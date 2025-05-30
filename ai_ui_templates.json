@@ -1,0 +1,56 @@
+{
+  "dashboard_ai_card": {
+    "type": "card",
+    "title": "AI Insight",
+    "content": {
+      "risk_level": "High",
+      "message": "Your expenses have exceeded your income in the last 3 months. It's risky to make new purchases right now."
+    },
+    "icon": "warning",
+    "color": "red"
+  },
+  "balance_indicator": {
+    "type": "status",
+    "label": "Financial Status",
+    "value": "Stable",
+    "icon": "check_circle",
+    "tooltip": "AI reviewed your recent activity. All looks good."
+  },
+  "weekly_summary": {
+    "type": "summary_card",
+    "title": "Your Week at a Glance",
+    "items": [
+      "+ Met your budget goals",
+      "- Spending increased by 12%",
+      "AI Advice: Pause large purchases and cut back on dining out"
+    ]
+  },
+  "installment_check_card": {
+    "type": "action_card",
+    "title": "Thinking about a purchase?",
+    "input_fields": [
+      {
+        "name": "item",
+        "type": "text",
+        "placeholder": "e.g. MacBook"
+      },
+      {
+        "name": "price",
+        "type": "number",
+        "placeholder": "Total price"
+      },
+      {
+        "name": "months",
+        "type": "number",
+        "placeholder": "Months"
+      }
+    ],
+    "button": {
+      "text": "Check with AI",
+      "action": "/installment"
+    },
+    "output_placeholder": {
+      "result": "Your monthly payment would be $125. AI says: Safe to buy."
+    }
+  }
+}

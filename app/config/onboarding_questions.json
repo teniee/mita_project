@@ -1,0 +1,28 @@
+{
+  "income": {
+    "monthly_income": "float",
+    "additional_income": "float"
+  },
+  "fixed_expenses": {
+    "rent_or_mortgage": "float",
+    "utilities": "float",
+    "subscriptions": "float",
+    "loans": "float",
+    "insurance": "float",
+    "childcare_or_education": "float",
+    "other_fixed": "float"
+  },
+  "spending_habits": {
+    "dining_out_per_month": "int",
+    "entertainment_per_month": "int",
+    "clothing_per_month": "int",
+    "travel_per_year": "int",
+    "coffee_per_week": "int",
+    "transport_per_month": "int"
+  },
+  "goals": {
+    "savings_goal_amount_per_month": "float",
+    "savings_goal_type": "str",
+    "has_emergency_fund": "bool"
+  }
+}
