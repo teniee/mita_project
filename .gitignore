@@ -1,0 +1,28 @@
+# === Flutter ===
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+
+# === Firebase Secrets ===
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# === VS Code ===
+.vscode/
+
+# === macOS ===
+macos/Flutter/ephemeral/
+
+# === Python ===
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# === Docker / Secrets ===
+secrets/
+.env
+*.log
+docker-compose.override.yml

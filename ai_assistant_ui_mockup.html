@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Assistant UI Mockup</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f6f6; padding: 2rem; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 600px;
+    }
+    .title { font-size: 1.4rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .status { font-weight: bold; padding: 0.2rem 0.5rem; border-radius: 4px; display: inline-block; }
+    .status.stable { background: #e0f9e2; color: #2e7d32; }
+    .status.high { background: #fdecea; color: #c62828; }
+    ul { padding-left: 1.2rem; }
+    .action-form input { width: 100%; margin: 0.3rem 0; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    .action-form button { background: #0066ff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="title">AI Insight</div>
+  <div class="status high">Risk Level: High</div>
+  <p>Your expenses have exceeded your income in the last 3 months. It's risky to make new purchases right now.</p>
+</div>
+
+<div class="card">
+  <div class="title">Financial Status</div>
+  <div class="status stable">Stable</div>
+  <p>AI reviewed your recent activity. All looks good.</p>
+</div>
+
+<div class="card">
+  <div class="title">Your Week at a Glance</div>
+  <ul>
+    <li>✅ Met your budget goals</li>
+    <li>⚠️ Spending increased by 12%</li>
+    <li>💬 AI Advice: Pause large purchases and cut back on dining out</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="title">Thinking about a purchase?</div>
+  <form class="action-form">
+    <input type="text" placeholder="e.g. MacBook" />
+    <input type="number" placeholder="Total price" />
+    <input type="number" placeholder="Months" />
+    <button type="button">Check with AI</button>
+  </form>
+  <p><strong>AI Suggestion:</strong> Monthly payment would be $125. Safe to buy.</p>
+</div>
+
+</body>
+</html>

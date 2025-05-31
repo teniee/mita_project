@@ -1,0 +1,16 @@
+currency: GBP
+mandatory_categories: [housing, utilities, council_tax, healthcare, insurance]
+seasonal_factors:
+  winter:
+    utilities: 1.25
+  summer:
+    travel: 1.25
+classes:
+  lower_middle:
+    housing: 0.35
+    food: 0.17
+    transport: 0.15
+    savings: 0.08
+    healthcare: 0.07
+    entertainment: 0.08
+    miscellaneous: 0.10
