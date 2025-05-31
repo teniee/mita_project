@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart'; // Импорт сервиса
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({Key? key}) : super(key: key);
@@ -10,6 +11,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  final ApiService _api = ApiService(); // Создание экземпляра API
 
   @override
   void initState() {
@@ -24,9 +26,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
       curve: Curves.easeInOut,
     );
 
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(context, '/onboarding_region');
-    });
+    _checkAuth(); // Проверка токена и переход
+  }
+
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(seconds: 2)); // Подождать анимацию
+
+    final token = await _api.getToken();
+
+    if (token == null) {
+      Navigator.pushReplacementNamed(context, '/login'); // Если токена нет
+    } else {
+      try {
+        final response = await _api.getUserProfile(); // Попробовать получить профиль
+        if (response.statusCode == 200) {
+          Navigator.pushReplacementNamed(context, '/main'); // Успех — перейти на главный экран
+        } else {
+          Navigator.pushReplacementNamed(context, '/login'); // Неавторизован
+        }
+      } catch (e) {
+        Navigator.pushReplacementNamed(context, '/login'); // Ошибка — на логин
+      }
+    }
   }
 
   @override
@@ -38,7 +59,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF193C57), // твой основной акцент
+      backgroundColor: const Color(0xFF193C57),
       body: Center(
         child: ScaleTransition(
           scale: _animation,

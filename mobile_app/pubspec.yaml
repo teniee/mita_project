@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  dio: ^5.4.0                   # ✅ HTTP клиент
+  flutter_secure_storage: ^8.0.0  # ✅ Хранилище токена
 
 dev_dependencies:
   flutter_test:
