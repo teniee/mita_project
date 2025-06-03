@@ -1,8 +1,8 @@
 fastapi
-uvicorn[standard]
+uvicorn[standard]==0.27.0.post1
 pydantic
 pydantic[email]
-pydantic-settings
+pydantic-settings==2.2.1
 python-dotenv
 python-multipart
 numpy
@@ -16,6 +16,7 @@ passlib[bcrypt]==1.7
 fastapi-limiter==0.1.5
 aioredis==2.0
 starlette
+pyyaml==6.0
 pytesseract
 Pillow
 firebase-admin
