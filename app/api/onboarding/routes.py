@@ -16,10 +16,12 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 @router.get("/questions", response_model=dict)
 async def get_questions():
-    path = Path("data/onboarding_questions.json")
+    """Return onboarding questions from the config directory."""
+    base_dir = Path(__file__).resolve().parent.parent
+    path = base_dir / "config" / "onboarding_questions.json"
     if not path.exists():
         return success_response({"questions": []})
-    with path.open("r") as f:
+    with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     return success_response(data)
 
