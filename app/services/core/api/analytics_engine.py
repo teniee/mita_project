@@ -10,7 +10,10 @@ from app.services.core.analytics.monthly_aggregator import (
 
 
 class AnalyticsEngine:
-    def __init__(self):
+    """High level API aggregating analytics helpers."""
+
+    def __init__(self) -> None:
+        """Initialize the engine with no state."""
         pass
 
     def get_monthly_summary(self, calendar: list, month: str) -> dict:
