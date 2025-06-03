@@ -27,7 +27,6 @@ class ApiService {
     );
     return response.data;
   }
-}
 
   Future<Map<String, dynamic>> getDashboard() async {
     final token = await getToken();
@@ -221,3 +220,4 @@ class ApiService {
     );
     return response.data;
   }
+}
