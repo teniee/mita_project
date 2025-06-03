@@ -1,49 +1,51 @@
-from app.utils.response_wrapper import success_response
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from decimal import Decimal
 from datetime import datetime
-from sqlalchemy.orm import Session
-from app.core.session import get_db
-from app.db.models import Transaction
-from app.api.dependencies import get_current_user
-
-router=APIRouter(prefix="/transactions", tags=["transactions"])
-
-class TxnIn(BaseModel):
-    category:str
-    amount:float
-    currency:str="USD"
-    spent_at:datetime=datetime.utcnow()
-
-@router.post("/")
-def add_txn(txn:TxnIn, user=Depends(get_current_user), db:Session=Depends(get_db)):
-    t=Transaction(user_id=user.id, category=txn.category,
-                  amount=Decimal(str(txn.amount)), currency=txn.currency,
-                  spent_at=txn.spent_at)
-    db.add(t); db.commit(); db.refresh(t)
-    return success_response({"id":str(t.id)})
-
-@router.get("/")
-def list_transactions(user=Depends(get_current_user), db: Session = Depends(get_db)):
-    txns = db.query(Transaction).filter(Transaction.user_id == user.id).all()
-    return [
-        {
-            "id": str(t.id),
-            "category": t.category,
-            "amount": float(t.amount),
-            "currency": t.currency,
-            "spent_at": t.spent_at.isoformat(),
-        }
-        for t in txns
-    ]
-
-
-from app.schemas.core_outputs import TransactionOut
+from decimal import Decimal
 from typing import List
 
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import get_current_user
+from app.core.session import get_db
+from app.db.models import Transaction
+from app.schemas.core_outputs import TransactionOut
+from app.utils.response_wrapper import success_response
+
+router = APIRouter(prefix="/transactions", tags=["transactions"])
+
+
+class TxnIn(BaseModel):
+    category: str
+    amount: float
+    currency: str = "USD"
+    spent_at: datetime = datetime.utcnow()
+
+
+@router.post("/")
+def add_txn(
+    txn: TxnIn,
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    t = Transaction(
+        user_id=user.id,
+        category=txn.category,
+        amount=Decimal(str(txn.amount)),
+        currency=txn.currency,
+        spent_at=txn.spent_at,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    return success_response({"id": str(t.id)})
+
+
 @router.get("/", response_model=List[TransactionOut])
-def list_transactions(user=Depends(get_current_user), db: Session = Depends(get_db)):
+def list_transactions(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
     txns = db.query(Transaction).filter(Transaction.user_id == user.id).all()
     return [
         {
