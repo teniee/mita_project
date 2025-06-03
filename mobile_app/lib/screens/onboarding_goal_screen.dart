@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingGoalScreen extends StatefulWidget {
   const OnboardingGoalScreen({Key? key}) : super(key: key);
@@ -30,8 +31,8 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
 
   void _submitGoals() {
     if (selectedGoals.isEmpty) return;
-
-    // TODO: сохранить goals в глобальное состояние или передать напрямую
+    // Save selected goals for the final onboarding request
+    OnboardingState.instance.goals = selectedGoals.toList();
     Navigator.pushNamed(context, '/onboarding_habits');
   }
 
