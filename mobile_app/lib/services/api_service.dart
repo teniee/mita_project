@@ -27,7 +27,6 @@ class ApiService {
     );
     return response.data;
   }
-}
 
   Future<Map<String, dynamic>> getDashboard() async {
     final token = await getToken();
@@ -146,8 +145,6 @@ class ApiService {
     );
   }
 
-}
-
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
@@ -221,3 +218,4 @@ class ApiService {
     );
     return response.data;
   }
+}
