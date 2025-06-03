@@ -1,9 +1,8 @@
 class StylePersonalizationEngine:
     """Generate UI and tone tweaks based on user behavior profile."""
 
-    def __init__(self) -> None:
-        """Currently stateless but left for future extensibility."""
-        pass
+    # No initialization logic is required yet. The class remains simple and can
+    # evolve in the future without carrying unused boilerplate.
 
     def adapt(self, profile):
         style = profile.get("behavior", "neutral")

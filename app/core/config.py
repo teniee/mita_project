@@ -1,7 +1,9 @@
 from functools import lru_cache
+
 try:
     from pydantic_settings import BaseSettings
-except ModuleNotFoundError:  # fallback for environments without pydantic-settings
+except ModuleNotFoundError:
+    # Fallback for environments without pydantic-settings
     from pydantic import BaseSettings
 
 
@@ -32,9 +34,9 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
 
     class Config:
-        # 🔻 Удалено, потому что Render использует переменные окружения из UI
-        # env_file = "./secrets/.env.production"
-        pass
+        # Render uses environment variables from the UI. The ``env_file``
+        # option remains for local development.
+        env_file = ".env"
 
 
 @lru_cache
