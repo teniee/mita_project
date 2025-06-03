@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingMotivationScreen extends StatefulWidget {
   const OnboardingMotivationScreen({Key? key}) : super(key: key);
@@ -14,8 +15,8 @@ class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen>
   void _submitMotivation() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-
-    // TODO: сохранить мотивацию
+    // Persist motivation text
+    OnboardingState.instance.motivation = text;
     Navigator.pushNamed(context, '/onboarding_finish');
   }
 

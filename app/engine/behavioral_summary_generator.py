@@ -1,9 +1,9 @@
 class BehavioralSummaryGenerator:
     """Compose human readable financial behavior summaries."""
 
-    def __init__(self) -> None:
-        """Initialize the generator with no state for now."""
-        pass
+    # The generator currently has no state, so we rely solely on the input
+    # data when constructing summaries. By omitting ``__init__`` we keep the
+    # class lightweight and avoid unused placeholder code.
 
     def generate(self, profile, analytics_data):
         region = profile.get("region", "unknown")

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingRegionScreen extends StatefulWidget {
   const OnboardingRegionScreen({Key? key}) : super(key: key);
@@ -19,8 +20,8 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
   void _submitRegion() async {
     if (selectedRegion == null) return;
 
-    // TODO: Подключи к своему API, если нужно сохранить регион сразу:
-    // await ApiService.submitRegion(selectedRegion);
+    // Persist region choice until the final onboarding step
+    OnboardingState.instance.region = selectedRegion;
 
     Navigator.pushNamed(context, '/onboarding_income');
   }

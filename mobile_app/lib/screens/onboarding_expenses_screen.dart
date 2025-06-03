@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class FixedExpense {
   String category;
@@ -31,8 +32,8 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
           .map((e) => {"category": e.category, "amount": double.parse(e.amount)})
           .toList();
 
-      // TODO: Подключи к своему API
-      // await ApiService.submitExpenses(apiExpenses);
+      // Preserve expenses for the final onboarding request
+      OnboardingState.instance.expenses = apiExpenses;
 
       Navigator.pushNamed(context, '/onboarding_goal');
     }
@@ -123,7 +124,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                                     }
                                     final n = double.tryParse(val);
                                     if (n == null || n <= 0) {
-                                      return ">";
+                                      return "Enter a positive number";
                                     }
                                     return null;
                                   },

@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({Key? key}) : super(key: key);
@@ -22,14 +23,17 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
   Future<void> _submitOnboardingData() async {
     try {
-      // TODO: заменить на реальные значения из состояния/хранилища
+      // Gather answers from the temporary onboarding state
+      final state = OnboardingState.instance;
       final onboardingData = {
-        "region": "EU",
-        "income": 1000,
-        "expenses": 500,
-        "goals": ["save_more", "budgeting"],
-        "habits": ["impulse_buying", "no_budgeting"],
-        "motivation": "Хочу научиться контролировать расходы"
+        "region": state.region,
+        "income": state.income,
+        "expenses": state.expenses,
+        "goals": state.goals,
+        "habits": state.habits,
+        "motivation": state.motivation,
+        if (state.habitsComment != null && state.habitsComment!.isNotEmpty)
+          "habits_comment": state.habitsComment,
       };
 
       await _api.submitOnboarding(onboardingData);
