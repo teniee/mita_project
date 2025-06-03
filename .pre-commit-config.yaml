@@ -12,7 +12,9 @@ repos:
         additional_dependencies: ['flake8-bugbear']
 
   - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.12.0
+    # Latest available tag in mirrors-isort repository
+    # v5.12.0 does not exist which breaks pre-commit installation
+    rev: v5.10.1
     hooks:
       - id: isort
         name: isort
