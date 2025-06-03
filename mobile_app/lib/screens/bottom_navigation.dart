@@ -1,7 +1,7 @@
 import 'habits_screen.dart';
 
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'main_screen.dart';
 import 'calendar_screen.dart';
 import 'goals_screen.dart';
 import 'insights_screen.dart';
@@ -17,7 +17,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    HomeScreen(),
+    MainScreen(),
     CalendarScreen(),
     GoalsScreen(),
     InsightsScreen(),

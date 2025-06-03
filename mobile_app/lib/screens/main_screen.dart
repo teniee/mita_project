@@ -113,7 +113,7 @@ class _MainScreenState extends State<MainScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Today's Budget Targets',
+          "Today's Budget Targets",
           style: TextStyle(
             fontFamily: 'Sora',
             fontSize: 18,
