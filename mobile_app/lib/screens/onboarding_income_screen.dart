@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingIncomeScreen extends StatefulWidget {
   const OnboardingIncomeScreen({Key? key}) : super(key: key);
@@ -15,8 +16,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       double income = double.parse(_incomeController.text.replaceAll(',', ''));
 
-      // TODO: Подключи к своему API (пример):
-      // await ApiService.submitIncome(income);
+      // Store income until all onboarding data is collected
+      OnboardingState.instance.income = income;
 
       Navigator.pushNamed(context, '/onboarding_expenses');
     }

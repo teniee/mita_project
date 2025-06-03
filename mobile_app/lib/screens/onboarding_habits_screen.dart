@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../services/onboarding_state.dart';
 
 class OnboardingHabitsScreen extends StatefulWidget {
   const OnboardingHabitsScreen({Key? key}) : super(key: key);
@@ -31,8 +32,9 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
 
   void _submitHabits() {
     if (selectedHabits.isEmpty) return;
-
-    // TODO: сохранить habits и комментарий в глобальное состояние или передать напрямую
+    // Save habits and optional comment
+    OnboardingState.instance.habits = selectedHabits.toList();
+    OnboardingState.instance.habitsComment = commentController.text.trim();
     Navigator.pushNamed(context, '/onboarding_motivation');
   }
 

@@ -12,9 +12,8 @@ from app.services.core.analytics.monthly_aggregator import (
 class AnalyticsEngine:
     """High level API aggregating analytics helpers."""
 
-    def __init__(self) -> None:
-        """Initialize the engine with no state."""
-        pass
+    # The engine simply proxies helper functions. An explicit ``__init__`` is
+    # not needed, which keeps the class lightweight.
 
     def get_monthly_summary(self, calendar: list, month: str) -> dict:
         return aggregate_monthly_data(calendar, month)

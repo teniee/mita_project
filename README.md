@@ -209,3 +209,21 @@ Include:
 - [ ] Email reminders
 - [ ] Scheduled redistribution
 - [ ] i18n support
+
+## 🔧 13. Running Tests
+
+To run the backend unit tests locally, first install all Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then execute:
+
+```bash
+pytest -q
+```
+
+If dependencies such as `SQLAlchemy` are missing, `pytest` will fail with
+`ModuleNotFoundError`. Installing from `requirements.txt` ensures all packages
+are available.
