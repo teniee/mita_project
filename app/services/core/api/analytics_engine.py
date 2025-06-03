@@ -1,10 +1,19 @@
-from app.services.core.analytics.calendar_anomaly_detector import detect_anomalies
-from app.services.core.analytics.monthly_aggregator import aggregate_monthly_data
+# isort: off
+from app.services.core.analytics.calendar_anomaly_detector import (
+    detect_anomalies,
+)
+from app.services.core.analytics.monthly_aggregator import (
+    aggregate_monthly_data,
+)
+
+# isort: on
 
 
 class AnalyticsEngine:
-    def __init__(self):
-        pass
+    """High level API aggregating analytics helpers."""
+
+    # The engine simply proxies helper helpers. An explicit ``__init__`` is not
+    # needed, which keeps the class lightweight.
 
     def get_monthly_summary(self, calendar: list, month: str) -> dict:
         return aggregate_monthly_data(calendar, month)
