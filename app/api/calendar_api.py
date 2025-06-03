@@ -1,3 +1,9 @@
+"""Legacy Django REST Framework API.
+
+This module was part of an early prototype and is not used by the current
+FastAPI application. It is kept for reference only.
+"""
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 

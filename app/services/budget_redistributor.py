@@ -33,6 +33,7 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
     # 2. Перераспределение из лишних в дефицитные
     redistribution_log = []
     for cat, deficit in deficit_by_cat.items():
+        transferred_total = 0.0
         for donor_cat, available in surplus_by_cat.items():
             if donor_cat == cat or available <= 0:
                 continue
@@ -48,6 +49,7 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
                 if to_take > 0:
                     donor_entry.planned_amount -= to_take
                     transfer -= to_take
+                    transferred_total += to_take
                     surplus_by_cat[donor_cat] -= to_take
                     redistribution_log.append({
                         "from": donor_cat,
@@ -58,10 +60,11 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
                 if transfer <= 0:
                     break
 
-            # добавляем к cat
-            for receiver_entry in sorted(plan_map[cat], key=lambda e: e.date):
-                receiver_entry.planned_amount += to_take
-                break  # только один день
+
+        # добавляем к cat
+        for receiver_entry in sorted(plan_map[cat], key=lambda e: e.date):
+            receiver_entry.planned_amount += transferred_total
+            break  # только один день
 
     db.commit()
     return {"status": "redistributed", "log": redistribution_log}
