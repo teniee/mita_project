@@ -1,5 +1,8 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings
+try:
+    from pydantic_settings import BaseSettings
+except ModuleNotFoundError:  # fallback for environments without pydantic-settings
+    from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -10,13 +13,13 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://redis:6379"
 
     # Auth / JWT
-    JWT_SECRET: str
+    JWT_SECRET: str = "test_secret"
     SECRET_KEY: str = "default_dev_secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # OpenAI
-    openai_api_key: str
+    openai_api_key: str = "test"
     openai_model: str = "gpt-4o-mini"
 
     # Firebase
