@@ -1,5 +1,12 @@
-from app.services.core.analytics.calendar_anomaly_detector import detect_anomalies
-from app.services.core.analytics.monthly_aggregator import aggregate_monthly_data
+# isort: off
+from app.services.core.analytics.calendar_anomaly_detector import (
+    detect_anomalies,
+)
+from app.services.core.analytics.monthly_aggregator import (
+    aggregate_monthly_data,
+)
+
+# isort: on
 
 
 class AnalyticsEngine:
