@@ -7,9 +7,9 @@ python-dotenv
 python-multipart
 numpy
 scikit-learn
-SQLAlchemy>=1.4,<2.0
+SQLAlchemy==1.4.54
 alembic==1.8
-asyncpg
+asyncpg==0.30.0
 psycopg2-binary
 PyJWT==2.8
 passlib[bcrypt]==1.7
