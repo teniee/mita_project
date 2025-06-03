@@ -112,28 +112,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Details: ${day['date']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: (day['categories'] as List).map((cat) {
-            return ListTile(
-              title: Text(cat['category']),
-              trailing: Text('\$${cat['limit']}'),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Color _getDayColor(String status) {
     switch (status) {
