@@ -66,20 +66,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   itemCount: _expenses.length,
                   itemBuilder: (context, index) {
                     final item = _expenses[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
+                    return GestureDetector(
                       onTap: () async {
                     final result = await Navigator.push(
                       context,
@@ -89,9 +76,23 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     );
                     if (result == true) fetchExpenses();
                   },
-                  child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           Text(
                             item['category'] ?? 'Unknown',
                             style: const TextStyle(
