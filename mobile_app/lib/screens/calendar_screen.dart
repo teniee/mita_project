@@ -54,7 +54,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Day: \${day['date']}',
+              'Day: ${day['date']}',
               style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold, fontSize: 20),
             ),
             const SizedBox(height: 12),
@@ -62,7 +62,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Spent', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$\$spent', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('\$$spent', style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 4),
@@ -70,7 +70,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Daily Limit', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$\$limit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('\$$limit', style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const Divider(height: 24),
