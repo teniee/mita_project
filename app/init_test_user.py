@@ -18,7 +18,7 @@ def create_test_user():
     user = User(
         is_premium=True,
         email="test@example.com",
-        hashed_password="$2b$12$examplehashforpassword",  # предполагаемый bcrypt хеш
+        hashed_password=hash_password("oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA"),
         full_name="Test User"
     )
     db.add(user)
