@@ -224,6 +224,6 @@ Then execute:
 pytest -q
 ```
 
-If dependencies such as `SQLAlchemy` are missing, `pytest` will fail with
-`ModuleNotFoundError`. Installing from `requirements.txt` ensures all packages
-are available.
+If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
+`pytest` will fail with `ModuleNotFoundError`. Installing from
+`requirements.txt` ensures all packages are available.

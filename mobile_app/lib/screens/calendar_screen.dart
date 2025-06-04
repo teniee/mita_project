@@ -54,7 +54,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Day: \${day['date']}',
+              'Day: ${day['date']}',
               style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold, fontSize: 20),
             ),
             const SizedBox(height: 12),
@@ -62,7 +62,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Spent', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$\$spent', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('\$$spent', style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 4),
@@ -70,7 +70,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Daily Limit', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$\$limit', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('\$$limit', style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const Divider(height: 24),
@@ -109,28 +109,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             }).toList()
           ],
         ),
-      ),
-    );
-  }
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Details: ${day['date']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: (day['categories'] as List).map((cat) {
-            return ListTile(
-              title: Text(cat['category']),
-              trailing: Text('\$${cat['limit']}'),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
       ),
     );
   }
@@ -181,10 +159,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     itemBuilder: (context, index) {
                       final day = calendarData[index];
                       return GestureDetector(
-                        onTap: () => _showDayDetails(day),
-                        child: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/daily_budget'),
-              child: Container(
+                        onTap: () => Navigator.pushNamed(context, '/daily_budget'),
+                        child: Container(
                           decoration: BoxDecoration(
                             color: _getDayColor(day['status']),
                             borderRadius: BorderRadius.circular(14),
