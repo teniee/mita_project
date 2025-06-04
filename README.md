@@ -1,0 +1,229 @@
+
+# 💸 MITA – Money Intelligence Task Assistant (Full Documentation)
+
+MITA is an AI-powered personal finance backend platform designed to help users control their spending, plan budgets, and receive intelligent feedback using a daily calendar-based system. Built on **FastAPI**, this backend supports OCR receipt parsing, automatic budget redistribution, Firebase-based drift tracking, and more.
+
+---
+
+## 🔷 1. Overview
+
+MITA distributes a user’s **monthly income** into **daily budgets per category** (e.g. food, rent, entertainment). As the user logs expenses, the system compares **planned vs spent**, detects overages, and **redistributes** funds automatically across categories. 
+
+---
+
+## 🧱 2. System Architecture
+
+```
+[ User App ] ─┬─> [ Auth API        ]
+              ├─> [ Onboarding API  ]
+              ├─> [ Transactions API]
+              ├─> [ Calendar API    ]──> DailyPlan
+              ├─> [ OCR Service     ]──> Receipt → Text → Expense
+              ├─> [ AI Assistant    ]
+              └─> [ Drift Monitor   ]──> Firebase
+
+[ PostgreSQL ] <── [ SQLAlchemy Models ]
+```
+
+- **Backend:** FastAPI
+- **Database:** PostgreSQL (via SQLAlchemy)
+- **OCR:** Google Cloud Vision
+- **AI Assistant:** placeholder modules (`agent_runner`, `recommendation`)
+- **Tracking:** Firebase Firestore (optional)
+- **Deployment:** Docker
+
+---
+
+## ⚙️ 3. Core Business Logic (Use Cases)
+
+### 🔐 Auth & Users
+- Register/login with JWT
+- Store income, country, segment (low/mid/high), config flags
+
+### 🧾 Expenses
+- Add expense manually or via receipt (OCR)
+- Store transaction (amount, date, category, description)
+
+### 📅 Daily Budgeting
+- Calculate budget per day/category
+- Track spent vs planned per category
+- Update `DailyPlan` after each transaction
+
+### 🔁 Redistribution
+- Redistribute remaining budget between categories
+- Close gaps from overspending using surplus days
+- Triggered manually or during planning phase
+
+### 🧠 Assistant
+- Suggest budget changes
+- Warn about overspending trends
+- Predict category overshoot (planned)
+
+---
+
+## 🧬 4. Entities & Models
+
+### User
+```json
+{
+  "id": "UUID",
+  "email": "user@example.com",
+  "income": 60000,
+  "country": "US",
+  "class_segment": "mid",
+  "config": { "income_check": true }
+}
+```
+
+### Transaction
+```json
+{
+  "amount": 1200,
+  "category": "food",
+  "date": "2025-05-10",
+  "description": "groceries"
+}
+```
+
+### DailyPlan
+```json
+{
+  "date": "2025-05-10",
+  "category": "food",
+  "planned_amount": 300,
+  "spent_amount": 220
+}
+```
+
+---
+
+## 📡 5. API Endpoints
+
+| Method | Path                                 | Description                                 |
+|--------|--------------------------------------|---------------------------------------------|
+| POST   | `/auth/login`                        | Login with email/password                   |
+| POST   | `/auth/register`                     | Register new user                           |
+| GET    | `/user/profile`                      | Get user data                               |
+| POST   | `/onboarding/answers`                | Submit onboarding answers                   |
+| POST   | `/transactions`                      | Add a new transaction                       |
+| GET    | `/transactions/history`              | Get transaction history                     |
+| GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
+| POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
+| POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
+| GET    | `/assistant/recommendation`          | (Future) Get financial suggestions          |
+
+---
+
+## 🔄 6. Internal Logic Flow
+
+### Expense Added:
+- ⏎ User submits amount/category
+- 🔁 Transaction saved → linked to day
+- 🔍 System finds `DailyPlan`:
+  - if exists → updates `spent_amount`
+  - else → creates one
+- 📊 UI shows remaining budget for that day
+
+### Redistribution:
+- 🧠 Scans all `DailyPlan` entries in month
+- 🔴 Detects overspending (`spent > planned`)
+- 🟢 Pulls from surplus days
+- Updates planned values to balance categories
+
+---
+
+## 🧰 7. Module Descriptions
+
+- `services/ocr_google.py` — integrates Google Cloud Vision
+- `services/budget_redistributor.py` — logic for balancing budget
+- `services/expense_tracker.py` — updates DailyPlan after transaction
+- `orchestrator/receipt_orchestrator.py` — parses receipt → transaction
+- `agent_runner.py` — placeholder for AI logic
+- `financial/routes.py` — assistant and analytics routes
+- `drift_service.py` — Firebase connection and drift tracking
+
+---
+
+## 🧪 8. Environment Variables
+
+```
+GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
+FIREBASE_CONFIGURED=true
+JWT_SECRET_KEY=supersecret
+DATABASE_URL=postgresql://user:pass@localhost:5432/mita
+```
+
+---
+
+## 💻 9. Dev Setup
+
+### Docker
+```bash
+docker-compose up --build
+```
+
+### Local (manual)
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+---
+
+## 🧠 10. Frontend Expectations
+
+A proper Flutter or React frontend should include:
+
+- ✅ Login/register
+- ✅ Onboarding: income, categories
+- ✅ Dashboard: daily budget left
+- ✅ Calendar: per-day category breakdown
+- ✅ Add expense (manual or photo)
+- ✅ Button: redistribute budget
+- ✅ View history
+- 🧠 Assistant suggestions (optional)
+
+---
+
+## 🤖 11. Lovable Prompt
+
+> Build a full budgeting assistant UI for: https://github.com/teniee/mita_docker_ready_project_manus_
+
+Include:
+- Auth
+- Onboarding (income, categories)
+- Budget calendar
+- Add transaction
+- Redistribute button
+- Expense history
+- Assistant recommendations
+
+---
+
+## 🛠 12. Roadmap
+
+- [ ] Assistant dialog with contextual replies
+- [ ] Spending goals per category
+- [ ] Email reminders
+- [ ] Scheduled redistribution
+- [ ] i18n support
+
+## 🔧 13. Running Tests
+
+To run the backend unit tests locally, first install all Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then execute:
+
+```bash
+pytest -q
+```
+
+If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
+`pytest` will fail with `ModuleNotFoundError`. Installing from
+`requirements.txt` ensures all packages are available.

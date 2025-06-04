@@ -1,0 +1,10 @@
+currency: USD
+mandatory_categories: [housing, utilities]
+seasonal_factors: {}
+classes:
+  middle:
+    housing: 0.33
+    food: 0.18
+    transport: 0.17
+    savings: 0.10
+    miscellaneous: 0.22
