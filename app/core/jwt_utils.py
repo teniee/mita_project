@@ -2,7 +2,7 @@ import os, datetime, uuid
 import jwt
 from passlib.context import CryptContext
 
-SECRET_KEY=os.getenv("JWT_SECRET","change_me")
+SECRET_KEY=os.getenv "oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA"
 ALGORITHM="HS256"
 ACCESS_EXPIRES_MIN=30
 REFRESH_EXPIRES_DAYS=7
