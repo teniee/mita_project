@@ -16,6 +16,17 @@ class ApiService {
     return await _storage.read(key: 'access_token');
   }
 
+  Future<void> saveToken(String token) async {
+    await _storage.write(key: 'access_token', value: token);
+  }
+
+  Future<Response> loginWithGoogle(String idToken) async {
+    return await _dio.post(
+      '/api/auth/google',
+      data: {'id_token': idToken},
+    );
+  }
+
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     final response = await _dio.post(
@@ -73,6 +84,32 @@ class ApiService {
       ),
     );
     return response.data;
+  }
+
+  Future<void> createGoal(Map<String, dynamic> data) async {
+    final token = await getToken();
+    await _dio.post(
+      '/api/goals/',
+      data: data,
+      options: Options(headers: {'Authorization': 'Bearer \$token'}),
+    );
+  }
+
+  Future<void> updateGoal(int id, Map<String, dynamic> data) async {
+    final token = await getToken();
+    await _dio.patch(
+      '/api/goals/\$id/',
+      data: data,
+      options: Options(headers: {'Authorization': 'Bearer \$token'}),
+    );
+  }
+
+  Future<void> deleteGoal(int id) async {
+    final token = await getToken();
+    await _dio.delete(
+      '/api/goals/\$id/',
+      options: Options(headers: {'Authorization': 'Bearer \$token'}),
+    );
   }
 
 
@@ -214,6 +251,15 @@ class ApiService {
     final token = await getToken();
     final response = await _dio.get(
       '/api/daily-budget/',
+      options: Options(headers: {'Authorization': 'Bearer \$token'}),
+    );
+    return response.data;
+  }
+
+  Future<List<dynamic>> getMonthlyAnalytics() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/analytics/monthly/',
       options: Options(headers: {'Authorization': 'Bearer \$token'}),
     );
     return response.data;
