@@ -28,9 +28,9 @@ flutter:
   fonts:
     - family: Sora
       fonts:
-        - asset: assets/fonts/static/Sora-Regular.ttf
-        - asset: assets/fonts/static/Sora-Bold.ttf
+        - asset: assets/fonts/Sora/static/Sora-Regular.ttf
+        - asset: assets/fonts/Sora/static/Sora-Bold.ttf
     - family: Manrope
       fonts:
-        - asset: assets/fonts/static/Manrope-Regular.ttf
-        - asset: assets/fonts/static/Manrope-Bold.ttf
+        - asset: assets/fonts/Manrope/static/Manrope-Regular.ttf
+        - asset: assets/fonts/Manrope/static/Manrope-Bold.ttf
