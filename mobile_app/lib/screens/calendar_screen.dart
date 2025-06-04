@@ -112,28 +112,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Details: ${day['date']}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: (day['categories'] as List).map((cat) {
-            return ListTile(
-              title: Text(cat['category']),
-              trailing: Text('\$${cat['limit']}'),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Color _getDayColor(String status) {
     switch (status) {
@@ -181,10 +159,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     itemBuilder: (context, index) {
                       final day = calendarData[index];
                       return GestureDetector(
-                        onTap: () => _showDayDetails(day),
-                        child: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/daily_budget'),
-              child: Container(
+                        onTap: () => Navigator.pushNamed(context, '/daily_budget'),
+                        child: Container(
                           decoration: BoxDecoration(
                             color: _getDayColor(day['status']),
                             borderRadius: BorderRadius.circular(14),
