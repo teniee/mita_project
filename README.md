@@ -224,6 +224,18 @@ Then execute:
 pytest -q
 ```
 
-If dependencies such as `SQLAlchemy` are missing, `pytest` will fail with
-`ModuleNotFoundError`. Installing from `requirements.txt` ensures all packages
-are available.
+If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
+`pytest` will fail with `ModuleNotFoundError`. Installing from
+`requirements.txt` ensures all packages are available.
+
+### Flutter app
+
+The mobile client resides in `mobile_app/`. Before running it, install
+its dependencies with `flutter pub get`. Required packages include
+`intl`, `google_sign_in` and `fl_chart`.
+
+After installing packages you can run the Windows app with:
+
+```bash
+flutter run -d windows
+```
