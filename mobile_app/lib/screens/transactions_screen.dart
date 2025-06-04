@@ -33,7 +33,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load transactions: \$e';
+        _error = 'Failed to load transactions: $e';
         _isLoading = false;
       });
     }
@@ -94,45 +94,47 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                          Text(
-                            item['category'] ?? 'Unknown',
-                            style: const TextStyle(
-                              fontFamily: 'Sora',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item['description'] ?? 'No description',
-                            style: const TextStyle(
-                              fontFamily: 'Manrope',
-                              fontSize: 14,
-                              color: Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '\$${item['amount']}',
-                                style: const TextStyle(
-                                  fontFamily: 'Manrope',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
+                            Text(
+                              item['category'] ?? 'Unknown',
+                              style: const TextStyle(
+                                fontFamily: 'Sora',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
-                              Text(
-                                DateFormat.yMMMd().format(DateTime.parse(item['date'])),
-                                style: const TextStyle(
-                                  fontFamily: 'Manrope',
-                                  fontSize: 14,
-                                ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item['description'] ?? 'No description',
+                              style: const TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 14,
+                                color: Colors.black54,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '\$${item['amount']}',
+                                  style: const TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat.yMMMd().format(
+                                      DateTime.parse(item['date'])),
+                                  style: const TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
