@@ -159,10 +159,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     itemBuilder: (context, index) {
                       final day = calendarData[index];
                       return GestureDetector(
-                        onTap: () => _showDayDetails(day),
-                        child: GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/daily_budget'),
-              child: Container(
+                        onTap: () => Navigator.pushNamed(context, '/daily_budget'),
+                        child: Container(
                           decoration: BoxDecoration(
                             color: _getDayColor(day['status']),
                             borderRadius: BorderRadius.circular(14),

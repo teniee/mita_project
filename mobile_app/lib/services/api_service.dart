@@ -1,6 +1,8 @@
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ApiService {
   final Dio _dio = Dio(BaseOptions(
@@ -251,6 +253,15 @@ class ApiService {
     final token = await getToken();
     final response = await _dio.get(
       '/api/daily-budget/',
+      options: Options(headers: {'Authorization': 'Bearer \$token'}),
+    );
+    return response.data;
+  }
+
+  Future<List<dynamic>> getMonthlyAnalytics() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/analytics/monthly/',
       options: Options(headers: {'Authorization': 'Bearer \$token'}),
     );
     return response.data;
