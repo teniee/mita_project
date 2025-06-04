@@ -38,12 +38,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
       Navigator.pushReplacementNamed(context, '/login'); // Если токена нет
     } else {
       try {
-        final response = await _api.getUserProfile(); // Попробовать получить профиль
-        if (response.statusCode == 200) {
-          Navigator.pushReplacementNamed(context, '/main'); // Успех — перейти на главный экран
-        } else {
-          Navigator.pushReplacementNamed(context, '/login'); // Неавторизован
-        }
+        await _api.getUserProfile(); // Попробовать получить профиль
+        Navigator.pushReplacementNamed(context, '/main'); // Успех — перейти на главный экран
       } catch (e) {
         Navigator.pushReplacementNamed(context, '/login'); // Ошибка — на логин
       }
