@@ -14,7 +14,7 @@ dependencies:
   flutter_secure_storage: ^8.0.0  # ✅ Хранилище токена
   intl: ^0.18.1
   google_sign_in: ^6.1.5
-  fl_chart: ^0.62.0
+  fl_chart: ^0.71.0
 
 dev_dependencies:
   flutter_test:
@@ -22,15 +22,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/logo/mitalogo.png
-    - assets/fonts/
-  fonts:
-    - family: Sora
-      fonts:
-        - asset: assets/fonts/Sora-Regular.ttf
-        - asset: assets/fonts/Sora-Bold.ttf
-    - family: Manrope
-      fonts:
-        - asset: assets/fonts/Manrope-Regular.ttf
-        - asset: assets/fonts/Manrope-Bold.ttf

@@ -51,7 +51,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         dailyTotals = daily.entries
             .map((e) => {'date': e.key, 'amount': e.value})
             .toList()
-          ..sort((a, b) => a['date'].compareTo(b['date']));
+          ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
         _isLoading = false;
       });
     } catch (e) {
