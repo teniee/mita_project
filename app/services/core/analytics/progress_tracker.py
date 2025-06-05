@@ -1,7 +1,10 @@
-from typing import Any, List, Dict, Tuple
 from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
-def calculate_monthly_savings_progress(current_month: List[Dict], previous_month: List[Dict]) -> Dict[str, Any]:
+
+def calculate_monthly_savings_progress(
+    current_month: List[Dict], previous_month: List[Dict]
+) -> Dict[str, Any]:
     """
     Compares current and previous month savings.
     Returns % improvement or decline, and absolute difference.
@@ -29,5 +32,5 @@ def calculate_monthly_savings_progress(current_month: List[Dict], previous_month
         "previous_saved": previous_saved,
         "difference": round(change, 2),
         "percent_change": round(percent_change, 1),
-        "status": "improved" if change > 0 else "declined" if change < 0 else "same"
+        "status": "improved" if change > 0 else "declined" if change < 0 else "same",
     }
