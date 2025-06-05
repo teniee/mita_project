@@ -149,7 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ```
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-JWT_SECRET_KEY=supersecret
+SECRET_KEY=supersecret
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ```
 
