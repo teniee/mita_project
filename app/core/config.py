@@ -2,9 +2,13 @@ from functools import lru_cache
 
 try:
     from pydantic_settings import BaseSettings
-except ModuleNotFoundError:
-    # Fallback for environments without pydantic-settings
+except ModuleNotFoundError:  # pragma: no cover - fallback for older pydantic
     from pydantic import BaseSettings
+
+try:
+    from pydantic import ConfigDict
+except ImportError:  # pragma: no cover - pydantic v1 compatibility
+    ConfigDict = None
 
 
 class Settings(BaseSettings):
@@ -33,10 +37,11 @@ class Settings(BaseSettings):
     # Sentry (опционально)
     sentry_dsn: str = ""
 
-    class Config:
-        # Render uses environment variables from the UI. The ``env_file``
-        # option remains for local development.
-        env_file = ".env"
+    if ConfigDict:
+        model_config = ConfigDict(env_file=".env")
+    else:  # pragma: no cover - pydantic v1 fallback
+        class Config:
+            env_file = ".env"
 
 
 @lru_cache
