@@ -2,9 +2,9 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 
-SECRET_KEY = "REPLACE_ME"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from app.core.config import SECRET_KEY, ALGORITHM, settings
+
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Можно заменить на хранилище в Redis/DB

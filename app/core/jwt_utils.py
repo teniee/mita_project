@@ -1,11 +1,13 @@
-import os, datetime, uuid
+import os
+import datetime
+import uuid
 import jwt
 from passlib.context import CryptContext
 
-SECRET_KEY=os.getenv "oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA"
-ALGORITHM="HS256"
-ACCESS_EXPIRES_MIN=30
-REFRESH_EXPIRES_DAYS=7
+from app.core.config import SECRET_KEY, ALGORITHM, settings
+
+ACCESS_EXPIRES_MIN = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_EXPIRES_DAYS = 7
 
 pwd_context=CryptContext(schemes=["bcrypt"], deprecated="auto")
 

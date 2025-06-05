@@ -149,7 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ```
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-JWT_SECRET_KEY=supersecret
+SECRET_KEY=supersecret
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ```
 
@@ -158,6 +158,8 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ## 💻 9. Dev Setup
 
 ### Docker
+The provided Dockerfile now uses a multi-stage build to keep the final image
+small. Build and start the stack with:
 ```bash
 docker-compose up --build
 ```
