@@ -54,6 +54,10 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - Close gaps from overspending using surplus days
 - Triggered manually or during planning phase
 
+### 🙂 Mood Tracking
+- Record user mood for each day via the `/mood` API
+- Persist moods in the database for analytics
+
 ### 🧠 Assistant
 - Suggest budget changes
 - Warn about overspending trends
@@ -142,6 +146,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `agent_runner.py` — placeholder for AI logic
 - `financial/routes.py` — assistant and analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
+- `mood_store.py` — persists user mood entries in the database
 
 ---
 
