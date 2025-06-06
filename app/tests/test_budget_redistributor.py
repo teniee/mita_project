@@ -1,6 +1,9 @@
-from datetime import date
 import sys
+from datetime import date
 from types import SimpleNamespace
+
+from app.services.budget_redistributor import redistribute_budget_for_user
+
 
 class DummyField:
     def __ge__(self, other):
@@ -20,8 +23,6 @@ DummyModel = SimpleNamespace(
     planned_amount=DummyField(),
     spent_amount=DummyField(),
 )
-sys.modules['app.db.models'] = SimpleNamespace(DailyPlan=DummyModel)
-from app.services.budget_redistributor import redistribute_budget_for_user
 
 
 class DummyEntry:
@@ -57,6 +58,8 @@ class DummyDB:
 
 
 def test_redistribute_sums_transfers():
+    original = sys.modules.get("app.db.models")
+    sys.modules["app.db.models"] = SimpleNamespace(DailyPlan=DummyModel)
     entries = [
         DummyEntry(1, "rent", date(2023, 1, 1), 100.0, 150.0),
         DummyEntry(1, "rent", date(2023, 1, 2), 100.0, 150.0),
@@ -70,3 +73,7 @@ def test_redistribute_sums_transfers():
     assert db.committed
     # Total surplus = 80, should be added to first rent entry
     assert entries[0].planned_amount == 180.0
+    if original is not None:
+        sys.modules["app.db.models"] = original
+    else:
+        del sys.modules["app.db.models"]

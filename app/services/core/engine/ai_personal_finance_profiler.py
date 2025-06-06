@@ -1,27 +1,44 @@
-from sqlalchemy.orm import Session
-from app.db.models.user import User
-from app.db.models.daily_plan import DailyPlan
-from app.engine.behavior.spending_pattern_extractor import extract_patterns
-from app.agent.gpt_agent_service import GPTAgentService
+import json
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
-import json
+
+from sqlalchemy.orm import Session
+
+from app.agent.gpt_agent_service import GPTAgentService
+from app.core.config import settings
+from app.db.models.daily_plan import DailyPlan
+from app.db.models.user import User
+from app.engine.behavior.spending_pattern_extractor import extract_patterns
 
 # Initialize GPT agent with desired configuration
-GPT = GPTAgentService(api_key="sk-REPLACE_ME", model="gpt-4o")
+GPT = GPTAgentService(
+    api_key=settings.openai_api_key,
+    model=settings.openai_model,
+)
 
-def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict:
+
+def build_user_profile(
+    user_id: int,
+    db: Session,
+    year: int,
+    month: int,
+) -> dict:
     # Query user from the database
     user = db.query(User).filter_by(id=user_id).first()
     if not user:
         return {"error": "User not found"}
 
     # Fetch all user plans within the month
-    days = db.query(DailyPlan).filter_by(user_id=user_id).filter(
-        DailyPlan.date >= date(year, month, 1),
-        DailyPlan.date < date(year, month, 28) + timedelta(days=5)
-    ).all()
+    days = (
+        db.query(DailyPlan)
+        .filter_by(user_id=user_id)
+        .filter(
+            DailyPlan.date >= date(year, month, 1),
+            DailyPlan.date < date(year, month, 28) + timedelta(days=5),
+        )
+        .all()
+    )
 
     # Initialize data aggregators
     status_summary = defaultdict(int)
@@ -42,8 +59,9 @@ def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict
         "status_breakdown": dict(status_summary),
         "total_by_category": {k: float(v) for k, v in category_totals.items()},
         "behavior_tags": patterns,
-        "is_premium": getattr(user, "is_premium", False)
+        "is_premium": getattr(user, "is_premium", False),
     }
+
 
 def generate_financial_rating(user_profile: dict) -> dict:
     # Construct the prompt to send to GPT
@@ -52,8 +70,10 @@ def generate_financial_rating(user_profile: dict) -> dict:
         f"Top spending categories: {user_profile['total_by_category']}.\n"
         f"Day statuses: {user_profile['status_breakdown']}.\n"
         f"Behavioral tags: {user_profile['behavior_tags']}.\n"
-        "Write a short analytical summary: rating, overspending risk, and advice.\n"
-        "Respond in Russian, as JSON with the following fields: 'rating', 'risk', 'summary'."
+        "Write a short analytical summary: rating, overspending risk, and "
+        "advice.\n"
+        "Respond in Russian, as JSON with the following fields: "
+        "'rating', 'risk', 'summary'."
     )
 
     # Ask GPT model
@@ -66,5 +86,8 @@ def generate_financial_rating(user_profile: dict) -> dict:
         return {
             "rating": "B",
             "risk": "умеренный",
-            "summary": "Пользователь тратит стабильно, но иногда выходит за рамки бюджета."
+            "summary": (
+                "Пользователь тратит стабильно, но иногда выходит за рамки "
+                + "бюджета."
+            ),
         }
