@@ -149,7 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ```
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-SECRET_KEY=supersecret
+SECRET_KEY=supersecret  # replace this in production
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ```
 
@@ -170,6 +170,13 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+Install git hooks with [pre-commit](https://pre-commit.com/) to ensure code style:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
 ```
 
 ---
