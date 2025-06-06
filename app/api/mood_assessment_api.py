@@ -1,12 +1,15 @@
-from app.utils.response_wrapper import success_response
-from fastapi import APIRouter, HTTPException, Body
 from datetime import date
-from app.engine.mood_store import save_mood, get_mood
+
+from fastapi import APIRouter, Body, HTTPException
+
+from app.engine.mood_store import get_mood, save_mood
+from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/mood", tags=["mood"])
 
+
 @router.post("/{user_id}")
-def submit_mood(user_id: str, payload: dict = Body(...)):
+def submit_mood(user_id: str, payload: dict = Body(...)):  # noqa: B008
     mood = payload.get("mood")
     today = date.today().isoformat()
 
@@ -15,6 +18,7 @@ def submit_mood(user_id: str, payload: dict = Body(...)):
 
     save_mood(user_id, today, mood)
     return success_response({"status": "ok", "mood": mood, "date": today})
+
 
 @router.get("/{user_id}")
 def get_today_mood(user_id: str):

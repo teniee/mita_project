@@ -1,11 +1,23 @@
-### mood_store.py — stores per-day user mood ratings for behavioral context
+"""Simple persistent store for user moods."""
 
-mood_db = {}
+from sqlalchemy.orm import Session
 
-def save_mood(user_id: str, date: str, mood: str):
-    if user_id not in mood_db:
-        mood_db[user_id] = {}
-    mood_db[user_id][date] = mood
+from app.core.session import get_db
+from app.db.models import Mood
 
-def get_mood(user_id: str, date: str):
-    return mood_db.get(user_id, {}).get(date)
+
+def save_mood(user_id: str, date: str, mood: str) -> None:
+    db: Session = next(get_db())
+    obj = db.query(Mood).filter_by(user_id=user_id, date=date).first()
+    if obj:
+        obj.mood = mood
+    else:
+        obj = Mood(user_id=user_id, date=date, mood=mood)
+        db.add(obj)
+    db.commit()
+
+
+def get_mood(user_id: str, date: str) -> str | None:
+    db: Session = next(get_db())
+    obj = db.query(Mood).filter_by(user_id=user_id, date=date).first()
+    return obj.mood if obj else None
