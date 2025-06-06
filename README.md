@@ -48,11 +48,17 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - Calculate budget per day/category
 - Track spent vs planned per category
 - Update `DailyPlan` after each transaction
+- Set monthly spending goals per category and track progress
+- Send email reminders for important events
 
 ### 🔁 Redistribution
 - Redistribute remaining budget between categories
 - Close gaps from overspending using surplus days
 - Triggered manually or during planning phase
+
+### 🙂 Mood Tracking
+- Record user mood for each day via the `/mood` API
+- Persist moods in the database for analytics
 
 ### 🧠 Assistant
 - Suggest budget changes
@@ -109,6 +115,8 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 | GET    | `/transactions/history`              | Get transaction history                     |
 | GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
 | POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
+| POST   | `/category-goal/set`                | Set monthly goal for a spending category    |
+| POST   | `/category-goal/progress`           | Get progress toward a category goal         |
 | POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
 | GET    | `/assistant/recommendation`          | (Future) Get financial suggestions          |
 
@@ -129,6 +137,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
+- ⏰ Monthly cron job runs automatic redistribution
 
 ---
 
@@ -141,6 +150,9 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `agent_runner.py` — placeholder for AI logic
 - `financial/routes.py` — assistant and analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
+- `mood_store.py` — persists user mood entries in the database
+- `category_goal_service.py` — manage monthly spending goals per category
+- `email_service.py` — send email reminders via SMTP
 
 ---
 
@@ -149,8 +161,11 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ```
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-SECRET_KEY=supersecret
+SECRET_KEY=supersecret  # replace this in production
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
+SMTP_HOST=localhost
+SMTP_PORT=25
+FROM_EMAIL=no-reply@example.com
 ```
 
 ---
@@ -170,6 +185,13 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+Install git hooks with [pre-commit](https://pre-commit.com/) to ensure code style:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
 ```
 
 ---
@@ -207,9 +229,9 @@ Include:
 ## 🛠 12. Roadmap
 
 - [ ] Assistant dialog with contextual replies
-- [ ] Spending goals per category
-- [ ] Email reminders
-- [ ] Scheduled redistribution
+- [x] Spending goals per category
+- [x] Email reminders
+- [x] Scheduled redistribution (monthly cron task)
 - [ ] i18n support
 
 ## 🔧 13. Running Tests

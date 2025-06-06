@@ -1,10 +1,12 @@
+from datetime import datetime
 
 from sqlalchemy.orm import Session
+
 from app.core.db import get_db
-from app.services.core.engine.ai_budget_analyst import generate_push_advice
-from app.services.push_service import send_push_notification  # предполагаем, что такая есть
 from app.db.models import User
-from datetime import datetime
+from app.services.core.engine.ai_budget_analyst import generate_push_advice
+from app.services.push_service import send_push_notification
+
 
 def run_ai_advice_batch():
     db: Session = next(get_db())
@@ -12,7 +14,7 @@ def run_ai_advice_batch():
     year = now.year
     month = now.month
 
-    users = db.query(User).filter(User.is_active == True).all()
+    users = db.query(User).filter(User.is_active.is_(True)).all()
     for user in users:
         try:
             result = generate_push_advice(user.id, db, year, month)
