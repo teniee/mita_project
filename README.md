@@ -129,6 +129,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
+- ⏰ Monthly cron job runs automatic redistribution
 
 ---
 
@@ -216,7 +217,7 @@ Include:
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
 - [ ] Email reminders
-- [ ] Scheduled redistribution
+- [x] Scheduled redistribution (monthly cron task)
 - [ ] i18n support
 
 ## 🔧 13. Running Tests
