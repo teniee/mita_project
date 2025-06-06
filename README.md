@@ -54,6 +54,10 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - Close gaps from overspending using surplus days
 - Triggered manually or during planning phase
 
+### 🙂 Mood Tracking
+- Record user mood for each day via the `/mood` API
+- Persist moods in the database for analytics
+
 ### 🧠 Assistant
 - Suggest budget changes
 - Warn about overspending trends
@@ -129,6 +133,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
+- ⏰ Monthly cron job runs automatic redistribution
 
 ---
 
@@ -141,6 +146,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `agent_runner.py` — placeholder for AI logic
 - `financial/routes.py` — assistant and analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
+- `mood_store.py` — persists user mood entries in the database
 
 ---
 
@@ -149,7 +155,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ```
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-SECRET_KEY=supersecret
+SECRET_KEY=supersecret  # replace this in production
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ```
 
@@ -170,6 +176,13 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+Install git hooks with [pre-commit](https://pre-commit.com/) to ensure code style:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
 ```
 
 ---
@@ -209,7 +222,7 @@ Include:
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
 - [ ] Email reminders
-- [ ] Scheduled redistribution
+- [x] Scheduled redistribution (monthly cron task)
 - [ ] i18n support
 
 ## 🔧 13. Running Tests
