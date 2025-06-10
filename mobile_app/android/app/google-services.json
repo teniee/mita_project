@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "147595998708",
+    "project_id": "mita-finance",
+    "storage_bucket": "mita-finance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:147595998708:android:84d48c2591631b948335a1",
+        "android_client_info": {
+          "package_name": "mita.finance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "147595998708-922jre4rvolrul3dfpdkaqudk02952v8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "mita.finance",
+            "certificate_hash": "ec943693666b81dab74f59215518f265c732fd7f"
+          }
+        },
+        {
+          "client_id": "147595998708-0pkq7emouan1rs2lrgjau0ee2lge35pl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRI7k1ATHDbpi-KEpJCx8pgAufcF7WVKk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "147595998708-0pkq7emouan1rs2lrgjau0ee2lge35pl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

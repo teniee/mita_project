@@ -23,7 +23,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/logo/mitalogo2.png
+    - assets/logo/mitalogo.png
     - assets/fonts/
   fonts:
     - family: Sora
