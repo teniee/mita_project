@@ -79,7 +79,10 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Include public routers (order might matter if prefixes overlap, ensure unique paths)
-app.include_router(auth_router_legacy, prefix="/api/v0/auth", tags=["auth_legacy"])
+# Mount legacy auth routes under the same `/api` prefix so the
+# Google login endpoint becomes `/api/auth/google` as expected by the
+# mobile application.
+app.include_router(auth_router_legacy, prefix="/api", tags=["auth_legacy"])
 app.include_router(ocr_google_router, prefix="/api/v0/ocr/google", tags=["ocr_legacy"])
 app.include_router(ocr_image_router, prefix="/api/v0/ocr/image", tags=["ocr_legacy"])
 app.include_router(ocr_router, prefix="/api/v0/ocr", tags=["ocr_legacy"])
