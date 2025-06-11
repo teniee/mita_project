@@ -43,10 +43,16 @@ async def generate(data: GenerateCalendarRequest):
         data.num_days,
         data.budget_plan,
     )
-    return success_response({"calendar_id": data.calendar_id, "days": days})
+    return success_response({
+        "calendar_id": data.calendar_id,
+        "days": days,
+    })
 
 
-@router.get("/day/{user_id}/{year}/{month}/{day}", response_model=CalendarDayOut)
+@router.get(
+    "/day/{user_id}/{year}/{month}/{day}",
+    response_model=CalendarDayOut,
+)
 async def get_day_view(user_id: str, year: int, month: int, day: int):
     calendar = fetch_calendar(user_id, year, month)
     if day not in calendar:
@@ -54,7 +60,10 @@ async def get_day_view(user_id: str, year: int, month: int, day: int):
     return success_response(calendar[day])
 
 
-@router.patch("/day/{user_id}/{year}/{month}/{day}", response_model=CalendarDayOut)
+@router.patch(
+    "/day/{user_id}/{year}/{month}/{day}",
+    response_model=CalendarDayOut,
+)
 async def edit_day(
     user_id: str,
     year: int,
