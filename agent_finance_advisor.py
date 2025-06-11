@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 # Загрузка API-ключа
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("sOPENAI_API_KEY=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")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=sOPENAI_API_KEY=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)
 
 # Инструмент: Анализ рассрочки
 installment_tool = {
