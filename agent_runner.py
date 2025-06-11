@@ -1,9 +1,10 @@
 
 import os
-from openai import OpenAI
 from dotenv import load_dotenv
-from app.logic.installment_evaluator import can_user_afford_installment
+from openai import OpenAI
+
 from app.engine.risk_predictor import evaluate_user_risk
+from app.logic.installment_evaluator import can_user_afford_installment
 
 # Загрузка переменных среды
 load_dotenv()
@@ -12,17 +13,23 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+
 def run_agent_for_user_message(user_message: str):
     assistant = client.beta.assistants.create(
         name="Finance Advisor Agent",
-        instructions="Ты — финансовый AI-советник. Анализируешь риски и рассрочку. Действуешь строго по фактам.",
+        instructions=(
+            "Ты — финансовый AI-советник. Анализируешь риски и "
+            "рассрочку. Действуешь строго по фактам."
+        ),
         model=OPENAI_MODEL,
         tools=[
             {
                 "type": "function",
                 "function": {
                     "name": "can_user_afford_installment",
-                    "description": "Проверяет, может ли пользователь позволить рассрочку",
+                    "description": (
+                        "Проверяет, может ли пользователь позволить рассрочку"
+                    ),
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -65,11 +72,16 @@ def run_agent_for_user_message(user_message: str):
 
     import time
     while True:
-        run_status = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+        run_status = client.beta.threads.runs.retrieve(
+            thread_id=thread.id,
+            run_id=run.id,
+        )
         if run_status.status == "completed":
             break
         elif run_status.status == "requires_action":
-            tool_calls = run_status.required_action.submit_tool_outputs.tool_calls
+            tool_calls = (
+                run_status.required_action.submit_tool_outputs.tool_calls
+            )
             tool_outputs = []
 
             for call in tool_calls:
@@ -102,6 +114,7 @@ def run_agent_for_user_message(user_message: str):
             return msg.content[0].text.value
 
     return "Агент не дал ответа."
+
 
 if __name__ == "__main__":
     msg = "Оцени мой риск, если я user_001"

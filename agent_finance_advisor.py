@@ -14,7 +14,10 @@ installment_tool = {
     "type": "function",
     "function": {
         "name": "can_user_afford_installment",
-        "description": "Анализирует, может ли пользователь безопасно взять товар в рассрочку.",
+        "description": (
+            "Анализирует, может ли пользователь безопасно "
+            "взять товар в рассрочку."
+        ),
         "parameters": {
             "type": "object",
             "properties": {

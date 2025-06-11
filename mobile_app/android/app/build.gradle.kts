@@ -31,7 +31,7 @@ android {
         release {
             // TODO: Replace with your own release signing config
             signingConfig = signingConfigs.getByName("debug")
-        }○
+        }
     }
 }
 
