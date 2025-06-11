@@ -1,6 +1,4 @@
-"""
-GPTAgentService: Service for handling user conversations via OpenAI Chat API (v1.x).
-"""
+"""GPTAgentService for handling user conversations via OpenAI Chat API."""
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -8,9 +6,7 @@ from openai import OpenAIError
 
 
 class GPTAgentService:
-    """
-    A service that communicates with OpenAI's GPT models to provide financial advice.
-    """
+    """Service that uses OpenAI's GPT models to offer financial advice."""
 
     def __init__(self, api_key: str, model: str = "gpt-4o"):
         """
@@ -23,8 +19,8 @@ class GPTAgentService:
         self.model = model
         self.system_prompt = (
             "You are a professional financial assistant. "
-            "You help users manage their budgets, categorize their expenses, "
-            "and offer smart advice based on their country and spending profile. "
+            "You help users manage their budgets and categorize expenses. "
+            "Offer smart advice based on country and spending profile. "
             "Be concise, clear, and supportive."
         )
 
@@ -32,17 +28,20 @@ class GPTAgentService:
         """
         Send user messages to OpenAI and get the assistant's reply.
 
-        :param user_messages: List of message dicts: [{'role': 'user', 'content': '...'}, ...]
+        :param user_messages: list of message dicts:
+            [{'role': 'user', 'content': '...'}, ...]
         :return: The assistant's reply as a string.
         """
         try:
-            messages = [{"role": "system", "content": self.system_prompt}] + user_messages
+            messages = [
+                {"role": "system", "content": self.system_prompt}
+            ] + user_messages
 
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=0.3,
-                max_tokens=600
+                max_tokens=600,
             )
 
             return response.choices[0].message.content.strip()
