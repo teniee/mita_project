@@ -9,6 +9,7 @@ from app.core.jwt_utils import (
 from app.utils.response_wrapper import success_response
 from app.api.auth.schemas import RegisterIn, LoginIn, TokenOut
 
+
 def register_user(data: RegisterIn, db: Session) -> TokenOut:
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(
@@ -30,6 +31,7 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
         refresh_token=create_refresh_token(user.id)
     )
 
+
 def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not verify_password(data.password, user.password_hash):
@@ -42,6 +44,7 @@ def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
         refresh_token=create_refresh_token(user.id)
     )
 
+
 def refresh_token_for_user(user: User) -> TokenOut:
     if not user:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -52,7 +55,9 @@ def refresh_token_for_user(user: User) -> TokenOut:
     )
 
 
-# Placeholder for token revocation - this should be replaced with proper token blacklist logic
+# Placeholder for token revocation.
+# Replace with proper token blacklist logic.
+
 def revoke_token(user: User):
     # e.g. save refresh token jti to blacklist in Redis
     return success_response({"message": "Logged out successfully"})

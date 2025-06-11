@@ -1,4 +1,6 @@
-from app.services.core.behavior.behavioral_budget_allocator import get_behavioral_allocation as generate_behavioral_calendar
+from app.services.core.behavior.behavioral_budget_allocator import (
+    get_behavioral_allocation as generate_behavioral_calendar,
+)
 
 
 def generate_behavior(

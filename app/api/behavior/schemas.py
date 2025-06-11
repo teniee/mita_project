@@ -1,6 +1,6 @@
-
 from pydantic import BaseModel
 from typing import Dict
+
 
 class BehaviorPayload(BaseModel):
     user_id: str

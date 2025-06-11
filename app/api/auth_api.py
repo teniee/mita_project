@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -7,8 +6,10 @@ from app.services.google_auth_service import authenticate_google_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+
 class GoogleAuthInput(BaseModel):
     id_token: str
+
 
 @router.post("/google")
 def google_login(payload: GoogleAuthInput, db: Session = Depends(get_db)):
