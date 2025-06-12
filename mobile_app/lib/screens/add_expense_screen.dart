@@ -15,11 +15,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final ApiService _apiService = ApiService();
 
   double? _amount;
-  String? _category;
-  String? _description;
+  String? _action;
   DateTime _selectedDate = DateTime.now();
 
-  final List<String> _categories = [
+  final List<String> _actions = [
     'Food',
     'Transport',
     'Entertainment',
@@ -31,14 +30,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   ];
 
   Future<void> _submitExpense() async {
-    if (!_formKey.currentState!.validate() || _category == null) return;
+    if (!_formKey.currentState!.validate() || _action == null) return;
     _formKey.currentState!.save();
 
     final data = {
       'amount': _amount,
-      'category': _category,
+      'action': _action,
       'date': _selectedDate.toIso8601String(),
-      'description': _description,
     };
 
     try {
@@ -104,24 +102,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category),
                 ),
-                items: _categories.map((cat) {
+                items: _actions.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
                     child: Text(cat, style: const TextStyle(fontFamily: 'Manrope')),
                   );
                 }).toList(),
-                onChanged: (value) => setState(() => _category = value),
+                onChanged: (value) => setState(() => _action = value),
                 validator: (value) => value == null ? 'Select category' : null,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: Icon(Icons.description),
-                ),
-                style: const TextStyle(fontFamily: 'Manrope'),
-                onSaved: (value) => _description = value,
               ),
               const SizedBox(height: 20),
               ListTile(

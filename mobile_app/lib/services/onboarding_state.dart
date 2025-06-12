@@ -9,4 +9,14 @@ class OnboardingState {
   List<String> habits = [];
   String? habitsComment;
   String? motivation;
+
+  void reset() {
+    region = null;
+    income = null;
+    expenses = [];
+    goals = [];
+    habits = [];
+    habitsComment = null;
+    motivation = null;
+  }
 }

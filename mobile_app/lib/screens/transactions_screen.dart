@@ -95,20 +95,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              item['category'] ?? 'Unknown',
+                              item['action'] ?? 'Unknown',
                               style: const TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              item['description'] ?? 'No description',
-                              style: const TextStyle(
-                                fontFamily: 'Manrope',
-                                fontSize: 14,
-                                color: Colors.black54,
                               ),
                             ),
                             const SizedBox(height: 8),
