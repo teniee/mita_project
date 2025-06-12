@@ -43,7 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final response = await _api.loginWithGoogle(idToken);
       final accessToken = response.data['access_token'];
-      await _api.saveToken(accessToken);
+      final refreshToken = response.data['refresh_token'];
+      await _api.saveTokens(accessToken, refreshToken);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');

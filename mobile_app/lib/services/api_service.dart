@@ -1,16 +1,48 @@
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class ApiService {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://mita-docker-ready-project-manus.onrender.com',
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-    contentType: 'application/json',
-  ));
+  ApiService() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await getToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          handler.next(options);
+        },
+        onError: (DioError e, handler) async {
+          if (e.response?.statusCode == 401) {
+            final refreshed = await _refreshTokens();
+            if (refreshed) {
+              final req = e.requestOptions;
+              final token = await getToken();
+              if (token != null) {
+                req.headers['Authorization'] = 'Bearer $token';
+              }
+              final clone = await _dio.fetch(req);
+              return handler.resolve(clone);
+            }
+          }
+          handler.next(e);
+        },
+      ),
+    );
+  }
+
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://mita-docker-ready-project-manus.onrender.com',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      contentType: 'application/json',
+    ),
+  );
 
   final _storage = const FlutterSecureStorage();
 
@@ -18,8 +50,42 @@ class ApiService {
     return await _storage.read(key: 'access_token');
   }
 
-  Future<void> saveToken(String token) async {
-    await _storage.write(key: 'access_token', value: token);
+  Future<String?> getRefreshToken() async {
+    return await _storage.read(key: 'refresh_token');
+  }
+
+  Future<void> saveTokens(String access, String refresh) async {
+    await _storage.write(key: 'access_token', value: access);
+    await _storage.write(key: 'refresh_token', value: refresh);
+  }
+
+  Future<void> clearTokens() async {
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
+  }
+
+  Future<bool> _refreshTokens() async {
+    final refresh = await getRefreshToken();
+    if (refresh == null) return false;
+    try {
+      final response = await _dio.post(
+        '/api/auth/refresh',
+        options: Options(headers: {'Authorization': 'Bearer $refresh'}),
+      );
+      final data = response.data as Map<String, dynamic>;
+      final newAccess = data['access_token'] as String?;
+      final newRefresh = data['refresh_token'] as String?;
+      if (newAccess != null) {
+        await _storage.write(key: 'access_token', value: newAccess);
+      }
+      if (newRefresh != null) {
+        await _storage.write(key: 'refresh_token', value: newRefresh);
+      }
+      return true;
+    } catch (_) {
+      await clearTokens();
+      return false;
+    }
   }
 
   Future<Response> loginWithGoogle(String idToken) async {
