@@ -39,7 +39,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
       for (final e in monthExpenses) {
         sum += e['amount'];
-        final cat = e['category'] ?? 'Other';
+        final cat = e['action'] ?? 'Other';
         final day = DateFormat('yyyy-MM-dd').format(DateTime.parse(e['date']));
         catSums[cat] = (catSums[cat] ?? 0) + e['amount'];
         daily[day] = (daily[day] ?? 0) + e['amount'];

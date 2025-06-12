@@ -196,7 +196,7 @@ class _MainScreenState extends State<MainScreen> {
         ...transactions.map<Widget>((tx) {
           return ListTile(
             leading: const Icon(Icons.attach_money),
-            title: Text(tx['category']),
+            title: Text(tx['action']),
             subtitle: Text(tx['date']),
             trailing: Text('-\$${tx['amount']}', style: const TextStyle(fontWeight: FontWeight.bold)),
           );

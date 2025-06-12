@@ -17,11 +17,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final ApiService _apiService = ApiService();
 
   late double _amount;
-  late String _category;
-  String? _description;
+  late String _action;
   late DateTime _selectedDate;
 
-  final List<String> _categories = [
+  final List<String> _actions = [
     'Food', 'Transport', 'Entertainment', 'Health',
     'Shopping', 'Utilities', 'Education', 'Other',
   ];
@@ -30,8 +29,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   void initState() {
     super.initState();
     _amount = widget.expense['amount']?.toDouble() ?? 0.0;
-    _category = widget.expense['category'] ?? _categories.first;
-    _description = widget.expense['description'];
+    _action = widget.expense['action'] ?? _actions.first;
     _selectedDate = DateTime.parse(widget.expense['date']);
   }
 
@@ -41,8 +39,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
 
     final updated = {
       'amount': _amount,
-      'category': _category,
-      'description': _description,
+      'action': _action,
       'date': _selectedDate.toIso8601String(),
     };
 
@@ -138,30 +135,19 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                value: _category,
+                value: _action,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category),
                 ),
-                items: _categories.map((cat) {
+                items: _actions.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
                     child: Text(cat, style: const TextStyle(fontFamily: 'Manrope')),
                   );
                 }).toList(),
-                onChanged: (value) => setState(() => _category = value!),
+                onChanged: (value) => setState(() => _action = value!),
                 validator: (value) => value == null ? 'Select category' : null,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                initialValue: _description,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: Icon(Icons.description),
-                ),
-                style: const TextStyle(fontFamily: 'Manrope'),
-                onSaved: (value) => _description = value,
               ),
               const SizedBox(height: 20),
               ListTile(

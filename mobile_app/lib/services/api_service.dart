@@ -233,7 +233,8 @@ class ApiService {
         headers: {'Authorization': 'Bearer $token'},
       ),
     );
-    return response.data;
+    final data = response.data as Map<String, dynamic>;
+    return data['data']['expenses'] as List<dynamic>;
   }
 
 
