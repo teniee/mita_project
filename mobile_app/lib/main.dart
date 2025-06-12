@@ -39,7 +39,7 @@ class MITAApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFF9F0),
         fontFamily: 'Manrope',
       ),
-      initialRoute: '/home',
+      initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(), // 👈 добавлен логин
