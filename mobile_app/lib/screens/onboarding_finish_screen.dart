@@ -38,6 +38,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       await _api.submitOnboarding(onboardingData);
 
+      OnboardingState.instance.reset();
+
       if (!mounted) return;
       setState(() {
         _loading = false;
