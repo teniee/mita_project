@@ -152,10 +152,19 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ## 🧪 8. Environment Variables
 
+Copy `.env.example` to `.env` and adjust the values:
+
+```bash
+cp .env.example .env
+# then edit .env
 ```
+
+Example variables:
+
+```bash
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
-SECRET_KEY=supersecret  # replace this in production
+SECRET_KEY=change_me
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
 ```
 
