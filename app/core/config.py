@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://redis:6379"
 
     # Auth / JWT
-    JWT_SECRET: str = "test_secret"
-    SECRET_KEY: str = "default_dev_secret"
+    # Should be overridden via env
+    JWT_SECRET: str = "change_me_jwt"
+    # Default should be overwritten via environment variable
+    SECRET_KEY: str = "change_me"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -40,6 +42,7 @@ class Settings(BaseSettings):
     if ConfigDict:
         model_config = ConfigDict(env_file=".env")
     else:  # pragma: no cover - pydantic v1 fallback
+
         class Config:
             env_file = ".env"
 
