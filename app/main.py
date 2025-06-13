@@ -35,6 +35,7 @@ from app.api.calendar_api_redistribute import router as redistribute_router
 from app.api.calendar_api_sql import router as calendar_router
 from app.api.calendar_api_summary import router as summary_router
 from app.api.challenge.routes import router as challenge_router
+from app.api.challenge_progress_api import router as challenge_progress_router
 from app.api.checkpoint.routes import router as checkpoint_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
@@ -125,6 +126,7 @@ private_routers_list = [
     (users_router, "/api/users", ["Users"]),
     (calendar_router, "/api/calendar", ["Calendar"]),
     (challenge_router, "/api/challenges", ["Challenges"]),
+    (challenge_progress_router, "/api/challenge-progress", ["ChallengeProgress"]),
     (expense_router, "/api/expenses", ["Expenses"]),
     (goal_router, "/api/goals", ["Goals"]),
     (plan_router, "/api/plans", ["Plans"]),
