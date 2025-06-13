@@ -1,5 +1,6 @@
-"""Very naive receipt validation helpers."""
+"""Very naive receipt validation helpers with simulated expiration."""
 
+from datetime import datetime, timedelta
 from typing import Dict
 
 
@@ -10,13 +11,19 @@ def validate_receipt(
 ) -> Dict[str, str]:
     """Validate receipt contents.
 
-    This stub just checks that the platform is supported and the receipt is
-    not empty. Real integration with App Store or Google Play should be
-    implemented separately.
+    This stub now returns an expiration timestamp. Real integration with
+    App Store or Google Play should be implemented separately.
     """
 
     if platform not in {"ios", "android"}:
         return {"status": "invalid", "reason": "unsupported platform"}
     if not receipt:
         return {"status": "invalid", "reason": "empty receipt"}
-    return {"status": "valid", "platform": platform}
+
+    days = 365 if "year" in receipt else 30
+    expiration = datetime.utcnow() + timedelta(days=days)
+    return {
+        "status": "valid",
+        "platform": platform,
+        "expires_at": expiration,
+    }
