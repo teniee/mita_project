@@ -21,7 +21,9 @@ from fastapi_limiter.depends import RateLimiter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
+from app.api.ai.routes import router as ai_router
 from app.api.analytics.routes import router as analytics_router
+from app.api.assistant_chat_api import router as assistant_chat_router
 
 # New style routers from subdirectories
 from app.api.auth.routes import router as auth_router
@@ -33,6 +35,7 @@ from app.api.calendar_api_redistribute import router as redistribute_router
 from app.api.calendar_api_sql import router as calendar_router
 from app.api.calendar_api_summary import router as summary_router
 from app.api.challenge.routes import router as challenge_router
+from app.api.challenge_progress_api import router as challenge_progress_router
 from app.api.checkpoint.routes import router as checkpoint_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
@@ -41,6 +44,7 @@ from app.api.drift.routes import router as drift_router
 from app.api.expense.routes import router as expense_router
 from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
+from app.api.goals.routes import router as goals_crud_router
 from app.api.iap.routes import router as iap_router
 from app.api.ocr_api import router as ocr_router
 from app.api.ocr_google_api import router as ocr_google_router
@@ -123,14 +127,18 @@ private_routers_list = [
     (users_router, "/api/users", ["Users"]),
     (calendar_router, "/api/calendar", ["Calendar"]),
     (challenge_router, "/api/challenges", ["Challenges"]),
+    (challenge_progress_router, "/api/challenge-progress", ["ChallengeProgress"]),
     (expense_router, "/api/expenses", ["Expenses"]),
     (goal_router, "/api/goals", ["Goals"]),
+    (goals_crud_router, "/api/goals", ["GoalsCRUD"]),
     (plan_router, "/api/plans", ["Plans"]),
     (budget_router, "/api/budgets", ["Budgets"]),
     (analytics_router, "/api/analytics", ["Analytics"]),
     (behavior_router, "/api/behavior", ["Behavior"]),
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
+    (ai_router, "/api/ai", ["AI"]),
+    (assistant_chat_router, "/api/assistant", ["assistant"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
     (referral_router, "/api/referrals", ["Referrals"]),
