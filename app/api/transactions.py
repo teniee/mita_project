@@ -10,6 +10,7 @@ from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models import Transaction
 from app.schemas.core_outputs import TransactionOut
+from app.services.core.engine.expense_tracker import apply_transaction_to_plan
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -38,6 +39,7 @@ def add_txn(
     db.add(t)
     db.commit()
     db.refresh(t)
+    apply_transaction_to_plan(db, t)
     return success_response({"id": str(t.id)})
 
 
