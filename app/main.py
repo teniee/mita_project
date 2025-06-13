@@ -21,7 +21,9 @@ from fastapi_limiter.depends import RateLimiter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
+from app.api.ai.routes import router as ai_router
 from app.api.analytics.routes import router as analytics_router
+from app.api.assistant_chat_api import router as assistant_chat_router
 
 # New style routers from subdirectories
 from app.api.auth.routes import router as auth_router
@@ -131,6 +133,8 @@ private_routers_list = [
     (behavior_router, "/api/behavior", ["Behavior"]),
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
+    (ai_router, "/api/ai", ["AI"]),
+    (assistant_chat_router, "/api/assistant", ["assistant"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
     (referral_router, "/api/referrals", ["Referrals"]),
