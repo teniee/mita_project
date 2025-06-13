@@ -44,6 +44,7 @@ from app.api.drift.routes import router as drift_router
 from app.api.expense.routes import router as expense_router
 from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
+from app.api.goals.routes import router as goals_crud_router
 from app.api.iap.routes import router as iap_router
 from app.api.ocr_api import router as ocr_router
 from app.api.ocr_google_api import router as ocr_google_router
@@ -129,6 +130,7 @@ private_routers_list = [
     (challenge_progress_router, "/api/challenge-progress", ["ChallengeProgress"]),
     (expense_router, "/api/expenses", ["Expenses"]),
     (goal_router, "/api/goals", ["Goals"]),
+    (goals_crud_router, "/api/goals", ["GoalsCRUD"]),
     (plan_router, "/api/plans", ["Plans"]),
     (budget_router, "/api/budgets", ["Budgets"]),
     (analytics_router, "/api/analytics", ["Analytics"]),
