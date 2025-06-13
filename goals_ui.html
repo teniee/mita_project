@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Goals Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+    li { margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h2>Your Goals</h2>
+  <ul id="list"></ul>
+  <input id="title" placeholder="Goal title" />
+  <input id="amount" type="number" placeholder="Target amount" />
+  <button id="add">Add Goal</button>
+  <script>
+    async function fetchGoals() {
+      const resp = await fetch('/api/goals/');
+      const data = await resp.json();
+      list.innerHTML = '';
+      for (const g of data.data) {
+        const li = document.createElement('li');
+        li.textContent = `${g.title} - target $${g.target_amount}`;
+        list.appendChild(li);
+      }
+    }
+    document.getElementById('add').onclick = async () => {
+      const title = document.getElementById('title').value.trim();
+      const amt = parseFloat(document.getElementById('amount').value);
+      if (!title || isNaN(amt)) return;
+      await fetch('/api/goals/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, target_amount: amt })
+      });
+      document.getElementById('title').value = '';
+      document.getElementById('amount').value = '';
+      fetchGoals();
+    };
+    fetchGoals();
+  </script>
+</body>
+</html>
