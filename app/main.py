@@ -46,6 +46,7 @@ from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
 from app.api.goals.routes import router as goals_crud_router
 from app.api.iap.routes import router as iap_router
+from app.api.notifications.routes import router as notifications_router
 from app.api.ocr_api import router as ocr_router
 from app.api.ocr_google_api import router as ocr_google_router
 from app.api.ocr_image_api import router as ocr_image_router
@@ -141,6 +142,7 @@ private_routers_list = [
     (assistant_chat_router, "/api/assistant", ["assistant"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
+    (notifications_router, "/api/notifications", ["Notifications"]),
     (referral_router, "/api/referrals", ["Referrals"]),
     (onboarding_router, "/api/onboarding", ["Onboarding"]),
     (cohort_router, "/api/cohorts", ["Cohorts"]),

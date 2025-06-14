@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     # Sentry (опционально)
     sentry_dsn: str = ""
 
+    # SMTP settings
+    smtp_host: str = ""
+    smtp_port: int = 25
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "no-reply@example.com"
+
     if ConfigDict:
         model_config = ConfigDict(env_file=".env")
     else:  # pragma: no cover - pydantic v1 fallback
