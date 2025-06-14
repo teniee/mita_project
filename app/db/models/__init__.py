@@ -5,6 +5,7 @@ from .expense import Expense
 from .goal import Goal
 from .mood import Mood
 from .subscription import Subscription
+from .push_token import PushToken
 from .transaction import Transaction
 from .user import User
 from .user_answer import UserAnswer
@@ -16,6 +17,7 @@ __all__ = [
     "Transaction",
     "DailyPlan",
     "Subscription",
+    "PushToken",
     "UserAnswer",
     "UserProfile",
     "AIAnalysisSnapshot",

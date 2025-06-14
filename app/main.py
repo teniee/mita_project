@@ -54,6 +54,7 @@ from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
+from app.api.notifications.routes import router as notifications_router
 from app.api.transactions.routes import (
     router as transactions_router,  # This is likely the intended transactions_router
 )
@@ -141,6 +142,7 @@ private_routers_list = [
     (assistant_chat_router, "/api/assistant", ["assistant"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
+    (notifications_router, "/api/notifications", ["Notifications"]),
     (referral_router, "/api/referrals", ["Referrals"]),
     (onboarding_router, "/api/onboarding", ["Onboarding"]),
     (cohort_router, "/api/cohorts", ["Cohorts"]),
