@@ -136,7 +136,6 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
 
-
 ---
 
 ## 🧰 7. Module Descriptions
@@ -150,6 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
 - `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
+
 
 ---
 
@@ -169,6 +169,11 @@ GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
 SECRET_KEY=change_me
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
+SMTP_HOST=mail.example.com
+SMTP_PORT=587
+SMTP_USERNAME=mailer
+SMTP_PASSWORD=secret
+SMTP_FROM=notify@example.com
 ```
 
 ---
@@ -236,8 +241,6 @@ Include:
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
 - [x] Email reminders
-- [x] Scheduled redistribution (`scripts/monthly_redistribute.py`)
-
 
 ## 🔧 13. Running Tests
 
