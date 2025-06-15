@@ -223,6 +223,7 @@ Include:
 - Redistribute button
 - Expense history
 - Assistant recommendations
+- Push notifications & email reminders
 
 ---
 
@@ -230,7 +231,7 @@ Include:
 
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
-- [ ] Email reminders
+- [x] Email reminders
 - [x] Scheduled redistribution (monthly cron task)
 - [ ] i18n support
 
