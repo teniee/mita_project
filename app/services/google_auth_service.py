@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.models import User
 from fastapi import HTTPException
 
-# Твой iOS OAuth Client ID
+# Your iOS OAuth Client ID
 GOOGLE_CLIENT_ID = "796406677497-0a9jg6vkuv2jtibddll5dp2b0394h21h.apps.googleusercontent.com"
 
 def authenticate_google_user(id_token_str: str, db: Session) -> User:
@@ -17,7 +17,7 @@ def authenticate_google_user(id_token_str: str, db: Session) -> User:
 
         user = db.query(User).filter_by(email=email).first()
         if not user:
-            # Автоматическое создание пользователя
+            # Automatically create a user record
             user = User(email=email, is_premium=False)
             db.add(user)
             db.commit()

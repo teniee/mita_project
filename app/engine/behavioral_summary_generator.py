@@ -14,17 +14,16 @@ class BehavioralSummaryGenerator:
 
         behavior_counts = analytics_data.get("behaviors", {})
 
-        summary.append(f"Ты относишься к когорте: {cohort}")
+        summary.append(f"You belong to cohort: {cohort}")
         if behavior in behavior_counts:
             summary.append(
                 (
-                    f"Твоё поведение — '{behavior}' "
-                    + "— распространено в твоём регионе."
+                    f"Your behavior '{behavior}' is common in your region."
                 )
             )
         else:
             summary.append(
-                f"Твоё поведение — '{behavior}' " + f"— редкое для {region}."
+                f"Your behavior '{behavior}' is rare for {region}."
             )
 
         success_rate = analytics_data.get("challenge_success_rate", 0)
@@ -32,13 +31,12 @@ class BehavioralSummaryGenerator:
 
         summary.append(
             (
-                "Средняя успешность челленджей в регионе "
-                + f"{region}: {int(success_rate * 100)}%"
+                "Average challenge success in " + f"{region}: {int(success_rate * 100)}%"
             )
         )
 
         goal_summary = (
-            "Выполнение целей в твоей категории: " + f"{int(goal_rate * 100)}%"
+            "Goal completion in your category: " + f"{int(goal_rate * 100)}%"
         )
         summary.append(goal_summary)
 

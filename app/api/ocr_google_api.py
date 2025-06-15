@@ -16,7 +16,10 @@ def create_transaction_google_ocr(
     db: Session = Depends(get_db)
 ):
     if not user.is_premium:
-        raise HTTPException(status_code=403, detail="Google OCR доступен только для премиум-пользователей")
+        raise HTTPException(
+            status_code=403,
+            detail="Google OCR is available only for premium users",
+        )
 
     file_bytes = file.file.read()
     text = extract_text_from_image_google(file_bytes)

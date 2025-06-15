@@ -28,7 +28,7 @@ def create_test_user():
     user_id = user.id
     print(f"Test user created with ID: {user_id}")
 
-    # Пример ответов для генерации бюджета и календаря
+    # Example answers used to generate a budget and calendar
     answers = {
         "income": {
             "monthly_income": 5000,
@@ -59,7 +59,7 @@ def create_test_user():
     calendar = build_calendar({**answers, **budget})
     save_calendar_for_user(db, user_id, calendar)
 
-    # Тестовая трата
+    # Example expense entry for demo purposes
     record_expense(db, user_id, date(2025, 5, 3), "restaurants", 35.50, "Lunch at cafe")
 
     print("Calendar and test transaction initialized.")

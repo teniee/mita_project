@@ -22,10 +22,14 @@ def update_day_status(db: Session, user_id: int, day: date):
         recommendations = []
     elif delta <= Decimal("10.00"):
         status = "yellow"
-        recommendations = ["Умеренный перерасход. Пересмотри развлекательные траты."]
+        recommendations = [
+            "Moderate overspending. Review entertainment expenses."
+        ]
     else:
         status = "red"
-        recommendations = ["Сильный перерасход. Сократи discretionary категории."]
+        recommendations = [
+            "Heavy overspending. Cut back on discretionary categories."
+        ]
 
     for d in days:
         d.status = status

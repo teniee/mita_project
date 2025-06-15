@@ -3,9 +3,9 @@ from typing import Dict
 
 
 def get_today_checkpoint(user_id: str, calendar: Dict[str, Dict]) -> Dict:
-    """
-    Возвращает информацию о текущем дне в календаре.
-    Ключи календаря должны быть в формате 'YYYY-MM-DD'.
+    """Return information about the current day in the calendar.
+
+    Calendar keys must be in ``YYYY-MM-DD`` format.
     """
     today = date.today().isoformat()
 

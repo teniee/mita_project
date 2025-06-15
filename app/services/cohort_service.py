@@ -27,7 +27,7 @@ class CohortService:
     def get_current_cohort(self, user_id: str):
         return self.drift_tracker.get_current(user_id)
 
-# 🔽 Эти функции нужны для импорта в маршрутах API (и падали раньше)
+# 🔽 Functions below are used by API routes
 _cohort_service = CohortService()
 
 def assign_user_cohort(profile: dict) -> str:

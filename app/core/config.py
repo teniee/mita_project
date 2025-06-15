@@ -9,6 +9,9 @@ try:
     from pydantic import ConfigDict
 except ImportError:  # pragma: no cover - pydantic v1 compatibility
     ConfigDict = None
+    from pydantic.class_validators import validator as field_validator  # type: ignore
+else:
+    from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -32,10 +35,10 @@ class Settings(BaseSettings):
     # Firebase
     google_application_credentials: str = ""
 
-    # App Store (не используется, но нужно чтобы не падало)
+    # App Store (unused but required so the app doesn't crash)
     appstore_shared_secret: str = ""
 
-    # Sentry (опционально)
+    # Sentry (optional)
     sentry_dsn: str = ""
 
     # SMTP settings
@@ -44,6 +47,16 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from: str = "no-reply@example.com"
+
+    # CORS
+    allowed_origins: list[str] = ["*"]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def split_origins(cls, v):
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
 
     if ConfigDict:
         model_config = ConfigDict(env_file=".env")
@@ -60,6 +73,6 @@ def get_settings():
 
 settings = get_settings()
 
-# Для старого кода
+# Legacy support
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM

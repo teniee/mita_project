@@ -4,34 +4,34 @@ from statistics import mean
 
 def calculate_checkpoint(user_profile: Dict[str, Any], transaction_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Вычисляет финансовую контрольную точку пользователя.
+    Calculate a financial checkpoint for the user.
 
-    :param user_profile: словарь с характеристиками пользователя (возраст, доход и т.п.)
-    :param transaction_data: словарь с транзакциями по категориям: { "food": [10, 20, 30], ... }
-    :return: словарь с результатами расчёта
+    :param user_profile: dict with user attributes (age, income, etc.)
+    :param transaction_data: dict of transactions per category: {"food": [10, 20, 30], ...}
+    :return: dict with calculation results
     """
 
-    # 1. Вычисляем общие суммы по категориям
+    # 1. Sum per category
     category_totals = {
         category: sum(values)
         for category, values in transaction_data.items()
         if isinstance(values, list) and all(isinstance(v, (int, float)) for v in values)
     }
 
-    # 2. Общая сумма всех расходов
+    # 2. Total amount spent
     total_spent = sum(category_totals.values())
 
-    # 3. Средние значения по категориям
+    # 3. Average spend per category
     category_averages = {
         category: round(mean(values), 2)
         for category, values in transaction_data.items()
         if isinstance(values, list) and values
     }
 
-    # 4. Оценка финансового поведения
+    # 4. Basic behavior assessment
     behavior_score = assess_behavior(user_profile, category_totals)
 
-    # 5. Финальный ответ
+    # 5. Final response
     return {
         "user_profile": user_profile,
         "total_spent": round(total_spent, 2),
@@ -43,9 +43,11 @@ def calculate_checkpoint(user_profile: Dict[str, Any], transaction_data: Dict[st
 
 
 def assess_behavior(user_profile: Dict[str, Any], category_totals: Dict[str, float]) -> str:
-    """
-    Простейший анализ поведения: например, если доля "entertainment" > 30% от расходов — флаг.
-    :return: строка: 'balanced', 'overspending', 'unusual'
+    """Simple behavior analysis.
+
+    If spending on ``entertainment`` exceeds 30% of total, or ``dining out`` is
+    more than 25%, the user is flagged as overspending.
+    Returns ``'balanced'`` or ``'overspending'``.
     """
     total = sum(category_totals.values())
     if not total:

@@ -105,5 +105,5 @@ def _load_all_profiles() -> dict:
 
     return profiles
 
-# Глобально доступный словарь всех профилей
+# Globally available dictionary of all loaded profiles
 COUNTRY_PROFILES = _load_all_profiles()

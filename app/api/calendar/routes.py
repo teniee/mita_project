@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body
 
-# ──────────────────────────── схемы ────────────────────────────
+# ---------------------------- Schemas ----------------------------
 from app.api.calendar.schemas import (
     GenerateCalendarRequest,
     CalendarOut,
@@ -14,7 +14,7 @@ from app.api.calendar.schemas import (
     ShellCalendarOut,
 )
 
-# ────────────────────────── сервис‑функции ─────────────────────
+# -------------------------- Service functions -------------------
 from app.services.calendar_service import (
     generate_calendar,
     fetch_calendar,
@@ -23,7 +23,7 @@ from app.services.calendar_service import (
     generate_shell_calendar,
 )
 
-# рабочий алгоритм перераспределения бюджета
+# core budget redistribution algorithm
 from app.engine.budget_redistributor import (
     redistribute_budget as redistribute_calendar_budget,
 )
@@ -33,7 +33,7 @@ from app.utils.response_wrapper import success_response
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
 
-# ──────────────────────────  ROUTES  ───────────────────────────
+# ----------------------------- ROUTES ----------------------------
 
 @router.post("/generate", response_model=CalendarOut)
 async def generate(data: GenerateCalendarRequest):
@@ -92,11 +92,9 @@ async def get_day_state(payload: DayInput):
 
 @router.post("/redistribute", response_model=RedistributeResult)
 async def redistribute(payload: RedistributeInput):
-    """
-    Принимает текущий календарь (dict[str, dict]) и возвращает
-    обновлённый после применения алгоритма redistribute_budget.
-    Поле `strategy` пока не используется, но оставлено в схеме
-    для возможных future‑режимов.
+    """Return the calendar updated by ``redistribute_budget``.
+
+    The ``strategy`` field is currently unused but reserved for future modes.
     """
     updated_calendar = redistribute_calendar_budget(payload.calendar)
     return success_response({"updated_calendar": updated_calendar})

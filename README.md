@@ -109,12 +109,14 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 | POST   | `/auth/register`                     | Register new user                           |
 | GET    | `/user/profile`                      | Get user data                               |
 | POST   | `/onboarding/answers`                | Submit onboarding answers                   |
-| POST   | `/transactions`                      | Add a new transaction                       |
+| POST   | `/transactions`                      | Add a new transaction              |
+| POST   | `/transactions/v2`                   | Add transaction (background update) |
 | GET    | `/transactions/history`              | Get transaction history                     |
 | GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
 | POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
 | POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
 | GET    | `/assistant/recommendation`          | (Future) Get financial suggestions          |
+| POST   | `/ai/snapshot`                       | Generate AI analysis snapshot                |
 
 ---
 
@@ -133,7 +135,12 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
-- ⏰ Monthly cron job runs automatic redistribution
+- ⏰ Monthly cron job runs automatic redistribution using
+  `scripts/monthly_redistribute.py`
+- 📩 Daily cron job sends AI budgeting tips using
+  `scripts/send_daily_ai_advice.py`
+- ✉️ Daily email reminders executed via
+  `scripts/send_daily_reminders.py`
 
 ---
 
@@ -147,6 +154,8 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `financial/routes.py` — assistant and analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
+- `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
+- `scripts/send_daily_reminders.py` — cron entry for daily email reminders
 
 ---
 
@@ -166,6 +175,11 @@ GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
 SECRET_KEY=change_me
 DATABASE_URL=postgresql://user:pass@localhost:5432/mita
+SMTP_HOST=mail.example.com
+SMTP_PORT=587
+SMTP_USERNAME=mailer
+SMTP_PASSWORD=secret
+SMTP_FROM=notify@example.com
 ```
 
 ---
@@ -224,6 +238,7 @@ Include:
 - Expense history
 - Assistant recommendations
 - Push notifications & email reminders
+- AI budgeting tips via push
 
 ---
 
@@ -232,7 +247,9 @@ Include:
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
 - [x] Email reminders
-- [x] Scheduled redistribution (monthly cron task)
+- [x] Daily email reminder script (`scripts/send_daily_reminders.py`)
+- [x] Scheduled redistribution (`scripts/monthly_redistribute.py`)
+- [x] Daily AI tips (`scripts/send_daily_ai_advice.py`)
 - [ ] i18n support
 
 ## 🔧 13. Running Tests

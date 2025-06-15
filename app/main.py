@@ -1,8 +1,8 @@
 # flake8: noqa
 import os
 
-# --- Раннее создание firebase.json, до всех импортов ---
-firebase_path = "/tmp/firebase.json"  # ← здесь замена
+# --- Early creation of firebase.json before any imports ---
+firebase_path = "/tmp/firebase.json"  # temp path for credentials
 
 if "FIREBASE_JSON" in os.environ:
     with open(firebase_path, "w") as f:
@@ -23,7 +23,6 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.ai.routes import router as ai_router
 from app.api.analytics.routes import router as analytics_router
-from app.api.assistant_chat_api import router as assistant_chat_router
 
 # New style routers from subdirectories
 from app.api.auth.routes import router as auth_router
@@ -58,20 +57,26 @@ from app.api.notifications.routes import router as notifications_router
 from app.api.transactions.routes import (
     router as transactions_router,  # This is likely the intended transactions_router
 )
+from app.api.transactions.routes_background import (
+    router as transactions_v2_router,
+)
 from app.api.transactions_sql import (
     router as transactions_sql_router,  # Renamed to avoid conflict
 )
 from app.api.users.routes import router as users_router
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
+from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -139,8 +144,8 @@ private_routers_list = [
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
     (ai_router, "/api/ai", ["AI"]),
-    (assistant_chat_router, "/api/assistant", ["assistant"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
+    (transactions_v2_router, "/api/transactions/v2", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
     (notifications_router, "/api/notifications", ["Notifications"]),
     (referral_router, "/api/referrals", ["Referrals"]),

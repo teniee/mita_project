@@ -11,10 +11,10 @@ class OnboardingHabitsScreen extends StatefulWidget {
 
 class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
   final List<Map<String, dynamic>> habits = [
-    {'id': 'impulse_buying', 'label': 'Импульсивные покупки', 'icon': Icons.shopping_cart},
-    {'id': 'no_budgeting', 'label': 'Нет бюджета', 'icon': Icons.money_off},
-    {'id': 'forgot_subscriptions', 'label': 'Забываю про подписки', 'icon': Icons.subscriptions},
-    {'id': 'credit_dependency', 'label': 'Часто беру кредиты', 'icon': Icons.credit_card},
+    {'id': 'impulse_buying', 'label': 'Impulse purchases', 'icon': Icons.shopping_cart},
+    {'id': 'no_budgeting', 'label': 'No budgeting', 'icon': Icons.money_off},
+    {'id': 'forgot_subscriptions', 'label': 'Forget about subscriptions', 'icon': Icons.subscriptions},
+    {'id': 'credit_dependency', 'label': 'Frequent loans', 'icon': Icons.credit_card},
   ];
 
   final Set<String> selectedHabits = {};
@@ -49,7 +49,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Какие финансовые привычки вам мешают?',
+                'Which financial habits are hurting you?',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w700,
@@ -105,7 +105,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                     }),
                     const SizedBox(height: 12),
                     const Text(
-                      "Что-нибудь ещё?",
+                      "Anything else?",
                       style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 16,
@@ -116,7 +116,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                     TextFormField(
                       controller: commentController,
                       decoration: InputDecoration(
-                        hintText: 'Опишите свою ситуацию...',
+                        hintText: 'Describe your situation...',
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -148,7 +148,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  child: const Text("Продолжить"),
+                  child: const Text("Continue"),
                 ),
               ),
             ],

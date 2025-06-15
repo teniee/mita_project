@@ -1,12 +1,9 @@
-"""app/services/calendar_service.py
-Простейшая in‑memory / stub‑реализация календарного сервиса.
+"""In-memory calendar service used during development.
 
-‼  Это *рабочие* функции, которых достаточно, чтобы backend поднялся
-    и эндпоинты Swagger отдавали корректные ответы.
-
-Постоянного хранения в БД здесь нет — данные создаются «на лету».
-В production‑варианте вы замените эти функции реальным доступом к
-таблице DailyPlan / Redis‑кэшу.
+These helper functions are sufficient for the backend to start and for
+the Swagger endpoints to return valid responses. There is no persistent
+storage here—the data is generated on the fly. In production these
+functions should access the ``DailyPlan`` table or a Redis cache.
 """
 
 from __future__ import annotations
@@ -16,12 +13,12 @@ from decimal import Decimal
 from typing import Dict, List, Any
 
 ###############################################################################
-#                        ВСПОМОГАТЕЛЬНЫЕ УТИЛИТЫ
+#                           HELPER UTILITIES
 ###############################################################################
 
 
 def _date_range(start: date, num_days: int) -> List[date]:
-    """Генерирует список дат начиная со start (вкл.) длиной num_days."""
+    """Generate a list of dates starting from ``start`` (inclusive)."""
     return [start + timedelta(days=i) for i in range(num_days)]
 
 
@@ -30,7 +27,7 @@ def _iso(d: date) -> str:
 
 
 ###############################################################################
-#                        ОСНОВНОЕ API  (используется в роутерах)
+#                        MAIN API (used in routes)
 ###############################################################################
 
 # ------------------------------------------------------------------ generate_calendar
@@ -42,18 +39,18 @@ def generate_calendar(
     num_days: int,
     budget_plan: Dict[str, float | int],
 ) -> List[Dict[str, Any]]:
-    """
-    Строит календарь с плановым бюджетом на каждый день.
+    """Build a calendar with a planned budget for each day.
 
-    • budget_plan — месячные суммы по категориям.
-    • Лимит дня == сумма категорий / num_days  (равномерно).
+    ``budget_plan`` contains monthly sums per category.
+    The daily limit is ``sum(categories) / num_days``.
 
-    Возвращает список словарей вида:
+    Returns a list of dictionaries like::
+
         {
-          "date": "2025-05-01",
-          "planned_budget": {"groceries": 10.0, ...},
-          "limit": 30.0,
-          "total": 0.0,
+            "date": "2025-05-01",
+            "planned_budget": {"groceries": 10.0, ...},
+            "limit": 30.0,
+            "total": 0.0,
         }
     """
     days = _date_range(start_date, num_days)
@@ -79,11 +76,7 @@ def generate_calendar(
 
 
 def fetch_calendar(user_id: str, year: int, month: int) -> Dict[int, Dict[str, Any]]:
-    """
-    Возвращает упрощённый «календарь месяца» для пользователя.
-    Здесь это просто рыба‑данные (свободные дни).
-    Ключ — день месяца, значение — словарь про день.
-    """
+    """Return a simplified month calendar for the user."""
     first_day = date(year, month, 1)
     num_days = (date(year + month // 12, month % 12 + 1, 1) - first_day).days
     return {
@@ -101,10 +94,7 @@ def fetch_calendar(user_id: str, year: int, month: int) -> Dict[int, Dict[str, A
 
 
 def update_day(calendar: Dict[int, Dict[str, Any]], day: int, updates: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Обновляет запись дня внутри переданного календаря.
-    Возвращает обновлённый словарь дня.
-    """
+    """Update the day entry in the given calendar and return it."""
     if day not in calendar:
         raise KeyError("day not in calendar")
 
@@ -116,10 +106,7 @@ def update_day(calendar: Dict[int, Dict[str, Any]], day: int, updates: Dict[str,
 
 
 def fetch_day_state(user_id: str, year: int, month: int, day: int) -> Dict[str, Any]:
-    """
-    Заготовка для получения «состояния дня».
-    Сейчас возвращает статичный набор задач.
-    """
+    """Return a placeholder day state with a static task list."""
     return {
         "user_id": user_id,
         "date": f"{year}-{month:02d}-{day:02d}",
@@ -133,11 +120,11 @@ def fetch_day_state(user_id: str, year: int, month: int, day: int) -> Dict[str, 
 
 def generate_shell_calendar(user_id: str, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Используется на шаге онбординга: строит «скорлупу» календаря, чтобы
-    фронтенд показал пользователю пример бюджета, *не* сохраняя его.
+    Used during onboarding to build a shell calendar so that the frontend can
+    show an example budget without persisting it.
 
-    payload ожидает ключи:
-        start_date: str (ISO, 'YYYY-MM-DD')
+    ``payload`` expects keys:
+        start_date: str (ISO ``YYYY-MM-DD``)
         num_days:   int
         budget_plan: dict[cat, amount]
     """
@@ -145,5 +132,5 @@ def generate_shell_calendar(user_id: str, payload: Dict[str, Any]) -> List[Dict[
     num_days = int(payload["num_days"])
     budget_plan = payload["budget_plan"]
 
-    # просто переиспользуем generate_calendar (calendar_id не нужен)
+    # Just reuse ``generate_calendar`` (calendar_id is not needed)
     return generate_calendar("__shell__", start_date, num_days, budget_plan)

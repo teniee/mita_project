@@ -7,7 +7,7 @@ from app.api.budget.services import (
     fetch_spent_by_category,
 )
 from app.core.db import get_db
-# предполагается, что User определён в models
+# assumes User is defined in models
 from app.db.models.user import User
 from app.services.auth_dependency import get_current_user
 
