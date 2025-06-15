@@ -9,6 +9,9 @@ try:
     from pydantic import ConfigDict
 except ImportError:  # pragma: no cover - pydantic v1 compatibility
     ConfigDict = None
+    from pydantic.class_validators import validator as field_validator  # type: ignore
+else:
+    from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -44,6 +47,16 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from: str = "no-reply@example.com"
+
+    # CORS
+    allowed_origins: list[str] = ["*"]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def split_origins(cls, v):
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
 
     if ConfigDict:
         model_config = ConfigDict(env_file=".env")

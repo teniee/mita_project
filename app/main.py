@@ -66,6 +66,7 @@ from app.api.transactions_sql import (
 from app.api.users.routes import router as users_router
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
+from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 
@@ -75,7 +76,7 @@ app = FastAPI(title="Mita Finance API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

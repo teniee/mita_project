@@ -135,8 +135,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
- - ⏰ Monthly cron job runs automatic redistribution using
-   `scripts/monthly_redistribute.py`
+
 
 ---
 
@@ -150,6 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `financial/routes.py` — assistant and analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
+- `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
 
 ---
 
@@ -227,6 +227,7 @@ Include:
 - Expense history
 - Assistant recommendations
 - Push notifications & email reminders
+- AI budgeting tips via push
 
 ---
 
@@ -236,7 +237,7 @@ Include:
 - [ ] Spending goals per category
 - [x] Email reminders
 - [x] Scheduled redistribution (`scripts/monthly_redistribute.py`)
-- [ ] i18n support
+
 
 ## 🔧 13. Running Tests
 
