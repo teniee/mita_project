@@ -2,7 +2,7 @@ from app.engine.risk_predictor import evaluate_user_risk
 from app.logic.installment_evaluator import can_user_afford_installment
 from app.services.user_data_service import UserDataService
 
-# Добавляем заглушку метода, если он не определён
+# Add a fallback method if ``get_user_financial_profile`` is missing
 if not hasattr(UserDataService, "get_user_financial_profile"):
     def mock_profile(user_id):
         return {

@@ -16,7 +16,7 @@ def get_progress_data(
     cal = get_calendar_for_user(user_id, year, month)
     days = cal.values() if isinstance(cal, dict) else cal
 
-    # Челленджи пока пустые — логика генерации будет позже
+    # Challenges are empty for now — generation logic will be added later
     tracker_v2 = ChallengeTracker([])
     challenge_results = tracker_v2.evaluate_challenge(user_id, year, month)
 

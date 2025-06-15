@@ -3,11 +3,11 @@ from typing import List, Dict, Any
 
 
 class FitRequest(BaseModel):
-    user_data: List[Dict[str, float]]  # массив пользователей с признаками
+    user_data: List[Dict[str, float]]  # array of users with features
 
 
 class LabelRequest(BaseModel):
-    user_id: str  # ID пользователя для предсказания кластера
+    user_id: str  # user ID for cluster prediction
 
 
 class ClusterResult(BaseModel):
@@ -20,9 +20,9 @@ class ClusterResult(BaseModel):
 class LabelResult(BaseModel):
     user_id: str
     cluster_id: int
-    label: str  # строковое описание (например, "spender", "saver")
+    label: str  # descriptive label (e.g., "spender", "saver")
 
 
 class CentroidResult(BaseModel):
     cluster_id: int
-    centroid: Dict[str, float]  # координаты центра кластера по признакам
+    centroid: Dict[str, float]  # centroid coordinates by features

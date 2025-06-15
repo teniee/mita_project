@@ -109,12 +109,14 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 | POST   | `/auth/register`                     | Register new user                           |
 | GET    | `/user/profile`                      | Get user data                               |
 | POST   | `/onboarding/answers`                | Submit onboarding answers                   |
-| POST   | `/transactions`                      | Add a new transaction                       |
+| POST   | `/transactions`                      | Add a new transaction              |
+| POST   | `/transactions/v2`                   | Add transaction (background update) |
 | GET    | `/transactions/history`              | Get transaction history                     |
 | GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
 | POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
 | POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
 | GET    | `/assistant/recommendation`          | (Future) Get financial suggestions          |
+| POST   | `/ai/snapshot`                       | Generate AI analysis snapshot                |
 
 ---
 
@@ -133,7 +135,8 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - 🔴 Detects overspending (`spent > planned`)
 - 🟢 Pulls from surplus days
 - Updates planned values to balance categories
-- ⏰ Monthly cron job runs automatic redistribution
+ - ⏰ Monthly cron job runs automatic redistribution using
+   `scripts/monthly_redistribute.py`
 
 ---
 
@@ -232,7 +235,7 @@ Include:
 - [ ] Assistant dialog with contextual replies
 - [ ] Spending goals per category
 - [x] Email reminders
-- [x] Scheduled redistribution (monthly cron task)
+- [x] Scheduled redistribution (`scripts/monthly_redistribute.py`)
 - [ ] i18n support
 
 ## 🔧 13. Running Tests

@@ -19,12 +19,12 @@ CATEGORY_COOLDOWN: Dict[str, int] = {
 }
 
 def get_behavioral_allocation(start_date: str, num_days: int, budget_plan: Dict[str, float]) -> List[Dict[str, float]]:
-    """
-    Распределяет поведенческий бюджет по дням на основе дня недели, bias и cooldown.
-    :param start_date: Дата начала (в формате YYYY-MM-DD)
-    :param num_days: Кол-во дней в планируемом периоде
-    :param budget_plan: Бюджет на категории, например {"groceries": 100.0, "transport": 50.0}
-    :return: Список словарей, где каждый элемент — бюджет на день
+    """Distribute behavioral budget across days using weekday bias and cooldown.
+
+    :param start_date: Start date in ``YYYY-MM-DD`` format
+    :param num_days: Number of days in the period
+    :param budget_plan: Category budget, e.g. ``{"groceries": 100.0, "transport": 50.0}``
+    :return: List of dictionaries where each element is a day's budget
     """
     base_date = datetime.strptime(start_date, "%Y-%m-%d")
     calendar = [base_date + timedelta(days=i) for i in range(num_days)]

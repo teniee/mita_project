@@ -33,7 +33,7 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
             )
         except Exception as e:
             logger.error(f"[user={user_id}] Failed to get AI advice for {day_str}: {str(e)}")
-            explanation = "AI-комментарий временно недоступен."
+            explanation = "AI comment temporarily unavailable."
 
     return {
         "planned": day_data.get("planned_budget", {}),

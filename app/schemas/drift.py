@@ -7,42 +7,32 @@ PositiveFloat = Annotated[float, Field(ge=0.0)]
 
 
 class DriftLogRequest(BaseModel):
-    """
-    Запрос на логирование дрейфа пользователя за указанный месяц.
-    """
+    """Request to log user drift for a given month."""
     user_id: str = Field(..., example="user_123")
     month: MonthStr = Field(..., example="2025-05")
     value: PositiveFloat = Field(..., example=0.153)
 
 
 class DriftGetRequest(BaseModel):
-    """
-    Запрос на получение информации о дрейфе пользователя.
-    """
+    """Request to fetch drift information for a user."""
     user_id: str = Field(..., example="user_123")
     month: MonthStr = Field(..., example="2025-05")
 
 
 class DriftLogResponse(BaseModel):
-    """
-    Ответ после успешного логирования дрейфа.
-    """
+    """Response after logging drift successfully."""
     status: str = Field(..., example="ok")
     message: Optional[str] = Field(None, example="Drift logged successfully")
 
 
 class DriftEntry(BaseModel):
-    """
-    Один элемент истории дрейфа.
-    """
+    """Single item of user drift history."""
     month: MonthStr = Field(..., example="2025-04")
     value: PositiveFloat = Field(..., example=0.12)
 
 
 class DriftGetResponse(BaseModel):
-    """
-    Ответ с историей дрейфа и текущим значением.
-    """
+    """Response containing drift history and current value."""
     user_id: str = Field(..., example="user_123")
     month: MonthStr = Field(..., example="2025-05")
     drift_value: PositiveFloat = Field(..., example=0.15)

@@ -1,5 +1,5 @@
 
-# Основные категории расходов
+# Primary expense categories
 ALLOWED_CATEGORIES = {
     "rent", "utilities", "insurance", "loan", "other",
     "groceries", "restaurants", "entertainment", "shopping",
@@ -7,7 +7,7 @@ ALLOWED_CATEGORIES = {
     "pets", "childcare", "donations", "gym", "personal_care"
 }
 
-# Базовые веса для распределения (для класса по умолчанию)
+# Default distribution weights for the base class
 DEFAULT_WEIGHTS = {
     "groceries": 0.25,
     "restaurants": 0.15,
@@ -21,7 +21,7 @@ DEFAULT_WEIGHTS = {
     "personal_care": 0.05
 }
 
-# Поведенческие шаблоны по умолчанию
+# Default behavioral templates
 DEFAULT_TEMPLATES = {
     "rent": "fixed",
     "utilities": "fixed",

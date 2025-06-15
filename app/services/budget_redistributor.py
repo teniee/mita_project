@@ -8,7 +8,7 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
     start = date(year, month, 1)
     end = date(year + (month // 12), (month % 12) + 1, 1)
 
-    # 1. Получаем все записи календаря пользователя за месяц
+    # 1. Fetch all calendar entries for the user for the month
     entries = (
         db.query(DailyPlan)
         .filter(DailyPlan.user_id == user_id)
@@ -30,7 +30,7 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
         elif delta < -0.01:
             deficit_by_cat[entry.category] += abs(delta)
 
-    # 2. Перераспределение из лишних в дефицитные
+    # 2. Move surplus amounts into deficit categories
     redistribution_log = []
     for cat, deficit in deficit_by_cat.items():
         transferred_total = 0.0
@@ -42,7 +42,7 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
             if transfer <= 0:
                 continue
 
-            # списываем из donor_cat
+            # Deduct from donor_cat
             for donor_entry in sorted(plan_map[donor_cat], key=lambda e: e.date):
                 d_surplus = float(donor_entry.planned_amount - donor_entry.spent_amount)
                 to_take = min(d_surplus, transfer)
@@ -61,10 +61,10 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
                     break
 
 
-        # добавляем к cat
+        # Add to receiving category
         for receiver_entry in sorted(plan_map[cat], key=lambda e: e.date):
             receiver_entry.planned_amount += transferred_total
-            break  # только один день
+            break  # only one day
 
     db.commit()
     return {"status": "redistributed", "log": redistribution_log}

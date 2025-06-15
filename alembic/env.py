@@ -10,7 +10,7 @@ sys.path.insert(
 from logging.config import fileConfig  # noqa: E402
 from sqlalchemy import engine_from_config, pool  # noqa: E402
 from alembic import context  # noqa: E402
-from app.db.models import Base  # Импорт моделей  # noqa: E402
+from app.db.models import Base  # Import models  # noqa: E402
 
 # this is the Alembic Config object
 config = context.config
@@ -21,7 +21,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline():
     context.configure(
-        url="sqlite:///example.db",  # Заменить на свой URI
+        url="sqlite:///example.db",  # Replace with your URI
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True

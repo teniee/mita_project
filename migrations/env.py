@@ -5,26 +5,26 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 from dotenv import load_dotenv
 
-# Добавляем корень проекта в PYTHONPATH
+# Add project root to PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Загружаем переменные из .env, если он есть в корне проекта
+# Load environment variables from .env if present
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Alembic Config
 config = context.config
 fileConfig(config.config_file_name)
 
-# Импорт моделей (Base.metadata)
+# Import models (Base.metadata)
 from app.db.models import Base  # noqa
 target_metadata = Base.metadata
 
-# Получаем строку подключения из переменной окружения
+# Get database URL from environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL is not set in environment")
 
-# Передаём строку подключения в Alembic напрямую (без % интерполяции)
+# Pass the connection string to Alembic directly (without % interpolation)
 config.attributes["sqlalchemy.url"] = DATABASE_URL
 
 def run_migrations_offline():

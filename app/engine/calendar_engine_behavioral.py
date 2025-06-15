@@ -8,14 +8,15 @@ from app.services.behavior_adapter import apply_behavioral_adjustments
 calendar_logger = CalendarBehaviorLogger()
 
 def build_calendar(config: dict) -> dict:
-    """
-    Генерирует календарь расходов на основе поведенческих шаблонов.
-    Учитывает:
-    - Класс общества
-    - Весовые категории
-    - Шаблоны (fixed, spread, clustered)
-    - Повторяющиеся расходы (из БД)
-    Возвращает: дата -> категория -> сумма.
+    """Generate a spending calendar based on behavioral patterns.
+
+    Considers:
+    - Social class
+    - Category weights
+    - Templates (fixed, spread, clustered)
+    - Recurring expenses from the database
+
+    Returns mapping: date -> category -> amount.
     """
     mode = config.get("mode", "default")
     year = config.get("year", 2025)
