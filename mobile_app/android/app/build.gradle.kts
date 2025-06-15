@@ -39,5 +39,5 @@ flutter {
     source = "../.."
 }
 
-// ✅ Добавляем Google Services Plugin для Firebase/Google Sign-In
+// Add Google Services Plugin for Firebase/Google Sign-In
 apply(plugin = "com.google.gms.google-services")

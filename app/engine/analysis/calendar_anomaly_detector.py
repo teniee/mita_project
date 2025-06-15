@@ -33,4 +33,4 @@ if __name__ == "__main__":
     )
     cal = engine.generate_calendar(2025, 4)
     anomalies = detect_anomalies(cal)
-    print("Аномалии:", anomalies)
+    print("Anomalies:", anomalies)

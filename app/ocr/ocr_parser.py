@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 
-# Примитивная эвристика по ключевым словам для определения категории
+# Simple keyword heuristics for determining the category
 CATEGORY_KEYWORDS = {
     "groceries": ["market", "grocery", "supermarket", "food", "aldi", "whole foods"],
     "restaurants": ["restaurant", "burger", "cafe", "mcdonald", "kfc", "pizza", "diner"],
@@ -19,7 +19,7 @@ def parse_receipt_text(text: str) -> dict:
     date_found = None
     category = "other"
 
-    # 1. Сумма: ищем наибольшую, около слов total/amount
+    # 1. Amount: choose the largest value near words like "total" or "amount"
     for line in lines:
         if "total" in line or "amount" in line or re.search(r"\$\s?\d", line):
             amounts = re.findall(r"\$?\b(\d{1,5}(\.\d{1,2})?)\b", line)
@@ -28,7 +28,7 @@ def parse_receipt_text(text: str) -> dict:
                 if val > best_amount:
                     best_amount = val
 
-    # 2. Дата: ищем в разных форматах
+    # 2. Date: try multiple common formats
     date_patterns = [
         r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b",     # YYYY-MM-DD
         r"\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b",   # MM/DD/YY or DD-MM-YYYY
@@ -53,7 +53,7 @@ def parse_receipt_text(text: str) -> dict:
         if date_found:
             break
 
-    # 3. Категория по ключевым словам
+    # 3. Category by matching keywords
     for line in lines:
         for cat, keywords in CATEGORY_KEYWORDS.items():
             if any(word in line for word in keywords):

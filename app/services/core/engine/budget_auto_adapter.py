@@ -29,12 +29,12 @@ def adapt_category_weights(user_id: int, default_weights: Dict[str, float], db: 
         if "restaurants" in adjusted:
             adjusted["restaurants"] = adjusted.get("restaurants", 0.1) + 0.05
 
-    if risk == "высокий":
+    if risk == "high":
         for cat in adjusted:
             adjusted[cat] = round(adjusted[cat] * 0.95, 3)
         adjusted["savings"] = adjusted.get("savings", 0.0) + 0.05
 
-    # Нормализация
+    # Normalization
     total = sum(adjusted.values())
     if not (0.99 <= total <= 1.01):
         adjusted = {k: round(v / total, 4) for k, v in adjusted.items()}

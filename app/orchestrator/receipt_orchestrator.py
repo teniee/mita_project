@@ -14,7 +14,7 @@ def process_receipt_from_text(user_id: int, text: str, db) -> dict:
     except:
         parsed_date = datetime.today().date()
 
-    # Создание транзакции
+    # Create transaction
     result = record_expense(
         db=db,
         user_id=user_id,

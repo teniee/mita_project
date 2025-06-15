@@ -11,10 +11,10 @@ class OnboardingGoalScreen extends StatefulWidget {
 
 class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   final List<Map<String, dynamic>> goals = [
-    {'id': 'save_more', 'label': 'Накопить подушку', 'icon': Icons.savings},
-    {'id': 'pay_off_debt', 'label': 'Погасить долги', 'icon': Icons.credit_card},
-    {'id': 'budgeting', 'label': 'Научиться бюджетировать', 'icon': Icons.bar_chart},
-    {'id': 'investing', 'label': 'Начать инвестировать', 'icon': Icons.show_chart},
+    {'id': 'save_more', 'label': 'Build an emergency fund', 'icon': Icons.savings},
+    {'id': 'pay_off_debt', 'label': 'Pay off debt', 'icon': Icons.credit_card},
+    {'id': 'budgeting', 'label': 'Learn budgeting', 'icon': Icons.bar_chart},
+    {'id': 'investing', 'label': 'Start investing', 'icon': Icons.show_chart},
   ];
 
   final Set<String> selectedGoals = {};
@@ -47,7 +47,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Какие у вас финансовые цели?',
+                'What are your financial goals?',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w700,
@@ -120,7 +120,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  child: const Text("Продолжить"),
+                  child: const Text("Continue"),
                 ),
               ),
             ],

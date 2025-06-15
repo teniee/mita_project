@@ -52,8 +52,8 @@ def generate_financial_rating(user_profile: dict) -> dict:
         f"Top spending categories: {user_profile['total_by_category']}.\n"
         f"Day statuses: {user_profile['status_breakdown']}.\n"
         f"Behavioral tags: {user_profile['behavior_tags']}.\n"
-        "Write a short analytical summary: rating, overspending risk, and advice.\n"
-        "Respond in Russian, as JSON with the following fields: 'rating', 'risk', 'summary'."
+        "Write a short analytical summary in English with rating, overspending risk, and advice.\n"
+        "Respond as JSON with fields: 'rating', 'risk', 'summary'."
     )
 
     # Ask GPT model
@@ -65,6 +65,6 @@ def generate_financial_rating(user_profile: dict) -> dict:
     except Exception:
         return {
             "rating": "B",
-            "risk": "умеренный",
-            "summary": "Пользователь тратит стабильно, но иногда выходит за рамки бюджета."
+            "risk": "moderate",
+            "summary": "User spending is generally steady but occasionally exceeds the budget."
         }

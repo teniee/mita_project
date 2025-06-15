@@ -12,7 +12,7 @@ def create_test_user():
 
     user = User(
         email="test@example.com",
-        hashed_password="$2b$12$examplehashforpassword",  # предполагаемый bcrypt хеш
+        hashed_password="$2b$12$examplehashforpassword",  # assumed bcrypt hash
         full_name="Test User"
     )
     db.add(user)
@@ -21,6 +21,6 @@ def create_test_user():
     print(f"Test user created with ID: {user.id}")
     return user
 
-# Для ручного запуска
+# For manual execution
 if __name__ == "__main__":
     create_test_user()

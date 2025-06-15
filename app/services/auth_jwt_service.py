@@ -7,7 +7,7 @@ from app.core.config import SECRET_KEY, ALGORITHM, settings
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# Можно заменить на хранилище в Redis/DB
+# Could be replaced by Redis/DB storage
 TOKEN_BLACKLIST = set()
 
 def create_access_token(data: dict, expires_delta: timedelta = None):

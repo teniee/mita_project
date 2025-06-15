@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-# Симуляция in-memory базы календарей
+# Simple in-memory calendar store used for development
 CALENDAR_DB: Dict[str, List[Dict]] = {}
 
 def save_calendar(calendar_id: str, days: List[Dict]) -> Dict:

@@ -42,7 +42,7 @@ class MITAApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const LoginScreen(), // 👈 добавлен логин
+        '/login': (context) => const LoginScreen(), // added login route
         '/main': (context) => const BottomNavigation(),
         '/onboarding_region': (context) => const OnboardingRegionScreen(),
         '/onboarding_income': (context) => const OnboardingIncomeScreen(),

@@ -36,14 +36,14 @@ class CohortAnalyzer:
         return cohort
 
 
-# ✅ Простая функция, как ждёт твой API
+# Simple helper used by the API
 def determine_cohort(profile: Dict) -> str:
     analyzer = CohortAnalyzer()
     analyzer.register_user("temp_user", profile)
     return analyzer.assign_cohort("temp_user")
 
 
-# ✅ Пример ручного теста
+# Example manual test
 if __name__ == "__main__":
     demo = {
         "income": 4500,

@@ -3,7 +3,7 @@ from google.cloud import vision
 from google.oauth2 import service_account
 import io
 
-# Убедитесь, что путь к сервисному аккаунту задан в GOOGLE_CREDENTIALS_PATH
+# Ensure the service account path is provided via ``GOOGLE_CREDENTIALS_PATH``
 import os
 GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH")
 
@@ -19,4 +19,4 @@ def extract_text_from_image_google(file_bytes: bytes) -> str:
     annotations = response.text_annotations
     if not annotations:
         return ""
-    return annotations[0].description  # Полный текст
+    return annotations[0].description  # Full extracted text
