@@ -49,7 +49,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = "Ошибка при отправке данных: \$e";
+        _error = "Failed to submit data: \$e";
       });
     }
   }
@@ -75,7 +75,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                     ),
                   )
                 : const Text(
-                    'Добро пожаловать в MITA!',
+                    'Welcome to MITA!',
                     style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.bold,

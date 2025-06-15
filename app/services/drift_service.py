@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from typing import Dict
 
-# Инициализация Firebase, если не инициализировано
+# Initialize Firebase if it hasn't been set up yet
 if not firebase_admin._apps:
     cred = credentials.ApplicationDefault()
     firebase_admin.initialize_app(cred)
@@ -13,9 +13,7 @@ _COLLECTION = "drift_logs"
 
 
 def log_cohort_drift(user_id: str, month: str, value: float) -> Dict:
-    """
-    Логирует или обновляет запись о дрейфе пользователя в Firestore.
-    """
+    """Log or update the user's drift value in Firestore."""
     doc_id = f"{user_id}_{month}"
     doc_ref = db.collection(_COLLECTION).document(doc_id)
 
@@ -29,15 +27,13 @@ def log_cohort_drift(user_id: str, month: str, value: float) -> Dict:
 
 
 def get_cohort_drift(user_id: str, month: str) -> Dict:
-    """
-    Получает дрейф за указанный месяц + всю историю по пользователю.
-    """
-    # Получаем текущий месяц
+    """Return drift for the given month along with user history."""
+    # Current month record
     doc_id = f"{user_id}_{month}"
     current_doc = db.collection(_COLLECTION).document(doc_id).get()
     drift_value = current_doc.to_dict().get("value", 0.0) if current_doc.exists else 0.0
 
-    # Получаем всю историю пользователя
+    # Fetch the user's entire drift history
     query = db.collection(_COLLECTION).where("user_id", "==", user_id).stream()
     history = [{"month": doc.to_dict()["month"], "value": doc.to_dict()["value"]} for doc in query]
 

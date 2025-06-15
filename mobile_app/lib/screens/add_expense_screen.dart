@@ -42,7 +42,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     try {
       await _apiService.createExpense(data);
       if (!mounted) return;
-      Navigator.pop(context, true); // Возвращаем результат
+      Navigator.pop(context, true); // return result
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add expense: \$e')),

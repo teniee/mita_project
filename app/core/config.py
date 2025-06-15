@@ -32,10 +32,10 @@ class Settings(BaseSettings):
     # Firebase
     google_application_credentials: str = ""
 
-    # App Store (не используется, но нужно чтобы не падало)
+    # App Store (unused but required so the app doesn't crash)
     appstore_shared_secret: str = ""
 
-    # Sentry (опционально)
+    # Sentry (optional)
     sentry_dsn: str = ""
 
     # SMTP settings
@@ -60,6 +60,6 @@ def get_settings():
 
 settings = get_settings()
 
-# Для старого кода
+# Legacy support
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM

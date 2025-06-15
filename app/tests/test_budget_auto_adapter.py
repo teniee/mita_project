@@ -14,7 +14,7 @@ class DummyDB:
     def order_by(self, *args, **kwargs):
         return self
     def first(self):
-        return DummySnapshot("высокий", ["emotional_spender", "food_dominated"])
+        return DummySnapshot("high", ["emotional_spender", "food_dominated"])
 
 def test_adapt_category_weights():
     default = {

@@ -3,35 +3,34 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Загрузка API-ключа
+# Load API key
 load_dotenv()
-OPENAI_API_KEY = os.getenv("sOPENAI_API_KEY=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")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-client = OpenAI(api_key=sOPENAI_API_KEY=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)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Инструмент: Анализ рассрочки
+# Installment analysis tool
 installment_tool = {
     "type": "function",
     "function": {
         "name": "can_user_afford_installment",
         "description": (
-            "Анализирует, может ли пользователь безопасно "
-            "взять товар в рассрочку."
+            "Analyzes whether the user can safely buy an item on installment."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "user_id": {
                     "type": "string",
-                    "description": "Идентификатор пользователя"
+                    "description": "User identifier"
                 },
                 "price": {
                     "type": "number",
-                    "description": "Цена товара"
+                    "description": "Item price"
                 },
                 "months": {
                     "type": "integer",
-                    "description": "Срок в месяцах"
+                    "description": "Duration in months"
                 }
             },
             "required": ["user_id", "price", "months"]
@@ -39,18 +38,18 @@ installment_tool = {
     }
 }
 
-# Инструмент: Анализ риска
+# Risk analysis tool
 risk_tool = {
     "type": "function",
     "function": {
         "name": "evaluate_user_risk",
-        "description": "Оценивает уровень финансового риска пользователя.",
+        "description": "Evaluates the user's financial risk level.",
         "parameters": {
             "type": "object",
             "properties": {
                 "user_id": {
                     "type": "string",
-                    "description": "ID пользователя"
+                    "description": "User ID"
                 }
             },
             "required": ["user_id"]
@@ -58,24 +57,23 @@ risk_tool = {
     }
 }
 
-# Создание агента
+# Create the assistant
 assistant = client.beta.assistants.create(
     name="Finance Advisor Agent",
-    instructions="""
-Ты — финансовый AI-советник.
-Анализируешь риски, поведение и стабильность.
-Рекомендуешь только разумные финансовые действия, объясняешь свои выводы.
-""",
+    instructions=(
+        "You are a financial AI advisor. Analyze risks, behavior and stability. "
+        "Recommend only reasonable financial actions and explain your reasoning."
+    ),
     model="gpt-4o",
     tools=[installment_tool, risk_tool]
 )
 
-# Создание thread и запуск
+# Create thread and run
 thread = client.beta.threads.create()
 message = client.beta.threads.messages.create(
     thread_id=thread.id,
     role="user",
-    content="Какой у меня финансовый риск?"
+    content="What is my financial risk?"
 )
 
 run = client.beta.threads.runs.create(

@@ -3,15 +3,15 @@ from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP, getcontext
 from typing import Dict, List, Tuple
 
-# ‑‑‑ предпочитаем финансовую точность ‑‑‑
-getcontext().prec = 28          # 28 — стандарт IEEE 754 decimal64
+# --- prefer financial precision ---
+getcontext().prec = 28          # 28 is IEEE 754 decimal64 standard
 getcontext().rounding = ROUND_HALF_UP
 
 
 class BudgetRedistributor:
     """
-    Переносит «неистраченный остаток» дней‑доноров на дни‑получатели,
-    чтобы погасить перерасход и сохранить общий monthly‑лимит.
+    Move leftover amounts from surplus days to deficit days
+    to cover overspending while keeping the monthly limit.
 
     calendar =
         {
@@ -20,16 +20,16 @@ class BudgetRedistributor:
             ...
         }
 
-    *   over‑day  →  total  > limit   (перерасход)
-    *   under‑day →  total  < limit   (экономия)
+    *   over-day  →  total  > limit   (overspent)
+    *   under-day →  total  < limit   (surplus)
 
-    Алгоритм проходит по донорам (по убыванию размера перерасхода) и
-    погашает самый «дорогой» долг самым «богатым» донором, пока
-    или все долги не погашены, или у доноров не кончились деньги.
+    The algorithm processes donors in descending order of overspend
+    and uses the largest donor to cover the largest deficit until
+    debts are paid or donors run out of funds.
     """
 
     def __init__(self, calendar: Dict[str, Dict[str, float | int | Decimal]]):
-        # храним календарь в Decimal для точной математики
+        # store the calendar using Decimal for precise math
         self.calendar: Dict[str, Dict[str, Decimal]] = {
             day: {
                 "total": Decimal(str(data["total"])),
@@ -38,10 +38,10 @@ class BudgetRedistributor:
             for day, data in calendar.items()
         }
 
-    # ----------------- публичный метод -----------------
+    # ----------------- public method -----------------
     def redistribute_budget(self) -> Tuple[Dict[str, Dict[str, Decimal]],
                                            List[Tuple[str, str, Decimal]]]:
-        """Возвращает (обновлённый календарь, список трансферов)."""
+        """Return the updated calendar and the list of transfers."""
         over_days = [
             day for day in self.calendar if self._overage(day) > 0
         ]
@@ -49,7 +49,7 @@ class BudgetRedistributor:
             day for day in self.calendar if self._shortfall(day) > 0
         ]
 
-        # сортируем: сначала самые большие проблемы/ресурсы
+        # sort donors and receivers by largest amounts first
         over_days.sort(key=self._overage, reverse=True)
         under_days.sort(key=self._shortfall, reverse=True)
 
@@ -73,12 +73,12 @@ class BudgetRedistributor:
                 transfers.append((src, dst, amount))
                 src_over -= amount
 
-                if src_over == 0:  # донор «опустошён»
+                if src_over == 0:  # donor depleted
                     break
 
         return self.calendar, transfers
 
-    # ----------------- вспомогательные -----------------
+    # ----------------- helper methods -----------------
     def _overage(self, day: str) -> Decimal:
         data = self.calendar[day]
         return data["total"] - data["limit"]
@@ -92,16 +92,16 @@ class BudgetRedistributor:
         self.calendar[dst]["total"] += amount
 
 
-# ===  external API ===
+# === external API ===
 
 def redistribute_budget(
     calendar_dict: Dict[str, Dict[str, float | int | Decimal]]
 ) -> Dict[str, Dict[str, Decimal]]:
     """
-    Тонкая обёртка под использование в сервисах API.
+    Thin wrapper for use in API services.
 
-    Возвращает обновлённый календарь (с уже перенесёнными суммами).
-    Список трансферов при необходимости можно получить так:
+    Returns the updated calendar (with transfers already applied).
+    To retrieve the transfer list, call::
 
         updated, transfers = BudgetRedistributor(calendar_dict).redistribute_budget()
     """

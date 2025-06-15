@@ -19,7 +19,7 @@ def generate_push_advice(
     year: int,
     month: int,
 ) -> dict:
-    # Собираем статистику по статусам
+    # Collect status statistics for the month
     rows = (
         db.query(DailyPlan)
         .filter_by(user_id=user_id)
@@ -41,7 +41,7 @@ def generate_push_advice(
             delta = row.spent_amount - row.planned_amount
             category_overspend[row.category] += delta
 
-    # Список перерасходов
+    # Top overspent categories
     overspent_categories = sorted(
         category_overspend.items(), key=lambda x: x[1], reverse=True
     )
@@ -55,21 +55,20 @@ def generate_push_advice(
 
     mood = get_mood(str(user_id), date.today().isoformat())
 
-    # Поведенческие паттерны
+    # Behavior patterns extracted from historical data
     patterns_result = extract_patterns(str(user_id), year, month)
     behavior_tags = patterns_result.get("patterns", [])
 
     prompt = (
-        "Ты ИИ-финансовый аналитик."
-        f" Сегодняшнее настроение пользователя: {mood or 'неизвестно'}."
-        f" Итоговые траты за текущий месяц: {float(total_spent)}."
-        f" Прогноз расходов на следующий месяц: {predicted_expense}."
-        f" Статусы дней: {dict(status_summary)}."
-        f" Категории перерасхода: {overspent_names}."
-        f" Поведенческие признаки: {behavior_tags}."
-        " Сгенерируй короткий совет (1 предложение) в стиле пуш-уведомления "
-        "на русском языке."
-        " Тон: доброжелательный, краткий, без паники."
+        "You are an AI financial analyst."
+        f" Today's user mood: {mood or 'unknown'}."
+        f" Total spending this month: {float(total_spent)}."
+        f" Predicted spending next month: {predicted_expense}."
+        f" Day statuses: {dict(status_summary)}."
+        f" Overspent categories: {overspent_names}."
+        f" Behavior patterns: {behavior_tags}."
+        " Generate one short push-style tip in English."
+        " Keep it friendly and concise."
     )
 
     ai_text = GPT.ask([{"role": "user", "content": prompt}])

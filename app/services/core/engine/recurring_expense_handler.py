@@ -5,15 +5,16 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 def inject_recurring_expenses(db: Session, user_id: int, calendar: list):
-    """
-    Вставляет повторяющиеся расходы в календарь.
-    calendar: список dict с ключами 'date', 'planned_budget', ...
+    """Insert recurring expenses into the calendar.
+
+    ``calendar`` is a list of dictionaries with keys ``date`` and
+    ``planned_budget`` among others.
     """
     recurring = db.query(RecurringExpense).filter_by(user_id=user_id).all()
     if not recurring:
         return calendar
 
-    # Преобразуем календарь в dict по дате
+    # Convert calendar to a dict keyed by date
     cal_dict = {d['date']: d for d in calendar}
 
     for entry in recurring:
@@ -29,6 +30,6 @@ def inject_recurring_expenses(db: Session, user_id: int, calendar: list):
             elif entry.frequency == "daily":
                 current_date += timedelta(days=1)
             else:
-                break  # неизвестная частота
+                break  # unknown frequency
 
     return list(cal_dict.values())

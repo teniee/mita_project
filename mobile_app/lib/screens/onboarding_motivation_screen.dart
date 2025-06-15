@@ -31,7 +31,7 @@ class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Что вас мотивирует изменить ваши финансы?',
+                'What motivates you to improve your finances?',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w700,
@@ -43,7 +43,7 @@ class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen>
               TextFormField(
                 controller: _controller,
                 decoration: InputDecoration(
-                  hintText: 'Например: Хочу научиться контролировать расходы...',
+                  hintText: 'For example: I want to learn to control spending...',
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -72,7 +72,7 @@ class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen>
                       fontSize: 16,
                     ),
                   ),
-                  child: const Text("Завершить онбординг"),
+                  child: const Text("Finish onboarding"),
                 ),
               ),
               const SizedBox(height: 24),

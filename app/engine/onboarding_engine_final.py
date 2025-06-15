@@ -47,20 +47,20 @@ class OnboardingEngine:
         answers = self.user_service.get_onboarding_answers(user_id, self.db)
 
         try:
-            # Генерация бюджетного плана
+            # Generate a budget plan
             plan = generate_budget_from_answers(answers)
             config = {**answers, **plan, "user_id": user_id, "db": self.db}
 
-            # Генерация календаря
+            # Generate the calendar
             calendar = build_calendar(config)
 
-            # Сохранение календаря в БД
+            # Save calendar to the database
             save_calendar_for_user(self.db, user_id, calendar)
 
-            # Сохранение итогового финансового профиля
+            # Save final financial profile
             self.user_service.save_user_financial_profile(user_id, plan, self.db)
 
         except Exception as e:
-            # Логируем ошибку и поднимаем выше
+            # Log the error and re-raise
             print(f"[OnboardingEngine] Error finalizing profile for user {user_id}: {str(e)}")
             raise

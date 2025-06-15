@@ -6,7 +6,7 @@ from openai import OpenAI
 from app.engine.risk_predictor import evaluate_user_risk
 from app.logic.installment_evaluator import can_user_afford_installment
 
-# Загрузка переменных среды
+# Load environment variables
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -18,8 +18,8 @@ def run_agent_for_user_message(user_message: str):
     assistant = client.beta.assistants.create(
         name="Finance Advisor Agent",
         instructions=(
-            "Ты — финансовый AI-советник. Анализируешь риски и "
-            "рассрочку. Действуешь строго по фактам."
+            "You are a financial AI advisor. Analyze risk and installment options. "
+            "Respond strictly based on facts."
         ),
         model=OPENAI_MODEL,
         tools=[
@@ -28,7 +28,7 @@ def run_agent_for_user_message(user_message: str):
                 "function": {
                     "name": "can_user_afford_installment",
                     "description": (
-                        "Проверяет, может ли пользователь позволить рассрочку"
+                        "Checks whether the user can afford an installment purchase"
                     ),
                     "parameters": {
                         "type": "object",
@@ -45,7 +45,7 @@ def run_agent_for_user_message(user_message: str):
                 "type": "function",
                 "function": {
                     "name": "evaluate_user_risk",
-                    "description": "Оценивает финансовый риск пользователя",
+                    "description": "Evaluates the user's financial risk",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -113,9 +113,9 @@ def run_agent_for_user_message(user_message: str):
         if msg.role == "assistant":
             return msg.content[0].text.value
 
-    return "Агент не дал ответа."
+    return "Agent returned no answer."
 
 
 if __name__ == "__main__":
-    msg = "Оцени мой риск, если я user_001"
+    msg = "Assess my risk if I am user_001"
     print(run_agent_for_user_message(msg))

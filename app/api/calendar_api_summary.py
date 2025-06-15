@@ -40,7 +40,7 @@ def get_month_summary(
             summary[cat]["planned"] - summary[cat]["spent"], 2
         )
 
-    # округление всех значений
+    # round all values
     for cat in summary:
         for key in summary[cat]:
             summary[cat][key] = round(summary[cat][key], 2)

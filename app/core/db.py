@@ -7,7 +7,7 @@ DATABASE_URL = settings.DATABASE_URL
 engine = create_async_engine(DATABASE_URL, future=True, echo=False)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-Base = declarative_base()  # <-- добавлено
+Base = declarative_base()  # added for legacy code
 
 async def get_db():
     async with async_session() as session:

@@ -5,7 +5,7 @@ from decimal import Decimal
 from app.db.models import Transaction, DailyPlan
 
 def record_expense(db: Session, user_id: int, day: date, category: str, amount: float, description: str = ""):
-    # 1. Запись в таблицу transactions
+    # 1. Save into the transactions table
     txn = Transaction(
         user_id=user_id,
         date=day,
@@ -15,7 +15,7 @@ def record_expense(db: Session, user_id: int, day: date, category: str, amount: 
     )
     db.add(txn)
 
-    # 2. Обновление календаря
+    # 2. Update the daily calendar plan
     plan = (
         db.query(DailyPlan)
         .filter_by(user_id=user_id, date=day, category=category)
@@ -24,7 +24,7 @@ def record_expense(db: Session, user_id: int, day: date, category: str, amount: 
     if plan:
         plan.spent_amount += Decimal(amount)
     else:
-        # Если нет такой категории — создаём строку
+        # Create plan row if category is missing
         new_plan = DailyPlan(
             user_id=user_id,
             date=day,
