@@ -5,9 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class GPTAgentService:
-    """
-    A service that communicates with OpenAI's GPT models to provide financial advice.
-    """
+    """Service for analytics and notification generation via OpenAI."""
 
     def __init__(self, api_key: str, model: str = "gpt-4o"):
         """
@@ -26,12 +24,7 @@ class GPTAgentService:
         )
 
     def ask(self, user_messages: list) -> str:
-        """
-        Send user messages to OpenAI and get the assistant's reply.
-
-        :param user_messages: List of message dicts: [{'role': 'user', 'content': '...'}, ...]
-        :return: The assistant's reply as a string.
-        """
+        """Send prompts to OpenAI and return generated advice."""
         try:
             messages = [{"role": "system", "content": self.system_prompt}] + user_messages
             response = openai.ChatCompletion.create(
