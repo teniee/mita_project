@@ -49,9 +49,7 @@ from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
-from app.api.transactions.routes import (
-    router as transactions_router,
-)  # This is likely the intended transactions_router
+from app.api.transactions.routes import router as transactions_router
 from app.api.transactions.routes_background import router as transactions_v2_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
@@ -97,9 +95,6 @@ async def security_headers(request: Request, call_next):
 
 
 # Include public routers (order might matter if prefixes overlap, ensure unique paths)
-# Mount legacy auth routes under the same `/api` prefix so the
-# Google login endpoint becomes `/api/auth/google` as expected by the
-# mobile application.
 app.include_router(auth_router_legacy, prefix="/api", tags=["auth_legacy"])
 
 # Include new style public routers (auth is usually public for login/register)
