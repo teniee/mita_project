@@ -29,10 +29,7 @@ from app.api.auth.routes import router as auth_router
 from app.api.auth_api import router as auth_router_legacy  # Renamed to avoid conflict
 from app.api.behavior.routes import router as behavior_router
 from app.api.budget.routes import router as budget_router
-from app.api.calendar_api_extensions import router as calendar_ext_router
-from app.api.calendar_api_redistribute import router as redistribute_router
-from app.api.calendar_api_sql import router as calendar_router
-from app.api.calendar_api_summary import router as summary_router
+from app.api.calendar.routes import router as calendar_router
 from app.api.challenge.routes import router as challenge_router
 from app.api.challenge_progress_api import router as challenge_progress_router
 from app.api.checkpoint.routes import router as checkpoint_router
@@ -45,9 +42,6 @@ from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
 from app.api.goals.routes import router as goals_crud_router
 from app.api.iap.routes import router as iap_router
-from app.api.ocr_api import router as ocr_router
-from app.api.ocr_google_api import router as ocr_google_router
-from app.api.ocr_image_api import router as ocr_image_router
 from app.api.onboarding.routes import router as onboarding_router
 from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
@@ -59,9 +53,6 @@ from app.api.transactions.routes import (
 )
 from app.api.transactions.routes_background import (
     router as transactions_v2_router,
-)
-from app.api.transactions_sql import (
-    router as transactions_sql_router,  # Renamed to avoid conflict
 )
 from app.api.users.routes import router as users_router
 from app.core.limiter_setup import init_rate_limiter
@@ -99,25 +90,6 @@ async def log_requests(request: Request, call_next):
 # Google login endpoint becomes `/api/auth/google` as expected by the
 # mobile application.
 app.include_router(auth_router_legacy, prefix="/api", tags=["auth_legacy"])
-app.include_router(ocr_google_router, prefix="/api/v0/ocr/google", tags=["ocr_legacy"])
-app.include_router(ocr_image_router, prefix="/api/v0/ocr/image", tags=["ocr_legacy"])
-app.include_router(ocr_router, prefix="/api/v0/ocr", tags=["ocr_legacy"])
-app.include_router(
-    summary_router, prefix="/api/v0/calendar/summary", tags=["calendar_legacy"]
-)
-app.include_router(
-    redistribute_router,
-    prefix="/api/v0/calendar/redistribute",
-    tags=["calendar_legacy"],
-)
-app.include_router(
-    calendar_ext_router, prefix="/api/v0/calendar/extensions", tags=["calendar_legacy"]
-)
-app.include_router(
-    transactions_sql_router,
-    prefix="/api/v0/transactions_sql",
-    tags=["transactions_legacy"],
-)
 
 # Include new style public routers (auth is usually public for login/register)
 app.include_router(
