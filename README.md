@@ -149,6 +149,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
 - `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
+- `scripts/refresh_premium_status.py` — cron entry to disable expired subscriptions
 
 
 ---
@@ -174,6 +175,8 @@ SMTP_PORT=587
 SMTP_USERNAME=mailer
 SMTP_PASSWORD=secret
 SMTP_FROM=notify@example.com
+APPLE_SHARED_SECRET=changeme
+GOOGLE_SERVICE_ACCOUNT=/path/to/google.json
 ALLOWED_ORIGINS=https://app.mita.finance
 ```
 

@@ -1,14 +1,14 @@
 """Very naive receipt validation helpers with simulated expiration."""
 
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Any, Dict
 
 
 def validate_receipt(
     user_id: str,
     receipt: str,
     platform: str,
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """Validate receipt contents.
 
     This stub now returns an expiration timestamp. Real integration with
@@ -25,5 +25,7 @@ def validate_receipt(
     return {
         "status": "valid",
         "platform": platform,
+        "plan": "annual" if days > 30 else "monthly",
+        "starts_at": datetime.utcnow(),
         "expires_at": expiration,
     }
