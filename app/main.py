@@ -1,8 +1,9 @@
 # flake8: noqa
 import os
+import tempfile
 
 # --- Early creation of firebase.json before any imports ---
-firebase_path = "/tmp/firebase.json"  # temp path for credentials
+firebase_path = os.path.join(tempfile.gettempdir(), "firebase.json")  # temp path for credentials
 
 if "FIREBASE_JSON" in os.environ:
     with open(firebase_path, "w") as f:

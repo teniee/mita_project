@@ -13,5 +13,5 @@ def log_push(user_id: str, timestamp: datetime):
 def get_best_push_hour(user_id: str):
     hours = [t.hour for t in user_push_log.get(user_id, [])]
     if not hours:
-        return random.choice(range(9, 21))  # 9AM–8PM
+        return random.choice(range(9, 21))  # nosec B311 - 9AM–8PM
     return max(set(hours), key=hours.count)

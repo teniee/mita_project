@@ -19,3 +19,9 @@ repos:
       - id: isort
         name: isort
         args: ["--profile", "black"]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        args: ["-r", "app", "-x", "app/tests"]

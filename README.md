@@ -250,7 +250,20 @@ Include:
 - [ ] Spending goals per category
 - [x] Email reminders
 
-## 🔧 13. Running Tests
+## 📦 13. Automated Backups
+
+Use `scripts/backup_database.py` to dump the Postgres database and upload it to S3. Set `S3_BUCKET` and AWS credentials in the environment. Old backups older than 7 days are cleaned up automatically.
+
+## 🔒 14. Security Scans
+
+Run `bandit` to scan the codebase for common security issues. The provided pre-commit configuration runs it automatically:
+
+```bash
+pre-commit run bandit --all-files
+```
+
+
+## 🔧 15. Running Tests
 
 To run the backend unit tests locally, first install all Python dependencies:
 

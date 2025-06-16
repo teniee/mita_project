@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from app.utils.response_wrapper import success_response
 from .schemas import TokenIn, NotificationTest
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register-token")
@@ -45,13 +47,13 @@ async def send_test_notification(
     if token:
         try:
             send_push_notification(user_id=user.id, message=payload.message, token=token)
-        except Exception:
-            pass
+        except Exception as e:  # pragma: no cover - log and continue
+            logger.warning("Push notification failed: %s", e)
 
     email = payload.email or user.email
     try:
         send_reminder_email(email, "Mita Notification", payload.message)
-    except Exception:
-        pass
+    except Exception as e:  # pragma: no cover - log and continue
+        logger.warning("Reminder email failed: %s", e)
 
     return success_response({"sent": True})

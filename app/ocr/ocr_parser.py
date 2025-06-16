@@ -40,13 +40,13 @@ def parse_receipt_text(text: str) -> dict:
             if match:
                 try:
                     parsed_date = datetime.strptime(match.group(0), "%Y-%m-%d")
-                except:
+                except ValueError:
                     try:
                         parsed_date = datetime.strptime(match.group(0), "%m/%d/%Y")
-                    except:
+                    except ValueError:
                         try:
                             parsed_date = datetime.strptime(match.group(0), "%b %d, %Y")
-                        except:
+                        except ValueError:
                             continue
                 date_found = parsed_date.date()
                 break

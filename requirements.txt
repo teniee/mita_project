@@ -32,3 +32,5 @@ pytest-asyncio
 pytest-cov
 
 openai
+boto3
+bandit

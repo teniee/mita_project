@@ -15,7 +15,7 @@ class ReceiptProcessingOrchestrator:
     3. Transaction creation
     """
 
-    def __init__(self, transaction_store, budget_tracker, calendar_engine, temp_dir="/tmp"):
+    def __init__(self, transaction_store, budget_tracker, calendar_engine, temp_dir=None):
         self.ocr_service = OCRReceiptService(temp_dir=temp_dir)
         self.categorization_service = ReceiptCategorizationService()
         self.transaction_service = ReceiptTransactionService(
