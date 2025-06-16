@@ -19,7 +19,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
               ├─> [ Transactions API]
               ├─> [ Calendar API    ]──> DailyPlan
               ├─> [ OCR Service     ]──> Receipt → Text → Expense
-              ├─> [ AI Assistant    ]
+              ├─> [ AI Analytics   ]
               └─> [ Drift Monitor   ]──> Firebase
 
 [ PostgreSQL ] <── [ SQLAlchemy Models ]
@@ -28,7 +28,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - **Backend:** FastAPI
 - **Database:** PostgreSQL (via SQLAlchemy)
 - **OCR:** Google Cloud Vision
-- **AI Assistant:** placeholder modules (`agent_runner`, `recommendation`)
+- **AI Analytics:** analyzes mood, habits and spending to push budgeting recommendations
 - **Tracking:** Firebase Firestore (optional)
 - **Deployment:** Docker
 
@@ -115,7 +115,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 | GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
 | POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
 | POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
-| GET    | `/assistant/recommendation`          | (Future) Get financial suggestions          |
+| GET    | `/ai/latest-snapshots`               | Get latest AI budget analyses               |
 | POST   | `/ai/snapshot`                       | Generate AI analysis snapshot                |
 
 ---
@@ -145,10 +145,11 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `services/expense_tracker.py` — updates DailyPlan after transaction
 - `orchestrator/receipt_orchestrator.py` — parses receipt → transaction
 - `agent_runner.py` — placeholder for AI logic
-- `financial/routes.py` — assistant and analytics routes
+- `financial/routes.py` — AI analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
 - `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
+- `scripts/refresh_premium_status.py` — cron entry to disable expired subscriptions
 
 
 ---
@@ -174,7 +175,14 @@ SMTP_PORT=587
 SMTP_USERNAME=mailer
 SMTP_PASSWORD=secret
 SMTP_FROM=notify@example.com
+APPLE_SHARED_SECRET=changeme
+GOOGLE_SERVICE_ACCOUNT=/path/to/google.json
+ALLOWED_ORIGINS=https://app.mita.finance
 ```
+
+### Security Headers
+The API automatically adds strict security headers and redirects all requests to
+HTTPS. Adjust `ALLOWED_ORIGINS` to your production domain to enable CORS.
 
 ---
 
@@ -221,7 +229,7 @@ A proper Flutter or React frontend should include:
 
 ## 🤖 11. Lovable Prompt
 
-> Build a full budgeting assistant UI for: https://github.com/teniee/mita_docker_ready_project_manus_
+> Build a full budgeting analytics UI for: https://github.com/teniee/mita_docker_ready_project_manus_
 
 Include:
 - Auth
@@ -230,7 +238,7 @@ Include:
 - Add transaction
 - Redistribute button
 - Expense history
-- Assistant recommendations
+- AI-driven budget recommendations
 - Push notifications & email reminders
 - AI budgeting tips via push
 

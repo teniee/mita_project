@@ -26,8 +26,10 @@ async def validate(
     sub = Subscription(
         user_id=payload.user_id,
         platform=result["platform"],
+        plan=result.get("plan", "standard"),
         receipt={"raw": payload.receipt},
-        current_period_end=result["expires_at"],
+        starts_at=result.get("starts_at"),
+        expires_at=result["expires_at"],
     )
     db.add(sub)
 
