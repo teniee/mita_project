@@ -1,4 +1,4 @@
-"""GPTAgentService for handling user conversations via OpenAI Chat API."""
+"""GPTAgentService for analysing financial data using OpenAI."""
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -6,7 +6,7 @@ from openai import OpenAIError
 
 
 class GPTAgentService:
-    """Service that uses OpenAI's GPT models to offer financial advice."""
+    """Use OpenAI to derive insights for analytics and notifications."""
 
     def __init__(self, api_key: str, model: str = "gpt-4o"):
         """
@@ -25,13 +25,7 @@ class GPTAgentService:
         )
 
     def ask(self, user_messages: list[ChatCompletionMessageParam]) -> str:
-        """
-        Send user messages to OpenAI and get the assistant's reply.
-
-        :param user_messages: list of message dicts:
-            [{'role': 'user', 'content': '...'}, ...]
-        :return: The assistant's reply as a string.
-        """
+        """Send prompts to OpenAI and return the generated advice."""
         try:
             messages = [
                 {"role": "system", "content": self.system_prompt}
