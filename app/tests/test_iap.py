@@ -8,3 +8,5 @@ def test_validate_receipt_expiration():
     assert result["status"] == "valid"
     assert result["platform"] == "ios"
     assert isinstance(result["expires_at"], datetime)
+    assert result["plan"] == "annual"
+    assert isinstance(result["starts_at"], datetime)

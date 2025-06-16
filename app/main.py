@@ -16,6 +16,7 @@ import time
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_limiter.depends import RateLimiter
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -42,29 +43,25 @@ from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
 from app.api.goals.routes import router as goals_crud_router
 from app.api.iap.routes import router as iap_router
+from app.api.notifications.routes import router as notifications_router
 from app.api.onboarding.routes import router as onboarding_router
 from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
-from app.api.notifications.routes import router as notifications_router
-from app.api.transactions.routes import (
-    router as transactions_router,  # This is likely the intended transactions_router
-)
-from app.api.transactions.routes_background import (
-    router as transactions_v2_router,
-)
+from app.api.transactions.routes import router as transactions_router
+from app.api.transactions.routes_background import router as transactions_v2_router
 from app.api.users.routes import router as users_router
+from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
-from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
 
-
+app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -85,10 +82,19 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=63072000; includeSubDomains"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
+
+
 # Include public routers (order might matter if prefixes overlap, ensure unique paths)
-# Mount legacy auth routes under the same `/api` prefix so the
-# Google login endpoint becomes `/api/auth/google` as expected by the
-# mobile application.
 app.include_router(auth_router_legacy, prefix="/api", tags=["auth_legacy"])
 
 # Include new style public routers (auth is usually public for login/register)
