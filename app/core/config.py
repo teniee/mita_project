@@ -9,7 +9,9 @@ try:
     from pydantic import ConfigDict
 except ImportError:  # pragma: no cover - pydantic v1 compatibility
     ConfigDict = None
-    from pydantic.class_validators import validator as field_validator  # type: ignore
+    from pydantic.class_validators import validator as field_validator  # type:
+
+    # ignore
 else:
     from pydantic import field_validator
 
@@ -49,7 +51,8 @@ class Settings(BaseSettings):
     smtp_from: str = "no-reply@example.com"
 
     # CORS
-    allowed_origins: list[str] = ["*"]
+    # Restrict to production front-end domain(s) by default
+    allowed_origins: list[str] = ["https://app.mita.finance"]
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
