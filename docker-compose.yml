@@ -46,3 +46,24 @@ services:
       - --port
       - "8000"
 
+  worker:
+    build: .
+    command: python -m app.worker
+    environment:
+      PYTHONPATH: "/code"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    command: python scripts/rq_scheduler.py
+    environment:
+      PYTHONPATH: "/code"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
