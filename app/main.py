@@ -27,12 +27,10 @@ from app.api.analytics.routes import router as analytics_router
 
 # New style routers from subdirectories
 from app.api.auth.routes import router as auth_router
-from app.api.auth_api import router as auth_router_legacy  # Renamed to avoid conflict
 from app.api.behavior.routes import router as behavior_router
 from app.api.budget.routes import router as budget_router
 from app.api.calendar.routes import router as calendar_router
 from app.api.challenge.routes import router as challenge_router
-from app.api.challenge_progress_api import router as challenge_progress_router
 from app.api.checkpoint.routes import router as checkpoint_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
@@ -95,7 +93,6 @@ async def security_headers(request: Request, call_next):
 
 
 # Include public routers (order might matter if prefixes overlap, ensure unique paths)
-app.include_router(auth_router_legacy, prefix="/api", tags=["auth_legacy"])
 
 # Include new style public routers (auth is usually public for login/register)
 app.include_router(
@@ -111,7 +108,6 @@ private_routers_list = [
     (users_router, "/api/users", ["Users"]),
     (calendar_router, "/api/calendar", ["Calendar"]),
     (challenge_router, "/api/challenges", ["Challenges"]),
-    (challenge_progress_router, "/api/challenge-progress", ["ChallengeProgress"]),
     (expense_router, "/api/expenses", ["Expenses"]),
     (goal_router, "/api/goals", ["Goals"]),
     (goals_crud_router, "/api/goals", ["GoalsCRUD"]),

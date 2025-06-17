@@ -20,7 +20,6 @@ class ProgressRequest(BaseModel):
     user_id: str
     year: int
     month: int
-    currency: str = "USD"
     locale: str = "en_US"
 
 class ProgressOut(BaseModel):

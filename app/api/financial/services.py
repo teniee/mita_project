@@ -32,4 +32,5 @@ def evaluate_installment(
                 )
             except Exception:
                 pass
+    db.commit()
     return result

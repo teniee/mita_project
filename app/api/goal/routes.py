@@ -18,8 +18,10 @@ async def goal_from_calendar(payload: GoalProgressInput):
 
 @router.post("/user-progress", response_model=dict)
 async def full_progress(payload: ProgressRequest):
-    result = get_user_progress(payload.user_id, payload.year, payload.month, {
-        "currency": payload.currency,
-        "locale": payload.locale
-    })
+    result = get_user_progress(
+        payload.user_id,
+        payload.year,
+        payload.month,
+        {"currency": "USD", "locale": payload.locale},
+    )
     return success_response(result)
