@@ -24,6 +24,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Fail on Cyrillic characters
+      run: |
+        if grep -rIn --exclude-dir=.git --exclude-dir=docs/legacy -P "[\p{Cyrillic}]" .; then
+          echo "Cyrillic characters detected"
+          exit 1
+        fi
+
     - name: Run tests
       run: |
         export PYTHONPATH=.

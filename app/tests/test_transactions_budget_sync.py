@@ -1,6 +1,6 @@
 import datetime
-from types import SimpleNamespace
 from decimal import Decimal
+from types import SimpleNamespace
 
 from app.api.transactions.services import add_transaction
 
@@ -42,7 +42,6 @@ def test_add_transaction_records_expense(monkeypatch):
     data = SimpleNamespace(
         category="food",
         amount=12.5,
-        currency="USD",
         spent_at=datetime.datetime(2025, 1, 1),
     )
 

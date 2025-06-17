@@ -37,8 +37,8 @@ def get_progress_data(
             )
             saved_from_challenges += round(planned_total - actual_total, 2)
 
-    currency = config.get("currency", "USD")
-    locale = config.get("locale", "en_US")
+    currency = "USD"
+    locale = "en_US"
 
     return {
         "spent": (

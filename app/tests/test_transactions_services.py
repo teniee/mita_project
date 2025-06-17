@@ -57,7 +57,6 @@ def test_add_transaction_triggers_plan(monkeypatch):
     data = SimpleNamespace(
         category="food",
         amount=12.5,
-        currency="USD",
         spent_at=datetime.datetime(2025, 1, 1),
     )
 

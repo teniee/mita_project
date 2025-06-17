@@ -12,7 +12,7 @@ def run_daily_email_reminders() -> None:
     db: Session = next(get_db())
     today = datetime.utcnow().date().isoformat()
 
-    users = db.query(User).filter(User.is_active.is_(True)).all()
+    users = db.query(User).all()
     for user in users:
         try:
             body = f"Don't forget to log your expenses for {today}."

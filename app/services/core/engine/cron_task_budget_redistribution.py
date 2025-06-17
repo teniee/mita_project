@@ -19,7 +19,7 @@ def run_budget_redistribution_batch():
         month = 12
         year -= 1
 
-    users = db.query(User).filter(User.is_active.is_(True)).all()
+    users = db.query(User).all()
     for user in users:
         try:
             result = redistribute_budget_for_user(db, user.id, year, month)
