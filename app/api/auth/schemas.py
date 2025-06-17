@@ -6,6 +6,7 @@ class RegisterIn(BaseModel):
     password: str
     country: str = "US"
     annual_income: float = 0.0
+    timezone: str = "UTC"
 
 
 class LoginIn(BaseModel):

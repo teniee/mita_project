@@ -45,7 +45,8 @@ def test_add_transaction_records_expense(monkeypatch):
         spent_at=datetime.datetime(2025, 1, 1),
     )
 
-    add_transaction("u1", data, db)
+    user = SimpleNamespace(id="u1", timezone="UTC")
+    add_transaction(user, data, db)
 
     # Daily plan should be updated once with the transaction amount
     assert spent["amount"] == Decimal("12.5")

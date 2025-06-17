@@ -60,7 +60,8 @@ def test_add_transaction_triggers_plan(monkeypatch):
         spent_at=datetime.datetime(2025, 1, 1),
     )
 
-    result = add_transaction("u1", data, db)
+    user = SimpleNamespace(id="u1", timezone="UTC")
+    result = add_transaction(user, data, db)
 
     assert result is created["txn"]
     assert called["args"] == (db, created["txn"])

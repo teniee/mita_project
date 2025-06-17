@@ -16,4 +16,5 @@ class User(Base):
     annual_income = Column(Numeric, default=0)
     is_premium = Column(Boolean, default=False)
     premium_until = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    timezone = Column(String, default="UTC")
