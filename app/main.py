@@ -47,6 +47,7 @@ from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
+from app.api.insights.routes import router as insights_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.transactions.routes_background import router as transactions_v2_router
 from app.api.users.routes import router as users_router
@@ -117,6 +118,7 @@ private_routers_list = [
     (behavior_router, "/api/behavior", ["Behavior"]),
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
+    (insights_router, "/api/insights", ["Insights"]),
     (ai_router, "/api/ai", ["AI"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (transactions_v2_router, "/api/transactions/v2", ["Transactions"]),
