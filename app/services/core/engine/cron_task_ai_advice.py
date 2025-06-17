@@ -14,7 +14,10 @@ def run_ai_advice_batch() -> None:
     db: Session = next(get_db())
     today = datetime.utcnow().date()
 
-    users = db.query(User).filter(User.is_active.is_(True)).all()
+    users_q = db.query(User)
+    if hasattr(User, "is_active"):
+        users_q = users_q.filter(User.is_active.is_(True))
+    users = users_q.all()
     for user in users:
         already = (
             db.query(BudgetAdvice)

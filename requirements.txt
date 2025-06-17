@@ -27,6 +27,8 @@ Babel
 python-jose[cryptography]
 httpx
 google-cloud-vision
+google-auth
+google-api-python-client
 pytest
 pytest-asyncio
 pytest-cov
