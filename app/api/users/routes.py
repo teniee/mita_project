@@ -20,6 +20,10 @@ async def get_profile(current_user=Depends(get_current_user)):
             "country": current_user.country,
             "created_at": current_user.created_at.isoformat(),
             "timezone": current_user.timezone,
+            "is_premium": current_user.is_premium,
+            "premium_until": current_user.premium_until.isoformat()
+            if current_user.premium_until
+            else None,
         }
     )
 
@@ -39,6 +43,8 @@ async def update_profile(
             "email": user.email,
             "country": user.country,
             "timezone": user.timezone,
+            "is_premium": user.is_premium,
+            "premium_until": user.premium_until.isoformat() if user.premium_until else None,
             "updated_at": user.updated_at.isoformat(),
         }
     )

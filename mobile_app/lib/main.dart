@@ -10,6 +10,11 @@ import 'screens/add_expense_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'screens/advice_history_screen.dart';
+import 'screens/premium_subscription_screen.dart';
+import 'services/api_service.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -21,7 +26,26 @@ import 'screens/onboarding_habits_screen.dart';
 import 'screens/onboarding_motivation_screen.dart';
 import 'screens/onboarding_finish_screen.dart';
 
-void main() {
+Future<void> _initFirebase() async {
+  await Firebase.initializeApp();
+  await FirebaseMessaging.instance.requestPermission();
+  final token = await FirebaseMessaging.instance.getToken();
+  if (token != null) {
+    final api = ApiService();
+    await api.registerPushToken(token);
+  }
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => const AdviceHistoryScreen()),
+    );
+  });
+}
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _initFirebase();
   runApp(const MITAApp());
 }
 
@@ -31,6 +55,7 @@ class MITAApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'MITA',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -51,6 +76,7 @@ class MITAApp extends StatelessWidget {
         '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
         '/onboarding_motivation': (context) => const OnboardingMotivationScreen(),
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
+        '/premium': (context) => const PremiumSubscriptionScreen(),
       },
     );
   }
