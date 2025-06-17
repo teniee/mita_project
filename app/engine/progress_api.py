@@ -15,7 +15,6 @@ def get_progress_data(
     user_id: str,
     year: int,
     month: int,
-    config: dict,
 ) -> dict:
     progress = tracker.get_month_data(user_id, year, month)
     cal = get_calendar_for_user(user_id, year, month)
@@ -41,8 +40,8 @@ def get_progress_data(
             )
             saved_from_challenges += round(planned_total - actual_total, 2)
 
-    currency = config.get("currency", "USD")
-    locale = config.get("locale", "en_US")
+    currency = "USD"
+    locale = "en_US"
 
     return {
         "spent": (

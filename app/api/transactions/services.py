@@ -1,10 +1,10 @@
 from decimal import Decimal
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction
 from app.services.core.engine.expense_tracker import apply_transaction_to_plan
-from fastapi import BackgroundTasks
 
 
 def add_transaction(user_id: str, data, db: Session):
@@ -12,7 +12,7 @@ def add_transaction(user_id: str, data, db: Session):
         user_id=user_id,
         category=data.category,
         amount=Decimal(str(data.amount)),
-        currency=data.currency,
+        currency="USD",
         spent_at=data.spent_at,
     )
     db.add(txn)
@@ -30,7 +30,7 @@ def add_transaction_background(
         user_id=user_id,
         category=data.category,
         amount=Decimal(str(data.amount)),
-        currency=data.currency,
+        currency="USD",
         spent_at=data.spent_at,
     )
     db.add(txn)

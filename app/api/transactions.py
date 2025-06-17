@@ -19,7 +19,6 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 class TxnIn(BaseModel):
     category: str
     amount: float
-    currency: str = "USD"
     spent_at: datetime = datetime.utcnow()
 
 
@@ -33,7 +32,7 @@ def add_txn(
         user_id=user.id,
         category=txn.category,
         amount=Decimal(str(txn.amount)),
-        currency=txn.currency,
+        currency="USD",
         spent_at=txn.spent_at,
     )
     db.add(t)

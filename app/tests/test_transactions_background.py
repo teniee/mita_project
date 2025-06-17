@@ -1,6 +1,6 @@
+import datetime
 import importlib
 import sys
-import datetime
 from types import SimpleNamespace
 
 if isinstance(sys.modules.get("app.db.models"), object) and not hasattr(
@@ -66,7 +66,6 @@ def test_add_transaction_background(monkeypatch):
     data = SimpleNamespace(
         category="food",
         amount=12.5,
-        currency="USD",
         spent_at=datetime.datetime(2025, 1, 1),
     )
 
