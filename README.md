@@ -144,7 +144,6 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - `services/budget_redistributor.py` — logic for balancing budget
 - `services/expense_tracker.py` — updates DailyPlan after transaction
 - `orchestrator/receipt_orchestrator.py` — parses receipt → transaction
-- `agent_runner.py` — placeholder for AI logic
 - `financial/routes.py` — AI analytics routes
 - `drift_service.py` — Firebase connection and drift tracking
 - `mood_store.py` — persists user mood entries in the database
