@@ -1,16 +1,32 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
 
 import app.core.jwt_utils as jwt_utils
+from app.api.auth.schemas import LoginIn, RegisterIn, TokenOut
+from app.api.auth.services import authenticate_user, register_user
+from app.core.session import get_db
 from app.services.auth_jwt_service import (
     blacklist_token,
     create_access_token,
     verify_token,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+async def register(payload: RegisterIn, db: Session = Depends(get_db)):
+    """Create a new user account."""
+    return register_user(payload, db)
+
+
+@router.post("/login", response_model=TokenOut)
+async def login(payload: LoginIn, db: Session = Depends(get_db)):
+    """Authenticate an existing user."""
+    return authenticate_user(payload, db)
 
 
 @router.post("/refresh")
