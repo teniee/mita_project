@@ -24,7 +24,7 @@ def test_evaluate_user_risk_records_advice(monkeypatch):
         return {"risk_level": "high", "reason": "bad"}
 
     monkeypatch.setattr(
-        "app.engine.risk_predictor.evaluate_user_risk",
+        "app.services.advisory_service.evaluate_user_risk",
         fake_eval,
     )
     service = AdvisoryService(db)
