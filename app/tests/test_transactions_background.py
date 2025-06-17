@@ -69,7 +69,8 @@ def test_add_transaction_background(monkeypatch):
         spent_at=datetime.datetime(2025, 1, 1),
     )
 
-    result = add_transaction_background("u1", data, db, bg)
+    user = SimpleNamespace(id="u1", timezone="UTC")
+    result = add_transaction_background(user, data, db, bg)
 
     assert result is created["txn"]
     assert db.committed

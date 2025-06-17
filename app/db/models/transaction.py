@@ -1,9 +1,11 @@
-
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Numeric
+
+from sqlalchemy import Column, DateTime, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
+
 from .base import Base
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -12,5 +14,5 @@ class Transaction(Base):
     category = Column(String, nullable=False)
     amount = Column(Numeric, nullable=False)
     currency = Column(String(3), default="USD")
-    spent_at = Column(DateTime, default=datetime.utcnow, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    spent_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)

@@ -53,7 +53,7 @@ async def test_create_transaction_updates_plan(monkeypatch):
     )
 
     db = DummyDB()
-    user = SimpleNamespace(id="u1")
+    user = SimpleNamespace(id="u1", timezone="UTC")
     data = TxnIn(
         category="food",
         amount=12.5,

@@ -25,7 +25,7 @@ async def create_transaction(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    return success_response(add_transaction(user.id, txn, db))
+    return success_response(add_transaction(user, txn, db))
 
 
 @router.get("/", response_model=List[TxnOut])
@@ -33,4 +33,4 @@ async def get_transactions(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    return success_response(list_user_transactions(user.id, db))
+    return success_response(list_user_transactions(user, db))
