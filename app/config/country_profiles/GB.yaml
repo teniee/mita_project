@@ -1,4 +1,4 @@
-currency: GBP
+currency: USD
 mandatory_categories: [housing, utilities, council_tax, healthcare, insurance]
 seasonal_factors:
   winter:

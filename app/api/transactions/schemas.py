@@ -13,5 +13,5 @@ class TxnOut(BaseModel):
     id: str
     category: str
     amount: float
-    currency: str
+    currency: str = "USD"
     spent_at: datetime

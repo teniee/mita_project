@@ -1,4 +1,5 @@
 from datetime import date
+import importlib
 import sys
 from types import SimpleNamespace
 
@@ -20,8 +21,6 @@ DummyModel = SimpleNamespace(
     planned_amount=DummyField(),
     spent_amount=DummyField(),
 )
-sys.modules['app.db.models'] = SimpleNamespace(DailyPlan=DummyModel)
-from app.services.budget_redistributor import redistribute_budget_for_user
 
 
 class DummyEntry:
@@ -56,7 +55,10 @@ class DummyDB:
         self.committed = True
 
 
-def test_redistribute_sums_transfers():
+def test_redistribute_sums_transfers(monkeypatch):
+    monkeypatch.setitem(sys.modules, "app.db.models", SimpleNamespace(DailyPlan=DummyModel))
+    mod = importlib.import_module("app.services.budget_redistributor")
+
     entries = [
         DummyEntry(1, "rent", date(2023, 1, 1), 100.0, 150.0),
         DummyEntry(1, "rent", date(2023, 1, 2), 100.0, 150.0),
@@ -65,7 +67,7 @@ def test_redistribute_sums_transfers():
     ]
     db = DummyDB(entries)
 
-    redistribute_budget_for_user(db, user_id=1, year=2023, month=1)
+    mod.redistribute_budget_for_user(db, user_id=1, year=2023, month=1)
 
     assert db.committed
     # Total surplus = 80, should be added to first rent entry
