@@ -10,6 +10,8 @@ class UserProfileOut(BaseModel):
     country: str
     created_at: datetime
     timezone: str
+    is_premium: bool
+    premium_until: Optional[datetime] = None
 
 
 class UserUpdateIn(BaseModel):

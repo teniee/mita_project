@@ -17,6 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _name;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isPremium = false;
 
   @override
   void initState() {
@@ -28,8 +29,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final data = await _apiService.getUserProfile();
       setState(() {
-        _email = data['email'];
-        _name = data['name'];
+        final map = data['data'] as Map<String, dynamic>;
+        _email = map['email'] as String?;
+        _name = map['name'] as String?;
+        _isPremium = map['is_premium'] as bool? ?? false;
         _isLoading = false;
       });
     } catch (e) {
@@ -136,6 +139,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
 
                     const SizedBox(height: 20),
+                    if (!_isPremium)
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/premium');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF193C57),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Upgrade to Premium',
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                    if (!_isPremium) const SizedBox(height: 20),
+
                     ElevatedButton(
                       onPressed: () async {
                         await _apiService.logout();

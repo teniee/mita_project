@@ -198,6 +198,28 @@ class ApiService {
     return Map<String, dynamic>.from(response.data);
   }
 
+  Future<Map<String, dynamic>?> getLatestAdvice() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/insights/',
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+    return response.data['data'] as Map<String, dynamic>?;
+  }
+
+  Future<List<dynamic>> getAdviceHistory() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/insights/history',
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+    return List<dynamic>.from(response.data['data'] as List);
+  }
+
 
   Future<Map<String, dynamic>> getUser() async {
     final token = await getToken();
@@ -277,6 +299,22 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> validateReceipt(
+      String receipt, String platform) async {
+    final token = await getToken();
+    final userId = await getUserId();
+    final response = await _dio.post(
+      '/api/iap/validate',
+      data: {
+        'user_id': userId,
+        'receipt': receipt,
+        'platform': platform,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data']);
+  }
+
 
   Future<List<dynamic>> getNotifications() async {
     final token = await getToken();
@@ -340,6 +378,15 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
+  }
+
+  Future<void> registerPushToken(String token) async {
+    final access = await getToken();
+    await _dio.post(
+      '/api/notifications/register-token',
+      data: {'token': token},
+      options: Options(headers: {'Authorization': 'Bearer $access'}),
+    );
   }
 
   Future<void> logout() async {

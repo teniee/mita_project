@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
   Map<String, dynamic>? dashboardData;
+  Map<String, dynamic>? latestAdvice;
   bool isLoading = true;
   String? error;
 
@@ -24,9 +26,11 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> fetchDashboardData() async {
     try {
       final data = await _apiService.getDashboard();
+      final advice = await _apiService.getLatestAdvice();
       if (!mounted) return;
       setState(() {
         dashboardData = data;
+        latestAdvice = advice;
         isLoading = false;
       });
     } catch (e) {
@@ -66,6 +70,8 @@ class _MainScreenState extends State<MainScreen> {
                         _buildBudgetTargets(),
                         const SizedBox(height: 20),
                         _buildMiniCalendar(),
+                        const SizedBox(height: 20),
+                        _buildInsightsCard(),
                         const SizedBox(height: 20),
                         _buildRecentTransactions(),
                       ],
@@ -174,6 +180,29 @@ class _MainScreenState extends State<MainScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildInsightsCard() {
+    final text = latestAdvice?['text'] ?? 'No advice yet';
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdviceHistoryScreen()),
+        );
+      },
+      child: Card(
+        color: const Color(0xFFE8F0FE),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            text,
+            style: const TextStyle(fontFamily: 'Manrope'),
+          ),
+        ),
+      ),
     );
   }
 
