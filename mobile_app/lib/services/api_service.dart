@@ -364,6 +364,15 @@ class ApiService {
     return response.data;
   }
 
+  Future<void> registerPushToken(String token) async {
+    final access = await getToken();
+    await _dio.post(
+      '/api/notifications/register-token',
+      data: {'token': token},
+      options: Options(headers: {'Authorization': 'Bearer $access'}),
+    );
+  }
+
   Future<void> logout() async {
     final token = await getToken();
     if (token != null) {
