@@ -4,7 +4,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 import app.core.jwt_utils as jwt_utils
-from app.api.auth.schemas import LoginIn, RegisterIn, TokenOut
+from app.api.auth.schemas import LoginIn  # noqa: E501
+from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
+from app.api.auth.services import authenticate_google  # noqa: E501
 from app.api.auth.services import authenticate_user, register_user
 from app.core.session import get_db
 from app.services.auth_jwt_service import (
@@ -17,14 +19,24 @@ router = APIRouter(prefix="", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterIn, db: Session = Depends(get_db)):
+@router.post(
+    "/register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    payload: RegisterIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
     """Create a new user account."""
     return register_user(payload, db)
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(payload: LoginIn, db: Session = Depends(get_db)):
+async def login(
+    payload: LoginIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
     """Authenticate an existing user."""
     return authenticate_user(payload, db)
 
@@ -63,3 +75,12 @@ async def logout(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     blacklist_token(token)
     return JSONResponse({"message": "Successfully logged out."})
+
+
+@router.post("/google", response_model=TokenOut)
+async def google_login(
+    payload: GoogleAuthIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """Authenticate a user using a Google ID token."""
+    return authenticate_google(payload, db)

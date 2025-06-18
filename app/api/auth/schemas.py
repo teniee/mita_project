@@ -14,6 +14,10 @@ class LoginIn(BaseModel):
     password: str
 
 
+class GoogleAuthIn(BaseModel):
+    id_token: str
+
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
