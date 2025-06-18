@@ -1,9 +1,11 @@
 import os
+
 from redis import Redis
 from rq_scheduler import Scheduler
-from datetime import datetime
+
 from app.tasks import (
     enqueue_daily_advice,
+    enqueue_daily_reminders,
     enqueue_monthly_redistribution,
     enqueue_subscription_refresh,
 )
@@ -19,6 +21,14 @@ scheduler.cancel_all()
 scheduler.cron(
     "0 * * * *",
     func=enqueue_daily_advice,
+    repeat=None,
+    queue_name="default",
+)
+
+# Daily email reminders at 09:00 UTC
+scheduler.cron(
+    "0 9 * * *",
+    func=enqueue_daily_reminders,
     repeat=None,
     queue_name="default",
 )

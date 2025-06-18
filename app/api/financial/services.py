@@ -29,6 +29,7 @@ def evaluate_installment(
                     user_id=user_id,
                     message=result.get("reason", ""),
                     token=token,
+                    db=db,
                 )
             except Exception:
                 pass
