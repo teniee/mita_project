@@ -21,7 +21,9 @@ def run_ai_advice_batch() -> None:
         users_q = users_q.filter(User.is_active.is_(True))
     users = users_q.all()
     for user in users:
-        user_now = utc_now.astimezone(ZoneInfo(getattr(user, "timezone", "UTC")))
+        user_now = utc_now.astimezone(
+            ZoneInfo(getattr(user, "timezone", "UTC"))
+        )  # noqa: E501
         if user_now.hour != 8:
             continue
         already = (
@@ -53,6 +55,7 @@ def run_ai_advice_batch() -> None:
                     user_id=user.id,
                     message=text,
                     token=token,
+                    db=db,
                 )
         except Exception as e:
             print(f"AI advice failed for user {user.id}: {str(e)}")

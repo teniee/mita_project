@@ -8,7 +8,7 @@ from app.services.push_service import send_push_notification
 from app.utils.email_utils import send_reminder_email
 from app.utils.response_wrapper import success_response
 
-from .schemas import TokenIn, NotificationTest
+from .schemas import NotificationTest, TokenIn
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -16,8 +16,8 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 @router.post("/register-token")
 async def register_token(
     data: TokenIn,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
 ):
     token = PushToken(user_id=user.id, token=data.token)
     db.add(token)
@@ -29,8 +29,8 @@ async def register_token(
 @router.post("/test")
 async def send_test_notification(
     payload: NotificationTest,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
 ):
     token = payload.token
     if not token:
@@ -44,13 +44,21 @@ async def send_test_notification(
 
     if token:
         try:
-            send_push_notification(user_id=user.id, message=payload.message, token=token)
+            send_push_notification(
+                user_id=user.id, message=payload.message, token=token, db=db
+            )
         except Exception:
             pass
 
     email = payload.email or user.email
     try:
-        send_reminder_email(email, "Mita Notification", payload.message)
+        send_reminder_email(
+            email,
+            "Mita Notification",
+            payload.message,
+            user_id=str(user.id),
+            db=db,
+        )
     except Exception:
         pass
 

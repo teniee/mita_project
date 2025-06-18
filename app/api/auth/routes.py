@@ -4,8 +4,25 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 import app.core.jwt_utils as jwt_utils
-from app.api.auth.schemas import LoginIn, RegisterIn, TokenOut
-from app.api.auth.services import authenticate_user, register_user
+from app.api.auth.schemas import LoginIn  # noqa: E501
+from app.api.auth.schemas import (
+    EmailVerifyIn,
+    GoogleAuthIn,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    RegisterIn,
+    TokenOut,
+)
+from app.api.auth.services import (
+    authenticate_google,
+    authenticate_user,
+    create_email_verification,
+    create_password_reset,
+    register_user,
+    reset_password,
+    verify_email_token,
+)
+from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.services.auth_jwt_service import (
     blacklist_token,
@@ -13,18 +30,37 @@ from app.services.auth_jwt_service import (
     verify_token,
 )
 
+# isort: off
+from app.utils.email_utils import (
+    send_password_reset_email,
+    send_verification_email,
+)
+
+# isort: on
+from app.utils.response_wrapper import success_response
+
 router = APIRouter(prefix="", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterIn, db: Session = Depends(get_db)):
+@router.post(
+    "/register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    payload: RegisterIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
     """Create a new user account."""
     return register_user(payload, db)
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(payload: LoginIn, db: Session = Depends(get_db)):
+async def login(
+    payload: LoginIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
     """Authenticate an existing user."""
     return authenticate_user(payload, db)
 
@@ -63,3 +99,50 @@ async def logout(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     blacklist_token(token)
     return JSONResponse({"message": "Successfully logged out."})
+
+
+@router.post("/google", response_model=TokenOut)
+async def google_login(
+    payload: GoogleAuthIn,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """Authenticate a user using a Google ID token."""
+    return authenticate_google(payload, db)
+
+
+@router.post("/password-reset/request")
+async def password_reset_request(
+    payload: PasswordResetRequest,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    token = create_password_reset(payload.email, db)
+    if token:
+        send_password_reset_email(payload.email, token)
+    return success_response({"sent": bool(token)})
+
+
+@router.post("/password-reset/confirm")
+async def password_reset_confirm(
+    payload: PasswordResetConfirm,
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    reset_password(payload.token, payload.new_password, db)
+    return success_response({"reset": True})
+
+
+@router.post("/verify-email/request")
+async def verify_email_request(
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    token = create_email_verification(user, db)
+    send_verification_email(user.email, token)
+    return success_response({"sent": True})
+
+
+@router.post("/verify-email")
+async def verify_email(
+    payload: EmailVerifyIn, db: Session = Depends(get_db)  # noqa: B008
+):
+    verify_email_token(payload.token, db)
+    return success_response({"verified": True})
