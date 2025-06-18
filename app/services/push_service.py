@@ -2,6 +2,7 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import credentials, messaging
+from sqlalchemy.orm import Session
 
 if not firebase_admin._apps:
     try:
@@ -12,7 +13,11 @@ if not firebase_admin._apps:
 
 
 def send_push_notification(
-    *, user_id: int, message: str, token: Optional[str] = None
+    *,
+    user_id: int,
+    message: str,
+    token: Optional[str] = None,
+    db: Optional[Session] = None
 ) -> dict:
     """Send a push notification via Firebase Cloud Messaging.
 
@@ -37,4 +42,10 @@ def send_push_notification(
     )
 
     resp = messaging.send(msg)
+    if db:
+        from app.services.notification_log_service import log_notification
+
+        log_notification(
+            db, user_id=user_id, channel="push", message=message, success=True
+        )
     return {"message_id": resp}

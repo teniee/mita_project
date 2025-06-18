@@ -80,10 +80,10 @@ async def test_register_token(monkeypatch):
 async def test_send_test_notification(monkeypatch):
     sent = {}
 
-    def fake_push(user_id, message, token):
+    def fake_push(user_id, message, token, **kwargs):
         sent["push"] = (user_id, message, token)
 
-    def fake_email(email, subject, body):
+    def fake_email(email, subject, body, **kwargs):
         sent["email"] = (email, subject, body)
 
     monkeypatch.setattr(
@@ -127,7 +127,7 @@ async def test_send_test_notification_fetches_token(monkeypatch):
     )
     monkeypatch.setattr(
         "app.api.notifications.routes.send_reminder_email",
-        lambda *a: sent.setdefault("email", a),
+        lambda *a, **k: sent.setdefault("email", a),
     )
     resp = await send_test_notification(
         NotificationTest(message="hi"),
