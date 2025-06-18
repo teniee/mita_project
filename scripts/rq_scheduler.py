@@ -15,9 +15,9 @@ scheduler = Scheduler(queue_name="default", connection=conn)
 # Clear existing jobs on startup
 scheduler.cancel_all()
 
-# Daily advisory push at 08:00 UTC
+# Run advisory push every hour and send at 08:00 user local time
 scheduler.cron(
-    "0 8 * * *",
+    "0 * * * *",
     func=enqueue_daily_advice,
     repeat=None,
     queue_name="default",

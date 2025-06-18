@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,13 +13,17 @@ from app.services.push_service import send_push_notification
 def run_ai_advice_batch() -> None:
     """Generate daily budget advice and push to active users."""
     db: Session = next(get_db())
-    today = datetime.utcnow().date()
+    utc_now = datetime.now(timezone.utc)
+    today = utc_now.date()
 
     users_q = db.query(User)
     if hasattr(User, "is_active"):
         users_q = users_q.filter(User.is_active.is_(True))
     users = users_q.all()
     for user in users:
+        user_now = utc_now.astimezone(ZoneInfo(getattr(user, "timezone", "UTC")))
+        if user_now.hour != 8:
+            continue
         already = (
             db.query(BudgetAdvice)
             .filter(BudgetAdvice.user_id == user.id)
