@@ -49,7 +49,6 @@ from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
 from app.api.insights.routes import router as insights_router
 from app.api.transactions.routes import router as transactions_router
-from app.api.transactions.routes_background import router as transactions_v2_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
@@ -121,7 +120,6 @@ private_routers_list = [
     (insights_router, "/api/insights", ["Insights"]),
     (ai_router, "/api/ai", ["AI"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
-    (transactions_v2_router, "/api/transactions/v2", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
     (notifications_router, "/api/notifications", ["Notifications"]),
     (referral_router, "/api/referrals", ["Referrals"]),

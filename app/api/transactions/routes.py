@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Optional
+
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -30,7 +32,22 @@ async def create_transaction(
 
 @router.get("/", response_model=List[TxnOut])
 async def get_transactions(
+    skip: int = 0,
+    limit: int = 100,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    category: Optional[str] = None,
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    return success_response(list_user_transactions(user, db))
+    return success_response(
+        list_user_transactions(
+            user,
+            db,
+            skip=skip,
+            limit=limit,
+            start_date=start_date,
+            end_date=end_date,
+            category=category,
+        )
+    )

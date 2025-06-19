@@ -109,9 +109,9 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 | POST   | `/auth/register`                     | Register new user                           |
 | GET    | `/user/profile`                      | Get user data                               |
 | POST   | `/onboarding/answers`                | Submit onboarding answers                   |
-| POST   | `/transactions`                      | Add a new transaction              |
-| POST   | `/transactions/v2`                   | Add transaction (background update) |
-| GET    | `/transactions/history`              | Get transaction history                     |
+| POST   | `/transactions`                      | Add a new transaction     |
+| GET    | `/transactions`                      | List transactions (paginated) |
+*Supports `skip`, `limit`, `start_date`, `end_date` and `category` query parameters.
 | GET    | `/calendar/day/{date}`               | Get daily plan by category                  |
 | POST   | `/calendar/redistribute/{y}/{m}`     | Redistribute budget for the month           |
 | POST   | `/ocr/parse`                         | (Optional) Parse text from receipt image    |
