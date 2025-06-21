@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "no-reply@example.com"
 
+    # APNs settings
+    apns_key: str = ""
+    apns_key_id: str = ""
+    apns_team_id: str = ""
+    apns_topic: str = ""
+    apns_use_sandbox: bool = False
+
     # CORS
     # Restrict to production front-end domain(s) by default
     allowed_origins: list[str] = ["https://app.mita.finance"]

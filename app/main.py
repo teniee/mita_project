@@ -48,6 +48,7 @@ from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
 from app.api.insights.routes import router as insights_router
+from app.api.mood.routes import router as mood_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
@@ -122,6 +123,7 @@ private_routers_list = [
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
     (notifications_router, "/api/notifications", ["Notifications"]),
+    (mood_router, "/api/mood", ["Mood"]),
     (referral_router, "/api/referrals", ["Referrals"]),
     (onboarding_router, "/api/onboarding", ["Onboarding"]),
     (cohort_router, "/api/cohorts", ["Cohorts"]),
