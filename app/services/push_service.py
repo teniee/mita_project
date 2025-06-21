@@ -60,6 +60,11 @@ def send_apns_notification(
     db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Apple Push Notification service."""
+    import collections
+    if not hasattr(collections, "MutableMapping"):
+        import collections.abc
+        collections.MutableMapping = collections.abc.MutableMapping
+        collections.Iterable = collections.abc.Iterable
     from apns2.client import APNsClient  # imported lazily for test compatibility
     from apns2.payload import Payload
 
