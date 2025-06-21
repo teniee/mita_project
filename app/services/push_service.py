@@ -75,12 +75,6 @@ def send_apns_notification(
     db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Apple Push Notification service."""
-    # Compatibility fix for older Python versions if needed
-    import collections
-    if not hasattr(collections, "MutableMapping"):
-        import collections.abc
-        collections.MutableMapping = collections.abc.MutableMapping
-        collections.Iterable = collections.abc.Iterable
 
     client = APNsClient(
         credentials=settings.apns_key,
