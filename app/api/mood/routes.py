@@ -29,7 +29,11 @@ async def log_mood(
     db.commit()
     db.refresh(record)
     return success_response(
-        {"id": str(record.id), "date": record.date, "mood": record.mood}
+        {
+            "id": str(record.id),
+            "date": record.date.isoformat() if hasattr(record.date, "isoformat") else record.date,
+            "mood": record.mood,
+        }
     )
 
 
@@ -47,5 +51,12 @@ async def list_moods(
         query = query.filter(Mood.date <= end_date)
     records = query.order_by(Mood.date).all()
     return success_response(
-        [{"id": str(r.id), "date": r.date, "mood": r.mood} for r in records]
+        [
+            {
+                "id": str(r.id),
+                "date": r.date.isoformat() if hasattr(r.date, "isoformat") else r.date,
+                "mood": r.mood,
+            }
+            for r in records
+        ]
     )
