@@ -3,6 +3,7 @@ from typing import Optional
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlalchemy.orm import Session
+from app.core.config import settings
 
 if not firebase_admin._apps:
     try:
@@ -49,3 +50,29 @@ def send_push_notification(
             db, user_id=user_id, channel="push", message=message, success=True
         )
     return {"message_id": resp}
+
+
+def send_apns_notification(
+    *,
+    user_id: int,
+    message: str,
+    token: str,
+    db: Optional[Session] = None,
+) -> dict:
+    """Send a push notification via Apple Push Notification service."""
+    from apns2.client import APNsClient  # imported lazily for test compatibility
+    from apns2.payload import Payload
+
+    client = APNsClient(
+        credentials=settings.apns_key,
+        use_sandbox=settings.apns_use_sandbox,
+        team_id=settings.apns_team_id,
+        key_id=settings.apns_key_id,
+    )
+    payload = Payload(alert=message, sound="default")
+    resp = client.send_notification(token, payload, topic=settings.apns_topic)
+    if db:
+        from app.services.notification_log_service import log_notification
+
+        log_notification(db, user_id=user_id, channel="apns", message=message, success=True)
+    return {"apns_id": resp}

@@ -47,10 +47,11 @@ class DummyDB:
 
 
 class DummyToken:
-    def __init__(self, user_id, token):
+    def __init__(self, user_id, token, platform="fcm"):
         self.id = "t123"
         self.user_id = user_id
         self.token = token
+        self.platform = platform
         self.created_at = None
 
 
@@ -67,7 +68,7 @@ async def test_register_token(monkeypatch):
     db = DummyDB()
     user = SimpleNamespace(id="u1")
 
-    resp = await register_token(TokenIn(token="abc"), db=db, user=user)
+    resp = await register_token(TokenIn(token="abc", platform="fcm"), db=db, user=user)
     payload = parse_json(resp)
 
     assert db.committed
@@ -98,7 +99,7 @@ async def test_send_test_notification(monkeypatch):
     user = SimpleNamespace(id="u1", email="u@example.com")
 
     resp = await send_test_notification(
-        NotificationTest(message="hi", token="tok", email="e@mail.com"),
+        NotificationTest(message="hi", token="tok", email="e@mail.com", platform="fcm"),
         db=db,
         user=user,
     )
@@ -110,7 +111,7 @@ async def test_send_test_notification(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_send_test_notification_fetches_token(monkeypatch):
-    record = DummyToken("u1", "dbtoken")
+    record = DummyToken("u1", "dbtoken", "fcm")
     db = DummyDB(record)
     user = SimpleNamespace(id="u1", email="u@example.com")
     sent = {}

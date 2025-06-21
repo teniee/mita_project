@@ -37,3 +37,4 @@ openai
 boto3
 rq
 rq-scheduler
+apns2
