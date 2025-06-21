@@ -4,8 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.api.transactions.routes import create_transaction
+from app.api.transactions.routes import create_transaction, process_receipt
 from app.api.transactions.schemas import TxnIn
+from starlette.datastructures import UploadFile
+import io
 
 
 class DummyDB:
@@ -64,3 +66,33 @@ async def test_create_transaction_updates_plan(monkeypatch):
 
     assert plan.spent_amount == Decimal("12.5")
     assert db.committed
+
+
+@pytest.mark.asyncio
+async def test_process_receipt(monkeypatch):
+    captured = {}
+
+    class DummyService:
+        def __init__(self, creds):
+            captured['creds'] = creds
+
+        def process_image(self, path):
+            captured['path'] = path
+            return {'store': 'Test', 'amount': 1.23}
+
+    monkeypatch.setattr(
+        'app.api.transactions.routes.GoogleVisionOCRService',
+        DummyService,
+    )
+    monkeypatch.setattr(
+        'app.api.transactions.routes.success_response',
+        lambda data=None, message='': data,
+    )
+
+    file = UploadFile(filename='r.jpg', file=io.BytesIO(b'data'))
+    user = SimpleNamespace(id='u1')
+
+    result = await process_receipt(file=file, user=user, db=SimpleNamespace())
+
+    assert result['store'] == 'Test'
+    assert 'path' in captured
