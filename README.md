@@ -57,6 +57,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ### 🙂 Mood Tracking
 - Record user mood for each day via the `/mood` API
 - Persist moods in the database for analytics
+- Manage personal habits via the `/habits` API
 
 ### 🧠 Assistant
 - Suggest budget changes

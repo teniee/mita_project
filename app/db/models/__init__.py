@@ -4,6 +4,7 @@ from .budget_advice import BudgetAdvice
 from .daily_plan import DailyPlan
 from .expense import Expense
 from .goal import Goal
+from .habit import Habit
 from .mood import Mood
 from .notification_log import NotificationLog
 from .push_token import PushToken
@@ -27,5 +28,6 @@ __all__ = [
     "Expense",
     "Mood",
     "Goal",
+    "Habit",
     "BudgetAdvice",
 ]
