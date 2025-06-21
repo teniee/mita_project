@@ -30,6 +30,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 - **OCR:** Google Cloud Vision
 - **AI Analytics:** analyzes mood, habits and spending to push budgeting recommendations
 - **Tracking:** Firebase Firestore (optional)
+- **Premium:** advanced insights API requires an active subscription
 - **Deployment:** Docker
 
 ---

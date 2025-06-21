@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, require_premium_user
 from app.core.session import get_db
 from app.db.models import BudgetAdvice
 from app.utils.response_wrapper import success_response
@@ -12,7 +12,7 @@ router = APIRouter(prefix="", tags=["insights"])
 
 @router.get("/", response_model=AdviceOut | None)
 async def latest_insight(
-    user=Depends(get_current_user),  # noqa: B008
+    user=Depends(require_premium_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
     advice = (
@@ -29,7 +29,7 @@ async def latest_insight(
 
 @router.get("/history", response_model=list[AdviceOut])
 async def insight_history(
-    user=Depends(get_current_user),  # noqa: B008
+    user=Depends(require_premium_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
     items = (
