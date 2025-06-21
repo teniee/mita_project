@@ -49,6 +49,7 @@ from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
 from app.api.insights.routes import router as insights_router
 from app.api.mood.routes import router as mood_router
+from app.api.habits.routes import router as habits_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
@@ -119,6 +120,7 @@ private_routers_list = [
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
     (insights_router, "/api/insights", ["Insights"]),
+    (habits_router, "/api/habits", ["Habits"]),
     (ai_router, "/api/ai", ["AI"]),
     (transactions_router, "/api/transactions", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),
