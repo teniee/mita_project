@@ -14,6 +14,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/advice_history_screen.dart';
 import 'services/api_service.dart';
+import 'services/push_notification_service.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -33,11 +34,7 @@ Future<void> _initFirebase() async {
     final api = ApiService();
     await api.registerPushToken(token);
   }
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => const AdviceHistoryScreen()),
-    );
-  });
+  await PushNotificationService.initialize(navigatorKey);
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

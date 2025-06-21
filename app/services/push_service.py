@@ -1,5 +1,16 @@
 from typing import Optional
 
+import collections
+if not hasattr(collections, "MutableMapping"):
+    import collections.abc
+    collections.MutableMapping = collections.abc.MutableMapping
+if not hasattr(collections, "MutableSet"):
+    import collections.abc
+    collections.MutableSet = collections.abc.MutableSet
+if not hasattr(collections, "Iterable"):
+    import collections.abc
+    collections.Iterable = collections.abc.Iterable
+
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlalchemy.orm import Session
@@ -64,12 +75,6 @@ def send_apns_notification(
     db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Apple Push Notification service."""
-    # Compatibility fix for older Python versions if needed
-    import collections
-    if not hasattr(collections, "MutableMapping"):
-        import collections.abc
-        collections.MutableMapping = collections.abc.MutableMapping
-        collections.Iterable = collections.abc.Iterable
 
     client = APNsClient(
         credentials=settings.apns_key,

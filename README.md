@@ -238,7 +238,7 @@ Include:
 - Redistribute button
 - Expense history
 - AI-driven budget recommendations
-- Push notifications & email reminders
+- Push notifications (FCM for Android and APNs for iOS) & email reminders
 - AI budgeting tips via push
 
 ---
