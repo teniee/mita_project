@@ -2,11 +2,13 @@ from typing import List, Optional
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut
+from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
+from app.core.config import settings
 
 # isort: off
 from app.api.transactions.services import (
@@ -51,3 +53,28 @@ async def get_transactions(
             category=category,
         )
     )
+
+
+@router.post("/receipt")
+async def process_receipt(
+    file: UploadFile = File(...),
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """Extract receipt data using Google Vision OCR."""
+    import os
+    import tempfile
+
+    temp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        temp.write(await file.read())
+        temp.close()
+        service = GoogleVisionOCRService(settings.google_application_credentials)
+        data = service.process_image(temp.name)
+    finally:
+        try:
+            os.unlink(temp.name)
+        except Exception:
+            pass
+
+    return success_response(data)

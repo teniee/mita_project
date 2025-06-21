@@ -8,6 +8,16 @@ from app.core.db import get_db
 from app.core.upstash import is_token_blacklisted
 from app.db.models import User
 
+
+def require_premium_user(user: User = Depends("get_current_user")) -> User:  # type: ignore
+    """Raise 402 if the user is not premium."""
+    if not user.is_premium:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Premium membership required",
+        )
+    return user
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):

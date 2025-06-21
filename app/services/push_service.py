@@ -1,5 +1,16 @@
 from typing import Optional
 
+import collections
+if not hasattr(collections, "MutableMapping"):
+    import collections.abc
+    collections.MutableMapping = collections.abc.MutableMapping
+if not hasattr(collections, "MutableSet"):
+    import collections.abc
+    collections.MutableSet = collections.abc.MutableSet
+if not hasattr(collections, "Iterable"):
+    import collections.abc
+    collections.Iterable = collections.abc.Iterable
+
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlalchemy.orm import Session
@@ -8,6 +19,7 @@ from apns2.client import APNsClient
 from apns2.payload import Payload
 
 from app.core.config import settings
+from app.services.notification_log_service import log_notification
 
 if not firebase_admin._apps:
     try:
@@ -15,6 +27,11 @@ if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
     except Exception:
         firebase_admin.initialize_app()
+
+
+def _record_log(db: Session | None, *, user_id: int, channel: str, message: str, success: bool) -> None:
+    if db:
+        log_notification(db, user_id=user_id, channel=channel, message=message, success=success)
 
 
 def send_push_notification(
@@ -46,14 +63,13 @@ def send_push_notification(
         data={"user_id": str(user_id)},
     )
 
-    resp = messaging.send(msg)
-    if db:
-        from app.services.notification_log_service import log_notification
-
-        log_notification(
-            db, user_id=user_id, channel="push", message=message, success=True
-        )
-    return {"message_id": resp}
+    try:
+        resp = messaging.send(msg)
+        _record_log(db, user_id=user_id, channel="fcm", message=message, success=True)
+        return {"message_id": resp}
+    except Exception:
+        _record_log(db, user_id=user_id, channel="fcm", message=message, success=False)
+        raise
 
 
 def send_apns_notification(
@@ -64,12 +80,6 @@ def send_apns_notification(
     db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Apple Push Notification service."""
-    # Compatibility fix for older Python versions if needed
-    import collections
-    if not hasattr(collections, "MutableMapping"):
-        import collections.abc
-        collections.MutableMapping = collections.abc.MutableMapping
-        collections.Iterable = collections.abc.Iterable
 
     client = APNsClient(
         credentials=settings.apns_key,
@@ -78,11 +88,10 @@ def send_apns_notification(
         key_id=settings.apns_key_id,
     )
     payload = Payload(alert=message, sound="default")
-    resp = client.send_notification(token, payload, topic=settings.apns_topic)
-
-    if db:
-        from app.services.notification_log_service import log_notification
-
-        log_notification(db, user_id=user_id, channel="apns", message=message, success=True)
-
-    return {"apns_id": resp}
+    try:
+        resp = client.send_notification(token, payload, topic=settings.apns_topic)
+        _record_log(db, user_id=user_id, channel="apns", message=message, success=True)
+        return {"apns_id": resp}
+    except Exception:
+        _record_log(db, user_id=user_id, channel="apns", message=message, success=False)
+        raise
