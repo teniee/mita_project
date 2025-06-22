@@ -50,11 +50,10 @@ class _MainScreenState extends State<MainScreen> {
             ? const Center(child: CircularProgressIndicator())
             : error != null
                 ? Center(child: Text(error!))
-                : Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 600;
+                      final leftColumn = <Widget>[
                         const Text(
                           'Hello!',
                           style: TextStyle(
@@ -68,14 +67,41 @@ class _MainScreenState extends State<MainScreen> {
                         _buildBalanceCard(),
                         const SizedBox(height: 20),
                         _buildBudgetTargets(),
-                        const SizedBox(height: 20),
+                      ];
+                      final rightColumn = <Widget>[
                         _buildMiniCalendar(),
                         const SizedBox(height: 20),
                         _buildInsightsCard(),
                         const SizedBox(height: 20),
                         _buildRecentTransactions(),
-                      ],
-                    ),
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: leftColumn,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: rightColumn,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [...leftColumn, const SizedBox(height: 20), ...rightColumn],
+                              ),
+                      );
+                    },
                   ),
       ),
     );
@@ -97,7 +123,7 @@ class _MainScreenState extends State<MainScreen> {
             const Text('Current Balance', style: TextStyle(fontFamily: 'Manrope', fontSize: 16)),
             const SizedBox(height: 6),
             Text(
-              '\$\$balance',
+              '\$${balance}',
               style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 28,
@@ -105,7 +131,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text('Spent: \$\$spent', style: const TextStyle(fontFamily: 'Manrope')),
+            Text('Spent: \$${spent}', style: const TextStyle(fontFamily: 'Manrope')),
           ],
         ),
       ),
