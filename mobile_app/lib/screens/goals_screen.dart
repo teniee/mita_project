@@ -145,49 +145,74 @@ class _GoalsScreenState extends State<GoalsScreen> {
         backgroundColor: const Color(0xFFFFD25F),
         child: const Icon(Icons.add, color: Colors.black),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _goals.isEmpty
-              ? const Center(child: Text('No goals yet'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _goals.length,
-                  itemBuilder: (context, index) {
-                    final goal = _goals[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 3,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        title: Text(
-                          goal['title'] ?? 'Goal',
-                          style: const TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Target: \$${goal['target_amount']}',
-                          style: const TextStyle(fontFamily: 'Manrope'),
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showGoalForm(goal: goal);
-                            } else if (value == 'delete') {
-                              _deleteGoal(goal['id']);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                          ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          Widget content;
+          if (_isLoading) {
+            content = const Center(child: CircularProgressIndicator());
+          } else if (_goals.isEmpty) {
+            content = const Center(child: Text('No goals yet'));
+          } else {
+            content = ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _goals.length,
+              itemBuilder: (context, index) {
+                final goal = _goals[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 3,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    title: Text(
+                      goal['title'] ?? 'Goal',
+                      style: const TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Target: \$${goal['target_amount']}',
+                      style: const TextStyle(fontFamily: 'Manrope'),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showGoalForm(goal: goal);
+                        } else if (value == 'delete') {
+                          _deleteGoal(goal['id']);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: isWide
+                ? Row(
+                    children: [
+                      Expanded(child: content),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Center(
+                          child: Icon(Icons.flag, size: 120, color: Colors.grey[400]),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ],
+                  )
+                : content,
+          );
+        },
+      ),
     );
   }
 }
