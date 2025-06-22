@@ -6,7 +6,7 @@ from typing import Dict
 import pytesseract
 from PIL import Image
 
-from app.ocr.ocr_parser import parse_receipt_text
+from app.ocr.ocr_parser import parse_receipt_details
 
 
 class OCRReceiptService:
@@ -37,19 +37,6 @@ class OCRReceiptService:
             except Exception as e:  # pragma: no cover - best effort cleanup
                 print(f"Warning: Could not delete temporary image file: {e}")
 
-        parsed = parse_receipt_text(raw_text)
+        parsed = parse_receipt_details(raw_text)
 
-        # Use the first non-empty line as a store hint
-        store = "unknown"
-        for line in raw_text.splitlines():
-            stripped = line.strip()
-            if stripped:
-                store = stripped[:64]
-                break
-
-        return {
-            "store": store,
-            "amount": parsed["amount"],
-            "category_hint": parsed["category"],
-            "date": parsed["date"],
-        }
+        return parsed

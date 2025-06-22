@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
+import 'receipt_capture_screen.dart'; // оставлен из ветки i3thw4-codex
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({Key? key}) : super(key: key);
@@ -47,7 +47,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       Navigator.pop(context, true); // return result
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add expense: \$e')),
+        SnackBar(content: Text('Failed to add expense: $e')),
       );
     }
   }
@@ -95,7 +95,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   prefixIcon: Icon(Icons.attach_money),
                 ),
                 style: const TextStyle(fontFamily: 'Manrope'),
-                validator: (value) => value == null || value.isEmpty ? 'Enter amount' : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter amount' : null,
                 onSaved: (value) => _amount = double.tryParse(value ?? ''),
               ),
               const SizedBox(height: 20),
@@ -117,14 +118,33 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Date', style: TextStyle(fontFamily: 'Manrope')),
-                subtitle: Text(DateFormat.yMMMd().format(_selectedDate),
-                    style: const TextStyle(fontFamily: 'Manrope')),
+                subtitle: Text(
+                  DateFormat.yMMMd().format(_selectedDate),
+                  style: const TextStyle(fontFamily: 'Manrope'),
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,
                 ),
               ),
               const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ReceiptCaptureScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE0E0E0),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('Scan Receipt'),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitExpense,
                 style: ElevatedButton.styleFrom(
