@@ -19,6 +19,23 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> {
   bool _loading = false;
   String? _error;
   Map<String, dynamic>? _result;
+  final _merchantController = TextEditingController();
+  final _totalController = TextEditingController();
+  final List<TextEditingController> _itemNameCtrls = [];
+  final List<TextEditingController> _itemPriceCtrls = [];
+
+  @override
+  void dispose() {
+    _merchantController.dispose();
+    _totalController.dispose();
+    for (final c in _itemNameCtrls) {
+      c.dispose();
+    }
+    for (final c in _itemPriceCtrls) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
   Future<void> _pick(ImageSource source) async {
     try {
@@ -48,11 +65,37 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> {
       if (!mounted) return;
       setState(() {
         _result = data;
+        _merchantController.text = data['merchant']?.toString() ?? '';
+        _totalController.text = data['total']?.toString() ?? '';
+        _itemNameCtrls.clear();
+        _itemPriceCtrls.clear();
+        final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+        for (final item in items) {
+          _itemNameCtrls.add(TextEditingController(text: item['name']?.toString() ?? ''));
+          _itemPriceCtrls.add(TextEditingController(text: item['price']?.toString() ?? ''));
+        }
       });
     } catch (e) {
       setState(() => _error = 'Failed: $e');
     } finally {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    final payload = {
+      'category': _result?['category'] ?? 'other',
+      'amount': double.tryParse(_totalController.text) ?? 0.0,
+      'spent_at': DateTime.now().toIso8601String(),
+    };
+    try {
+      await _apiService.createTransaction(payload);
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save: $e')),
+      );
     }
   }
 
@@ -71,7 +114,52 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> {
             if (_result != null)
               Expanded(
                 child: SingleChildScrollView(
-                  child: Text(_result.toString()),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _merchantController,
+                        decoration: const InputDecoration(labelText: 'Merchant'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _totalController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Total'),
+                      ),
+                      const SizedBox(height: 10),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _itemNameCtrls.length,
+                        itemBuilder: (context, i) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _itemNameCtrls[i],
+                                  decoration: const InputDecoration(labelText: 'Item'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: 80,
+                                child: TextField(
+                                  controller: _itemPriceCtrls[i],
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(labelText: 'Price'),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: _submit,
+                        child: const Text('Save Transaction'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             if (_error != null)

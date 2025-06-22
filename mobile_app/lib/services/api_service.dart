@@ -366,6 +366,15 @@ class ApiService {
     return response.data;
   }
 
+  Future<void> createTransaction(Map<String, dynamic> data) async {
+    final token = await getToken();
+    await _dio.post(
+      '/api/transactions/',
+      data: data,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
   Future<Map<String, dynamic>> uploadReceipt(File file) async {
     final token = await getToken();
     final form = FormData.fromMap({

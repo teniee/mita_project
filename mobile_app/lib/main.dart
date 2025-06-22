@@ -60,6 +60,10 @@ class MITAApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFF9F0),
         fontFamily: 'Manrope',
       ),
+      darkTheme: ThemeData.dark().copyWith(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFFD25F)),
+      ),
+      themeMode: ThemeMode.system,
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
