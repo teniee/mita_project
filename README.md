@@ -1,8 +1,4 @@
-Вот **полный и финально объединённый текст документации MITA** с устранением всех конфликтов (включая из ветки `40rgw0-codex/add-responsive-layout-logic`):
-
----
-
-# 💸 MITA – Money Intelligence Task Assistant (Full Documentation)
+💸 MITA – Money Intelligence Task Assistant (Full Documentation)
 
 MITA is an AI-powered personal finance backend platform designed to help users control their spending, plan budgets, and receive intelligent feedback using a daily calendar-based system. Built on **FastAPI**, this backend supports OCR receipt parsing, automatic budget redistribution, Firebase-based drift tracking, and more.
 
@@ -309,9 +305,11 @@ flutter test integration_test -d <deviceId>
 
 ### CI
 
-The CI workflows install dependencies and run tests with coverage for both the
-backend and Flutter app, uploading artifacts for review. Docker images are built
-and pushed on tagged releases via the `Deploy Docker` workflow.
+
+The CI workflow installs dependencies and runs tests with coverage for both the
+backend and Flutter app. Docker images are built and pushed on tagged releases
+via the `Deploy Docker` workflow.
+
 
 ### Crash Reporting
 
