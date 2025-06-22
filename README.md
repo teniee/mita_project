@@ -226,6 +226,7 @@ A proper Flutter or React frontend should include:
 - ✅ Add expense (manual or photo)
 - ✅ Button: redistribute budget
 - ✅ View history
+- ✅ Responsive layout for tablets and desktop using `LayoutBuilder`
 - 🧠 Assistant suggestions (optional)
 
 ---
@@ -275,5 +276,32 @@ pytest -q
 If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
 `pytest` will fail with `ModuleNotFoundError`. Installing from
 `requirements.txt` ensures all packages are available.
+
+### Mobile tests
+
+The mobile app lives in `mobile_app/`. If the Flutter SDK is installed,
+you can run unit tests with:
+
+```bash
+flutter test
+```
+
+Integration tests live in `mobile_app/integration_test/` and require a
+connected Android or iOS device or emulator. They are skipped in the CI
+workflow because web devices aren’t supported. Run them locally with:
+
+```bash
+flutter test integration_test -d <deviceId>
+```
+
+
+The CI workflow uses `subosito/flutter-action` to provide the toolchain.
+
+### Crash reporting
+
+Firebase Crashlytics is enabled in the Flutter app. Errors from the
+`runApp` zone and from the `PlatformDispatcher` are forwarded to both
+Crashlytics and Sentry. Set the `SENTRY_DSN` environment variable to
+forward reports to your own Sentry project.
 
 See [docs/privacy.md](docs/privacy.md) for privacy information.
