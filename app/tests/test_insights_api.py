@@ -20,6 +20,33 @@ sys.modules["firebase_admin.credentials"] = dummy.credentials
 sys.modules["firebase_admin.firestore"] = dummy.firestore
 sys.modules["firebase_admin.messaging"] = dummy.messaging
 
+# Stub OpenAI to avoid heavy dependencies during tests
+openai_dummy = types.ModuleType("openai")
+openai_dummy.OpenAIError = Exception
+openai_dummy.OpenAI = lambda *a, **k: types.SimpleNamespace(
+    chat=types.SimpleNamespace(
+        completions=types.SimpleNamespace(
+            create=lambda **k: types.SimpleNamespace(
+                choices=[types.SimpleNamespace(message=types.SimpleNamespace(content=""))]
+            )
+        )
+    )
+)
+openai_dummy.types = types.SimpleNamespace(
+    chat=types.SimpleNamespace(ChatCompletionMessageParam=dict)
+)
+sys.modules["openai"] = openai_dummy
+sys.modules["openai.types"] = openai_dummy.types
+sys.modules["openai.types.chat"] = openai_dummy.types.chat
+
+# Stub apns2 modules used by push_service
+apns_dummy_client = types.SimpleNamespace(APNsClient=None)
+apns_dummy_creds = types.SimpleNamespace(CertificateCredentials=None, Credentials=None)
+apns_dummy_payload = types.SimpleNamespace(Payload=None)
+sys.modules["apns2.client"] = apns_dummy_client
+sys.modules["apns2.credentials"] = apns_dummy_creds
+sys.modules["apns2.payload"] = apns_dummy_payload
+
 from app.main import app
 import app.api.insights.routes as insights_routes
 
@@ -56,7 +83,7 @@ def test_latest_insight(monkeypatch):
         yield DummyDB(advice)
 
     app.dependency_overrides[insights_routes.get_db] = dummy_get_db
-    app.dependency_overrides[insights_routes.get_current_user] = lambda: SimpleNamespace(id="u1")
+    app.dependency_overrides[insights_routes.get_current_user] = lambda: SimpleNamespace(id="u1", is_premium=True)
 
     client = TestClient(app)
     resp = client.get("/api/insights/")
@@ -72,7 +99,7 @@ def test_insight_history(monkeypatch):
         yield DummyDB(advice)
 
     app.dependency_overrides[insights_routes.get_db] = dummy_get_db
-    app.dependency_overrides[insights_routes.get_current_user] = lambda: SimpleNamespace(id="u1")
+    app.dependency_overrides[insights_routes.get_current_user] = lambda: SimpleNamespace(id="u1", is_premium=True)
 
     client = TestClient(app)
     resp = client.get("/api/insights/history")
