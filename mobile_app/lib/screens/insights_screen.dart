@@ -109,8 +109,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       PieChartData(
                         sections: categoryTotals.entries.map((e) {
                           final value = e.value;
-                          final total = categoryTotals.values.reduce((a, b) => a + b);
-                          final percent = (value / total * 100).toStringAsFixed(1);
                           return PieChartSectionData(
                             title: '\$${value.toStringAsFixed(0)}',
                             value: value,

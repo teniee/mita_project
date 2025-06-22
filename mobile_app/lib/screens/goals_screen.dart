@@ -76,7 +76,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
               try {
                 if (isEditing) {
-                  await _apiService.updateGoal(goal!['id'], data);
+                  await _apiService.updateGoal(goal['id'], data);
                 } else {
                   await _apiService.createGoal(data);
                 }
