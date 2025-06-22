@@ -30,7 +30,7 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load history: $e')),  # placeholder
+        SnackBar(content: Text('Failed to load history: $e')),
       );
     }
   }
