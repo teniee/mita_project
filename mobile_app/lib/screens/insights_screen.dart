@@ -80,9 +80,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          Widget content;
+          if (_isLoading) {
+            content = const Center(child: CircularProgressIndicator());
+          } else {
+            content = ListView(
               padding: const EdgeInsets.all(20),
               children: [
                 Text(
@@ -183,7 +188,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   ),
                 ]
               ],
-            ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: isWide
+                ? Row(
+                    children: [
+                      Expanded(child: content),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Center(
+                          child: Icon(Icons.insights,
+                              size: 120, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  )
+                : content,
+          );
+        },
+      ),
     );
   }
 }
+

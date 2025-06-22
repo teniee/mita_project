@@ -263,8 +263,8 @@ Include:
 
 ## 🛠 12. Roadmap
 
-* [ ] Assistant dialog with contextual replies
-* [ ] Spending goals per category
+* [x] Assistant dialog with contextual replies
+* [x] Spending goals per category
 * [x] Email reminders
 
 ---
@@ -287,7 +287,7 @@ Requires `S3_BUCKET` and AWS credentials. Automatically deletes backups older th
 
 ```bash
 pip install -r requirements.txt
-pytest -q
+pytest --cov=app --cov-report=term-missing
 ```
 
 If you see `ModuleNotFoundError`, ensure all required packages are installed.
@@ -295,8 +295,9 @@ If you see `ModuleNotFoundError`, ensure all required packages are installed.
 ### Mobile App
 
 ```bash
-flutter test
+flutter test --coverage
 ```
+Coverage results will be written to `mobile_app/coverage/lcov.info`.
 
 Integration tests live in `mobile_app/integration_test/` and require a connected Android or iOS device or emulator. Run them locally:
 
@@ -308,7 +309,9 @@ flutter test integration_test -d <deviceId>
 
 ### CI
 
-The CI workflow uses `subosito/flutter-action` to set up Flutter.
+The CI workflows install dependencies and run tests with coverage for both the
+backend and Flutter app, uploading artifacts for review. Docker images are built
+and pushed on tagged releases via the `Deploy Docker` workflow.
 
 ### Crash Reporting
 

@@ -27,6 +27,7 @@ transformers
 Babel
 python-jose[cryptography]
 httpx
+requests
 google-cloud-vision
 google-auth
 google-api-python-client

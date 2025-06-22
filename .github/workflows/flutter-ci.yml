@@ -18,5 +18,10 @@ jobs:
         working-directory: mobile_app
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
         working-directory: mobile_app
-      - run: flutter test
+      - run: flutter test --coverage
         working-directory: mobile_app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: mobile_app/coverage/lcov.info
+
