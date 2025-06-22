@@ -1,3 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+
 import 'screens/daily_budget_screen.dart';
 import 'screens/habits_screen.dart';
 import 'screens/goals_screen.dart';
@@ -8,12 +13,10 @@ import 'screens/profile_screen.dart';
 import 'screens/bottom_navigation.dart';
 import 'screens/referral_screen.dart';
 import 'screens/mood_screen.dart';
+import 'screens/subscription_screen.dart'; // добавлено из ветки
 import 'screens/add_expense_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/main_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/advice_history_screen.dart';
 import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
@@ -44,7 +47,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebase();
-  runApp(const MITAApp());
+  await SentryFlutter.init(
+    (o) => o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
+    appRunner: () => runApp(const MITAApp()),
+  );
 }
 
 class MITAApp extends StatelessWidget {
@@ -69,7 +75,7 @@ class MITAApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const LoginScreen(), // added login route
+        '/login': (context) => const LoginScreen(),
         '/main': (context) => const BottomNavigation(),
         '/onboarding_region': (context) => const OnboardingRegionScreen(),
         '/onboarding_income': (context) => const OnboardingIncomeScreen(),
@@ -80,6 +86,7 @@ class MITAApp extends StatelessWidget {
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
         '/referral': (context) => const ReferralScreen(),
         '/mood': (context) => const MoodScreen(),
+        '/subscribe': (context) => const SubscriptionScreen(), // добавлен маршрут
         '/notifications': (context) => const NotificationsScreen(),
       },
     );

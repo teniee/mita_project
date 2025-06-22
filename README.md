@@ -179,6 +179,8 @@ SMTP_FROM=notify@example.com
 APPLE_SHARED_SECRET=changeme
 GOOGLE_SERVICE_ACCOUNT=/path/to/google.json
 ALLOWED_ORIGINS=https://app.mita.finance
+JWT_PREVIOUS_SECRET=
+SENTRY_DSN=
 ```
 
 ### Security Headers
