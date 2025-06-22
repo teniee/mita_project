@@ -1,4 +1,4 @@
-💸 MITA – Money Intelligence Task Assistant (Full Documentation)
+# 💸 MITA – Money Intelligence Task Assistant (Full Documentation)
 
 MITA is an AI-powered personal finance backend platform designed to help users control their spending, plan budgets, and receive intelligent feedback using a daily calendar-based system. Built on **FastAPI**, this backend supports OCR receipt parsing, automatic budget redistribution, Firebase-based drift tracking, and more.
 
@@ -13,24 +13,26 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 ## 🧱 2. System Architecture
 
 ```
-[ User App ] ─┬─> [ Auth API        ]
-              ├─> [ Onboarding API  ]
-              ├─> [ Transactions API]
-              ├─> [ Calendar API    ]──> DailyPlan
-              ├─> [ OCR Service     ]──> Receipt → Text → Expense
-              ├─> [ AI Analytics   ]
-              └─> [ Drift Monitor   ]──> Firebase
 
-[ PostgreSQL ] <── [ SQLAlchemy Models ]
-```
+\[ User App ] ─┬─> \[ Auth API        ]
+├─> \[ Onboarding API  ]
+├─> \[ Transactions API]
+├─> \[ Calendar API    ]──> DailyPlan
+├─> \[ OCR Service     ]──> Receipt → Text → Expense
+├─> \[ AI Analytics   ]
+└─> \[ Drift Monitor   ]──> Firebase
 
-* **Backend:** FastAPI
-* **Database:** PostgreSQL (via SQLAlchemy)
-* **OCR:** Google Cloud Vision
-* **AI Analytics:** analyzes mood, habits and spending to push budgeting recommendations
-* **Tracking:** Firebase Firestore (optional)
-* **Premium:** advanced insights API requires an active subscription
-* **Deployment:** Docker
+\[ PostgreSQL ] <── \[ SQLAlchemy Models ]
+
+````
+
+- **Backend:** FastAPI  
+- **Database:** PostgreSQL (via SQLAlchemy)  
+- **OCR:** Google Cloud Vision  
+- **AI Analytics:** analyzes mood, habits and spending to push budgeting recommendations  
+- **Tracking:** Firebase Firestore (optional)  
+- **Premium:** advanced insights API requires an active subscription  
+- **Deployment:** Docker  
 
 ---
 
@@ -38,37 +40,37 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ### 🔐 Auth & Users
 
-* Register/login with JWT
-* Store income, country, segment (low/mid/high), config flags
+- Register/login with JWT  
+- Store income, country, segment (low/mid/high), config flags  
 
 ### 🧾 Expenses
 
-* Add expense manually or via receipt (OCR)
-* Store transaction (amount, date, category, description)
+- Add expense manually or via receipt (OCR)  
+- Store transaction (amount, date, category, description)  
 
 ### 📅 Daily Budgeting
 
-* Calculate budget per day/category
-* Track spent vs planned per category
-* Update `DailyPlan` after each transaction
+- Calculate budget per day/category  
+- Track spent vs planned per category  
+- Update `DailyPlan` after each transaction  
 
 ### 🔁 Redistribution
 
-* Redistribute remaining budget between categories
-* Close gaps from overspending using surplus days
-* Triggered manually or during planning phase
+- Redistribute remaining budget between categories  
+- Close gaps from overspending using surplus days  
+- Triggered manually or during planning phase  
 
 ### 🙂 Mood Tracking
 
-* Record user mood for each day via the `/mood` API
-* Persist moods in the database for analytics
-* Manage personal habits via the `/habits` API
+- Record user mood for each day via the `/mood` API  
+- Persist moods in the database for analytics  
+- Manage personal habits via the `/habits` API  
 
 ### 🧠 Assistant
 
-* Suggest budget changes
-* Warn about overspending trends
-* Predict category overshoot (planned)
+- Suggest budget changes  
+- Warn about overspending trends  
+- Predict category overshoot (planned)  
 
 ---
 
@@ -85,7 +87,7 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
   "class_segment": "mid",
   "config": { "income_check": true }
 }
-```
+````
 
 ### Transaction
 
@@ -132,22 +134,22 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ## 🔄 6. Internal Logic Flow
 
-### Expense Added:
+### Expense Added
 
 * ⏎ User submits amount/category
 * 🔁 Transaction saved → linked to day
 * 🔍 System finds `DailyPlan`:
 
-  * if exists → updates `spent_amount`
-  * else → creates one
-* 📊 UI shows remaining budget for that day
+  * If exists → updates `spent_amount`
+  * Else → creates one
+* 📊 UI shows remaining budget for the day
 
-### Redistribution:
+### Redistribution
 
-* 🧠 Scans all `DailyPlan` entries in month
+* 🧠 Scans all `DailyPlan` entries for the month
 * 🔴 Detects overspending (`spent > planned`)
 * 🟢 Pulls from surplus days
-* Updates planned values to balance categories
+* Updates `planned_amount` to balance categories
 
 ---
 
@@ -157,17 +159,17 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 * `services/budget_redistributor.py` — logic for balancing budget
 * `services/expense_tracker.py` — updates DailyPlan after transaction
 * `orchestrator/receipt_orchestrator.py` — parses receipt → transaction
-* `financial/routes.py` — AI analytics routes
+* `financial/routes.py` — AI analytics endpoints
 * `drift_service.py` — Firebase connection and drift tracking
 * `mood_store.py` — persists user mood entries in the database
 * `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
-* `scripts/refresh_premium_status.py` — cron entry to disable expired subscriptions
+* `scripts/refresh_premium_status.py` — cron to disable expired subscriptions
 
 ---
 
 ## 🧪 8. Environment Variables
 
-Copy `.env.example` to `.env` and adjust the values:
+Copy `.env.example` to `.env` and set values:
 
 ```bash
 cp .env.example .env
@@ -192,10 +194,6 @@ JWT_PREVIOUS_SECRET=
 SENTRY_DSN=
 ```
 
-### Security Headers
-
-Strict headers and HTTPS redirects are enabled by default. Use `ALLOWED_ORIGINS` to configure CORS.
-
 ---
 
 ## 💻 9. Dev Setup
@@ -206,7 +204,7 @@ Strict headers and HTTPS redirects are enabled by default. Use `ALLOWED_ORIGINS`
 docker-compose up --build
 ```
 
-### Manual (Local)
+### Manual
 
 ```bash
 python -m venv venv
@@ -228,52 +226,55 @@ pre-commit run --all-files
 ## 🧠 10. Frontend Expectations
 
 * ✅ Login/register
-* ✅ Onboarding: income, categories
-* ✅ Dashboard: daily budget left
-* ✅ Calendar: per-day category breakdown
-* ✅ Add expense (manual or photo)
-* ✅ Button: redistribute budget
-* ✅ View history
-* ✅ Responsive layout (tablet/desktop) via `LayoutBuilder`
-* 🧠 Optional: assistant suggestions
+* ✅ Onboarding (income, categories)
+* ✅ Daily dashboard
+* ✅ Budget calendar
+* ✅ Add transaction (manual/photo)
+* ✅ Redistribute budget
+* ✅ History view
+* ✅ Responsive UI with `LayoutBuilder`
+* 🧠 Assistant suggestions (optional)
 
 ---
 
 ## 🤖 11. Lovable Prompt
 
-> Build a full budgeting analytics UI for: [https://github.com/teniee/mita\_docker\_ready\_project\_manus](https://github.com/teniee/mita_docker_ready_project_manus)\_
+> Build a full budgeting analytics UI for:
+> [https://github.com/teniee/mita\_docker\_ready\_project\_manus](https://github.com/teniee/mita_docker_ready_project_manus)
 
-Include:
+Includes:
 
 * Auth
 * Onboarding
 * Budget calendar
 * Add transaction
-* Redistribute button
-* Expense history
-* AI-driven budget tips
-* Push notifications (FCM, APNs)
-* Email reminders
+* Redistribute
+* History
+* AI budget tips
+* Push/email reminders
 
 ---
 
 ## 🛠 12. Roadmap
 
-* [x] Assistant dialog with contextual replies
-* [x] Spending goals per category
+* [x] Assistant dialog
+* [x] Spending goals
 * [x] Email reminders
 
 ---
 
 ## 📦 13. Automated Backups
 
-Use:
-
 ```bash
 python scripts/backup_database.py
 ```
 
-Requires `S3_BUCKET` and AWS credentials. Automatically deletes backups older than 7 days.
+Requires:
+
+* `S3_BUCKET`
+* AWS credentials
+
+Backups older than 7 days are deleted automatically.
 
 ---
 
@@ -286,35 +287,39 @@ pip install -r requirements.txt
 pytest --cov=app --cov-report=term-missing
 ```
 
-If you see `ModuleNotFoundError`, ensure all required packages are installed.
-
-### Mobile App
+### Mobile
 
 ```bash
 flutter test --coverage
 ```
-Coverage results will be written to `mobile_app/coverage/lcov.info`.
 
-Integration tests live in `mobile_app/integration_test/` and require a connected Android or iOS device or emulator. Run them locally:
+Coverage file saved to:
+`mobile_app/coverage/lcov.info`
+
+To run integration tests:
 
 ```bash
 flutter test integration_test -d <deviceId>
 ```
 
-> ⚠️ Integration tests are **not** run in CI (Chrome-only support).
+> ⚠️ Integration tests are not run in CI (only web/Chrome supported)
+
+---
 
 ### CI
 
+The CI workflows:
 
-The CI workflow installs dependencies and runs tests with coverage for both the
-backend and Flutter app. Docker images are built and pushed on tagged releases
-via the `Deploy Docker` workflow.
+* install dependencies
+* run tests with coverage
+* upload artifacts
+* build & publish Docker images on release tags
 
+---
 
 ### Crash Reporting
 
-* Firebase Crashlytics is integrated
-* Errors from `runApp` and `PlatformDispatcher` are sent to Crashlytics and Sentry
-* Set `SENTRY_DSN` to enable Sentry tracking
-
+* Firebase Crashlytics enabled
+* Errors from `runApp` and `PlatformDispatcher` sent to Crashlytics + Sentry
+* Set `SENTRY_DSN` to enable Sentry
 
