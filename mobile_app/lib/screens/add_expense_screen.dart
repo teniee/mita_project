@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/offline_queue_service.dart';
+import 'receipt_capture_screen.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({Key? key}) : super(key: key);
@@ -13,6 +15,7 @@ class AddExpenseScreen extends StatefulWidget {
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
+  final OfflineQueueService _queue = OfflineQueueService.instance;
 
   double? _amount;
   String? _action;
@@ -40,7 +43,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     };
 
     try {
-      await _apiService.createExpense(data);
+      await _queue.queueExpense(data);
       if (!mounted) return;
       Navigator.pop(context, true); // return result
     } catch (e) {
@@ -123,6 +126,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ReceiptCaptureScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE0E0E0),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('Scan Receipt'),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitExpense,
                 style: ElevatedButton.styleFrom(

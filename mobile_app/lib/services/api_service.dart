@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -362,6 +364,24 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
+  }
+
+  Future<Map<String, dynamic>> uploadReceipt(File file) async {
+    final token = await getToken();
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path, filename: 'receipt.jpg'),
+    });
+    final response = await _dio.post(
+      '/api/transactions/receipt',
+      data: form,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'multipart/form-data',
+        },
+      ),
+    );
+    return Map<String, dynamic>.from(response.data['data'] as Map);
   }
 
   Future<void> registerPushToken(String token) async {

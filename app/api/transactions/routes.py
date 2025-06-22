@@ -1,14 +1,12 @@
-from typing import List, Optional
-
 from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut
-from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
-from app.core.config import settings
+from app.ocr.ocr_receipt_service import OCRReceiptService
 
 # isort: off
 from app.api.transactions.services import (
@@ -20,14 +18,18 @@ from app.api.transactions.services import (
 from app.core.session import get_db
 from app.utils.response_wrapper import success_response
 
+current_user_dep = Depends(get_current_user)  # noqa: B008
+db_dep = Depends(get_db)  # noqa: B008
+file_upload = File(...)  # noqa: B008
+
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 @router.post("/", response_model=TxnOut)
 async def create_transaction(
     txn: TxnIn,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    user=current_user_dep,
+    db: Session = db_dep,
 ):
     return success_response(add_transaction(user, txn, db))
 
@@ -39,8 +41,8 @@ async def get_transactions(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     category: Optional[str] = None,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    user=current_user_dep,
+    db: Session = db_dep,
 ):
     return success_response(
         list_user_transactions(
@@ -57,11 +59,11 @@ async def get_transactions(
 
 @router.post("/receipt")
 async def process_receipt(
-    file: UploadFile = File(...),
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    file: UploadFile = file_upload,
+    user=current_user_dep,
+    db: Session = db_dep,
 ):
-    """Extract receipt data using Google Vision OCR."""
+    """Extract and parse receipt data."""
     import os
     import tempfile
 
@@ -69,7 +71,7 @@ async def process_receipt(
     try:
         temp.write(await file.read())
         temp.close()
-        service = GoogleVisionOCRService(settings.google_application_credentials)
+        service = OCRReceiptService()
         data = service.process_image(temp.name)
     finally:
         try:
