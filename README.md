@@ -273,3 +273,5 @@ pytest -q
 If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
 `pytest` will fail with `ModuleNotFoundError`. Installing from
 `requirements.txt` ensures all packages are available.
+
+See [docs/privacy.md](docs/privacy.md) for privacy information.

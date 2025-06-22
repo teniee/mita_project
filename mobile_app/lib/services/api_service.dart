@@ -366,6 +366,15 @@ class ApiService {
     return response.data;
   }
 
+  Future<void> createTransaction(Map<String, dynamic> data) async {
+    final token = await getToken();
+    await _dio.post(
+      '/api/transactions/',
+      data: data,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
   Future<Map<String, dynamic>> uploadReceipt(File file) async {
     final token = await getToken();
     final form = FormData.fromMap({
@@ -390,6 +399,24 @@ class ApiService {
       '/api/notifications/register-token',
       data: {'token': token},
       options: Options(headers: {'Authorization': 'Bearer $access'}),
+    );
+  }
+
+  Future<String> getReferralCode() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/referral/code',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data['data']['code'] as String;
+  }
+
+  Future<void> logMood(int mood) async {
+    final token = await getToken();
+    await _dio.post(
+      '/api/mood/',
+      data: {'mood': mood, 'date': DateTime.now().toIso8601String()},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }
 

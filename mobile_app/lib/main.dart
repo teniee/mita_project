@@ -6,6 +6,8 @@ import 'screens/transactions_screen.dart';
 import 'screens/installments_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/bottom_navigation.dart';
+import 'screens/referral_screen.dart';
+import 'screens/mood_screen.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/main_screen.dart';
@@ -60,6 +62,10 @@ class MITAApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFF9F0),
         fontFamily: 'Manrope',
       ),
+      darkTheme: ThemeData.dark().copyWith(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFFD25F)),
+      ),
+      themeMode: ThemeMode.system,
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
@@ -72,6 +78,9 @@ class MITAApp extends StatelessWidget {
         '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
         '/onboarding_motivation': (context) => const OnboardingMotivationScreen(),
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
+        '/referral': (context) => const ReferralScreen(),
+        '/mood': (context) => const MoodScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
       },
     );
   }

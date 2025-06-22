@@ -1,4 +1,5 @@
 import 'habits_screen.dart';
+import 'mood_screen.dart';
 
 import 'package:flutter/material.dart';
 import 'main_screen.dart';
@@ -22,6 +23,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
     GoalsScreen(),
     InsightsScreen(),
     HabitsScreen(),
+    MoodScreen(),
   ];
 
   final List<BottomNavigationBarItem> _items = const [
@@ -44,6 +46,10 @@ class _BottomNavigationState extends State<BottomNavigation> {
     BottomNavigationBarItem(
       icon: Icon(Icons.check_circle),
       label: 'Habits',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.mood),
+      label: 'Mood',
     ),
   ];
 
