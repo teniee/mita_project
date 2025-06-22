@@ -263,8 +263,8 @@ Include:
 
 ## 🛠 12. Roadmap
 
-* [ ] Assistant dialog with contextual replies
-* [ ] Spending goals per category
+* [x] Assistant dialog with contextual replies
+* [x] Spending goals per category
 * [x] Email reminders
 
 ---
@@ -287,7 +287,7 @@ Requires `S3_BUCKET` and AWS credentials. Automatically deletes backups older th
 
 ```bash
 pip install -r requirements.txt
-pytest -q
+pytest --cov=app --cov-report=term-missing
 ```
 
 If you see `ModuleNotFoundError`, ensure all required packages are installed.
@@ -308,7 +308,9 @@ flutter test integration_test -d <deviceId>
 
 ### CI
 
-The CI workflow uses `subosito/flutter-action` to set up Flutter.
+The CI workflow installs dependencies and runs tests with coverage for both the
+backend and Flutter app. Docker images are built and pushed on tagged releases
+via the `Deploy Docker` workflow.
 
 ### Crash Reporting
 
