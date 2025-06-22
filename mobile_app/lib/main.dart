@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'dart:ui';
 
-import 'screens/daily_budget_screen.dart';
-import 'screens/habits_screen.dart';
-import 'screens/goals_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/transactions_screen.dart';
-import 'screens/installments_screen.dart';
-import 'screens/profile_screen.dart';
 import 'screens/bottom_navigation.dart';
 import 'screens/referral_screen.dart';
 import 'screens/mood_screen.dart';
-import 'screens/subscription_screen.dart'; // добавлено из ветки
-import 'screens/add_expense_screen.dart';
-import 'screens/calendar_screen.dart';
-import 'screens/main_screen.dart';
-import 'screens/advice_history_screen.dart';
+import 'screens/subscription_screen.dart';
 import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
 
@@ -33,6 +25,7 @@ import 'screens/onboarding_finish_screen.dart';
 
 Future<void> _initFirebase() async {
   await Firebase.initializeApp();
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   await FirebaseMessaging.instance.requestPermission();
   final token = await FirebaseMessaging.instance.getToken();
   if (token != null) {
@@ -47,6 +40,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebase();
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
   await SentryFlutter.init(
     (o) => o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
     appRunner: () => runApp(const MITAApp()),
@@ -86,7 +84,7 @@ class MITAApp extends StatelessWidget {
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
         '/referral': (context) => const ReferralScreen(),
         '/mood': (context) => const MoodScreen(),
-        '/subscribe': (context) => const SubscriptionScreen(), // добавлен маршрут
+        '/subscribe': (context) => const SubscriptionScreen(),
         '/notifications': (context) => const NotificationsScreen(),
       },
     );

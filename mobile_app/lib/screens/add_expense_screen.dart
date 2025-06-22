@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
 import 'receipt_capture_screen.dart';
 
@@ -13,7 +12,6 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
   final OfflineQueueService _queue = OfflineQueueService.instance;
 
   double? _amount;
@@ -82,12 +80,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          final form = Form(
+            key: _formKey,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
               TextFormField(
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
@@ -166,7 +166,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
             ],
           ),
-        ),
+        );
+
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: isWide
+                ? Row(
+                    children: [
+                      Expanded(child: form),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Center(
+                          child: Icon(Icons.receipt_long,
+                              size: 120, color: Colors.grey[400]),
+                        ),
+                      ),
+                    ],
+                  )
+                : form,
+          );
+        },
       ),
     );
   }
