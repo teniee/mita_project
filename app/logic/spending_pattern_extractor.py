@@ -1,4 +1,6 @@
-### spending_pattern_extractor.py — extracts behavioral spending flags from calendar
+# Extract behavioral spending flags from calendar
+
+from datetime import date
 
 from app.engine.calendar_store import get_calendar_for_user
 
@@ -12,7 +14,13 @@ def extract_patterns(user_id: str, year: int, month: int) -> dict:
     emotional_spike = False
 
     for day_str, data in cal.items():
-        categories = [k for k in data.keys() if k not in ["planned", "redistributed"]]
+        # fmt: off
+        categories = [
+            k
+            for k in data.keys()
+            if k not in ["planned", "redistributed"]
+        ]
+        # fmt: on
         total = sum(data.get(k, 0) for k in categories)
 
         if "food" in categories and data.get("food", 0) > 0.5 * total:
@@ -21,7 +29,8 @@ def extract_patterns(user_id: str, year: int, month: int) -> dict:
         if "shopping" in categories and data.get("shopping", 0) > 100:
             emotional_spike = True
 
-        if day_str.endswith("-06") or day_str.endswith("-07"):
+        d = date.fromisoformat(day_str)
+        if d.weekday() >= 5:
             weekend_spikes += 1
 
     if weekend_spikes >= 3:
