@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'dart:ui';
 
 import 'screens/daily_budget_screen.dart';
 import 'screens/habits_screen.dart';
@@ -33,6 +35,7 @@ import 'screens/onboarding_finish_screen.dart';
 
 Future<void> _initFirebase() async {
   await Firebase.initializeApp();
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   await FirebaseMessaging.instance.requestPermission();
   final token = await FirebaseMessaging.instance.getToken();
   if (token != null) {
@@ -47,6 +50,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebase();
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
   await SentryFlutter.init(
     (o) => o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
     appRunner: () => runApp(const MITAApp()),
