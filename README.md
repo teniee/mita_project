@@ -291,8 +291,9 @@ If you see `ModuleNotFoundError`, ensure all required packages are installed.
 ### Mobile App
 
 ```bash
-flutter test
+flutter test --coverage
 ```
+Coverage results will be written to `mobile_app/coverage/lcov.info`.
 
 Integration tests live in `mobile_app/integration_test/` and require a connected Android or iOS device or emulator. Run them locally:
 
@@ -304,9 +305,11 @@ flutter test integration_test -d <deviceId>
 
 ### CI
 
+
 The CI workflow installs dependencies and runs tests with coverage for both the
 backend and Flutter app. Docker images are built and pushed on tagged releases
 via the `Deploy Docker` workflow.
+
 
 ### Crash Reporting
 
