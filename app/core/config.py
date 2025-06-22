@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # Auth / JWT
     JWT_SECRET: str = "test_secret"
+    JWT_PREVIOUS_SECRET: str = ""
     # Default should be overwritten via environment variable
     SECRET_KEY: str = "change_me"
     ALGORITHM: str = "HS256"

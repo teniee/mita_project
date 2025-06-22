@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -46,3 +48,10 @@ async def validate(
             "premium_until": result["expires_at"],
         }
     )
+
+
+@router.post("/webhook")
+async def iap_webhook(payload: dict):
+    """Receive server notifications from App Store or Play Store."""
+    logging.info("IAP webhook payload: %s", payload)
+    return success_response({"received": True})

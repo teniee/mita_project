@@ -402,6 +402,24 @@ class ApiService {
     );
   }
 
+  Future<String> getReferralCode() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/api/referral/code',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data['data']['code'] as String;
+  }
+
+  Future<void> logMood(int mood) async {
+    final token = await getToken();
+    await _dio.post(
+      '/api/mood/',
+      data: {'mood': mood, 'date': DateTime.now().toIso8601String()},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
   Future<void> logout() async {
     final token = await getToken();
     if (token != null) {
