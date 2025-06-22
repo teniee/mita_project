@@ -276,4 +276,16 @@ If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
 `pytest` will fail with `ModuleNotFoundError`. Installing from
 `requirements.txt` ensures all packages are available.
 
+### Mobile tests
+
+The mobile app lives in `mobile_app/`. If the Flutter SDK is installed,
+run both unit and integration tests with:
+
+```bash
+flutter test
+flutter test integration_test -d chrome
+```
+
+The CI workflow uses `subosito/flutter-action` to provide the toolchain.
+
 See [docs/privacy.md](docs/privacy.md) for privacy information.

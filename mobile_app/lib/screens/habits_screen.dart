@@ -72,7 +72,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
               try {
                 if (isEditing) {
-                  await _apiService.updateHabit(habit!['id'], data);
+                  await _apiService.updateHabit(habit['id'], data);
                 } else {
                   await _apiService.createHabit(data);
                 }

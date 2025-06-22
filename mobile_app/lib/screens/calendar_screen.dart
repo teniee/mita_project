@@ -1,5 +1,3 @@
-import 'daily_budget_screen.dart';
-
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
@@ -38,80 +36,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void _showDayDetails(Map<String, dynamic> day) {
-    final spent = day['spent'];
-    final limit = day['limit'];
-    final status = day['status'];
-
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      backgroundColor: Colors.white,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Day: ${day['date']}',
-              style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Spent', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$${spent}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Daily Limit', style: TextStyle(fontFamily: 'Manrope')),
-                Text('\$${limit}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const Divider(height: 24),
-            const Text(
-              'By Categories',
-              style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            ...day['categories'].map<Widget>((cat) {
-              double catSpent = cat['spent'] ?? 0;
-              double catLimit = cat['limit'] ?? 0;
-              Color color = catSpent > catLimit
-                  ? const Color(0xFFFF5C5C)
-                  : (catSpent > 0.8 * catLimit
-                      ? const Color(0xFFFFD25F)
-                      : const Color(0xFF84FAA1));
-
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(cat['category'], style: const TextStyle(fontFamily: 'Manrope')),
-                    Text(
-                      '\$${cat['spent']} / \$${cat['limit']}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              );
-            }).toList()
-          ],
-        ),
-      ),
-    );
-  }
 
   Color _getDayColor(String status) {
     switch (status) {
