@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
-import 'receipt_capture_screen.dart'; // оставлен из ветки i3thw4-codex
+import 'receipt_capture_screen.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({Key? key}) : super(key: key);
