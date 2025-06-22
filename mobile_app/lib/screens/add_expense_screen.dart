@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
 import '../services/offline_queue_service.dart';
 import 'receipt_capture_screen.dart';
 
@@ -13,7 +12,6 @@ class AddExpenseScreen extends StatefulWidget {
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
   final OfflineQueueService _queue = OfflineQueueService.instance;
 
   double? _amount;
