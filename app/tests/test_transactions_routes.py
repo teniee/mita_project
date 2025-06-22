@@ -1,13 +1,13 @@
 import datetime
+import io
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+from starlette.datastructures import UploadFile
 
 from app.api.transactions.routes import create_transaction, process_receipt
 from app.api.transactions.schemas import TxnIn
-from starlette.datastructures import UploadFile
-import io
 
 
 class DummyDB:
@@ -73,26 +73,26 @@ async def test_process_receipt(monkeypatch):
     captured = {}
 
     class DummyService:
-        def __init__(self, creds):
-            captured['creds'] = creds
+        def __init__(self, creds=None):
+            captured["creds"] = creds
 
         def process_image(self, path):
-            captured['path'] = path
-            return {'store': 'Test', 'amount': 1.23}
+            captured["path"] = path
+            return {"store": "Test", "amount": 1.23}
 
     monkeypatch.setattr(
-        'app.api.transactions.routes.GoogleVisionOCRService',
+        "app.api.transactions.routes.OCRReceiptService",
         DummyService,
     )
     monkeypatch.setattr(
-        'app.api.transactions.routes.success_response',
-        lambda data=None, message='': data,
+        "app.api.transactions.routes.success_response",
+        lambda data=None, message="": data,
     )
 
-    file = UploadFile(filename='r.jpg', file=io.BytesIO(b'data'))
-    user = SimpleNamespace(id='u1')
+    file = UploadFile(filename="r.jpg", file=io.BytesIO(b"data"))
+    user = SimpleNamespace(id="u1")
 
     result = await process_receipt(file=file, user=user, db=SimpleNamespace())
 
-    assert result['store'] == 'Test'
-    assert 'path' in captured
+    assert result["store"] == "Test"
+    assert "path" in captured

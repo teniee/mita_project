@@ -14,6 +14,7 @@ if "FIREBASE_JSON" in os.environ:
 import logging
 import time
 
+import sentry_sdk
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -40,21 +41,23 @@ from app.api.expense.routes import router as expense_router
 from app.api.financial.routes import router as financial_router
 from app.api.goal.routes import router as goal_router
 from app.api.goals.routes import router as goals_crud_router
+from app.api.habits.routes import router as habits_router
 from app.api.iap.routes import router as iap_router
+from app.api.insights.routes import router as insights_router
+from app.api.mood.routes import router as mood_router
 from app.api.notifications.routes import router as notifications_router
 from app.api.onboarding.routes import router as onboarding_router
 from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
-from app.api.insights.routes import router as insights_router
-from app.api.mood.routes import router as mood_router
-from app.api.habits.routes import router as habits_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
+
+sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), traces_sample_rate=1.0)
 
 logging.basicConfig(level=logging.INFO)
 

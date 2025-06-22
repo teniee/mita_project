@@ -179,6 +179,8 @@ SMTP_FROM=notify@example.com
 APPLE_SHARED_SECRET=changeme
 GOOGLE_SERVICE_ACCOUNT=/path/to/google.json
 ALLOWED_ORIGINS=https://app.mita.finance
+JWT_PREVIOUS_SECRET=
+SENTRY_DSN=
 ```
 
 ### Security Headers
@@ -273,3 +275,5 @@ pytest -q
 If dependencies such as `SQLAlchemy` or `pydantic_settings` are missing,
 `pytest` will fail with `ModuleNotFoundError`. Installing from
 `requirements.txt` ensures all packages are available.
+
+See [docs/privacy.md](docs/privacy.md) for privacy information.
