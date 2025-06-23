@@ -1,0 +1,10 @@
+groups:
+  - name: redis_queue
+    rules:
+      - alert: RedisQueueLatencyHigh
+        expr: queue_latency_seconds > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Redis queue latency exceeds 1s
