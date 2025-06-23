@@ -25,12 +25,15 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
 
     if status in ["yellow", "red"]:
         try:
-            explanation = explain_day_status(
-                status=status,
-                recommendations=recommendations,
-                user_id=user_id,
-                date=day_str
-            )
+            from app.core.session import SessionLocal
+            with SessionLocal() as db:
+                explanation = explain_day_status(
+                    status=status,
+                    recommendations=recommendations,
+                    db=db,
+                    user_id=user_id,
+                    date=day_str,
+                )
         except Exception as e:
             logger.error(f"[user={user_id}] Failed to get AI advice for {day_str}: {str(e)}")
             explanation = "AI comment temporarily unavailable."

@@ -7,10 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.agent.gpt_agent_service import GPTAgentService
 from app.db.models import DailyPlan
+from app.services.template_service import AIAdviceTemplateService
 from app.engine.behavior.spending_pattern_extractor import extract_patterns
 from app.engine.mood_store import get_mood
-
-GPT = GPTAgentService(api_key="sk-REPLACE_ME", model="gpt-4o")
 
 
 def generate_push_advice(
@@ -59,19 +58,33 @@ def generate_push_advice(
     patterns_result = extract_patterns(str(user_id), year, month)
     behavior_tags = patterns_result.get("patterns", [])
 
-    prompt = (
-        "You are an AI financial analyst."
-        f" Today's user mood: {mood or 'unknown'}."
-        f" Total spending this month: {float(total_spent)}."
-        f" Predicted spending next month: {predicted_expense}."
-        f" Day statuses: {dict(status_summary)}."
-        f" Overspent categories: {overspent_names}."
-        f" Behavior patterns: {behavior_tags}."
-        " Generate one short push-style tip in English."
-        " Keep it friendly and concise."
-    )
+    tmpl_service = AIAdviceTemplateService(db)
+    template = tmpl_service.get("push_advice_prompt")
+    system_prompt = tmpl_service.get("system_prompt")
+    gpt = GPTAgentService(api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt)
+    if template:
+        prompt = template.format(
+            mood=mood or "unknown",
+            total_spent=float(total_spent),
+            predicted_expense=predicted_expense,
+            status_summary=dict(status_summary),
+            overspent_categories=overspent_names,
+            behavior_tags=behavior_tags,
+        )
+    else:
+        prompt = (
+            "You are an AI financial analyst."
+            f" Today's user mood: {mood or 'unknown'}."
+            f" Total spending this month: {float(total_spent)}."
+            f" Predicted spending next month: {predicted_expense}."
+            f" Day statuses: {dict(status_summary)}."
+            f" Overspent categories: {overspent_names}."
+            f" Behavior patterns: {behavior_tags}."
+            " Generate one short push-style tip in English."
+            " Keep it friendly and concise."
+        )
 
-    ai_text = GPT.ask([{"role": "user", "content": prompt}])
+    ai_text = gpt.ask([{"role": "user", "content": prompt}])
 
     return {
         "text": ai_text,
