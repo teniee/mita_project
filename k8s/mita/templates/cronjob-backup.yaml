@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: pg-backup
+              image: postgres:13
+              env:
+                - name: DATABASE_URL
+                  value: {{ .Values.postgresUrl | quote }}
+                - name: S3_BUCKET
+                  value: s3://mita-backups
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+          restartPolicy: OnFailure
+          volumes:
+            - name: script
+              configMap:
+                name: pg-backup-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-backup-script
+data:
+  pg_backup.sh: |
+{{ .Files.Get "../../scripts/pg_backup.sh" | indent 4 }}
