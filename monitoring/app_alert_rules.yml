@@ -1,0 +1,17 @@
+groups:
+  - name: app_alerts
+    rules:
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.4
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency above 400ms
+      - alert: QueueDepthHigh
+        expr: queue_length > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: RQ queue depth above 500

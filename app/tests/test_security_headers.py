@@ -46,6 +46,7 @@ def test_security_headers_present():
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
     assert r.headers.get("X-Frame-Options") == "DENY"
     assert "default-src" in r.headers.get("Content-Security-Policy", "")
+    assert r.headers.get("Permissions-Policy") == "geolocation=(), microphone=()"
 
 
 def test_cors_restricted():

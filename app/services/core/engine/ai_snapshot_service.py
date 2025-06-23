@@ -5,7 +5,7 @@ from app.db.models import AIAnalysisSnapshot
 
 def save_ai_snapshot(user_id: int, db: Session, year: int, month: int) -> dict:
     profile = build_user_profile(user_id=user_id, db=db, year=year, month=month)
-    rating_data = generate_financial_rating(profile)
+    rating_data = generate_financial_rating(profile, db)
 
     snapshot = AIAnalysisSnapshot(
         user_id=user_id,
