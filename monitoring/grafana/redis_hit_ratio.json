@@ -1,0 +1,12 @@
+{
+  "title": "Redis Hit Ratio",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Hit Ratio",
+      "targets": [
+        {"expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))", "legendFormat": "hit_ratio"}
+      ]
+    }
+  ]
+}

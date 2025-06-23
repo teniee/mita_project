@@ -1,0 +1,12 @@
+{
+  "title": "RQ Queue Depth",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Queue Length",
+      "targets": [
+        {"expr": "queue_length", "legendFormat": "length"}
+      ]
+    }
+  ]
+}
