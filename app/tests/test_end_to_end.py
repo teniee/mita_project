@@ -8,6 +8,7 @@ import requests
 
 BASE_URL = "http://localhost:8000"
 
+
 def _wait_for_app(timeout=30):
     start = time.time()
     while time.time() - start < timeout:
@@ -37,6 +38,7 @@ def _backend_python(code: str, capture: bool = False) -> str | None:
         return result.stdout.strip()
     subprocess.run(cmd, check=True)
     return None
+
 
 @pytest.fixture(scope="session")
 def docker_stack():
@@ -128,11 +130,17 @@ def test_end_to_end_flow(user_token, daily_budget, ocr_receipt, expired_subscrip
     )
     advice_count = int(
         _backend_python(
-            "from app.core.session import SessionLocal; from app.db.models import User, BudgetAdvice; db=SessionLocal(); u=db.query(User).filter(User.email=='e2e@example.com').first(); print(db.query(BudgetAdvice).filter(BudgetAdvice.user_id==u.id).count()); db.close()",
+            "from app.core.session import SessionLocal; "
+            "from app.db.models import User, BudgetAdvice; "
+            "db=SessionLocal(); "
+            "u=db.query(User).filter(User.email=='e2e@example.com').first(); "
+            "print(db.query(BudgetAdvice).filter(BudgetAdvice.user_id==u.id).count()); "
+            "db.close()",
             capture=True,
         )
     )
     assert advice_count >= 1
+
     resp = requests.get(
         f"{BASE_URL}/api/insights/",
         headers=_auth_header(user_token),
@@ -143,8 +151,7 @@ def test_end_to_end_flow(user_token, daily_budget, ocr_receipt, expired_subscrip
         "from app.services.core.engine.cron_task_subscription_refresh import refresh_premium_status; refresh_premium_status()"
     )
     premium = _backend_python(
-        "from app.core.session import SessionLocal; from app.db.models import User; db=SessionLocal(); u=db.query(User).filter(User.email=='e2e@example.com').first(); print(u.is_premium); db.close()",
-        capture=True,
-    )
-    assert premium == "False"
-
+        "from app.core.session import SessionLocal; "
+        "from app.db.models import User; "
+        "db=SessionLocal(); "
+        "u=db.query(Use
