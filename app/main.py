@@ -15,6 +15,8 @@ import logging
 import time
 
 import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.rq import RqIntegration
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -57,7 +59,12 @@ from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
 
-sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"), traces_sample_rate=1.0)
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[FastApiIntegration(), RqIntegration()],
+    traces_sample_rate=1.0,
+    send_default_pii=True,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -86,6 +93,25 @@ async def log_requests(request: Request, call_next):
 
 
 @app.middleware("http")
+async def capture_request_bodies(request: Request, call_next):
+    body = await request.body()
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
+            sentry_sdk.capture_exception(exc)
+        raise
+    if response.status_code >= 400:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
+            sentry_sdk.capture_message(
+                f"HTTP {response.status_code} for {request.url.path}"
+            )
+    return response
+
+
+@app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["Strict-Transport-Security"] = (
@@ -94,6 +120,9 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
 
 
