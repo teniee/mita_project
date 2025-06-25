@@ -1,0 +1,12 @@
+{
+  "title": "Postgres I/O",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Read IOPS",
+      "targets": [
+        {"expr": "rate(pg_stat_database_blks_read_total[5m])", "legendFormat": "reads"}
+      ]
+    }
+  ]
+}

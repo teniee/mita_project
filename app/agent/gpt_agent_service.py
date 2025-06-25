@@ -8,7 +8,7 @@ from openai import OpenAIError
 class GPTAgentService:
     """Use OpenAI to derive insights for analytics and notifications."""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o"):
+    def __init__(self, api_key: str, model: str = "gpt-4o", system_prompt: str | None = None):
         """
         Initialize the GPT agent.
 
@@ -17,7 +17,7 @@ class GPTAgentService:
         """
         self.client = OpenAI(api_key=api_key)
         self.model = model
-        self.system_prompt = (
+        self.system_prompt = system_prompt or (
             "You are a professional financial assistant. "
             "You help users manage their budgets and categorize expenses. "
             "Offer smart advice based on country and spending profile. "

@@ -41,7 +41,7 @@ def test_save_ai_snapshot(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.core.engine.ai_snapshot_service.generate_financial_rating",
-        lambda profile: {"rating": "A", "risk": "low", "summary": "ok"},
+        lambda profile, db: {"rating": "A", "risk": "low", "summary": "ok"},
     )
 
     db = DummyDB()
