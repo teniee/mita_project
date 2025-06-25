@@ -8,6 +8,7 @@ import requests
 
 BASE_URL = "http://localhost:8000"
 
+
 def _wait_for_app(timeout=30):
     start = time.time()
     while time.time() - start < timeout:
@@ -19,6 +20,25 @@ def _wait_for_app(timeout=30):
             pass
         time.sleep(1)
     raise RuntimeError("backend did not start")
+
+
+def _backend_python(code: str, capture: bool = False) -> str | None:
+    """Execute Python code inside the backend container."""
+    cmd = [
+        "docker-compose",
+        "exec",
+        "-T",
+        "backend",
+        "python",
+        "-c",
+        code,
+    ]
+    if capture:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    subprocess.run(cmd, check=True)
+    return None
+
 
 @pytest.fixture(scope="session")
 def docker_stack():
@@ -75,7 +95,35 @@ def ocr_receipt(user_token):
     return resp.json()["data"]
 
 
-def test_end_to_end_flow(user_token, daily_budget, ocr_receipt):
+@pytest.fixture
+def expired_subscription(user_token):
+    code = """
+from datetime import datetime, timedelta
+from app.core.session import SessionLocal
+from app.db.models import User, Subscription
+
+db = SessionLocal()
+u = db.query(User).filter(User.email == 'e2e@example.com').first()
+sub = Subscription(
+    user_id=u.id,
+    platform='ios',
+    plan='monthly',
+    receipt={},
+    status='active',
+    expires_at=datetime.utcnow() - timedelta(days=1),
+)
+u.is_premium = True
+u.premium_until = sub.expires_at
+db.add(sub)
+db.commit()
+db.close()
+"""
+    _backend_python(code)
+    return True
+
+
+def test_end_to_end_flow(user_token, daily_budget, ocr_receipt, expired_subscription):
+    # Step 1: Add expense
     txn = {
         "category": "food",
         "amount": ocr_receipt.get("amount", 10.0),
@@ -88,31 +136,43 @@ def test_end_to_end_flow(user_token, daily_budget, ocr_receipt):
     )
     assert resp.status_code == 200
 
-    subprocess.run(
-        [
-            "docker-compose",
-            "exec",
-            "backend",
-            "python",
-            "-c",
-            "from app.services.core.engine.cron_task_ai_advice import run_ai_advice_batch; run_ai_advice_batch()",
-        ],
-        check=True,
+    # Step 2: Run AI advice cron
+    _backend_python(
+        "from app.services.core.engine.cron_task_ai_advice import run_ai_advice_batch; run_ai_advice_batch()"
     )
+
+    advice_count = int(
+        _backend_python(
+            "from app.core.session import SessionLocal; "
+            "from app.db.models import User, BudgetAdvice; "
+            "db=SessionLocal(); "
+            "u=db.query(User).filter(User.email=='e2e@example.com').first(); "
+            "print(db.query(BudgetAdvice).filter(BudgetAdvice.user_id==u.id).count()); "
+            "db.close()",
+            capture=True,
+        )
+    )
+    assert advice_count >= 1
+
+    # Step 3: Check insights endpoint
     resp = requests.get(
         f"{BASE_URL}/api/insights/",
         headers=_auth_header(user_token),
     )
     assert resp.status_code == 200
 
-    subprocess.run(
-        [
-            "docker-compose",
-            "exec",
-            "backend",
-            "python",
-            "-c",
-            "from app.services.core.engine.cron_task_subscription_refresh import refresh_premium_status; refresh_premium_status()",
-        ],
-        check=True,
+    # Step 4: Refresh subscription and check premium flag
+    _backend_python(
+        "from app.services.core.engine.cron_task_subscription_refresh import refresh_premium_status; refresh_premium_status()"
     )
+
+    premium = _backend_python(
+        "from app.core.session import SessionLocal; "
+        "from app.db.models import User; "
+        "db=SessionLocal(); "
+        "u=db.query(User).filter(User.email=='e2e@example.com').first(); "
+        "print(u.is_premium); "
+        "db.close()",
+        capture=True,
+    )
+    assert premium == "False"
