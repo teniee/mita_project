@@ -4,6 +4,7 @@ import types
 
 from fastapi.testclient import TestClient
 
+# Mock Firebase to avoid real external dependencies
 os.environ.setdefault("FIREBASE_JSON", "{}")
 
 dummy = types.ModuleType("firebase_admin")
@@ -35,6 +36,7 @@ sys.modules["firebase_admin"] = dummy
 sys.modules["firebase_admin.credentials"] = dummy.credentials
 sys.modules["firebase_admin.firestore"] = dummy.firestore
 
+# Import the FastAPI app
 from app.main import app  # noqa: E402
 
 client = TestClient(app)

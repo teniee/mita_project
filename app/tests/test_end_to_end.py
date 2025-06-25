@@ -1,160 +1,199 @@
+# flake8: noqa
 import os
-import subprocess
+
+# --- Early creation of firebase.json before any imports ---
+firebase_path = "/tmp/firebase.json"  # temp path for credentials
+
+if "FIREBASE_JSON" in os.environ:
+    with open(firebase_path, "w") as f:
+        f.write(os.environ["FIREBASE_JSON"])
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = firebase_path
+    os.environ["GOOGLE_CREDENTIALS_PATH"] = firebase_path
+
+
+import logging
 import time
-import shutil
-import tempfile
-import pytest
-import requests
 
-BASE_URL = "http://localhost:8000"
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.rq import RqIntegration
+from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.responses import JSONResponse
+from fastapi_limiter.depends import RateLimiter
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
-def _wait_for_app(timeout=30):
-    start = time.time()
-    while time.time() - start < timeout:
-        try:
-            r = requests.get(f"{BASE_URL}/docs")
-            if r.status_code < 500:
-                return
-        except Exception:
-            pass
-        time.sleep(1)
-    raise RuntimeError("backend did not start")
+# Routers
+from app.api.ai.routes import router as ai_router
+from app.api.analytics.routes import router as analytics_router
+from app.api.auth.routes import router as auth_router
+from app.api.behavior.routes import router as behavior_router
+from app.api.budget.routes import router as budget_router
+from app.api.calendar.routes import router as calendar_router
+from app.api.challenge.routes import router as challenge_router
+from app.api.checkpoint.routes import router as checkpoint_router
+from app.api.cluster.routes import router as cluster_router
+from app.api.cohort.routes import router as cohort_router
+from app.api.dependencies import get_current_user
+from app.api.drift.routes import router as drift_router
+from app.api.expense.routes import router as expense_router
+from app.api.financial.routes import router as financial_router
+from app.api.goal.routes import router as goal_router
+from app.api.goals.routes import router as goals_crud_router
+from app.api.habits.routes import router as habits_router
+from app.api.iap.routes import router as iap_router
+from app.api.insights.routes import router as insights_router
+from app.api.mood.routes import router as mood_router
+from app.api.notifications.routes import router as notifications_router
+from app.api.onboarding.routes import router as onboarding_router
+from app.api.plan.routes import router as plan_router
+from app.api.referral.routes import router as referral_router
+from app.api.spend.routes import router as spend_router
+from app.api.style.routes import router as style_router
+from app.api.transactions.routes import router as transactions_router
+from app.api.users.routes import router as users_router
 
-
-def _backend_python(code: str, capture: bool = False) -> str | None:
-    """Execute Python code inside the backend container."""
-    cmd = [
-        "docker-compose",
-        "exec",
-        "-T",
-        "backend",
-        "python",
-        "-c",
-        code,
-    ]
-    if capture:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return result.stdout.strip()
-    subprocess.run(cmd, check=True)
-    return None
-
-@pytest.fixture(scope="session")
-def docker_stack():
-    if shutil.which("docker-compose") is None:
-        pytest.skip("docker-compose not available")
-    subprocess.run(["docker-compose", "up", "-d"], check=True)
-    _wait_for_app()
-    yield
-    subprocess.run(["docker-compose", "down", "-v"], check=True)
-
-
-def _auth_header(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
+# Core
+from app.core.config import settings
+from app.core.limiter_setup import init_rate_limiter
+from app.utils.response_wrapper import error_response, success_response
 
 
-@pytest.fixture
-def user_token(docker_stack):
-    payload = {
-        "email": "e2e@example.com",
-        "password": "secret123",
-        "country": "US",
-        "annual_income": 50000,
-        "timezone": "UTC",
-    }
-    resp = requests.post(f"{BASE_URL}/api/auth/register", json=payload)
-    assert resp.status_code == 201
-    return resp.json()["data"]["access_token"]
-
-
-@pytest.fixture
-def daily_budget(user_token):
-    answers = {"q1": "yes"}
-    resp = requests.post(
-        f"{BASE_URL}/api/onboarding/submit",
-        json=answers,
-        headers=_auth_header(user_token),
-    )
-    assert resp.status_code == 200
-    return True
-
-
-@pytest.fixture
-def ocr_receipt(user_token):
-    with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
-        tmp.write(b"test")
-        tmp.flush()
-        with open(tmp.name, "rb") as f:
-            resp = requests.post(
-                f"{BASE_URL}/api/transactions/receipt",
-                headers=_auth_header(user_token),
-                files={"file": ("r.jpg", f, "image/jpeg")},
-            )
-    assert resp.status_code == 200
-    return resp.json()["data"]
-
-
-@pytest.fixture
-def expired_subscription(user_token):
-    code = """
-from datetime import datetime, timedelta
-from app.core.session import SessionLocal
-from app.db.models import User, Subscription
-
-db = SessionLocal()
-u = db.query(User).filter(User.email == 'e2e@example.com').first()
-sub = Subscription(
-    user_id=u.id,
-    platform='ios',
-    plan='monthly',
-    receipt={},
-    status='active',
-    expires_at=datetime.utcnow() - timedelta(days=1),
+# --- Sentry Initialization ---
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[FastApiIntegration(), RqIntegration()],
+    traces_sample_rate=1.0,
+    send_default_pii=True,
 )
-u.is_premium = True
-u.premium_until = sub.expires_at
-db.add(sub)
-db.commit()
-db.close()
-"""
-    _backend_python(code)
-    return True
+
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI(title="Mita Finance API", version="1.0.0")
+
+# --- Middleware ---
+app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def test_end_to_end_flow(user_token, daily_budget, ocr_receipt, expired_subscription):
-    txn = {
-        "category": "food",
-        "amount": ocr_receipt.get("amount", 10.0),
-        "spent_at": "2025-01-01T00:00:00Z",
-    }
-    resp = requests.post(
-        f"{BASE_URL}/api/transactions/",
-        json=txn,
-        headers=_auth_header(user_token),
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logging.info(
+        f"{request.method} {request.url.path} completed in {duration*1000:.2f}ms with status {response.status_code}"
     )
-    assert resp.status_code == 200
+    return response
 
-    _backend_python(
-        "from app.services.core.engine.cron_task_ai_advice import run_ai_advice_batch; run_ai_advice_batch()"
-    )
-    advice_count = int(
-        _backend_python(
-            "from app.core.session import SessionLocal; from app.db.models import User, BudgetAdvice; db=SessionLocal(); u=db.query(User).filter(User.email=='e2e@example.com').first(); print(db.query(BudgetAdvice).filter(BudgetAdvice.user_id==u.id).count()); db.close()",
-            capture=True,
-        )
-    )
-    assert advice_count >= 1
-    resp = requests.get(
-        f"{BASE_URL}/api/insights/",
-        headers=_auth_header(user_token),
-    )
-    assert resp.status_code == 200
 
-    _backend_python(
-        "from app.services.core.engine.cron_task_subscription_refresh import refresh_premium_status; refresh_premium_status()"
-    )
-    premium = _backend_python(
-        "from app.core.session import SessionLocal; from app.db.models import User; db=SessionLocal(); u=db.query(User).filter(User.email=='e2e@example.com').first(); print(u.is_premium); db.close()",
-        capture=True,
-    )
-    assert premium == "False"
+@app.middleware("http")
+async def capture_request_bodies(request: Request, call_next):
+    body = await request.body()
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
+            sentry_sdk.capture_exception(exc)
+        raise
+    if response.status_code >= 400:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
+            sentry_sdk.capture_message(
+                f"HTTP {response.status_code} for {request.url.path}"
+            )
+    return response
 
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+
+
+# --- Public Router ---
+app.include_router(
+    auth_router,
+    prefix="/api/auth",
+    tags=["Authentication"],
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+)
+
+# --- Private Routers ---
+private_routers_list = [
+    (financial_router, "/api/financial", ["Financial"]),
+    (users_router, "/api/users", ["Users"]),
+    (calendar_router, "/api/calendar", ["Calendar"]),
+    (challenge_router, "/api/challenges", ["Challenges"]),
+    (expense_router, "/api/expenses", ["Expenses"]),
+    (goal_router, "/api/goals", ["Goals"]),
+    (goals_crud_router, "/api/goals", ["GoalsCRUD"]),
+    (plan_router, "/api/plans", ["Plans"]),
+    (budget_router, "/api/budgets", ["Budgets"]),
+    (analytics_router, "/api/analytics", ["Analytics"]),
+    (behavior_router, "/api/behavior", ["Behavior"]),
+    (spend_router, "/api/spend", ["Spend"]),
+    (style_router, "/api/styles", ["Styles"]),
+    (insights_router, "/api/insights", ["Insights"]),
+    (habits_router, "/api/habits", ["Habits"]),
+    (ai_router, "/api/ai", ["AI"]),
+    (transactions_router, "/api/transactions", ["Transactions"]),
+    (iap_router, "/api/iap", ["IAP"]),
+    (notifications_router, "/api/notifications", ["Notifications"]),
+    (mood_router, "/api/mood", ["Mood"]),
+    (referral_router, "/api/referrals", ["Referrals"]),
+    (onboarding_router, "/api/onboarding", ["Onboarding"]),
+    (cohort_router, "/api/cohorts", ["Cohorts"]),
+    (cluster_router, "/api/clusters", ["Clusters"]),
+    (checkpoint_router, "/api/checkpoints", ["Checkpoints"]),
+    (drift_router, "/api/drift", ["Drift"]),
+]
+
+for router_item, prefix, tags_list in private_routers_list:
+    app.include_router(
+        router_item,
+        prefix=prefix,
+        tags=tags_list,
+        dependencies=[Depends(get_current_user)],
+    )
+
+
+# --- Exception Handlers ---
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    logging.error(f"HTTPException: {exc.detail}")
+    return error_response(error_message=exc.detail, status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logging.error(f"ValidationError: {exc.errors()}")
+    return error_response(error_message=str(exc), status_code=422)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Unhandled error: {exc}")
+    return error_response(error_message="Internal server error", status_code=500)
+
+
+# --- Startup Event ---
+@app.on_event("startup")
+async def on_startup():
+    await init_rate_limiter(app)

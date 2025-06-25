@@ -10,7 +10,6 @@ if "FIREBASE_JSON" in os.environ:
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = firebase_path
     os.environ["GOOGLE_CREDENTIALS_PATH"] = firebase_path
 
-
 import logging
 import time
 
@@ -25,11 +24,10 @@ from fastapi_limiter.depends import RateLimiter
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
-from app.api.ai.routes import router as ai_router
-from app.api.analytics.routes import router as analytics_router
-
-# New style routers from subdirectories
+# Routers
 from app.api.auth.routes import router as auth_router
+from app.api.analytics.routes import router as analytics_router
+from app.api.ai.routes import router as ai_router
 from app.api.behavior.routes import router as behavior_router
 from app.api.budget.routes import router as budget_router
 from app.api.calendar.routes import router as calendar_router
@@ -37,7 +35,6 @@ from app.api.challenge.routes import router as challenge_router
 from app.api.checkpoint.routes import router as checkpoint_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
-from app.api.dependencies import get_current_user
 from app.api.drift.routes import router as drift_router
 from app.api.expense.routes import router as expense_router
 from app.api.financial.routes import router as financial_router
@@ -55,10 +52,12 @@ from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
+from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
-from app.utils.response_wrapper import error_response, success_response
+from app.utils.response_wrapper import error_response
 
+# Sentry setup
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
     integrations=[FastApiIntegration(), RqIntegration()],
@@ -70,8 +69,9 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
-
+# Middlewares
 app.add_middleware(HTTPSRedirectMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -125,10 +125,7 @@ async def security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
 
-
-# Include public routers (order might matter if prefixes overlap, ensure unique paths)
-
-# Include new style public routers (auth is usually public for login/register)
+# Public routes
 app.include_router(
     auth_router,
     prefix="/api/auth",
@@ -136,7 +133,7 @@ app.include_router(
     dependencies=[Depends(RateLimiter(times=10, seconds=60))],
 )
 
-# Include new style private routers (protected by auth)
+# Protected routers list
 private_routers_list = [
     (financial_router, "/api/financial", ["Financial"]),
     (users_router, "/api/users", ["Users"]),
@@ -166,15 +163,15 @@ private_routers_list = [
     (drift_router, "/api/drift", ["Drift"]),
 ]
 
-for router_item, prefix, tags_list in private_routers_list:
+for router, prefix, tags in private_routers_list:
     app.include_router(
-        router_item,
+        router,
         prefix=prefix,
-        tags=tags_list,
+        tags=tags,
         dependencies=[Depends(get_current_user)],
     )
 
-
+# Exception Handlers
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     logging.error(f"HTTPException: {exc.detail}")
