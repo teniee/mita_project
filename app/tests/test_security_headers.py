@@ -9,7 +9,10 @@ os.environ.setdefault("FIREBASE_JSON", "{}")
 
 dummy = types.ModuleType("firebase_admin")
 dummy._apps = []
-dummy.credentials = types.SimpleNamespace(ApplicationDefault=lambda: None)
+dummy.credentials = types.SimpleNamespace(
+    ApplicationDefault=lambda: None,
+    Certificate=lambda *a, **k: None,
+)
 dummy.initialize_app = lambda cred=None: None
 
 
