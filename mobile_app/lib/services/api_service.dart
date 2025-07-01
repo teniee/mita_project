@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config.dart';
 
 class ApiService {
   ApiService() {
@@ -33,9 +34,12 @@ class ApiService {
     );
   }
 
+  final String _baseUrl =
+      const String.fromEnvironment('API_BASE_URL', defaultValue: defaultApiBaseUrl);
+
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'https://mita-docker-ready-project-manus.onrender.com',
+      baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 20),
       contentType: 'application/json',
