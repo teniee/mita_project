@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mita
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  backend:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - ./secrets/.env.production
+    environment:
+      PYTHONPATH: "/code"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/secrets/mita-finance-firebase-adminsdk-fbsvc-3458074f8e.json"
+      GOOGLE_CREDENTIALS_PATH: "/app/secrets/mita-finance-firebase-adminsdk-fbsvc-3458074f8e.json"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./secrets:/app/secrets
+    command:
+      - ./wait-for-it.sh
+      - db:5432
+      - -t
+      - "60"
+      - --
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+  worker:
+    build: .
+    command: python -m app.worker
+    environment:
+      PYTHONPATH: "/code"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    command: python scripts/rq_scheduler.py
+    environment:
+      PYTHONPATH: "/code"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
