@@ -4,10 +4,10 @@ from typing import Dict
 import os
 import json
 
-# Берём JSON из переменной окружения
+
 firebase_json = os.environ["FIREBASE_JSON"]
 
-# Инициализируем через Certificate из JSON (НЕ ApplicationDefault!)
+
 if not firebase_admin._apps:
     cred = credentials.Certificate(json.loads(firebase_json))
     firebase_admin.initialize_app(cred)
