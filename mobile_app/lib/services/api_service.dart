@@ -42,7 +42,7 @@ class ApiService {
     ),
   );
 
-  /// 👇 Добавлен публичный геттер для доступа к baseUrl
+  
   String get baseUrl => _dio.options.baseUrl;
 
   final _storage = const FlutterSecureStorage();
