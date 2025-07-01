@@ -1,8 +1,12 @@
 # flake8: noqa
 
 import os
+import json
 import logging
 import time
+
+import firebase_admin
+from firebase_admin import credentials
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -47,6 +51,12 @@ from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response
+
+# ---- Firebase Admin SDK init ----
+firebase_json = os.environ["FIREBASE_JSON"]
+cred_dict = json.loads(firebase_json)
+cred = credentials.Certificate(cred_dict)
+firebase_admin.initialize_app(cred)
 
 # ---- Sentry setup ----
 sentry_sdk.init(
