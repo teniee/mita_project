@@ -53,10 +53,18 @@ from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response
 
 # ---- Firebase Admin SDK init ----
-firebase_json = os.environ["FIREBASE_JSON"]
-cred_dict = json.loads(firebase_json)
-cred = credentials.Certificate(cred_dict)
-firebase_admin.initialize_app(cred)
+# Initialize Firebase only once. Other modules may do so as well,
+# but firebase_admin throws an error if `initialize_app` is called
+# multiple times without an app name. Guard the call to avoid this
+# issue during application startup.
+if not firebase_admin._apps:
+    firebase_json = os.environ["FIREBASE_JSON"]
+    cred_dict = json.loads(firebase_json)
+    if hasattr(credentials, "Certificate") and cred_dict:
+        cred = credentials.Certificate(cred_dict)
+    else:
+        cred = credentials.ApplicationDefault()
+    firebase_admin.initialize_app(cred)
 
 # ---- Sentry setup ----
 sentry_sdk.init(

@@ -9,7 +9,11 @@ firebase_json = os.environ["FIREBASE_JSON"]
 
 # Инициализируем через Certificate из JSON (НЕ ApplicationDefault!)
 if not firebase_admin._apps:
-    cred = credentials.Certificate(json.loads(firebase_json))
+    cred_dict = json.loads(firebase_json)
+    if hasattr(credentials, "Certificate") and cred_dict:
+        cred = credentials.Certificate(cred_dict)
+    else:
+        cred = credentials.ApplicationDefault()
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()

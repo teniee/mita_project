@@ -10,6 +10,9 @@ if not hasattr(collections, "MutableSet"):
 if not hasattr(collections, "Iterable"):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
+if not hasattr(collections, "Mapping"):
+    import collections.abc
+    collections.Mapping = collections.abc.Mapping
 
 import firebase_admin
 from firebase_admin import credentials, messaging
