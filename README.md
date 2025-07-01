@@ -323,3 +323,7 @@ The CI workflows:
 * Errors from `runApp` and `PlatformDispatcher` sent to Crashlytics + Sentry
 * Set `SENTRY_DSN` to enable Sentry
 
+
+## License
+
+This project is licensed under the terms of the [MIT License](LICENSE).
