@@ -4,10 +4,10 @@ from typing import Dict
 import os
 import json
 
-# Берём JSON из переменной окружения
+
 firebase_json = os.environ["FIREBASE_JSON"]
 
-# Инициализируем через Certificate из JSON (НЕ ApplicationDefault!)
+
 if not firebase_admin._apps:
     cred_dict = json.loads(firebase_json)
     if hasattr(credentials, "Certificate") and cred_dict:
