@@ -1,22 +1,28 @@
+import collections
 from typing import Optional
 
-import collections
 if not hasattr(collections, "MutableMapping"):
     import collections.abc
+
     collections.MutableMapping = collections.abc.MutableMapping
 if not hasattr(collections, "MutableSet"):
     import collections.abc
+
     collections.MutableSet = collections.abc.MutableSet
 if not hasattr(collections, "Iterable"):
     import collections.abc
+
     collections.Iterable = collections.abc.Iterable
+if not hasattr(collections, "Mapping"):
+    import collections.abc
+
+    collections.Mapping = collections.abc.Mapping
 
 import firebase_admin
-from firebase_admin import credentials, messaging
-from sqlalchemy.orm import Session
-
 from apns2.client import APNsClient
 from apns2.payload import Payload
+from firebase_admin import credentials, messaging
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.services.notification_log_service import log_notification
@@ -29,9 +35,13 @@ if not firebase_admin._apps:
         firebase_admin.initialize_app()
 
 
-def _record_log(db: Session | None, *, user_id: int, channel: str, message: str, success: bool) -> None:
+def _record_log(
+    db: Session | None, *, user_id: int, channel: str, message: str, success: bool
+) -> None:
     if db:
-        log_notification(db, user_id=user_id, channel=channel, message=message, success=success)
+        log_notification(
+            db, user_id=user_id, channel=channel, message=message, success=success
+        )
 
 
 def send_push_notification(
@@ -39,7 +49,7 @@ def send_push_notification(
     user_id: int,
     message: str,
     token: Optional[str] = None,
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Firebase Cloud Messaging.
 
