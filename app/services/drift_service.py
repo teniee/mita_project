@@ -1,10 +1,15 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 from typing import Dict
+import os
+import json
 
-# Initialize Firebase if it hasn't been set up yet
+# Берём JSON из переменной окружения
+firebase_json = os.environ["FIREBASE_JSON"]
+
+# Инициализируем через Certificate из JSON (НЕ ApplicationDefault!)
 if not firebase_admin._apps:
-    cred = credentials.ApplicationDefault()
+    cred = credentials.Certificate(json.loads(firebase_json))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
