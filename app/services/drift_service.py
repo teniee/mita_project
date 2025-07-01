@@ -5,10 +5,10 @@ from typing import Dict
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Берём JSON из переменной окружения
+# Get JSON key from environment variable
 firebase_json = os.environ.get("FIREBASE_JSON", "{}")
 
-# Инициализируем через Certificate из JSON (НЕ ApplicationDefault!)
+# Initialize Firebase only once
 if not firebase_admin._apps:
     cred_dict = json.loads(firebase_json)
 
@@ -37,12 +37,12 @@ def log_cohort_drift(user_id: str, month: str, value: float) -> Dict:
 
 def get_cohort_drift(user_id: str, month: str) -> Dict:
     """Return drift for the given month along with user history."""
-    # Current month record
+    # Get current month record
     doc_id = f"{user_id}_{month}"
     current_doc = db.collection(_COLLECTION).document(doc_id).get()
     drift_value = current_doc.to_dict().get("value", 0.0) if current_doc.exists else 0.0
 
-    # Fetch the user's entire drift history
+    # Fetch user's entire drift history
     query = db.collection(_COLLECTION).where("user_id", "==", user_id).stream()
     history = [
         {"month": doc.to_dict()["month"], "value": doc.to_dict()["value"]}
