@@ -17,6 +17,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   double totalSpending = 0;
   Map<String, double> categoryTotals = {};
   List<Map<String, dynamic>> dailyTotals = [];
+  List<Map<String, dynamic>> monthlyTrend = [];
 
   @override
   void initState() {
@@ -26,6 +27,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Future<void> fetchInsights() async {
     try {
+      final analytics = await _apiService.getMonthlyAnalytics();
+      final trend = await _apiService.getMonthlyTrend();
       final expenses = await _apiService.getExpenses();
       final now = DateTime.now();
       final monthExpenses = expenses.where((e) {
@@ -34,14 +37,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
       });
 
       double sum = 0;
-      final Map<String, double> catSums = {};
+      final Map<String, double> catSums =
+          Map<String, double>.from(analytics['categories'] as Map);
       final Map<String, double> daily = {};
 
       for (final e in monthExpenses) {
         sum += e['amount'];
-        final cat = e['action'] ?? 'Other';
         final day = DateFormat('yyyy-MM-dd').format(DateTime.parse(e['date']));
-        catSums[cat] = (catSums[cat] ?? 0) + e['amount'];
         daily[day] = (daily[day] ?? 0) + e['amount'];
       }
 
@@ -52,6 +54,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
             .map((e) => {'date': e.key, 'amount': e.value})
             .toList()
           ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+        monthlyTrend = trend
+            .map((e) => {
+                  'label': e['month'] ?? e['day'],
+                  'amount': e['total'] as num? ?? 0,
+                })
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -183,6 +191,66 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             ],
                           );
                         }),
+                      ),
+                    ),
+                  ),
+                ],
+                if (monthlyTrend.isNotEmpty) ...[
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Monthly Trend',
+                    style: TextStyle(
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        borderData: FlBorderData(show: false),
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 32,
+                              interval: 1,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                if (index < 0 || index >= monthlyTrend.length) {
+                                  return Container();
+                                }
+                                return Text(
+                                  monthlyTrend[index]['label'],
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        lineBarsData: [
+                          LineChartBarData(
+                            color: const Color(0xFF193C57),
+                            spots: List.generate(
+                              monthlyTrend.length,
+                              (i) => FlSpot(
+                                i.toDouble(),
+                                (monthlyTrend[i]['amount'] as num).toDouble(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

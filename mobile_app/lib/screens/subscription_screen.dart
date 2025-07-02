@@ -25,6 +25,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   @override
+  void dispose() {
+    _iapService.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
