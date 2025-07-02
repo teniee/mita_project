@@ -288,6 +288,21 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> validateReceipt(
+      String userId, String receipt, String platform) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/api/iap/validate',
+      data: {
+        'user_id': userId,
+        'receipt': receipt,
+        'platform': platform,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<String> getReferralCode() async {
     final token = await getToken();
     final response = await _dio.get('/api/referral/code', options: Options(headers: {'Authorization': 'Bearer $token'}));
