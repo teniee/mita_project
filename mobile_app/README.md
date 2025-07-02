@@ -26,3 +26,10 @@ flutter build apk --dart-define=API_BASE_URL=https://api.example.com
 ```
 
 Replace the URL with your deployment.
+
+## In-app purchases
+
+Premium upgrades are verified server-side. `IapService` listens to purchase
+updates and sends the purchase receipt to `/api/iap/validate` via
+`ApiService.validateReceipt`. Make sure the `API_BASE_URL` variable points to the
+running backend when building release artifacts so validation succeeds.

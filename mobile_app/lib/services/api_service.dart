@@ -250,10 +250,24 @@ class ApiService {
     return response.data;
   }
 
-  Future<List<dynamic>> getMonthlyAnalytics() async {
+  Future<Map<String, dynamic>> getMonthlyAnalytics() async {
     final token = await getToken();
-    final response = await _dio.get('/api/analytics/monthly/', options: Options(headers: {'Authorization': 'Bearer $token'}));
-    return response.data;
+    final userId = await getUserId();
+    final response = await _dio.get(
+      '/api/analytics/monthly/$userId',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] as Map);
+  }
+
+  Future<List<dynamic>> getMonthlyTrend() async {
+    final token = await getToken();
+    final userId = await getUserId();
+    final response = await _dio.get(
+      '/api/analytics/trend/$userId',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return List<dynamic>.from(response.data['data'] as List);
   }
 
   Future<void> createTransaction(Map<String, dynamic> data) async {
@@ -286,6 +300,21 @@ class ApiService {
       data: {'token': token},
       options: Options(headers: {'Authorization': 'Bearer $access'}),
     );
+  }
+
+  Future<Map<String, dynamic>> validateReceipt(
+      String userId, String receipt, String platform) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/api/iap/validate',
+      data: {
+        'user_id': userId,
+        'receipt': receipt,
+        'platform': platform,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<String> getReferralCode() async {
