@@ -17,7 +17,7 @@ async def init_rate_limiter(app: FastAPI):
     await FastAPILimiter.init(
         redis_client,
         prefix="FASTAPI_LIMITER",
-        identifier="ip"
+        identifier=get_remote_address
     )
 
     @app.on_event("shutdown")
