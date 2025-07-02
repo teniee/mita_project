@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import get_remote_address
 import redis.asyncio as redis
 
 
@@ -17,7 +18,7 @@ async def init_rate_limiter(app: FastAPI):
     await FastAPILimiter.init(
         redis_client,
         prefix="FASTAPI_LIMITER",
-        identifier=get_remote_address
+        identifier=get_remote_address  # ✅ Импортируешь и используешь
     )
 
     @app.on_event("shutdown")
