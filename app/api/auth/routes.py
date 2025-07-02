@@ -83,4 +83,4 @@ async def google_login(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Authenticate a user using a Google ID token."""
-    return authenticate_google(payload, db)
+    return await authenticate_google(payload, db)
