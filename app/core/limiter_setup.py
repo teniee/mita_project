@@ -11,14 +11,13 @@ async def init_rate_limiter(app: FastAPI):
     redis_client = await redis.from_url(
         redis_url,
         encoding="utf-8",
-        decode_responses=True
+        decode_responses=True,
     )
 
     await FastAPILimiter.init(
         redis_client,
         prefix="FASTAPI_LIMITER",
-        identifier="ip",
-        raise_on_failure=False
+        identifier="ip"
     )
 
     @app.on_event("shutdown")
