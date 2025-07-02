@@ -26,6 +26,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Future<void> fetchInsights() async {
     try {
+      final analytics = await _apiService.getMonthlyAnalytics();
       final expenses = await _apiService.getExpenses();
       final now = DateTime.now();
       final monthExpenses = expenses.where((e) {
@@ -34,14 +35,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
       });
 
       double sum = 0;
-      final Map<String, double> catSums = {};
+      final Map<String, double> catSums =
+          Map<String, double>.from(analytics['categories'] as Map);
       final Map<String, double> daily = {};
 
       for (final e in monthExpenses) {
         sum += e['amount'];
-        final cat = e['action'] ?? 'Other';
         final day = DateFormat('yyyy-MM-dd').format(DateTime.parse(e['date']));
-        catSums[cat] = (catSums[cat] ?? 0) + e['amount'];
         daily[day] = (daily[day] ?? 0) + e['amount'];
       }
 
