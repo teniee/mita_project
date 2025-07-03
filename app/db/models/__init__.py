@@ -1,5 +1,5 @@
+from app.db.base import Base
 from .ai_analysis_snapshot import AIAnalysisSnapshot
-from .base import Base
 from .budget_advice import BudgetAdvice
 from .ai_advice_template import AIAdviceTemplate
 from .daily_plan import DailyPlan

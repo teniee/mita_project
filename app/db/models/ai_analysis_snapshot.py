@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.core.db import Base
+from app.db.base import Base
 
 class AIAnalysisSnapshot(Base):
     __tablename__ = "ai_analysis_snapshots"
