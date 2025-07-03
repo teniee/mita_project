@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from app.core.config import SECRET_KEY, ALGORITHM
-from app.core.db import get_db
+from app.core.session import get_db
 from app.core.upstash import is_token_blacklisted
 from app.db.models import User
 

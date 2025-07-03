@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
+from app.core.session import get_db
 from app.db.models import AIAnalysisSnapshot, User
 from app.api.dependencies import get_current_user
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot

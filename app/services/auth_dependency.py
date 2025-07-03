@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
-from app.core.db import get_db
+from app.core.session import get_db
 from app.db.models import User
 
 GOOGLE_CLIENT_IDS = [

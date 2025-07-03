@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
+from app.core.session import get_db
 from app.db.models import BudgetAdvice, PushToken, User
 from app.services.advisory_service import AdvisoryService
 from app.services.push_service import send_push_notification

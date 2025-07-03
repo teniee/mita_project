@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
+from app.core.session import get_db
 from app.db.models import User
 from app.services.budget_redistributor import redistribute_budget_for_user
 
