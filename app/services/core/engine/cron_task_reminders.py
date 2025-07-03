@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
+from app.core.session import get_db
 from app.db.models import User
 from app.utils.email_utils import send_reminder_email
 

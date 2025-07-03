@@ -1,7 +1,7 @@
 
 from sqlalchemy.orm import Session
 from app.db.models import User
-from app.core.db import get_db
+from app.core.session import get_db
 
 def create_test_user():
     db: Session = next(get_db())

@@ -5,7 +5,7 @@ from app.services.user_data_service import UserDataService
 from app.services.budget_planner import generate_budget_from_answers
 from app.engine.calendar_engine_behavioral import build_calendar
 from app.services.calendar_service_real import save_calendar_for_user
-from app.core.db import get_db
+from app.core.session import get_db
 from sqlalchemy.orm import Session
 
 ONBOARDING_QUESTIONS_PATH = os.path.join(

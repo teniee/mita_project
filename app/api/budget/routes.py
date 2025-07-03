@@ -6,7 +6,7 @@ from app.api.budget.services import (
     fetch_remaining_budget,
     fetch_spent_by_category,
 )
-from app.core.db import get_db
+from app.core.session import get_db
 # assumes User is defined in models
 from app.db.models.user import User
 from app.services.auth_dependency import get_current_user
