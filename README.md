@@ -181,7 +181,8 @@ Example:
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
 SECRET_KEY=change_me
-DATABASE_URL=postgresql://user:pass@localhost:5432/mita
+# Use the asyncpg driver for SQLAlchemy's async engine
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mita
 SMTP_HOST=mail.example.com
 SMTP_PORT=587
 SMTP_USERNAME=mailer
