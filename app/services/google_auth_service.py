@@ -6,8 +6,11 @@ from app.core.jwt_utils import hash_password
 import uuid
 
 ALLOWED_GOOGLE_CLIENT_IDS = [
+    # Production Android/iOS client IDs
     "796406677497-kgkd6q7t75bpcsn343baokpuli8p5gad.apps.googleusercontent.com",  # Android
     "796406677497-0a9jg6vkuv2jtibddll5dp2b0394h21h.apps.googleusercontent.com",  # iOS
+    # Development/web client ID used by the Flutter app
+    "147595998708-0pkq7emouan1rs2lrgjau0ee2lge35pl.apps.googleusercontent.com",
 ]
 
 async def authenticate_google_user(id_token_str: str, db: Session) -> User:
