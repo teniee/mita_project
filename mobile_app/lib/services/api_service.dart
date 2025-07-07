@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
@@ -75,7 +74,7 @@ class ApiService {
     if (refresh == null) return false;
     try {
       final response = await _dio.post(
-        '/auth/refresh',
+        '/auth/auth/refresh',
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
       final data = response.data as Map<String, dynamic>;
@@ -90,8 +89,9 @@ class ApiService {
     }
   }
 
+
   Future<Response> loginWithGoogle(String idToken) async =>
-      await _dio.post('/auth/google', data: {'id_token': idToken});
+      await _dio.post('/auth/auth/google', data: {'id_token': idToken});
 
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
@@ -176,7 +176,7 @@ class ApiService {
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/user/profile/',
+      '/users/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
