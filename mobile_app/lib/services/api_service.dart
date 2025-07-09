@@ -6,7 +6,7 @@ import '../config.dart';
 class ApiService {
   final String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: defaultApiBaseUrl, // Make sure this has /api or /api/v1 if needed
+    defaultValue: defaultApiBaseUrl, // Example: https://yourserver.com/api
   );
 
   late final Dio _dio;
@@ -76,7 +76,7 @@ class ApiService {
     if (refresh == null) return false;
     try {
       final response = await _dio.post(
-        '/auth/refresh',
+        '/auth/refresh', // Should be /api/auth/refresh if your backend expects that
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
       final data = response.data as Map<String, dynamic>;
@@ -113,7 +113,7 @@ class ApiService {
     );
   }
 
-  /// Example: Get user profile
+  /// Get user profile
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
@@ -123,7 +123,7 @@ class ApiService {
     return Map<String, dynamic>.from(response.data);
   }
 
-  /// Logout if you want to implement manual clear
+  /// Manual logout
   Future<void> logout() async {
     await clearTokens();
   }
