@@ -6,7 +6,7 @@ import '../config.dart';
 class ApiService {
   final String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: defaultApiBaseUrl,
+    defaultValue: defaultApiBaseUrl, // Make sure this has /api or /api/v1 if needed
   );
 
   late final Dio _dio;
@@ -30,9 +30,11 @@ class ApiService {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          print('[API] REQUEST: ${options.method} ${options.uri}');
           handler.next(options);
         },
         onError: (DioError e, handler) async {
+          print('[API] ERROR: ${e.response?.statusCode} ${e.requestOptions.uri}');
           if (e.response?.statusCode == 401) {
             final refreshed = await _refreshTokens();
             if (refreshed) {
@@ -89,23 +91,19 @@ class ApiService {
     }
   }
 
-
+  /// Google sign-in
   Future<Response> loginWithGoogle(String idToken) async =>
       await _dio.post('/auth/google', data: {'id_token': idToken});
 
-
+  /// Email/Password register
   Future<Response> register(String email, String password) async =>
-      await _dio.post(
-        '/auth/register',
-        data: {'email': email, 'password': password},
-      );
+      await _dio.post('/auth/register', data: {'email': email, 'password': password});
 
+  /// Email/Password login
   Future<Response> login(String email, String password) async =>
-      await _dio.post(
-        '/auth/login',
-        data: {'email': email, 'password': password},
-      );
+      await _dio.post('/auth/login', data: {'email': email, 'password': password});
 
+  /// Onboarding
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(
@@ -115,184 +113,20 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>> getDashboard() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/dashboard/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return Map<String, dynamic>.from(response.data);
-  }
-
-  Future<List<dynamic>> getCalendar() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/calendar/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data;
-  }
-
-  Future<List<dynamic>> getGoals() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/goals/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data;
-  }
-
-  Future<void> createGoal(Map<String, dynamic> data) async {
-    final token = await getToken();
-    await _dio.post(
-      '/goals/',
-      data: data,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<void> updateGoal(int id, Map<String, dynamic> data) async {
-    final token = await getToken();
-    await _dio.patch(
-      '/goals/$id/',
-      data: data,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<void> deleteGoal(int id) async {
-    final token = await getToken();
-    await _dio.delete(
-      '/goals/$id/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<Map<String, dynamic>?> getLatestAdvice() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/insights/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data['data'] as Map<String, dynamic>?;
-  }
-
-  Future<List<dynamic>> getAdviceHistory() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/insights/history',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return List<dynamic>.from(response.data['data'] as List);
-  }
-
+  /// Example: Get user profile
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
       '/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data;
+    return Map<String, dynamic>.from(response.data);
   }
 
-  Future<List<dynamic>> getHabits() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/habits/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data;
+  /// Logout if you want to implement manual clear
+  Future<void> logout() async {
+    await clearTokens();
   }
 
-  Future<void> createHabit(Map<String, dynamic> data) async {
-    final token = await getToken();
-    await _dio.post(
-      '/habits/',
-      data: data,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<void> updateHabit(int id, Map<String, dynamic> data) async {
-    final token = await getToken();
-    await _dio.patch(
-      '/habits/$id/',
-      data: data,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<void> deleteHabit(int id) async {
-    final token = await getToken();
-    await _dio.delete(
-      '/habits/$id/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<List<dynamic>> getNotifications() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/notifications/',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data;
-  }
-
-  Future<String> getReferralCode() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/referral/code',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data['data']['code'] as String;
-  }
-
-  Future<void> logMood(int mood) async {
-    final token = await getToken();
-    await _dio.post(
-      '/mood/',
-      data: {'mood': mood, 'date': DateTime.now().toIso8601String()},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-  }
-
-  Future<Map<String, dynamic>> getMonthlyAnalytics() async {
-    final token = await getToken();
-    final userId = await getUserId();
-    final response = await _dio.get(
-      '/analytics/monthly/$userId',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return Map<String, dynamic>.from(response.data['data'] as Map);
-  }
-
-  Future<List<dynamic>> getExpenses() async {
-    final token = await getToken();
-    final userId = await getUserId();
-    final response = await _dio.post(
-      '/expense/history',
-      data: {'user_id': userId},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data['data']['expenses'] as List<dynamic>;
-  }
-
-  Future<Map<String, dynamic>> validateReceipt(
-    String userId,
-    String receipt,
-    String platform,
-  ) async {
-    final token = await getToken();
-    final response = await _dio.post(
-      '/iap/validate',
-      data: {
-        'user_id': userId,
-        'receipt': receipt,
-        'platform': platform,
-      },
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return Map<String, dynamic>.from(response.data as Map);
-  }
+  /// Add any other endpoints below...
 }
