@@ -105,6 +105,18 @@ class ApiService {
         data: {'email': email, 'password': password},
       );
 
+  Future<Response> register(String email, String password) async =>
+      await _dio.post(
+        '/auth/auth/register',
+        data: {'email': email, 'password': password},
+      );
+
+  Future<Response> login(String email, String password) async =>
+      await _dio.post(
+        '/auth/auth/login',
+        data: {'email': email, 'password': password},
+      );
+
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(
