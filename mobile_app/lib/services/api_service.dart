@@ -74,7 +74,7 @@ class ApiService {
     if (refresh == null) return false;
     try {
       final response = await _dio.post(
-        '/auth/auth/refresh',
+        '/auth/refresh',
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
       final data = response.data as Map<String, dynamic>;
@@ -91,7 +91,7 @@ class ApiService {
 
 
   Future<Response> loginWithGoogle(String idToken) async =>
-      await _dio.post('/auth/auth/google', data: {'id_token': idToken});
+      await _dio.post('/auth/google', data: {'id_token': idToken});
 
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
