@@ -93,6 +93,18 @@ class ApiService {
   Future<Response> loginWithGoogle(String idToken) async =>
       await _dio.post('/auth/auth/google', data: {'id_token': idToken});
 
+  Future<Response> register(String email, String password) async =>
+      await _dio.post(
+        '/auth/auth/register',
+        data: {'email': email, 'password': password},
+      );
+
+  Future<Response> login(String email, String password) async =>
+      await _dio.post(
+        '/auth/auth/login',
+        data: {'email': email, 'password': password},
+      );
+
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(

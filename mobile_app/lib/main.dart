@@ -15,6 +15,7 @@ import 'services/push_notification_service.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/onboarding_region_screen.dart';
 import 'screens/onboarding_income_screen.dart';
 import 'screens/onboarding_expenses_screen.dart';
@@ -77,6 +78,7 @@ class MITAApp extends StatelessWidget {
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
         '/main': (context) => const BottomNavigation(),
         '/onboarding_region': (context) => const OnboardingRegionScreen(),
         '/onboarding_income': (context) => const OnboardingIncomeScreen(),

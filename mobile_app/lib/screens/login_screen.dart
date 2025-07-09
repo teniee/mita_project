@@ -13,6 +13,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final ApiService _api = ApiService();
   bool _loading = false;
   String? _error;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _handleGoogleSignIn() async {
     setState(() {
@@ -44,9 +46,32 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await _api.loginWithGoogle(idToken);
       final accessToken = response.data['access_token'];
       final refreshToken = response.data['refresh_token'];
-      final userId = response.data['user_id'];
       await _api.saveTokens(accessToken, refreshToken);
-      await _api.saveUserId(userId);
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/main');
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = 'Login failed: $e';
+      });
+    }
+  }
+
+  Future<void> _handleEmailLogin() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await _api.login(
+        _emailController.text,
+        _passwordController.text,
+      );
+      final accessToken = response.data['access_token'];
+      final refreshToken = response.data['refresh_token'];
+      await _api.saveTokens(accessToken, refreshToken);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
@@ -86,29 +111,79 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  TextField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _loading
                       ? const CircularProgressIndicator()
-                      : ElevatedButton.icon(
-                          icon: Image.asset(
-                            'assets/logo/mitalogo.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                          label: const Text("Sign in with Google"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFD25F),
-                            foregroundColor: const Color(0xFF193C57),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                      : Column(
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFD25F),
+                                foregroundColor: const Color(0xFF193C57),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 24),
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              onPressed: _handleEmailLogin,
+                              child: const Text('Sign in'),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                            textStyle: const TextStyle(
-                              fontFamily: 'Sora',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/register'),
+                              child: const Text('Create account'),
                             ),
-                          ),
-                          onPressed: _handleGoogleSignIn,
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              icon: Image.asset(
+                                'assets/logo/mitalogo.png',
+                                width: 24,
+                                height: 24,
+                              ),
+                              label: const Text('Sign in with Google'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFD25F),
+                                foregroundColor: const Color(0xFF193C57),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 24),
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              onPressed: _handleGoogleSignIn,
+                            ),
+                          ],
                         ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
