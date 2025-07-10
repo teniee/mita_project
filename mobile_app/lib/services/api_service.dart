@@ -76,7 +76,7 @@ class ApiService {
     if (refresh == null) return false;
     try {
       final response = await _dio.post(
-        '/auth/refresh', // Should be /api/auth/refresh if your backend expects that
+        '/auth/refresh',
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
       final data = response.data as Map<String, dynamic>;
@@ -91,19 +91,15 @@ class ApiService {
     }
   }
 
-  /// Google sign-in
   Future<Response> loginWithGoogle(String idToken) async =>
       await _dio.post('/auth/google', data: {'id_token': idToken});
 
-  /// Email/Password register
   Future<Response> register(String email, String password) async =>
       await _dio.post('/auth/register', data: {'email': email, 'password': password});
 
-  /// Email/Password login
   Future<Response> login(String email, String password) async =>
       await _dio.post('/auth/login', data: {'email': email, 'password': password});
 
-  /// Onboarding
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(
@@ -113,7 +109,6 @@ class ApiService {
     );
   }
 
-  /// Get user profile
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
@@ -123,10 +118,9 @@ class ApiService {
     return Map<String, dynamic>.from(response.data);
   }
 
-  /// Manual logout
   Future<void> logout() async {
     await clearTokens();
   }
 
-  /// Add any other endpoints below...
+  // Add other endpoints here if needed
 }
