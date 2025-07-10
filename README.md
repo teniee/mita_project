@@ -182,7 +182,7 @@ GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
 FIREBASE_CONFIGURED=true
 SECRET_KEY=change_me
 # Use the asyncpg driver for SQLAlchemy's async engine
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mita
+DATABASE_URL=postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
 SMTP_HOST=mail.example.com
 SMTP_PORT=587
 SMTP_USERNAME=mailer
@@ -205,12 +205,19 @@ SENTRY_DSN=
 docker-compose up --build
 ```
 
+After the services are running, execute migrations once:
+
+```bash
+python scripts/run_migrations.py  # ensure database schema is up to date
+```
+
 ### Manual
 
 ```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+python scripts/run_migrations.py  # create/update tables
 uvicorn app.main:app --reload
 ```
 

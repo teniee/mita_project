@@ -19,4 +19,4 @@ ingress:
   host: mita.example.com
   tls: true
 redisUrl: redis://redis:6379/0
-postgresUrl: postgres://postgres:postgres@db:5432/mita
+postgresUrl: postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
