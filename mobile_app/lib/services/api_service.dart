@@ -93,27 +93,18 @@ class ApiService {
   Future<Response> loginWithGoogle(String idToken) async =>
       await _dio.post('/auth/google', data: {'id_token': idToken});
 
+
+  // POST /api/auth/register
   Future<Response> register(String email, String password) async =>
       await _dio.post(
-        '/auth/auth/register',
+        '/auth/register',
         data: {'email': email, 'password': password},
       );
 
+  // POST /api/auth/login
   Future<Response> login(String email, String password) async =>
       await _dio.post(
-        '/auth/auth/login',
-        data: {'email': email, 'password': password},
-      );
-
-  Future<Response> register(String email, String password) async =>
-      await _dio.post(
-        '/auth/auth/register',
-        data: {'email': email, 'password': password},
-      );
-
-  Future<Response> login(String email, String password) async =>
-      await _dio.post(
-        '/auth/auth/login',
+        '/auth/login',
         data: {'email': email, 'password': password},
       );
 
@@ -200,7 +191,7 @@ class ApiService {
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/users/users/me',
+      '/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
