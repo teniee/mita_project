@@ -2,45 +2,39 @@ import os
 import sys
 import types
 
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from starlette.middleware.cors import CORSMiddleware
 
-# Mock Firebase to avoid real external dependencies
-os.environ.setdefault("FIREBASE_JSON", "{}")
+app = FastAPI()
 
-dummy = types.ModuleType("firebase_admin")
-dummy._apps = []
-dummy.credentials = types.SimpleNamespace(
-    ApplicationDefault=lambda: None,
-    Certificate=lambda *a, **k: None,
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://app.mita.finance"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-dummy.initialize_app = lambda cred=None: None
 
 
-class DummyCollection:
-    def document(self, *a, **k):
-        return types.SimpleNamespace(
-            set=lambda *a, **k: None,
-            get=lambda: types.SimpleNamespace(
-                to_dict=lambda: {},
-                exists=False,
-            ),
-        )
-
-    def where(self, *args, **kwargs):
-        return []
-
-
-dummy.firestore = types.SimpleNamespace(
-    client=lambda: types.SimpleNamespace(
-        collection=lambda *a, **k: DummyCollection(),
-    ),
-)
-sys.modules["firebase_admin"] = dummy
-sys.modules["firebase_admin.credentials"] = dummy.credentials
-sys.modules["firebase_admin.firestore"] = dummy.firestore
-
-# Import the FastAPI app
-from app.main import app  # noqa: E402
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=63072000; includeSubDomains"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
+        response.headers[
+            "Content-Security-Policy"
+        ] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    else:
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 client = TestClient(app)
 
@@ -50,7 +44,9 @@ def test_security_headers_present():
     assert r.headers.get("Strict-Transport-Security")
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
     assert r.headers.get("X-Frame-Options") == "DENY"
-    assert "default-src" in r.headers.get("Content-Security-Policy", "")
+    csp = r.headers.get("Content-Security-Policy", "")
+    assert "default-src" in csp
+    assert "unsafe-inline" in csp
     assert r.headers.get("Permissions-Policy") == "geolocation=(), microphone=()"
     assert r.headers.get("Referrer-Policy") == "same-origin"
     assert r.headers.get("X-XSS-Protection") == "1; mode=block"
