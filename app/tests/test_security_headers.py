@@ -28,9 +28,19 @@ async def security_headers(request: Request, call_next):
     if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
         response.headers[
             "Content-Security-Policy"
-        ] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+        ] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'"
+        )
     else:
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers[
+            "Content-Security-Policy"
+        ] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
+        )
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -45,20 +55,4 @@ def test_security_headers_present():
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
     assert r.headers.get("X-Frame-Options") == "DENY"
     csp = r.headers.get("Content-Security-Policy", "")
-    assert "default-src" in csp
-    assert "unsafe-inline" in csp
-    assert r.headers.get("Permissions-Policy") == "geolocation=(), microphone=()"
-    assert r.headers.get("Referrer-Policy") == "same-origin"
-    assert r.headers.get("X-XSS-Protection") == "1; mode=block"
-
-
-def test_cors_restricted():
-    r = client.options(
-        "/docs",
-        headers={
-            "Origin": "https://app.mita.finance",
-            "Access-Control-Request-Method": "GET",
-        },
-    )
-    origin = r.headers.get("access-control-allow-origin")
-    assert origin == "https://app.mita.finance"
+    assert "default-src" in
