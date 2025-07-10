@@ -115,18 +115,25 @@ async def capture_request_bodies(request: Request, call_next):
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=63072000; includeSubDomains"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers[
-        "Content-Security-Policy"
-    ] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
-    )
+    if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
+        response.headers[
+            "Content-Security-Policy"
+        ] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'"
+        )
+    else:
+        response.headers[
+            "Content-Security-Policy"
+        ] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
+        )
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -183,7 +190,6 @@ for router, prefix, tags in private_routers_list:
 
 # ---- Exception Handlers ----
 
-
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     logging.error(f"HTTPException: {exc.detail}")
@@ -203,7 +209,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ---- Startup ----
-
 
 @app.on_event("startup")
 async def on_startup():
