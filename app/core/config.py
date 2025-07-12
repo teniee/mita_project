@@ -18,7 +18,10 @@ else:
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@db:5432/mita"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@"
+        "aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
+    )
 
     # Redis
     REDIS_URL: str = "redis://redis:6379"

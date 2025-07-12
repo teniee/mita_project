@@ -18,16 +18,21 @@ if not hasattr(collections, "Mapping"):
 
     collections.Mapping = collections.abc.Mapping
 
-import firebase_admin
+try:
+    import firebase_admin
+    from firebase_admin import credentials, messaging
+except Exception:  # pragma: no cover - optional dependency
+    firebase_admin = None
+    credentials = None
+    messaging = None
 from apns2.client import APNsClient
 from apns2.payload import Payload
-from firebase_admin import credentials, messaging
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.services.notification_log_service import log_notification
 
-if not firebase_admin._apps:
+if firebase_admin and not firebase_admin._apps:
     try:
         cred = credentials.ApplicationDefault()
         firebase_admin.initialize_app(cred)
