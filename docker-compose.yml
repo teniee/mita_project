@@ -2,8 +2,9 @@ version: "3.9"
 
 services:
   db:
-    image: postgres:13
+    image: postgres:15
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mita
     ports:
@@ -11,7 +12,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:6
+    image: redis:7
     ports:
       - "6379:6379"
     restart: unless-stopped
@@ -23,9 +24,9 @@ services:
       - ./secrets/.env.production
     environment:
       PYTHONPATH: "/code"
-      GOOGLE_APPLICATION_CREDENTIALS: "/app/secrets/mita-finance-firebase-adminsdk-fbsvc-3458074f8e.json"
-      GOOGLE_CREDENTIALS_PATH: "/app/secrets/mita-finance-firebase-adminsdk-fbsvc-3458074f8e.json"
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/mita
       REDIS_URL: redis://redis:6379/0
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/secrets/mita-finance-firebase-adminsdk-fbsvc-3458074f8e.json"
     depends_on:
       - db
       - redis
@@ -51,10 +52,11 @@ services:
     command: python -m app.worker
     environment:
       PYTHONPATH: "/code"
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/mita
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - redis
       - db
+      - redis
     restart: unless-stopped
 
   scheduler:
@@ -62,8 +64,9 @@ services:
     command: python scripts/rq_scheduler.py
     environment:
       PYTHONPATH: "/code"
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/mita
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      - db
       - redis
     restart: unless-stopped
-
