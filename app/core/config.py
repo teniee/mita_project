@@ -19,7 +19,7 @@ else:
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = (
-        "postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@"
+        "postgresql+psycopg2://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@"
         "aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     )
 
