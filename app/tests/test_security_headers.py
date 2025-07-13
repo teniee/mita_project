@@ -1,7 +1,3 @@
-import os
-import sys
-import types
-
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from starlette.middleware.cors import CORSMiddleware
@@ -25,18 +21,16 @@ async def security_headers(request: Request, call_next):
     )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    if request.url.path.startswith("/docs") or request.url.path.startswith("/redoc"):
-        response.headers[
-            "Content-Security-Policy"
-        ] = (
+    if request.url.path.startswith("/docs") or request.url.path.startswith(
+        "/redoc"
+    ):  # noqa: E501
+        response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'"
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
         )
     else:
-        response.headers[
-            "Content-Security-Policy"
-        ] = (
+        response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
@@ -45,6 +39,7 @@ async def security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
+
 
 client = TestClient(app)
 
@@ -55,4 +50,5 @@ def test_security_headers_present():
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
     assert r.headers.get("X-Frame-Options") == "DENY"
     csp = r.headers.get("Content-Security-Policy", "")
-    assert "default-src" in
+    assert "default-src" in csp
+    assert "cdn.jsdelivr.net" in csp
