@@ -25,3 +25,5 @@ class Transaction(Base):
     amount = Column(Float, nullable=False)
     currency = Column(String, default="USD")
     spent_at = Column(DateTime, default=datetime.utcnow)
+    timezone = Column(String, nullable=True)
+
