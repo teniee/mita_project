@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 import app.core.jwt_utils as jwt_utils
@@ -15,8 +14,7 @@ from app.services.auth_jwt_service import (
     verify_token,
 )
 
-router = APIRouter(prefix="", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+router = APIRouter(prefix="", tags=["Authentication"])
 
 
 @router.post(
