@@ -3,12 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
 from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
-from app.core.jwt_utils import (
-    create_access_token,
-    create_refresh_token,
-    hash_password,
-    verify_password,
-)
+from app.core.jwt_utils import hash_password, verify_password
+from app.services.auth_jwt_service import create_access_token, create_refresh_token
 from app.db.models import User
 from app.services.google_auth_service import authenticate_google_user
 from app.utils.response_wrapper import success_response

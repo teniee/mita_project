@@ -1,11 +1,10 @@
 
 from fastapi import HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from jose import JWTError
 from sqlalchemy.orm import Session
-from app.core.config import SECRET_KEY, ALGORITHM
 from app.core.session import get_db
-from app.core.upstash import is_token_blacklisted
+from app.services.auth_jwt_service import verify_token
 from app.db.models import User
 
 
@@ -15,12 +14,7 @@ def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        jti = payload.get("jti")
-        if jti and is_token_blacklisted(jti):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked"
-            )
+        payload = verify_token(token) or {}
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(
@@ -51,10 +45,7 @@ oauth2_refresh_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/refresh")
 
 def get_refresh_token_user(token: str = Depends(oauth2_refresh_scheme), db: Session = Depends(get_db)):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        jti = payload.get("jti")
-        if jti and is_token_blacklisted(jti):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
+        payload = verify_token(token, scope="refresh_token") or {}
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
