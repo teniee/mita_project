@@ -117,8 +117,8 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 | Method | Path                                                             | Description                              |
 | ------ | ---------------------------------------------------------------- | ---------------------------------------- |
-| POST   | `/auth/login`                                                    | Login with email/password                |
-| POST   | `/auth/register`                                                 | Register new user                        |
+| POST   | `/api/auth/login`                                                | Login with email/password                |
+| POST   | `/api/auth/register`                                             | Register new user                        |
 | GET    | `/user/profile`                                                  | Get user data                            |
 | POST   | `/onboarding/answers`                                            | Submit onboarding answers                |
 | POST   | `/transactions`                                                  | Add a new transaction                    |
