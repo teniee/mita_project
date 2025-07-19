@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -89,7 +89,7 @@ def update_goal(
         .first()
     )
     if not goal:
-        return success_response({"error": "not found"})
+        raise HTTPException(status_code=404, detail="not found")
     if data.title is not None:
         goal.title = data.title
     if data.target_amount is not None:
@@ -112,7 +112,8 @@ def delete_goal(
         )
         .first()
     )
-    if goal:
-        db.delete(goal)
-        db.commit()
+    if not goal:
+        raise HTTPException(status_code=404, detail="not found")
+    db.delete(goal)
+    db.commit()
     return success_response({"status": "deleted"})
