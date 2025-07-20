@@ -10,8 +10,11 @@ from alembic import context
 # Include your app for model imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import app.db.models  # noqa: F401
+
 # Import Base where all models are attached
-from app.db.models import Base
+# Import Base and all models so Alembic can detect schema changes
+from app.db.models.base import Base
 
 # Load Alembic config
 config = context.config

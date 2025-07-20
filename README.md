@@ -331,6 +331,12 @@ The CI workflows:
 * Errors from `runApp` and `PlatformDispatcher` sent to Crashlytics + Sentry
 * Set `SENTRY_DSN` to enable Sentry
 
+### API Conventions
+
+All FastAPI routes should return data using `success_response()` from
+`app.utils.response_wrapper`. This keeps JSON responses consistent across
+the project.
+
 
 
 

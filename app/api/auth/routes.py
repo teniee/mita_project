@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from app.utils.response_wrapper import success_response
 from sqlalchemy.orm import Session
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
@@ -53,11 +53,13 @@ async def refresh_token(request: Request):
         user_data.pop("jti", None)
         new_access = create_access_token(user_data)
         new_refresh = create_refresh_token(user_data)
-        return {
-            "access_token": new_access,
-            "refresh_token": new_refresh,
-            "token_type": "bearer",
-        }
+        return success_response(
+            {
+                "access_token": new_access,
+                "refresh_token": new_refresh,
+                "token_type": "bearer",
+            }
+        )
 
     # Fallback for legacy tokens without `scope`
     try:
@@ -67,11 +69,13 @@ async def refresh_token(request: Request):
         user_id = str(legacy["sub"])
         access = jwt_utils.create_access_token(user_id)
         refresh = jwt_utils.create_refresh_token(user_id)
-        return {
-            "access_token": access,
-            "refresh_token": refresh,
-            "token_type": "bearer",
-        }
+        return success_response(
+            {
+                "access_token": access,
+                "refresh_token": refresh,
+                "token_type": "bearer",
+            }
+        )
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
@@ -80,7 +84,7 @@ async def refresh_token(request: Request):
 async def logout(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     blacklist_token(token)
-    return JSONResponse({"message": "Successfully logged out."})
+    return success_response({"message": "Successfully logged out."})
 
 
 @router.post("/google", response_model=TokenOut)

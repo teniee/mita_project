@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -57,7 +58,10 @@ async def get_transactions(
     )
 
 
-@router.post("/receipt")
+@router.post(
+    "/receipt",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def process_receipt(
     file: UploadFile = file_upload,
     user=current_user_dep,
