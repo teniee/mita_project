@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.agent.gpt_agent_service import GPTAgentService
 from app.db.models import DailyPlan
-from app.services.template_service import AIAdviceTemplateService
 from app.engine.behavior.spending_pattern_extractor import extract_patterns
 from app.engine.mood_store import get_mood
+from app.services.template_service import AIAdviceTemplateService
 
 
 def generate_push_advice(
@@ -61,7 +61,9 @@ def generate_push_advice(
     tmpl_service = AIAdviceTemplateService(db)
     template = tmpl_service.get("push_advice_prompt")
     system_prompt = tmpl_service.get("system_prompt")
-    gpt = GPTAgentService(api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt)
+    gpt = GPTAgentService(
+        api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt
+    )
     if template:
         prompt = template.format(
             mood=mood or "unknown",

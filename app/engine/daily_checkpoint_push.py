@@ -1,5 +1,6 @@
 from datetime import date
 
+
 def get_today_checkpoint(user_id: str, calendar: dict) -> dict:
     today = date.today().isoformat()
     if today not in calendar:
@@ -12,5 +13,5 @@ def get_today_checkpoint(user_id: str, calendar: dict) -> dict:
         "planned": today_data.get("planned", {}),
         "actual": today_data.get("actual", {}),
         "total": today_data.get("total", 0),
-        "status": today_data.get("status", {})
+        "status": today_data.get("status", {}),
     }

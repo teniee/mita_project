@@ -1,7 +1,8 @@
-from datetime import date
 import importlib
 import sys
+from datetime import date
 from types import SimpleNamespace
+
 
 class DummyField:
     def __ge__(self, other):
@@ -56,7 +57,9 @@ class DummyDB:
 
 
 def test_redistribute_sums_transfers(monkeypatch):
-    monkeypatch.setitem(sys.modules, "app.db.models", SimpleNamespace(DailyPlan=DummyModel))
+    monkeypatch.setitem(
+        sys.modules, "app.db.models", SimpleNamespace(DailyPlan=DummyModel)
+    )
     mod = importlib.import_module("app.services.budget_redistributor")
 
     entries = [

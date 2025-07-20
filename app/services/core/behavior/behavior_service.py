@@ -1,12 +1,9 @@
 from datetime import datetime
 
-from app.services.core.behavior.behavioral_config import (
-    BEHAVIORAL_BIAS,
-    COOLDOWN_DAYS,
-)
 from app.services.core.behavior.behavioral_budget_allocator import (
     generate_behavioral_distribution as get_behavioral_allocation,
 )
+from app.services.core.behavior.behavioral_config import BEHAVIORAL_BIAS, COOLDOWN_DAYS
 
 
 def generate_behavioral_calendar(

@@ -1,12 +1,12 @@
-
 from app.services.core.analytics.daily_checkpoint import get_today_budget
+
 
 def test_get_today_budget():
     calendar = [
         {
             "date": "2023-04-01",
             "planned_budget": {"food": 50, "transport": 20},
-            "actual_spent": {"food": 30, "transport": 5}
+            "actual_spent": {"food": 30, "transport": 5},
         }
     ]
     result = get_today_budget(calendar, "2023-04-01")

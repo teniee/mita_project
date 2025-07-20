@@ -1,7 +1,8 @@
 from adaptive_behavior_agent import AdaptiveBehaviorAgent
+from category_priority import get_priority
 from cohort_drift_tracker import CohortDriftTracker
 from expense_journal import ExpenseJournal
-from category_priority import get_priority
+
 
 class AdaptiveBehaviorLogic:
     def __init__(self):
@@ -20,11 +21,14 @@ class AdaptiveBehaviorLogic:
             recommendations.append("Cohort drift detected — re-onboard user")
         if redis_freq > 3:
             recommendations.append("User is unstable — tighten discretionary budget")
-        if last_action and last_action["action"] == "edit" and last_action["data"]["category"] == "entertainment":
+        if (
+            last_action
+            and last_action["action"] == "edit"
+            and last_action["data"]["category"] == "entertainment"
+        ):
             if get_priority("entertainment") < 30:
-                recommendations.append("Too many impulse edits — recommend control challenge")
+                recommendations.append(
+                    "Too many impulse edits — recommend control challenge"
+                )
 
-        return {
-            "cluster_policy": policy,
-            "recommendations": recommendations
-        }
+        return {"cluster_policy": policy, "recommendations": recommendations}

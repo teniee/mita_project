@@ -1,4 +1,5 @@
-from typing import List, Dict
+from typing import Dict, List
+
 
 def predict_user_behavior(transactions: List[Dict], income: float) -> str:
     """

@@ -1,5 +1,6 @@
-from typing import List, Dict
 from datetime import datetime
+from typing import Dict, List
+
 
 def aggregate_monthly_data(calendar: List[Dict], month: str) -> Dict[str, float]:
     """

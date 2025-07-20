@@ -1,4 +1,3 @@
-
 from app.engine.calendar_engine import CalendarEngine
 
 
@@ -18,6 +17,4 @@ def test_calendar_engine_days():
     assert "groceries" in first_day["planned_budget"]
 
     # Entertainment should appear on at least one day
-    assert any(
-        "entertainment" in day["planned_budget"] for day in calendar.values()
-    )
+    assert any("entertainment" in day["planned_budget"] for day in calendar.values())

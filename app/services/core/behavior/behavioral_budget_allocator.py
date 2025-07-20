@@ -1,13 +1,13 @@
-from datetime import datetime, timedelta
 from collections import defaultdict
-from typing import List, Dict
+from datetime import datetime, timedelta
+from typing import Dict, List
 
 CATEGORY_TIME_BIAS: Dict[str, List[float]] = {
     "entertainment events": [0.1, 0.1, 0.1, 0.2, 0.6, 0.9, 1.0],
     "dining out": [0.1, 0.1, 0.2, 0.4, 0.8, 1.0, 0.9],
     "clothing": [0.1, 0.1, 0.1, 0.2, 0.6, 0.9, 0.9],
     "groceries": [0.8, 0.8, 0.8, 0.7, 0.6, 0.3, 0.3],
-    "transport": [0.7, 0.7, 0.7, 0.7, 0.7, 0.2, 0.2]
+    "transport": [0.7, 0.7, 0.7, 0.7, 0.7, 0.2, 0.2],
 }
 
 CATEGORY_COOLDOWN: Dict[str, int] = {
@@ -15,10 +15,13 @@ CATEGORY_COOLDOWN: Dict[str, int] = {
     "dining out": 2,
     "clothing": 5,
     "groceries": 1,
-    "transport": 0
+    "transport": 0,
 }
 
-def get_behavioral_allocation(start_date: str, num_days: int, budget_plan: Dict[str, float]) -> List[Dict[str, float]]:
+
+def get_behavioral_allocation(
+    start_date: str, num_days: int, budget_plan: Dict[str, float]
+) -> List[Dict[str, float]]:
     """Distribute behavioral budget across days using weekday bias and cooldown.
 
     :param start_date: Start date in ``YYYY-MM-DD`` format
@@ -49,7 +52,11 @@ def get_behavioral_allocation(start_date: str, num_days: int, budget_plan: Dict[
                 slots.append((i, score))
 
         slots.sort(key=lambda x: -x[1])
-        max_slots = 4 if category in ["entertainment events", "clothing", "dining out"] else len(slots)
+        max_slots = (
+            4
+            if category in ["entertainment events", "clothing", "dining out"]
+            else len(slots)
+        )
         selected = sorted([i for i, _ in slots[:max_slots]])
 
         if selected:

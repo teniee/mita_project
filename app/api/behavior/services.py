@@ -10,14 +10,8 @@ def generate_behavior(
     profile: dict,
     mood_log: dict,
     challenge_log: dict,
-    calendar_log: dict
+    calendar_log: dict,
 ) -> dict:
     return generate_behavioral_calendar(
-        user_id,
-        year,
-        month,
-        profile,
-        mood_log,
-        challenge_log,
-        calendar_log
+        user_id, year, month, profile, mood_log, challenge_log, calendar_log
     )

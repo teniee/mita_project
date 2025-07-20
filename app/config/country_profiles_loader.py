@@ -1,24 +1,24 @@
-import os
-import yaml
 import datetime
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
+
+import yaml
 
 CONFIG_DIR = Path(__file__).resolve().parent / "country_profiles"
 
 _FALLBACK_STUB = {
     "currency": "USD",
-    "mandatory_categories": ["housing", "utilities", "healthcare", "debts", "insurance"],
-    "seasonal_factors": {
-        "winter": {},
-        "summer": {}
-    },
-    "class_thresholds": {
-        "low": 2000,
-        "middle": 5000,
-        "high": 10000
-    },
+    "mandatory_categories": [
+        "housing",
+        "utilities",
+        "healthcare",
+        "debts",
+        "insurance",
+    ],
+    "seasonal_factors": {"winter": {}, "summer": {}},
+    "class_thresholds": {"low": 2000, "middle": 5000, "high": 10000},
     "default_behavior": "balanced",
     "classes": {
         "middle": {
@@ -30,8 +30,9 @@ _FALLBACK_STUB = {
             "entertainment": 0.07,
             "miscellaneous": 0.07,
         }
-    }
+    },
 }
+
 
 def _load_yaml(path: Path) -> dict:
     try:
@@ -40,6 +41,7 @@ def _load_yaml(path: Path) -> dict:
     except Exception as e:
         logging.error("Failed to load YAML %s: %s", path, e)
         return {}
+
 
 @lru_cache(maxsize=32)
 def get_profile(country_code: str) -> dict:
@@ -60,6 +62,7 @@ def get_profile(country_code: str) -> dict:
 
     return data
 
+
 def current_season(date: datetime.date = None) -> str:
     d = date or datetime.date.today()
     if d.month in (12, 1, 2):
@@ -68,19 +71,29 @@ def current_season(date: datetime.date = None) -> str:
         return "summer"
     return "neutral"
 
-def get_class_split(country_code: str, class_key: str, date: datetime.date = None) -> dict:
+
+def get_class_split(
+    country_code: str, class_key: str, date: datetime.date = None
+) -> dict:
     profile = get_profile(country_code)
     split = profile["classes"].get(class_key)
     if not split:
-        split = profile["classes"].get("middle") or next(iter(profile["classes"].values()))
+        split = profile["classes"].get("middle") or next(
+            iter(profile["classes"].values())
+        )
     season = current_season(date)
     factors = profile["seasonal_factors"].get(season, {})
-    return {cat: round(share * factors.get(cat, 1.0), 4) for cat, share in split.items()}
+    return {
+        cat: round(share * factors.get(cat, 1.0), 4) for cat, share in split.items()
+    }
+
 
 def _load_all_profiles() -> dict:
     profiles = {}
     if not CONFIG_DIR.exists() or not CONFIG_DIR.is_dir():
-        raise RuntimeError(f"Profile directory {CONFIG_DIR} is missing or not a directory.")
+        raise RuntimeError(
+            f"Profile directory {CONFIG_DIR} is missing or not a directory."
+        )
 
     for yaml_file in CONFIG_DIR.glob("*.yaml"):
         country_code = yaml_file.stem.upper()
@@ -104,6 +117,7 @@ def _load_all_profiles() -> dict:
         raise RuntimeError(f"No valid country profiles found in {CONFIG_DIR}")
 
     return profiles
+
 
 # Globally available dictionary of all loaded profiles
 COUNTRY_PROFILES = _load_all_profiles()

@@ -1,6 +1,7 @@
+from typing import List
 
 from pydantic import BaseModel
-from typing import List
+
 
 class GoalState(BaseModel):
     user_id: str
@@ -12,15 +13,18 @@ class GoalState(BaseModel):
     goal: float
     saved: float
 
+
 class GoalProgressInput(BaseModel):
     calendar: List[dict]
     target: float
+
 
 class ProgressRequest(BaseModel):
     user_id: str
     year: int
     month: int
     locale: str = "en_US"
+
 
 class ProgressOut(BaseModel):
     progress_pct: float

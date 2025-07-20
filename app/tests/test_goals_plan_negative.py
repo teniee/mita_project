@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 
 from app.api.goals import routes as goals_routes
 from app.api.plan import routes as plan_routes

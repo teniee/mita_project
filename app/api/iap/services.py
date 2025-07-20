@@ -1,9 +1,10 @@
 """Receipt validation helpers for App Store and Google Play."""
 
-from datetime import datetime
-from typing import Any, Dict
 import json
 import os
+from datetime import datetime
+from typing import Any, Dict
+
 import httpx
 from fastapi.concurrency import run_in_threadpool
 from google.oauth2 import service_account
@@ -46,7 +47,9 @@ async def validate_receipt(
             int(latest.get("purchase_date_ms", 0)) / 1000
         )
         prod = latest.get("product_id", "").lower()
-        plan = "annual" if any(x in prod for x in ["1y", "annual", "year"]) else "monthly"
+        plan = (
+            "annual" if any(x in prod for x in ["1y", "annual", "year"]) else "monthly"
+        )
         return {
             "status": "valid",
             "platform": "ios",
@@ -60,12 +63,16 @@ async def validate_receipt(
         if not creds_path:
             return {"status": "invalid", "reason": "missing credentials"}
         try:
+
             def _fetch():
                 credentials = service_account.Credentials.from_service_account_file(
                     creds_path
                 )
                 service = build(
-                    "androidpublisher", "v3", credentials=credentials, cache_discovery=False
+                    "androidpublisher",
+                    "v3",
+                    credentials=credentials,
+                    cache_discovery=False,
                 )
                 payload = json.loads(receipt)
                 return (
@@ -87,8 +94,7 @@ async def validate_receipt(
             int(result.get("expiryTimeMillis", 0)) / 1000
         )
         starts_at = datetime.utcfromtimestamp(
-            int(result.get("startTimeMillis", result.get("expiryTimeMillis", 0)))
-            / 1000
+            int(result.get("startTimeMillis", result.get("expiryTimeMillis", 0))) / 1000
         )
         plan = "annual" if "P1Y" in result.get("subscriptionPeriod", "") else "monthly"
         return {

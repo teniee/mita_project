@@ -1,5 +1,5 @@
-from app.services.template_service import AIAdviceTemplateService
 from app.db.models.ai_advice_template import AIAdviceTemplate
+from app.services.template_service import AIAdviceTemplateService
 
 
 class DummyQuery:
@@ -54,4 +54,3 @@ def test_template_crud():
 
     service.delete("test")
     assert service.get("test") is None
-

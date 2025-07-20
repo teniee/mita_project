@@ -65,9 +65,7 @@ def update_habit(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     habit = (
-        db.query(Habit)
-        .filter(Habit.id == habit_id, Habit.user_id == user.id)
-        .first()
+        db.query(Habit).filter(Habit.id == habit_id, Habit.user_id == user.id).first()
     )
     if not habit:
         raise HTTPException(status_code=404, detail="not found")
@@ -86,9 +84,7 @@ def delete_habit(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     habit = (
-        db.query(Habit)
-        .filter(Habit.id == habit_id, Habit.user_id == user.id)
-        .first()
+        db.query(Habit).filter(Habit.id == habit_id, Habit.user_id == user.id).first()
     )
     if not habit:
         raise HTTPException(status_code=404, detail="not found")

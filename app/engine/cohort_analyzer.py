@@ -1,5 +1,6 @@
 from typing import Dict
 
+
 class CohortAnalyzer:
     def __init__(self):
         self.user_profiles = {}  # user_id -> profile data
@@ -28,7 +29,9 @@ class CohortAnalyzer:
         else:
             style = "neutral"
 
-        challenge_engaged = any(cat in ["coffee", "entertainment"] for cat in categories)
+        challenge_engaged = any(
+            cat in ["coffee", "entertainment"] for cat in categories
+        )
         tag = "challenge-prone" if challenge_engaged else "core-user"
 
         region = profile.get("region", "US-CA")
@@ -48,6 +51,6 @@ if __name__ == "__main__":
     demo = {
         "income": 4500,
         "behavior": "impulsive",
-        "categories": ["coffee", "shopping", "rent"]
+        "categories": ["coffee", "shopping", "rent"],
     }
     print(determine_cohort(demo))

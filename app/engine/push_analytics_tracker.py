@@ -1,13 +1,11 @@
-
 from collections import defaultdict
+
 
 class PushAnalyticsTracker:
     def __init__(self):
-        self.push_stats = defaultdict(lambda: {
-            "delivered": 0,
-            "opened": 0,
-            "ignored": 0
-        })
+        self.push_stats = defaultdict(
+            lambda: {"delivered": 0, "opened": 0, "ignored": 0}
+        )
 
     def log_delivery(self, region: str):
         self.push_stats[region]["delivered"] += 1
@@ -27,6 +25,6 @@ class PushAnalyticsTracker:
                 "opened": stats["opened"],
                 "ignored": stats["ignored"],
                 "open_rate": round(stats["opened"] / total, 2) if total else 0,
-                "ignore_rate": round(stats["ignored"] / total, 2) if total else 0
+                "ignore_rate": round(stats["ignored"] / total, 2) if total else 0,
             }
         return report

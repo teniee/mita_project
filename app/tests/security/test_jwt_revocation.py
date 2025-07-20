@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services import auth_jwt_service as svc
 from app.api.auth import routes as auth_routes
+from app.services import auth_jwt_service as svc
 
 
 @pytest.mark.asyncio

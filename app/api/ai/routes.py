@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models import AIAnalysisSnapshot
-from app.api.dependencies import get_current_user
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.utils.response_wrapper import success_response
 
@@ -34,7 +34,9 @@ async def get_latest_ai_snapshots(
 
 @router.post("/snapshot")
 async def create_ai_snapshot(
-    *, year: int, month: int,
+    *,
+    year: int,
+    month: int,
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):

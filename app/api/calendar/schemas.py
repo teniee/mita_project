@@ -1,7 +1,8 @@
+from datetime import date
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
-from typing import List, Dict
-from datetime import date
+
 
 class GenerateCalendarRequest(BaseModel):
     calendar_id: str
@@ -9,14 +10,17 @@ class GenerateCalendarRequest(BaseModel):
     num_days: int
     budget_plan: Dict[str, float]
 
+
 class CalendarDayOut(BaseModel):
     date: date
     expenses: Dict[str, float]
     total: float
 
+
 class CalendarOut(BaseModel):
     calendar_id: str
     days: List[CalendarDayOut]
+
 
 class EditDayRequest(BaseModel):
     updates: Dict[str, float]
@@ -27,6 +31,7 @@ class DayInput(BaseModel):
     month: int
     day: int
 
+
 class CalendarDayStateOut(BaseModel):
     state: dict
 
@@ -34,6 +39,7 @@ class CalendarDayStateOut(BaseModel):
 class RedistributeInput(BaseModel):
     calendar: dict
     strategy: str = "balance"
+
 
 class RedistributeResult(BaseModel):
     updated_calendar: dict
@@ -46,6 +52,7 @@ class ShellConfig(BaseModel):
     weights: Dict[str, float]
     year: int
     month: int
+
 
 class ShellCalendarOut(BaseModel):
     calendar: dict

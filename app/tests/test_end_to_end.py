@@ -15,13 +15,13 @@ import logging
 import time
 
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.rq import RqIntegration
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_limiter.depends import RateLimiter
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.rq import RqIntegration
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
@@ -59,7 +59,6 @@ from app.api.users.routes import router as users_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.utils.response_wrapper import error_response, success_response
-
 
 # --- Sentry Initialization ---
 sentry_sdk.init(
@@ -117,7 +116,9 @@ async def capture_request_bodies(request: Request, call_next):
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=63072000; includeSubDomains"
+    )
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Content-Security-Policy"] = "default-src 'self'"

@@ -1,11 +1,13 @@
-
 from collections import defaultdict
+
 
 class AnalyticsEngine:
     def __init__(self):
         self.data = defaultdict(lambda: defaultdict(list))  # region -> metric -> values
 
-    def log_behavior(self, user_id, region, cohort, behavior_tag, challenge_success, goal_completed):
+    def log_behavior(
+        self, user_id, region, cohort, behavior_tag, challenge_success, goal_completed
+    ):
         self.data[region]["cohort"].append(cohort)
         self.data[region]["behavior"].append(behavior_tag)
         self.data[region]["challenge_success"].append(challenge_success)
@@ -29,4 +31,5 @@ class AnalyticsEngine:
 
     def _top_values(self, lst):
         from collections import Counter
+
         return dict(Counter(lst).most_common(3))

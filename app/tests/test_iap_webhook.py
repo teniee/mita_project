@@ -1,7 +1,8 @@
+from types import SimpleNamespace
+
 import pytest
 
 from app.api.iap.routes import iap_webhook
-from types import SimpleNamespace
 
 
 class DummyQuery:

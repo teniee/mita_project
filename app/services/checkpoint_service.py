@@ -1,8 +1,10 @@
-from typing import Dict, Any
 from statistics import mean
+from typing import Any, Dict
 
 
-def calculate_checkpoint(user_profile: Dict[str, Any], transaction_data: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_checkpoint(
+    user_profile: Dict[str, Any], transaction_data: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Calculate a financial checkpoint for the user.
 
@@ -38,11 +40,13 @@ def calculate_checkpoint(user_profile: Dict[str, Any], transaction_data: Dict[st
         "category_totals": category_totals,
         "category_averages": category_averages,
         "behavior_score": behavior_score,
-        "checkpoint_status": "generated"
+        "checkpoint_status": "generated",
     }
 
 
-def assess_behavior(user_profile: Dict[str, Any], category_totals: Dict[str, float]) -> str:
+def assess_behavior(
+    user_profile: Dict[str, Any], category_totals: Dict[str, float]
+) -> str:
     """Simple behavior analysis.
 
     If spending on ``entertainment`` exceeds 30% of total, or ``dining out`` is

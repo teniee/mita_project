@@ -5,6 +5,7 @@ def check_spending(calendar: list, day: int, category: str) -> float:
             return float(item.get("spent", 0.0))
     return 0.0
 
+
 def check_limit(calendar: list, day: int, category: str) -> float:
     """Return remaining budget for a category on a given day."""
     for item in calendar:

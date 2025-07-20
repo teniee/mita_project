@@ -1,11 +1,12 @@
-
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from datetime import datetime, timedelta
 from collections import defaultdict
+from datetime import datetime, timedelta
+
+from fastapi import HTTPException, Request
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # In-memory rate tracking
 rate_limit_store = defaultdict(list)
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_requests: int = 5, window_seconds: int = 60):
@@ -19,7 +20,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             client_ip = request.client.host
             now = datetime.utcnow()
             key = f"{client_ip}:{path}"
-            rate_limit_store[key] = [t for t in rate_limit_store[key] if now - t < self.window]
+            rate_limit_store[key] = [
+                t for t in rate_limit_store[key] if now - t < self.window
+            ]
             rate_limit_store[key].append(now)
 
             if len(rate_limit_store[key]) > self.max_requests:

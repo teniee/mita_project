@@ -1,4 +1,5 @@
 import os
+
 import psycopg2
 
 
@@ -21,7 +22,9 @@ def explain_slow_queries(limit: int = 10) -> None:
             cur.execute(query, (limit,))
             rows = cur.fetchall()
             for i, row in enumerate(rows, 1):
-                print(f"{i}. {row[0][:100]}\n   total_time={row[1]:.2f}s calls={row[2]}")
+                print(
+                    f"{i}. {row[0][:100]}\n   total_time={row[1]:.2f}s calls={row[2]}"
+                )
     finally:
         conn.close()
 
