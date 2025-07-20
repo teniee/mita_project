@@ -44,45 +44,35 @@ async def generate(data: GenerateCalendarRequest):
         data.num_days,
         data.budget_plan,
     )
-    return success_response({
-        "calendar_id": data.calendar_id,
-        "days": days,
-    })
+    return success_response(
+        {
+            "calendar_id": data.calendar_id,
+            "days": days,
+        }
+    )
 
 
-@router.get(
-    "/day/{user_id}/{year}/{month}/{day}",
-    response_model=CalendarDayOut,
-)
+@router.get("/day/{year}/{month}/{day}", response_model=CalendarDayOut)
 async def get_day_view(
-    user_id: str,
     year: int,
     month: int,
     day: int,
     user=Depends(get_current_user),  # noqa: B008
 ):
-    if user_id != user.id:
-        raise HTTPException(status_code=403, detail="forbidden")
     calendar = fetch_calendar(user.id, year, month)
     if day not in calendar:
         raise HTTPException(status_code=404, detail="Day not found")
     return success_response(calendar[day])
 
 
-@router.patch(
-    "/day/{user_id}/{year}/{month}/{day}",
-    response_model=CalendarDayOut,
-)
+@router.patch("/day/{year}/{month}/{day}", response_model=CalendarDayOut)
 async def edit_day(
-    user_id: str,
     year: int,
     month: int,
     day: int,
     payload: EditDayRequest = Body(...),
     user=Depends(get_current_user),  # noqa: B008
 ):
-    if user_id != user.id:
-        raise HTTPException(status_code=403, detail="forbidden")
     calendar = fetch_calendar(user.id, year, month)
     if day not in calendar:
         raise HTTPException(status_code=404, detail="Day not found")
@@ -93,10 +83,9 @@ async def edit_day(
 
 @router.post("/day_state", response_model=CalendarDayStateOut)
 async def get_day_state(
-    payload: DayInput, user=Depends(get_current_user)  # noqa: B008
+    payload: DayInput,
+    user=Depends(get_current_user),  # noqa: B008
 ):
-    if payload.user_id != user.id:
-        raise HTTPException(status_code=403, detail="forbidden")
     state = fetch_day_state(
         user.id,
         payload.year,
@@ -118,9 +107,8 @@ async def redistribute(payload: RedistributeInput):
 
 @router.post("/shell", response_model=ShellCalendarOut)
 async def get_shell(
-    payload: ShellConfig, user=Depends(get_current_user)  # noqa: B008
+    payload: ShellConfig,
+    user=Depends(get_current_user),  # noqa: B008
 ):
-    if payload.user_id != user.id:
-        raise HTTPException(status_code=403, detail="forbidden")
-    calendar = generate_shell_calendar(payload.user_id, payload.dict())
+    calendar = generate_shell_calendar(user.id, payload.dict())
     return success_response({"calendar": calendar})

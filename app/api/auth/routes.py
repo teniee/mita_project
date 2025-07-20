@@ -11,6 +11,7 @@ from app.core.session import get_db
 from app.services.auth_jwt_service import (
     blacklist_token,
     create_access_token,
+    create_refresh_token,
     verify_token,
 )
 
@@ -45,11 +46,18 @@ async def refresh_token(request: Request):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     payload = verify_token(token, scope="refresh_token")
     if payload:
+        blacklist_token(token)
         user_data = {k: payload[k] for k in payload}
         user_data.pop("exp", None)
         user_data.pop("scope", None)
+        user_data.pop("jti", None)
         new_access = create_access_token(user_data)
-        return {"access_token": new_access, "token_type": "bearer"}
+        new_refresh = create_refresh_token(user_data)
+        return {
+            "access_token": new_access,
+            "refresh_token": new_refresh,
+            "token_type": "bearer",
+        }
 
     # Fallback for legacy tokens without `scope`
     try:
