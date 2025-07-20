@@ -10,6 +10,7 @@ from app.core.session import get_db
 
 # assumes User is defined in models
 from app.db.models.user import User
+from app.utils.response_wrapper import success_response
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
 from app.api.budget.services import fetch_spent_by_category  # isort:skip
@@ -37,7 +38,7 @@ async def spent(
     result = fetch_spent_by_category(db, user.id, year, month)
     if inspect.isawaitable(result):
         result = await result
-    return result
+    return success_response(result)
 
 
 @router.get("/remaining")
@@ -59,4 +60,4 @@ async def remaining(
     result = fetch_remaining_budget(db, user.id, year, month)
     if inspect.isawaitable(result):
         result = await result
-    return result
+    return success_response(result)

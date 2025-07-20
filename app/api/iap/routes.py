@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -14,7 +15,11 @@ from app.utils.response_wrapper import success_response
 router = APIRouter(prefix="/iap", tags=["iap"])
 
 
-@router.post("/validate", response_model=dict)
+@router.post(
+    "/validate",
+    response_model=dict,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def validate(
     payload: IAPReceipt,
     user=Depends(get_current_user),

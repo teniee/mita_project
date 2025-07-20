@@ -20,6 +20,7 @@ class AdvisoryService:
         self.db = db
 
     def _store_advice(self, user_id: str, type_: str, text: str):
+        """Persist an advice entry in the database."""
         advice = BudgetAdvice(
             user_id=user_id,
             date=datetime.utcnow(),
@@ -32,6 +33,7 @@ class AdvisoryService:
         return advice
 
     def evaluate_user_risk(self, user_id: str) -> dict:
+        """Run the risk predictor and save the generated advice."""
         result = evaluate_user_risk(user_id)
         self._store_advice(user_id, "risk", result.get("reason", ""))
         return result
@@ -39,6 +41,7 @@ class AdvisoryService:
     def can_user_afford_installment(
         self, user_id: str, price: float, months: int
     ) -> dict:
+        """Check installment affordability and store advice if not."""
         result = can_user_afford_installment(user_id, price, months)
         if not result.get("can_afford"):
             self._store_advice(
