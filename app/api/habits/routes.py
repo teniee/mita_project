@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -70,7 +70,7 @@ def update_habit(
         .first()
     )
     if not habit:
-        return success_response({"error": "not found"})
+        raise HTTPException(status_code=404, detail="not found")
     if data.title is not None:
         habit.title = data.title
     if data.description is not None:
@@ -90,7 +90,8 @@ def delete_habit(
         .filter(Habit.id == habit_id, Habit.user_id == user.id)
         .first()
     )
-    if habit:
-        db.delete(habit)
-        db.commit()
+    if not habit:
+        raise HTTPException(status_code=404, detail="not found")
+    db.delete(habit)
+    db.commit()
     return success_response({"status": "deleted"})

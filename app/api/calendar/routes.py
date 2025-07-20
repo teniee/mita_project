@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 
 # ---------------------------- Schemas ----------------------------
 from app.api.calendar.schemas import (
@@ -29,6 +29,7 @@ from app.engine.budget_redistributor import (
 )
 
 from app.utils.response_wrapper import success_response
+from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -50,28 +51,33 @@ async def generate(data: GenerateCalendarRequest):
 
 
 @router.get(
-    "/day/{user_id}/{year}/{month}/{day}",
+    "/day/{year}/{month}/{day}",
     response_model=CalendarDayOut,
 )
-async def get_day_view(user_id: str, year: int, month: int, day: int):
-    calendar = fetch_calendar(user_id, year, month)
+async def get_day_view(
+    year: int,
+    month: int,
+    day: int,
+    user=Depends(get_current_user),  # noqa: B008
+):
+    calendar = fetch_calendar(user.id, year, month)
     if day not in calendar:
         raise HTTPException(status_code=404, detail="Day not found")
     return success_response(calendar[day])
 
 
 @router.patch(
-    "/day/{user_id}/{year}/{month}/{day}",
+    "/day/{year}/{month}/{day}",
     response_model=CalendarDayOut,
 )
 async def edit_day(
-    user_id: str,
     year: int,
     month: int,
     day: int,
     payload: EditDayRequest = Body(...),
+    user=Depends(get_current_user),  # noqa: B008
 ):
-    calendar = fetch_calendar(user_id, year, month)
+    calendar = fetch_calendar(user.id, year, month)
     if day not in calendar:
         raise HTTPException(status_code=404, detail="Day not found")
 
@@ -80,9 +86,11 @@ async def edit_day(
 
 
 @router.post("/day_state", response_model=CalendarDayStateOut)
-async def get_day_state(payload: DayInput):
+async def get_day_state(
+    payload: DayInput, user=Depends(get_current_user)  # noqa: B008
+):
     state = fetch_day_state(
-        payload.user_id,
+        user.id,
         payload.year,
         payload.month,
         payload.day,
@@ -101,6 +109,8 @@ async def redistribute(payload: RedistributeInput):
 
 
 @router.post("/shell", response_model=ShellCalendarOut)
-async def get_shell(payload: ShellConfig):
-    calendar = generate_shell_calendar(payload.user_id, payload.dict())
+async def get_shell(
+    payload: ShellConfig, user=Depends(get_current_user)  # noqa: B008
+):
+    calendar = generate_shell_calendar(user.id, payload.dict())
     return success_response({"calendar": calendar})

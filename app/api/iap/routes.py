@@ -8,6 +8,7 @@ from app.api.iap.services import validate_receipt
 from app.core.session import get_db
 from app.db.models import Subscription, User
 from app.utils.response_wrapper import success_response
+from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/iap", tags=["iap"])
 
@@ -15,10 +16,11 @@ router = APIRouter(prefix="/iap", tags=["iap"])
 @router.post("/validate", response_model=dict)
 async def validate(
     payload: IAPReceipt,
+    user=Depends(get_current_user),
     db: Session = Depends(get_db),  # noqa: B008
 ):
     result = validate_receipt(
-        payload.user_id,
+        user.id,
         payload.receipt,
         payload.platform,
     )
@@ -26,7 +28,7 @@ async def validate(
         return success_response(result)
 
     sub = Subscription(
-        user_id=payload.user_id,
+        user_id=user.id,
         platform=result["platform"],
         plan=result.get("plan", "standard"),
         receipt={"raw": payload.receipt},
@@ -35,7 +37,7 @@ async def validate(
     )
     db.add(sub)
 
-    user = db.query(User).filter(User.id == payload.user_id).first()
+    user = db.query(User).filter(User.id == user.id).first()
     if user:
         user.is_premium = True
         user.premium_until = result["expires_at"]

@@ -23,7 +23,6 @@ class EditDayRequest(BaseModel):
 
 
 class DayInput(BaseModel):
-    user_id: str
     year: int
     month: int
     day: int
@@ -41,7 +40,6 @@ class RedistributeResult(BaseModel):
 
 
 class ShellConfig(BaseModel):
-    user_id: str
     savings_target: float
     income: float
     fixed: Dict[str, float]
