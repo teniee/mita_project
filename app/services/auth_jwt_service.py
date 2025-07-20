@@ -83,7 +83,7 @@ def blacklist_token(token: str) -> None:
             jti = payload.get("jti")
             exp = payload.get("exp")
             if jti and exp:
-                ttl = max(0, int(exp - time.time()))
+                ttl = max(1, int(exp - time.time()))
                 upstash_blacklist_token(jti, ttl)
             break
         except JWTError:
