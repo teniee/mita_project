@@ -1,8 +1,8 @@
+from mita_calendar.calendar_engine_behavioral import build_calendar
+from mita_calendar.calendar_store import get_calendar, save_calendar
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from mita_calendar.calendar_engine_behavioral import build_calendar
-from mita_calendar.calendar_store import save_calendar, get_calendar
 
 @api_view(["POST"])
 def generate_calendar(request):
@@ -21,6 +21,7 @@ def generate_calendar(request):
         return Response({"calendar_id": calendar_id, "days": calendar_days})
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
 
 @api_view(["GET"])
 def fetch_calendar(request):

@@ -19,5 +19,5 @@ def get_today_checkpoint(user_id: str, calendar: Dict[str, Dict]) -> Dict:
         "planned": today_data.get("planned", {}),
         "actual": today_data.get("actual", {}),
         "total": today_data.get("total", 0),
-        "status": today_data.get("status", {})
+        "status": today_data.get("status", {}),
     }

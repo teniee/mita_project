@@ -1,8 +1,10 @@
-from typing import List, Dict, Any
 from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
-def check_monthly_challenge_eligibility(calendar: List[Dict], today_date: str,
-                                        challenge_log: Dict[str, Any]) -> Dict[str, Any]:
+
+def check_monthly_challenge_eligibility(
+    calendar: List[Dict], today_date: str, challenge_log: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Returns eligibility for 30-day no-overspend challenge.
     challenge_log = {
@@ -19,7 +21,7 @@ def check_monthly_challenge_eligibility(calendar: List[Dict], today_date: str,
         if (today - last_date).days < 30:
             return {
                 "eligible": False,
-                "reason": f"Cooldown active until {(last_date + timedelta(days=30)).isoformat()}"
+                "reason": f"Cooldown active until {(last_date + timedelta(days=30)).isoformat()}",
             }
 
     # Count streak days (terminate streak on first overspent)
@@ -38,10 +40,6 @@ def check_monthly_challenge_eligibility(calendar: List[Dict], today_date: str,
             "streak_days": streak,
             "reward": "-20%_annual",
             "activation": "manual",
-            "claimable": True
+            "claimable": True,
         }
-    return {
-        "eligible": False,
-        "streak_days": streak,
-        "claimable": False
-    }
+    return {"eligible": False, "streak_days": streak, "claimable": False}

@@ -1,6 +1,9 @@
 from typing import Dict
 
-def suggest_budget_adjustments(calendar: Dict[str, Dict], income: float) -> Dict[str, str]:
+
+def suggest_budget_adjustments(
+    calendar: Dict[str, Dict], income: float
+) -> Dict[str, str]:
     """
     Suggests how to adjust user's budget.
     Returns dict: category -> suggestion

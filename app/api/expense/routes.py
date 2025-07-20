@@ -1,15 +1,9 @@
 from fastapi import APIRouter, Depends
-from app.api.dependencies import get_current_user
 
-from app.schemas.expense import (
-    ExpenseEntry,
-    ExpenseHistoryOut,
-    ExpenseOut,
-)
-from app.services.expense_service import (  # noqa: E501
-    add_user_expense,
-    get_user_expense_history,
-)
+from app.api.dependencies import get_current_user
+from app.schemas.expense import ExpenseEntry, ExpenseHistoryOut, ExpenseOut
+from app.services.expense_service import add_user_expense  # noqa: E501
+from app.services.expense_service import get_user_expense_history
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/expense", tags=["expense"])

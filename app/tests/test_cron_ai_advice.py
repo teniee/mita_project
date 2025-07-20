@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from app.services.core.engine.cron_task_ai_advice import run_ai_advice_batch
 
@@ -78,7 +78,9 @@ def test_run_ai_advice_batch_sends(monkeypatch):
 
     monkeypatch.setattr(
         "app.services.core.engine.cron_task_ai_advice.datetime",
-        SimpleNamespace(utcnow=lambda: datetime(2025, 1, 1, 8, 0, 0, tzinfo=timezone.utc)),
+        SimpleNamespace(
+            utcnow=lambda: datetime(2025, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
+        ),
     )
 
     run_ai_advice_batch()
@@ -122,7 +124,9 @@ def test_run_ai_advice_batch_skips_outside_hour(monkeypatch):
     # force utc_now in module to a time not equal to 08:00
     monkeypatch.setattr(
         "app.services.core.engine.cron_task_ai_advice.datetime",
-        SimpleNamespace(utcnow=lambda: datetime(2025, 1, 1, 7, 0, 0, tzinfo=timezone.utc)),
+        SimpleNamespace(
+            utcnow=lambda: datetime(2025, 1, 1, 7, 0, 0, tzinfo=timezone.utc)
+        ),
     )
 
     run_ai_advice_batch()

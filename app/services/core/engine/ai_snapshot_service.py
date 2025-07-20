@@ -1,7 +1,11 @@
-
 from sqlalchemy.orm import Session
-from app.services.core.engine.ai_personal_finance_profiler import build_user_profile, generate_financial_rating
+
 from app.db.models import AIAnalysisSnapshot
+from app.services.core.engine.ai_personal_finance_profiler import (
+    build_user_profile,
+    generate_financial_rating,
+)
+
 
 def save_ai_snapshot(user_id: int, db: Session, year: int, month: int) -> dict:
     profile = build_user_profile(user_id=user_id, db=db, year=year, month=month)
@@ -12,7 +16,7 @@ def save_ai_snapshot(user_id: int, db: Session, year: int, month: int) -> dict:
         rating=rating_data["rating"],
         risk=rating_data["risk"],
         summary=rating_data["summary"],
-        full_profile=profile
+        full_profile=profile,
     )
 
     db.add(snapshot)
@@ -23,5 +27,5 @@ def save_ai_snapshot(user_id: int, db: Session, year: int, month: int) -> dict:
         "status": "saved",
         "snapshot_id": snapshot.id,
         "rating": snapshot.rating,
-        "risk": snapshot.risk
+        "risk": snapshot.risk,
     }

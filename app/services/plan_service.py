@@ -1,7 +1,9 @@
+from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from collections import defaultdict
+
 from app.config.country_profiles import COUNTRY_PROFILES
+
 
 def generate_monthly_plan(user_profile: dict, year: int, month: int) -> dict:
     """
@@ -28,7 +30,9 @@ def generate_monthly_plan(user_profile: dict, year: int, month: int) -> dict:
         raise ValueError(f"No budget split config for class: {user_class}")
 
     # Days in month
-    days_in_month = (date(year + (month // 12), ((month % 12) + 1), 1) - date(year, month, 1)).days
+    days_in_month = (
+        date(year + (month // 12), ((month % 12) + 1), 1) - date(year, month, 1)
+    ).days
 
     # Daily allocation
     calendar_plan = defaultdict(dict)

@@ -1,6 +1,6 @@
-import random
 import datetime
-from typing import List, Dict
+import random
+from typing import Dict, List
 
 CATEGORY_BEHAVIOR: Dict[str, str] = {
     "groceries": "spread",
@@ -35,8 +35,9 @@ CATEGORY_BEHAVIOR: Dict[str, str] = {
     "savings emergency": "spread",
     "savings goal based": "spread",
     "debt repayment": "fixed",
-    "investment contribution": "fixed"
+    "investment contribution": "fixed",
 }
+
 
 class CalendarDay:
     def __init__(self, date: datetime.date):
@@ -57,15 +58,22 @@ class CalendarDay:
             "planned_budget": self.planned_budget,
             "actual_spending": self.actual_spending,
             "recommendations": self.recommendations,
-            "status": self.status
+            "status": self.status,
         }
 
-def distribute_budget_over_days(days: List[CalendarDay], category: str, total: float) -> None:
+
+def distribute_budget_over_days(
+    days: List[CalendarDay], category: str, total: float
+) -> None:
     behavior = CATEGORY_BEHAVIOR.get(category, "spread")
     num_days = len(days)
 
     if behavior == "fixed":
-        index = 0 if category in ["rent", "mortgage", "school fees"] else min(4, num_days - 1)
+        index = (
+            0
+            if category in ["rent", "mortgage", "school fees"]
+            else min(4, num_days - 1)
+        )
         days[index].planned_budget[category] = round(total, 2)
 
     elif behavior == "spread":
@@ -78,7 +86,9 @@ def distribute_budget_over_days(days: List[CalendarDay], category: str, total: f
     elif behavior == "clustered":
         candidate_days = [d for d in days if d.day_type == "weekend"]
         if len(candidate_days) < 4:
-            candidate_days += random.sample(days, min(4 - len(candidate_days), len(days)))
+            candidate_days += random.sample(
+                days, min(4 - len(candidate_days), len(days))
+            )
         selected_days = random.sample(candidate_days, min(4, len(candidate_days)))
         chunk = round(total / len(selected_days), 2)
         for day in selected_days:

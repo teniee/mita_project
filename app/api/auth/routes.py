@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.services import auth_jwt_service as jwt_utils
 from app.api.auth.schemas import LoginIn  # noqa: E501
 from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
 from app.api.auth.services import authenticate_google  # noqa: E501
 from app.api.auth.services import authenticate_user, register_user
 from app.core.session import get_db
+from app.services import auth_jwt_service as jwt_utils
 from app.services.auth_jwt_service import (
     blacklist_token,
     create_access_token,

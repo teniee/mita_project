@@ -1,8 +1,10 @@
-
-from sqlalchemy.orm import Session
-from app.db.models import DailyPlan
 from collections import defaultdict
 from datetime import date
+
+from sqlalchemy.orm import Session
+
+from app.db.models import DailyPlan
+
 
 def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: int):
     start = date(year, month, 1)
@@ -51,15 +53,16 @@ def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: in
                     transfer -= to_take
                     transferred_total += to_take
                     surplus_by_cat[donor_cat] -= to_take
-                    redistribution_log.append({
-                        "from": donor_cat,
-                        "to": cat,
-                        "amount": round(to_take, 2),
-                        "from_day": donor_entry.date.isoformat()
-                    })
+                    redistribution_log.append(
+                        {
+                            "from": donor_cat,
+                            "to": cat,
+                            "amount": round(to_take, 2),
+                            "from_day": donor_entry.date.isoformat(),
+                        }
+                    )
                 if transfer <= 0:
                     break
-
 
         # Add to receiving category
         for receiver_entry in sorted(plan_map[cat], key=lambda e: e.date):

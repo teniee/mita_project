@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime
+
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
+
 
 class PushToken(Base):
     __tablename__ = "push_tokens"

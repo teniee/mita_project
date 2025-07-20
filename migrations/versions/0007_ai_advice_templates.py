@@ -5,9 +5,10 @@ Revises: 0006_transactions_user_created_at_idx
 Create Date: 2025-10-01 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0007_ai_advice_templates"
@@ -27,4 +28,3 @@ def upgrade():
 
 def downgrade():
     op.drop_table("ai_advice_templates")
-

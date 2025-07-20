@@ -1,5 +1,7 @@
+from app.services.core.analytics.progress_tracker import (
+    calculate_monthly_savings_progress,
+)
 
-from app.services.core.analytics.progress_tracker import calculate_monthly_savings_progress
 
 def test_progress_tracker_track():
     current_month = [

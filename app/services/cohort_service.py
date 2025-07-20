@@ -1,7 +1,8 @@
+from app.services.core.cohort.cluster_mapper import map_cluster_label
 from app.services.core.cohort.cohort_analysis import determine_cohort
 from app.services.core.cohort.cohort_cluster_engine import CohortClusterEngine
 from app.services.core.cohort.cohort_drift_tracker import CohortDriftTracker
-from app.services.core.cohort.cluster_mapper import map_cluster_label
+
 
 class CohortService:
     def __init__(self):
@@ -27,11 +28,14 @@ class CohortService:
     def get_current_cohort(self, user_id: str):
         return self.drift_tracker.get_current(user_id)
 
+
 # 🔽 Functions below are used by API routes
 _cohort_service = CohortService()
 
+
 def assign_user_cohort(profile: dict) -> str:
     return _cohort_service.assign_cohort(profile)
+
 
 def get_user_drift(user_id: str):
     return _cohort_service.get_cohort_drift(user_id)

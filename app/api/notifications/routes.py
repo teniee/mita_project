@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models import PushToken
-from app.services.push_service import send_push_notification, send_apns_notification
+from app.services.notification_log_service import log_notification
+from app.services.push_service import send_apns_notification, send_push_notification
 from app.utils.email_utils import send_reminder_email
 from app.utils.response_wrapper import success_response
-from app.services.notification_log_service import log_notification
 
 from .schemas import NotificationTest, TokenIn
 

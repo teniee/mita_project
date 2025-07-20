@@ -1,5 +1,5 @@
-
 from app.logic.behavioral_budget_allocator import BehavioralBudgetAllocator
+
 
 def test_behavioral_allocator():
     profile = {"behavior": "neutral"}

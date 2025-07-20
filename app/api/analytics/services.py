@@ -1,8 +1,8 @@
-
 """Business logic for analytics routes."""
 
 from collections import defaultdict
 from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction
@@ -58,10 +58,7 @@ def get_monthly_trend(user_id: str, db: Session) -> list:
     for txn in txns:
         key = txn.timestamp.date().isoformat()
         trend[key] += float(txn.amount)
-    return [
-        {"date": k, "amount": round(v, 2)}
-        for k, v in sorted(trend.items())
-    ]
+    return [{"date": k, "amount": round(v, 2)} for k, v in sorted(trend.items())]
 
 
 def analyze_aggregate(calendar: list) -> dict:

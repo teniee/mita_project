@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 
 from app.api.calendar import routes as calendar_routes
 

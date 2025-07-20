@@ -1,6 +1,7 @@
+from mita_calendar.budget_tracker import get_limit, get_spent
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from mita_calendar.budget_tracker import get_spent, get_limit
+
 
 @api_view(["GET"])
 def category_spend_summary(request):
@@ -12,4 +13,11 @@ def category_spend_summary(request):
 
     spent = get_spent(calendar_id, category)
     limit = get_limit(calendar_id, category)
-    return Response({"calendar_id": calendar_id, "category": category, "spent": spent, "limit": limit})
+    return Response(
+        {
+            "calendar_id": calendar_id,
+            "category": category,
+            "spent": spent,
+            "limit": limit,
+        }
+    )

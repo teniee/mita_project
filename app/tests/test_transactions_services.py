@@ -72,7 +72,12 @@ def test_list_user_transactions_pagination(monkeypatch):
     user = SimpleNamespace(id="u1", timezone="UTC")
 
     txns = [
-        SimpleNamespace(id=str(i), user_id="u1", category="food", spent_at=datetime.datetime(2025, 1, i + 1))
+        SimpleNamespace(
+            id=str(i),
+            user_id="u1",
+            category="food",
+            spent_at=datetime.datetime(2025, 1, i + 1),
+        )
         for i in range(5)
     ]
 

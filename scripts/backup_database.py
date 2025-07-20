@@ -1,9 +1,10 @@
-import os
-import subprocess
-import tempfile
 import datetime
 import gzip
+import os
 import shutil
+import subprocess
+import tempfile
+
 import boto3
 
 
@@ -37,7 +38,10 @@ def backup_database() -> None:
         retention = datetime.datetime.utcnow() - datetime.timedelta(days=7)
         objects = s3.list_objects_v2(Bucket=bucket).get("Contents", [])
         for obj in objects:
-            if obj.get("LastModified") and obj["LastModified"].replace(tzinfo=None) < retention:
+            if (
+                obj.get("LastModified")
+                and obj["LastModified"].replace(tzinfo=None) < retention
+            ):
                 s3.delete_object(Bucket=bucket, Key=obj["Key"])
 
 

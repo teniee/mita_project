@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP, getcontext
+from decimal import ROUND_HALF_UP, Decimal, getcontext
 from typing import Dict, List, Tuple
 
 # --- prefer financial precision ---
-getcontext().prec = 28          # 28 is IEEE 754 decimal64 standard
+getcontext().prec = 28  # 28 is IEEE 754 decimal64 standard
 getcontext().rounding = ROUND_HALF_UP
 
 
@@ -39,15 +39,12 @@ class BudgetRedistributor:
         }
 
     # ----------------- public method -----------------
-    def redistribute_budget(self) -> Tuple[Dict[str, Dict[str, Decimal]],
-                                           List[Tuple[str, str, Decimal]]]:
+    def redistribute_budget(
+        self,
+    ) -> Tuple[Dict[str, Dict[str, Decimal]], List[Tuple[str, str, Decimal]]]:
         """Return the updated calendar and the list of transfers."""
-        over_days = [
-            day for day in self.calendar if self._overage(day) > 0
-        ]
-        under_days = [
-            day for day in self.calendar if self._shortfall(day) > 0
-        ]
+        over_days = [day for day in self.calendar if self._overage(day) > 0]
+        under_days = [day for day in self.calendar if self._shortfall(day) > 0]
 
         # sort donors and receivers by largest amounts first
         over_days.sort(key=self._overage, reverse=True)
@@ -94,8 +91,9 @@ class BudgetRedistributor:
 
 # === external API ===
 
+
 def redistribute_budget(
-    calendar_dict: Dict[str, Dict[str, float | int | Decimal]]
+    calendar_dict: Dict[str, Dict[str, float | int | Decimal]],
 ) -> Dict[str, Dict[str, Decimal]]:
     """
     Thin wrapper for use in API services.

@@ -1,13 +1,15 @@
-from sqlalchemy.orm import Session
-from app.db.models.user import User
-from app.db.models.daily_plan import DailyPlan
-from app.engine.behavior.spending_pattern_extractor import extract_patterns
-from app.agent.gpt_agent_service import GPTAgentService
-from app.services.template_service import AIAdviceTemplateService
+import json
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
-import json
+
+from sqlalchemy.orm import Session
+
+from app.agent.gpt_agent_service import GPTAgentService
+from app.db.models.daily_plan import DailyPlan
+from app.db.models.user import User
+from app.engine.behavior.spending_pattern_extractor import extract_patterns
+from app.services.template_service import AIAdviceTemplateService
 
 
 def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict:
@@ -17,10 +19,15 @@ def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict
         return {"error": "User not found"}
 
     # Fetch all user plans within the month
-    days = db.query(DailyPlan).filter_by(user_id=user_id).filter(
-        DailyPlan.date >= date(year, month, 1),
-        DailyPlan.date < date(year, month, 28) + timedelta(days=5)
-    ).all()
+    days = (
+        db.query(DailyPlan)
+        .filter_by(user_id=user_id)
+        .filter(
+            DailyPlan.date >= date(year, month, 1),
+            DailyPlan.date < date(year, month, 28) + timedelta(days=5),
+        )
+        .all()
+    )
 
     # Initialize data aggregators
     status_summary = defaultdict(int)
@@ -41,8 +48,9 @@ def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict
         "status_breakdown": dict(status_summary),
         "total_by_category": {k: float(v) for k, v in category_totals.items()},
         "behavior_tags": patterns,
-        "is_premium": getattr(user, "is_premium", False)
+        "is_premium": getattr(user, "is_premium", False),
     }
+
 
 def generate_financial_rating(user_profile: dict, db) -> dict:
     tmpl_service = AIAdviceTemplateService(db)
@@ -66,7 +74,9 @@ def generate_financial_rating(user_profile: dict, db) -> dict:
 
     # Ask GPT model
     system_prompt = tmpl_service.get("system_prompt")
-    gpt = GPTAgentService(api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt)
+    gpt = GPTAgentService(
+        api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt
+    )
     result = gpt.ask([{"role": "user", "content": prompt}])
 
     # Attempt to parse JSON response
@@ -76,5 +86,5 @@ def generate_financial_rating(user_profile: dict, db) -> dict:
         return {
             "rating": "B",
             "risk": "moderate",
-            "summary": "User spending is generally steady but occasionally exceeds the budget."
+            "summary": "User spending is generally steady but occasionally exceeds the budget.",
         }

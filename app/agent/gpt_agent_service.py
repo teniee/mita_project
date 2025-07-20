@@ -1,14 +1,15 @@
 """GPTAgentService for analysing financial data using OpenAI."""
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
-from openai import OpenAIError
 
 
 class GPTAgentService:
     """Use OpenAI to derive insights for analytics and notifications."""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o", system_prompt: str | None = None):
+    def __init__(
+        self, api_key: str, model: str = "gpt-4o", system_prompt: str | None = None
+    ):
         """
         Initialize the GPT agent.
 

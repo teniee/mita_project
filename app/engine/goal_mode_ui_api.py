@@ -1,5 +1,6 @@
 ### goal_mode_ui_api.py — API surface to show goal progress in UI
 
+
 def get_goal_progress(state: dict) -> dict:
     saved = state.get("progress", {}).get("saved", 0)
     goal = state.get("savings_target", 0)
@@ -13,5 +14,5 @@ def get_goal_progress(state: dict) -> dict:
         "progress_pct": round(progress * 100, 1),
         "remaining_to_goal": remaining,
         "goal": goal,
-        "saved": saved
+        "saved": saved,
     }
