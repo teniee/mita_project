@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class ReferralInput(BaseModel):
-    user_id: str
+    pass
 
 class ReferralResult(BaseModel):
     eligible: Optional[bool] = None

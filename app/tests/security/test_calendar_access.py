@@ -1,0 +1,29 @@
+import pytest
+from types import SimpleNamespace
+
+from app.api.calendar import routes as calendar_routes
+
+@pytest.mark.asyncio
+async def test_get_day_view_enforces_user(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.calendar.routes.success_response",
+        lambda data=None, message="": data,
+    )
+    def dummy_fetch(uid, year, month):
+        return {1: {'total': 0}}
+    monkeypatch.setattr(calendar_routes, "fetch_calendar", dummy_fetch)
+    user = SimpleNamespace(id="u1")
+    result = await calendar_routes.get_day_view("u1", 2025, 1, 1, user=user)
+    assert result["total"] == 0
+
+@pytest.mark.asyncio
+async def test_get_day_view_forbidden(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.calendar.routes.success_response",
+        lambda data=None, message="": data,
+    )
+    monkeypatch.setattr(calendar_routes, "fetch_calendar", lambda *a, **k: {})
+    user = SimpleNamespace(id="u1")
+    with pytest.raises(calendar_routes.HTTPException) as exc:
+        await calendar_routes.get_day_view("u2", 2025, 1, 1, user=user)
+    assert exc.value.status_code == 403

@@ -3,11 +3,10 @@ from pydantic import BaseModel
 from typing import Dict
 
 class ProfileRequest(BaseModel):
-    user_id: str
     profile: Dict
 
 class DriftRequest(BaseModel):
-    user_id: str
+    pass
 
 class CohortOut(BaseModel):
     cohort: str
