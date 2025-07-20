@@ -44,16 +44,15 @@ async def generate(data: GenerateCalendarRequest):
         data.num_days,
         data.budget_plan,
     )
-    return success_response({
-        "calendar_id": data.calendar_id,
-        "days": days,
-    })
+    return success_response(
+        {
+            "calendar_id": data.calendar_id,
+            "days": days,
+        }
+    )
 
 
-@router.get(
-    "/day/{year}/{month}/{day}",
-    response_model=CalendarDayOut,
-)
+@router.get("/day/{year}/{month}/{day}", response_model=CalendarDayOut)
 async def get_day_view(
     year: int,
     month: int,
@@ -66,10 +65,7 @@ async def get_day_view(
     return success_response(calendar[day])
 
 
-@router.patch(
-    "/day/{year}/{month}/{day}",
-    response_model=CalendarDayOut,
-)
+@router.patch("/day/{year}/{month}/{day}", response_model=CalendarDayOut)
 async def edit_day(
     year: int,
     month: int,
@@ -87,7 +83,8 @@ async def edit_day(
 
 @router.post("/day_state", response_model=CalendarDayStateOut)
 async def get_day_state(
-    payload: DayInput, user=Depends(get_current_user)  # noqa: B008
+    payload: DayInput,
+    user=Depends(get_current_user),  # noqa: B008
 ):
     state = fetch_day_state(
         user.id,
@@ -110,7 +107,8 @@ async def redistribute(payload: RedistributeInput):
 
 @router.post("/shell", response_model=ShellCalendarOut)
 async def get_shell(
-    payload: ShellConfig, user=Depends(get_current_user)  # noqa: B008
+    payload: ShellConfig,
+    user=Depends(get_current_user),  # noqa: B008
 ):
     calendar = generate_shell_calendar(user.id, payload.dict())
     return success_response({"calendar": calendar})
