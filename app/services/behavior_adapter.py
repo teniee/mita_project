@@ -1,5 +1,5 @@
-
 from app.engine.behavior.spending_pattern_extractor import extract_patterns
+
 
 def apply_behavioral_adjustments(user_id: int, config: dict, db):
     # Extract behavior patterns from history

@@ -6,4 +6,3 @@ def test_streak_progress_basic():
     result = auto_run_challenge_streak(calendar, "u1", {"last_claimed": "2025-01-01"})
     assert isinstance(result, dict)
     assert "streak_days" in result
-

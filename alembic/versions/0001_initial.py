@@ -1,4 +1,3 @@
-
 """initial unified migration
 
 Revision ID: 0001_initial
@@ -7,9 +6,10 @@ Create Date: 2025-05-07
 
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "0001_initial"
 down_revision = None
@@ -88,8 +88,8 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table('ai_analysis_snapshots')
-    op.drop_table('subscriptions')
-    op.drop_table('daily_plan')
-    op.drop_table('transactions')
-    op.drop_table('users')
+    op.drop_table("ai_analysis_snapshots")
+    op.drop_table("subscriptions")
+    op.drop_table("daily_plan")
+    op.drop_table("transactions")
+    op.drop_table("users")

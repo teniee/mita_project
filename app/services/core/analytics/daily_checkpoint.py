@@ -1,6 +1,9 @@
 from typing import Dict, List, Union
 
-def get_today_budget(calendar: Union[Dict[int, Dict], List[Dict]], today_date: str) -> Dict[str, float]:
+
+def get_today_budget(
+    calendar: Union[Dict[int, Dict], List[Dict]], today_date: str
+) -> Dict[str, float]:
     """
     Returns remaining budget for each category on today's calendar entry.
     Supports both indexed dicts and date-keyed list formats.

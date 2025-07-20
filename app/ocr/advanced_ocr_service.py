@@ -1,20 +1,25 @@
-
 """
 AdvancedOCRService: Dual OCR Engine (Tesseract for free users, Google Vision API for premium users)
 """
 
-import pytesseract
-from PIL import Image
 import os
 
+import pytesseract
+from PIL import Image
+
 from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
+
 
 class AdvancedOCRService:
     """
     OCR service that dynamically switches between Tesseract and Google Vision API based on user type.
     """
 
-    def __init__(self, temp_dir: str = "/tmp", credentials_json_path: str = "/path/to/credentials.json"):
+    def __init__(
+        self,
+        temp_dir: str = "/tmp",
+        credentials_json_path: str = "/path/to/credentials.json",
+    ):
         self.temp_dir = temp_dir
         self.credentials_json_path = credentials_json_path
 
@@ -68,7 +73,7 @@ class AdvancedOCRService:
                 "amount": 50.0,
                 "category_hint": "groceries",
                 "date": "2025-04-26",
-                "raw_text": raw_text
+                "raw_text": raw_text,
             }
 
         except Exception as e:

@@ -1,5 +1,6 @@
 ### behavioral_budget_allocator.py — REFACTORED
 
+
 class BehavioralBudgetAllocator:
     def __init__(self, profile, category_weights, total_amount):
         self.profile = profile

@@ -1,15 +1,15 @@
+import inspect
 from datetime import datetime
 from typing import Optional
-import inspect
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_user
 from app.core.session import get_db
 
 # assumes User is defined in models
 from app.db.models.user import User
-from app.api.dependencies import get_current_user
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
 from app.api.budget.services import fetch_spent_by_category  # isort:skip

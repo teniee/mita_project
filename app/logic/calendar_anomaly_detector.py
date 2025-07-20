@@ -12,13 +12,16 @@ def detect_anomalies(calendar: dict, threshold: float = 2.5):
     anomalies = []
     for day_num, day_data in calendar.items():
         if day_data["total"] > upper_limit:
-            anomalies.append({
-                "day": day_num,
-                "total": round(day_data["total"], 2),
-                "threshold": round(upper_limit, 2)
-            })
+            anomalies.append(
+                {
+                    "day": day_num,
+                    "total": round(day_data["total"], 2),
+                    "threshold": round(upper_limit, 2),
+                }
+            )
 
     return anomalies
+
 
 if __name__ == "__main__":
     from calendar_engine import CalendarEngine
@@ -28,8 +31,8 @@ if __name__ == "__main__":
         fixed_expenses=[{"day": 1, "amount": 1200, "category": "rent"}],
         discretionary_categories=[
             {"category": "groceries", "amount": 500, "frequency": 4},
-            {"category": "entertainment", "amount": 200, "frequency": 2}
-        ]
+            {"category": "entertainment", "amount": 200, "frequency": 2},
+        ],
     )
     cal = engine.generate_calendar(2025, 4)
     anomalies = detect_anomalies(cal)

@@ -1,8 +1,11 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class ReferralInput(BaseModel):
     pass
+
 
 class ReferralResult(BaseModel):
     eligible: Optional[bool] = None

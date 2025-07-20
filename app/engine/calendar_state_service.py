@@ -1,10 +1,11 @@
-
-from app.engine.calendar_store import get_calendar_for_user
 from datetime import date
-from app.services.core.engine.calendar_ai_advisor import explain_day_status
+
 from app.core.logger import get_logger
+from app.engine.calendar_store import get_calendar_for_user
+from app.services.core.engine.calendar_ai_advisor import explain_day_status
 
 logger = get_logger("calendar_state_service")
+
 
 def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
     cal = get_calendar_for_user(user_id, year, month)
@@ -26,6 +27,7 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
     if status in ["yellow", "red"]:
         try:
             from app.core.session import SessionLocal
+
             with SessionLocal() as db:
                 explanation = explain_day_status(
                     status=status,
@@ -35,7 +37,9 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
                     date=day_str,
                 )
         except Exception as e:
-            logger.error(f"[user={user_id}] Failed to get AI advice for {day_str}: {str(e)}")
+            logger.error(
+                f"[user={user_id}] Failed to get AI advice for {day_str}: {str(e)}"
+            )
             explanation = "AI comment temporarily unavailable."
 
     return {
@@ -44,5 +48,5 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
         "redistributed": day_data.get("redistributed", {}),
         "status": status,
         "recommendations": recommendations,
-        "advisor_comment": explanation
+        "advisor_comment": explanation,
     }

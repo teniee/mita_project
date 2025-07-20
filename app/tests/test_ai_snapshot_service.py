@@ -9,6 +9,7 @@ if isinstance(sys.modules.get("app.db.models"), object) and not hasattr(
 
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 
+
 class DummyDB:
     def __init__(self):
         self.added = []

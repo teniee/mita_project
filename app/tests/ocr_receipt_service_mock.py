@@ -1,10 +1,10 @@
-
 """
 OCRReceiptService: Service for handling receipt image processing and text extraction.
 """
 
 import os
 import random
+
 
 class OCRReceiptService:
     """
@@ -29,13 +29,13 @@ class OCRReceiptService:
             raise FileNotFoundError("Image file not found.")
 
         # --- MOCK OCR BEHAVIOR ---
-        stores = ['Walmart', 'Costco', 'Starbucks', 'Amazon', 'McDonalds']
-        categories = ['groceries', 'transport', 'entertainment', 'restaurants']
+        stores = ["Walmart", "Costco", "Starbucks", "Amazon", "McDonalds"]
+        categories = ["groceries", "transport", "entertainment", "restaurants"]
         result = {
             "store": random.choice(stores),
             "amount": round(random.uniform(5.0, 100.0), 2),
             "category_hint": random.choice(categories),
-            "date": "2025-04-26"
+            "date": "2025-04-26",
         }
 
         # After processing, delete the image

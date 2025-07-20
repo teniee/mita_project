@@ -66,8 +66,7 @@ def estimate_completion_date(goal: Dict, calendar: Dict[int, Dict]) -> Optional[
         return None
 
     est_days = int(remaining / daily_avg)
-    est_completion = (
-        datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
-        + timedelta(days=est_days)
-    )
+    est_completion = datetime.today().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) + timedelta(days=est_days)
     return est_completion.strftime("%Y-%m-%d")

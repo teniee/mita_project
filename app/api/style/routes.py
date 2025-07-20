@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends
 
+from app.api.dependencies import get_current_user
 from app.api.style.schemas import StyleRequest, StyleResponse
 from app.api.style.services import get_ui_style
 from app.utils.response_wrapper import success_response
-from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/style", tags=["style"])
 

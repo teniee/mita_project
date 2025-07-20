@@ -8,8 +8,8 @@ from app.api.analytics.schemas import (
     MonthlyAnalyticsOut,
     TrendOut,
 )
-from app.core.session import get_db
 from app.api.dependencies import get_current_user
+from app.core.session import get_db
 from app.services.analytics_service import (
     analyze_aggregate,
     analyze_anomalies,

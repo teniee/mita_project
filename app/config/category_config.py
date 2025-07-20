@@ -1,10 +1,24 @@
-
 # Primary expense categories
 ALLOWED_CATEGORIES = {
-    "rent", "utilities", "insurance", "loan", "other",
-    "groceries", "restaurants", "entertainment", "shopping",
-    "transport", "travel", "subscriptions", "health", "education",
-    "pets", "childcare", "donations", "gym", "personal_care"
+    "rent",
+    "utilities",
+    "insurance",
+    "loan",
+    "other",
+    "groceries",
+    "restaurants",
+    "entertainment",
+    "shopping",
+    "transport",
+    "travel",
+    "subscriptions",
+    "health",
+    "education",
+    "pets",
+    "childcare",
+    "donations",
+    "gym",
+    "personal_care",
 }
 
 # Default distribution weights for the base class
@@ -18,7 +32,7 @@ DEFAULT_WEIGHTS = {
     "subscriptions": 0.05,
     "health": 0.05,
     "education": 0.05,
-    "personal_care": 0.05
+    "personal_care": 0.05,
 }
 
 # Default behavioral templates
@@ -36,5 +50,5 @@ DEFAULT_TEMPLATES = {
     "subscriptions": "fixed",
     "health": "spread",
     "education": "spread",
-    "personal_care": "clustered"
+    "personal_care": "clustered",
 }

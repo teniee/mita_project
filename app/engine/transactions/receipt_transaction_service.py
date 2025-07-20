@@ -1,9 +1,9 @@
-
 """
 ReceiptTransactionService: Service for creating transactions based on OCR receipt data.
 """
 
 from datetime import datetime
+
 
 class ReceiptTransactionService:
     """
@@ -13,7 +13,7 @@ class ReceiptTransactionService:
     def __init__(self, transaction_store, budget_tracker, calendar_engine):
         """
         Initialize with references to system services.
-        
+
         Args:
             transaction_store: The store/service managing user transactions.
             budget_tracker: The budget management component.
@@ -32,7 +32,9 @@ class ReceiptTransactionService:
             receipt_data (dict): Must contain 'store', 'amount', 'category', 'date'.
         """
         if not all(k in receipt_data for k in ("store", "amount", "category", "date")):
-            raise ValueError("Incomplete receipt data. Required fields: store, amount, category, date.")
+            raise ValueError(
+                "Incomplete receipt data. Required fields: store, amount, category, date."
+            )
 
         transaction = {
             "user_id": user_id,
@@ -40,7 +42,7 @@ class ReceiptTransactionService:
             "amount": receipt_data["amount"],
             "category": receipt_data["category"],
             "date": datetime.strptime(receipt_data["date"], "%Y-%m-%d"),
-            "source": "receipt_ocr"
+            "source": "receipt_ocr",
         }
 
         # Step 1: Save the transaction
@@ -50,11 +52,10 @@ class ReceiptTransactionService:
         self.budget_tracker.record_expense(
             user_id=user_id,
             category=transaction["category"],
-            amount=transaction["amount"]
+            amount=transaction["amount"],
         )
 
         # Step 3: Update the expense calendar
         self.calendar_engine.update_calendar_for_new_transaction(
-            user_id=user_id,
-            transaction=transaction
+            user_id=user_id, transaction=transaction
         )

@@ -1,5 +1,6 @@
 from app.config.country_profiles_loader import get_profile
 
+
 def generate_budget_from_answers(answers: dict) -> dict:
     region = answers.get("region", "US")
     profile = get_profile(region)
@@ -38,7 +39,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
         "clothing": freq.get("clothing_per_month", 0),
         "travel": freq.get("travel_per_year", 0) / 12,
         "coffee": freq.get("coffee_per_week", 0) * 4,
-        "transport": freq.get("transport_per_month", 0)
+        "transport": freq.get("transport_per_month", 0),
     }
 
     total_freq = sum(freq_weights.values())
@@ -56,5 +57,5 @@ def generate_budget_from_answers(answers: dict) -> dict:
         "discretionary_total": round(discretionary, 2),
         "discretionary_breakdown": {
             k: round(discretionary * w, 2) for k, w in weights.items()
-        }
+        },
     }

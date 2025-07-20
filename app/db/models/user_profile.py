@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String
+
 from .base import Base
+
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"

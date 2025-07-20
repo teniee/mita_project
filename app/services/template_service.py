@@ -38,4 +38,3 @@ class AIAdviceTemplateService:
 
     def list_all(self) -> list[AIAdviceTemplate]:
         return self.db.query(AIAdviceTemplate).all()
-

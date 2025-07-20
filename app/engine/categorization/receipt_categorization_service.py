@@ -1,7 +1,7 @@
-
 """
 ReceiptCategorizationService: Service for categorizing receipt information into expense categories.
 """
+
 
 class ReceiptCategorizationService:
     """
@@ -11,10 +11,30 @@ class ReceiptCategorizationService:
     def __init__(self):
         # Simple keyword-based mapping
         self.category_keywords = {
-            "groceries": ["walmart", "costco", "aldi", "whole foods", "grocery", "supermarket"],
+            "groceries": [
+                "walmart",
+                "costco",
+                "aldi",
+                "whole foods",
+                "grocery",
+                "supermarket",
+            ],
             "transport": ["uber", "lyft", "taxi", "shell", "chevron", "gas", "metro"],
-            "entertainment": ["cinema", "movie", "netflix", "amc", "theater", "entertainment"],
-            "restaurants": ["mcdonalds", "starbucks", "restaurant", "cafe", "burger king"],
+            "entertainment": [
+                "cinema",
+                "movie",
+                "netflix",
+                "amc",
+                "theater",
+                "entertainment",
+            ],
+            "restaurants": [
+                "mcdonalds",
+                "starbucks",
+                "restaurant",
+                "cafe",
+                "burger king",
+            ],
             "shopping": ["amazon", "target", "best buy", "mall", "clothing"],
             "healthcare": ["pharmacy", "walgreens", "cvs", "hospital", "clinic"],
         }

@@ -5,8 +5,9 @@ Revises: 0004_user_timezone
 Create Date: 2025-09-01 00:00:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0005_push_token_platform"

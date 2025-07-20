@@ -8,8 +8,9 @@ CATEGORY_PRIORITY = {
     "shopping": 30,
     "entertainment": 20,
     "coffee": 10,
-    "misc": 5
+    "misc": 5,
 }
+
 
 def get_priority(category: str) -> int:
     return CATEGORY_PRIORITY.get(category, 0)

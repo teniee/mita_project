@@ -31,7 +31,11 @@ async def log_mood(
     return success_response(
         {
             "id": str(record.id),
-            "date": record.date.isoformat() if hasattr(record.date, "isoformat") else record.date,
+            "date": (
+                record.date.isoformat()
+                if hasattr(record.date, "isoformat")
+                else record.date
+            ),
             "mood": record.mood,
         }
     )
