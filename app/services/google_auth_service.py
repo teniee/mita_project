@@ -1,9 +1,11 @@
-import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from app.db.models import User
-from app.core.jwt_utils import hash_password
 import uuid
+
+import httpx
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.db.models import User
+from app.services.auth_jwt_service import hash_password
 
 ALLOWED_GOOGLE_CLIENT_IDS = [
     # Production Android/iOS client IDs
@@ -12,6 +14,7 @@ ALLOWED_GOOGLE_CLIENT_IDS = [
     # Development/web client ID used by the Flutter app
     "147595998708-0pkq7emouan1rs2lrgjau0ee2lge35pl.apps.googleusercontent.com",
 ]
+
 
 async def authenticate_google_user(id_token_str: str, db: Session) -> User:
     async with httpx.AsyncClient() as client:
@@ -29,7 +32,7 @@ async def authenticate_google_user(id_token_str: str, db: Session) -> User:
     if aud not in ALLOWED_GOOGLE_CLIENT_IDS:
         raise HTTPException(
             status_code=401,
-            detail=f"Invalid Client ID: got {aud}, allowed {ALLOWED_GOOGLE_CLIENT_IDS}"
+            detail=f"Invalid Client ID: got {aud}, allowed {ALLOWED_GOOGLE_CLIENT_IDS}",
         )
 
     email = payload.get("email")

@@ -4,8 +4,4 @@ class User:
         self.income = income
         self.country = country
         self.class_segment = class_segment
-        self.config = {
-            "income_check": {
-                "enabled": True
-            }
-        }
+        self.config = {"income_check": {"enabled": True}}

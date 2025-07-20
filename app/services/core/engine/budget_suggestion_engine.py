@@ -1,12 +1,15 @@
 from typing import Dict
 
-def suggest_budget_adjustments(calendar: Dict[str, Dict], income: float) -> Dict[str, str]:
+
+def suggest_budget_adjustments(
+    calendar: Dict[str, Dict], income: float
+) -> Dict[str, str]:
     """
     Suggests how to adjust user's budget.
     Returns dict: category -> suggestion
     """
     suggestions = {}
-    for date, day in calendar.items():
+    for _date, day in calendar.items():
         actual = day.get("actual_spending", {})
         planned = day.get("planned_budget", {})
 

@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+
 from app import tasks
 
 

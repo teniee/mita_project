@@ -1,7 +1,9 @@
-from sqlalchemy.orm import Session
-from app.db.models import UserAnswer, UserProfile, DailyPlan
-from sqlalchemy import select
 import json
+
+from sqlalchemy.orm import Session
+
+from app.db.models import DailyPlan, UserAnswer, UserProfile
+
 
 class UserDataService:
     def save_onboarding_answer(self, user_id: int, key: str, value, db: Session):
@@ -9,7 +11,9 @@ class UserDataService:
         if obj:
             obj.answer_json = json.dumps(value)
         else:
-            obj = UserAnswer(user_id=user_id, question_key=key, answer_json=json.dumps(value))
+            obj = UserAnswer(
+                user_id=user_id, question_key=key, answer_json=json.dumps(value)
+            )
             db.add(obj)
         db.commit()
 
@@ -41,7 +45,7 @@ class UserDataService:
                     date=date_str,
                     category=category,
                     planned_amount=amount,
-                    spent_amount=0
+                    spent_amount=0,
                 )
                 db.add(dp)
         db.commit()
@@ -53,14 +57,14 @@ class UserDataService:
                 "monthly_income": 5000,
                 "monthly_expenses": [1000, 1200, 1100, 1300],
                 "savings_balance": 2000,
-                "missed_payments": 0
+                "missed_payments": 0,
             }
         elif user_id == "user_002":
             return {
                 "monthly_income": 3000,
                 "monthly_expenses": [900, 1000, 950, 970],
                 "savings_balance": 1000,
-                "missed_payments": 2
+                "missed_payments": 2,
             }
         else:
             return None

@@ -1,6 +1,5 @@
-from datetime import date, timedelta
-from collections import defaultdict
 import calendar
+from datetime import date
 from typing import Dict
 
 CATEGORY_BEHAVIOR = {
@@ -9,8 +8,9 @@ CATEGORY_BEHAVIOR = {
     "entertainment": "clustered",
     "transport": "spread",
     "utilities": "fixed",
-    "shopping": "clustered"
+    "shopping": "clustered",
 }
+
 
 class CalendarDay:
     def __init__(self, date_str: str, is_weekend: bool):
@@ -28,8 +28,9 @@ class CalendarDay:
             "date": self.date,
             "type": self.day_type,
             "planned_budget": self.planned_budget,
-            "total": self.total
+            "total": self.total,
         }
+
 
 class CalendarEngine:
     def __init__(self, income, fixed_expenses, flexible_categories, region="US-CA"):
@@ -72,6 +73,8 @@ class CalendarEngine:
                         day.add(cat, daily_amount * 2)
 
             elif behavior == "fixed":
-                calendar_data[first_day_key].add(cat, remaining * weight / total_flexible)
+                calendar_data[first_day_key].add(
+                    cat, remaining * weight / total_flexible
+                )
 
         return {k: v.to_dict() for k, v in calendar_data.items()}

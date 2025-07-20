@@ -1,5 +1,6 @@
 from typing import Dict
 
+
 class CohortAnalyzer:
     def assign_cohort(self, profile: Dict) -> str:
         income = profile.get("income", 0)
@@ -20,7 +21,9 @@ class CohortAnalyzer:
         else:
             style = "neutral"
 
-        challenge_engaged = any(cat in ["coffee", "entertainment"] for cat in categories)
+        challenge_engaged = any(
+            cat in ["coffee", "entertainment"] for cat in categories
+        )
         tag = "challenge-prone" if challenge_engaged else "core-user"
 
         region = profile.get("region", "US-CA")

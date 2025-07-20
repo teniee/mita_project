@@ -1,7 +1,8 @@
-from sqlalchemy import select, extract, func
-from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import List
+
+from sqlalchemy import extract, func, select
+from sqlalchemy.orm import Session
 
 from app.db.models.transaction import Transaction
 from app.services.core.analytics.monthly_aggregator import aggregate_monthly_data
@@ -13,14 +14,11 @@ def get_monthly_category_totals(user_id: str, db: Session):
     current_month = datetime.utcnow().month
 
     stmt = (
-        select(
-            Transaction.category,
-            func.sum(Transaction.amount).label("total")
-        )
+        select(Transaction.category, func.sum(Transaction.amount).label("total"))
         .where(
             Transaction.user_id == user_id,
             extract("year", Transaction.spent_at) == current_year,
-            extract("month", Transaction.spent_at) == current_month
+            extract("month", Transaction.spent_at) == current_month,
         )
         .group_by(Transaction.category)
     )
@@ -30,20 +28,31 @@ def get_monthly_category_totals(user_id: str, db: Session):
     return [{"category": row[0], "total": float(row[1])} for row in result]
 
 
-def get_monthly_trend(user_id: str, db: Session):
+def get_trend(
+    user_id: str,
+    db: Session,
+    start_date: date | None = None,
+    end_date: date | None = None,
+):
+    end_date = end_date or datetime.utcnow().date()
+    start_date = start_date or (end_date - timedelta(days=365))
+
     stmt = (
         select(
-            func.to_char(Transaction.spent_at, "YYYY-MM").label("month"),
-            func.sum(Transaction.amount).label("total")
+            func.date(Transaction.spent_at).label("d"),
+            func.sum(Transaction.amount).label("a"),
         )
-        .where(Transaction.user_id == user_id)
-        .group_by("month")
-        .order_by("month")
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at <= end_date,
+        )
+        .group_by("d")
+        .order_by("d")
     )
 
-    result = db.execute(stmt).all()
-
-    return [{"month": row[0], "total": float(row[1])} for row in result]
+    rows = db.execute(stmt).all()
+    return [{"date": r.d.isoformat(), "amount": float(r.a)} for r in rows]
 
 
 def analyze_aggregate(calendar: List[dict]):

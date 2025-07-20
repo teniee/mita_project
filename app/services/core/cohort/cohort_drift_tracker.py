@@ -1,5 +1,5 @@
-from typing import Dict
 from collections import defaultdict
+
 
 class CohortDriftTracker:
     def __init__(self):
@@ -16,14 +16,18 @@ class CohortDriftTracker:
 
         drifts = []
         for i in range(1, len(months)):
-            prev, curr = months[i-1], months[i]
+            prev, curr = months[i - 1], months[i]
             if self.history[user_id][prev] != self.history[user_id][curr]:
-                drifts.append({
-                    "from": self.history[user_id][prev],
-                    "to": self.history[user_id][curr],
-                    "month": curr
-                })
+                drifts.append(
+                    {
+                        "from": self.history[user_id][prev],
+                        "to": self.history[user_id][curr],
+                        "month": curr,
+                    }
+                )
         return drifts
 
     def get_current(self, user_id: str):
-        return sorted(self.history[user_id].items())[-1] if self.history[user_id] else None
+        return (
+            sorted(self.history[user_id].items())[-1] if self.history[user_id] else None
+        )

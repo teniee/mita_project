@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Dict
 
+
 def personalize_ui(user_id: str, profile: dict) -> Dict[str, str]:
     """Return UI style settings personalized for the user.
 
@@ -49,9 +50,4 @@ def personalize_ui(user_id: str, profile: dict) -> Dict[str, str]:
     # Layout
     layout = preferences.get("layout", "spacious" if age > 40 else "compact")
 
-    return {
-        "theme": theme,
-        "palette": palette,
-        "fontSize": font_size,
-        "layout": layout
-    }
+    return {"theme": theme, "palette": palette, "fontSize": font_size, "layout": layout}

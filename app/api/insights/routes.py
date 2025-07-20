@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_premium_user
+from app.api.dependencies import require_premium_user
 from app.core.session import get_db
 from app.db.models import BudgetAdvice
 from app.utils.response_wrapper import success_response
+
 from .schemas import AdviceOut
 
 router = APIRouter(prefix="", tags=["insights"])
@@ -21,9 +22,7 @@ async def latest_insight(
         .order_by(BudgetAdvice.date.desc())
         .first()
     )
-    data = (
-        AdviceOut.model_validate(advice).model_dump(mode="json") if advice else None
-    )
+    data = AdviceOut.model_validate(advice).model_dump(mode="json") if advice else None
     return success_response(data)
 
 

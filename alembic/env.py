@@ -28,6 +28,7 @@ sync_url = make_url(url)
 if sync_url.drivername.endswith("+asyncpg"):
     sync_url = sync_url.set(drivername="postgresql+psycopg2")
 
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode."""
     context.configure(
@@ -39,6 +40,7 @@ def run_migrations_offline():
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online():
     """Run migrations in 'online' mode."""
@@ -57,6 +59,7 @@ def run_migrations_online():
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

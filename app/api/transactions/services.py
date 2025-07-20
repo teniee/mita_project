@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from fastapi import BackgroundTasks
@@ -5,12 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import apply_transaction_to_plan
-from datetime import datetime
-
 from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
 
 def add_transaction(user: User, data, db: Session):
+    if data.amount <= 0:
+        raise ValueError("invalid amount")
     txn = Transaction(
         user_id=user.id,
         category=data.category,
@@ -65,12 +66,7 @@ def list_user_transactions(
         query = query.filter(
             Transaction.spent_at <= from_user_timezone(end_date, user.timezone)
         )
-    txns = (
-        query.order_by(Transaction.spent_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    txns = query.order_by(Transaction.spent_at.desc()).offset(skip).limit(limit).all()
     for t in txns:
         t.spent_at = to_user_timezone(t.spent_at, user.timezone)
     return txns

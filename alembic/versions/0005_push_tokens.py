@@ -2,6 +2,7 @@
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
 from alembic import op
 
 revision = "0005_push_tokens"

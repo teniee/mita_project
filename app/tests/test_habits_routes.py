@@ -1,9 +1,8 @@
-from types import SimpleNamespace
 import datetime
+from types import SimpleNamespace
 
-from app.api.habits.routes import create_habit, list_habits, update_habit, delete_habit
+from app.api.habits.routes import create_habit, delete_habit, list_habits, update_habit
 from app.api.habits.schemas import HabitIn, HabitUpdate
-import pytest
 
 
 class DummyHabit:

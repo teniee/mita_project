@@ -1,10 +1,11 @@
-from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 from datetime import datetime
+from typing import List
 
-from app.schemas.expense import ExpenseEntry, ExpenseOut
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.db.models.expense import Expense
+from app.schemas.expense import ExpenseEntry, ExpenseOut
 
 
 async def add_user_expense(entry: ExpenseEntry, db: AsyncSession) -> ExpenseOut:
@@ -12,7 +13,7 @@ async def add_user_expense(entry: ExpenseEntry, db: AsyncSession) -> ExpenseOut:
         user_id=entry.user_id,
         action=entry.action,
         amount=entry.amount,
-        date=datetime.strptime(entry.date, "%Y-%m-%d").date()
+        date=datetime.strptime(entry.date, "%Y-%m-%d").date(),
     )
     db.add(expense)
     await db.commit()
@@ -21,7 +22,7 @@ async def add_user_expense(entry: ExpenseEntry, db: AsyncSession) -> ExpenseOut:
         user_id=expense.user_id,
         action=expense.action,
         amount=expense.amount,
-        date=expense.date
+        date=expense.date,
     )
 
 
@@ -33,6 +34,7 @@ async def get_user_expense_history(user_id: str, db: AsyncSession) -> List[Expen
             user_id=expense.user_id,
             action=expense.action,
             amount=expense.amount,
-            date=expense.date
-        ) for expense in expenses
+            date=expense.date,
+        )
+        for expense in expenses
     ]

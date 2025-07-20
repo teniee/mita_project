@@ -1,15 +1,17 @@
 """Receipt validation helpers for App Store and Google Play."""
 
-from datetime import datetime
-from typing import Any, Dict
 import json
 import os
-import requests
+from datetime import datetime
+from typing import Any, Dict
+
+import httpx
+from fastapi.concurrency import run_in_threadpool
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 
-def validate_receipt(
+async def validate_receipt(
     user_id: str,
     receipt: str,
     platform: str,
@@ -26,12 +28,13 @@ def validate_receipt(
         if not secret:
             return {"status": "invalid", "reason": "missing secret"}
         try:
-            resp = requests.post(
-                "https://buy.itunes.apple.com/verifyReceipt",
-                json={"receipt-data": receipt, "password": secret},
-                timeout=10,
-            )
-            data = resp.json()
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://buy.itunes.apple.com/verifyReceipt",
+                    json={"receipt-data": receipt, "password": secret},
+                    timeout=10,
+                )
+                data = resp.json()
         except Exception as exc:  # pragma: no cover - network failure
             return {"status": "invalid", "reason": str(exc)}
         if resp.status_code != 200 or data.get("status") != 0:
@@ -44,7 +47,9 @@ def validate_receipt(
             int(latest.get("purchase_date_ms", 0)) / 1000
         )
         prod = latest.get("product_id", "").lower()
-        plan = "annual" if any(x in prod for x in ["1y", "annual", "year"]) else "monthly"
+        plan = (
+            "annual" if any(x in prod for x in ["1y", "annual", "year"]) else "monthly"
+        )
         return {
             "status": "valid",
             "platform": "ios",
@@ -58,23 +63,30 @@ def validate_receipt(
         if not creds_path:
             return {"status": "invalid", "reason": "missing credentials"}
         try:
-            credentials = service_account.Credentials.from_service_account_file(
-                creds_path
-            )
-            service = build(
-                "androidpublisher", "v3", credentials=credentials, cache_discovery=False
-            )
-            payload = json.loads(receipt)
-            result = (
-                service.purchases()
-                .subscriptions()
-                .get(
-                    packageName=payload["packageName"],
-                    subscriptionId=payload["subscriptionId"],
-                    token=payload["purchaseToken"],
+
+            def _fetch():
+                credentials = service_account.Credentials.from_service_account_file(
+                    creds_path
                 )
-                .execute()
-            )
+                service = build(
+                    "androidpublisher",
+                    "v3",
+                    credentials=credentials,
+                    cache_discovery=False,
+                )
+                payload = json.loads(receipt)
+                return (
+                    service.purchases()
+                    .subscriptions()
+                    .get(
+                        packageName=payload["packageName"],
+                        subscriptionId=payload["subscriptionId"],
+                        token=payload["purchaseToken"],
+                    )
+                    .execute()
+                )
+
+            result = await run_in_threadpool(_fetch)
         except Exception as exc:  # pragma: no cover - network failure
             return {"status": "invalid", "reason": str(exc)}
 
@@ -82,8 +94,7 @@ def validate_receipt(
             int(result.get("expiryTimeMillis", 0)) / 1000
         )
         starts_at = datetime.utcfromtimestamp(
-            int(result.get("startTimeMillis", result.get("expiryTimeMillis", 0)))
-            / 1000
+            int(result.get("startTimeMillis", result.get("expiryTimeMillis", 0))) / 1000
         )
         plan = "annual" if "P1Y" in result.get("subscriptionPeriod", "") else "monthly"
         return {

@@ -1,6 +1,5 @@
-from app.services.core.cohort.cohort_cluster_engine import CohortClusterEngine
 from app.services.core.cohort.cluster_mapper import map_cluster_label
-
+from app.services.core.cohort.cohort_cluster_engine import CohortClusterEngine
 
 # Create a single cluster engine instance for the app
 _cluster_engine = CohortClusterEngine()

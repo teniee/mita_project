@@ -1,7 +1,8 @@
+from datetime import datetime
 
 from app.ocr.ocr_parser import parse_receipt_text
 from app.services.expense_tracker import record_expense
-from datetime import datetime
+
 
 def process_receipt_from_text(user_id: int, text: str, db) -> dict:
     parsed = parse_receipt_text(text)
@@ -21,11 +22,7 @@ def process_receipt_from_text(user_id: int, text: str, db) -> dict:
         day=parsed_date,
         category=category,
         amount=amount,
-        description="Imported from receipt"
+        description="Imported from receipt",
     )
 
-    return {
-        "parsed": parsed,
-        "status": "created",
-        "transaction": result
-    }
+    return {"parsed": parsed, "status": "created", "transaction": result}

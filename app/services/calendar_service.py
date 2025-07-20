@@ -8,9 +8,9 @@ functions should access the ``DailyPlan`` table or a Redis cache.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 ###############################################################################
 #                           HELPER UTILITIES
@@ -93,7 +93,9 @@ def fetch_calendar(user_id: str, year: int, month: int) -> Dict[int, Dict[str, A
 # ------------------------------------------------------------------ update_day
 
 
-def update_day(calendar: Dict[int, Dict[str, Any]], day: int, updates: Dict[str, Any]) -> Dict[str, Any]:
+def update_day(
+    calendar: Dict[int, Dict[str, Any]], day: int, updates: Dict[str, Any]
+) -> Dict[str, Any]:
     """Update the day entry in the given calendar and return it."""
     if day not in calendar:
         raise KeyError("day not in calendar")
@@ -118,7 +120,9 @@ def fetch_day_state(user_id: str, year: int, month: int, day: int) -> Dict[str, 
 # ------------------------------------------------------------------ generate_shell_calendar
 
 
-def generate_shell_calendar(user_id: str, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+def generate_shell_calendar(
+    user_id: str, payload: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     """
     Used during onboarding to build a shell calendar so that the frontend can
     show an example budget without persisting it.

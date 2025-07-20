@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends
 
 from app.api.behavior.schemas import BehaviorPayload
+from app.api.dependencies import get_current_user
 from app.services.behavior_service import generate_behavior
 from app.utils.response_wrapper import success_response
-from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/behavior", tags=["behavior"])
 

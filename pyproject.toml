@@ -1,0 +1,10 @@
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length = 88
+lint.select = ["E", "F", "B", "I"]
+lint.extend-ignore = ["E402", "E501", "B008", "B904", "E722", "F821"]

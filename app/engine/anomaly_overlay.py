@@ -11,6 +11,6 @@ def get_anomaly_overlay(user_id: str, year: int, month: int):
         overlay[day] = {
             "category": item["category"],
             "severity": item["severity"],
-            "description": item["description"]
+            "description": item["description"],
         }
     return overlay

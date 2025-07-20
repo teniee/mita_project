@@ -1,40 +1,40 @@
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 
 # ---------------------------- Schemas ----------------------------
 from app.api.calendar.schemas import (
-    GenerateCalendarRequest,
-    CalendarOut,
-    EditDayRequest,
     CalendarDayOut,
-    DayInput,
     CalendarDayStateOut,
+    CalendarOut,
+    DayInput,
+    EditDayRequest,
+    GenerateCalendarRequest,
     RedistributeInput,
     RedistributeResult,
-    ShellConfig,
     ShellCalendarOut,
+    ShellConfig,
 )
-
-# -------------------------- Service functions -------------------
-from app.services.calendar_service import (
-    generate_calendar,
-    fetch_calendar,
-    update_day,
-    fetch_day_state,
-    generate_shell_calendar,
-)
+from app.api.dependencies import get_current_user
 
 # core budget redistribution algorithm
 from app.engine.budget_redistributor import (
     redistribute_budget as redistribute_calendar_budget,
 )
 
+# -------------------------- Service functions -------------------
+from app.services.calendar_service import (
+    fetch_calendar,
+    fetch_day_state,
+    generate_calendar,
+    generate_shell_calendar,
+    update_day,
+)
 from app.utils.response_wrapper import success_response
-from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
 
 # ----------------------------- ROUTES ----------------------------
+
 
 @router.post("/generate", response_model=CalendarOut)
 async def generate(data: GenerateCalendarRequest):

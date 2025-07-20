@@ -1,7 +1,10 @@
-from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+from typing import Dict, List
 
-def evaluate_referral_eligibility(user: Dict, referred_users: List[Dict]) -> Dict[str, any]:
+
+def evaluate_referral_eligibility(
+    user: Dict, referred_users: List[Dict]
+) -> Dict[str, any]:
     """
     Checks if a user is eligible for a referral reward.
     Conditions:
@@ -20,8 +23,9 @@ def evaluate_referral_eligibility(user: Dict, referred_users: List[Dict]) -> Dic
         "eligible": True,
         "reward": "-20%_annual",
         "activation": "manual",
-        "claimable": True
+        "claimable": True,
     }
+
 
 def apply_referral_claim(user: Dict) -> Dict[str, any]:
     """
@@ -29,11 +33,10 @@ def apply_referral_claim(user: Dict) -> Dict[str, any]:
     Must be called manually when user activates reward.
     """
     today = datetime.today().date()
-    premium_until = datetime.strptime(user.get("premium_until", today.isoformat()), "%Y-%m-%d").date()
+    premium_until = datetime.strptime(
+        user.get("premium_until", today.isoformat()), "%Y-%m-%d"
+    ).date()
     extended_until = premium_until + timedelta(days=365)
     user["premium_until"] = extended_until.isoformat()
     user["referral_reward_used"] = True
-    return {
-        "status": "success",
-        "new_premium_until": user["premium_until"]
-    }
+    return {"status": "success", "new_premium_until": user["premium_until"]}

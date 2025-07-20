@@ -6,7 +6,12 @@ from types import SimpleNamespace
 import pytest
 from starlette.datastructures import UploadFile
 
-from app.api.transactions.routes import create_transaction, process_receipt
+from app.api.transactions.routes import (
+    MAX_UPLOAD_MB,
+    HTTPException,
+    create_transaction,
+    process_receipt,
+)
 from app.api.transactions.schemas import TxnIn
 
 
@@ -96,3 +101,18 @@ async def test_process_receipt(monkeypatch):
 
     assert result["store"] == "Test"
     assert "path" in captured
+
+
+@pytest.mark.asyncio
+async def test_process_receipt_size_limit(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.transactions.routes.OCRReceiptService",
+        lambda: SimpleNamespace(process_image=lambda p: {}),
+    )
+    user = SimpleNamespace(id="u1")
+    big = UploadFile(
+        filename="b.jpg", file=io.BytesIO(b"x" * (MAX_UPLOAD_MB * 1024 * 1024 + 1))
+    )
+    with pytest.raises(HTTPException) as exc:
+        await process_receipt(file=big, user=user, db=SimpleNamespace())
+    assert exc.value.status_code == 413

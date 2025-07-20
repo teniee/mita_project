@@ -1,10 +1,14 @@
-from datetime import datetime
 import os
+from datetime import datetime
+
+import httpx
+import pytest
 
 from app.api.iap.services import validate_receipt
 
 
-def test_validate_receipt_expiration(monkeypatch):
+@pytest.mark.asyncio
+async def test_validate_receipt_expiration(monkeypatch):
     os.environ["APPLE_SHARED_SECRET"] = "secret"
 
     class FakeResp:
@@ -22,12 +26,12 @@ def test_validate_receipt_expiration(monkeypatch):
                 ],
             }
 
-    def fake_post(*args, **kwargs):
+    async def fake_post(self, *args, **kwargs):
         return FakeResp()
 
-    monkeypatch.setattr("requests.post", fake_post)
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
 
-    result = validate_receipt("u1", "stub", "ios")
+    result = await validate_receipt("u1", "stub", "ios")
 
     assert result["status"] == "valid"
     assert result["platform"] == "ios"

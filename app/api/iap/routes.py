@@ -1,25 +1,31 @@
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_user
 from app.api.iap.schemas import IAPReceipt
 from app.api.iap.services import validate_receipt
 from app.core.session import get_db
 from app.db.models import Subscription, User
 from app.utils.response_wrapper import success_response
-from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/iap", tags=["iap"])
 
 
-@router.post("/validate", response_model=dict)
+@router.post(
+    "/validate",
+    response_model=dict,
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def validate(
     payload: IAPReceipt,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    result = validate_receipt(
+    result = await validate_receipt(
         user.id,
         payload.receipt,
         payload.platform,
@@ -52,8 +58,35 @@ async def validate(
     )
 
 
-@router.post("/webhook")
-async def iap_webhook(payload: dict):
+@router.post(
+    "/webhook",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
+async def iap_webhook(payload: dict, db: Session = Depends(get_db)):
     """Receive server notifications from App Store or Play Store."""
     logging.info("IAP webhook payload: %s", payload)
+
+    user_id = payload.get("user_id")
+    expires_at = payload.get("expires_at")
+    if user_id and expires_at:
+        try:
+            expires = datetime.fromisoformat(expires_at)
+        except Exception:  # pragma: no cover - bad format
+            expires = None
+
+        if expires:
+            sub = (
+                db.query(Subscription)
+                .filter(Subscription.user_id == user_id)
+                .order_by(Subscription.created_at.desc())
+                .first()
+            )
+            if sub:
+                sub.expires_at = expires
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                user.is_premium = True
+                user.premium_until = expires
+            db.commit()
+
     return success_response({"received": True})

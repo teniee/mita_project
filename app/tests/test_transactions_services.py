@@ -3,6 +3,8 @@ import importlib
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 if isinstance(sys.modules.get("app.db.models"), object) and not hasattr(
     sys.modules.get("app.db.models"), "Transaction"
 ):
@@ -68,11 +70,26 @@ def test_add_transaction_triggers_plan(monkeypatch):
     assert db.committed
 
 
+def test_add_transaction_invalid(monkeypatch):
+    db = DummyDB()
+    user = SimpleNamespace(id="u1", timezone="UTC")
+    data = SimpleNamespace(
+        category="food", amount=-1, spent_at=datetime.datetime.utcnow()
+    )
+    with pytest.raises(ValueError):
+        add_transaction(user, data, db)
+
+
 def test_list_user_transactions_pagination(monkeypatch):
     user = SimpleNamespace(id="u1", timezone="UTC")
 
     txns = [
-        SimpleNamespace(id=str(i), user_id="u1", category="food", spent_at=datetime.datetime(2025, 1, i + 1))
+        SimpleNamespace(
+            id=str(i),
+            user_id="u1",
+            category="food",
+            spent_at=datetime.datetime(2025, 1, i + 1),
+        )
         for i in range(5)
     ]
 

@@ -1,11 +1,11 @@
-
 """
 ReceiptProcessingOrchestrator: Orchestrates receipt OCR, categorization, and transaction creation.
 """
 
-from ocr.ocr_receipt_service import OCRReceiptService
 from categorization.receipt_categorization_service import ReceiptCategorizationService
+from ocr.ocr_receipt_service import OCRReceiptService
 from transactions.receipt_transaction_service import ReceiptTransactionService
+
 
 class ReceiptProcessingOrchestrator:
     """
@@ -15,7 +15,9 @@ class ReceiptProcessingOrchestrator:
     3. Transaction creation
     """
 
-    def __init__(self, transaction_store, budget_tracker, calendar_engine, temp_dir="/tmp"):
+    def __init__(
+        self, transaction_store, budget_tracker, calendar_engine, temp_dir="/tmp"
+    ):
         self.ocr_service = OCRReceiptService(temp_dir=temp_dir)
         self.categorization_service = ReceiptCategorizationService()
         self.transaction_service = ReceiptTransactionService(
@@ -44,7 +46,9 @@ class ReceiptProcessingOrchestrator:
             receipt_data["category"] = detected_category
 
             # Create transaction
-            self.transaction_service.create_transaction_from_receipt(user_id, receipt_data)
+            self.transaction_service.create_transaction_from_receipt(
+                user_id, receipt_data
+            )
 
             return {
                 "status": "success",
@@ -52,8 +56,8 @@ class ReceiptProcessingOrchestrator:
                     "store": receipt_data["store"],
                     "amount": receipt_data["amount"],
                     "category": receipt_data["category"],
-                    "date": receipt_data["date"]
-                }
+                    "date": receipt_data["date"],
+                },
             }
 
         except Exception as e:

@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -8,13 +10,13 @@ from app.api.analytics.schemas import (
     MonthlyAnalyticsOut,
     TrendOut,
 )
-from app.core.session import get_db
 from app.api.dependencies import get_current_user
+from app.core.session import get_db
 from app.services.analytics_service import (
     analyze_aggregate,
     analyze_anomalies,
     get_monthly_category_totals,
-    get_monthly_trend,
+    get_trend,
 )
 from app.utils.response_wrapper import success_response
 
@@ -31,9 +33,19 @@ async def monthly(
 
 @router.get("/trend", response_model=TrendOut)
 async def trend(
-    user=Depends(get_current_user), db: Session = Depends(get_db)  # noqa: B008
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = 365,
+    offset: int = 0,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
 ):
-    result = get_monthly_trend(user.id, db)
+    result = get_trend(
+        user.id,
+        db,
+        start_date=start_date,
+        end_date=end_date,
+    )[offset : offset + limit]
     return success_response({"trend": result})
 
 

@@ -1,8 +1,9 @@
-
-import openai
 import logging
 
+import openai
+
 logger = logging.getLogger(__name__)
+
 
 class GPTAgentService:
     """Service for analytics and notification generation via OpenAI."""
@@ -26,14 +27,13 @@ class GPTAgentService:
     def ask(self, user_messages: list) -> str:
         """Send prompts to OpenAI and return generated advice."""
         try:
-            messages = [{"role": "system", "content": self.system_prompt}] + user_messages
+            messages = [
+                {"role": "system", "content": self.system_prompt}
+            ] + user_messages
             response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.3,
-                max_tokens=600
+                model=self.model, messages=messages, temperature=0.3, max_tokens=600
             )
-            return response['choices'][0]['message']['content'].strip()
+            return response["choices"][0]["message"]["content"].strip()
 
         except openai.error.RateLimitError:
             logger.warning("OpenAI rate limit hit.")

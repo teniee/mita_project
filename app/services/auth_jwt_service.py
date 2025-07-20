@@ -1,19 +1,34 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import time
 import uuid
+from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from app.core.config import ALGORITHM, settings
+from app.core.upstash import blacklist_token as upstash_blacklist_token
 from app.core.upstash import (
-    blacklist_token as upstash_blacklist_token,
     is_token_blacklisted,
 )
 
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def decode_token(token: str) -> dict:
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
 
 
 def _current_secret() -> str:
@@ -27,11 +42,13 @@ def _previous_secret() -> str | None:
 def _create_token(data: dict, expires_delta: timedelta, scope: str) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
-    to_encode.update({
-        "exp": expire,
-        "scope": scope,
-        "jti": str(uuid.uuid4()),
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "scope": scope,
+            "jti": str(uuid.uuid4()),
+        }
+    )
     return jwt.encode(to_encode, _current_secret(), algorithm=ALGORITHM)
 
 
@@ -88,4 +105,3 @@ def blacklist_token(token: str) -> None:
             break
         except JWTError:
             continue
-

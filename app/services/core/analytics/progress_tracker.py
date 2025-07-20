@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 
 def calculate_monthly_savings_progress(

@@ -1,8 +1,9 @@
-
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.db.models import User
+
 from app.api.users.schemas import UserUpdateIn
+from app.db.models import User
+
 
 def update_user_profile(current_user: User, data: UserUpdateIn, db: Session) -> User:
     if data.email and current_user.email != data.email:

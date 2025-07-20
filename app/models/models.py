@@ -1,11 +1,12 @@
-
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
 import uuid
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.declarative import declarative_base
+
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "users"
@@ -15,6 +16,7 @@ class User(Base):
     income = Column(Float, nullable=True)
     country = Column(String, nullable=True)
     class_segment = Column(String, nullable=True)
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -26,4 +28,3 @@ class Transaction(Base):
     currency = Column(String, default="USD")
     spent_at = Column(DateTime, default=datetime.utcnow)
     timezone = Column(String, nullable=True)
-

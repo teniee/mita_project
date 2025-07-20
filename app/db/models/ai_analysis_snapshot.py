@@ -1,8 +1,10 @@
-
-from sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
 from app.db.base import Base
+
 
 class AIAnalysisSnapshot(Base):
     __tablename__ = "ai_analysis_snapshots"

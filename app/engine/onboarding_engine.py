@@ -1,10 +1,13 @@
-from app.services.user_data_service import UserDataService
-from app.services.budget_planner import generate_budget_from_answers
-from app.engine.calendar_engine import CalendarEngine
 import json
 import os
 
-ONBOARDING_QUESTIONS_PATH = os.path.join(os.path.dirname(__file__), "../config/onboarding_questions.json")
+from app.engine.calendar_engine import CalendarEngine
+from app.services.budget_planner import generate_budget_from_answers
+from app.services.user_data_service import UserDataService
+
+ONBOARDING_QUESTIONS_PATH = os.path.join(
+    os.path.dirname(__file__), "../config/onboarding_questions.json"
+)
 with open(ONBOARDING_QUESTIONS_PATH, "r", encoding="utf-8") as f:
     ONBOARDING_QUESTIONS = json.load(f)
 
@@ -29,7 +32,7 @@ class OnboardingEngine:
         return {
             "completed": len(missing_steps) == 0,
             "missing_steps": missing_steps,
-            "answers": answers
+            "answers": answers,
         }
 
     def _is_onboarding_complete(self, user_id: str) -> bool:
@@ -48,19 +51,20 @@ class OnboardingEngine:
             "fixed_expenses": fixed_expenses,
             "spending_priorities": categories,
             "savings_balance": answers.get("savings", 0),
-            "missed_payments": 0
+            "missed_payments": 0,
         }
 
         self.user_service.save_user_financial_profile(user_id, profile)
 
         # Generate initial calendar based on answers
         budget_plan = generate_budget_from_answers(answers)
-    from app.services.budget_planner import generate_and_save_calendar
-    generate_and_save_calendar(user_id, answers)
+        from app.services.budget_planner import generate_and_save_calendar
+
+        generate_and_save_calendar(user_id, answers)
         calendar = CalendarEngine(
             income=income,
             fixed_expenses=fixed_expenses,
-            flexible_categories=budget_plan
+            flexible_categories=budget_plan,
         ).generate_calendar(year=2025, month=4)
 
         self.user_service.save_user_calendar(user_id, calendar)

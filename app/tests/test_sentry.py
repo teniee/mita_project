@@ -1,12 +1,12 @@
 import os
-import types
 
 import pytest
-from fastapi.testclient import TestClient
 import sentry_sdk
+from fastapi.testclient import TestClient
 from sentry_sdk.transport import Transport
 
 os.environ.setdefault("FIREBASE_JSON", "{}")
+
 
 class DummyTransport(Transport):
     def __init__(self, options=None):
@@ -16,9 +16,12 @@ class DummyTransport(Transport):
     def capture_envelope(self, envelope):
         self.events.append(envelope)
 
+
 def test_sentry_captures_error():
     transport = DummyTransport()
-    sentry_sdk.init(dsn="http://example@localhost/1", transport=transport, integrations=[])
+    sentry_sdk.init(
+        dsn="http://example@localhost/1", transport=transport, integrations=[]
+    )
 
     from app.main import app
 

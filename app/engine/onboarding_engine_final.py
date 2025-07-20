@@ -1,12 +1,13 @@
-
 import json
 import os
-from app.services.user_data_service import UserDataService
-from app.services.budget_planner import generate_budget_from_answers
-from app.engine.calendar_engine_behavioral import build_calendar
-from app.services.calendar_service_real import save_calendar_for_user
-from app.core.session import get_db
+
 from sqlalchemy.orm import Session
+
+from app.core.session import get_db
+from app.engine.calendar_engine_behavioral import build_calendar
+from app.services.budget_planner import generate_budget_from_answers
+from app.services.calendar_service_real import save_calendar_for_user
+from app.services.user_data_service import UserDataService
 
 ONBOARDING_QUESTIONS_PATH = os.path.join(
     os.path.dirname(__file__), "../config/onboarding_questions.json"
@@ -36,7 +37,7 @@ class OnboardingEngine:
         return {
             "completed": len(missing_steps) == 0,
             "missing_steps": missing_steps,
-            "answers": answers
+            "answers": answers,
         }
 
     def _is_onboarding_complete(self, user_id: int) -> bool:
@@ -62,5 +63,7 @@ class OnboardingEngine:
 
         except Exception as e:
             # Log the error and re-raise
-            print(f"[OnboardingEngine] Error finalizing profile for user {user_id}: {str(e)}")
+            print(
+                f"[OnboardingEngine] Error finalizing profile for user {user_id}: {str(e)}"
+            )
             raise

@@ -1,5 +1,6 @@
-
-def calculate_savings_plan(savings_target: dict, income: float, fixed_total: float) -> dict:
+def calculate_savings_plan(
+    savings_target: dict, income: float, fixed_total: float
+) -> dict:
     """
     savings_target = {
         "amount": 3000,
@@ -24,5 +25,5 @@ def calculate_savings_plan(savings_target: dict, income: float, fixed_total: flo
     return {
         "monthly_savings": monthly_savings,
         "categories_to_cut": categories,
-        "explanation": explanation
+        "explanation": explanation,
     }

@@ -1,9 +1,11 @@
 import json
 import os
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 ONBOARDING_PATH = os.path.join(os.path.dirname(__file__), "onboarding_questions.json")
+
 
 @api_view(["GET"])
 def get_onboarding_questions(request):

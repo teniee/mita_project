@@ -13,10 +13,8 @@ DB models required (see bottom of this file).
 
 from __future__ import annotations
 
-import uuid
 from datetime import date, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -46,7 +44,9 @@ def _date_range(start: date, end: date) -> List[date]:
 # ------------------------------------------------------------------ #
 
 
-def check_eligibility(user_id: str, current_month: str, db: Session) -> ChallengeEligibilityResponse:
+def check_eligibility(
+    user_id: str, current_month: str, db: Session
+) -> ChallengeEligibilityResponse:
     """
     User is eligible for challenges that:
 
@@ -122,16 +122,19 @@ def _current_streak(user_id: str, start_from: date, db: Session) -> Tuple[int, b
     today = date.today()
     days = _date_range(start_from, today)
 
-    spent_days = db.execute(
-        select(models.Transaction.spent_at)
-        .where(
-            and_(
-                models.Transaction.user_id == user_id,
-                models.Transaction.spent_at >= start_from,
-                models.Transaction.spent_at <= today,
+    spent_days = (
+        db.execute(
+            select(models.Transaction.spent_at).where(
+                and_(
+                    models.Transaction.user_id == user_id,
+                    models.Transaction.spent_at >= start_from,
+                    models.Transaction.spent_at <= today,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     spent_set = {d.date() for d in spent_days}
 

@@ -1,5 +1,6 @@
-from typing import Dict, List
 from datetime import datetime
+from typing import Dict, List
+
 
 class ExpenseJournal:
     def __init__(self):
@@ -9,7 +10,7 @@ class ExpenseJournal:
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "action": action,
-            "data": payload
+            "data": payload,
         }
         self.log.setdefault(user_id, []).append(entry)
 

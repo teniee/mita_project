@@ -1,8 +1,10 @@
-
-from sqlalchemy.orm import Session
 from datetime import date
 from decimal import Decimal
+
+from sqlalchemy.orm import Session
+
 from app.db.models import DailyPlan
+
 
 def update_day_status(db: Session, user_id: int, day: date):
     days = db.query(DailyPlan).filter_by(user_id=user_id, date=day).all()
@@ -22,14 +24,10 @@ def update_day_status(db: Session, user_id: int, day: date):
         recommendations = []
     elif delta <= Decimal("10.00"):
         status = "yellow"
-        recommendations = [
-            "Moderate overspending. Review entertainment expenses."
-        ]
+        recommendations = ["Moderate overspending. Review entertainment expenses."]
     else:
         status = "red"
-        recommendations = [
-            "Heavy overspending. Cut back on discretionary categories."
-        ]
+        recommendations = ["Heavy overspending. Cut back on discretionary categories."]
 
     for d in days:
         d.status = status

@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -23,6 +25,8 @@ db_dep = Depends(get_db)  # noqa: B008
 file_upload = File(...)  # noqa: B008
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
+
+MAX_UPLOAD_MB = 10
 
 
 @router.post("/", response_model=TxnOut)
@@ -57,7 +61,10 @@ async def get_transactions(
     )
 
 
-@router.post("/receipt")
+@router.post(
+    "/receipt",
+    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+)
 async def process_receipt(
     file: UploadFile = file_upload,
     user=current_user_dep,
@@ -67,12 +74,16 @@ async def process_receipt(
     import os
     import tempfile
 
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large")
+
     temp = tempfile.NamedTemporaryFile(delete=False)
     try:
-        temp.write(await file.read())
+        temp.write(contents)
         temp.close()
         service = OCRReceiptService()
-        data = service.process_image(temp.name)
+        data = await run_in_threadpool(service.process_image, temp.name)
     finally:
         try:
             os.unlink(temp.name)

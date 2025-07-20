@@ -1,8 +1,9 @@
-
 """Business logic for analytics routes."""
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime, timedelta
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction
@@ -40,28 +41,32 @@ def get_monthly_category_totals(user_id: str, db: Session) -> dict:
     return dict(totals)
 
 
-def get_monthly_trend(user_id: str, db: Session) -> list:
-    """Return a daily total trend for the current month."""
+def get_trend(
+    user_id: str,
+    db: Session,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list:
+    """Return aggregated daily totals within a window."""
 
-    now = datetime.now()
-    start, end = _month_start_end(now)
-    txns = (
-        db.query(Transaction)
-        .filter(
-            Transaction.user_id == user_id,
-            Transaction.timestamp >= start,
-            Transaction.timestamp < end,
+    end_date = end_date or datetime.utcnow().date()
+    start_date = start_date or (end_date - timedelta(days=365))
+
+    stmt = (
+        select(
+            func.date(Transaction.spent_at).label("d"),
+            func.sum(Transaction.amount).label("a"),
         )
-        .all()
+        .where(
+            Transaction.user_id == user_id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at <= end_date,
+        )
+        .group_by("d")
+        .order_by("d")
     )
-    trend = defaultdict(float)
-    for txn in txns:
-        key = txn.timestamp.date().isoformat()
-        trend[key] += float(txn.amount)
-    return [
-        {"date": k, "amount": round(v, 2)}
-        for k, v in sorted(trend.items())
-    ]
+    rows = db.execute(stmt).all()
+    return [{"date": r.d.isoformat(), "amount": float(r.a)} for r in rows]
 
 
 def analyze_aggregate(calendar: list) -> dict:

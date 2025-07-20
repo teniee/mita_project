@@ -1,11 +1,12 @@
 from app.engine.calendar_behavior_logger import CalendarBehaviorLogger
 from app.engine.goal_budget_engine import build_goal_budget
-from app.services.core.engine.monthly_budget_engine import build_monthly_budget
+
 # used by downstream logic: from app.db.models import RecurringExpense
 from app.services.behavior_adapter import apply_behavioral_adjustments
-
+from app.services.core.engine.monthly_budget_engine import build_monthly_budget
 
 calendar_logger = CalendarBehaviorLogger()
+
 
 def build_calendar(config: dict) -> dict:
     """Generate a spending calendar based on behavioral patterns.
@@ -31,9 +32,13 @@ def build_calendar(config: dict) -> dict:
     else:
         user_id = config.get("user_id")
         if not user_id:
-            raise ValueError("Missing 'user_id' in config for behavioral calendar generation")
+            raise ValueError(
+                "Missing 'user_id' in config for behavioral calendar generation"
+            )
 
-        config = apply_behavioral_adjustments(user_id=user_id, config=config, db=config.get('db'))
+        config = apply_behavioral_adjustments(
+            user_id=user_id, config=config, db=config.get("db")
+        )
         result = build_monthly_budget(user_answers=config, year=year, month=month)
 
     return result
