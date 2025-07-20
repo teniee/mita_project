@@ -1,5 +1,5 @@
 
-from app.core.jwt_utils import hash_password
+from app.services.auth_jwt_service import hash_password
 from sqlalchemy.orm import Session
 from app.db.models import User
 from app.core.session import get_db
