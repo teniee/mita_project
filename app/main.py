@@ -52,9 +52,18 @@ from app.utils.response_wrapper import error_response
 
 # ---- Firebase Admin SDK init ----
 if not firebase_admin._apps:
-    firebase_json = os.environ["FIREBASE_JSON"]
-    cred_dict = json.loads(firebase_json)
-    cred = credentials.Certificate(cred_dict)
+    firebase_json = os.environ.get("FIREBASE_JSON")
+    if firebase_json:
+        cred = credentials.Certificate(json.loads(firebase_json))
+    else:
+        cred_path = os.getenv("GOOGLE_SERVICE_ACCOUNT") or os.getenv(
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        )
+        if cred_path and os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+        else:
+            cred = credentials.ApplicationDefault()
+
     firebase_admin.initialize_app(cred)
 
 # ---- Sentry setup ----
