@@ -1,4 +1,5 @@
 import datetime
+import json
 import time
 import types
 from types import SimpleNamespace
@@ -45,7 +46,8 @@ async def test_snapshot_access_after_logout(monkeypatch):
     )
 
     resp = await ai_routes.get_latest_ai_snapshots(user=user, db=db)
-    assert resp["count"] == 1
+    data = json.loads(resp.body.decode())
+    assert data["data"]["count"] == 1
 
     svc.blacklist_token(token)
     assert svc.verify_token(token) is None
