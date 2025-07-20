@@ -2,7 +2,7 @@ import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.models import User
-from app.core.jwt_utils import hash_password
+from app.services.auth_jwt_service import hash_password
 import uuid
 
 ALLOWED_GOOGLE_CLIENT_IDS = [

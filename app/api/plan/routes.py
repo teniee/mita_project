@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -28,4 +28,6 @@ async def plan_month(
         )
         .all()
     )
+    if not rows:
+        raise HTTPException(status_code=404, detail="not found")
     return success_response({row.date.day: row.plan_json for row in rows})
