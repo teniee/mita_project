@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -22,8 +23,9 @@ async def test_spent_defaults_to_current_date(monkeypatch):
 
     now = datetime.utcnow()
     result = await budget_routes.spent()
+    data = json.loads(result.body.decode())
 
-    assert result == {"ok": True}
+    assert data["data"] == {"ok": True}
     assert captured["args"] == (now.year, now.month)
 
 
@@ -42,6 +44,7 @@ async def test_remaining_accepts_custom_date(monkeypatch):
     monkeypatch.setattr(budget_routes, "get_db", lambda: iter(["db"]))
 
     result = await budget_routes.remaining(year=2030, month=12)
+    data = json.loads(result.body.decode())
 
-    assert result == {"rem": True}
+    assert data["data"] == {"rem": True}
     assert captured["args"] == (2030, 12)
