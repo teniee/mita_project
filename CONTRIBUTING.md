@@ -33,5 +33,6 @@ pytest -q
 
 ## Architecture Diagram
 
-The `docs/architecture.puml` file contains a PlantUML diagram referenced from
-`docs/ARCHITECTURE.md`.
+`docs/architecture.puml` contains the high level layout and
+`docs/service_interactions.puml` shows how the mobile app interacts with the
+API, database and S3. Both diagrams have PNG exports in the same folder.
