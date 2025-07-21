@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from app.utils.response_wrapper import success_response
 from sqlalchemy.orm import Session
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
@@ -14,9 +13,14 @@ from app.services.auth_jwt_service import (
     create_refresh_token,
     verify_token,
 )
+from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="", tags=["Authentication"])
 
+
+# ------------------------------------------------------------------
+# Auth & registration
+# ------------------------------------------------------------------
 
 @router.post(
     "/register",
@@ -40,17 +44,24 @@ async def login(
     return authenticate_user(payload, db)
 
 
+# ------------------------------------------------------------------
+# Token refresh / logout
+# ------------------------------------------------------------------
+
 @router.post("/refresh")
 async def refresh_token(request: Request):
-    """Issue a new access token using either token format."""
+    """Issue a new access & refresh token pair from a valid refresh token."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     payload = verify_token(token, scope="refresh_token")
+
     if payload:
+        # Blacklist old token and generate a new pair
         blacklist_token(token)
         user_data = {k: payload[k] for k in payload}
         user_data.pop("exp", None)
         user_data.pop("scope", None)
         user_data.pop("jti", None)
+
         new_access = create_access_token(user_data)
         new_refresh = create_refresh_token(user_data)
         return success_response(
@@ -61,11 +72,12 @@ async def refresh_token(request: Request):
             }
         )
 
-    # Fallback for legacy tokens without `scope`
+    # Fallback for legacy refresh tokens (without `scope`)
     try:
         legacy = jwt_utils.decode_token(token)
         if legacy.get("type") != "refresh":
             raise ValueError("Incorrect token type")
+
         user_id = str(legacy["sub"])
         access = jwt_utils.create_access_token(user_id)
         refresh = jwt_utils.create_refresh_token(user_id)
@@ -82,10 +94,15 @@ async def refresh_token(request: Request):
 
 @router.post("/logout")
 async def logout(request: Request):
+    """Blacklist the current access token."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     blacklist_token(token)
     return success_response({"message": "Successfully logged out."})
 
+
+# ------------------------------------------------------------------
+# Third-party login
+# ------------------------------------------------------------------
 
 @router.post("/google", response_model=TokenOut)
 async def google_login(

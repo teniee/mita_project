@@ -24,6 +24,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Start Postgres
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mita -p 5432:5432 postgres:15
+          for i in {1..10}; do
+            docker exec pg pg_isready && break
+            sleep 2
+          done
+
+      - name: Migration smoke test
+        env:
+          DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/mita
+        run: alembic upgrade head
+
       - name: Lint & style
         run: |
           black --check .
