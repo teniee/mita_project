@@ -1,3 +1,4 @@
+
 # 💸 MITA – Money Intelligence Task Assistant (Full Documentation)
 
 MITA is an AI-powered personal finance backend platform designed to help users control their spending, plan budgets, and receive intelligent feedback using a daily calendar-based system. Built on **FastAPI**, this backend supports OCR receipt parsing, automatic budget redistribution, Firebase-based drift tracking, and more.
@@ -14,63 +15,40 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ```
 
-\[ User App ] ─┬─> \[ Auth API        ]
-├─> \[ Onboarding API  ]
-├─> \[ Transactions API]
-├─> \[ Calendar API    ]──> DailyPlan
-├─> \[ OCR Service     ]──> Receipt → Text → Expense
-├─> \[ AI Analytics   ]
-└─> \[ Drift Monitor   ]──> Firebase
+\[ User App ] ─┬─> \[ Auth API         ]
+├─> \[ Onboarding API   ]
+├─> \[ Transactions API ]
+├─> \[ Calendar API     ]──> DailyPlan
+├─> \[ OCR Service      ]──> Receipt → Text → Expense
+├─> \[ AI Analytics     ]
+└─> \[ Drift Monitor    ]──> Firebase
 
 \[ PostgreSQL ] <── \[ SQLAlchemy Models ]
 
 ````
 
-- **Backend:** FastAPI  
-- **Database:** PostgreSQL (via SQLAlchemy)  
-- **OCR:** Google Cloud Vision  
-- **AI Analytics:** analyzes mood, habits and spending to push budgeting recommendations  
-- **Tracking:** Firebase Firestore (optional)  
-- **Premium:** advanced insights API requires an active subscription  
-- **Deployment:** Docker  
+| Layer      | Tech / Responsibility                              |
+|------------|----------------------------------------------------|
+| **Backend**| FastAPI, Pydantic, jwt-based auth                  |
+| **DB**     | PostgreSQL (SQLAlchemy async engine)               |
+| **OCR**    | Google Cloud Vision                                |
+| **AI**     | GPT-based analytics, K-Means clustering            |
+| **Tracking**| Firebase (optional drift metrics)                 |
+| **Premium**| App- / Play-Store receipts, webhook handling       |
+| **Deploy** | Docker, Alembic migrations, CI/CD pipeline         |
 
 ---
 
-## ⚙️ 3. Core Business Logic (Use Cases)
+## ⚙️ 3. Core Business Logic (Use-Cases)
 
-### 🔐 Auth & Users
-
-- Register/login with JWT  
-- Store income, country, segment (low/mid/high), config flags  
-
-### 🧾 Expenses
-
-- Add expense manually or via receipt (OCR)  
-- Store transaction (amount, date, category, description)  
-
-### 📅 Daily Budgeting
-
-- Calculate budget per day/category  
-- Track spent vs planned per category  
-- Update `DailyPlan` after each transaction  
-
-### 🔁 Redistribution
-
-- Redistribute remaining budget between categories  
-- Close gaps from overspending using surplus days  
-- Triggered manually or during planning phase  
-
-### 🙂 Mood Tracking
-
-- Record user mood for each day via the `/mood` API  
-- Persist moods in the database for analytics  
-- Manage personal habits via the `/habits` API  
-
-### 🧠 Assistant
-
-- Suggest budget changes  
-- Warn about overspending trends  
-- Predict category overshoot (planned)  
+| Domain            | Key Flows                                                                                                      |
+|-------------------|----------------------------------------------------------------------------------------------------------------|
+| **Auth & Users**  | JWT login / refresh / logout, income + country stored, premium flag via subscription                           |
+| **Expenses**      | Manual add or receipt photo → OCR → transaction                                                                |
+| **Daily Budgeting**| Generate DailyPlan per day+category, update spent vs planned on each transaction                              |
+| **Redistribution**| Scan month, detect overspend, pull from surplus days, write back new planned_amounts                           |
+| **Mood / Habits** | `/mood` and `/habits` endpoints record qualitative factors for AI                                             |
+| **AI Assistant**  | Periodic snapshot, GPT summaries, push tips, trend alerts                                                      |
 
 ---
 
@@ -113,22 +91,23 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ---
 
-## 📡 5. API Endpoints
+## 📡 5. API Endpoints (selection)
 
-| Method | Path                                                             | Description                              |
-| ------ | ---------------------------------------------------------------- | ---------------------------------------- |
-| POST   | `/api/auth/login`                                                | Login with email/password                |
-| POST   | `/api/auth/register`                                             | Register new user                        |
-| GET    | `/user/profile`                                                  | Get user data                            |
-| POST   | `/onboarding/answers`                                            | Submit onboarding answers                |
-| POST   | `/transactions`                                                  | Add a new transaction                    |
-| GET    | `/transactions`                                                  | List transactions (paginated)            |
-|        | *Supports `skip`, `limit`, `start_date`, `end_date`, `category`* |                                          |
-| GET    | `/calendar/day/{date}`                                           | Get daily plan by category               |
-| POST   | `/calendar/redistribute/{y}/{m}`                                 | Redistribute budget for the month        |
-| POST   | `/ocr/parse`                                                     | (Optional) Parse text from receipt image |
-| GET    | `/ai/latest-snapshots`                                           | Get latest AI budget analyses            |
-| POST   | `/ai/snapshot`                                                   | Generate AI analysis snapshot            |
+| Method | Path                             | Description                   |
+| ------ | -------------------------------- | ----------------------------- |
+| POST   | `/api/auth/login`                | Login with email/password     |
+| POST   | `/api/auth/register`             | Register new user             |
+| GET    | `/user/profile`                  | Get user data                 |
+| POST   | `/onboarding/answers`            | Submit onboarding answers     |
+| POST   | `/transactions`                  | Add a new transaction         |
+| GET    | `/transactions`                  | List transactions (paginated) |
+| GET    | `/calendar/day/{date}`           | Get daily plan by category    |
+| POST   | `/calendar/redistribute/{y}/{m}` | Redistribute month budget     |
+| POST   | `/ocr/parse`                     | Parse receipt image           |
+| GET    | `/ai/latest-snapshots`           | Latest AI analyses            |
+| POST   | `/ai/snapshot`                   | Trigger new AI snapshot       |
+
+*(see `docs/openapi.yaml` for full spec)*
 
 ---
 
@@ -136,62 +115,46 @@ MITA distributes a user’s **monthly income** into **daily budgets per category
 
 ### Expense Added
 
-* ⏎ User submits amount/category
-* 🔁 Transaction saved → linked to day
-* 🔍 System finds `DailyPlan`:
-
-  * If exists → updates `spent_amount`
-  * Else → creates one
-* 📊 UI shows remaining budget for the day
+1. User submits amount / category.
+2. Transaction saved → linked to `DailyPlan`.
+3. `spent_amount` updated (or plan created).
+4. UI reflects remaining budget.
 
 ### Redistribution
 
-* 🧠 Scans all `DailyPlan` entries for the month
-* 🔴 Detects overspending (`spent > planned`)
-* 🟢 Pulls from surplus days
-* Updates `planned_amount` to balance categories
+1. Iterate month’s `DailyPlan`.
+2. Collect deficits (`spent > planned`).
+3. Pull surplus from underspent days.
+4. Write balanced `planned_amount` values.
 
 ---
 
-## 🧰 7. Module Descriptions
+## 🧰 7. Key Modules
 
-* `services/ocr_google.py` — integrates Google Cloud Vision
-* `services/budget_redistributor.py` — logic for balancing budget
-* `services/expense_tracker.py` — updates DailyPlan after transaction
-* `orchestrator/receipt_orchestrator.py` — parses receipt → transaction
-* `financial/routes.py` — AI analytics endpoints
-* `drift_service.py` — Firebase connection and drift tracking
-* `mood_store.py` — persists user mood entries in the database
-* `scripts/send_daily_ai_advice.py` — cron entry for daily push tips
-* `scripts/refresh_premium_status.py` — cron to disable expired subscriptions
+| Path                                | Purpose                                 |
+| ----------------------------------- | --------------------------------------- |
+| `services/ocr_google.py`            | Google Vision integration               |
+| `engine/budget_redistributor.py`    | Core redistribution algorithm           |
+| `services/expense_tracker.py`       | Hooks to update DailyPlan on spend      |
+| `orchestrator/receipt_orchestrator` | Receipt → OCR → Transaction pipeline    |
+| `services/core/cohort/…`            | K-Means clustering, AI advice generator |
+| `scripts/send_daily_ai_advice.py`   | Cron job: daily budget tips             |
+| `scripts/refresh_premium_status.py` | Cron: deactivate expired subscriptions  |
 
 ---
 
 ## 🧪 8. Environment Variables
 
-Copy `.env.example` to `.env` and set values:
-
-```bash
-cp .env.example .env
-```
-
-Example:
+Copy `.env.example` to `.env` and adjust:
 
 ```bash
 GOOGLE_CREDENTIALS_PATH=/path/to/ocr.json
-FIREBASE_CONFIGURED=true
+DATABASE_URL=postgresql+asyncpg://...
 SECRET_KEY=change_me
-# Use the asyncpg driver for SQLAlchemy's async engine
-DATABASE_URL=postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
-SMTP_HOST=mail.example.com
-SMTP_PORT=587
-SMTP_USERNAME=mailer
-SMTP_PASSWORD=secret
-SMTP_FROM=notify@example.com
-APPLE_SHARED_SECRET=changeme
+SMTP_HOST=…
+APPLE_SHARED_SECRET=…
 GOOGLE_SERVICE_ACCOUNT=/path/to/google.json
 ALLOWED_ORIGINS=https://app.mita.finance
-JWT_PREVIOUS_SECRET=
 SENTRY_DSN=
 ```
 
@@ -203,21 +166,15 @@ SENTRY_DSN=
 
 ```bash
 docker-compose up --build
+python scripts/run_migrations.py
 ```
 
-After the services are running, execute migrations once:
+### Manual venv
 
 ```bash
-python scripts/run_migrations.py  # ensure database schema is up to date
-```
-
-### Manual
-
-```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python scripts/run_migrations.py  # create/update tables
+python scripts/run_migrations.py
 uvicorn app.main:app --reload
 ```
 
@@ -231,35 +188,23 @@ pre-commit run --all-files
 
 ---
 
-## 🧠 10. Frontend Expectations
+## 🧠 10. Front-End Checklist
 
-* ✅ Login/register
-* ✅ Onboarding (income, categories)
-* ✅ Daily dashboard
-* ✅ Budget calendar
-* ✅ Add transaction (manual/photo)
-* ✅ Redistribute budget
-* ✅ History view
-* ✅ Responsive UI with `LayoutBuilder`
-* 🧠 Assistant suggestions (optional)
+* Login / Register
+* Onboarding wizard
+* Daily dashboard & calendar
+* Add transaction (manual / photo)
+* Budget redistribution button
+* History screen
+* Assistant suggestions (premium)
 
 ---
 
-## 🤖 11. Lovable Prompt
+## 🤖 11. Prompt for UI Team
 
-> Build a full budgeting analytics UI for:
+> “Build a full budgeting analytics UI for:
 > [https://github.com/teniee/mita\_docker\_ready\_project\_manus](https://github.com/teniee/mita_docker_ready_project_manus)
-
-Includes:
-
-* Auth
-* Onboarding
-* Budget calendar
-* Add transaction
-* Redistribute
-* History
-* AI budget tips
-* Push/email reminders
+> Needs auth, onboarding, calendar, add TX, redistribute, history, AI tips, push/email reminders”
 
 ---
 
@@ -269,6 +214,8 @@ Includes:
 * [x] Spending goals
 * [x] Email reminders
 
+Future: budgeting rules engine, currency auto-detect, multi-wallet support.
+
 ---
 
 ## 📦 13. Automated Backups
@@ -277,12 +224,7 @@ Includes:
 python scripts/backup_database.py
 ```
 
-Requires:
-
-* `S3_BUCKET`
-* AWS credentials
-
-Backups older than 7 days are deleted automatically.
+Requires `S3_BUCKET`, AWS creds. Old backups (>7 days) auto-purged.
 
 ---
 
@@ -299,51 +241,41 @@ pytest --cov=app --cov-report=term-missing
 
 ```bash
 flutter test --coverage
-```
-
-Coverage file saved to:
-`mobile_app/coverage/lcov.info`
-
-To run integration tests:
-
-```bash
+# coverage output → mobile_app/coverage/lcov.info
 flutter test integration_test -d <deviceId>
 ```
 
-> ⚠️ Integration tests are not run in CI (only web/Chrome supported)
+> Integration tests aren’t run in CI (Chrome-only).
 
 ---
 
-### CI
+### CI Pipeline
 
-The CI workflows:
-
-* install dependencies
-* run tests with coverage
-* upload artifacts
-* build & publish Docker images on release tags
+* Install deps
+* Lint (`black`, `isort`, `ruff`)
+* Run tests + coverage ≥ 60 %
+* Spin up Postgres → `alembic upgrade head`
+* Build & push Docker on release tags
 
 ---
 
 ### Crash Reporting
 
-* Firebase Crashlytics enabled
-* Errors from `runApp` and `PlatformDispatcher` sent to Crashlytics + Sentry
-* Set `SENTRY_DSN` to enable Sentry
+* Firebase Crashlytics + optional Sentry (`SENTRY_DSN`)
+
+---
 
 ### API Conventions
 
-All FastAPI routes should return data using `success_response()` from
-`app.utils.response_wrapper`. This keeps JSON responses consistent across
-the project.
+All FastAPI routes must return data via `success_response()` from
+`app.utils.response_wrapper` for a consistent JSON envelope.
 
 ### Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branch workflow, lint rules and how
-to run tests locally.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for branching workflow, lint / coverage rules, and local testing instructions.
 
+---
 
-
-
-License: Proprietary — All Rights Reserved.
+License: **Proprietary — All Rights Reserved**
 © 2025 YAKOVLEV LTD (207808591)
+
