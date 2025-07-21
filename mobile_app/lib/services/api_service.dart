@@ -2,18 +2,11 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
+import 'loading_service.dart';
+import 'message_service.dart';
 
 class ApiService {
-  final String _baseUrl = const String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: defaultApiBaseUrl,
-  );
-
-  late final Dio _dio;
-
-  final _storage = const FlutterSecureStorage();
-
-  ApiService() {
+  ApiService._internal() {
     _dio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,
@@ -26,15 +19,19 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          LoadingService.instance.start();
           final token = await getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          print('[API] REQUEST: ${options.method} ${options.uri}');
           handler.next(options);
         },
+        onResponse: (response, handler) {
+          LoadingService.instance.stop();
+          handler.next(response);
+        },
         onError: (DioError e, handler) async {
-          print('[API] ERROR: ${e.response?.statusCode} ${e.requestOptions.uri}');
+          LoadingService.instance.stop();
           if (e.response?.statusCode == 401) {
             final refreshed = await _refreshTokens();
             if (refreshed) {
@@ -45,13 +42,31 @@ class ApiService {
               }
               final clone = await _dio.fetch(req);
               return handler.resolve(clone);
+            } else {
+              MessageService.instance.showError('Session expired. Please log in');
             }
+          } else if (e.response?.statusCode == 429) {
+            MessageService.instance.showRateLimit();
+          } else {
+            MessageService.instance.showError('Network error, please try again');
           }
           handler.next(e);
         },
       ),
     );
   }
+
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+
+  final String _baseUrl = const String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: defaultApiBaseUrl,
+  );
+
+  late final Dio _dio;
+
+  final _storage = const FlutterSecureStorage();
 
   String get baseUrl => _dio.options.baseUrl;
 

@@ -10,12 +10,13 @@ spec:
         spec:
           containers:
             - name: pg-backup
-              image: postgres:13
+              image: python:3.11-slim
+              command: ["python", "/scripts/backup_database.py"]
               env:
                 - name: DATABASE_URL
                   value: {{ .Values.postgresUrl | quote }}
                 - name: S3_BUCKET
-                  value: s3://mita-backups
+                  value: {{ .Values.backupBucket | quote }}
               volumeMounts:
                 - name: script
                   mountPath: /scripts
@@ -30,5 +31,5 @@ kind: ConfigMap
 metadata:
   name: pg-backup-script
 data:
-  pg_backup.sh: |
-{{ .Files.Get "../../scripts/pg_backup.sh" | indent 4 }}
+  backup_database.py: |
+{{ .Files.Get "../../scripts/backup_database.py" | indent 4 }}

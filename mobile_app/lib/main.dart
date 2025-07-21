@@ -12,6 +12,8 @@ import 'screens/mood_screen.dart';
 import 'screens/subscription_screen.dart';
 import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
+import 'services/loading_service.dart';
+import 'services/message_service.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -60,8 +62,9 @@ class MITAApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final app = MaterialApp(
       navigatorKey: navigatorKey,
+      scaffoldMessengerKey: MessageService.instance.messengerKey,
       title: 'MITA',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -92,6 +95,21 @@ class MITAApp extends StatelessWidget {
         '/subscribe': (context) => const SubscriptionScreen(),
         '/notifications': (context) => const NotificationsScreen(),
       },
+    );
+    return ValueListenableBuilder<int>(
+      valueListenable: LoadingService.instance.notifier,
+      builder: (context, value, child) {
+        return Stack(
+          children: [
+            child!,
+            if (value > 0) ...[
+              const ModalBarrier(dismissible: false, color: Colors.black45),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ],
+        );
+      },
+      child: app,
     );
   }
 }
