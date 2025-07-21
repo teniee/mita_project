@@ -220,11 +220,17 @@ Future: budgeting rules engine, currency auto-detect, multi-wallet support.
 
 ## 📦 13. Automated Backups
 
+`scripts/backup_database.py` dumps Postgres and uploads to S3. In production it
+is executed from a Kubernetes `CronJob` defined in `k8s/mita/templates/cronjob-backup.yaml`.
+Infrastructure for the S3 bucket is provisioned via Terraform (`terraform/backup.tf`).
+
+Run manually with:
+
 ```bash
 python scripts/backup_database.py
 ```
 
-Requires `S3_BUCKET`, AWS creds. Old backups (>7 days) auto-purged.
+Requires `S3_BUCKET` and AWS credentials. Old backups (>7 days) are purged.
 
 ---
 

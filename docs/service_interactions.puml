@@ -1,0 +1,11 @@
+@startuml
+actor User
+component MobileApp
+component "FastAPI Service" as API
+cloud S3
+database Postgres
+User -> MobileApp
+MobileApp -> API : REST calls
+API -> Postgres : read/write
+API -> S3 : backups
+@enduml
