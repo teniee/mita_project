@@ -26,16 +26,17 @@ import 'screens/onboarding_habits_screen.dart';
 import 'screens/onboarding_motivation_screen.dart';
 import 'screens/onboarding_finish_screen.dart';
 
+/// Initialise Firebase, Crashlytics and push notifications.
 Future<void> _initFirebase() async {
   await Firebase.initializeApp();
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   await FirebaseMessaging.instance.requestPermission();
 
+  // Register device push-token (optional)
   final token = await FirebaseMessaging.instance.getToken();
   if (token != null) {
-    final api = ApiService();
-    print('⚠️ Using API base: ${api.baseUrl}');
-    //await api.registerPushToken(token);
+    final api = ApiService(); // singleton
+    // await api.registerPushToken(token);
   }
 
   await PushNotificationService.initialize(navigatorKey);
@@ -46,13 +47,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initFirebase();
+
+  // Pipe uncaught errors to Crashlytics
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
   PlatformDispatcher.instance.onError = (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     return true;
   };
+
   await SentryFlutter.init(
-    (o) => o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
+    (o) =>
+        o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
     appRunner: () => runApp(const MITAApp()),
   );
 }
@@ -88,7 +93,8 @@ class MITAApp extends StatelessWidget {
         '/onboarding_expenses': (context) => const OnboardingExpensesScreen(),
         '/onboarding_goal': (context) => const OnboardingGoalScreen(),
         '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
-        '/onboarding_motivation': (context) => const OnboardingMotivationScreen(),
+        '/onboarding_motivation': (context) =>
+            const OnboardingMotivationScreen(),
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
         '/referral': (context) => const ReferralScreen(),
         '/mood': (context) => const MoodScreen(),
@@ -96,6 +102,8 @@ class MITAApp extends StatelessWidget {
         '/notifications': (context) => const NotificationsScreen(),
       },
     );
+
+    // Wrap the app with a global loading overlay
     return ValueListenableBuilder<int>(
       valueListenable: LoadingService.instance.notifier,
       builder: (context, value, child) {
