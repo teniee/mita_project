@@ -259,7 +259,7 @@ flutter test integration_test -d <deviceId>
 
 * Install deps
 * Lint (`black`, `isort`, `ruff`)
-* Run tests + coverage ≥ 60 %
+* Run tests + coverage ≥ 65 %
 * Spin up Postgres → `alembic upgrade head`
 * Build & push Docker on release tags
 

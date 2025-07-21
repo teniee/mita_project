@@ -19,7 +19,7 @@ isort .
 pytest --cov=app -q
 ```
 
-Coverage must remain above 60% for the CI gate to pass.
+Coverage must remain above 65% for the CI gate to pass.
 
 ## Running Tests Locally
 
