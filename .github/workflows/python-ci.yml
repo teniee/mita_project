@@ -24,6 +24,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Start Postgres
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mita -p 5432:5432 postgres:15
+          for i in {1..10}; do
+            docker exec pg pg_isready && break
+            sleep 2
+          done
+
+      - name: Migration smoke test
+        env:
+          DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/mita
+        run: alembic upgrade head
+
       - name: Lint & style
         run: |
           black --check .
@@ -47,3 +60,20 @@ jobs:
         with:
           name: backend-coverage
           path: coverage.xml
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/mita-backend:latest

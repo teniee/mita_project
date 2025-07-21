@@ -1,3 +1,4 @@
+import json
 import time
 from types import SimpleNamespace
 
@@ -57,6 +58,7 @@ async def test_refresh_revokes_old(monkeypatch):
     resp = await auth_routes.refresh_token(req)
 
     # route should return a new refresh token
-    assert "refresh_token" in resp
+    data = json.loads(resp.body.decode())
+    assert "refresh_token" in data["data"]
     # old refresh must now be invalid
     assert svc.verify_token(refresh, "refresh_token") is None

@@ -1,0 +1,14 @@
+@startuml
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v14.0/LATEST/AWSPUML
+!includeurl AWSPUML
+
+actor User
+package "FastAPI App" {
+  [API Routes]
+  [Services]
+}
+[Database] as DB
+User --> [API Routes]
+[API Routes] --> [Services]
+[Services] --> DB
+@enduml

@@ -5,14 +5,18 @@ from sklearn.cluster import KMeans
 
 
 class CohortClusterEngine:
-    def __init__(self, n_clusters=4):
+    """Simple in-memory KMeans clustering for user cohorts."""
+
+    def __init__(self, n_clusters: int = 4):
+        """Create a new clustering engine."""
         self.model = KMeans(n_clusters=n_clusters, random_state=42)
-        self.user_vectors = {}
-        self.labels = {}
+        self.user_vectors: Dict[str, List[float]] = {}
+        self.labels: Dict[str, int] = {}
 
     def _build_vector(
         self, profile: Dict, calendar: Dict, mood: Dict, challenges: Dict
     ) -> List[float]:
+        """Convert raw user blobs into a numerical feature vector."""
         income = profile.get("income", 0)
         moods = len(mood)
         mood_variety = len(set(mood.values()))
@@ -24,6 +28,7 @@ class CohortClusterEngine:
         return [income, moods, mood_variety, challenge_count, avg_spent, redistribs]
 
     def fit(self, user_blobs: Dict[str, Dict]):
+        """Fit the cluster model on a dictionary of user data blobs."""
         vectors = []
         ids = []
 
@@ -41,8 +46,10 @@ class CohortClusterEngine:
         for i, user_id in enumerate(ids):
             self.labels[user_id] = int(self.model.labels_[i])
 
-    def get_label(self, user_id: str):
+    def get_label(self, user_id: str) -> int:
+        """Return the assigned cluster label for a user."""
         return self.labels.get(user_id, -1)
 
-    def get_centroids(self):
+    def get_centroids(self) -> np.ndarray:
+        """Return coordinates of all cluster centroids."""
         return self.model.cluster_centers_

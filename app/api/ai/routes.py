@@ -21,7 +21,7 @@ async def get_latest_ai_snapshots(
         .first()
     )
     if not snapshot:
-        return {"count": 0, "data": []}
+        return success_response({"count": 0, "data": []})
     data = {
         "user_id": user.id,
         "rating": snapshot.rating,
@@ -29,7 +29,7 @@ async def get_latest_ai_snapshots(
         "summary": snapshot.summary,
         "created_at": snapshot.created_at.isoformat(),
     }
-    return {"count": 1, "data": [data]}
+    return success_response({"count": 1, "data": [data]})
 
 
 @router.post("/snapshot")
