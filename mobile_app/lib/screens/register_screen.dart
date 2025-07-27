@@ -66,17 +66,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {
+      print('Registration error: $e');
+      print('Error type: ${e.runtimeType}');
+      
       String errorMessage = 'Registration failed';
       
-      // Extract more specific error message
-      if (e.toString().contains('Email already exists')) {
-        errorMessage = 'This email is already registered. Try logging in instead.';
-      } else if (e.toString().contains('400')) {
-        errorMessage = 'Invalid email or password format';
-      } else if (e.toString().contains('500')) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (e.toString().contains('network')) {
-        errorMessage = 'Network error. Check your connection.';
+      // Extract more specific error message from DioException
+      if (e.toString().contains('DioException')) {
+        try {
+          // Try to extract error from response data
+          final dioError = e as dynamic;
+          if (dioError.response?.data != null) {
+            final data = dioError.response.data;
+            print('Response data: $data');
+            
+            if (data is Map) {
+              if (data.containsKey('error') && data['error'] is Map) {
+                final errorDetail = data['error']['detail']?.toString() ?? '';
+                if (errorDetail.contains('Email already exists')) {
+                  errorMessage = 'This email is already registered. Try logging in instead.';
+                } else if (errorDetail.isNotEmpty) {
+                  errorMessage = errorDetail;
+                }
+              } else if (data.containsKey('detail')) {
+                final detail = data['detail'].toString();
+                if (detail.contains('Email already exists')) {
+                  errorMessage = 'This email is already registered. Try logging in instead.';
+                } else {
+                  errorMessage = detail;
+                }
+              }
+            }
+          }
+        } catch (parseError) {
+          print('Error parsing response: $parseError');
+        }
+      }
+      
+      // Fallback error handling
+      if (errorMessage == 'Registration failed') {
+        if (e.toString().contains('Email already exists')) {
+          errorMessage = 'This email is already registered. Try logging in instead.';
+        } else if (e.toString().contains('400')) {
+          errorMessage = 'Invalid email or password format';
+        } else if (e.toString().contains('500')) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (e.toString().contains('SocketException') || 
+                   e.toString().contains('TimeoutException') ||
+                   e.toString().contains('network') ||
+                   e.toString().contains('HandshakeException')) {
+          errorMessage = 'Network error. Check your internet connection and try again.';
+        } else {
+          errorMessage = 'Registration failed: ${e.toString()}';
+        }
       }
       
       setState(() {
