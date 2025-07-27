@@ -392,9 +392,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> getMonthlyAnalytics() async {
     final token = await getToken();
-    final userId = await getUserId();
     final response = await _dio.get(
-      '/analytics/monthly/$userId',
+      '/analytics/monthly',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] as Map);
