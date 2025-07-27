@@ -15,14 +15,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+  }
+
+  bool _isValidPassword(String password) {
+    return password.length >= 8;
+  }
+
+  String? _validateInputs() {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!_isValidEmail(email)) {
+      return 'Please enter a valid email address';
+    }
+    if (password.isEmpty) {
+      return 'Please enter a password';
+    }
+    if (!_isValidPassword(password)) {
+      return 'Password must be at least 8 characters long';
+    }
+    return null;
+  }
+
   Future<void> _register() async {
+    // Validate inputs first
+    final validationError = _validateInputs();
+    if (validationError != null) {
+      setState(() {
+        _error = validationError;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final response = await _api.register(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
       final accessToken = response.data['access_token'];
@@ -103,6 +138,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Password must be at least 8 characters long',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontFamily: 'Manrope',
                     ),
                   ),
                   const SizedBox(height: 16),
