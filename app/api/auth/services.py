@@ -32,8 +32,8 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
     db.refresh(user)
 
     return TokenOut(
-        access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
     )
 
 
@@ -45,8 +45,8 @@ def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
             detail="Invalid email or password",
         )
     return TokenOut(
-        access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
     )
 
 
@@ -55,8 +55,8 @@ def refresh_token_for_user(user: User) -> TokenOut:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     return TokenOut(
-        access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
     )
 
 
@@ -72,6 +72,6 @@ def revoke_token(user: User):
 async def authenticate_google(data: GoogleAuthIn, db: Session) -> TokenOut:
     user = await authenticate_google_user(data.id_token, db)
     return TokenOut(
-        access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
     )
