@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mobile_app"
+    namespace = "mita.finance"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
@@ -32,8 +32,8 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
-        languageVersion = "1.8"
-        apiVersion = "1.8"
+        languageVersion = "2.1"
+        apiVersion = "2.1"
     }
 }
 

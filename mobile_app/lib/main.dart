@@ -107,14 +107,17 @@ class MITAApp extends StatelessWidget {
     return ValueListenableBuilder<int>(
       valueListenable: LoadingService.instance.notifier,
       builder: (context, value, child) {
-        return Stack(
-          children: [
-            child!,
-            if (value > 0) ...[
-              const ModalBarrier(dismissible: false, color: Colors.black45),
-              const Center(child: CircularProgressIndicator()),
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: Stack(
+            children: [
+              child!,
+              if (value > 0) ...[
+                const ModalBarrier(dismissible: false, color: Colors.black45),
+                const Center(child: CircularProgressIndicator()),
+              ],
             ],
-          ],
+          ),
         );
       },
       child: app,

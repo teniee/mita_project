@@ -5,14 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/alembic.ini" beforeDir="false" afterPath="$PROJECT_DIR$/alembic.ini" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/alembic/env.py" beforeDir="false" afterPath="$PROJECT_DIR$/alembic/env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/db.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/db.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/db/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/ai_analysis_snapshot.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/ai_analysis_snapshot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/android/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/ios/Flutter/Debug.xcconfig" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/ios/Flutter/Debug.xcconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/ios/Flutter/Release.xcconfig" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/ios/Flutter/Release.xcconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/macos/Flutter/Flutter-Debug.xcconfig" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/macos/Flutter/Flutter-Debug.xcconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/macos/Flutter/Flutter-Release.xcconfig" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/macos/Flutter/Flutter-Release.xcconfig" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
