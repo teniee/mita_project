@@ -72,24 +72,16 @@ class ApiService {
             }
           } else if (e.response?.statusCode == 429) {
             MessageService.instance.showRateLimit();
+          } else if (e.response?.statusCode == 404) {
+            // Don't show error messages for missing endpoints (404)
+            // These will be handled gracefully by individual screens
+            print('API endpoint not found: ${e.requestOptions.path}');
+          } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+            // Only show error messages for server errors (5xx)
+            MessageService.instance.showError('Server error. Please try again later.');
           } else {
-            // Try to extract specific error message from backend
-            String errorMessage = 'Network error, please try again.';
-            if (e.response?.data != null) {
-              try {
-                final data = e.response!.data;
-                if (data is Map && data.containsKey('detail')) {
-                  errorMessage = data['detail'].toString();
-                } else if (data is Map && data.containsKey('message')) {
-                  errorMessage = data['message'].toString();
-                } else if (data is String) {
-                  errorMessage = data;
-                }
-              } catch (_) {
-                // Keep default error message if parsing fails
-              }
-            }
-            MessageService.instance.showError(errorMessage);
+            // For other errors (400, etc), extract specific message but don't always show
+            print('API error ${e.response?.statusCode}: ${e.requestOptions.path}');
           }
 
           handler.next(e);

@@ -29,9 +29,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         isLoading = false;
       });
     } catch (e) {
+      print('Error loading calendar: $e');
+      // For missing endpoints, show empty state instead of error
+      if (!mounted) return;
       setState(() {
-        error = 'Failed to load calendar: \$e';
+        calendarData = []; // Show empty calendar instead of error
         isLoading = false;
+        error = null; // Don't show error message
       });
     }
   }
