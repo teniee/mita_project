@@ -11,6 +11,26 @@ class OnboardingMotivationScreen extends StatefulWidget {
 
 class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen> {
   final TextEditingController _controller = TextEditingController();
+  bool _isButtonEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_updateButtonState);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_updateButtonState);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _updateButtonState() {
+    setState(() {
+      _isButtonEnabled = _controller.text.trim().isNotEmpty;
+    });
+  }
 
   void _submitMotivation() {
     final text = _controller.text.trim();
@@ -58,7 +78,7 @@ class _OnboardingMotivationScreenState extends State<OnboardingMotivationScreen>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _controller.text.trim().isNotEmpty ? _submitMotivation : null,
+                  onPressed: _isButtonEnabled ? _submitMotivation : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF193C57),
                     foregroundColor: Colors.white,
