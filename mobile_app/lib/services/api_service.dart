@@ -184,6 +184,27 @@ class ApiService {
   // Onboarding
   // ---------------------------------------------------------------------------
 
+  Future<bool> hasCompletedOnboarding() async {
+    try {
+      final token = await getToken();
+      final response = await _dio.get(
+        '/users/me',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      // Check if user has basic profile data (country indicates some onboarding)
+      final userData = response.data['data'];
+      if (userData != null && userData['country'] != null) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      // If there's an error (like 404/500), assume onboarding not completed
+      print('Error checking onboarding status: $e');
+      // For now, always show onboarding since backend routes aren't fully set up
+      return false;
+    }
+  }
+
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(

@@ -25,8 +25,34 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> fetchDashboardData() async {
     try {
-      final data = await _apiService.getDashboard();
-      final advice = await _apiService.getLatestAdvice();
+      // Try to fetch dashboard data
+      Map<String, dynamic>? data;
+      Map<String, dynamic>? advice;
+      
+      try {
+        data = await _apiService.getDashboard();
+      } catch (e) {
+        print('Dashboard endpoint not available: $e');
+        // Provide default dashboard data for users without onboarding
+        data = {
+          'total_budget': 0,
+          'spent_today': 0,
+          'remaining_budget': 0,
+          'message': 'Complete onboarding to see your dashboard'
+        };
+      }
+      
+      try {
+        advice = await _apiService.getLatestAdvice();
+      } catch (e) {
+        print('Advice endpoint not available: $e');
+        // Provide default advice for new users
+        advice = {
+          'title': 'Welcome to MITA!',
+          'content': 'Complete your onboarding to get personalized financial advice.'
+        };
+      }
+      
       if (!mounted) return;
       setState(() {
         dashboardData = data;
@@ -34,8 +60,9 @@ class _MainScreenState extends State<MainScreen> {
         isLoading = false;
       });
     } catch (e) {
+      print('General error in fetchDashboardData: $e');
       setState(() {
-        error = 'Failed to load data: \$e';
+        error = 'Unable to load data. Please check your connection.';
         isLoading = false;
       });
     }

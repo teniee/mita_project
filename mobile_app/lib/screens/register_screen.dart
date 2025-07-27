@@ -64,7 +64,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final refreshToken = response.data['refresh_token'];
       await _api.saveTokens(accessToken, refreshToken);
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/main');
+      
+      // Check if user has completed onboarding
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      if (hasOnboarded) {
+        Navigator.pushReplacementNamed(context, '/main');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding_region');
+      }
     } catch (e) {
       print('Registration error: $e');
       print('Error type: ${e.runtimeType}');

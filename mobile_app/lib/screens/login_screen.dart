@@ -49,7 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
       await _api.saveTokens(accessToken, refreshToken);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/main');
+      
+      // Check if user has completed onboarding
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      if (hasOnboarded) {
+        Navigator.pushReplacementNamed(context, '/main');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding_region');
+      }
     } catch (e) {
       setState(() {
         _loading = false;
@@ -74,7 +81,14 @@ class _LoginScreenState extends State<LoginScreen> {
       await _api.saveTokens(accessToken, refreshToken);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/main');
+      
+      // Check if user has completed onboarding
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      if (hasOnboarded) {
+        Navigator.pushReplacementNamed(context, '/main');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding_region');
+      }
     } catch (e) {
       setState(() {
         _loading = false;
