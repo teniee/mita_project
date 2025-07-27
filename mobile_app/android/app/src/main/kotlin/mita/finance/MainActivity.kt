@@ -1,4 +1,4 @@
-package mita.mita
+package mita.finance
 
 import io.flutter.embedding.android.FlutterActivity
 

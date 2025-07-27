@@ -31,9 +31,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {
+      String errorMessage = 'Registration failed';
+      
+      // Extract more specific error message
+      if (e.toString().contains('Email already exists')) {
+        errorMessage = 'This email is already registered. Try logging in instead.';
+      } else if (e.toString().contains('400')) {
+        errorMessage = 'Invalid email or password format';
+      } else if (e.toString().contains('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (e.toString().contains('network')) {
+        errorMessage = 'Network error. Check your connection.';
+      }
+      
       setState(() {
         _loading = false;
-        _error = 'Registration failed: $e';
+        _error = errorMessage;
       });
     }
   }

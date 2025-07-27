@@ -5,6 +5,8 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'dart:ui';
 
+import 'firebase_options.dart';
+
 import 'screens/notifications_screen.dart';
 import 'screens/bottom_navigation.dart';
 import 'screens/referral_screen.dart';
@@ -28,7 +30,9 @@ import 'screens/onboarding_finish_screen.dart';
 
 /// Initialise Firebase, Crashlytics and push notifications.
 Future<void> _initFirebase() async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   await FirebaseMessaging.instance.requestPermission();
 

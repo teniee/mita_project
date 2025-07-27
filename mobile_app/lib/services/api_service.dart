@@ -27,6 +27,11 @@ class ApiService {
         onRequest: (options, handler) async {
           LoadingService.instance.start();
 
+          // Debug logging
+          print('🚀 REQUEST: ${options.method} ${options.uri}');
+          print('📤 Headers: ${options.headers}');
+          print('📤 Data: ${options.data}');
+
           final token = await getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -35,10 +40,20 @@ class ApiService {
         },
         onResponse: (response, handler) {
           LoadingService.instance.stop();
+          
+          // Debug logging
+          print('✅ RESPONSE: ${response.statusCode} ${response.requestOptions.uri}');
+          print('📥 Data: ${response.data}');
+          
           handler.next(response);
         },
         onError: (DioError e, handler) async {
           LoadingService.instance.stop();
+
+          // Debug logging
+          print('❌ ERROR: ${e.response?.statusCode} ${e.requestOptions.uri}');
+          print('📥 Error Data: ${e.response?.data}');
+          print('📥 Error Message: ${e.message}');
 
           // Handle auth refresh / errors
           if (e.response?.statusCode == 401) {
@@ -58,8 +73,23 @@ class ApiService {
           } else if (e.response?.statusCode == 429) {
             MessageService.instance.showRateLimit();
           } else {
-            MessageService.instance
-                .showError('Network error, please try again.');
+            // Try to extract specific error message from backend
+            String errorMessage = 'Network error, please try again.';
+            if (e.response?.data != null) {
+              try {
+                final data = e.response!.data;
+                if (data is Map && data.containsKey('detail')) {
+                  errorMessage = data['detail'].toString();
+                } else if (data is Map && data.containsKey('message')) {
+                  errorMessage = data['message'].toString();
+                } else if (data is String) {
+                  errorMessage = data;
+                }
+              } catch (_) {
+                // Keep default error message if parsing fails
+              }
+            }
+            MessageService.instance.showError(errorMessage);
           }
 
           handler.next(e);
