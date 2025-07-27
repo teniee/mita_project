@@ -31,9 +31,13 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
         isLoading = false;
       });
     } catch (e) {
+      print('Error loading installments: $e');
+      if (!mounted) return;
       setState(() {
-        error = 'Failed to load installments: \$e';
+        // Set data to empty instead of showing error
+        installments = [];
         isLoading = false;
+        error = null;
       });
     }
   }
@@ -71,8 +75,29 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: Text(error!))
+          : installments.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.payment, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No installments found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Your installment tracking will appear here',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: installments.length,

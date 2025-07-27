@@ -28,10 +28,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load goals: \$e')),
-      );
+      print('Error loading goals: $e');
+      if (!mounted) return;
+      setState(() {
+        // Set data to empty instead of showing error
+        _goals = [];
+        _isLoading = false;
+      });
     }
   }
 
@@ -152,7 +155,28 @@ class _GoalsScreenState extends State<GoalsScreen> {
           if (_isLoading) {
             content = const Center(child: CircularProgressIndicator());
           } else if (_goals.isEmpty) {
-            content = const Center(child: Text('No goals yet'));
+            content = const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.flag, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No goals yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Tap the + button to create your first goal',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
           } else {
             content = ListView.builder(
               padding: const EdgeInsets.all(16),

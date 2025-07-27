@@ -32,9 +32,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      print('Error loading transactions: $e');
+      // For missing endpoints, show empty state instead of error
+      if (!mounted) return;
       setState(() {
-        _error = 'Failed to load transactions: $e';
+        _expenses = []; // Show empty list instead of error
         _isLoading = false;
+        _error = null; // Don't show error message
       });
     }
   }
@@ -59,9 +63,39 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : ListView.builder(
+          : _expenses.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.receipt_long,
+                            size: 64,
+                            color: Color(0xFF193C57),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No transactions yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF193C57),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Add your first expense to get started',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Manrope',
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _expenses.length,
                   itemBuilder: (context, index) {

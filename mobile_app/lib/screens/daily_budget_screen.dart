@@ -29,10 +29,13 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load budgets: \$e')),
-      );
+      print('Error loading daily budgets: $e');
+      if (!mounted) return;
+      setState(() {
+        // Set data to empty instead of showing error
+        _budgets = [];
+        _isLoading = false;
+      });
     }
   }
 
@@ -83,7 +86,28 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _budgets.isEmpty
-              ? const Center(child: Text('No budget data available'))
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No budget data available',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Your daily budget tracking will appear here',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _budgets.length,

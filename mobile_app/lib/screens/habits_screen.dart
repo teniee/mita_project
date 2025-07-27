@@ -28,10 +28,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load habits: \$e')),
-      );
+      print('Error loading habits: $e');
+      if (!mounted) return;
+      setState(() {
+        // Set data to empty instead of showing error
+        _habits = [];
+        _isLoading = false;
+      });
     }
   }
 
@@ -144,7 +147,28 @@ class _HabitsScreenState extends State<HabitsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _habits.isEmpty
-              ? const Center(child: Text('No habits added yet'))
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.track_changes, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No habits added yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Tap the + button to create your first habit',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _habits.length,

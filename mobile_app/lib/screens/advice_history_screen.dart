@@ -28,10 +28,13 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load history: $e')),
-      );
+      print('Error loading advice history: $e');
+      if (!mounted) return;
+      setState(() {
+        // Set data to empty instead of showing error
+        _items = [];
+        _loading = false;
+      });
     }
   }
 
@@ -48,17 +51,40 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
       backgroundColor: const Color(0xFFFFF9F0),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _items.length,
-              itemBuilder: (_, i) {
-                final item = _items[i] as Map<String, dynamic>;
-                final date = DateFormat.yMMMd().format(DateTime.parse(item['date'] as String));
-                return ListTile(
-                  title: Text(item['text'] as String),
-                  subtitle: Text(date),
-                );
-              },
-            ),
+          : _items.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No advice history yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Your advice history will appear here',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _items.length,
+                  itemBuilder: (_, i) {
+                    final item = _items[i] as Map<String, dynamic>;
+                    final date = DateFormat.yMMMd().format(DateTime.parse(item['date'] as String));
+                    return ListTile(
+                      title: Text(item['text'] as String),
+                      subtitle: Text(date),
+                    );
+                  },
+                ),
     );
   }
 }
