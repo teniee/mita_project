@@ -212,20 +212,26 @@ class ApiService {
 
   Future<Map<String, dynamic>> getDashboard() async {
     final token = await getToken();
-    final response = await _dio.get(
-      '/dashboard/',
+    // Use calendar shell for dashboard data
+    final response = await _dio.post(
+      '/calendar/shell',
+      data: {'year': DateTime.now().year, 'month': DateTime.now().month},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return Map<String, dynamic>.from(response.data);
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
   Future<List<dynamic>> getCalendar() async {
     final token = await getToken();
-    final response = await _dio.get(
-      '/calendar/',
+    // Use calendar shell to get calendar data
+    final response = await _dio.post(
+      '/calendar/shell',
+      data: {'year': DateTime.now().year, 'month': DateTime.now().month},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data;
+    final calendar = response.data['data']['calendar'] ?? {};
+    // Convert calendar object to list format expected by UI
+    return calendar.values.toList();
   }
 
   // ---------------------------------------------------------------------------
@@ -361,13 +367,12 @@ class ApiService {
 
   Future<List<dynamic>> getExpenses() async {
     final token = await getToken();
-    final userId = await getUserId();
-    final response = await _dio.post(
-      '/expense/history',
-      data: {'user_id': userId},
+    // Use transactions endpoint to get expense history
+    final response = await _dio.get(
+      '/transactions/',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data['data']['expenses'] as List<dynamic>;
+    return response.data['data'] as List<dynamic>;
   }
 
   // ---------------------------------------------------------------------------
