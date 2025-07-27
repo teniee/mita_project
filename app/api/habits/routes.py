@@ -11,7 +11,7 @@ from app.utils.response_wrapper import success_response
 
 from .schemas import HabitIn, HabitOut, HabitUpdate
 
-router = APIRouter(prefix="", tags=["habits"])
+router = APIRouter(prefix="/habits", tags=["habits"])
 
 
 @router.post("/", response_model=HabitOut)

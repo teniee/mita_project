@@ -173,7 +173,7 @@ private_routers_list = [
     (spend_router, "/api/spend", ["Spend"]),
     (style_router, "/api/styles", ["Styles"]),
     (insights_router, "/api", ["Insights"]),
-    (habits_router, "/api/habits", ["Habits"]),
+    (habits_router, "/api", ["Habits"]),
     (ai_router, "/api/ai", ["AI"]),
     (transactions_router, "/api", ["Transactions"]),
     (iap_router, "/api/iap", ["IAP"]),

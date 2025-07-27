@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -119,6 +120,40 @@ class ApiService {
   Future<void> saveTokens(String access, String refresh) async {
     await _storage.write(key: 'access_token', value: access);
     await _storage.write(key: 'refresh_token', value: refresh);
+    
+    // Extract and save user ID from access token
+    try {
+      final userId = _extractUserIdFromToken(access);
+      if (userId != null) {
+        await saveUserId(userId);
+      }
+    } catch (e) {
+      print('Failed to extract user ID from token: $e');
+    }
+  }
+
+  String? _extractUserIdFromToken(String token) {
+    try {
+      // JWT tokens have format: header.payload.signature
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      
+      // Decode the payload (second part)
+      String payload = parts[1];
+      // Add padding if needed for base64 decoding
+      while (payload.length % 4 != 0) {
+        payload += '=';
+      }
+      
+      final decodedBytes = base64Url.decode(payload);
+      final decodedPayload = utf8.decode(decodedBytes);
+      final Map<String, dynamic> payloadData = json.decode(decodedPayload);
+      
+      return payloadData['sub'] as String?;
+    } catch (e) {
+      print('Error decoding JWT token: $e');
+      return null;
+    }
   }
 
   Future<void> saveUserId(String id) async =>
@@ -244,7 +279,7 @@ class ApiService {
       '/goals/',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data;
+    return List<dynamic>.from(response.data['data'] ?? []);
   }
 
   Future<void> createGoal(Map<String, dynamic> data) async {
@@ -283,7 +318,7 @@ class ApiService {
       '/habits/',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data;
+    return List<dynamic>.from(response.data['data'] ?? []);
   }
 
   Future<void> createHabit(Map<String, dynamic> data) async {
