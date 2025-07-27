@@ -8,7 +8,7 @@ from app.utils.response_wrapper import success_response
 
 from .schemas import AdviceOut
 
-router = APIRouter(prefix="", tags=["insights"])
+router = APIRouter(prefix="/insights", tags=["insights"])
 
 
 @router.get("/", response_model=AdviceOut | None)

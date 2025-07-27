@@ -10,7 +10,7 @@ from app.core.session import get_db
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
 
-router = APIRouter(prefix="", tags=["goals"])
+router = APIRouter(prefix="/goals", tags=["goals"])
 
 
 class GoalIn(BaseModel):
