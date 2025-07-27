@@ -15,7 +15,7 @@ from app.services.auth_jwt_service import (
 )
 from app.utils.response_wrapper import success_response
 
-router = APIRouter(prefix="", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 # ------------------------------------------------------------------
