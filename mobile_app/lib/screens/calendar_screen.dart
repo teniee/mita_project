@@ -13,6 +13,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<dynamic> calendarData = [];
   bool isLoading = true;
   String? error;
+  DateTime currentMonth = DateTime.now();
 
   @override
   void initState() {
@@ -21,6 +22,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> fetchCalendarData() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
     try {
       final data = await _apiService.getCalendar();
       if (!mounted) return;
@@ -30,92 +36,291 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
     } catch (e) {
       print('Error loading calendar: $e');
-      // For missing endpoints, show empty state instead of error
       if (!mounted) return;
       setState(() {
-        calendarData = []; // Show empty calendar instead of error
+        calendarData = [];
         isLoading = false;
-        error = null; // Don't show error message
+        error = e.toString();
       });
     }
   }
 
-
   Color _getDayColor(String status) {
-    switch (status) {
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (status.toLowerCase()) {
       case 'over':
-        return const Color(0xFFFF5C5C);
+        return colorScheme.error;
       case 'warning':
-        return const Color(0xFFFFD25F);
+        return colorScheme.tertiary;
+      case 'good':
       default:
-        return const Color(0xFF84FAA1);
+        return colorScheme.primary;
     }
+  }
+
+  Color _getOnDayColor(String status) {
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (status.toLowerCase()) {
+      case 'over':
+        return colorScheme.onError;
+      case 'warning':
+        return colorScheme.onTertiary;
+      case 'good':
+      default:
+        return colorScheme.onPrimary;
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text(
-          'Calendar',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+        title: Text(
+          '${_getMonthName(currentMonth.month)} ${currentMonth.year}',
+          style: textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: colorScheme.surface,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: fetchCalendarData,
+            tooltip: 'Refresh Calendar',
+          ),
+        ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: Text(error!))
-              : Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: GridView.builder(
+      body: RefreshIndicator(
+        onRefresh: fetchCalendarData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Month header with spending summary
+                Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Monthly Overview',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildStatusIndicator('Good', colorScheme.primary, colorScheme.onPrimary),
+                            _buildStatusIndicator('Warning', colorScheme.tertiary, colorScheme.onTertiary),
+                            _buildStatusIndicator('Over Budget', colorScheme.error, colorScheme.onError),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Calendar grid
+                if (isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (error != null)
+                  Card(
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.error_outline_rounded,
+                            size: 48,
+                            color: colorScheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Unable to load calendar',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please check your connection and try again',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: fetchCalendarData,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (calendarData.isEmpty)
+                  Card(
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.calendar_month_outlined,
+                            size: 48,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No calendar data available',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Complete your budget setup to see your spending calendar',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: calendarData.length,
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 1,
+                      crossAxisCount: 7, // 7 days in a week
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 0.8,
                     ),
                     itemBuilder: (context, index) {
                       final day = calendarData[index];
-                      return GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/daily_budget'),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _getDayColor(day['status']),
-                            borderRadius: BorderRadius.circular(14),
+                      final dayNumber = day['day'] as int;
+                      final status = day['status'] as String;
+                      final limit = day['limit'] as int;
+                      final spent = day['spent'] as int? ?? 0;
+
+                      return Material(
+                        elevation: 2,
+                        borderRadius: BorderRadius.circular(12),
+                        color: _getDayColor(status),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.pushNamed(
+                            context, 
+                            '/daily_budget',
+                            arguments: {'day': dayNumber, 'month': currentMonth.month, 'year': currentMonth.year},
                           ),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                day['day'].toString(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: Colors.white,
+                          child: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  dayNumber.toString(),
+                                  style: textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: _getOnDayColor(status),
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '\$${day['limit']}',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '\$$limit',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: _getOnDayColor(status).withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (spent > 0) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Spent: \$$spent',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: _getOnDayColor(status).withValues(alpha: 0.7),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       );
                     },
                   ),
-                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, '/daily_budget'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
+        tooltip: 'Add new expense',
+      ),
+    );
+  }
+
+  Widget _buildStatusIndicator(String label, Color color, Color onColor) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+      ],
     );
   }
 }
