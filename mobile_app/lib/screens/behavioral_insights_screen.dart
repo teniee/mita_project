@@ -40,16 +40,16 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
       final results = await Future.wait([
         _apiService.getSpendingPatterns(),
         _apiService.getBehaviorPredictions(),
-        _apiService.getSpendingAnomalies(),
+        _apiService.getBehaviorAnomalies(),
         _apiService.getBehaviorInsights(),
       ]);
 
       if (!mounted) return;
       setState(() {
-        _patterns = results[0];
-        _predictions = results[1];
-        _anomalies = results[2];
-        _insights = results[3];
+        _patterns = Map<String, dynamic>.from(results[0] as Map);
+        _predictions = Map<String, dynamic>.from(results[1] as Map);
+        _anomalies = List<dynamic>.from(results[2] as List);
+        _insights = Map<String, dynamic>.from(results[3] as Map);
         _isLoading = false;
       });
     } catch (e) {

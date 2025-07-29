@@ -67,9 +67,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   Future<void> _fetchAIInsights() async {
     try {
       final futures = await Future.wait([
-        _apiService.getLatestAISnapshot().catchError((e) => null),
-        _apiService.getSpendingPatterns().catchError((e) => null),
-        _apiService.getAIWeeklyInsights().catchError((e) => null),
+        _apiService.getLatestAISnapshot().catchError((e) => <String, dynamic>{}),
+        _apiService.getSpendingPatterns().catchError((e) => <String, dynamic>{}),
+        _apiService.getAIWeeklyInsights().catchError((e) => <String, dynamic>{}),
         _apiService.getSpendingAnomalies().catchError((e) => <Map<String, dynamic>>[]),
       ]);
 
@@ -491,35 +491,11 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             // Budget Suggestions
             if (_budgetSuggestions.isNotEmpty) ...[
               _buildBudgetSuggestionsPreview(),
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colorScheme.tertiary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.arrow_forward_ios, size: 12, color: colorScheme.tertiary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          suggestion['message'] ?? suggestion.toString(),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ).toList(),
             ],
             
             // Recent redistribution activity
             if (_redistributionHistory.isNotEmpty) ...[
-              if (suggestions.isNotEmpty) const SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 'Recent Activity',
                 style: TextStyle(

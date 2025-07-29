@@ -1331,24 +1331,6 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  /// Get behavioral budget allocation based on user patterns
-  Future<Map<String, dynamic>> getBehavioralBudgetAllocation({
-    required double totalAmount,
-    Map<String, dynamic>? userProfile,
-    Map<String, dynamic>? categoryWeights,
-  }) async {
-    final token = await getToken();
-    final response = await _dio.post(
-      '/behavior/budget_allocation',
-      data: {
-        'total_amount': totalAmount,
-        'profile': userProfile ?? {},
-        'category_weights': categoryWeights ?? {},
-      },
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return Map<String, dynamic>.from(response.data['data'] ?? {});
-  }
 
   /// Get behavioral warnings for calendar days
   Future<Map<String, dynamic>> getBehavioralWarnings({int? year, int? month}) async {
@@ -1443,42 +1425,6 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  Future<Map<String, dynamic>> getSpendingPatterns({
-    int? year,
-    int? month,
-  }) async {
-    final token = await getToken();
-    final currentYear = year ?? DateTime.now().year;
-    final currentMonth = month ?? DateTime.now().month;
-    
-    try {
-      final response = await _dio.get(
-        '/behavior/patterns',
-        queryParameters: {
-          'year': currentYear,
-          'month': currentMonth,
-        },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      return Map<String, dynamic>.from(response.data['data'] ?? {});
-    } catch (e) {
-      // Return demo patterns if endpoint not available
-      return {
-        'patterns': ['weekend_spender', 'food_dominated'],
-        'analysis': {
-          'weekend_spending_ratio': 0.65,
-          'food_spending_ratio': 0.45,
-          'emotional_triggers': ['stress', 'celebrations'],
-          'peak_spending_times': ['Friday evening', 'Sunday afternoon'],
-          'recommendations': [
-            'Consider meal planning to reduce food spending',
-            'Set weekend spending limits',
-            'Identify emotional spending triggers',
-          ],
-        },
-      };
-    }
-  }
 
   Future<Map<String, dynamic>> getBehaviorPredictions() async {
     final token = await getToken();
@@ -1504,7 +1450,7 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getSpendingAnomalies({
+  Future<List<dynamic>> getBehaviorAnomalies({
     int? days = 30,
   }) async {
     final token = await getToken();
