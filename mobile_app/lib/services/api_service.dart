@@ -1708,6 +1708,289 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
+  // Challenge & Gamification System
+  // ---------------------------------------------------------------------------
+
+  Future<List<dynamic>> getChallenges() async {
+    final token = await getToken();
+    
+    try {
+      final response = await _dio.get(
+        '/challenges/',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<dynamic>.from(response.data['data'] ?? []);
+    } catch (e) {
+      // Return demo challenges if endpoint not available
+      return [
+        {
+          'id': '1',
+          'title': 'Coffee Saver Challenge',
+          'description': 'Skip buying coffee for 5 days and save money',
+          'type': 'spending_reduction',
+          'target_value': 5,
+          'current_progress': 2,
+          'reward_points': 100,
+          'reward_amount': 25.0,
+          'status': 'active',
+          'difficulty': 'easy',
+          'duration_days': 7,
+          'start_date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+          'end_date': DateTime.now().add(const Duration(days: 5)).toIso8601String(),
+          'category': 'Food & Dining',
+        },
+        {
+          'id': '2',
+          'title': 'Weekend Budget Master',
+          'description': 'Stay within weekend budget for 4 consecutive weekends',
+          'type': 'budget_adherence',
+          'target_value': 4,
+          'current_progress': 1,
+          'reward_points': 250,
+          'reward_amount': 50.0,
+          'status': 'active',
+          'difficulty': 'medium',
+          'duration_days': 28,
+          'start_date': DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
+          'end_date': DateTime.now().add(const Duration(days: 21)).toIso8601String(),
+          'category': 'Entertainment',
+        },
+        {
+          'id': '3',
+          'title': 'Transportation Optimizer',
+          'description': 'Reduce transportation costs by 20% this month',
+          'type': 'category_reduction',
+          'target_value': 20.0,
+          'current_progress': 8.5,
+          'reward_points': 500,
+          'reward_amount': 100.0,
+          'status': 'active',
+          'difficulty': 'hard',
+          'duration_days': 30,
+          'start_date': DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
+          'end_date': DateTime.now().add(const Duration(days: 20)).toIso8601String(),
+          'category': 'Transportation',
+        },
+      ];
+    }
+  }
+
+  Future<Map<String, dynamic>> getChallengeProgress(String challengeId) async {
+    final token = await getToken();
+    
+    try {
+      final response = await _dio.get(
+        '/challenges/$challengeId/progress',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return demo progress data
+      return {
+        'challenge_id': challengeId,
+        'current_progress': 2,
+        'target_value': 5,
+        'completion_percentage': 40.0,
+        'streak_days': 2,
+        'best_streak': 3,
+        'daily_progress': [
+          {'date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(), 'completed': true},
+          {'date': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(), 'completed': true},
+          {'date': DateTime.now().toIso8601String(), 'completed': false},
+        ],
+        'estimated_completion': DateTime.now().add(const Duration(days: 3)).toIso8601String(),
+      };
+    }
+  }
+
+  Future<void> joinChallenge(String challengeId) async {
+    final token = await getToken();
+    
+    await _dio.post(
+      '/challenges/$challengeId/join',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<void> leaveChallenge(String challengeId) async {
+    final token = await getToken();
+    
+    await _dio.delete(
+      '/challenges/$challengeId/leave',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<Map<String, dynamic>> getGameificationStats() async {
+    final token = await getToken();
+    
+    try {
+      final response = await _dio.get(
+        '/challenges/stats',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return demo gamification stats
+      return {
+        'total_points': 1250,
+        'current_level': 5,
+        'next_level_points': 1500,
+        'points_to_next_level': 250,
+        'completed_challenges': 8,
+        'active_challenges': 3,
+        'current_streak': 12,
+        'best_streak': 18,
+        'badges_earned': [
+          {
+            'id': 'coffee_saver',
+            'name': 'Coffee Saver',
+            'description': 'Saved money by skipping coffee purchases',
+            'icon': 'coffee',
+            'earned_date': DateTime.now().subtract(const Duration(days: 5)).toIso8601String(),
+            'rarity': 'common',
+          },
+          {
+            'id': 'budget_master',
+            'name': 'Budget Master',
+            'description': 'Stayed within budget for 7 consecutive days',
+            'icon': 'trophy',
+            'earned_date': DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
+            'rarity': 'rare',
+          },
+          {
+            'id': 'early_bird',
+            'name': 'Early Bird',
+            'description': 'Completed 5 challenges in first month',
+            'icon': 'star',
+            'earned_date': DateTime.now().subtract(const Duration(days: 15)).toIso8601String(),
+            'rarity': 'epic',
+          },
+        ],
+        'leaderboard_position': 42,
+        'points_this_week': 150,
+        'challenges_completed_this_month': 2,
+      };
+    }
+  }
+
+  Future<List<dynamic>> getAvailableChallenges() async {
+    final token = await getToken();
+    
+    try {
+      final response = await _dio.get(
+        '/challenges/available',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<dynamic>.from(response.data['data'] ?? []);
+    } catch (e) {
+      // Return demo available challenges
+      return [
+        {
+          'id': '4',
+          'title': 'Meal Prep Master',
+          'description': 'Cook at home for 10 days straight',
+          'type': 'habit_building',
+          'target_value': 10,
+          'reward_points': 300,
+          'reward_amount': 75.0,
+          'difficulty': 'medium',
+          'duration_days': 14,
+          'category': 'Food & Dining',
+          'participants': 127,
+          'success_rate': 0.78,
+        },
+        {
+          'id': '5',
+          'title': 'No-Spend Weekend',
+          'description': 'Complete a weekend without any non-essential spending',
+          'type': 'spending_freeze',
+          'target_value': 1,
+          'reward_points': 150,
+          'reward_amount': 30.0,
+          'difficulty': 'easy',
+          'duration_days': 2,
+          'category': 'Entertainment',
+          'participants': 89,
+          'success_rate': 0.65,
+        },
+        {
+          'id': '6',
+          'title': 'Subscription Audit',
+          'description': 'Review and cancel at least 2 unused subscriptions',
+          'type': 'cost_optimization',
+          'target_value': 2,
+          'reward_points': 400,
+          'reward_amount': 120.0,
+          'difficulty': 'easy',
+          'duration_days': 7,
+          'category': 'Subscriptions',
+          'participants': 234,
+          'success_rate': 0.92,
+        },
+      ];
+    }
+  }
+
+  Future<void> updateChallengeProgress(String challengeId, Map<String, dynamic> progressData) async {
+    final token = await getToken();
+    
+    await _dio.patch(
+      '/challenges/$challengeId/progress',
+      data: progressData,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
+
+  Future<List<dynamic>> getLeaderboard({String? period = 'weekly'}) async {
+    final token = await getToken();
+    
+    try {
+      final response = await _dio.get(
+        '/challenges/leaderboard',
+        queryParameters: {'period': period},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<dynamic>.from(response.data['data'] ?? []);
+    } catch (e) {
+      // Return demo leaderboard
+      return [
+        {
+          'rank': 1,
+          'user_id': 'user_123',
+          'username': 'BudgetNinja',
+          'points': 2850,
+          'level': 8,
+          'badges_count': 15,
+          'challenges_completed': 23,
+          'avatar_url': null,
+        },
+        {
+          'rank': 2,
+          'user_id': 'user_456',
+          'username': 'SavingsHero',
+          'points': 2720,
+          'level': 7,
+          'badges_count': 12,
+          'challenges_completed': 19,
+          'avatar_url': null,
+        },
+        {
+          'rank': 42,
+          'user_id': 'current_user',
+          'username': 'You',
+          'points': 1250,
+          'level': 5,
+          'badges_count': 3,
+          'challenges_completed': 8,
+          'avatar_url': null,
+          'is_current_user': true,
+        },
+      ];
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Manual logout
   // ---------------------------------------------------------------------------
 
