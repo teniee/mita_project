@@ -6,6 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="fixed register problem 2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -105,7 +107,15 @@
       <option name="project" value="LOCAL" />
       <updated>1753640253563</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="fixed register problem 2">
+      <option name="closed" value="true" />
+      <created>1753794860372</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1753794860372</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

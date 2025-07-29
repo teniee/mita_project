@@ -14,6 +14,13 @@ class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
   Map<String, dynamic>? dashboardData;
   Map<String, dynamic>? latestAdvice;
+  
+  // AI Insights Data
+  Map<String, dynamic>? aiSnapshot;
+  Map<String, dynamic>? financialHealthScore;
+  Map<String, dynamic>? weeklyInsights;
+  List<Map<String, dynamic>> spendingAnomalies = [];
+  
   bool isLoading = true;
   String? error;
 
@@ -36,12 +43,21 @@ class _MainScreenState extends State<MainScreen> {
         _apiService.getLatestAdvice().catchError((e) => _getDefaultAdvice()),
         _apiService.getExpenses().catchError((e) => <dynamic>[]),
         _apiService.getMonthlyAnalytics().catchError((e) => <String, dynamic>{}),
+        // AI Insights
+        _apiService.getLatestAISnapshot().catchError((e) => null),
+        _apiService.getAIFinancialHealthScore().catchError((e) => null),
+        _apiService.getAIWeeklyInsights().catchError((e) => null),
+        _apiService.getSpendingAnomalies().catchError((e) => <Map<String, dynamic>>[]),
       ]);
 
       final dashboardResponse = futures[0] as Map<String, dynamic>;
       final adviceResponse = futures[1] as Map<String, dynamic>;
       final transactionsResponse = futures[2] as List<dynamic>;
       final analyticsResponse = futures[3] as Map<String, dynamic>;
+      final aiSnapshotResponse = futures[4] as Map<String, dynamic>?;
+      final financialHealthResponse = futures[5] as Map<String, dynamic>?;
+      final weeklyInsightsResponse = futures[6] as Map<String, dynamic>?;
+      final anomaliesResponse = futures[7] as List<Map<String, dynamic>>;
 
       // Process and combine the data
       final processedData = _processDashboardData(
@@ -54,6 +70,10 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         dashboardData = processedData;
         latestAdvice = adviceResponse;
+        aiSnapshot = aiSnapshotResponse;
+        financialHealthScore = financialHealthResponse;
+        weeklyInsights = weeklyInsightsResponse;
+        spendingAnomalies = anomaliesResponse;
         isLoading = false;
       });
     } catch (e) {
@@ -160,7 +180,9 @@ class _MainScreenState extends State<MainScreen> {
                       final rightColumn = <Widget>[
                         _buildMiniCalendar(),
                         const SizedBox(height: 20),
-                        _buildInsightsCard(),
+                        _buildAIInsightsCard(),
+                        const SizedBox(height: 20),
+                        _buildFinancialHealthCard(),
                         const SizedBox(height: 20),
                         _buildRecentTransactions(),
                       ];
@@ -185,9 +207,11 @@ class _MainScreenState extends State<MainScreen> {
                                   ),
                                 ],
                               )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [...leftColumn, const SizedBox(height: 20), ...rightColumn],
+                            : SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [...leftColumn, const SizedBox(height: 20), ...rightColumn],
+                                ),
                               ),
                       );
                     },
@@ -480,27 +504,309 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildInsightsCard() {
-    final text = latestAdvice?['text'] ?? 'No advice yet';
+  Widget _buildAIInsightsCard() {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AdviceHistoryScreen()),
-        );
-      },
-      child: Card(
-        color: const Color(0xFFE8F0FE),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            text,
-            style: const TextStyle(fontFamily: 'Manrope'),
+      onTap: () => Navigator.pushNamed(context, '/insights'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF193C57),
+              const Color(0xFF193C57).withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF193C57).withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.psychology,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'AI Insights',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 16,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (aiSnapshot != null)
+              _buildSnapshotPreview()
+            else if (weeklyInsights != null)
+              _buildWeeklyInsightsPreview()
+            else
+              Text(
+                latestAdvice?['text'] ?? 'Tap to view personalized AI insights about your financial health',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
+                  height: 1.4,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            if (spendingAnomalies.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber,
+                      size: 16,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${spendingAnomalies.length} anomaly detected',
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildSnapshotPreview() {
+    final rating = aiSnapshot!['rating'] ?? 'B';
+    final summary = aiSnapshot!['summary'] ?? '';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'Rating: $rating',
+                style: const TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          summary.length > 100 ? '${summary.substring(0, 100)}...' : summary,
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            color: Colors.white.withOpacity(0.9),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyInsightsPreview() {
+    final insights = weeklyInsights!['insights'] ?? '';
+    final trend = weeklyInsights!['trend'] ?? 'stable';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              _getTrendIcon(trend),
+              color: _getTrendColor(trend),
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Trend: ${trend.toUpperCase()}',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: _getTrendColor(trend),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            color: Colors.white.withOpacity(0.9),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFinancialHealthCard() {
+    if (financialHealthScore == null) return Container();
+    
+    final score = financialHealthScore!['score'] ?? 75;
+    final grade = financialHealthScore!['grade'] ?? 'B+';
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.health_and_safety,
+                  color: Colors.green,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Financial Health',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF193C57),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                '$score',
+                style: const TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 32,
+                  color: Color(0xFF193C57),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '/ 100',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(score).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  grade,
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.w600,
+                    color: _getScoreColor(score),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getTrendIcon(String trend) {
+    switch (trend.toLowerCase()) {
+      case 'improving':
+        return Icons.trending_up;
+      case 'declining':
+        return Icons.trending_down;
+      default:
+        return Icons.trending_flat;
+    }
+  }
+
+  Color _getTrendColor(String trend) {
+    switch (trend.toLowerCase()) {
+      case 'improving':
+        return Colors.green;
+      case 'declining':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  Color _getScoreColor(int score) {
+    if (score >= 80) return Colors.green;
+    if (score >= 60) return Colors.orange;
+    return Colors.red;
   }
 
   Widget _buildRecentTransactions() {
