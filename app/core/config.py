@@ -17,55 +17,55 @@ else:
 
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = (
-        "postgresql+psycopg2://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@"
-        "aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
-    )
-
+    # Database - MUST be provided via environment variable
+    DATABASE_URL: str
+    
     # Redis
-    REDIS_URL: str = "redis://redis:6379"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Auth / JWT
-    JWT_SECRET: str = "test_secret"
+    # Auth / JWT - MUST be provided via environment variables for security
+    JWT_SECRET: str
     JWT_PREVIOUS_SECRET: str = ""
-    # Default should be overwritten via environment variable
-    SECRET_KEY: str = "change_me"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # OpenAI
-    openai_api_key: str = "test"
-    openai_model: str = "gpt-4o-mini"
+    # OpenAI - MUST be provided via environment variable
+    OPENAI_API_KEY: str
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Firebase
-    google_application_credentials: str = ""
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
 
-    # App Store (unused but required so the app doesn't crash)
-    appstore_shared_secret: str = ""
+    # App Store
+    APPSTORE_SHARED_SECRET: str = ""
 
     # Sentry (optional)
-    sentry_dsn: str = ""
+    SENTRY_DSN: str = ""
 
     # SMTP settings
-    smtp_host: str = ""
-    smtp_port: int = 25
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from: str = "no-reply@example.com"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@mita.finance"
 
     # APNs settings
-    apns_key: str = ""
-    apns_key_id: str = ""
-    apns_team_id: str = ""
-    apns_topic: str = ""
-    apns_use_sandbox: bool = False
+    APNS_KEY: str = ""
+    APNS_KEY_ID: str = ""
+    APNS_TEAM_ID: str = ""
+    APNS_TOPIC: str = "com.mita.finance"
+    APNS_USE_SANDBOX: bool = True
 
-    # CORS
-    # Restrict to production front-end domain(s) by default
-    allowed_origins: list[str] = ["https://app.mita.finance"]
+    # CORS - Allow configuration via environment
+    ALLOWED_ORIGINS: list[str] = ["https://app.mita.finance"]
+    
+    # Environment settings
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
 
-    @field_validator("allowed_origins", mode="before")
+    @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def split_origins(cls, v):
         if isinstance(v, str):
@@ -87,6 +87,36 @@ def get_settings():
 
 settings = get_settings()
 
-# Legacy support
+# Legacy support - maintain backward compatibility
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
+
+# Validation function to ensure critical settings are provided
+def validate_required_settings():
+    """Validate that all required environment variables are set"""
+    required_settings = [
+        ('DATABASE_URL', settings.DATABASE_URL),
+        ('JWT_SECRET', settings.JWT_SECRET),
+        ('SECRET_KEY', settings.SECRET_KEY),
+        ('OPENAI_API_KEY', settings.OPENAI_API_KEY),
+    ]
+    
+    missing_settings = []
+    for name, value in required_settings:
+        if not value or (isinstance(value, str) and value.strip() == ""):
+            missing_settings.append(name)
+    
+    if missing_settings:
+        raise ValueError(
+            f"Missing required environment variables: {', '.join(missing_settings)}. "
+            f"Please check your .env file or environment configuration."
+        )
+
+# Validate settings on import
+try:
+    validate_required_settings()
+except ValueError as e:
+    print(f"Configuration Error: {e}")
+    # In development, we can continue with warnings
+    if settings.ENVIRONMENT == "production":
+        raise

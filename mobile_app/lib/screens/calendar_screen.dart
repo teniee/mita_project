@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'dart:async';
 import '../utils/string_extensions.dart';
+import 'services/logging_service.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);
@@ -83,7 +84,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         });
       }
     } catch (e) {
-      print('Error fetching AI insights: $e');
+      logError('Error fetching AI insights: $e');
     }
   }
 
@@ -143,7 +144,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         isLoading = false;
       });
     } catch (e) {
-      print('Error loading calendar: $e');
+      logError('Error loading calendar: $e');
       if (!mounted) return;
       setState(() {
         calendarData = [];
@@ -162,7 +163,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         });
       }
     } catch (e) {
-      print('Error loading budget suggestions: $e');
+      logError('Error loading budget suggestions: $e');
     }
   }
 
@@ -175,7 +176,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         });
       }
     } catch (e) {
-      print('Error loading budget mode: $e');
+      logError('Error loading budget mode: $e');
     }
   }
 
@@ -188,7 +189,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         });
       }
     } catch (e) {
-      print('Error loading redistribution history: $e');
+      logError('Error loading redistribution history: $e');
     }
   }
 
@@ -233,7 +234,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         );
       }
     } catch (e) {
-      print('Error during calendar redistribution: $e');
+      logError('Error during calendar redistribution: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

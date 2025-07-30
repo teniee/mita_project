@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/logging_service.dart';
 import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -77,7 +78,7 @@ class _MainScreenState extends State<MainScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error in fetchDashboardData: $e');
+      logError('Error in fetchDashboardData: $e', tag: 'MAIN_SCREEN');
       if (!mounted) return;
       setState(() {
         error = 'Unable to load dashboard data. Please try again.';

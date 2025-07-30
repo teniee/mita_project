@@ -7,8 +7,9 @@ python-dotenv
 python-multipart
 numpy
 scikit-learn
-SQLAlchemy==1.4.54
-alembic==1.8
+# Upgraded to SQLAlchemy 2.x for better async support
+SQLAlchemy==2.0.25
+alembic==1.13.1
 asyncpg==0.30.0
 psycopg2-binary==2.9.7
 PyJWT==2.8

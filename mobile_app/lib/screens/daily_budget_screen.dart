@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'services/logging_service.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({Key? key}) : super(key: key);
@@ -59,7 +60,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading daily budgets: $e');
+      logError('Error loading daily budgets: $e');
       if (!mounted) return;
       setState(() {
         // Set data to empty instead of showing error
@@ -78,7 +79,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         });
       }
     } catch (e) {
-      print('Error loading live budget status: $e');
+      logError('Error loading live budget status: $e');
     }
   }
 
@@ -91,7 +92,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         });
       }
     } catch (e) {
-      print('Error loading budget suggestions: $e');
+      logError('Error loading budget suggestions: $e');
     }
   }
 
@@ -104,7 +105,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         });
       }
     } catch (e) {
-      print('Error loading budget mode: $e');
+      logError('Error loading budget mode: $e');
     }
   }
 
@@ -117,7 +118,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         });
       }
     } catch (e) {
-      print('Error loading redistribution history: $e');
+      logError('Error loading redistribution history: $e');
     }
   }
 
@@ -156,7 +157,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         );
       }
     } catch (e) {
-      print('Error during budget redistribution: $e');
+      logError('Error during budget redistribution: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -190,7 +191,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         );
       }
     } catch (e) {
-      print('Error during auto adaptation: $e');
+      logError('Error during auto adaptation: $e');
     }
   }
 

@@ -3,6 +3,7 @@ import 'edit_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import 'services/logging_service.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({Key? key}) : super(key: key);
@@ -37,7 +38,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading transactions: $e');
+      logError('Error loading transactions: $e');
       if (!mounted) return;
       setState(() {
         // Show demo data if backend is not available

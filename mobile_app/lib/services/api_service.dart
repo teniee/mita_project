@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
 import 'loading_service.dart';
 import 'message_service.dart';
+import 'logging_service.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -28,10 +29,16 @@ class ApiService {
         onRequest: (options, handler) async {
           LoadingService.instance.start();
 
-          // Debug logging
-          print('🚀 REQUEST: ${options.method} ${options.uri}');
-          print('📤 Headers: ${options.headers}');
-          print('📤 Data: ${options.data}');
+          // Structured logging
+          logDebug('API Request: ${options.method} ${options.uri}', 
+            tag: 'API',
+            extra: {
+              'method': options.method,
+              'url': options.uri.toString(),
+              'headers': options.headers,
+              'hasData': options.data != null,
+            }
+          );
 
           final token = await getToken();
           if (token != null) {
@@ -42,19 +49,32 @@ class ApiService {
         onResponse: (response, handler) {
           LoadingService.instance.stop();
           
-          // Debug logging
-          print('✅ RESPONSE: ${response.statusCode} ${response.requestOptions.uri}');
-          print('📥 Data: ${response.data}');
+          // Structured logging
+          logDebug('API Response: ${response.statusCode} ${response.requestOptions.uri}',
+            tag: 'API',
+            extra: {
+              'statusCode': response.statusCode,
+              'url': response.requestOptions.uri.toString(),
+              'hasData': response.data != null,
+            }
+          );
           
           handler.next(response);
         },
         onError: (DioError e, handler) async {
           LoadingService.instance.stop();
 
-          // Debug logging
-          print('❌ ERROR: ${e.response?.statusCode} ${e.requestOptions.uri}');
-          print('📥 Error Data: ${e.response?.data}');
-          print('📥 Error Message: ${e.message}');
+          // Structured error logging
+          logError('API Error: ${e.response?.statusCode} ${e.requestOptions.uri}',
+            tag: 'API',
+            extra: {
+              'statusCode': e.response?.statusCode,
+              'url': e.requestOptions.uri.toString(),
+              'errorMessage': e.message,
+              'errorData': e.response?.data,
+            },
+            error: e,
+          );
 
           // Handle auth refresh / errors
           if (e.response?.statusCode == 401) {
@@ -76,13 +96,14 @@ class ApiService {
           } else if (e.response?.statusCode == 404) {
             // Don't show error messages for missing endpoints (404)
             // These will be handled gracefully by individual screens
-            print('API endpoint not found: ${e.requestOptions.path}');
+            logWarning('API endpoint not found: ${e.requestOptions.path}', tag: 'API');
           } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
             // Only show error messages for server errors (5xx)
             MessageService.instance.showError('Server error. Please try again later.');
+            logError('Server error: ${e.response?.statusCode}', tag: 'API', error: e);
           } else {
             // For other errors (400, etc), extract specific message but don't always show
-            print('API error ${e.response?.statusCode}: ${e.requestOptions.path}');
+            logWarning('API error ${e.response?.statusCode}: ${e.requestOptions.path}', tag: 'API');
           }
 
           handler.next(e);
@@ -128,7 +149,7 @@ class ApiService {
         await saveUserId(userId);
       }
     } catch (e) {
-      print('Failed to extract user ID from token: $e');
+      logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
     }
   }
 
@@ -151,7 +172,7 @@ class ApiService {
       
       return payloadData['sub'] as String?;
     } catch (e) {
-      print('Error decoding JWT token: $e');
+      logError('Error decoding JWT token', tag: 'AUTH', error: e);
       return null;
     }
   }
@@ -226,7 +247,7 @@ class ApiService {
       return false;
     } catch (e) {
       // If there's an error (like 404/500), assume onboarding not completed
-      print('Error checking onboarding status: $e');
+      logWarning('Error checking onboarding status', tag: 'ONBOARDING', error: e);
       // For now, always show onboarding since backend routes aren't fully set up
       return false;
     }

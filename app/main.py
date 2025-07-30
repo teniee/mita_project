@@ -48,6 +48,7 @@ from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
+from app.core.async_session import init_database, close_database
 from app.core.error_handler import (
     MITAException, ValidationException, 
     mita_exception_handler, validation_exception_handler,
@@ -91,7 +92,7 @@ app.add_middleware(HTTPSRedirectMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -229,4 +230,11 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 @app.on_event("startup")
 async def on_startup():
+    """Initialize application on startup"""
     await init_rate_limiter(app)
+    await init_database()
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Clean up resources on shutdown"""
+    await close_database()

@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:crypto/crypto.dart';
+import 'logging_service.dart';
 
 /// Advanced offline service with intelligent caching and sync
 class AdvancedOfflineService {
@@ -478,7 +479,7 @@ class AdvancedOfflineService {
   Future<void> _processSingleSync(PendingSync sync) async {
     // This would integrate with your ApiService
     // For now, this is a placeholder
-    print('Processing sync: ${sync.method} ${sync.endpoint}');
+    logDebug('Processing sync: ${sync.method} ${sync.endpoint}', tag: 'OFFLINE');
     
     // Simulate API call
     await Future.delayed(const Duration(milliseconds: 500));
@@ -499,7 +500,7 @@ class AdvancedOfflineService {
       // Max retries reached, remove from queue
       await _removeSyncFromQueue(sync.id);
       _pendingSyncs.remove(sync);
-      print('Sync failed permanently: ${sync.endpoint} - $error');
+      logError('Sync failed permanently: ${sync.endpoint} - $error', tag: 'OFFLINE');
     } else {
       // Update retry count and schedule for later
       final backoffDelay = Duration(minutes: newRetryCount * 5); // Exponential backoff
@@ -518,7 +519,7 @@ class AdvancedOfflineService {
       sync.retryCount = newRetryCount;
       sync.scheduledAt = newScheduledAt;
       
-      print('Sync failed, retrying later: ${sync.endpoint} - $error');
+      logWarning('Sync failed, retrying later: ${sync.endpoint} - $error', tag: 'OFFLINE');
     }
   }
 

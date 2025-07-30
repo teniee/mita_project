@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'services/logging_service.dart';
 
 // Habit data model for better type safety and data management
 class Habit {
@@ -94,7 +95,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       });
       _animationController.forward();
     } catch (e) {
-      print('Error loading habits: $e');
+      logError('Error loading habits: $e');
       if (!mounted) return;
       setState(() {
         _habits = [];

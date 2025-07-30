@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'logging_service.dart';
 
 /// Performance metric data point
 class PerformanceMetric {
@@ -210,9 +211,7 @@ class PerformanceService {
     
     _isMonitoring = true;
     
-    if (kDebugMode) {
-      print('Performance monitoring initialized');
-    }
+    logInfo('Performance monitoring initialized', tag: 'PERFORMANCE');
   }
 
   /// Stop performance monitoring
@@ -221,9 +220,7 @@ class PerformanceService {
     _memoryTimer?.cancel();
     _isMonitoring = false;
     
-    if (kDebugMode) {
-      print('Performance monitoring stopped');
-    }
+    logInfo('Performance monitoring stopped', tag: 'PERFORMANCE');
   }
 
   /// Set up frame timing callback
@@ -253,8 +250,8 @@ class PerformanceService {
     if (frameTimeMs > SLOW_FRAME_THRESHOLD) {
       _droppedFrames++;
       
-      if (kDebugMode && frameTimeMs > SLOW_FRAME_THRESHOLD * 2) {
-        print('Slow frame detected: ${frameTimeMs.toStringAsFixed(2)}ms');
+      if (frameTimeMs > SLOW_FRAME_THRESHOLD * 2) {
+        logWarning('Slow frame detected: ${frameTimeMs.toStringAsFixed(2)}ms', tag: 'PERFORMANCE');
       }
     }
     
@@ -332,18 +329,14 @@ class PerformanceService {
       // Check for memory warnings
       if (memoryInfo.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
         _memoryWarningCount++;
-        if (kDebugMode) {
-          print('High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%');
-        }
+        logWarning('High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%', tag: 'PERFORMANCE');
         
         // Suggest garbage collection
         _suggestGarbageCollection();
       }
       
     } catch (e) {
-      if (kDebugMode) {
-        print('Error collecting memory info: $e');
-      }
+      logError('Error collecting memory info: $e', tag: 'PERFORMANCE');
     }
   }
 
@@ -371,9 +364,7 @@ class PerformanceService {
         return await _getIOSMemoryInfo();
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error getting system memory info: $e');
-      }
+      logError('Error getting system memory info: $e', tag: 'PERFORMANCE');
     }
     
     return {
@@ -413,9 +404,7 @@ class PerformanceService {
     // Force garbage collection
     // Note: This is generally not recommended in production
     // but can be useful for performance monitoring
-    if (kDebugMode) {
-      print('Suggesting garbage collection due to high memory usage');
-    }
+    logDebug('Suggesting garbage collection due to high memory usage', tag: 'PERFORMANCE');
   }
 
   /// Start periodic monitoring
@@ -488,8 +477,8 @@ class PerformanceService {
     }
     
     // Log slow requests
-    if (responseTimeMs > 2000 && kDebugMode) {
-      print('Slow network request: $method $endpoint - ${responseTimeMs}ms');
+    if (responseTimeMs > 2000) {
+      logWarning('Slow network request: $method $endpoint - ${responseTimeMs}ms', tag: 'PERFORMANCE');
     }
   }
 
@@ -688,8 +677,6 @@ class PerformanceService {
     _droppedFrames = 0;
     _totalFrames = 0;
     
-    if (kDebugMode) {
-      print('Performance history cleared');
-    }
+    logInfo('Performance history cleared', tag: 'PERFORMANCE');
   }
 }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
 import '../utils/string_extensions.dart';
+import 'services/logging_service.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({Key? key}) : super(key: key);
@@ -105,7 +106,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       aiSnapshot = await _apiService.getLatestAISnapshot();
     } catch (e) {
-      print('Error fetching AI snapshot: $e');
+      logError('Error fetching AI snapshot: $e');
     }
   }
 
@@ -113,7 +114,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       aiProfile = await _apiService.getAIFinancialProfile();
     } catch (e) {
-      print('Error fetching AI profile: $e');
+      logError('Error fetching AI profile: $e');
     }
   }
 
@@ -121,7 +122,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       spendingPatterns = await _apiService.getSpendingPatterns();
     } catch (e) {
-      print('Error fetching spending patterns: $e');
+      logError('Error fetching spending patterns: $e');
     }
   }
 
@@ -129,7 +130,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       personalizedFeedback = await _apiService.getAIPersonalizedFeedback();
     } catch (e) {
-      print('Error fetching personalized feedback: $e');
+      logError('Error fetching personalized feedback: $e');
     }
   }
 
@@ -137,7 +138,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       financialHealthScore = await _apiService.getAIFinancialHealthScore();
     } catch (e) {
-      print('Error fetching financial health score: $e');
+      logError('Error fetching financial health score: $e');
     }
   }
 
@@ -145,7 +146,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       spendingAnomalies = await _apiService.getSpendingAnomalies();
     } catch (e) {
-      print('Error fetching spending anomalies: $e');
+      logError('Error fetching spending anomalies: $e');
     }
   }
 
@@ -153,7 +154,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       savingsOptimization = await _apiService.getAISavingsOptimization();
     } catch (e) {
-      print('Error fetching savings optimization: $e');
+      logError('Error fetching savings optimization: $e');
     }
   }
 
@@ -161,7 +162,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     try {
       weeklyInsights = await _apiService.getAIWeeklyInsights();
     } catch (e) {
-      print('Error fetching weekly insights: $e');
+      logError('Error fetching weekly insights: $e');
     }
   }
 

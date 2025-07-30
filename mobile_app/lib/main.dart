@@ -16,6 +16,7 @@ import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/loading_service.dart';
 import 'services/message_service.dart';
+import 'services/logging_service.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -50,6 +51,13 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize logging service first
+  LoggingService.instance.initialize(
+    enableConsoleLogging: true,
+    minimumLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
+  );
+  
   await _initFirebase();
 
   // Pipe uncaught errors to Crashlytics

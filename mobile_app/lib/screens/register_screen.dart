@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'services/logging_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -73,8 +74,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.pushReplacementNamed(context, '/onboarding_region');
       }
     } catch (e) {
-      print('Registration error: $e');
-      print('Error type: ${e.runtimeType}');
+      logError('Registration error: $e');
+      logError('Error type: ${e.runtimeType}');
       
       String errorMessage = 'Registration failed';
       
@@ -85,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           final dioError = e as dynamic;
           if (dioError.response?.data != null) {
             final data = dioError.response.data;
-            print('Response data: $data');
+            logInfo('Response data: $data');
             
             if (data is Map) {
               if (data.containsKey('error') && data['error'] is Map) {
@@ -106,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
           }
         } catch (parseError) {
-          print('Error parsing response: $parseError');
+          logError('Error parsing response: $parseError');
         }
       }
       

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/offline_queue_service.dart';
 import '../services/api_service.dart';
 import 'receipt_capture_screen.dart';
+import 'services/logging_service.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({Key? key}) : super(key: key);
@@ -67,7 +68,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         });
       }
     } catch (e) {
-      print('Error getting AI suggestions: $e');
+      logError('Error getting AI suggestions: $e');
       if (mounted) {
         setState(() {
           _loadingSuggestions = false;

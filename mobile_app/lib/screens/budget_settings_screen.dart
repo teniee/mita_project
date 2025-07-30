@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'services/logging_service.dart';
 
 class BudgetSettingsScreen extends StatefulWidget {
   const BudgetSettingsScreen({Key? key}) : super(key: key);
@@ -81,7 +82,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
         });
       }
     } catch (e) {
-      print('Error loading budget settings: $e');
+      logError('Error loading budget settings: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -120,7 +121,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
         );
       }
     } catch (e) {
-      print('Error updating budget mode: $e');
+      logError('Error updating budget mode: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -169,7 +170,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
         );
       }
     } catch (e) {
-      print('Error updating automation settings: $e');
+      logError('Error updating automation settings: $e');
     }
   }
 

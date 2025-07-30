@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
+import 'logging_service.dart';
 
 /// Cache entry with metadata
 class CacheEntry {
@@ -170,9 +171,7 @@ class MemoryCache implements CacheBackend {
       
       // Check if single entry is too large
       if (valueBytes > maxSizeBytes) {
-        if (kDebugMode) {
-          print('Value too large for memory cache: ${valueBytes} bytes');
-        }
+        logWarning('Value too large for memory cache: ${valueBytes} bytes', tag: 'CACHE');
         return false;
       }
 
@@ -194,9 +193,7 @@ class MemoryCache implements CacheBackend {
       _updateStats();
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Error setting cache entry: $e');
-      }
+      logError('Error setting cache entry: $e', tag: 'CACHE');
       return false;
     }
   }
@@ -247,8 +244,8 @@ class MemoryCache implements CacheBackend {
 
     _updateStats();
 
-    if (kDebugMode && expiredKeys.isNotEmpty) {
-      print('Cleaned up ${expiredKeys.length} expired cache entries');
+    if (expiredKeys.isNotEmpty) {
+      logDebug('Cleaned up ${expiredKeys.length} expired cache entries', tag: 'CACHE');
     }
   }
 
@@ -393,9 +390,7 @@ class PersistentCache implements CacheBackend {
       
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Error setting persistent cache entry: $e');
-      }
+      logError('Error setting persistent cache entry: $e', tag: 'CACHE');
       return false;
     }
   }
@@ -458,8 +453,8 @@ class PersistentCache implements CacheBackend {
       _stats.evictions++;
     }
 
-    if (kDebugMode && expiredKeys.isNotEmpty) {
-      print('Cleaned up ${expiredKeys.length} expired persistent cache entries');
+    if (expiredKeys.isNotEmpty) {
+      logDebug('Cleaned up ${expiredKeys.length} expired persistent cache entries', tag: 'CACHE');
     }
   }
 
@@ -514,9 +509,7 @@ class SmartCacheService {
     // Start analytics collection
     _startAnalytics();
     
-    if (kDebugMode) {
-      print('Smart cache service initialized');
-    }
+    logInfo('Smart cache service initialized', tag: 'CACHE');
   }
 
   /// Get value from cache
@@ -536,9 +529,7 @@ class SmartCacheService {
           return value as T?;
         }
       } catch (e) {
-        if (kDebugMode) {
-          print('Error getting from ${tier.name} cache: $e');
-        }
+        logError('Error getting from ${tier.name} cache: $e', tag: 'CACHE');
       }
     }
     
@@ -576,9 +567,7 @@ class SmartCacheService {
         final success = await backend.set(key, value, ttl: ttl, tags: tags);
         if (success) anySuccess = true;
       } catch (e) {
-        if (kDebugMode) {
-          print('Error setting in ${tier.name} cache: $e');
-        }
+        logError('Error setting in ${tier.name} cache: $e', tag: 'CACHE');
       }
     }
 
@@ -614,9 +603,7 @@ class SmartCacheService {
         final success = await backend.delete(key);
         if (success) anySuccess = true;
       } catch (e) {
-        if (kDebugMode) {
-          print('Error deleting from cache: $e');
-        }
+        logError('Error deleting from cache: $e', tag: 'CACHE');
       }
     }
 
@@ -649,9 +636,7 @@ class SmartCacheService {
           return true;
         }
       } catch (e) {
-        if (kDebugMode) {
-          print('Error checking existence in cache: $e');
-        }
+        logError('Error checking existence in cache: $e', tag: 'CACHE');
       }
     }
     return false;
@@ -666,9 +651,7 @@ class SmartCacheService {
       try {
         await backend.clear();
       } catch (e) {
-        if (kDebugMode) {
-          print('Error clearing cache: $e');
-        }
+        logError('Error clearing cache: $e', tag: 'CACHE');
       }
     }
   }
@@ -746,9 +729,7 @@ class SmartCacheService {
       try {
         await backend.cleanup();
       } catch (e) {
-        if (kDebugMode) {
-          print('Error during cache cleanup: $e');
-        }
+        logError('Error during cache cleanup: $e', tag: 'CACHE');
       }
     }
   }
@@ -784,13 +765,9 @@ class SmartCacheService {
       if (memoryCache != null) {
         try {
           await memoryCache.set(key, value, tags: _keyTags[key]);
-          if (kDebugMode) {
-            print('Promoted key $key to memory cache');
-          }
+          logDebug('Promoted key $key to memory cache', tag: 'CACHE');
         } catch (e) {
-          if (kDebugMode) {
-            print('Failed to promote key $key: $e');
-          }
+          logError('Failed to promote key $key: $e', tag: 'CACHE');
         }
       }
     }
@@ -798,10 +775,8 @@ class SmartCacheService {
 
   void _startAnalytics() {
     _analyticsTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
-      if (kDebugMode) {
-        final stats = getStats();
-        print('Cache Stats: ${stats['overall']}');
-      }
+      final stats = getStats();
+      logDebug('Cache Stats: ${stats['overall']}', tag: 'CACHE');
     });
   }
 
