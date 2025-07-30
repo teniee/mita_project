@@ -48,7 +48,14 @@ from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
+from app.core.error_handler import (
+    MITAException, ValidationException, 
+    mita_exception_handler, validation_exception_handler,
+    sqlalchemy_exception_handler, generic_exception_handler
+)
 from app.utils.response_wrapper import error_response
+from pydantic import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 
 # ---- Firebase Admin SDK init ----
 if not firebase_admin._apps:
@@ -197,23 +204,24 @@ for router, prefix, tags in private_routers_list:
 
 # ---- Exception Handlers ----
 
+# Custom MITA exceptions
+app.add_exception_handler(MITAException, mita_exception_handler)
 
+# Pydantic validation errors
+app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+# Database errors
+app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
+
+# HTTP exceptions
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    logging.error(f"HTTPException: {exc.detail}")
-    return error_response(error_message=exc.detail, status_code=exc.status_code)
+    from app.core.error_handler import ErrorHandler
+    return ErrorHandler.create_error_response(exc, request)
 
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logging.error(f"ValidationError: {exc.errors()}")
-    return error_response(error_message=str(exc), status_code=422)
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logging.error(f"Unhandled error: {exc}")
-    return error_response(error_message="Internal server error", status_code=500)
+# Generic exception handler (catch-all)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 
 # ---- Startup ----
