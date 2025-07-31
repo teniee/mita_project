@@ -6,23 +6,14 @@ from app.core.config import settings
 # Import Base so that Alembic can discover models; it's unused directly here.
 from app.db.base import Base  # noqa: F401
 
-# CRITICAL TEST: This should crash if changes aren't deployed
-print("=" * 80)
-print("🚨 CRITICAL DEPLOYMENT TEST - IF YOU SEE THIS, CHANGES ARE DEPLOYED 🚨")
-print("=" * 80)
-
 # Use the ASYNC_DATABASE_URL property which ensures asyncpg driver
 DATABASE_URL = settings.ASYNC_DATABASE_URL
 
-print(f"[URGENT DEBUG db.py] Using ASYNC_DATABASE_URL: {DATABASE_URL}")
-print(f"[URGENT DEBUG db.py] Original DATABASE_URL: {settings.DATABASE_URL}")
-
-# Force crash if this code isn't running correctly
+# Verify code changes are deployed
 if not hasattr(settings, 'ASYNC_DATABASE_URL'):
-    raise RuntimeError("🚨 CRITICAL: Code changes not deployed - ASYNC_DATABASE_URL missing!")
-    
-if DATABASE_URL == settings.DATABASE_URL and DATABASE_URL.startswith(('postgresql://', 'postgres://')):
-    raise RuntimeError(f"🚨 CRITICAL: URL conversion failed! Got: {DATABASE_URL}")
+    raise RuntimeError("CRITICAL: Code changes not deployed - ASYNC_DATABASE_URL missing!")
+
+print("[DEBUG] db.py using ASYNC_DATABASE_URL property for asyncpg driver")
 
 # Parse the URL to verify it has the correct driver
 url = make_url(DATABASE_URL)

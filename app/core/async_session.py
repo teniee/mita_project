@@ -28,18 +28,12 @@ def initialize_database():
     
     # Use the ASYNC_DATABASE_URL property which ensures asyncpg driver
     database_url = settings.ASYNC_DATABASE_URL
-    print(f"[URGENT DEBUG] ASYNC_DATABASE_URL: {database_url}")
-    print(f"[URGENT DEBUG] Original DATABASE_URL: {settings.DATABASE_URL}")
     
-    # Force crash if this code isn't running
+    # Verify code changes are deployed
     if not hasattr(settings, 'ASYNC_DATABASE_URL'):
         raise RuntimeError("CRITICAL: ASYNC_DATABASE_URL property missing - code changes not deployed!")
     
-    # Additional safety check
-    if database_url == settings.DATABASE_URL and database_url.startswith(('postgresql://', 'postgres://')):
-        raise RuntimeError(f"CRITICAL: URL not converted! Got: {database_url}")
-        
-    print(f"[URGENT DEBUG] About to create engine with URL: {database_url}")
+    print("[DEBUG] Using ASYNC_DATABASE_URL property for asyncpg driver")
     
     # Create async engine with optimized settings
     async_engine = create_async_engine(
