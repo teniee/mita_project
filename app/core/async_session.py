@@ -26,18 +26,9 @@ def initialize_database():
     if not settings.DATABASE_URL:
         raise ValueError("DATABASE_URL is required but not set")
     
-    # Ensure we use asyncpg driver for PostgreSQL async connections
-    database_url = settings.DATABASE_URL
-    print(f"[DEBUG] Original DATABASE_URL: {database_url}")
-    
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        print(f"[DEBUG] Converted postgresql:// to asyncpg: {database_url}")
-    elif database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-        print(f"[DEBUG] Converted postgres:// to asyncpg: {database_url}")
-    else:
-        print(f"[DEBUG] URL scheme not converted: {database_url}")
+    # Use the ASYNC_DATABASE_URL property which ensures asyncpg driver
+    database_url = settings.ASYNC_DATABASE_URL
+    print(f"[DEBUG] Using ASYNC_DATABASE_URL: {database_url}")
     
     # Create async engine with optimized settings
     async_engine = create_async_engine(

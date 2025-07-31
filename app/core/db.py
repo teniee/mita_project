@@ -6,22 +6,21 @@ from app.core.config import settings
 # Import Base so that Alembic can discover models; it's unused directly here.
 from app.db.base import Base  # noqa: F401
 
-DATABASE_URL = settings.DATABASE_URL
+# Use the ASYNC_DATABASE_URL property which ensures asyncpg driver
+DATABASE_URL = settings.ASYNC_DATABASE_URL
 
-print(f"[DEBUG db.py] Original DATABASE_URL: {DATABASE_URL}")
+print(f"[DEBUG db.py] Using ASYNC_DATABASE_URL: {DATABASE_URL}")
 
-# Ensure that an async driver is used even if the provided DATABASE_URL is
-# synchronous (e.g. ``postgresql://``). ``alembic upgrade`` would otherwise
-# fail with ``InvalidRequestError: The asyncio extension requires an async
-# driver to be used``.
+# Parse the URL to verify it has the correct driver
 url = make_url(DATABASE_URL)
 print(f"[DEBUG db.py] Parsed URL drivername: {url.drivername}")
 
+# Additional safety check - if somehow it's still not asyncpg, force it
 if url.drivername in ["postgresql", "postgresql+psycopg2", "postgres"]:
     url = url.set(drivername="postgresql+asyncpg")
-    print(f"[DEBUG db.py] Converted URL drivername to: {url.drivername}")
+    print(f"[DEBUG db.py] FORCED conversion to: {url.drivername}")
 else:
-    print(f"[DEBUG db.py] URL drivername not converted: {url.drivername}")
+    print(f"[DEBUG db.py] URL drivername is already correct: {url.drivername}")
 
 engine = create_async_engine(
     url.render_as_string(hide_password=False),

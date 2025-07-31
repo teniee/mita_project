@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     # Database - MUST be provided via environment variable
     DATABASE_URL: str = ""
     
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        """Get DATABASE_URL with asyncpg driver for async connections"""
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
+    
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
