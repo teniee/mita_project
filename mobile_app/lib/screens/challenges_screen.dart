@@ -46,10 +46,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
 
       if (!mounted) return;
       setState(() {
-        _activeChallenges = results[0];
-        _availableChallenges = results[1];
-        _gamificationStats = results[2];
-        _leaderboard = results[3];
+        _activeChallenges = results[0] as List<dynamic>;
+        _availableChallenges = results[1] as List<dynamic>;
+        _gamificationStats = results[2] as Map<String, dynamic>;
+        _leaderboard = results[3] as List<dynamic>;
         _isLoading = false;
       });
     } catch (e) {

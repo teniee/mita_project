@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,6 +19,7 @@ import 'services/loading_service.dart';
 import 'services/message_service.dart';
 import 'services/logging_service.dart';
 import 'core/app_error_handler.dart';
+import 'core/error_handling.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';

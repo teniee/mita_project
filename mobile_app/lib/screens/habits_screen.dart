@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 // Habit data model for better type safety and data management
 class Habit {

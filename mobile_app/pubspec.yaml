@@ -20,6 +20,8 @@ dependencies:
   firebase_crashlytics: ^3.4.3
   connectivity_plus: ^6.0.3
   shared_preferences: ^2.2.2
+  http: ^1.1.0
+  sqflite: ^2.3.0
   image_picker: ^1.0.7
   image_cropper: ^9.1.0
   flutter_local_notifications: ^17.0.0

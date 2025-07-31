@@ -247,7 +247,7 @@ class ApiService {
       return false;
     } catch (e) {
       // If there's an error (like 404/500), assume onboarding not completed
-      logWarning('Error checking onboarding status', tag: 'ONBOARDING', error: e);
+      logWarning('Error checking onboarding status: $e', tag: 'ONBOARDING');
       // For now, always show onboarding since backend routes aren't fully set up
       return false;
     }

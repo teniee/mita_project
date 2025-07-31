@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({Key? key}) : super(key: key);

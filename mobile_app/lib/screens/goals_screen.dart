@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({Key? key}) : super(key: key);

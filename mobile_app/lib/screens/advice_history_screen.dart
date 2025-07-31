@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class AdviceHistoryScreen extends StatefulWidget {
   const AdviceHistoryScreen({Key? key}) : super(key: key);

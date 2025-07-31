@@ -1,8 +1,9 @@
-"""
+/*
 Enhanced Animations and UI Components for MITA
 Provides smooth, polished animations and Material 3 UI components
-"""
+*/
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -583,7 +584,7 @@ class _EnhancedCardState extends State<EnhancedCard>
               ),
               child: InkWell(
                 onTap: widget.onTap,
-                borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
+                borderRadius: (widget.borderRadius ?? BorderRadius.circular(12)) as BorderRadius,
                 child: Padding(
                   padding: widget.padding ?? const EdgeInsets.all(16),
                   child: widget.child,

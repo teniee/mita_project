@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({Key? key}) : super(key: key);

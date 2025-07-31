@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'dart:async';
 import '../utils/string_extensions.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);

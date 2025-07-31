@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
-import 'services/logging_service.dart';
+import '../services/logging_service.dart';
 
 class InstallmentsScreen extends StatefulWidget {
   const InstallmentsScreen({Key? key}) : super(key: key);

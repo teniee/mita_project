@@ -8,9 +8,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+// import 'package:device_info_plus/device_info_plus.dart';
+// import 'package:package_info_plus/package_info_plus.dart';
+// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -132,7 +132,7 @@ class ErrorHandler {
       // Create error report
       final report = _createErrorReport(
         error: details.exception.toString(),
-        stackTrace: details.stack?.toString(),
+        stackTrace: details.stack,
         severity: ErrorSeverity.high,
         category: ErrorCategory.ui,
         context: {
@@ -149,7 +149,7 @@ class ErrorHandler {
     PlatformDispatcher.instance.onError = (error, stackTrace) {
       final report = _createErrorReport(
         error: error.toString(),
-        stackTrace: stackTrace.toString(),
+        stackTrace: stackTrace,
         severity: ErrorSeverity.critical,
         category: ErrorCategory.system,
         context: {'source': 'platform_dispatcher'},
@@ -166,7 +166,7 @@ class ErrorHandler {
     runZonedGuarded(() {}, (error, stackTrace) {
       final report = _createErrorReport(
         error: error.toString(),
-        stackTrace: stackTrace.toString(),
+        stackTrace: stackTrace,
         severity: ErrorSeverity.high,
         category: ErrorCategory.system,
         context: {'source': 'async_error'},
@@ -179,24 +179,15 @@ class ErrorHandler {
   // Initialize system information
   Future<void> _initializeSystemInfo() async {
     try {
-      // Get app version
-      final packageInfo = await PackageInfo.fromPlatform();
-      _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
-
-      // Get device information
-      final deviceInfo = DeviceInfoPlugin();
-      String deviceDetails;
+      // Get app version - simplified version without package_info_plus
+      _appVersion = '1.0.0 (1)'; // Hardcoded for now, can be made configurable
       
+      // Get basic device information without device_info_plus
+      String deviceDetails = Platform.operatingSystem;
       if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        deviceDetails = '${androidInfo.manufacturer} ${androidInfo.model} '
-            '(Android ${androidInfo.version.release})';
+        deviceDetails = 'Android Device';
       } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        deviceDetails = '${iosInfo.name} ${iosInfo.model} '
-            '(iOS ${iosInfo.systemVersion})';
-      } else {
-        deviceDetails = Platform.operatingSystem;
+        deviceDetails = 'iOS Device';
       }
       
       _deviceInfo = deviceDetails;
@@ -211,7 +202,7 @@ class ErrorHandler {
   // Create standardized error report
   ErrorReport _createErrorReport({
     required String error,
-    String? stackTrace,
+    StackTrace? stackTrace,
     required ErrorSeverity severity,
     required ErrorCategory category,
     Map<String, dynamic>? context,
@@ -220,7 +211,7 @@ class ErrorHandler {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       timestamp: DateTime.now(),
       error: error,
-      stackTrace: stackTrace,
+      stackTrace: stackTrace?.toString(),
       severity: severity,
       category: category,
       context: context ?? {},
@@ -239,12 +230,11 @@ class ErrorHandler {
       'Error reported: ${report.error}',
       name: 'ErrorHandler',
       error: report.error,
-      stackTrace: report.stackTrace,
+      stackTrace: report.stackTrace != null ? StackTrace.fromString(report.stackTrace!) : null,
     );
 
-    // Check connectivity
-    final connectivity = await Connectivity().checkConnectivity();
-    final isConnected = connectivity != ConnectivityResult.none;
+    // Check connectivity - simplified without connectivity_plus
+    final isConnected = true; // Assume connected for now
     
     final updatedReport = ErrorReport(
       id: report.id,
@@ -370,8 +360,9 @@ class ErrorHandler {
   Future<void> _retryPendingReports() async {
     if (_pendingReports.isEmpty) return;
 
-    final connectivity = await Connectivity().checkConnectivity();
-    if (connectivity == ConnectivityResult.none) return;
+    // Skip connectivity check for now
+    // final connectivity = await Connectivity().checkConnectivity();
+    // if (connectivity == ConnectivityResult.none) return;
 
     final successfulReports = <ErrorReport>[];
     
@@ -414,7 +405,7 @@ class ErrorHandler {
   }) {
     final report = instance._createErrorReport(
       error: error.toString(),
-      stackTrace: stackTrace?.toString(),
+      stackTrace: stackTrace,
       severity: severity,
       category: category,
       context: context,

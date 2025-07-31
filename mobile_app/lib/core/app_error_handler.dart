@@ -3,6 +3,7 @@ Application-wide Error Handler Setup
 Initializes and configures the error handling system for the MITA app
 */
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'error_handling.dart';
@@ -356,10 +357,11 @@ mixin ErrorHandlingMixin<T extends StatefulWidget> on State<T> {
   }
 
   void handleNetworkError(dynamic error, String endpoint) {
-    AppErrorHandler.reportNetworkError(
+    AppErrorHandler.reportError(
       error,
-      endpoint: endpoint,
+      category: ErrorCategory.network,
       context: {
+        'endpoint': endpoint,
         'widget': T.toString(),
         'screen': widget.runtimeType.toString(),
       },
@@ -385,7 +387,7 @@ class SafeExecution {
     String? operationName,
     ErrorCategory category = ErrorCategory.unknown,
     T? fallbackValue,
-    bool rethrow = false,
+    bool rethrowError = false,
   }) async {
     try {
       return await operation();
@@ -401,7 +403,7 @@ class SafeExecution {
         },
       );
 
-      if (rethrow) {
+      if (rethrowError) {
         rethrow;
       }
 
@@ -414,7 +416,7 @@ class SafeExecution {
     String? operationName,
     ErrorCategory category = ErrorCategory.unknown,
     T? fallbackValue,
-    bool rethrow = false,
+    bool rethrowError = false,
   }) {
     try {
       return operation();
@@ -430,7 +432,7 @@ class SafeExecution {
         },
       );
 
-      if (rethrow) {
+      if (rethrowError) {
         rethrow;
       }
 
