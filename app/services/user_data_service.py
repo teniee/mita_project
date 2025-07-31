@@ -1,9 +1,12 @@
 import json
+import logging
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan, UserAnswer, UserProfile
+
+logger = logging.getLogger(__name__)
 
 
 class UserDataService:
@@ -24,7 +27,11 @@ class UserDataService:
         for row in rows:
             try:
                 answers[row.question_key] = json.loads(row.answer_json)
-            except:
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse JSON for user {user_id}, question {row.question_key}: {str(e)}")
+                answers[row.question_key] = row.answer_json
+            except Exception as e:
+                logger.error(f"Unexpected error parsing answer for user {user_id}, question {row.question_key}: {str(e)}")
                 answers[row.question_key] = row.answer_json
         return answers
 

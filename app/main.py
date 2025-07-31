@@ -46,9 +46,14 @@ from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
+from app.api.endpoints.audit import router as audit_router
+from app.api.endpoints.database_performance import router as db_performance_router
+from app.api.endpoints.cache_management import router as cache_management_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
+from app.core.logging_config import setup_logging
+from app.middleware.audit_middleware import audit_middleware
 from app.core.error_handler import (
     MITAException, ValidationException, 
     mita_exception_handler, validation_exception_handler,
@@ -82,12 +87,14 @@ sentry_sdk.init(
     send_default_pii=True,
 )
 
-logging.basicConfig(level=logging.INFO)
+# Initialize comprehensive logging
+setup_logging()
 
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
 # ---- Middlewares ----
 
+# Security and CORS middlewares
 app.add_middleware(HTTPSRedirectMiddleware)
 
 app.add_middleware(
@@ -97,6 +104,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add comprehensive audit logging middleware
+@app.middleware("http")
+async def audit_logging_middleware(request: Request, call_next):
+    return await audit_middleware(request, call_next)
 
 
 @app.middleware("http")
@@ -193,6 +205,9 @@ private_routers_list = [
     (cluster_router, "/api/clusters", ["Clusters"]),
     (checkpoint_router, "/api/checkpoints", ["Checkpoints"]),
     (drift_router, "/api/drift", ["Drift"]),
+    (audit_router, "/api", ["Audit"]),
+    (db_performance_router, "/api", ["Database Performance"]),
+    (cache_management_router, "/api", ["Cache Management"]),
 ]
 
 for router, prefix, tags in private_routers_list:

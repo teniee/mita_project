@@ -17,6 +17,7 @@ import 'services/push_notification_service.dart';
 import 'services/loading_service.dart';
 import 'services/message_service.dart';
 import 'services/logging_service.dart';
+import 'core/app_error_handler.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -58,12 +59,42 @@ void main() async {
     minimumLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
   );
   
+  // Initialize comprehensive error handling
+  await AppErrorHandler.initialize();
+  
   await _initFirebase();
 
-  // Pipe uncaught errors to Crashlytics
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  // Enhanced error handling that integrates with our custom system
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // Send to Firebase Crashlytics
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    
+    // Also send to our custom error handler
+    AppErrorHandler.reportError(
+      details.exception,
+      stackTrace: details.stack,
+      severity: ErrorSeverity.critical,
+      category: ErrorCategory.ui,
+      context: {
+        'library': details.library,
+        'context': details.context?.toString(),
+      },
+    );
+  };
+  
   PlatformDispatcher.instance.onError = (error, stack) {
+    // Send to Firebase Crashlytics
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    
+    // Also send to our custom error handler
+    AppErrorHandler.reportError(
+      error,
+      stackTrace: stack,
+      severity: ErrorSeverity.critical,
+      category: ErrorCategory.system,
+      context: {'source': 'platform_dispatcher'},
+    );
+    
     return true;
   };
 
@@ -96,22 +127,66 @@ class MITAApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: '/',
       routes: {
-        '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/main': (context) => const BottomNavigation(),
-        '/onboarding_region': (context) => const OnboardingRegionScreen(),
-        '/onboarding_income': (context) => const OnboardingIncomeScreen(),
-        '/onboarding_expenses': (context) => const OnboardingExpensesScreen(),
-        '/onboarding_goal': (context) => const OnboardingGoalScreen(),
-        '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
-        '/onboarding_motivation': (context) =>
-            const OnboardingMotivationScreen(),
-        '/onboarding_finish': (context) => const OnboardingFinishScreen(),
-        '/referral': (context) => const ReferralScreen(),
-        '/mood': (context) => const MoodScreen(),
-        '/subscribe': (context) => const SubscriptionScreen(),
-        '/notifications': (context) => const NotificationsScreen(),
+        '/': (context) => const AppErrorBoundary(
+          screenName: 'Welcome',
+          child: WelcomeScreen(),
+        ),
+        '/login': (context) => const AppErrorBoundary(
+          screenName: 'Login',
+          child: LoginScreen(),
+        ),
+        '/register': (context) => const AppErrorBoundary(
+          screenName: 'Register', 
+          child: RegisterScreen(),
+        ),
+        '/main': (context) => const AppErrorBoundary(
+          screenName: 'Main',
+          child: BottomNavigation(),
+        ),
+        '/onboarding_region': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingRegion',
+          child: OnboardingRegionScreen(),
+        ),
+        '/onboarding_income': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingIncome',
+          child: OnboardingIncomeScreen(),
+        ),
+        '/onboarding_expenses': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingExpenses', 
+          child: OnboardingExpensesScreen(),
+        ),
+        '/onboarding_goal': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingGoal',
+          child: OnboardingGoalScreen(),
+        ),
+        '/onboarding_habits': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingHabits',
+          child: OnboardingHabitsScreen(),
+        ),
+        '/onboarding_motivation': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingMotivation',
+          child: OnboardingMotivationScreen(),
+        ),
+        '/onboarding_finish': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingFinish',
+          child: OnboardingFinishScreen(),
+        ),
+        '/referral': (context) => const AppErrorBoundary(
+          screenName: 'Referral',
+          child: ReferralScreen(),
+        ),
+        '/mood': (context) => const AppErrorBoundary(
+          screenName: 'Mood',
+          child: MoodScreen(),
+        ),
+        '/subscribe': (context) => const AppErrorBoundary(
+          screenName: 'Subscription',
+          child: SubscriptionScreen(),
+        ),
+        '/notifications': (context) => const AppErrorBoundary(
+          screenName: 'Notifications',
+          child: NotificationsScreen(),
+        ),
       },
     );
 

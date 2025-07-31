@@ -1,0 +1,136 @@
+"""
+Async Database Session Management for MITA
+Provides async SQLAlchemy session handling with proper connection management and monitoring
+"""
+
+from typing import AsyncGenerator
+from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import StaticPool
+
+from app.core.config import settings
+from app.core.database_monitoring import db_engine
+
+# Create async engine with optimized settings
+async_engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=30,
+    pool_recycle=3600,  # Recycle connections every hour
+    # Use StaticPool for SQLite, QueuePool for PostgreSQL (default)
+    poolclass=StaticPool if "sqlite" in settings.DATABASE_URL else None,
+    connect_args={
+        "server_settings": {
+            "application_name": "mita_finance_app",
+            "jit": "off",  # Disable JIT for faster connections
+        }
+    } if "postgresql" in settings.DATABASE_URL else {}
+)
+
+# Create async session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False
+)
+
+# Base class for all models
+Base = declarative_base()
+
+
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Async database dependency for FastAPI
+    Provides proper async session management with automatic cleanup and monitoring
+    """
+    # Use optimized database engine with monitoring
+    async with db_engine.get_session() as session:
+        try:
+            yield session
+        except Exception:
+            raise
+
+
+@asynccontextmanager
+async def get_async_db_context():
+    """
+    Context manager for async database operations
+    Use when you need manual transaction control with monitoring
+    """
+    async with db_engine.get_session() as session:
+        try:
+            yield session
+        except Exception:
+            raise
+
+
+# Legacy compatibility functions (use the monitored versions above)
+async def get_async_db_legacy() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Legacy async database dependency - use get_async_db() instead
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@asynccontextmanager
+async def get_async_db_context_legacy():
+    """
+    Legacy context manager - use get_async_db_context() instead
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def init_database():
+    """
+    Initialize database tables
+    Call this during application startup
+    """
+    async with async_engine.begin() as conn:
+        # Import all models to ensure they are registered
+        from app.db.models import User, Expense, Transaction  # noqa
+        # Create all tables
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def close_database():
+    """
+    Close database connections
+    Call this during application shutdown
+    """
+    await async_engine.dispose()
+
+
+# Health check function
+async def check_database_health() -> bool:
+    """
+    Check if database connection is healthy
+    Returns True if connection is working, False otherwise
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute("SELECT 1")
+            return True
+    except Exception:
+        return False

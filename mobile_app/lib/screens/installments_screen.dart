@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'services/logging_service.dart';
 
 class InstallmentsScreen extends StatefulWidget {
   const InstallmentsScreen({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error loading installments: $e');
+      logError('Error loading installments: $e');
       if (!mounted) return;
       setState(() {
         // Set data to empty instead of showing error

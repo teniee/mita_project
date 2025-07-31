@@ -25,10 +25,20 @@ logger = logging.getLogger(__name__)
 
 # Initialize Redis for rate limiting and security monitoring
 try:
-    redis_client = redis.Redis.from_url(settings.redis_url if hasattr(settings, 'redis_url') else 'redis://localhost:6379')
-except:
+    redis_url = getattr(settings, 'redis_url', 'redis://localhost:6379')
+    redis_client = redis.Redis.from_url(redis_url, decode_responses=True)
+    # Test connection
+    redis_client.ping()
+    logger.info("Redis connection established successfully")
+except redis.ConnectionError as e:
     redis_client = None
-    logger.warning("Redis not available - rate limiting will use in-memory storage")
+    logger.warning(f"Redis connection failed: {str(e)} - rate limiting will use in-memory storage")
+except redis.RedisError as e:
+    redis_client = None
+    logger.error(f"Redis error: {str(e)} - rate limiting will use in-memory storage")
+except Exception as e:
+    redis_client = None
+    logger.error(f"Unexpected error connecting to Redis: {str(e)} - rate limiting will use in-memory storage")
 
 # In-memory fallback for rate limiting
 rate_limit_memory: Dict[str, Dict] = {}

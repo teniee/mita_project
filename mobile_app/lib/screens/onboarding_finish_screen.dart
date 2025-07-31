@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
+import 'services/logging_service.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({Key? key}) : super(key: key);
@@ -36,13 +37,13 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
           "habits_comment": state.habitsComment,
       };
 
-      print('Submitting onboarding data: $onboardingData');
+      logInfo('Submitting onboarding data: $onboardingData');
 
       try {
         await _api.submitOnboarding(onboardingData);
-        print('Onboarding submitted successfully');
+        logInfo('Onboarding submitted successfully');
       } catch (e) {
-        print('Onboarding submission failed (but continuing): $e');
+        logInfo('Onboarding submission failed (but continuing): $e');
         // Continue anyway since the backend endpoint might not be ready
       }
 
@@ -56,7 +57,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       // Always go to main screen after onboarding
       Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {
-      print('Critical error in onboarding: $e');
+      logError('Critical error in onboarding: $e');
       setState(() {
         _loading = false;
         _error = "Unable to complete onboarding. Please try again.";
