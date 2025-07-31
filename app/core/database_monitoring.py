@@ -369,6 +369,11 @@ class OptimizedDatabaseEngine:
     def _setup_engines(self):
         """Set up optimized database engines"""
         try:
+            # Skip engine setup if DATABASE_URL is not configured
+            if not settings.DATABASE_URL:
+                logger.warning("DATABASE_URL not configured, skipping engine setup")
+                return
+                
             # Primary database engine with optimized pool settings
             primary_engine = create_async_engine(
                 settings.DATABASE_URL,
@@ -580,8 +585,22 @@ class OptimizedDatabaseEngine:
         return suggestions
 
 
-# Global database engine instance
-db_engine = OptimizedDatabaseEngine()
+# Global database engine instance - initialized lazily
+_db_engine = None
+
+def get_db_engine():
+    """Get or create the global database engine instance"""
+    global _db_engine
+    if _db_engine is None:
+        _db_engine = OptimizedDatabaseEngine()
+    return _db_engine
+
+# For backward compatibility
+class DBEngineProxy:
+    def __getattr__(self, name):
+        return getattr(get_db_engine(), name)
+
+db_engine = DBEngineProxy()
 
 
 async def get_optimized_db_session(readonly: bool = False):

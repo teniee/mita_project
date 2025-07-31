@@ -43,3 +43,4 @@ rq-scheduler
 apns2
 sentry-sdk
 prometheus-client
+psutil
