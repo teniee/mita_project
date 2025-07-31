@@ -374,9 +374,16 @@ class OptimizedDatabaseEngine:
                 logger.warning("DATABASE_URL not configured, skipping engine setup")
                 return
                 
+            # Ensure we use asyncpg driver for PostgreSQL async connections
+            database_url = settings.DATABASE_URL
+            if database_url.startswith("postgresql://"):
+                database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            elif database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            
             # Primary database engine with optimized pool settings
             primary_engine = create_async_engine(
-                settings.DATABASE_URL,
+                database_url,
                 # Connection pool settings
                 poolclass=QueuePool,
                 pool_size=20,  # Base pool size
@@ -405,6 +412,12 @@ class OptimizedDatabaseEngine:
             # Read-only replica engine (if available)
             readonly_url = getattr(settings, 'READONLY_DATABASE_URL', None)
             if readonly_url:
+                # Ensure we use asyncpg driver for readonly connection too
+                if readonly_url.startswith("postgresql://"):
+                    readonly_url = readonly_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                elif readonly_url.startswith("postgres://"):
+                    readonly_url = readonly_url.replace("postgres://", "postgresql+asyncpg://", 1)
+                
                 readonly_engine = create_async_engine(
                     readonly_url,
                     poolclass=QueuePool,

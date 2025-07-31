@@ -43,13 +43,13 @@ def initialize_database():
         pool_timeout=30,
         pool_recycle=3600,  # Recycle connections every hour
         # Use StaticPool for SQLite, QueuePool for PostgreSQL (default)
-        poolclass=StaticPool if "sqlite" in settings.DATABASE_URL else None,
+        poolclass=StaticPool if "sqlite" in database_url else None,
         connect_args={
             "server_settings": {
                 "application_name": "mita_finance_app",
                 "jit": "off",  # Disable JIT for faster connections
             }
-        } if "postgresql" in settings.DATABASE_URL else {}
+        } if "postgresql" in database_url else {}
     )
     
     # Create async session factory
