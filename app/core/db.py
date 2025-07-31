@@ -8,13 +8,20 @@ from app.db.base import Base  # noqa: F401
 
 DATABASE_URL = settings.DATABASE_URL
 
+print(f"[DEBUG db.py] Original DATABASE_URL: {DATABASE_URL}")
+
 # Ensure that an async driver is used even if the provided DATABASE_URL is
 # synchronous (e.g. ``postgresql://``). ``alembic upgrade`` would otherwise
 # fail with ``InvalidRequestError: The asyncio extension requires an async
 # driver to be used``.
 url = make_url(DATABASE_URL)
-if url.drivername in ["postgresql", "postgresql+psycopg2"]:
+print(f"[DEBUG db.py] Parsed URL drivername: {url.drivername}")
+
+if url.drivername in ["postgresql", "postgresql+psycopg2", "postgres"]:
     url = url.set(drivername="postgresql+asyncpg")
+    print(f"[DEBUG db.py] Converted URL drivername to: {url.drivername}")
+else:
+    print(f"[DEBUG db.py] URL drivername not converted: {url.drivername}")
 
 engine = create_async_engine(
     url.render_as_string(hide_password=False),
