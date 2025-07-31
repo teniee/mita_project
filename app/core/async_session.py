@@ -26,9 +26,16 @@ def initialize_database():
     if not settings.DATABASE_URL:
         raise ValueError("DATABASE_URL is required but not set")
     
+    # Ensure we use asyncpg driver for PostgreSQL async connections
+    database_url = settings.DATABASE_URL
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    
     # Create async engine with optimized settings
     async_engine = create_async_engine(
-        settings.DATABASE_URL,
+        database_url,
         echo=getattr(settings, 'DEBUG', False),
         pool_pre_ping=True,
         pool_size=20,
