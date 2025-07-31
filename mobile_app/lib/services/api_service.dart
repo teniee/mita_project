@@ -236,7 +236,7 @@ class ApiService {
     try {
       final token = await getToken();
       final response = await _dio.get(
-        '/users/me',
+        '/users/users/me',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       // Check if user has basic profile data (country indicates some onboarding)
@@ -256,7 +256,7 @@ class ApiService {
   Future<void> submitOnboarding(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.post(
-      '/onboarding/submit',
+      '/onboarding/onboarding/submit',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -290,7 +290,7 @@ class ApiService {
     };
     
     final response = await _dio.post(
-      '/calendar/shell',
+      '/calendar/calendar/shell',
       data: shellConfig,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -344,7 +344,7 @@ class ApiService {
     };
     
     final response = await _dio.post(
-      '/calendar/shell',
+      '/calendar/calendar/shell',
       data: shellConfig,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -508,7 +508,7 @@ class ApiService {
   Future<List<dynamic>> getNotifications() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/notifications/',
+      '/notifications/notifications/register-token',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
@@ -547,7 +547,7 @@ class ApiService {
   Future<Map<String, dynamic>> getMonthlyAnalytics() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/analytics/monthly',
+      '/analytics/analytics/monthly',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] as Map);
@@ -614,7 +614,7 @@ class ApiService {
   Future<Map<String, dynamic>> getUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/users/me',
+      '/users/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
@@ -669,7 +669,7 @@ class ApiService {
   Future<Map<String, dynamic>> redistributeCalendarBudget(Map<String, dynamic> calendar, {String strategy = 'balance'}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/calendar/redistribute',
+      '/calendar/calendar/redistribute',
       data: {
         'calendar': calendar,
         'strategy': strategy,
@@ -951,7 +951,7 @@ class ApiService {
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.patch(
-      '/users/me',
+      '/users/users/me',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -964,7 +964,7 @@ class ApiService {
   Future<List<dynamic>> getInstallments() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/expenses/installments',
+      '/financial/financial/installment-evaluate',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return List<dynamic>.from(response.data['data'] ?? []);
@@ -978,7 +978,7 @@ class ApiService {
   Future<Map<String, dynamic>?> getLatestAISnapshot() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/latest-snapshots',
+      '/ai/ai/ai/latest-snapshots',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     final data = response.data['data'] as List?;
@@ -990,7 +990,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.post(
-      '/ai/snapshot',
+      '/ai/ai/ai/snapshot',
       data: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1005,7 +1005,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
-      '/ai/profile',
+      '/ai/ai/profile',
       queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1019,7 +1019,7 @@ class ApiService {
   Future<String> getAIDayStatusExplanation(String status, {List<String>? recommendations, String? date}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/ai/day-status-explanation',
+      '/ai/ai/day-status-explanation',
       data: {
         'status': status,
         'recommendations': recommendations ?? [],
@@ -1035,7 +1035,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
-      '/ai/spending-patterns',
+      '/ai/ai/spending-patterns',
       queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1050,7 +1050,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
-      '/ai/personalized-feedback',
+      '/ai/ai/personalized-feedback',
       queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1064,7 +1064,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAIBudgetOptimization({Map<String, dynamic>? calendar, double? income}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/ai/budget-optimization',
+      '/ai/ai/budget-optimization',
       data: {
         'calendar': calendar,
         'income': income,
@@ -1078,7 +1078,7 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getAICategorySuggestions(String transactionDescription, {double? amount}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/ai/category-suggestions',
+      '/ai/ai/category-suggestions',
       data: {
         'description': transactionDescription,
         'amount': amount,
@@ -1092,7 +1092,7 @@ class ApiService {
   Future<String> askAIAssistant(String question, {Map<String, dynamic>? context}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/ai/assistant',
+      '/ai/ai/assistant',
       data: {
         'question': question,
         'context': context,
@@ -1107,7 +1107,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
-      '/ai/spending-anomalies',
+      '/ai/ai/spending-anomalies',
       queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1121,7 +1121,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAIFinancialHealthScore() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/financial-health-score',
+      '/ai/ai/financial-health-score',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -1131,7 +1131,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAISavingsOptimization() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/savings-optimization',
+      '/ai/ai/savings-optimization',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -1141,7 +1141,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAISpendingPrediction({int? daysAhead}) async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/spending-prediction',
+      '/ai/ai/spending-prediction',
       queryParameters: {
         'days_ahead': daysAhead ?? 30,
       },
@@ -1154,7 +1154,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAIGoalAnalysis() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/goal-analysis',
+      '/ai/ai/goal-analysis',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -1164,7 +1164,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAIWeeklyInsights() async {
     final token = await getToken();
     final response = await _dio.get(
-      '/ai/weekly-insights',
+      '/ai/ai/weekly-insights',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -1175,7 +1175,7 @@ class ApiService {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
-      '/ai/monthly-report',
+      '/ai/ai/monthly-report',
       queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
@@ -1683,7 +1683,7 @@ class ApiService {
     
     try {
       final response = await _dio.get(
-        '/challenges/',
+        '/challenges/challenge/eligibility',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return List<dynamic>.from(response.data['data'] ?? []);
