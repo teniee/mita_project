@@ -15,15 +15,14 @@ from sqlalchemy import event, text, create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
 from sqlalchemy.pool import QueuePool, NullPool
 from sqlalchemy.engine import Engine
-from sqlalchemy.engine.events import PoolEvents
-from sqlalchemy.pool.events import PoolResetEvent
+# Remove invalid imports - these don't exist in current SQLAlchemy
 from sqlalchemy.sql import sqltypes
 import psutil
 import threading
 from collections import defaultdict, deque
 
 from app.core.config import settings
-from app.core.error_monitoring import log_error, ErrorSeverity, ErrorCategory
+# from app.core.error_monitoring import log_error, ErrorSeverity, ErrorCategory
 
 logger = logging.getLogger(__name__)
 
