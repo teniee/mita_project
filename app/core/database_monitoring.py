@@ -422,12 +422,8 @@ class OptimizedDatabaseEngine:
             
         except Exception as e:
             logger.error(f"Error setting up database engines: {str(e)}")
-            await log_error(
-                e,
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.DATABASE,
-                additional_context={'operation': 'engine_setup'}
-            )
+            # Can't use async log_error in sync function
+            logger.error(f"Critical database engine setup error: {str(e)}")
     
     def _setup_event_listeners(self):
         """Set up event listeners for monitoring"""
