@@ -135,18 +135,22 @@ class ErrorHandler:
         context = {
             "error_id": error_id,
             "error_type": type(error).__name__,
-            "message": str(error),
+            "error_message": str(error),
             "user_id": user_id,
             "timestamp": datetime.utcnow().isoformat()
         }
         
         if request:
-            context.update({
-                "method": request.method,
-                "url": str(request.url),
-                "headers": dict(request.headers),
-                "client_ip": request.client.host if request.client else None
-            })
+            try:
+                context.update({
+                    "method": request.method,
+                    "url": str(request.url),
+                    "headers": dict(request.headers),
+                    "client_ip": request.client.host if request.client else None
+                })
+            except Exception as e:
+                # If there's an issue with request context, log it safely
+                context["request_error"] = f"Failed to serialize request context: {str(e)}"
         
         # Log with appropriate level
         if isinstance(error, (ValidationException, AuthenticationException, AuthorizationException)):
