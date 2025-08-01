@@ -35,6 +35,10 @@ def initialize_database():
     elif "postgresql+psycopg2" in database_url:
         database_url = database_url.replace("postgresql+psycopg2", "postgresql+asyncpg")
     
+    # Fix SSL parameters for asyncpg
+    if "sslmode=" in database_url:
+        database_url = database_url.replace("sslmode=", "ssl=")
+    
     print(f"[DEBUG] FORCED asyncpg conversion for async_session.py")
     
     # Create async engine with optimized settings

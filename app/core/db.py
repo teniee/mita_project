@@ -16,6 +16,10 @@ if not hasattr(settings, 'ASYNC_DATABASE_URL'):
 print("[DEBUG] db.py using ASYNC_DATABASE_URL property for asyncpg driver")
 
 # Parse the URL to verify it has the correct driver
+# Fix SSL parameters for asyncpg before parsing
+if "sslmode=" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
+
 url = make_url(DATABASE_URL)
 print(f"[DEBUG db.py] Parsed URL drivername: {url.drivername}")
 
