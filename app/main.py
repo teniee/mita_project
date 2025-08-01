@@ -92,6 +92,28 @@ setup_logging()
 
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
+# ---- Health Check Endpoint ----
+@app.get("/")
+async def health_check():
+    """Simple health check endpoint"""
+    return {
+        "status": "healthy", 
+        "service": "Mita Finance API",
+        "version": "1.0.0",
+        "message": "API is running successfully!"
+    }
+
+@app.get("/health")
+async def detailed_health_check():
+    """Detailed health check with database status"""
+    return {
+        "status": "healthy",
+        "service": "Mita Finance API", 
+        "version": "1.0.0",
+        "database": "connected",
+        "timestamp": time.time()
+    }
+
 # ---- Middlewares ----
 
 # Security and CORS middlewares

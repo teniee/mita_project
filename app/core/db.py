@@ -13,22 +13,15 @@ DATABASE_URL = settings.ASYNC_DATABASE_URL
 if not hasattr(settings, 'ASYNC_DATABASE_URL'):
     raise RuntimeError("CRITICAL: Code changes not deployed - ASYNC_DATABASE_URL missing!")
 
-print("[DEBUG] db.py using ASYNC_DATABASE_URL property for asyncpg driver")
-
-# Parse the URL to verify it has the correct driver
 # Fix SSL parameters for asyncpg before parsing
 if "sslmode=" in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
 
 url = make_url(DATABASE_URL)
-print(f"[DEBUG db.py] Parsed URL drivername: {url.drivername}")
 
 # Additional safety check - if somehow it's still not asyncpg, force it
 if url.drivername in ["postgresql", "postgresql+psycopg2", "postgres"]:
     url = url.set(drivername="postgresql+asyncpg")
-    print(f"[DEBUG db.py] FORCED conversion to: {url.drivername}")
-else:
-    print(f"[DEBUG db.py] URL drivername is already correct: {url.drivername}")
 
 engine = create_async_engine(
     url.render_as_string(hide_password=False),

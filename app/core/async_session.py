@@ -39,7 +39,6 @@ def initialize_database():
     if "sslmode=" in database_url:
         database_url = database_url.replace("sslmode=", "ssl=")
     
-    print(f"[DEBUG] FORCED asyncpg conversion for async_session.py")
     
     # Create async engine with optimized settings
     async_engine = create_async_engine(
