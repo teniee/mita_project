@@ -1,5 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
 from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
@@ -71,6 +73,51 @@ def revoke_token(user: User):
 
 async def authenticate_google(data: GoogleAuthIn, db: Session) -> TokenOut:
     user = await authenticate_google_user(data.id_token, db)
+    return TokenOut(
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
+    )
+
+
+# Async versions of auth functions
+async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
+    # Check if user already exists
+    result = await db.execute(select(User).filter(User.email == data.email))
+    existing_user = result.scalars().first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already exists",
+        )
+    
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        country=data.country,
+        annual_income=data.annual_income,
+        timezone=data.timezone,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return TokenOut(
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
+    )
+
+
+async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
+    result = await db.execute(select(User).filter(User.email == data.email))
+    user = result.scalars().first()
+    
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    
     return TokenOut(
         access_token=create_access_token({"sub": str(user.id)}),
         refresh_token=create_refresh_token({"sub": str(user.id)}),

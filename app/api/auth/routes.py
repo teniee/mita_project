@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
 from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
 from app.api.auth.services import authenticate_google  # noqa: E501
-from app.api.auth.services import authenticate_user, register_user
-from app.core.session import get_db
+from app.api.auth.services import authenticate_user_async, register_user_async
+from app.core.async_session import get_async_db
 from app.services import auth_jwt_service as jwt_utils
 from app.services.auth_jwt_service import (
     blacklist_token,
@@ -29,19 +29,19 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 )
 async def register(
     payload: RegisterIn,
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Create a new user account."""
-    return register_user(payload, db)
+    return await register_user_async(payload, db)
 
 
 @router.post("/login", response_model=TokenOut)
 async def login(
     payload: LoginIn,
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Authenticate an existing user."""
-    return authenticate_user(payload, db)
+    return await authenticate_user_async(payload, db)
 
 
 # ------------------------------------------------------------------
