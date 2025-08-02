@@ -107,7 +107,7 @@ async def logout(request: Request):
 @router.post("/google", response_model=TokenOut)
 async def google_login(
     payload: GoogleAuthIn,
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Authenticate a user using a Google ID token."""
     return await authenticate_google(payload, db)

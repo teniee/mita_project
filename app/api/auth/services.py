@@ -71,7 +71,7 @@ def revoke_token(user: User):
     return success_response({"message": "Logged out successfully"})
 
 
-async def authenticate_google(data: GoogleAuthIn, db: Session) -> TokenOut:
+async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
     user = await authenticate_google_user(data.id_token, db)
     return TokenOut(
         access_token=create_access_token({"sub": str(user.id)}),
