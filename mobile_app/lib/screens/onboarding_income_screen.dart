@@ -16,7 +16,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
   final _incomeController = TextEditingController();
   final _incomeService = IncomeService();
   
-  IncomeService.IncomeTier? _currentTier;
+  IncomeTier? _currentTier;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -74,7 +74,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
     }
   }
 
-  Future<void> _showIncomeConfirmationDialog(double income, IncomeService.IncomeTier tier) async {
+  Future<void> _showIncomeConfirmationDialog(double income, IncomeTier tier) async {
     final tierName = _incomeService.getIncomeTierName(tier);
     final message = _incomeService.getOnboardingMessage(tier);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
@@ -383,23 +383,23 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
     );
   }
   
-  List<String> _getIncomeBasedBenefits(IncomeService.IncomeTier tier) {
+  List<String> _getIncomeBasedBenefits(IncomeTier tier) {
     switch (tier) {
-      case IncomeService.IncomeTier.low:
+      case IncomeTier.low:
         return [
           'Budget templates focused on essential spending',
           'Tips for maximizing every dollar',
           'Affordable goal suggestions',
           'Community resources and discounts',
         ];
-      case IncomeService.IncomeTier.mid:
+      case IncomeTier.mid:
         return [
           'Balanced budget with growth opportunities',
           'Investment and savings strategies',
           'Career advancement financial planning',
           'Medium-term goal recommendations',
         ];
-      case IncomeService.IncomeTier.high:
+      case IncomeTier.high:
         return [
           'Advanced wealth-building strategies',
           'Tax optimization recommendations',  

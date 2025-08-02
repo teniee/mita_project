@@ -7,13 +7,13 @@ class IncomeTheme {
   static final IncomeService _incomeService = IncomeService();
 
   /// Get themed color scheme based on income tier
-  static ColorScheme getIncomeColorScheme(IncomeService.IncomeTier tier) {
+  static ColorScheme getIncomeColorScheme(IncomeTier tier) {
     switch (tier) {
-      case IncomeService.IncomeTier.low:
+      case IncomeTier.low:
         return _getLowIncomeColorScheme();
-      case IncomeService.IncomeTier.mid:
+      case IncomeTier.mid:
         return _getMidIncomeColorScheme();
-      case IncomeService.IncomeTier.high:
+      case IncomeTier.high:
         return _getHighIncomeColorScheme();
     }
   }
@@ -100,7 +100,7 @@ class IncomeTheme {
   }
 
   /// Get theme data for specific income tier
-  static ThemeData getIncomeTheme(IncomeService.IncomeTier tier) {
+  static ThemeData getIncomeTheme(IncomeTier tier) {
     final colorScheme = getIncomeColorScheme(tier);
     
     return ThemeData(
@@ -123,7 +123,7 @@ class IncomeTheme {
       ),
       
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -276,7 +276,7 @@ class IncomeTheme {
   }
 
   /// Get spending status colors based on income tier
-  static Map<String, Color> getSpendingStatusColors(IncomeService.IncomeTier tier) {
+  static Map<String, Color> getSpendingStatusColors(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     
     return {
@@ -288,12 +288,12 @@ class IncomeTheme {
   }
 
   /// Get budget category colors based on income tier
-  static Map<String, Color> getBudgetCategoryColors(IncomeService.IncomeTier tier) {
+  static Map<String, Color> getBudgetCategoryColors(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
     
     switch (tier) {
-      case IncomeService.IncomeTier.low:
+      case IncomeTier.low:
         return {
           'housing': const Color(0xFF388E3C),    // Deep green
           'food': const Color(0xFF66BB6A),       // Medium green
@@ -304,7 +304,7 @@ class IncomeTheme {
           'savings': const Color(0xFF1B5E20),    // Very dark green
           'other': Colors.grey.shade500,
         };
-      case IncomeService.IncomeTier.mid:
+      case IncomeTier.mid:
         return {
           'housing': const Color(0xFF1976D2),    // Deep blue
           'food': const Color(0xFF42A5F5),       // Medium blue  
@@ -315,7 +315,7 @@ class IncomeTheme {
           'savings': const Color(0xFF0277BD),    // Very dark blue
           'other': Colors.grey.shade500,
         };
-      case IncomeService.IncomeTier.high:
+      case IncomeTier.high:
         return {
           'housing': const Color(0xFF7B1FA2),    // Deep purple
           'food': const Color(0xFF9C27B0),       // Medium purple
@@ -330,7 +330,7 @@ class IncomeTheme {
   }
 
   /// Get tier-specific gradients
-  static LinearGradient getTierGradient(IncomeService.IncomeTier tier) {
+  static LinearGradient getTierGradient(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
     
@@ -346,7 +346,7 @@ class IncomeTheme {
   }
 
   /// Get tier-specific shadow colors
-  static List<BoxShadow> getTierShadows(IncomeService.IncomeTier tier) {
+  static List<BoxShadow> getTierShadows(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     
     return [
@@ -367,7 +367,7 @@ class IncomeTheme {
 
   /// Create tier-specific decorated container
   static Widget createTierContainer({
-    required IncomeService.IncomeTier tier,
+    required IncomeTier tier,
     required Widget child,
     EdgeInsetsGeometry? padding,
     EdgeInsetsGeometry? margin,
@@ -391,7 +391,7 @@ class IncomeTheme {
   }
 
   /// Get tier-appropriate success/warning/error indicators
-  static Map<String, Color> getTierStatusColors(IncomeService.IncomeTier tier) {
+  static Map<String, Color> getTierStatusColors(IncomeTier tier) {
     return {
       'success': Colors.green.shade600,
       'warning': Colors.orange.shade600,
@@ -402,7 +402,7 @@ class IncomeTheme {
 
   /// Create tier-themed floating action button
   static FloatingActionButton createTierFAB({
-    required IncomeService.IncomeTier tier,
+    required IncomeTier tier,
     required VoidCallback onPressed,
     required Widget child,
   }) {
@@ -422,7 +422,7 @@ class IncomeTheme {
 
   /// Create tier-themed app bar
   static AppBar createTierAppBar({
-    required IncomeService.IncomeTier tier,
+    required IncomeTier tier,
     required String title,
     List<Widget>? actions,
     Widget? leading,

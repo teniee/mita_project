@@ -28,7 +28,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   
   // Income-related data
   double _monthlyIncome = 0.0;
-  IncomeService.IncomeTier? _incomeTier;
+  IncomeTier? _incomeTier;
   Map<String, dynamic>? _userProfile;
   
   // Traditional Analytics Data
@@ -106,7 +106,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     } catch (e) {
       logError('Error fetching user profile: $e');
       _monthlyIncome = 3000.0;
-      _incomeTier = IncomeService.IncomeTier.mid;
+      _incomeTier = IncomeTier.mid;
     }
   }
 
@@ -129,7 +129,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     } catch (e) {
       logError('Error fetching income-based insights: $e');
       // Fallback to default recommendations
-      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeService.IncomeTier.mid);
+      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.mid);
     }
   }
 

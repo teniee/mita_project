@@ -23,7 +23,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   
   // Income-related data
   double _monthlyIncome = 0.0;
-  IncomeService.IncomeTier? _incomeTier;
+  IncomeTier? _incomeTier;
   Map<String, dynamic>? _userProfile;
   Map<String, dynamic>? _budgetRecommendations;
 

@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+/// Income classification enum
+enum IncomeTier {
+  low,    // < $3,000
+  mid,    // $3,000 - $7,000
+  high,   // > $7,000
+}
+
 /// Income classification service for MITA
 /// Handles income band classification, peer comparison, and income-based features
 class IncomeService {
@@ -11,13 +18,6 @@ class IncomeService {
   /// Income band thresholds (monthly income)
   static const double lowIncomeThreshold = 3000.0;
   static const double highIncomeThreshold = 7000.0;
-
-  /// Income classification enum
-  enum IncomeTier {
-    low,    // < $3,000
-    mid,    // $3,000 - $7,000
-    high,   // > $7,000
-  }
 
   /// Classify income into tiers
   IncomeTier classifyIncome(double monthlyIncome) {

@@ -218,17 +218,17 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
     final tierName = _incomeService.getIncomeTierName(tier);
     
     return {
-      'cohort_size': tier == IncomeService.IncomeTier.low ? 2847 
-                   : tier == IncomeService.IncomeTier.mid ? 4126 
+      'cohort_size': tier == IncomeTier.low ? 2847 
+                   : tier == IncomeTier.mid ? 4126 
                    : 1653,
-      'your_rank': tier == IncomeService.IncomeTier.low ? 842 
-                 : tier == IncomeService.IncomeTier.mid ? 1247 
+      'your_rank': tier == IncomeTier.low ? 842 
+                 : tier == IncomeTier.mid ? 1247 
                  : 423,
       'percentile': 70,
       'top_insights': [
-        '$tierName users typically save ${tier == IncomeService.IncomeTier.low ? "8-12" : tier == IncomeService.IncomeTier.mid ? "15-20" : "25-35"}% of income',
-        'Most peers spend ${tier == IncomeService.IncomeTier.low ? "40" : tier == IncomeService.IncomeTier.mid ? "30-35" : "25-30"}% on housing',
-        'Food expenses average ${tier == IncomeService.IncomeTier.low ? "15-18" : tier == IncomeService.IncomeTier.mid ? "12-15" : "8-12"}% in your group',
+        '$tierName users typically save ${tier == IncomeTier.low ? "8-12" : tier == IncomeTier.mid ? "15-20" : "25-35"}% of income',
+        'Most peers spend ${tier == IncomeTier.low ? "40" : tier == IncomeTier.mid ? "30-35" : "25-30"}% on housing',
+        'Food expenses average ${tier == IncomeTier.low ? "15-18" : tier == IncomeTier.mid ? "12-15" : "8-12"}% in your group',
       ],
       'recommendations': _incomeService.getFinancialTips(tier).take(3).toList(),
     };

@@ -6,7 +6,7 @@ class OnboardingState {
 
   String? region;
   double? income;
-  IncomeService.IncomeTier? incomeTier;
+  IncomeTier? incomeTier;
   List<Map<String, dynamic>> expenses = [];
   List<String> goals = [];
   List<String> habits = [];
