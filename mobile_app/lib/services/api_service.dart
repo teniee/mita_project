@@ -266,24 +266,36 @@ class ApiService {
   // Dashboard / Calendar
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> getDashboard() async {
+  Future<Map<String, dynamic>> getDashboard({double? userIncome}) async {
     final token = await getToken();
     
-    // Prepare shell configuration with default values for dashboard
+    // Get user profile to retrieve actual income if not provided
+    double actualIncome = userIncome ?? 0.0;
+    if (actualIncome == 0.0) {
+      try {
+        final profile = await getUserProfile();
+        actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+      } catch (e) {
+        // Fallback: use a reasonable default but warn about missing income
+        actualIncome = 3000.0;
+      }
+    }
+    
+    // Prepare shell configuration with user's actual income
     final shellConfig = {
-      'savings_target': 500.0,
-      'income': 3000.0,
+      'savings_target': actualIncome * 0.2, // 20% savings target
+      'income': actualIncome,
       'fixed': {
-        'rent': 800.0,
-        'utilities': 150.0,
-        'insurance': 100.0,
+        'rent': actualIncome * 0.3,     // 30% for housing
+        'utilities': actualIncome * 0.05, // 5% for utilities
+        'insurance': actualIncome * 0.04, // 4% for insurance
       },
       'weights': {
-        'food': 0.3,
-        'transportation': 0.2,
-        'entertainment': 0.15,
-        'shopping': 0.2,
-        'healthcare': 0.15,
+        'food': 0.15,
+        'transportation': 0.15,
+        'entertainment': 0.08,
+        'shopping': 0.10,
+        'healthcare': 0.07,
       },
       'year': DateTime.now().year,
       'month': DateTime.now().month,
@@ -319,25 +331,36 @@ class ApiService {
     return dashboardData;
   }
 
-  Future<List<dynamic>> getCalendar() async {
+  Future<List<dynamic>> getCalendar({double? userIncome}) async {
     final token = await getToken();
     
-    // Prepare shell configuration with default values
-    // These should ideally come from user preferences/onboarding data
+    // Get user profile to retrieve actual income if not provided
+    double actualIncome = userIncome ?? 0.0;
+    if (actualIncome == 0.0) {
+      try {
+        final profile = await getUserProfile();
+        actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+      } catch (e) {
+        // Fallback: use a reasonable default but warn about missing income
+        actualIncome = 3000.0;
+      }
+    }
+    
+    // Prepare shell configuration with user's actual income and income-appropriate allocations
     final shellConfig = {
-      'savings_target': 500.0, // Default savings goal
-      'income': 3000.0, // Default monthly income
+      'savings_target': actualIncome * 0.2, // 20% savings target
+      'income': actualIncome,
       'fixed': {
-        'rent': 800.0,
-        'utilities': 150.0,
-        'insurance': 100.0,
+        'rent': actualIncome * 0.3,     // 30% for housing
+        'utilities': actualIncome * 0.05, // 5% for utilities
+        'insurance': actualIncome * 0.04, // 4% for insurance
       },
       'weights': {
-        'food': 0.3,
-        'transportation': 0.2,
-        'entertainment': 0.15,
-        'shopping': 0.2,
-        'healthcare': 0.15,
+        'food': 0.15,
+        'transportation': 0.15,
+        'entertainment': 0.08,
+        'shopping': 0.10,
+        'healthcare': 0.07,
       },
       'year': DateTime.now().year,
       'month': DateTime.now().month,
@@ -1955,6 +1978,293 @@ class ApiService {
         },
       ];
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Income-Based Personalization & Cohort Analysis
+  // ---------------------------------------------------------------------------
+
+  /// Get user's income tier and classification
+  Future<Map<String, dynamic>> getIncomeClassification() async {
+    final token = await getToken();
+    try {
+      final response = await _dio.get(
+        '/cohort/income_classification',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return default classification based on user profile
+      final profile = await getUserProfile();
+      final income = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+      return {
+        'monthly_income': income,
+        'tier': income < 3000 ? 'low' : income <= 7000 ? 'mid' : 'high',
+        'tier_name': income < 3000 ? 'Essential Earner' : income <= 7000 ? 'Growing Professional' : 'High Achiever',
+        'range': income < 3000 ? 'Under \$3,000' : income <= 7000 ? '\$3,000 - \$7,000' : 'Over \$7,000',
+      };
+    }
+  }
+
+  /// Get peer comparison data for user's income tier
+  Future<Map<String, dynamic>> getPeerComparison({int? year, int? month}) async {
+    final token = await getToken();
+    final now = DateTime.now();
+    try {
+      final response = await _dio.get(
+        '/cohort/peer_comparison',
+        queryParameters: {
+          'year': year ?? now.year,
+          'month': month ?? now.month,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return demo peer comparison data
+      return {
+        'your_spending': 2450.0,
+        'peer_average': 2680.0,
+        'peer_median': 2520.0,
+        'percentile': 35,
+        'categories': {
+          'food': {'your_amount': 450.0, 'peer_average': 480.0},
+          'transportation': {'your_amount': 320.0, 'peer_average': 380.0},
+          'entertainment': {'your_amount': 180.0, 'peer_average': 220.0},
+          'shopping': {'your_amount': 280.0, 'peer_average': 350.0},
+        },
+        'insights': [
+          'You spend 15% less than peers in your income group',
+          'Your food spending is very close to the average',
+          'You save more on transportation than most peers',
+        ],
+      };
+    }
+  }
+
+  /// Get income-specific budget recommendations
+  Future<Map<String, dynamic>> getIncomeBasedBudgetRecommendations(double monthlyIncome) async {
+    final token = await getToken();
+    try {
+      final response = await _dio.post(
+        '/budget/income_based_recommendations',
+        data: {'monthly_income': monthlyIncome},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return income-appropriate defaults
+      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
+      late Map<String, double> weights;
+      
+      switch (tier) {
+        case 'low':
+          weights = {
+            'housing': 0.40,
+            'food': 0.15,
+            'transportation': 0.15,
+            'utilities': 0.10,
+            'healthcare': 0.08,
+            'entertainment': 0.05,
+            'savings': 0.07,
+          };
+          break;
+        case 'mid':
+          weights = {
+            'housing': 0.35,
+            'food': 0.12,
+            'transportation': 0.15,
+            'utilities': 0.08,
+            'healthcare': 0.06,
+            'entertainment': 0.08,
+            'savings': 0.16,
+          };
+          break;
+        case 'high':
+          weights = {
+            'housing': 0.30,
+            'food': 0.10,
+            'transportation': 0.12,
+            'utilities': 0.05,
+            'healthcare': 0.05,
+            'entertainment': 0.10,
+            'savings': 0.28,
+          };
+          break;
+      }
+      
+      final allocations = <String, double>{};
+      weights.forEach((category, weight) {
+        allocations[category] = (monthlyIncome * weight).roundToDouble();
+      });
+      
+      return {
+        'monthly_income': monthlyIncome,
+        'tier': tier,
+        'allocations': allocations,
+        'total_allocated': allocations.values.reduce((a, b) => a + b),
+      };
+    }
+  }
+
+  /// Get cohort-based spending insights
+  Future<Map<String, dynamic>> getCohortInsights() async {
+    final token = await getToken();
+    try {
+      final response = await _dio.get(
+        '/cohort/insights',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      // Return demo cohort insights
+      return {
+        'cohort_size': 1247,
+        'your_rank': 312,
+        'percentile': 75,
+        'top_insights': [
+          'Users in your income group typically save 18% of their income',
+          'Most peers allocate 12-15% to food expenses',
+          'Transportation costs vary widely (8-20%) in your group',
+          'Entertainment spending peaks on weekends for your cohort',
+        ],
+        'recommendations': [
+          'Consider increasing your savings rate to match top performers',
+          'Your food spending is well-optimized compared to peers',
+          'Look into carpooling or public transit to reduce transportation costs',
+        ],
+      };
+    }
+  }
+
+  /// Get income-appropriate goal suggestions
+  Future<List<Map<String, dynamic>>> getIncomeBasedGoals(double monthlyIncome) async {
+    final token = await getToken();
+    try {
+      final response = await _dio.post(
+        '/goals/income_based_suggestions',
+        data: {'monthly_income': monthlyIncome},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
+    } catch (e) {
+      // Return income-appropriate goal suggestions
+      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
+      
+      switch (tier) {
+        case 'low':
+          return [
+            {
+              'title': 'Emergency Fund',
+              'description': 'Build a \$500 emergency fund',
+              'target_amount': 500.0,
+              'monthly_target': monthlyIncome * 0.05,
+              'priority': 'high',
+              'category': 'emergency',
+            },
+            {
+              'title': 'Debt Reduction',
+              'description': 'Pay down high-interest debt',
+              'target_amount': monthlyIncome * 2,
+              'monthly_target': monthlyIncome * 0.10,
+              'priority': 'high',
+              'category': 'debt',
+            },
+          ];
+        case 'mid':
+          return [
+            {
+              'title': 'Emergency Fund',
+              'description': 'Build 3-month emergency fund',
+              'target_amount': monthlyIncome * 3,
+              'monthly_target': monthlyIncome * 0.08,
+              'priority': 'high',
+              'category': 'emergency',
+            },
+            {
+              'title': 'Investment Portfolio',
+              'description': 'Start investing for the future',
+              'target_amount': monthlyIncome * 6,
+              'monthly_target': monthlyIncome * 0.15,
+              'priority': 'high',
+              'category': 'investment',
+            },
+          ];
+        case 'high':
+          return [
+            {
+              'title': 'Investment Growth',
+              'description': 'Aggressive investment strategy',
+              'target_amount': monthlyIncome * 12,
+              'monthly_target': monthlyIncome * 0.20,
+              'priority': 'high',
+              'category': 'investment',
+            },
+            {
+              'title': 'Tax Optimization',
+              'description': 'Maximize tax-advantaged accounts',
+              'target_amount': 22500.0,
+              'monthly_target': 1875.0,
+              'priority': 'high',
+              'category': 'tax',
+            },
+          ];
+        default:
+          return [];
+      }
+    }
+  }
+
+  /// Get income-based financial tips
+  Future<List<String>> getIncomeBasedTips(double monthlyIncome) async {
+    final token = await getToken();
+    try {
+      final response = await _dio.post(
+        '/insights/income_based_tips',
+        data: {'monthly_income': monthlyIncome},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<String>.from(response.data['data'] ?? []);
+    } catch (e) {
+      // Return income-appropriate tips
+      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
+      
+      switch (tier) {
+        case 'low':
+          return [
+            'Focus on the 50/30/20 rule: 50% needs, 30% wants, 20% savings',
+            'Look for free entertainment options in your community',
+            'Cook meals at home to reduce food expenses',
+            'Build an emergency fund, even if it\'s \$5-10 per week',
+          ];
+        case 'mid':
+          return [
+            'Increase your savings rate to 15-20% of income',
+            'Consider investing in low-cost index funds',
+            'Look into employer 401(k) matching opportunities',
+            'Set up automatic transfers to savings accounts',
+          ];
+        case 'high':
+          return [
+            'Aim for a 25-30% savings rate',
+            'Diversify investments across asset classes',
+            'Consider tax-advantaged accounts (IRA, 401k)',
+            'Work with a financial advisor for complex planning',
+          ];
+        default:
+          return [];
+      }
+    }
+  }
+
+  /// Update user income and trigger recalculations
+  Future<void> updateUserIncome(double monthlyIncome) async {
+    final token = await getToken();
+    await _dio.patch(
+      '/users/users/me',
+      data: {'income': monthlyIncome},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
   }
 
   // ---------------------------------------------------------------------------

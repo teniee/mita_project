@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../services/income_service.dart';
+import '../widgets/income_tier_widgets.dart';
+import '../theme/income_theme.dart';
 import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -13,8 +16,16 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
+  final IncomeService _incomeService = IncomeService();
+  
   Map<String, dynamic>? dashboardData;
   Map<String, dynamic>? latestAdvice;
+  Map<String, dynamic>? userProfile;
+  
+  // Income-based data
+  Map<String, dynamic>? incomeClassification;
+  Map<String, dynamic>? peerComparison;
+  Map<String, dynamic>? cohortInsights;
   
   // AI Insights Data
   Map<String, dynamic>? aiSnapshot;
@@ -24,6 +35,10 @@ class _MainScreenState extends State<MainScreen> {
   
   bool isLoading = true;
   String? error;
+  
+  // Income tier info
+  IncomeService.IncomeTier? _incomeTier;
+  double _monthlyIncome = 0.0;
 
   @override
   void initState() {
@@ -38,12 +53,21 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     try {
+      // First get user profile to determine income
+      final profileResponse = await _apiService.getUserProfile().catchError((e) => <String, dynamic>{});
+      _monthlyIncome = (profileResponse['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+
       // Fetch multiple data sources in parallel for better performance
       final futures = await Future.wait([
-        _apiService.getDashboard().catchError((e) => _getDefaultDashboard()),
+        _apiService.getDashboard(userIncome: _monthlyIncome).catchError((e) => _getDefaultDashboard()),
         _apiService.getLatestAdvice().catchError((e) => _getDefaultAdvice()),
         _apiService.getExpenses().catchError((e) => <dynamic>[]),
         _apiService.getMonthlyAnalytics().catchError((e) => <String, dynamic>{}),
+        // Income-based features
+        _apiService.getIncomeClassification().catchError((e) => _getDefaultIncomeClassification()),
+        _apiService.getPeerComparison().catchError((e) => _getDefaultPeerComparison()),
+        _apiService.getCohortInsights().catchError((e) => _getDefaultCohortInsights()),
         // AI Insights
         _apiService.getLatestAISnapshot().catchError((e) => null),
         _apiService.getAIFinancialHealthScore().catchError((e) => null),
@@ -55,10 +79,13 @@ class _MainScreenState extends State<MainScreen> {
       final adviceResponse = futures[1] as Map<String, dynamic>;
       final transactionsResponse = futures[2] as List<dynamic>;
       final analyticsResponse = futures[3] as Map<String, dynamic>;
-      final aiSnapshotResponse = futures[4] as Map<String, dynamic>?;
-      final financialHealthResponse = futures[5] as Map<String, dynamic>?;
-      final weeklyInsightsResponse = futures[6] as Map<String, dynamic>?;
-      final anomaliesResponse = futures[7] as List<Map<String, dynamic>>;
+      final incomeClassificationResponse = futures[4] as Map<String, dynamic>;
+      final peerComparisonResponse = futures[5] as Map<String, dynamic>;
+      final cohortInsightsResponse = futures[6] as Map<String, dynamic>;
+      final aiSnapshotResponse = futures[7] as Map<String, dynamic>?;
+      final financialHealthResponse = futures[8] as Map<String, dynamic>?;
+      final weeklyInsightsResponse = futures[9] as Map<String, dynamic>?;
+      final anomaliesResponse = futures[10] as List<Map<String, dynamic>>;
 
       // Process and combine the data
       final processedData = _processDashboardData(
@@ -69,8 +96,12 @@ class _MainScreenState extends State<MainScreen> {
 
       if (!mounted) return;
       setState(() {
+        userProfile = profileResponse;
         dashboardData = processedData;
         latestAdvice = adviceResponse;
+        incomeClassification = incomeClassificationResponse;
+        peerComparison = peerComparisonResponse;
+        cohortInsights = cohortInsightsResponse;
         aiSnapshot = aiSnapshotResponse;
         financialHealthScore = financialHealthResponse;
         weeklyInsights = weeklyInsightsResponse;
@@ -88,15 +119,69 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Map<String, dynamic> _getDefaultDashboard() => {
-    'balance': 2500.00,
-    'spent': 45.50,
-    'daily_targets': [
-      {'category': 'Food', 'limit': 35.00, 'spent': 12.50},
-      {'category': 'Transport', 'limit': 20.00, 'spent': 8.00},
-      {'category': 'Entertainment', 'limit': 25.00, 'spent': 0.00},
-    ],
+    'balance': _monthlyIncome * 0.8,
+    'spent': _monthlyIncome * 0.02,
+    'daily_targets': _getDefaultDailyTargets(),
     'week': _generateWeekData(),
     'transactions': [],
+  };
+  
+  List<Map<String, dynamic>> _getDefaultDailyTargets() {
+    final budgetWeights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeService.IncomeTier.mid);
+    final dailyBudget = _monthlyIncome / 30;
+    
+    return [
+      {
+        'category': 'Food',
+        'limit': dailyBudget * (budgetWeights['food'] ?? 0.15),
+        'spent': dailyBudget * (budgetWeights['food'] ?? 0.15) * 0.4,
+      },
+      {
+        'category': 'Transportation',
+        'limit': dailyBudget * (budgetWeights['transportation'] ?? 0.15),
+        'spent': dailyBudget * (budgetWeights['transportation'] ?? 0.15) * 0.3,
+      },
+      {
+        'category': 'Entertainment',
+        'limit': dailyBudget * (budgetWeights['entertainment'] ?? 0.08),
+        'spent': 0.0,
+      },
+    ];
+  }
+  
+  Map<String, dynamic> _getDefaultIncomeClassification() => {
+    'monthly_income': _monthlyIncome,
+    'tier': _incomeTier.toString().split('.').last,
+    'tier_name': _incomeService.getIncomeTierName(_incomeTier ?? IncomeService.IncomeTier.mid),
+    'range': _incomeService.getIncomeRangeString(_incomeTier ?? IncomeService.IncomeTier.mid),
+  };
+  
+  Map<String, dynamic> _getDefaultPeerComparison() => {
+    'your_spending': _monthlyIncome * 0.65,
+    'peer_average': _monthlyIncome * 0.72,
+    'peer_median': _monthlyIncome * 0.68,
+    'percentile': 35,
+    'categories': {
+      'food': {'your_amount': _monthlyIncome * 0.12, 'peer_average': _monthlyIncome * 0.15},
+      'transportation': {'your_amount': _monthlyIncome * 0.10, 'peer_average': _monthlyIncome * 0.15},
+      'entertainment': {'your_amount': _monthlyIncome * 0.06, 'peer_average': _monthlyIncome * 0.08},
+    },
+    'insights': [
+      'You spend 15% less than peers in your income group',
+      'Your food spending is well-controlled',
+      'Transportation costs are below average',
+    ],
+  };
+  
+  Map<String, dynamic> _getDefaultCohortInsights() => {
+    'cohort_size': 2847,
+    'your_rank': 842,
+    'percentile': 70,
+    'top_insights': [
+      'Users in your income group typically save 18% of income',
+      'Most peers allocate 15% to food expenses',
+      'Transportation costs vary widely in your group',
+    ],
   };
 
   Map<String, dynamic> _getDefaultAdvice() => {
@@ -163,16 +248,32 @@ class _MainScreenState extends State<MainScreen> {
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth > 600;
+                      final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : 'User';
+                      final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+                      
                       final leftColumn = <Widget>[
-                        const Text(
-                          'Hello!',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24,
-                            color: Color(0xFF193C57),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Hello, $tierName!',
+                                style: TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 24,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ),
+                            if (_incomeTier != null)
+                              IncomeTierBadge(
+                                monthlyIncome: _monthlyIncome,
+                                showIcon: true,
+                              ),
+                          ],
                         ),
+                        const SizedBox(height: 20),
+                        _buildIncomeContextCard(),
                         const SizedBox(height: 20),
                         _buildBalanceCard(),
                         const SizedBox(height: 20),
@@ -180,6 +281,8 @@ class _MainScreenState extends State<MainScreen> {
                       ];
                       final rightColumn = <Widget>[
                         _buildMiniCalendar(),
+                        const SizedBox(height: 20),
+                        _buildPeerComparisonCard(),
                         const SizedBox(height: 20),
                         _buildAIInsightsCard(),
                         const SizedBox(height: 20),
@@ -221,20 +324,126 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _buildIncomeContextCard() {
+    if (_incomeTier == null) return Container();
+    
+    final balance = dashboardData?['balance'] ?? 0;
+    final balancePercentage = _incomeService.getIncomePercentage(balance.toDouble(), _monthlyIncome);
+    final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
+    final secondaryColor = _incomeService.getIncomeTierSecondaryColor(_incomeTier!);
+    
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [secondaryColor, secondaryColor.withOpacity(0.7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.insights_rounded,
+                    color: primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Income Context',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Monthly Income',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          '\$${_monthlyIncome.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Balance as % of Income',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          '${balancePercentage.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
   Widget _buildBalanceCard() {
     final balance = dashboardData?['balance'] ?? 0;
     final spent = dashboardData?['spent'] ?? 0;
     final remaining = (balance is num && spent is num) ? balance - spent : balance;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFFFFD25F);
+    final secondaryColor = _incomeTier != null ? _incomeService.getIncomeTierSecondaryColor(_incomeTier!) : const Color(0xFFFFE082);
 
     return Card(
-      color: const Color(0xFFFFD25F),
+      color: primaryColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 4,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFD25F), Color(0xFFFFE082)],
+          gradient: LinearGradient(
+            colors: [primaryColor, primaryColor.withOpacity(0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -253,10 +462,10 @@ class _MainScreenState extends State<MainScreen> {
                       fontFamily: 'Manrope',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF193C57),
+                      color: Colors.white,
                     ),
                   ),
-                  const Icon(Icons.account_balance_wallet, color: Color(0xFF193C57)),
+                  const Icon(Icons.account_balance_wallet, color: Colors.white),
                 ],
               ),
               const SizedBox(height: 12),
@@ -266,7 +475,7 @@ class _MainScreenState extends State<MainScreen> {
                   fontFamily: 'Sora',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 12),
@@ -281,7 +490,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: Colors.white.withOpacity(0.8),
                         ),
                       ),
                       Text(
@@ -290,7 +499,7 @@ class _MainScreenState extends State<MainScreen> {
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF193C57),
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -303,7 +512,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: Colors.white.withOpacity(0.8),
                         ),
                       ),
                       Text(
@@ -312,7 +521,7 @@ class _MainScreenState extends State<MainScreen> {
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF193C57),
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -326,8 +535,18 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _buildPeerComparisonCard() {
+    if (peerComparison == null || _incomeTier == null) return Container();
+    
+    return PeerComparisonCard(
+      comparisonData: peerComparison!,
+      monthlyIncome: _monthlyIncome,
+    );
+  }
+
   Widget _buildBudgetTargets() {
     final targets = dashboardData?['daily_targets'] ?? [];
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,13 +554,13 @@ class _MainScreenState extends State<MainScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               "Today's Budget Targets",
               style: TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF193C57),
+                color: primaryColor,
               ),
             ),
             GestureDetector(
@@ -381,6 +600,7 @@ class _MainScreenState extends State<MainScreen> {
             final spent = double.tryParse(target['spent']?.toString() ?? '0') ?? 0.0;
             final progress = limit > 0 ? spent / limit : 0.0;
             final remaining = limit - spent;
+            final dailyIncomePercentage = _incomeService.getIncomePercentage(limit, _monthlyIncome / 30);
             
             Color progressColor;
             if (progress <= 0.7) {
@@ -403,22 +623,35 @@ class _MainScreenState extends State<MainScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          target['category'] ?? 'Category',
-                          style: const TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: Color(0xFF193C57),
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              target['category'] ?? 'Category',
+                              style: TextStyle(
+                                fontFamily: 'Sora',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: primaryColor,
+                              ),
+                            ),
+                            Text(
+                              '${dailyIncomePercentage.toStringAsFixed(1)}% of daily income',
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
                           '\$${spent.toStringAsFixed(2)} / \$${limit.toStringAsFixed(2)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
-                            color: Color(0xFF193C57),
+                            color: primaryColor,
                           ),
                         ),
                       ],

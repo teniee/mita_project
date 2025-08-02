@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../services/income_service.dart';
+import '../widgets/income_tier_widgets.dart';
+import '../theme/income_theme.dart';
 
 class BudgetSettingsScreen extends StatefulWidget {
   const BudgetSettingsScreen({Key? key}) : super(key: key);
@@ -11,10 +14,18 @@ class BudgetSettingsScreen extends StatefulWidget {
 
 class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   final ApiService _apiService = ApiService();
+  final IncomeService _incomeService = IncomeService();
+  
   bool _isLoading = true;
   String _currentBudgetMode = 'default';
   Map<String, dynamic> _automationSettings = {};
   bool _isUpdating = false;
+  
+  // Income-related data
+  double _monthlyIncome = 0.0;
+  IncomeService.IncomeTier? _incomeTier;
+  Map<String, dynamic>? _userProfile;
+  Map<String, dynamic>? _budgetRecommendations;
 
   final List<Map<String, dynamic>> _budgetModes = [
     {
@@ -71,13 +82,27 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     });
 
     try {
-      final budgetMode = await _apiService.getBudgetMode();
-      final automationSettings = await _apiService.getBudgetAutomationSettings();
+      // Load user profile for income data
+      final profileResponse = await _apiService.getUserProfile();
+      _monthlyIncome = (profileResponse['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+      
+      final futures = await Future.wait([
+        _apiService.getBudgetMode(),
+        _apiService.getBudgetAutomationSettings(),
+        _apiService.getIncomeBasedBudgetRecommendations(_monthlyIncome),
+      ]);
+      
+      final budgetMode = futures[0] as String;
+      final automationSettings = futures[1] as Map<String, dynamic>;
+      final budgetRecommendations = futures[2] as Map<String, dynamic>;
       
       if (mounted) {
         setState(() {
+          _userProfile = profileResponse;
           _currentBudgetMode = budgetMode;
           _automationSettings = automationSettings;
+          _budgetRecommendations = budgetRecommendations;
           _isLoading = false;
         });
       }
@@ -420,22 +445,28 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
     
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        title: const Text(
-          'Budget Settings',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
+      appBar: _incomeTier != null 
+        ? IncomeTheme.createTierAppBar(
+            tier: _incomeTier!,
+            title: 'Budget Settings',
+          )
+        : AppBar(
+            title: const Text(
+              'Budget Settings',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: colorScheme.surface,
+            elevation: 0,
+            centerTitle: true,
+            iconTheme: IconThemeData(color: colorScheme.onSurface),
           ),
-        ),
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
-      ),
       body: _isLoading
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
@@ -446,6 +477,97 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Income Context Card
+                  if (_incomeTier != null)
+                    IncomeTierCard(
+                      monthlyIncome: _monthlyIncome,
+                      showDetails: false,
+                    ),
+                  
+                  if (_incomeTier != null)
+                    const SizedBox(height: 16),
+                  
+                  // Income-based Budget Recommendations
+                  if (_budgetRecommendations != null)
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.recommend_rounded,
+                                  color: primaryColor,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Income-Based Recommendations',
+                                  style: TextStyle(
+                                    fontFamily: 'Sora',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            ...(_budgetRecommendations!['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
+                              final category = entry.key;
+                              final amount = entry.value as double;
+                              final percentage = _incomeService.getIncomePercentage(amount, _monthlyIncome);
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      category.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontFamily: 'Sora',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '\$${amount.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            fontFamily: 'Sora',
+                                            fontWeight: FontWeight.bold,
+                                            color: primaryColor,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${percentage.toStringAsFixed(1)}% of income',
+                                          style: TextStyle(
+                                            fontFamily: 'Manrope',
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList() ?? [],
+                          ],
+                        ),
+                      ),
+                    ),
+                  
+                  if (_budgetRecommendations != null)
+                    const SizedBox(height: 24),
+                  
                   // Current Mode Display
                   Card(
                     elevation: 4,

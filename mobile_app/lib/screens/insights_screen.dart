@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
+import '../services/income_service.dart';
+import '../services/cohort_service.dart';
+import '../widgets/income_tier_widgets.dart';
+import '../widgets/peer_comparison_widgets.dart';
+import '../theme/income_theme.dart';
 import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
 
@@ -15,8 +20,16 @@ class InsightsScreen extends StatefulWidget {
 
 class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  final IncomeService _incomeService = IncomeService();
+  final CohortService _cohortService = CohortService();
+  
   bool _isLoading = true;
   late TabController _tabController;
+  
+  // Income-related data
+  double _monthlyIncome = 0.0;
+  IncomeService.IncomeTier? _incomeTier;
+  Map<String, dynamic>? _userProfile;
   
   // Traditional Analytics Data
   double totalSpending = 0;
@@ -32,11 +45,17 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   List<Map<String, dynamic>> spendingAnomalies = [];
   Map<String, dynamic>? savingsOptimization;
   Map<String, dynamic>? weeklyInsights;
+  
+  // Income-based insights
+  Map<String, dynamic>? _peerComparison;
+  Map<String, dynamic>? _cohortInsights;
+  List<String> _incomeBasedTips = [];
+  Map<String, dynamic>? _budgetOptimization;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this); // Added peer insights tab
     fetchInsights();
   }
 
@@ -48,10 +67,13 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Future<void> fetchInsights() async {
     try {
+      // First, get user profile for income data
+      await _fetchUserProfile();
+      
       // Fetch traditional analytics
       await _fetchTraditionalAnalytics();
       
-      // Fetch AI insights in parallel
+      // Fetch AI insights and income-based insights in parallel
       await Future.wait([
         _fetchAISnapshot(),
         _fetchAIProfile(),
@@ -61,6 +83,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         _fetchSpendingAnomalies(),
         _fetchSavingsOptimization(),
         _fetchWeeklyInsights(),
+        // Income-based insights
+        _fetchIncomeBasedInsights(),
       ]);
 
       setState(() => _isLoading = false);
@@ -71,6 +95,41 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           SnackBar(content: Text('Error loading insights: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      _userProfile = await _apiService.getUserProfile();
+      _monthlyIncome = (_userProfile?['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+    } catch (e) {
+      logError('Error fetching user profile: $e');
+      _monthlyIncome = 3000.0;
+      _incomeTier = IncomeService.IncomeTier.mid;
+    }
+  }
+
+  Future<void> _fetchIncomeBasedInsights() async {
+    try {
+      final futures = await Future.wait([
+        _apiService.getPeerComparison(),
+        _apiService.getCohortInsights(),
+        _apiService.getIncomeBasedTips(_monthlyIncome),
+      ]);
+      
+      _peerComparison = futures[0] as Map<String, dynamic>;
+      _cohortInsights = futures[1] as Map<String, dynamic>;
+      _incomeBasedTips = List<String>.from(futures[2] as List);
+      
+      // Generate budget optimization insights
+      if (categoryTotals.isNotEmpty) {
+        _budgetOptimization = _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
+      }
+    } catch (e) {
+      logError('Error fetching income-based insights: $e');
+      // Fallback to default recommendations
+      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeService.IncomeTier.mid);
     }
   }
 
@@ -168,58 +227,200 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
-      appBar: AppBar(
-        title: const Text(
-          'AI Insights',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+      appBar: _incomeTier != null 
+        ? IncomeTheme.createTierAppBar(
+            tier: _incomeTier!,
+            title: 'Financial Insights',
+          )
+        : AppBar(
+            title: const Text(
+              'Financial Insights',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF193C57),
+              ),
+            ),
+            backgroundColor: const Color(0xFFFFF9F0),
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+            centerTitle: true,
           ),
-        ),
-        backgroundColor: const Color(0xFFFFF9F0),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
-        centerTitle: true,
-        bottom: _isLoading ? null : TabBar(
+      body: _isLoading ? _buildLoadingState() : _buildTabContent(),
+    );
+  }
+  
+  Widget _buildLoadingState() {
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: primaryColor),
+          const SizedBox(height: 16),
+          Text(
+            'Analyzing your financial data...',
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              color: primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTabContent() {
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    
+    return Column(
+      children: [
+        // Income tier header
+        if (_incomeTier != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: IncomeTierCard(
+              monthlyIncome: _monthlyIncome,
+              showDetails: false,
+            ),
+          ),
+        
+        // Tab bar
+        TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF193C57),
+          labelColor: primaryColor,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF193C57),
+          indicatorColor: primaryColor,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'AI Overview'),
             Tab(text: 'Analytics'),
+            Tab(text: 'Peer Insights'),
             Tab(text: 'Recommendations'),
           ],
         ),
-      ),
-      body: _isLoading 
-        ? const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: Color(0xFF193C57)),
-                SizedBox(height: 16),
-                Text(
-                  'Analyzing your financial data...',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    color: Color(0xFF193C57),
-                  ),
-                ),
-              ],
-            ),
-          )
-        : TabBarView(
+        
+        // Tab content
+        Expanded(
+          child: TabBarView(
             controller: _tabController,
             children: [
               _buildAIOverviewTab(),
               _buildAnalyticsTab(),
+              _buildPeerInsightsTab(),
               _buildRecommendationsTab(),
             ],
           ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildPeerInsightsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Peer comparison
+          if (_peerComparison != null && _incomeTier != null)
+            PeerComparisonCard(
+              comparisonData: _peerComparison!,
+              monthlyIncome: _monthlyIncome,
+            ),
+          
+          const SizedBox(height: 20),
+          
+          // Cohort insights
+          if (_incomeTier != null)
+            CohortInsightsWidget(monthlyIncome: _monthlyIncome),
+          
+          const SizedBox(height: 20),
+          
+          // Spending trends comparison
+          if (categoryTotals.isNotEmpty)
+            SpendingTrendsComparisonWidget(
+              userSpending: categoryTotals,
+              monthlyIncome: _monthlyIncome,
+              peerData: _peerComparison,
+            ),
+          
+          const SizedBox(height: 20),
+          
+          // Income-based tips
+          if (_incomeBasedTips.isNotEmpty)
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_rounded,
+                          color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : Colors.amber,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Tips for Your Income Level',
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ..._incomeBasedTips.map((tip) =>
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: Colors.blue.shade600,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                tip,
+                                style: const TextStyle(
+                                  fontFamily: 'Manrope',
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -408,12 +609,31 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Income-based budget optimization
+          if (_budgetOptimization != null)
+            _buildBudgetOptimizationCard(),
+          
+          if (_budgetOptimization != null)
+            const SizedBox(height: 20),
+          
+          // Cohort-based habit recommendations
+          if (_incomeTier != null)
+            _buildCohortHabitRecommendationsCard(),
+          
+          if (_incomeTier != null)
+            const SizedBox(height: 20),
+          
           // Personalized Feedback
           _buildPersonalizedFeedbackCard(),
           const SizedBox(height: 20),
           
           // Savings Optimization
           _buildSavingsOptimizationCard(),
+          const SizedBox(height: 20),
+          
+          // Income-level specific goal suggestions
+          if (_incomeTier != null)
+            _buildIncomeGoalSuggestionsCard(),
         ],
       ),
     );
@@ -1147,6 +1367,472 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         .split(' ')
         .map((word) => word.capitalize())
         .join(' ');
+  }
+  
+  Widget _buildBudgetOptimizationCard() {
+    if (_budgetOptimization == null) return Container();
+    
+    final optimizations = _budgetOptimization!['optimizations'] as Map<String, dynamic>? ?? {};
+    final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
+    final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.tune_rounded,
+                  color: primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Budget Optimization',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: primaryColor,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getScoreColor(overallScore.toInt()).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  '${overallScore.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.bold,
+                    color: _getScoreColor(overallScore.toInt()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          if (suggestions.isNotEmpty) ...[
+            Text(
+              'Optimization Suggestions:',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...suggestions.take(3).map((suggestion) =>
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: primaryColor.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_fix_high_rounded,
+                      color: primaryColor,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        suggestion,
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildCohortHabitRecommendationsCard() {
+    final habits = _cohortService.getCohortHabitRecommendations(_monthlyIncome);
+    final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
+    final tierName = _incomeService.getIncomeTierName(_incomeTier!);
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.fitness_center_rounded,
+                  color: primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recommended Habits',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: primaryColor,
+                      ),
+                    ),
+                    Text(
+                      'Based on successful $tierName patterns',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          ...habits.map((habit) =>
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: habit['color'].withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: habit['color'].withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          habit['icon'],
+                          color: habit['color'],
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              habit['title'],
+                              style: TextStyle(
+                                fontFamily: 'Sora',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: habit['color'],
+                              ),
+                            ),
+                            Text(
+                              habit['frequency'].toString().toUpperCase(),
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${habit['peer_adoption']} adopt',
+                          style: const TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 10,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    habit['description'],
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.trending_up,
+                        size: 14,
+                        color: habit['impact'] == 'high' ? Colors.green : Colors.blue,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${habit['impact'].toString().toUpperCase()} IMPACT',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 10,
+                          color: habit['impact'] == 'high' ? Colors.green : Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildIncomeGoalSuggestionsCard() {
+    final goalSuggestions = _cohortService.getCohortGoalSuggestions(_monthlyIncome);
+    if (goalSuggestions.isEmpty) return Container();
+    
+    final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
+    final tierName = _incomeService.getIncomeTierName(_incomeTier!);
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.flag_rounded,
+                  color: primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Suggested Goals',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: primaryColor,
+                      ),
+                    ),
+                    Text(
+                      'Popular goals among $tierName users',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          ...goalSuggestions.take(3).map((goal) =>
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primaryColor.withOpacity(0.05),
+                    primaryColor.withOpacity(0.02),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryColor.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          goal['title'],
+                          style: TextStyle(
+                            fontFamily: 'Sora',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${(goal['peer_adoption'] * 100).toStringAsFixed(0)}% adopt',
+                          style: const TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 10,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    goal['description'],
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  if (goal['target_amount'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Target: \$${goal['target_amount'].toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.blue.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            goal['cohort_context'],
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 12,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Color _getScoreColor(int score) {
+    if (score >= 80) return Colors.green;
+    if (score >= 60) return Colors.orange;
+    return Colors.red;
   }
 }
 
