@@ -1,9 +1,12 @@
+import 'income_service.dart';
+
 class OnboardingState {
   OnboardingState._();
   static final instance = OnboardingState._();
 
   String? region;
   double? income;
+  IncomeService.IncomeTier? incomeTier;
   List<Map<String, dynamic>> expenses = [];
   List<String> goals = [];
   List<String> habits = [];
@@ -13,6 +16,7 @@ class OnboardingState {
   void reset() {
     region = null;
     income = null;
+    incomeTier = null;
     expenses = [];
     goals = [];
     habits = [];

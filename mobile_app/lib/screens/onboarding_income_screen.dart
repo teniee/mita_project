@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../services/income_service.dart';
+import '../widgets/income_tier_widgets.dart';
+import '../theme/income_theme.dart';
 
 class OnboardingIncomeScreen extends StatefulWidget {
   const OnboardingIncomeScreen({Key? key}) : super(key: key);
@@ -8,115 +11,401 @@ class OnboardingIncomeScreen extends StatefulWidget {
   State<OnboardingIncomeScreen> createState() => _OnboardingIncomeScreenState();
 }
 
-class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> {
+class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _incomeController = TextEditingController();
+  final _incomeService = IncomeService();
+  
+  IncomeService.IncomeTier? _currentTier;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  bool _showTierInfo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+  }
+
+  void _onIncomeChanged(String value) {
+    if (value.isNotEmpty) {
+      final income = double.tryParse(value.replaceAll(',', ''));
+      if (income != null && income > 0) {
+        final newTier = _incomeService.classifyIncome(income);
+        if (newTier != _currentTier) {
+          setState(() {
+            _currentTier = newTier;
+            _showTierInfo = true;
+          });
+          _animationController.forward();
+        }
+      } else {
+        setState(() {
+          _currentTier = null;
+          _showTierInfo = false;
+        });
+        _animationController.reverse();
+      }
+    }
+  }
 
   void _submitIncome() async {
     if (_formKey.currentState?.validate() ?? false) {
       double income = double.parse(_incomeController.text.replaceAll(',', ''));
+      final tier = _incomeService.classifyIncome(income);
 
-      // Store income until all onboarding data is collected
+      // Store income and tier information
       OnboardingState.instance.income = income;
+      OnboardingState.instance.incomeTier = tier;
 
-      Navigator.pushNamed(context, '/onboarding_expenses');
+      // Show personalized message before continuing
+      await _showIncomeConfirmationDialog(income, tier);
     }
+  }
+
+  Future<void> _showIncomeConfirmationDialog(double income, IncomeService.IncomeTier tier) async {
+    final tierName = _incomeService.getIncomeTierName(tier);
+    final message = _incomeService.getOnboardingMessage(tier);
+    final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              _incomeService.getIncomeTierIcon(tier),
+              color: primaryColor,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Welcome, $tierName!',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline_rounded,
+                    color: primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'We\'ll customize your budget and recommendations based on your income level.',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/onboarding_expenses');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Continue Setup',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _incomeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = _currentTier != null 
+        ? _incomeService.getIncomeTierPrimaryColor(_currentTier!)
+        : const Color(0xFF193C57);
+    
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
       body: SafeArea(
-        child: Center(
-          child: Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-            color: Colors.white,
-            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "What’s your average monthly income?",
-                      style: const TextStyle(
-                        fontFamily: 'Sora',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24,
-                        color: Color(0xFF193C57),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      "If you want to be rich, start acting like one. No sugar-coating here.",
-                      style: const TextStyle(
-                        fontFamily: 'Manrope',
-                        color: Colors.black54,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    TextFormField(
-                      controller: _incomeController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: "Monthly Income (\$)",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        prefixIcon: const Icon(Icons.attach_money),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your income.";
-                        }
-                        final income = double.tryParse(value.replaceAll(',', ''));
-                        if (income == null || income <= 0) {
-                          return "Enter a positive amount.";
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 36),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFD25F),
-                          foregroundColor: const Color(0xFF193C57),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                
+                // Main income input card
+                Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "What's your average monthly income?",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 24,
+                              color: primaryColor,
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          textStyle: const TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
+                          const SizedBox(height: 18),
+                          Text(
+                            "We'll create a personalized budget plan based on your income level.",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontFamily: 'Manrope',
+                              color: Colors.black54,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        onPressed: _submitIncome,
-                        child: const Text("Continue"),
+                          const SizedBox(height: 30),
+                          TextFormField(
+                            controller: _incomeController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: _onIncomeChanged,
+                            decoration: InputDecoration(
+                              labelText: "Monthly Income (\$)",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: primaryColor, width: 2),
+                              ),
+                              prefixIcon: Icon(
+                                Icons.attach_money,
+                                color: primaryColor,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return "Please enter your income.";
+                              }
+                              final income = double.tryParse(value.replaceAll(',', ''));
+                              if (income == null || income <= 0) {
+                                return "Enter a positive amount.";
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 36),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                textStyle: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              onPressed: _submitIncome,
+                              child: const Text("Continue"),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                
+                // Income tier information card (animated)
+                if (_showTierInfo && _currentTier != null)
+                  AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (context, child) {
+                      return FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 20),
+                            child: Column(
+                              children: [
+                                // Income tier display
+                                IncomeTierCard(
+                                  monthlyIncome: double.tryParse(_incomeController.text.replaceAll(',', '')) ?? 0.0,
+                                  showDetails: true,
+                                ),
+                                
+                                const SizedBox(height: 16),
+                                
+                                // Quick preview of benefits
+                                Card(
+                                  elevation: 2,
+                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.auto_awesome_rounded,
+                                              color: primaryColor,
+                                              size: 24,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              'What You\'ll Get',
+                                              style: TextStyle(
+                                                fontFamily: 'Sora',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color: primaryColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ..._getIncomeBasedBenefits(_currentTier!).map((benefit) => 
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 8),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: primaryColor,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    benefit,
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Manrope',
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+  
+  List<String> _getIncomeBasedBenefits(IncomeService.IncomeTier tier) {
+    switch (tier) {
+      case IncomeService.IncomeTier.low:
+        return [
+          'Budget templates focused on essential spending',
+          'Tips for maximizing every dollar',
+          'Affordable goal suggestions',
+          'Community resources and discounts',
+        ];
+      case IncomeService.IncomeTier.mid:
+        return [
+          'Balanced budget with growth opportunities',
+          'Investment and savings strategies',
+          'Career advancement financial planning',
+          'Medium-term goal recommendations',
+        ];
+      case IncomeService.IncomeTier.high:
+        return [
+          'Advanced wealth-building strategies',
+          'Tax optimization recommendations',  
+          'Premium investment opportunities',
+          'High-value goal planning',
+        ];
+    }
   }
 }
