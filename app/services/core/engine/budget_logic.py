@@ -12,11 +12,20 @@ def generate_budget_from_answers(answers: dict) -> dict:
     additional_income = income_data.get("additional_income", 0)
     income = monthly_income + additional_income
 
-    user_class = "low"
-    for klass, limit in thresholds.items():
-        if income <= limit:
-            user_class = klass
-            break
+    # Convert monthly income to annual for threshold comparison
+    annual_income = income * 12
+    
+    # Use 5-tier classification with state-specific thresholds
+    if annual_income <= thresholds.get("low", 36000):
+        user_class = "low"
+    elif annual_income <= thresholds.get("lower_middle", 57600):
+        user_class = "lower_middle"
+    elif annual_income <= thresholds.get("middle", 86400):
+        user_class = "middle"
+    elif annual_income <= thresholds.get("upper_middle", 144000):
+        user_class = "upper_middle"
+    else:
+        user_class = "high"
 
     fixed = answers.get("fixed_expenses", {})
     fixed_total = sum(fixed.values())

@@ -23,7 +23,7 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
     // Persist region choice until the final onboarding step
     OnboardingState.instance.region = selectedRegion;
 
-    Navigator.pushNamed(context, '/onboarding_income');
+    Navigator.pushNamed(context, '/onboarding_location');
   }
 
   @override

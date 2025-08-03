@@ -38,9 +38,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
       Navigator.pushReplacementNamed(context, '/login'); // if no token
     } else {
       try {
-        await _api.getUserProfile(); // try to fetch profile
-        Navigator.pushReplacementNamed(context, '/main'); // success -> go to home
+        // Check if user has completed onboarding
+        final hasOnboarded = await _api.hasCompletedOnboarding();
+        if (hasOnboarded) {
+          Navigator.pushReplacementNamed(context, '/main'); // success -> go to home
+        } else {
+          Navigator.pushReplacementNamed(context, '/onboarding_location'); // complete onboarding
+        }
       } catch (e) {
+        // Token invalid or network error - clear tokens and go to login
+        await _api.clearTokens();
         Navigator.pushReplacementNamed(context, '/login'); // error or unauthorized
       }
     }

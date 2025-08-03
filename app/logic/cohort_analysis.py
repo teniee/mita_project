@@ -1,4 +1,5 @@
 from typing import Dict
+from app.config.country_profiles_loader import get_profile
 
 
 class CohortAnalyzer:
@@ -11,16 +12,29 @@ class CohortAnalyzer:
     def assign_cohort(self, user_id: str):
         profile = self.user_profiles.get(user_id, {})
 
-        income = profile.get("income", 0)
+        income = profile.get("income", 0)  # Monthly income
         behavior = profile.get("behavior", "neutral")
         categories = profile.get("categories", [])
-
-        if income >= 7000:
-            income_band = "high"
-        elif income >= 3000:
-            income_band = "mid"
-        else:
+        region = profile.get("region", "US-CA")
+        
+        # Get state-specific thresholds from country profiles
+        country_profile = get_profile(region)
+        thresholds = country_profile.get("class_thresholds", {})
+        
+        # Convert monthly income to annual for threshold comparison
+        annual_income = income * 12
+        
+        # Use 5-tier classification with state-specific thresholds
+        if annual_income <= thresholds.get("low", 36000):
             income_band = "low"
+        elif annual_income <= thresholds.get("lower_middle", 57600):
+            income_band = "lower_middle"
+        elif annual_income <= thresholds.get("middle", 86400):
+            income_band = "middle"
+        elif annual_income <= thresholds.get("upper_middle", 144000):
+            income_band = "upper_middle"
+        else:
+            income_band = "high"
 
         if behavior in ["frugal", "conservative"]:
             style = "saver"
@@ -34,7 +48,6 @@ class CohortAnalyzer:
         )
         tag = "challenge-prone" if challenge_engaged else "core-user"
 
-        region = profile.get("region", "US-CA")
         cohort = f"{region}-{income_band}-{style}-{tag}"
         return cohort
 
