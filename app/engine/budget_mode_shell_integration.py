@@ -6,5 +6,5 @@ from app.engine.calendar_engine_behavioral import build_calendar
 
 def get_shell_calendar(user_id: str, user_settings: dict) -> dict:
     mode = resolve_budget_mode(user_settings)
-    config = {**user_settings, "mode": mode}
+    config = {**user_settings, "mode": mode, "user_id": user_id}
     return build_calendar(config)

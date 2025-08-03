@@ -302,7 +302,7 @@ class ApiService {
     };
     
     final response = await _dio.post(
-      '/calendar/calendar/shell',
+      '/calendar/shell',
       data: shellConfig,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -367,7 +367,7 @@ class ApiService {
     };
     
     final response = await _dio.post(
-      '/calendar/calendar/shell',
+      '/calendar/shell',
       data: shellConfig,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -692,7 +692,7 @@ class ApiService {
   Future<Map<String, dynamic>> redistributeCalendarBudget(Map<String, dynamic> calendar, {String strategy = 'balance'}) async {
     final token = await getToken();
     final response = await _dio.post(
-      '/calendar/calendar/redistribute',
+      '/calendar/redistribute',
       data: {
         'calendar': calendar,
         'strategy': strategy,
