@@ -106,7 +106,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     } catch (e) {
       logError('Error fetching user profile: $e');
       _monthlyIncome = 3000.0;
-      _incomeTier = IncomeTier.mid;
+      _incomeTier = IncomeTier.middle;
     }
   }
 
@@ -129,7 +129,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     } catch (e) {
       logError('Error fetching income-based insights: $e');
       // Fallback to default recommendations
-      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.mid);
+      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.middle);
     }
   }
 

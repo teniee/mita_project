@@ -11,8 +11,12 @@ class IncomeTheme {
     switch (tier) {
       case IncomeTier.low:
         return _getLowIncomeColorScheme();
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return _getLowerMiddleIncomeColorScheme();
+      case IncomeTier.middle:
         return _getMidIncomeColorScheme();
+      case IncomeTier.upperMiddle:
+        return _getUpperMiddleIncomeColorScheme();
       case IncomeTier.high:
         return _getHighIncomeColorScheme();
     }
@@ -45,6 +49,33 @@ class IncomeTheme {
     );
   }
 
+  /// Rising Saver (Lower Middle Income) - Cyan Rising Theme
+  static ColorScheme _getLowerMiddleIncomeColorScheme() {
+    return const ColorScheme.light(
+      primary: Color(0xFF00BCD4),        // Cyan
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFFB2EBF2), // Light cyan container
+      onPrimaryContainer: Color(0xFF006064),
+      secondary: Color(0xFF26C6DA),       // Medium cyan
+      onSecondary: Color(0xFFFFFFFF),
+      secondaryContainer: Color(0xFFE0F7FA),
+      onSecondaryContainer: Color(0xFF00BCD4),
+      tertiary: Color(0xFF4DD0E1),        // Lighter cyan
+      onTertiary: Color(0xFF006064),
+      tertiaryContainer: Color(0xFFE0F2F1),
+      onTertiaryContainer: Color(0xFF00BCD4),
+      surface: Color(0xFFFFFFFE),
+      onSurface: Color(0xFF1A1C18),
+      surfaceVariant: Color(0xFFE7E0EC),
+      onSurfaceVariant: Color(0xFF49454F),
+      outline: Color(0xFF79747E),
+      error: Color(0xFFBA1A1A),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF410002),
+    );
+  }
+
   /// Growing Professional (Mid Income) - Blue Professional Theme
   static ColorScheme _getMidIncomeColorScheme() {
     return const ColorScheme.light(
@@ -60,6 +91,33 @@ class IncomeTheme {
       onTertiary: Color(0xFF0D47A1),
       tertiaryContainer: Color(0xFFE1F5FE),
       onTertiaryContainer: Color(0xFF1976D2),
+      surface: Color(0xFFFFFFFE),
+      onSurface: Color(0xFF1A1C18),
+      surfaceVariant: Color(0xFFE7E0EC),
+      onSurfaceVariant: Color(0xFF49454F),
+      outline: Color(0xFF79747E),
+      error: Color(0xFFBA1A1A),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF410002),
+    );
+  }
+
+  /// Established Professional (Upper Middle Income) - Deep Purple Established Theme
+  static ColorScheme _getUpperMiddleIncomeColorScheme() {
+    return const ColorScheme.light(
+      primary: Color(0xFF673AB7),        // Deep purple
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFFD1C4E9), // Light deep purple container
+      onPrimaryContainer: Color(0xFF311B92),
+      secondary: Color(0xFF7986CB),       // Medium deep purple
+      onSecondary: Color(0xFFFFFFFF),
+      secondaryContainer: Color(0xFFEDE7F6),
+      onSecondaryContainer: Color(0xFF673AB7),
+      tertiary: Color(0xFF9575CD),        // Lighter deep purple
+      onTertiary: Color(0xFF311B92),
+      tertiaryContainer: Color(0xFFF3E5F5),
+      onTertiaryContainer: Color(0xFF673AB7),
       surface: Color(0xFFFFFFFE),
       onSurface: Color(0xFF1A1C18),
       surfaceVariant: Color(0xFFE7E0EC),
@@ -304,7 +362,18 @@ class IncomeTheme {
           'savings': const Color(0xFF1B5E20),    // Very dark green
           'other': Colors.grey.shade500,
         };
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return {
+          'housing': const Color(0xFF00ACC1),    // Deep cyan
+          'food': const Color(0xFF26C6DA),       // Medium cyan
+          'transportation': const Color(0xFF4DD0E1), // Light cyan
+          'utilities': const Color(0xFF00BCD4),  // Cyan
+          'healthcare': const Color(0xFF006064), // Dark cyan
+          'entertainment': const Color(0xFFB2EBF2), // Very light cyan
+          'savings': const Color(0xFF00838F),    // Very dark cyan
+          'other': Colors.grey.shade500,
+        };
+      case IncomeTier.middle:
         return {
           'housing': const Color(0xFF1976D2),    // Deep blue
           'food': const Color(0xFF42A5F5),       // Medium blue  
@@ -313,6 +382,17 @@ class IncomeTheme {
           'healthcare': const Color(0xFF0D47A1), // Dark blue
           'entertainment': const Color(0xFFBBDEFB), // Very light blue
           'savings': const Color(0xFF0277BD),    // Very dark blue
+          'other': Colors.grey.shade500,
+        };
+      case IncomeTier.upperMiddle:
+        return {
+          'housing': const Color(0xFF5E35B1),    // Deep purple
+          'food': const Color(0xFF7986CB),       // Medium purple
+          'transportation': const Color(0xFF9575CD), // Light purple
+          'utilities': const Color(0xFF673AB7),  // Deep purple
+          'healthcare': const Color(0xFF311B92), // Dark purple
+          'entertainment': const Color(0xFFD1C4E9), // Very light purple
+          'savings': const Color(0xFF4527A0),    // Very dark purple
           'other': Colors.grey.shade500,
         };
       case IncomeTier.high:

@@ -38,11 +38,22 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
   }
 
-  void _onIncomeChanged(String value) {
+  void _onIncomeChanged(String value) async {
     if (value.isNotEmpty) {
       final income = double.tryParse(value.replaceAll(',', ''));
       if (income != null && income > 0) {
-        final newTier = _incomeService.classifyIncome(income);
+        // Use location-aware classification if location is available
+        IncomeTier newTier;
+        if (OnboardingState.instance.countryCode != null) {
+          newTier = _incomeService.classifyIncomeForLocation(
+            income, 
+            OnboardingState.instance.countryCode!, 
+            stateCode: OnboardingState.instance.stateCode
+          );
+        } else {
+          newTier = await _incomeService.classifyIncomeByLocation(income);
+        }
+        
         if (newTier != _currentTier) {
           setState(() {
             _currentTier = newTier;
@@ -63,7 +74,18 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
   void _submitIncome() async {
     if (_formKey.currentState?.validate() ?? false) {
       double income = double.parse(_incomeController.text.replaceAll(',', ''));
-      final tier = _incomeService.classifyIncome(income);
+      
+      // Use location-aware classification
+      IncomeTier tier;
+      if (OnboardingState.instance.countryCode != null) {
+        tier = _incomeService.classifyIncomeForLocation(
+          income, 
+          OnboardingState.instance.countryCode!, 
+          stateCode: OnboardingState.instance.stateCode
+        );
+      } else {
+        tier = await _incomeService.classifyIncomeByLocation(income);
+      }
 
       // Store income and tier information
       OnboardingState.instance.income = income;
@@ -392,12 +414,26 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
           'Affordable goal suggestions',
           'Community resources and discounts',
         ];
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return [
+          'Emergency fund building strategies',
+          'Income growth planning tools',
+          'Debt elimination frameworks',
+          'Skills development budget allocation',
+        ];
+      case IncomeTier.middle:
         return [
           'Balanced budget with growth opportunities',
           'Investment and savings strategies',
           'Career advancement financial planning',
           'Medium-term goal recommendations',
+        ];
+      case IncomeTier.upperMiddle:
+        return [
+          'Advanced investment portfolio building',
+          'Tax optimization strategies',
+          'Property investment planning',
+          'Retirement acceleration techniques',
         ];
       case IncomeTier.high:
         return [

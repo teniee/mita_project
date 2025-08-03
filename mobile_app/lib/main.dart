@@ -20,11 +20,13 @@ import 'services/message_service.dart';
 import 'services/logging_service.dart';
 import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
+import 'theme/mita_theme.dart';
 
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/onboarding_region_screen.dart';
+import 'screens/onboarding_location_screen.dart';
 import 'screens/onboarding_income_screen.dart';
 import 'screens/onboarding_expenses_screen.dart';
 import 'screens/onboarding_goal_screen.dart';
@@ -117,15 +119,8 @@ class MITAApp extends StatelessWidget {
       scaffoldMessengerKey: MessageService.instance.messengerKey,
       title: 'MITA',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        primaryColor: const Color(0xFFFFD25F),
-        scaffoldBackgroundColor: const Color(0xFFFFF9F0),
-        fontFamily: 'Manrope',
-      ),
-      darkTheme: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFFD25F)),
-      ),
+      theme: MitaTheme.lightTheme,
+      darkTheme: MitaTheme.darkTheme,
       themeMode: ThemeMode.system,
       initialRoute: '/',
       routes: {
@@ -148,6 +143,10 @@ class MITAApp extends StatelessWidget {
         '/onboarding_region': (context) => const AppErrorBoundary(
           screenName: 'OnboardingRegion',
           child: OnboardingRegionScreen(),
+        ),
+        '/onboarding_location': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingLocation',
+          child: OnboardingLocationScreen(),
         ),
         '/onboarding_income': (context) => const AppErrorBoundary(
           screenName: 'OnboardingIncome',

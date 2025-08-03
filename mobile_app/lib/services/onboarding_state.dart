@@ -5,6 +5,8 @@ class OnboardingState {
   static final instance = OnboardingState._();
 
   String? region;
+  String? countryCode;
+  String? stateCode;
   double? income;
   IncomeTier? incomeTier;
   List<Map<String, dynamic>> expenses = [];
@@ -15,6 +17,8 @@ class OnboardingState {
 
   void reset() {
     region = null;
+    countryCode = null;
+    stateCode = null;
     income = null;
     incomeTier = null;
     expenses = [];

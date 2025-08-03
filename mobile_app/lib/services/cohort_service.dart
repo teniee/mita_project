@@ -84,7 +84,37 @@ class CohortService {
             'color': Colors.orange.shade600,
           },
         ];
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return [
+          {
+            'title': 'Emergency Fund Building',
+            'description': 'Build emergency fund with consistent contributions',
+            'frequency': 'monthly',
+            'impact': 'high',
+            'peer_adoption': '73%',
+            'icon': Icons.security_rounded,
+            'color': Colors.cyan.shade600,
+          },
+          {
+            'title': 'Skill Development Investment',
+            'description': 'Invest in courses and certifications',
+            'frequency': 'quarterly',
+            'impact': 'high',
+            'peer_adoption': '68%',
+            'icon': Icons.school_rounded,
+            'color': Colors.teal.shade600,
+          },
+          {
+            'title': 'Debt Snowball Method',
+            'description': 'Systematically pay down high-interest debt',
+            'frequency': 'monthly',
+            'impact': 'high',
+            'peer_adoption': '81%',
+            'icon': Icons.trending_down_rounded,
+            'color': Colors.orange.shade600,
+          },
+        ];
+      case IncomeTier.middle:
         return [
           {
             'title': 'Investment Research Hour',
@@ -112,6 +142,36 @@ class CohortService {
             'peer_adoption': '67%',
             'icon': Icons.pie_chart_rounded,
             'color': Colors.purple.shade600,
+          },
+        ];
+      case IncomeTier.upperMiddle:
+        return [
+          {
+            'title': 'Advanced Portfolio Management',
+            'description': 'Diversify investments across asset classes',
+            'frequency': 'monthly',
+            'impact': 'high',
+            'peer_adoption': '79%',
+            'icon': Icons.pie_chart_outline_rounded,
+            'color': Colors.deepPurple.shade600,
+          },
+          {
+            'title': 'Tax Loss Harvesting',
+            'description': 'Optimize taxes through strategic selling',
+            'frequency': 'quarterly',
+            'impact': 'medium',
+            'peer_adoption': '64%',
+            'icon': Icons.receipt_long_rounded,
+            'color': Colors.indigo.shade600,
+          },
+          {
+            'title': 'Real Estate Research',
+            'description': 'Explore property investment opportunities',
+            'frequency': 'quarterly',
+            'impact': 'medium',
+            'peer_adoption': '58%',
+            'icon': Icons.home_rounded,
+            'color': Colors.brown.shade600,
           },
         ];
       case IncomeTier.high:
@@ -308,8 +368,12 @@ class CohortService {
     switch (tier) {
       case IncomeTier.low:
         return category == 'emergency' ? 0.89 : category == 'debt' ? 0.76 : 0.45;
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return category == 'emergency' ? 0.84 : category == 'debt' ? 0.79 : category == 'education' ? 0.68 : 0.52;
+      case IncomeTier.middle:
         return category == 'investment' ? 0.82 : category == 'emergency' ? 0.71 : 0.58;
+      case IncomeTier.upperMiddle:
+        return category == 'investment' ? 0.86 : category == 'tax' ? 0.74 : category == 'property' ? 0.61 : 0.64;
       case IncomeTier.high:
         return category == 'tax' ? 0.91 : category == 'investment' ? 0.88 : 0.67;
     }
@@ -323,11 +387,23 @@ class CohortService {
           'Meal planning can reduce food costs by 15-20% for your income group',
           'Building a \$500 emergency fund is the top priority for 89% of peers',
         ];
-      case IncomeTier.mid:
+      case IncomeTier.lowerMiddle:
+        return [
+          '${tierName}s who build emergency funds first avoid 68% more financial stress',
+          'Skill development investments increase income by 18% within 2 years',
+          'Debt elimination strategies save \$2,400 annually on average for your tier',
+        ];
+      case IncomeTier.middle:
         return [
           '${tierName}s who invest early see 40% better long-term outcomes',
           'Automating savings increases success rates by 65% in your tier',
           'Career development investments pay off 3x faster at your income level',
+        ];
+      case IncomeTier.upperMiddle:
+        return [
+          '${tierName}s who diversify investments see 28% higher returns',
+          'Tax optimization strategies save an average of \$4,200 annually',
+          'Property investments become viable at your income level for 61% of peers',
         ];
       case IncomeTier.high:
         return [

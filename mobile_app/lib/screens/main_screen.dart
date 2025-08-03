@@ -127,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
   };
   
   List<Map<String, dynamic>> _getDefaultDailyTargets() {
-    final budgetWeights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.mid);
+    final budgetWeights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
     final dailyBudget = _monthlyIncome / 30;
     
     return [
@@ -152,8 +152,8 @@ class _MainScreenState extends State<MainScreen> {
   Map<String, dynamic> _getDefaultIncomeClassification() => {
     'monthly_income': _monthlyIncome,
     'tier': _incomeTier.toString().split('.').last,
-    'tier_name': _incomeService.getIncomeTierName(_incomeTier ?? IncomeTier.mid),
-    'range': _incomeService.getIncomeRangeString(_incomeTier ?? IncomeTier.mid),
+    'tier_name': _incomeService.getIncomeTierName(_incomeTier ?? IncomeTier.middle),
+    'range': _incomeService.getIncomeRangeString(_incomeTier ?? IncomeTier.middle),
   };
   
   Map<String, dynamic> _getDefaultPeerComparison() => {
