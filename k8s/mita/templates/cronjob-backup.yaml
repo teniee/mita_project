@@ -1,35 +1,186 @@
+{{- if .Values.backup.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: pg-backup
+  name: {{ include "mita.fullname" . }}-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
 spec:
-  schedule: "0 3 * * *"
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  startingDeadlineSeconds: 300
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
         spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
           containers:
-            - name: pg-backup
-              image: python:3.11-slim
-              command: ["python", "/scripts/backup_database.py"]
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["python", "scripts/production_backup.py"]
+              
               env:
                 - name: DATABASE_URL
-                  value: {{ .Values.postgresUrl | quote }}
-                - name: S3_BUCKET
-                  value: {{ .Values.backupBucket | quote }}
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: database-url
+                - name: BACKUP_BUCKET
+                  value: {{ .Values.backup.bucket | quote }}
+                - name: AWS_DEFAULT_REGION
+                  value: {{ .Values.backup.region | quote }}
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: aws-access-key-id
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: aws-secret-access-key
+                      optional: true
+                - name: BACKUP_ENCRYPTION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: backup-encryption-key
+                      optional: true
+                - name: ENVIRONMENT
+                  value: {{ .Values.environment | quote }}
+
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+
               volumeMounts:
-                - name: script
-                  mountPath: /scripts
-          restartPolicy: OnFailure
+                - name: backup-storage
+                  mountPath: /tmp/backups
+                - name: logs
+                  mountPath: /app/logs
+
           volumes:
-            - name: script
-              configMap:
-                name: pg-backup-script
+            - name: backup-storage
+              emptyDir:
+                sizeLimit: 5Gi
+            - name: logs
+              emptyDir: {}
+
+          activeDeadlineSeconds: 3600  # 1 hour timeout
+{{- end }}
+
 ---
-apiVersion: v1
-kind: ConfigMap
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
 metadata:
-  name: pg-backup-script
-data:
-  backup_database.py: |
-{{ .Files.Get "../../scripts/backup_database.py" | indent 4 }}
+  name: {{ include "mita.fullname" . }}-backup-cleanup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup-cleanup
+spec:
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup-cleanup
+        spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
+          containers:
+            - name: backup-cleanup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["python", "-c"]
+              args:
+                - |
+                  import sys
+                  sys.path.insert(0, '/app')
+                  from scripts.production_backup import MitaProductionBackup
+                  backup_manager = MitaProductionBackup()
+                  backup_manager.cleanup_old_backups(retention_days=30)
+              
+              env:
+                - name: BACKUP_BUCKET
+                  value: {{ .Values.backup.bucket | quote }}
+                - name: AWS_DEFAULT_REGION
+                  value: {{ .Values.backup.region | quote }}
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: aws-access-key-id
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "mita.fullname" . }}-secrets
+                      key: aws-secret-access-key
+                      optional: true
+
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+
+          activeDeadlineSeconds: 600  # 10 minutes timeout
+{{- end }}

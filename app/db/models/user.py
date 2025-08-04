@@ -19,4 +19,7 @@ class User(Base):
     premium_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     timezone = Column(String, default="UTC")
+    
+    # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")
+    transactions = relationship("Transaction", back_populates="user")

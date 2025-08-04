@@ -1,0 +1,152 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mita.fullname" . }}-migration-{{ .Values.migrations.version | default "latest" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+
+      containers:
+        - name: migration
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          command: ["python", "-m", "alembic", "upgrade", "head"]
+          
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: database-url
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: LOG_LEVEL
+              value: "INFO"
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+{{- end }}
+
+---
+{{- if .Values.seedData.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mita.fullname" . }}-seed-data-{{ .Values.seedData.version | default "latest" }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed-data
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: seed-data
+    spec:
+      restartPolicy: Never
+      
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+
+      containers:
+        - name: seed-data
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          command: ["python", "scripts/seed_production_data.py"]
+          
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: database-url
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: LOG_LEVEL
+              value: "INFO"
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+{{- end }}

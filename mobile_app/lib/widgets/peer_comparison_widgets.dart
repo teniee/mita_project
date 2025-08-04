@@ -93,7 +93,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: (isUserBetter ? Colors.green : Colors.orange).withOpacity(0.1),
+                color: (isUserBetter ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -312,7 +312,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

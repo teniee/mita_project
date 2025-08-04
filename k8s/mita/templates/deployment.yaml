@@ -2,37 +2,249 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "mita.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.maxUnavailable }}
+      maxSurge: {{ .Values.maxSurge }}
   selector:
     matchLabels:
-      app: {{ include "mita.name" . }}
+      {{- include "mita.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "mita.name" . }}
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
+      {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.image.pullSecrets | nindent 8 }}
+      {{- end }}
+      
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+        {{- if .Values.security.seccompProfile }}
+        seccompProfile:
+          {{- toYaml .Values.security.seccompProfile | nindent 10 }}
+        {{- end }}
+
+      # Pod Anti-Affinity (spread across nodes)
+      {{- if .Values.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.podAntiAffinity.rule "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+          {{- end }}
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - {{ include "mita.name" . }}
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+
+      # Node Affinity
+      {{- if .Values.nodeAffinity.enabled }}
+      nodeAffinity:
+        {{- toYaml .Values.nodeAffinity.rules | nindent 8 }}
+      {{- end }}
+
+      # Tolerations
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+
       containers:
         - name: backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          # Environment Variables
           env:
-            - name: REDIS_URL
-              value: {{ .Values.redisUrl | quote }}
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: DEBUG
+              value: {{ .Values.debug | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
             - name: DATABASE_URL
-              value: {{ .Values.postgresUrl | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: jwt-secret
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: secret-key
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: openai-api-key
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mita.fullname" . }}-secrets
+                  key: sentry-dsn
+                  optional: true
+
+          # Ports
           ports:
-            - containerPort: 8000
-          resources: {{- toYaml .Values.resources | nindent 12 }}
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          # Health Checks
+          {{- if .Values.healthChecks.enabled }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
+          
+          {{- if .Values.healthChecks.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.healthChecks.livenessProbe | nindent 12 }}
+          {{- end }}
+          
+          {{- if .Values.healthChecks.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.healthChecks.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- end }}
+
+          # Resource Management
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          # Volume Mounts
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: app-logs
+              mountPath: /app/logs
+            {{- if .Values.monitoring.enabled }}
+            - name: prometheus-metrics
+              mountPath: /tmp/prometheus_multiproc
+            {{- end }}
+
+      # Volumes
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: app-logs  
+          emptyDir: {}
+        {{- if .Values.monitoring.enabled }}
+        - name: prometheus-metrics
+          emptyDir: {}
+        {{- end }}
+
+      # DNS Policy
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "mita.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  {{- if .Values.service.annotations }}
+  annotations:
+    {{- toYaml .Values.service.annotations | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: 8000
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
   selector:
-    app: {{ include "mita.name" . }}
+    {{- include "mita.selectorLabels" . | nindent 4 }}
+
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mita.fullname" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mita.fullname" . }}-netpol
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  {{- if .Values.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+  {{- end }}
+  {{- if .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+  {{- end }}
+{{- end }}

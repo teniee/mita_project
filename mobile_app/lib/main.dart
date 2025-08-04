@@ -13,7 +13,6 @@ import 'screens/bottom_navigation.dart';
 import 'screens/referral_screen.dart';
 import 'screens/mood_screen.dart';
 import 'screens/subscription_screen.dart';
-import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/loading_service.dart';
 import 'services/message_service.dart';
@@ -45,7 +44,8 @@ Future<void> _initFirebase() async {
   // Register device push-token (optional)
   final token = await FirebaseMessaging.instance.getToken();
   if (token != null) {
-    final api = ApiService(); // singleton
+    // TODO: Register push token when backend is ready
+    // final api = ApiService();
     // await api.registerPushToken(token);
   }
 
@@ -110,7 +110,7 @@ void main() async {
 }
 
 class MITAApp extends StatelessWidget {
-  const MITAApp({Key? key}) : super(key: key);
+  const MITAApp({super.key});
 
   @override
   Widget build(BuildContext context) {

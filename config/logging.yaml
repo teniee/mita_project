@@ -1,0 +1,301 @@
+# Production Logging Configuration for MITA Finance
+# Structured JSON logging for financial-grade applications
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mita-logging-config
+data:
+  logging.conf: |
+    [loggers]
+    keys=root,mita,uvicorn,sqlalchemy,redis,security,audit
+
+    [handlers]
+    keys=console,file,audit,error
+
+    [formatters]
+    keys=json,simple
+
+    [logger_root]
+    level=INFO
+    handlers=console,file
+
+    [logger_mita]
+    level=INFO
+    handlers=console,file,error
+    qualname=app
+    propagate=0
+
+    [logger_uvicorn]
+    level=INFO
+    handlers=console,file
+    qualname=uvicorn
+    propagate=0
+
+    [logger_sqlalchemy]
+    level=WARNING
+    handlers=console,file
+    qualname=sqlalchemy.engine
+    propagate=0
+
+    [logger_redis]
+    level=INFO
+    handlers=console,file
+    qualname=redis
+    propagate=0
+
+    [logger_security]
+    level=INFO
+    handlers=console,file,audit
+    qualname=security
+    propagate=0
+
+    [logger_audit]
+    level=INFO
+    handlers=audit
+    qualname=audit
+    propagate=0
+
+    [handler_console]
+    class=StreamHandler
+    level=INFO
+    formatter=json
+    args=(sys.stdout,)
+
+    [handler_file]
+    class=logging.handlers.RotatingFileHandler
+    level=INFO
+    formatter=json
+    args=('/app/logs/application.log', 'a', 100*1024*1024, 5, 'utf-8')
+
+    [handler_audit]
+    class=logging.handlers.RotatingFileHandler
+    level=INFO
+    formatter=json
+    args=('/app/logs/audit.log', 'a', 100*1024*1024, 10, 'utf-8')
+
+    [handler_error]
+    class=logging.handlers.RotatingFileHandler
+    level=ERROR
+    formatter=json
+    args=('/app/logs/error.log', 'a', 50*1024*1024, 5, 'utf-8')
+
+    [formatter_json]
+    class=pythonjsonlogger.jsonlogger.JsonFormatter
+    format=%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d %(funcName)s %(created)f %(thread)d %(threadName)s %(processName)s
+
+    [formatter_simple]
+    format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mita-fluent-bit-config
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Log_Level     info
+        Daemon        off
+        Parsers_File  parsers.conf
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+
+    [INPUT]
+        Name              tail
+        Path              /app/logs/*.log
+        Parser            json
+        Tag               mita.*
+        Refresh_Interval  5
+        Mem_Buf_Limit     50MB
+        Skip_Long_Lines   On
+
+    [INPUT]
+        Name              systemd
+        Tag               system.*
+        Systemd_Filter    _SYSTEMD_UNIT=kubelet.service
+        Systemd_Filter    _SYSTEMD_UNIT=docker.service
+
+    [FILTER]
+        Name                kubernetes
+        Match               mita.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     mita.var.log.containers.
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude Off
+        Annotations         Off
+        Labels              On
+
+    [FILTER]
+        Name                modify
+        Match               mita.*
+        Add                 environment production
+        Add                 application mita-finance
+        Add                 version ${APP_VERSION}
+
+    [FILTER]
+        Name                grep
+        Match               mita.*
+        Exclude             log \[INFO\].*health
+        Exclude             log \[INFO\].*metrics
+
+    [OUTPUT]
+        Name                elasticsearch
+        Match               mita.*
+        Host                elasticsearch.logging.svc.cluster.local
+        Port                9200
+        Index               mita-finance-logs
+        Type                _doc
+        Logstash_Format     On
+        Logstash_Prefix     mita-finance
+        Logstash_DateFormat %Y.%m.%d
+        Retry_Limit         False
+        Suppress_Type_Name  On
+
+    [OUTPUT]
+        Name                s3
+        Match               mita.audit.*
+        bucket              mita-production-logs
+        region              us-east-1
+        total_file_size     50M
+        upload_timeout      10m
+        use_put_object      On
+        compression         gzip
+        s3_key_format       /audit-logs/%Y/%m/%d/audit-%Y%m%d-%H%M%S
+
+  parsers.conf: |
+    [PARSER]
+        Name        json
+        Format      json
+        Time_Key    asctime
+        Time_Format %Y-%m-%d %H:%M:%S,%L
+        Time_Keep   On
+        Decode_Field_As escaped_utf8 message
+
+    [PARSER]
+        Name        mita-audit
+        Format      json
+        Time_Key    timestamp
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   On
+
+    [PARSER]
+        Name        nginx
+        Format      regex
+        Regex       ^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$
+        Time_Key    time
+        Time_Format %d/%b/%Y:%H:%M:%S %z
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  labels:
+    app: fluent-bit
+spec:
+  selector:
+    matchLabels:
+      app: fluent-bit
+  template:
+    metadata:
+      labels:
+        app: fluent-bit
+    spec:
+      serviceAccountName: fluent-bit
+      containers:
+      - name: fluent-bit
+        image: fluent/fluent-bit:2.2
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        ports:
+        - containerPort: 2020
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: fluent-bit-config
+          mountPath: /fluent-bit/etc
+        - name: app-logs
+          mountPath: /app/logs
+        env:
+        - name: APP_VERSION
+          value: "1.0.0"
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: fluent-bit-config
+        configMap:
+          name: mita-fluent-bit-config
+      - name: app-logs
+        persistentVolumeClaim:
+          claimName: mita-logs-pvc
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluent-bit
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - pods
+  - pods/logs
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fluent-bit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluent-bit
+subjects:
+- kind: ServiceAccount
+  name: fluent-bit
+  namespace: default
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mita-logs-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd

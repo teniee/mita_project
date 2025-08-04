@@ -301,13 +301,33 @@ class ApiService {
       'month': DateTime.now().month,
     };
     
-    final response = await _dio.post(
-      '/calendar/shell',
-      data: shellConfig,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
+    Map<String, dynamic> calendarData = {};
     
-    final calendarData = response.data['data']['calendar'] ?? {};
+    try {
+      final response = await _dio.post(
+        '/calendar/shell',
+        data: shellConfig,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      calendarData = response.data['data']['calendar'] ?? {};
+    } catch (e) {
+      logError('Failed to fetch calendar data, using fallback', tag: 'DASHBOARD', error: e);
+      // Provide fallback calendar data based on the shell configuration
+      final income = actualIncome;
+      final weights = shellConfig['weights'] as Map<String, dynamic>;
+      calendarData = {
+        'flexible': {
+          'food': income * (weights['food'] as double),
+          'transportation': income * (weights['transportation'] as double),
+          'entertainment': income * (weights['entertainment'] as double),
+          'shopping': income * (weights['shopping'] as double),
+          'healthcare': income * (weights['healthcare'] as double),
+        },
+        'fixed': shellConfig['fixed'],
+        'savings': shellConfig['savings_target'],
+      };
+    }
     
     // Transform for dashboard display
     Map<String, dynamic> dashboardData = {
@@ -366,13 +386,33 @@ class ApiService {
       'month': DateTime.now().month,
     };
     
-    final response = await _dio.post(
-      '/calendar/shell',
-      data: shellConfig,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
+    Map<String, dynamic> calendarData = {};
     
-    final calendarData = response.data['data']['calendar'] ?? {};
+    try {
+      final response = await _dio.post(
+        '/calendar/shell',
+        data: shellConfig,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      calendarData = response.data['data']['calendar'] ?? {};
+    } catch (e) {
+      logError('Failed to fetch calendar data, using fallback', tag: 'CALENDAR', error: e);
+      // Provide fallback calendar data based on the shell configuration
+      final income = actualIncome;
+      final weights = shellConfig['weights'] as Map<String, dynamic>;
+      calendarData = {
+        'flexible': {
+          'food': income * (weights['food'] as double),
+          'transportation': income * (weights['transportation'] as double),
+          'entertainment': income * (weights['entertainment'] as double),
+          'shopping': income * (weights['shopping'] as double),
+          'healthcare': income * (weights['healthcare'] as double),
+        },
+        'fixed': shellConfig['fixed'],
+        'savings': shellConfig['savings_target'],
+      };
+    }
     
     // Transform the budget data into calendar day format
     List<dynamic> calendarDays = [];

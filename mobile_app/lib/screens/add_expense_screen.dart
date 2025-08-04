@@ -219,9 +219,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.05),
+                    color: Colors.blue.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +265,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 border: Border.all(
                                   color: _action == category
                                       ? Colors.blue
-                                      : Colors.blue.withOpacity(0.3),
+                                      : Colors.blue.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Row(
@@ -289,8 +289,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                       fontFamily: 'Manrope',
                                       fontSize: 10,
                                       color: _action == category
-                                          ? Colors.white.withOpacity(0.8)
-                                          : Colors.blue.withOpacity(0.7),
+                                          ? Colors.white.withValues(alpha: 0.8)
+                                          : Colors.blue.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ],
@@ -306,7 +306,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 11,
-                            color: Colors.blue.withOpacity(0.8),
+                            color: Colors.blue.withValues(alpha: 0.8),
                             fontStyle: FontStyle.italic,
                           ),
                         ),

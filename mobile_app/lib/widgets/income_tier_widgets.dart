@@ -42,7 +42,7 @@ class IncomeTierCard extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [
                 secondaryColor,
-                secondaryColor.withOpacity(0.7),
+                secondaryColor.withValues(alpha: 0.7),
               ],
             ),
           ),
@@ -82,7 +82,7 @@ class IncomeTierCard extends StatelessWidget {
                           Text(
                             rangeString,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: primaryColor.withOpacity(0.8),
+                              color: primaryColor.withValues(alpha: 0.8),
                               fontFamily: 'Manrope',
                             ),
                           ),
@@ -132,8 +132,8 @@ class IncomeTierBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.1),
-        border: Border.all(color: primaryColor.withOpacity(0.3)),
+        color: primaryColor.withValues(alpha: 0.1),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -318,7 +318,7 @@ class PeerComparisonCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -486,7 +486,7 @@ class IncomeBasedGoalCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -513,7 +513,7 @@ class IncomeBasedGoalCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: getPriorityColor().withOpacity(0.1),
+                              color: getPriorityColor().withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(

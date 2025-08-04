@@ -167,7 +167,11 @@ async def init_database():
     
     async with async_engine.begin() as conn:
         # Import all models to ensure they are registered
-        from app.db.models import User, Expense, Transaction  # noqa
+        from app.db.models import (
+            User, Expense, Transaction, Goal, Habit, Mood, 
+            DailyPlan, Subscription, PushToken, NotificationLog,
+            UserAnswer, UserProfile, AIAnalysisSnapshot, BudgetAdvice, AIAdviceTemplate
+        )  # noqa
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
 

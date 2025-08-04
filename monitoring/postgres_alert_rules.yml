@@ -1,0 +1,119 @@
+groups:
+  - name: postgres_alerts
+    rules:
+      # Database Connection Alerts
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "CRITICAL: PostgreSQL is down"
+          description: "PostgreSQL database is not responding"
+          runbook_url: "https://wiki.mita.finance/runbooks/postgres-down"
+
+      - alert: PostgreSQLTooManyConnections
+        expr: sum(pg_stat_database_numbackends) / sum(pg_settings_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL connection usage high"
+          description: "{{ $value | humanizePercentage }} of max connections in use"
+
+      - alert: PostgreSQLConnectionsCritical
+        expr: sum(pg_stat_database_numbackends) / sum(pg_settings_max_connections) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "CRITICAL: PostgreSQL connection limit almost reached"
+          description: "{{ $value | humanizePercentage }} of max connections in use"
+
+      # Performance Alerts
+      - alert: PostgreSQLSlowQueries
+        expr: avg(rate(pg_stat_database_blk_read_time[5m]) + rate(pg_stat_database_blk_write_time[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Average query time is {{ $value }}ms"
+
+      - alert: PostgreSQLHighCacheHitRatio
+        expr: rate(pg_stat_database_blks_hit[5m]) / (rate(pg_stat_database_blks_hit[5m]) + rate(pg_stat_database_blks_read[5m])) < 0.95
+        for: 10m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "Low PostgreSQL cache hit ratio"
+          description: "Cache hit ratio is {{ $value | humanizePercentage }}"
+
+      # Replication Alerts
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag detected"
+          description: "Replication lag is {{ $value }} seconds"
+
+      - alert: PostgreSQLReplicationLagCritical
+        expr: pg_replication_lag > 300
+        for: 2m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "CRITICAL: High PostgreSQL replication lag"
+          description: "Replication lag is {{ $value }} seconds - data loss risk"
+
+      # Storage Alerts
+      - alert: PostgreSQLDiskSpaceLow
+        expr: pg_database_size_bytes / 1024 / 1024 / 1024 > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL database size growing"
+          description: "Database size is {{ $value }}GB"
+
+      # Transaction Alerts  
+      - alert: PostgreSQLDeadlocks
+        expr: increase(pg_stat_database_deadlocks[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "{{ $value }} deadlocks in the last 5 minutes"
+
+      - alert: PostgreSQLLongRunningTransactions
+        expr: max(pg_stat_activity_max_tx_duration) > 3600
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "Long running PostgreSQL transaction"
+          description: "Transaction running for {{ $value }} seconds"
+
+      # WAL and Archive Alerts
+      - alert: PostgreSQLWALFilesHigh
+        expr: pg_stat_archiver_failed_count > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL WAL archiving failures"
+          description: "{{ $value }} WAL archiving failures"

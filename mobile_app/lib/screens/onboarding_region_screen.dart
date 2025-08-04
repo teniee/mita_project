@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 
 class OnboardingRegionScreen extends StatefulWidget {
-  const OnboardingRegionScreen({Key? key}) : super(key: key);
+  const OnboardingRegionScreen({super.key});
 
   @override
   State<OnboardingRegionScreen> createState() => _OnboardingRegionScreenState();

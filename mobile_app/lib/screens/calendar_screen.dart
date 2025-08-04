@@ -5,7 +5,7 @@ import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({Key? key}) : super(key: key);
+  const CalendarScreen({super.key});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -357,7 +357,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getBudgetModeColor(_budgetMode).withOpacity(0.1),
+                    color: _getBudgetModeColor(_budgetMode).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -449,7 +449,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -503,14 +503,14 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface.withOpacity(0.8),
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -621,7 +621,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withOpacity(0.1),
+                                  color: colorScheme.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -807,7 +807,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                                               Icon(
                                                 Icons.auto_fix_high,
                                                 size: 12,
-                                                color: _getOnDayColor(status).withOpacity(0.8),
+                                                color: _getOnDayColor(status).withValues(alpha: 0.8),
                                               ),
                                           ],
                                         ),
@@ -831,7 +831,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                                           const SizedBox(height: 2),
                                           LinearProgressIndicator(
                                             value: (spent / limit).clamp(0.0, 1.0),
-                                            backgroundColor: _getOnDayColor(status).withOpacity(0.3),
+                                            backgroundColor: _getOnDayColor(status).withValues(alpha: 0.3),
                                             valueColor: AlwaysStoppedAnimation<Color>(_getOnDayColor(status)),
                                             minHeight: 2,
                                           ),
@@ -892,10 +892,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.05),
+        color: colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: colorScheme.primary.withOpacity(0.2),
+          color: colorScheme.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -921,7 +921,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _getRatingColor(rating).withOpacity(0.1),
+                  color: _getRatingColor(rating).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -940,7 +940,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             _aiSnapshot!['summary'] ?? 'AI analysis of your spending patterns',
             style: TextStyle(
               fontSize: 12,
-              color: colorScheme.onSurface.withOpacity(0.8),
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
               height: 1.3,
             ),
             maxLines: 2,
@@ -960,10 +960,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.05),
+        color: Colors.orange.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.orange.withOpacity(0.2),
+          color: Colors.orange.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -994,7 +994,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             children: patterns.take(3).map((pattern) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -1020,10 +1020,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.05),
+        color: Colors.blue.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.blue.withOpacity(0.2),
+          color: Colors.blue.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -1049,7 +1049,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _getTrendColor(trend).withOpacity(0.1),
+                  color: _getTrendColor(trend).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -1079,7 +1079,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             insights.length > 80 ? '${insights.substring(0, 80)}...' : insights,
             style: TextStyle(
               fontSize: 12,
-              color: colorScheme.onSurface.withOpacity(0.8),
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
               height: 1.3,
             ),
           ),
@@ -1094,10 +1094,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.05),
+        color: Colors.red.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.red.withOpacity(0.3),
+          color: Colors.red.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -1137,10 +1137,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.05),
+        color: Colors.green.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.green.withOpacity(0.2),
+          color: Colors.green.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -1169,7 +1169,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             suggestions.first['text'] ?? 'Smart budget optimization available',
             style: TextStyle(
               fontSize: 12,
-              color: colorScheme.onSurface.withOpacity(0.8),
+              color: colorScheme.onSurface.withValues(alpha: 0.8),
               height: 1.3,
             ),
             maxLines: 2,

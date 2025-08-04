@@ -1,0 +1,340 @@
+name: MITA Finance Production CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: mita-finance/backend
+  CLUSTER_NAME: mita-prod-cluster
+  CLUSTER_ZONE: us-central1-a
+
+jobs:
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit semgrep
+
+      - name: Run Safety (dependency vulnerability scan)
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+
+      - name: Run Bandit (code security scan)
+        run: |
+          bandit -r app/ -f json -o bandit-report.json || true
+
+      - name: Run Semgrep (SAST)
+        run: |
+          semgrep --config=auto app/ --json --output=semgrep-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            safety-report.json
+            bandit-report.json
+            semgrep-report.json
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: security-scan
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_mita
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-cov
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_mita
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          alembic upgrade head
+
+      - name: Run tests with coverage
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_mita
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET: test_jwt_secret_32_characters_long
+          SECRET_KEY: test_secret_key_32_characters_long
+          ENVIRONMENT: test
+        run: |
+          pytest app/tests/ -v --cov=app --cov-report=xml --cov-report=html --cov-fail-under=70
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  build-and-push:
+    name: Build and Push Container
+    runs-on: ubuntu-latest
+    needs: [security-scan, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          target: production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.0'
+
+      - name: Configure kubectl for staging
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy to staging
+        run: |
+          helm upgrade --install mita-staging ./k8s/mita \
+            --namespace mita-staging \
+            --create-namespace \
+            --set image.tag=latest \
+            --set environment=staging \
+            --set ingress.host=staging.mita.finance \
+            --wait --timeout=10m
+
+      - name: Run staging health checks
+        run: |
+          kubectl wait --for=condition=ready pod -l app=mita-staging -n mita-staging --timeout=300s
+          
+          # Wait for service to be ready
+          sleep 30
+          
+          # Test staging endpoint
+          curl -f https://staging.mita.finance/health || exit 1
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.0'
+
+      - name: Configure kubectl for production
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+
+      - name: Backup current production deployment
+        run: |
+          kubectl get deployment mita-production -n mita-production -o yaml > backup-deployment.yaml || true
+
+      - name: Deploy to production with blue-green strategy
+        run: |
+          helm upgrade --install mita-production ./k8s/mita \
+            --namespace mita-production \
+            --create-namespace \
+            --set image.tag=${{ github.event.release.tag_name }} \
+            --set replicaCount=3 \
+            --set environment=production \
+            --set ingress.host=mita.finance \
+            --set resources.requests.cpu=500m \
+            --set resources.requests.memory=1Gi \
+            --set resources.limits.cpu=2000m \
+            --set resources.limits.memory=2Gi \
+            --wait --timeout=15m
+
+      - name: Run production health checks
+        run: |
+          kubectl wait --for=condition=ready pod -l app=mita-production -n mita-production --timeout=600s
+          
+          # Wait for all replicas to be ready
+          sleep 60
+          
+          # Comprehensive health checks
+          curl -f https://mita.finance/health || exit 1
+          curl -f https://mita.finance/api/health || exit 1
+
+      - name: Run production smoke tests
+        run: |
+          # Test critical endpoints
+          curl -f -X POST https://mita.finance/api/auth/health-check || exit 1
+          
+          # Test database connectivity through API
+          curl -f https://mita.finance/api/health/database || exit 1
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Production deployment successful!"
+          echo "Version: ${{ github.event.release.tag_name }}"
+          echo "Time: $(date)"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed, initiating rollback..."
+          kubectl rollout undo deployment/mita-production -n mita-production
+          kubectl rollout status deployment/mita-production -n mita-production --timeout=300s
+
+  post-deployment:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+      - name: Run database migrations
+        run: |
+          kubectl exec -n mita-production deployment/mita-production -- python -m alembic upgrade head
+
+      - name: Clear application caches
+        run: |
+          kubectl exec -n mita-production deployment/mita-production -- python -c "
+          import redis
+          r = redis.from_url('${{ secrets.REDIS_URL }}')
+          r.flushdb()
+          print('Cache cleared successfully')
+          "
+
+      - name: Update external monitoring
+        run: |
+          # Notify monitoring systems of deployment
+          curl -X POST "${{ secrets.WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"message\": \"MITA Production deployed: ${{ github.event.release.tag_name }}\", \"status\": \"success\"}"

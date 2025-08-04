@@ -1,17 +1,143 @@
 groups:
-  - name: app_alerts
+  - name: mita_app_alerts
     rules:
+      # API Performance Alerts
       - alert: HighP95Latency
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.4
         for: 5m
         labels:
           severity: warning
+          service: mita-backend
         annotations:
-          summary: API p95 latency above 400ms
+          summary: "MITA API p95 latency above 400ms"
+          description: "95th percentile latency is {{ $value }}s for the last 5 minutes"
+          runbook_url: "https://wiki.mita.finance/runbooks/high-latency"
+
+      - alert: CriticalP95Latency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1.0
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-backend
+        annotations:
+          summary: "CRITICAL: MITA API p95 latency above 1 second"
+          description: "95th percentile latency is {{ $value }}s - immediate attention required"
+
+      # Error Rate Alerts
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      - alert: CriticalErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.20
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-backend
+        annotations:
+          summary: "CRITICAL: Very high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} - service may be down"
+
+      # Queue Depth Alerts
       - alert: QueueDepthHigh
         expr: queue_length > 500
         for: 5m
         labels:
           severity: warning
+          service: mita-worker
         annotations:
-          summary: RQ queue depth above 500
+          summary: "RQ queue depth above 500"
+          description: "Queue depth is {{ $value }}, may indicate processing bottleneck"
+
+      - alert: QueueDepthCritical
+        expr: queue_length > 2000
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-worker
+        annotations:
+          summary: "CRITICAL: RQ queue depth above 2000"
+          description: "Queue depth is {{ $value }} - workers may be failing"
+
+      # Memory Usage Alerts
+      - alert: HighMemoryUsage
+        expr: (process_memory_bytes / 1024 / 1024 / 1024) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          service: mita-backend
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}GB"
+
+      - alert: DatabaseConnectionsHigh
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} active connections to PostgreSQL"
+
+      # Financial Transaction Alerts
+      - alert: TransactionProcessingFailure
+        expr: increase(transaction_processing_errors_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-backend
+          team: finance
+        annotations:
+          summary: "CRITICAL: Multiple transaction processing failures"
+          description: "{{ $value }} transaction processing errors in the last 5 minutes"
+
+      - alert: UserRegistrationDown
+        expr: increase(user_registration_success_total[10m]) == 0 and increase(user_registration_attempts_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: mita-backend
+        annotations:
+          summary: "CRITICAL: User registration is failing"
+          description: "No successful user registrations in 10 minutes despite attempts"
+
+      # Redis Connectivity
+      - alert: RedisConnectionFailure
+        expr: redis_connected_clients < 1
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "CRITICAL: Redis connection failure"
+          description: "Cannot connect to Redis cache"
+
+  - name: mita_business_alerts
+    rules:
+      # Business Metrics
+      - alert: DailyActiveUsersDown
+        expr: daily_active_users < 100
+        for: 30m
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "Daily active users below threshold"
+          description: "Only {{ $value }} daily active users, below expected 100"
+
+      - alert: RevenueProcessingIssue
+        expr: increase(revenue_processing_errors_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: finance
+        annotations:
+          summary: "CRITICAL: Revenue processing error detected"
+          description: "Revenue processing errors detected - immediate financial review required"

@@ -1,23 +1,187 @@
-replicaCount: 2
+# Production Configuration for MITA Finance
+# Adjust these values for different environments (staging/production)
+
+# Replica Configuration
+replicaCount: 3
+maxUnavailable: 0
+maxSurge: 1
+
+# Image Configuration
 image:
-  repository: mita-backend
+  repository: ghcr.io/mita-finance/backend
   tag: latest
   pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Service Configuration
 service:
   type: ClusterIP
   port: 80
+  targetPort: 8000
+  annotations: {}
+
+# Resource Management (Financial-grade requirements)
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
     cpu: 500m
-    memory: 512Mi
+    memory: 1Gi
+    ephemeral-storage: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+    ephemeral-storage: 2Gi
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Ingress Configuration
 ingress:
   enabled: true
   className: nginx
-  host: mita.example.com
-  tls: true
-redisUrl: redis://redis:6379/0
-postgresUrl: postgresql+asyncpg://postgres.atdcxppfflmiwjwjuqyl:33SatinSatin11Satin@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require
-backupBucket: s3://mita-backups
+  host: mita.finance
+  tls: 
+    enabled: true
+    secretName: mita-tls-cert
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+# Database Configuration (External)
+database:
+  url: postgresql+asyncpg://USERNAME:PASSWORD@postgres-host:5432/mita?sslmode=require
+  host: postgres-host
+  port: 5432
+  name: mita
+  sslMode: require
+
+# Redis Configuration (External)
+redis:
+  url: redis://:PASSWORD@redis-host:6379/0
+  host: redis-host
+  port: 6379
+  database: 0
+
+# Environment Variables
+environment: production
+debug: false
+logLevel: INFO
+
+# Security Configuration
+security:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+# Network Policies
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: nginx-ingress
+      ports:
+      - protocol: TCP
+        port: 8000
+  egress:
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 5432  # PostgreSQL
+      - protocol: TCP
+        port: 6379  # Redis
+      - protocol: TCP
+        port: 443   # HTTPS outbound
+      - protocol: TCP
+        port: 53    # DNS
+      - protocol: UDP
+        port: 53    # DNS
+
+# Health Checks
+healthChecks:
+  enabled: true
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Startup Probe
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+  prometheusRule:
+    enabled: true
+
+# Logging
+logging:
+  level: INFO
+  format: json
+  structured: true
+
+# Backup Configuration
+backup:
+  enabled: true
+  bucket: s3://mita-production-backups
+  region: us-east-1
+  schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Node Affinity and Tolerations
+nodeAffinity:
+  enabled: false
+  
+tolerations: []
+
+# Pod Affinity
+podAffinity:
+  enabled: true
+  rule: soft  # soft or hard
+  
+# Pod Anti-Affinity (spread pods across nodes)
+podAntiAffinity:
+  enabled: true
+  rule: soft  # soft or hard

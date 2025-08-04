@@ -6,7 +6,7 @@ import 'dart:async';
 import '../services/logging_service.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
-  const DailyBudgetScreen({Key? key}) : super(key: key);
+  const DailyBudgetScreen({super.key});
 
   @override
   State<DailyBudgetScreen> createState() => _DailyBudgetScreenState();
@@ -299,7 +299,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -375,7 +375,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: percentage.clamp(0.0, 1.0),
-                backgroundColor: Colors.white.withOpacity(0.3),
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 minHeight: 8,
               ),
@@ -678,7 +678,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: getStatusColor(status).withOpacity(0.1),
+                                color: getStatusColor(status).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
