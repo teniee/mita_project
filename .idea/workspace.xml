@@ -4,34 +4,23 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="🚀 Production Achievements:&#10;&#10;  - ✅ Compilation Success: Flutter app builds without errors&#10;  - ✅ Backend Consistency: All income classification unified to 5-tier system&#10;  - ✅ USA-Only Focus: Simplified to support all 50 US states with state-specific thresholds&#10;  - ✅ Persistent Login: Remember me functionality with secure token management&#10;  - ✅ Financial-Grade Security: Production-ready authentication and data protection&#10;  - ✅ Behavioral Economics: Advanced personalization and nudge systems&#10;  - ✅ Production Infrastructure: Complete deployment-ready setup">
-      <change afterPath="$PROJECT_DIR$/.github/workflows/ci-cd-production.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.github/workflows/security-scan.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/health/production_health.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/k8s/mita/templates/migration-job.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/k8s/mita/templates/secrets.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/advanced_cohort_analytics.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/advanced_financial_engine.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_calendar_engine.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_calendar_helpers.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_nudge_generator.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/financial_health_calculator.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/financial_safety_validator.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/redistribution_opportunity.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mobile_app/lib/services/smart_goal_engine.dart" afterDir="false" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10;🤖 Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/budget/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/budget/services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/transactions/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/schemas.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/transaction.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/transaction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/user.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/mita/templates/cronjob-backup.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/mita/templates/cronjob-backup.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/mita/templates/deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/mita/templates/deployment.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/mita/templates/hpa.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/mita/templates/hpa.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/mita/values.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/mita/values.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/income_tier_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/income_tier_widgets.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/cohort_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/cohort_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/onboarding_state.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/onboarding_state.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/macos/Flutter/GeneratedPluginRegistrant.swift" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/macos/Flutter/GeneratedPluginRegistrant.swift" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugin_registrant.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugins.cmake" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -236,31 +225,7 @@
       <option name="project" value="LOCAL" />
       <updated>1754235476066</updated>
     </task>
-    <task id="LOCAL-00018" summary="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10;🤖 Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;">
-      <option name="closed" value="true" />
-      <created>1754257459315</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1754257459315</updated>
-    </task>
-    <task id="LOCAL-00019" summary="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10;🤖 Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;">
-      <option name="closed" value="true" />
-      <created>1754257469392</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1754257469392</updated>
-    </task>
-    <task id="LOCAL-00020" summary="🚀 Production Achievements:&#10;&#10;  - ✅ Compilation Success: Flutter app builds without errors&#10;  - ✅ Backend Consistency: All income classification unified to 5-tier system&#10;  - ✅ USA-Only Focus: Simplified to support all 50 US states with state-specific thresholds&#10;  - ✅ Persistent Login: Remember me functionality with secure token management&#10;  - ✅ Financial-Grade Security: Production-ready authentication and data protection&#10;  - ✅ Behavioral Economics: Advanced personalization and nudge systems&#10;  - ✅ Production Infrastructure: Complete deployment-ready setup">
-      <option name="closed" value="true" />
-      <created>1754333430110</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
-      <option name="project" value="LOCAL" />
-      <updated>1754333430110</updated>
-    </task>
-    <option name="localTasksCounter" value="21" />
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -283,7 +248,6 @@
     <MESSAGE value="&#10;  Verification: All core Python files now compile without syntax errors:&#10;  - ✅ database_monitoring.py&#10;  - ✅ async_session.py&#10;  - ✅ config.py" />
     <MESSAGE value="RESULT: The Flutter app now delivers the full sophisticated income-level personalization that the backend was designed to provide!" />
     <MESSAGE value="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10; Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;" />
-    <MESSAGE value=" Production Achievements:&#10;&#10;  - ✅ Compilation Success: Flutter app builds without errors&#10;  - ✅ Backend Consistency: All income classification unified to 5-tier system&#10;  - ✅ USA-Only Focus: Simplified to support all 50 US states with state-specific thresholds&#10;  - ✅ Persistent Login: Remember me functionality with secure token management&#10;  - ✅ Financial-Grade Security: Production-ready authentication and data protection&#10;  - ✅ Behavioral Economics: Advanced personalization and nudge systems&#10;  - ✅ Production Infrastructure: Complete deployment-ready setup" />
-    <option name="LAST_COMMIT_MESSAGE" value=" Production Achievements:&#10;&#10;  - ✅ Compilation Success: Flutter app builds without errors&#10;  - ✅ Backend Consistency: All income classification unified to 5-tier system&#10;  - ✅ USA-Only Focus: Simplified to support all 50 US states with state-specific thresholds&#10;  - ✅ Persistent Login: Remember me functionality with secure token management&#10;  - ✅ Financial-Grade Security: Production-ready authentication and data protection&#10;  - ✅ Behavioral Economics: Advanced personalization and nudge systems&#10;  - ✅ Production Infrastructure: Complete deployment-ready setup" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10; Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;" />
   </component>
 </project>
