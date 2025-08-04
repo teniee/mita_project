@@ -39,6 +39,25 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
+    @classmethod
+    def validate_secrets(cls, v, info):
+        """Ensure JWT secrets are provided in production"""
+        field_name = info.field_name
+        if not v and cls._get_environment() == "production":
+            raise ValueError(f"{field_name} is required in production environment")
+        # Generate fallback for development only
+        if not v and cls._get_environment() == "development":
+            import secrets
+            return secrets.token_urlsafe(32)
+        return v
+    
+    @classmethod
+    def _get_environment(cls) -> str:
+        """Get environment setting safely"""
+        import os
+        return os.getenv("ENVIRONMENT", "development")
 
     # OpenAI - MUST be provided via environment variable
     OPENAI_API_KEY: str = ""

@@ -8,7 +8,7 @@ import '../theme/income_theme.dart';
 import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -339,7 +339,7 @@ class _MainScreenState extends State<MainScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [secondaryColor, secondaryColor.withOpacity(0.7)],
+            colors: [secondaryColor, secondaryColor.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -443,7 +443,7 @@ class _MainScreenState extends State<MainScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [primaryColor, primaryColor.withOpacity(0.8)],
+            colors: [primaryColor, primaryColor.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -490,7 +490,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                       Text(
@@ -512,7 +512,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                       ),
                       Text(
@@ -747,7 +747,7 @@ class _MainScreenState extends State<MainScreen> {
           gradient: LinearGradient(
             colors: [
               const Color(0xFF193C57),
-              const Color(0xFF193C57).withOpacity(0.8),
+              const Color(0xFF193C57).withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -755,7 +755,7 @@ class _MainScreenState extends State<MainScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF193C57).withOpacity(0.3),
+              color: const Color(0xFF193C57).withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -784,7 +784,7 @@ class _MainScreenState extends State<MainScreen> {
                 const Spacer(),
                 Icon(
                   Icons.arrow_forward_ios,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   size: 16,
                 ),
               ],
@@ -800,7 +800,7 @@ class _MainScreenState extends State<MainScreen> {
                 style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   height: 1.4,
                 ),
                 maxLines: 3,
@@ -811,7 +811,7 @@ class _MainScreenState extends State<MainScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -854,7 +854,7 @@ class _MainScreenState extends State<MainScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -875,7 +875,7 @@ class _MainScreenState extends State<MainScreen> {
           style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             height: 1.4,
           ),
         ),
@@ -915,7 +915,7 @@ class _MainScreenState extends State<MainScreen> {
           style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             height: 1.4,
           ),
         ),
@@ -936,7 +936,7 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -950,7 +950,7 @@ class _MainScreenState extends State<MainScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -996,7 +996,7 @@ class _MainScreenState extends State<MainScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getScoreColor(score).withOpacity(0.1),
+                  color: _getScoreColor(score).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(

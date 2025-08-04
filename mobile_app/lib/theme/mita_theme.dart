@@ -132,7 +132,7 @@ class MitaTheme {
       ),
       
       // Card Theme with proper Material 3 elevation
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -202,7 +202,7 @@ class MitaTheme {
       // Input Decoration Theme with Material 3 styling
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: _lightColorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: _lightColorScheme.surfaceVariant.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
@@ -245,7 +245,7 @@ class MitaTheme {
         ),
         hintStyle: TextStyle(
           fontFamily: 'Manrope',
-          color: _lightColorScheme.onSurface.withOpacity(0.6),
+          color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
@@ -268,7 +268,7 @@ class MitaTheme {
       chipTheme: ChipThemeData(
         backgroundColor: _lightColorScheme.surfaceVariant,
         selectedColor: _lightColorScheme.secondaryContainer,
-        disabledColor: _lightColorScheme.surfaceVariant.withOpacity(0.12),
+        disabledColor: _lightColorScheme.surfaceVariant.withValues(alpha: 0.12),
         labelStyle: const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
@@ -304,7 +304,7 @@ class MitaTheme {
       searchBarTheme: SearchBarThemeData(
         backgroundColor: MaterialStateProperty.all(_lightColorScheme.surfaceContainer),
         surfaceTintColor: MaterialStateProperty.all(_lightColorScheme.surfaceTint),
-        overlayColor: MaterialStateProperty.all(_lightColorScheme.surfaceVariant.withOpacity(0.8)),
+        overlayColor: MaterialStateProperty.all(_lightColorScheme.surfaceVariant.withValues(alpha: 0.8)),
         shape: MaterialStateProperty.all(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
@@ -320,7 +320,7 @@ class MitaTheme {
         hintStyle: MaterialStateProperty.all(
           TextStyle(
             fontFamily: 'Manrope',
-            color: _lightColorScheme.onSurface.withOpacity(0.6),
+            color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -418,7 +418,7 @@ class MitaTheme {
           color: color,
         ),
       ),
-      backgroundColor: color.withOpacity(0.1),
+      backgroundColor: color.withValues(alpha: 0.1),
       side: BorderSide(color: color, width: 1),
     );
   }

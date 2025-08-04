@@ -10,17 +10,34 @@ from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
 
 def add_transaction(user: User, data, db: Session):
+    # Ensure amount is a proper Decimal for financial accuracy
+    amount = data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    
+    # Validate amount is positive and reasonable
+    if amount <= 0:
+        raise ValueError("Transaction amount must be positive")
+    if amount > Decimal('1000000'):  # 1 million limit
+        raise ValueError("Transaction amount exceeds maximum limit")
+    
     txn = Transaction(
         user_id=user.id,
         category=data.category,
-        amount=Decimal(str(data.amount)),
+        amount=amount,
         currency="USD",
+        description=getattr(data, 'description', None),
         spent_at=from_user_timezone(data.spent_at, user.timezone),
     )
     db.add(txn)
     db.commit()
     db.refresh(txn)
-    apply_transaction_to_plan(db, txn)
+    
+    # Apply transaction to budget plan
+    try:
+        apply_transaction_to_plan(db, txn)
+    except Exception as e:
+        # Log error but don't fail the transaction
+        print(f"Warning: Failed to update budget plan: {e}")
+    
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn
 
@@ -29,17 +46,30 @@ def add_transaction_background(
     user: User, data, db: Session, background_tasks: BackgroundTasks
 ) -> Transaction:
     """Create a transaction and update the plan in a background task."""
+    # Ensure amount is a proper Decimal for financial accuracy
+    amount = data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    
+    # Validate amount is positive and reasonable
+    if amount <= 0:
+        raise ValueError("Transaction amount must be positive")
+    if amount > Decimal('1000000'):  # 1 million limit
+        raise ValueError("Transaction amount exceeds maximum limit")
+    
     txn = Transaction(
         user_id=user.id,
         category=data.category,
-        amount=Decimal(str(data.amount)),
+        amount=amount,
         currency="USD",
+        description=getattr(data, 'description', None),
         spent_at=from_user_timezone(data.spent_at, user.timezone),
     )
     db.add(txn)
     db.commit()
     db.refresh(txn)
+    
+    # Apply budget plan update in background
     background_tasks.add_task(apply_transaction_to_plan, db, txn)
+    
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn
 

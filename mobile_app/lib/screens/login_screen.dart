@@ -5,7 +5,7 @@ import '../services/api_service.dart';
 import '../theme/mita_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -280,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               'Sign in to continue managing your finances',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.8),
+                                color: colorScheme.onSurface.withValues(alpha: 0.8),
                               ),
                             ),
                           ],
@@ -322,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       Icons.email_rounded,
                                       color: _isEmailValid 
                                         ? colorScheme.primary 
-                                        : colorScheme.onSurface.withOpacity(0.6),
+                                        : colorScheme.onSurface.withValues(alpha: 0.6),
                                     ),
                                     suffixIcon: _isEmailValid
                                       ? Icon(
@@ -360,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       Icons.lock_rounded,
                                       color: _isPasswordValid 
                                         ? colorScheme.primary 
-                                        : colorScheme.onSurface.withOpacity(0.6),
+                                        : colorScheme.onSurface.withValues(alpha: 0.6),
                                     ),
                                     suffixIcon: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -498,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                   children: [
                                     Expanded(
                                       child: Divider(
-                                        color: colorScheme.outline.withOpacity(0.5),
+                                        color: colorScheme.outline.withValues(alpha: 0.5),
                                       ),
                                     ),
                                     Padding(
@@ -506,13 +506,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                       child: Text(
                                         'or',
                                         style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface.withOpacity(0.6),
+                                          color: colorScheme.onSurface.withValues(alpha: 0.6),
                                         ),
                                       ),
                                     ),
                                     Expanded(
                                       child: Divider(
-                                        color: colorScheme.outline.withOpacity(0.5),
+                                        color: colorScheme.outline.withValues(alpha: 0.5),
                                       ),
                                     ),
                                   ],
@@ -569,7 +569,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           Text(
                             'Don\'t have an account? ',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.8),
+                              color: colorScheme.onSurface.withValues(alpha: 0.8),
                             ),
                           ),
                           TextButton(

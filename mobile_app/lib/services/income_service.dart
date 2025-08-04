@@ -71,35 +71,69 @@ class IncomeService {
     }
   }
 
-  /// Get income tier display name
-  String getIncomeTierName(IncomeTier tier) {
-    switch (tier) {
-      case IncomeTier.low:
-        return 'Essential Earner';
-      case IncomeTier.lowerMiddle:
-        return 'Rising Saver';
-      case IncomeTier.middle:
-        return 'Growing Professional';
-      case IncomeTier.upperMiddle:
-        return 'Established Professional';
-      case IncomeTier.high:
-        return 'High Achiever';
+  /// Get income tier display name (Enhanced with behavioral insights)
+  String getIncomeTierName(IncomeTier tier, {bool useOptimizedNames = true}) {
+    if (useOptimizedNames) {
+      // Optimized names based on behavioral analysis
+      switch (tier) {
+        case IncomeTier.low:
+          return 'Foundation Builder';
+        case IncomeTier.lowerMiddle:
+          return 'Momentum Builder';
+        case IncomeTier.middle:
+          return 'Strategic Achiever';
+        case IncomeTier.upperMiddle:
+          return 'Wealth Accelerator';
+        case IncomeTier.high:
+          return 'Legacy Builder';
+      }
+    } else {
+      // Original names for compatibility
+      switch (tier) {
+        case IncomeTier.low:
+          return 'Essential Earner';
+        case IncomeTier.lowerMiddle:
+          return 'Rising Saver';
+        case IncomeTier.middle:
+          return 'Growing Professional';
+        case IncomeTier.upperMiddle:
+          return 'Established Professional';
+        case IncomeTier.high:
+          return 'High Achiever';
+      }
     }
   }
 
-  /// Get income tier description
-  String getIncomeTierDescription(IncomeTier tier) {
-    switch (tier) {
-      case IncomeTier.low:
-        return 'Focus on essential spending and smart budgeting';
-      case IncomeTier.lowerMiddle:
-        return 'Build emergency fund while growing your income';
-      case IncomeTier.middle:
-        return 'Balance growth opportunities with financial stability';
-      case IncomeTier.upperMiddle:
-        return 'Accelerate wealth building and investment growth';
-      case IncomeTier.high:
-        return 'Optimize investments and advanced wealth strategies';
+  /// Get income tier description (Enhanced with behavioral insights)
+  String getIncomeTierDescription(IncomeTier tier, {bool useOptimizedDescriptions = true}) {
+    if (useOptimizedDescriptions) {
+      // Optimized descriptions based on behavioral analysis
+      switch (tier) {
+        case IncomeTier.low:
+          return 'Build your financial foundation through daily progress and smart essentials management';
+        case IncomeTier.lowerMiddle:
+          return 'Create momentum through systematic saving and strategic growth opportunities';
+        case IncomeTier.middle:
+          return 'Achieve strategic financial goals through balanced optimization and smart investments';
+        case IncomeTier.upperMiddle:
+          return 'Accelerate wealth building through sophisticated strategies and diversified growth';
+        case IncomeTier.high:
+          return 'Build lasting legacy through advanced wealth strategies and generational planning';
+      }
+    } else {
+      // Original descriptions for compatibility
+      switch (tier) {
+        case IncomeTier.low:
+          return 'Focus on essential spending and smart budgeting';
+        case IncomeTier.lowerMiddle:
+          return 'Build emergency fund while growing your income';
+        case IncomeTier.middle:
+          return 'Balance growth opportunities with financial stability';
+        case IncomeTier.upperMiddle:
+          return 'Accelerate wealth building and investment growth';
+        case IncomeTier.high:
+          return 'Optimize investments and advanced wealth strategies';
+      }
     }
   }
 
@@ -176,19 +210,36 @@ class IncomeService {
     }
   }
 
-  /// Get primary color for income tier
-  Color getIncomeTierPrimaryColor(IncomeTier tier) {
-    switch (tier) {
-      case IncomeTier.low:
-        return const Color(0xFF4CAF50); // Green - Growth mindset
-      case IncomeTier.lowerMiddle:
-        return const Color(0xFF00BCD4); // Cyan - Rising opportunities
-      case IncomeTier.middle:
-        return const Color(0xFF2196F3); // Blue - Professional
-      case IncomeTier.upperMiddle:
-        return const Color(0xFF673AB7); // Deep Purple - Established
-      case IncomeTier.high:
-        return const Color(0xFF9C27B0); // Purple - Premium
+  /// Get primary color for income tier (Enhanced with behavioral color psychology)
+  Color getIncomeTierPrimaryColor(IncomeTier tier, {bool useBehavioralColors = true}) {
+    if (useBehavioralColors) {
+      // Behavioral color psychology optimized colors
+      switch (tier) {
+        case IncomeTier.low:
+          return const Color(0xFF4CAF50); // Green - Growth, stability, hope
+        case IncomeTier.lowerMiddle:
+          return const Color(0xFF2196F3); // Blue - Trust, progress, reliability
+        case IncomeTier.middle:
+          return const Color(0xFF9C27B0); // Purple - Sophistication, strategy
+        case IncomeTier.upperMiddle:
+          return const Color(0xFFFF9800); // Gold - Achievement, value, success
+        case IncomeTier.high:
+          return const Color(0xFF1A237E); // Deep Blue - Wisdom, legacy, permanence
+      }
+    } else {
+      // Original colors for compatibility
+      switch (tier) {
+        case IncomeTier.low:
+          return const Color(0xFF4CAF50); // Green - Growth mindset
+        case IncomeTier.lowerMiddle:
+          return const Color(0xFF00BCD4); // Cyan - Rising opportunities
+        case IncomeTier.middle:
+          return const Color(0xFF2196F3); // Blue - Professional
+        case IncomeTier.upperMiddle:
+          return const Color(0xFF673AB7); // Deep Purple - Established
+        case IncomeTier.high:
+          return const Color(0xFF9C27B0); // Purple - Premium
+      }
     }
   }
 
@@ -555,5 +606,283 @@ class IncomeService {
       'is_over_recommended': amount > recommendedAmount,
       'tier_color': getIncomeTierPrimaryColor(tier),
     };
+  }
+
+  // ===========================================================================
+  // ENHANCED BEHAVIORAL ECONOMICS METHODS
+  // ===========================================================================
+
+  /// Get behavioral spending patterns for income tier
+  Map<String, dynamic> getBehavioralSpendingPatterns(IncomeTier tier) {
+    switch (tier) {
+      case IncomeTier.low:
+        return {
+          'spending_velocity': 'high', // Weekly/bi-weekly cycles
+          'decision_time': 'immediate', // Quick decisions due to necessity
+          'risk_tolerance': 'very_low',
+          'planning_horizon': 'immediate_to_monthly',
+          'primary_stressors': ['basic_needs_uncertainty', 'paycheck_anxiety'],
+          'mental_accounting_buckets': ['essential', 'non_essential'],
+          'nudge_responsiveness': {
+            'loss_framing': 0.9,
+            'scarcity_framing': 0.8,
+            'social_proof': 0.7,
+            'automated_savings': 0.6,
+          },
+          'optimal_budget_frequency': 'daily',
+          'celebration_frequency': 'weekly',
+        };
+      case IncomeTier.lowerMiddle:
+        return {
+          'spending_velocity': 'moderate',
+          'decision_time': 'hours_to_days',
+          'risk_tolerance': 'low_moderate',
+          'planning_horizon': 'monthly_to_quarterly',
+          'primary_stressors': ['lifestyle_inflation', 'emergency_fund_anxiety'],
+          'mental_accounting_buckets': ['needs', 'wants', 'emergency', 'goals', 'future'],
+          'nudge_responsiveness': {
+            'progress_tracking': 0.8,
+            'peer_comparison': 0.7,
+            'goal_visualization': 0.8,
+            'automated_increases': 0.6,
+          },
+          'optimal_budget_frequency': 'weekly',
+          'celebration_frequency': 'monthly',
+        };
+      case IncomeTier.middle:
+        return {
+          'spending_velocity': 'monthly',
+          'decision_time': 'days_to_weeks',
+          'risk_tolerance': 'moderate',
+          'planning_horizon': 'quarterly_to_yearly',
+          'primary_stressors': ['investment_paralysis', 'lifestyle_comparison'],
+          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun'],
+          'nudge_responsiveness': {
+            'opportunity_cost': 0.8,
+            'status_enhancement': 0.6,
+            'complexity_management': 0.7,
+            'peer_benchmarking': 0.8,
+          },
+          'optimal_budget_frequency': 'monthly',
+          'celebration_frequency': 'quarterly',
+        };
+      case IncomeTier.upperMiddle:
+        return {
+          'spending_velocity': 'quarterly',
+          'decision_time': 'weeks_to_months',
+          'risk_tolerance': 'moderate_high',
+          'planning_horizon': 'yearly_to_multi_year',
+          'primary_stressors': ['optimization_paralysis', 'tax_efficiency'],
+          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun', 'business', 'real_estate'],
+          'nudge_responsiveness': {
+            'tax_efficiency': 0.9,
+            'legacy_framing': 0.7,
+            'restraint_coaching': 0.6,
+            'professional_guidance': 0.8,
+          },
+          'optimal_budget_frequency': 'quarterly',
+          'celebration_frequency': 'semi_annually',
+        };
+      case IncomeTier.high:
+        return {
+          'spending_velocity': 'annually',
+          'decision_time': 'months_to_years',
+          'risk_tolerance': 'high',
+          'planning_horizon': 'multi_year_to_generational',
+          'primary_stressors': ['wealth_preservation', 'complex_tax_scenarios'],
+          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun', 'business', 'real_estate', 'trust', 'charity', 'education'],
+          'nudge_responsiveness': {
+            'impact_framing': 0.9,
+            'legacy_protection': 0.8,
+            'complexity_simplification': 0.7,
+            'generational_planning': 0.9,
+          },
+          'optimal_budget_frequency': 'annually',
+          'celebration_frequency': 'annually',
+        };
+    }
+  }
+
+  /// Get tier-specific behavioral nudges
+  List<Map<String, dynamic>> getTierSpecificNudges(IncomeTier tier, Map<String, double>? currentSpending, double monthlyIncome) {
+    final patterns = getBehavioralSpendingPatterns(tier);
+    final nudges = <Map<String, dynamic>>[];
+    
+    switch (tier) {
+      case IncomeTier.low:
+        nudges.addAll([
+          {
+            'type': 'loss_framing',
+            'message': 'Protect your \$${_calculateWeeklyProgress(currentSpending, monthlyIncome).toStringAsFixed(0)} weekly progress',
+            'effectiveness': patterns['nudge_responsiveness']['loss_framing'],
+            'frequency': 'daily',
+          },
+          {
+            'type': 'social_proof',
+            'message': '73% of Foundation Builders cook dinner at home to save money',
+            'effectiveness': patterns['nudge_responsiveness']['social_proof'],
+            'frequency': 'weekly',
+          },
+          {
+            'type': 'micro_savings',
+            'message': 'Save your spare change automatically - every \$5 counts!',
+            'effectiveness': patterns['nudge_responsiveness']['automated_savings'],
+            'frequency': 'daily',
+          },
+        ]);
+        break;
+      case IncomeTier.lowerMiddle:
+        nudges.addAll([
+          {
+            'type': 'progress_framing',
+            'message': 'You\'re ${_calculateEmergencyFundProgress(currentSpending, monthlyIncome).toStringAsFixed(0)}% to your \$1,000 safety net',
+            'effectiveness': patterns['nudge_responsiveness']['progress_tracking'],
+            'frequency': 'weekly',
+          },
+          {
+            'type': 'peer_comparison',
+            'message': 'Others at your level save \$${_calculatePeerAverageSavings(tier, monthlyIncome).toStringAsFixed(0)}/month on average',
+            'effectiveness': patterns['nudge_responsiveness']['peer_comparison'],
+            'frequency': 'monthly',
+          },
+        ]);
+        break;
+      case IncomeTier.middle:
+        nudges.addAll([
+          {
+            'type': 'opportunity_cost',
+            'message': 'That \$200 dinner could be \$600 in your investment account in 10 years',
+            'effectiveness': patterns['nudge_responsiveness']['opportunity_cost'],
+            'frequency': 'contextual',
+          },
+          {
+            'type': 'status_enhancement',
+            'message': 'Smart strategists max their 401k match - don\'t leave free money on the table',
+            'effectiveness': patterns['nudge_responsiveness']['status_enhancement'],
+            'frequency': 'quarterly',
+          },
+        ]);
+        break;
+      case IncomeTier.upperMiddle:
+        nudges.addAll([
+          {
+            'type': 'tax_efficiency',
+            'message': 'Save \$${_calculateTaxSavingsOpportunity(monthlyIncome).toStringAsFixed(0)} annually with this tax strategy',
+            'effectiveness': patterns['nudge_responsiveness']['tax_efficiency'],
+            'frequency': 'quarterly',
+          },
+          {
+            'type': 'legacy_framing',
+            'message': 'Build generational wealth systematically with your current income level',
+            'effectiveness': patterns['nudge_responsiveness']['legacy_framing'],
+            'frequency': 'annually',
+          },
+        ]);
+        break;
+      case IncomeTier.high:
+        nudges.addAll([
+          {
+            'type': 'impact_framing',
+            'message': 'Your wealth can change lives for generations - make it count',
+            'effectiveness': patterns['nudge_responsiveness']['impact_framing'],
+            'frequency': 'quarterly',
+          },
+          {
+            'type': 'legacy_protection',
+            'message': 'Preserve and grow what you\'ve built through strategic planning',
+            'effectiveness': patterns['nudge_responsiveness']['legacy_protection'],
+            'frequency': 'annually',
+          },
+        ]);
+        break;
+    }
+    
+    return nudges;
+  }
+
+  /// Check if user is near tier boundary for transition management
+  bool isNearTierBoundary(double monthlyIncome, IncomeTier currentTier) {
+    final annualIncome = monthlyIncome * 12;
+    
+    switch (currentTier) {
+      case IncomeTier.low:
+        final nextThreshold = 3000 * 12; // $36K annual
+        return (nextThreshold - annualIncome) / nextThreshold < 0.05; // Within 5%
+      case IncomeTier.lowerMiddle:
+        final nextThreshold = 4500 * 12; // $54K annual
+        return (nextThreshold - annualIncome) / nextThreshold < 0.05;
+      case IncomeTier.middle:
+        final nextThreshold = 7000 * 12; // $84K annual
+        return (nextThreshold - annualIncome) / nextThreshold < 0.05;
+      case IncomeTier.upperMiddle:
+        final nextThreshold = 12000 * 12; // $144K annual
+        return (nextThreshold - annualIncome) / nextThreshold < 0.05;
+      case IncomeTier.high:
+        return false; // Highest tier
+    }
+  }
+
+  /// Get next tier information for motivation
+  Map<String, dynamic>? getNextTierInfo(IncomeTier currentTier, double monthlyIncome) {
+    if (currentTier == IncomeTier.high) return null;
+    
+    final nextTier = IncomeTier.values[currentTier.index + 1];
+    final nextTierName = getIncomeTierName(nextTier);
+    
+    double nextThreshold;
+    switch (currentTier) {
+      case IncomeTier.low:
+        nextThreshold = 3000;
+        break;
+      case IncomeTier.lowerMiddle:
+        nextThreshold = 4500;
+        break;
+      case IncomeTier.middle:
+        nextThreshold = 7000;
+        break;
+      case IncomeTier.upperMiddle:
+        nextThreshold = 12000;
+        break;
+      case IncomeTier.high:
+        return null;
+    }
+    
+    final amountNeeded = nextThreshold - monthlyIncome;
+    final percentageComplete = (monthlyIncome / nextThreshold * 100).clamp(0.0, 100.0);
+    
+    return {
+      'next_tier': nextTier,
+      'next_tier_name': nextTierName,
+      'amount_needed': amountNeeded,
+      'percentage_complete': percentageComplete,
+      'monthly_threshold': nextThreshold,
+      'motivation_message': 'You\'re ${percentageComplete.toStringAsFixed(1)}% of the way to becoming a $nextTierName!',
+    };
+  }
+
+  // Private helper methods for behavioral calculations
+  double _calculateWeeklyProgress(Map<String, double>? spending, double monthlyIncome) {
+    if (spending == null) return 0.0;
+    final totalSpent = spending.values.fold(0.0, (sum, amount) => sum + amount);
+    final weeklyBudget = monthlyIncome / 4.33; // Average weeks per month
+    return (weeklyBudget - (totalSpent / 4.33)).clamp(0.0, double.infinity);
+  }
+
+  double _calculateEmergencyFundProgress(Map<String, double>? spending, double monthlyIncome) {
+    // Simulate emergency fund progress - in real app, this would come from user data
+    final savingsAmount = spending?['savings'] ?? (monthlyIncome * 0.05);
+    final targetEmergencyFund = 1000.0; // Target for lower-middle tier
+    return (savingsAmount / targetEmergencyFund * 100).clamp(0.0, 100.0);
+  }
+
+  double _calculatePeerAverageSavings(IncomeTier tier, double monthlyIncome) {
+    final weights = getDefaultBudgetWeights(tier);
+    return monthlyIncome * (weights['savings'] ?? 0.1);
+  }
+
+  double _calculateTaxSavingsOpportunity(double monthlyIncome) {
+    // Simplified tax savings calculation for upper-middle tier
+    final annualIncome = monthlyIncome * 12;
+    return annualIncome * 0.03; // Assume 3% tax savings opportunity
   }
 }

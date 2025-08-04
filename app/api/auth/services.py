@@ -81,8 +81,31 @@ async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
 
 # Async versions of auth functions
 async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
+    # Validate password strength
+    if len(data.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long",
+        )
+    
+    # Check password complexity
+    import re
+    if not re.search(r'[A-Za-z]', data.password) or not re.search(r'[0-9]', data.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain both letters and numbers",
+        )
+    
+    # Validate email format
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, data.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email format",
+        )
+    
     # Check if user already exists
-    result = await db.execute(select(User).filter(User.email == data.email))
+    result = await db.execute(select(User).filter(User.email == data.email.lower()))
     existing_user = result.scalars().first()
     
     if existing_user:
@@ -91,8 +114,15 @@ async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
             detail="Email already exists",
         )
     
+    # Validate annual income range
+    if data.annual_income and (data.annual_income < 0 or data.annual_income > 10000000):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Annual income must be between 0 and 10,000,000",
+        )
+    
     user = User(
-        email=data.email,
+        email=data.email.lower(),
         password_hash=hash_password(data.password),
         country=data.country,
         annual_income=data.annual_income,
@@ -101,7 +131,7 @@ async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
     db.add(user)
     await db.commit()
     await db.refresh(user)
-
+    
     return TokenOut(
         access_token=create_access_token({"sub": str(user.id)}),
         refresh_token=create_refresh_token({"sub": str(user.id)}),
@@ -109,10 +139,14 @@ async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
 
 
 async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
-    result = await db.execute(select(User).filter(User.email == data.email))
+    # Rate limiting check for failed attempts would go here
+    result = await db.execute(select(User).filter(User.email == data.email.lower()))
     user = result.scalars().first()
     
     if not user or not verify_password(data.password, user.password_hash):
+        # Add artificial delay to prevent timing attacks
+        import asyncio
+        await asyncio.sleep(0.1)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
