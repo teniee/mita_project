@@ -119,11 +119,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Map<String, dynamic> _getDefaultDashboard() => {
-    'balance': _monthlyIncome * 0.8,
-    'spent': _monthlyIncome * 0.02,
+    'balance': _monthlyIncome * 0.75,
+    'spent': _monthlyIncome * 0.035, // More realistic daily spending
     'daily_targets': _getDefaultDailyTargets(),
     'week': _generateWeekData(),
-    'transactions': [],
+    'transactions': _getDefaultTransactions(),
   };
   
   List<Map<String, dynamic>> _getDefaultDailyTargets() {
@@ -132,19 +132,24 @@ class _MainScreenState extends State<MainScreen> {
     
     return [
       {
-        'category': 'Food',
+        'category': 'Food & Dining',
         'limit': dailyBudget * (budgetWeights['food'] ?? 0.15),
-        'spent': dailyBudget * (budgetWeights['food'] ?? 0.15) * 0.4,
+        'spent': dailyBudget * (budgetWeights['food'] ?? 0.15) * 0.65,
       },
       {
         'category': 'Transportation',
         'limit': dailyBudget * (budgetWeights['transportation'] ?? 0.15),
-        'spent': dailyBudget * (budgetWeights['transportation'] ?? 0.15) * 0.3,
+        'spent': dailyBudget * (budgetWeights['transportation'] ?? 0.15) * 0.45,
       },
       {
         'category': 'Entertainment',
         'limit': dailyBudget * (budgetWeights['entertainment'] ?? 0.08),
-        'spent': 0.0,
+        'spent': dailyBudget * (budgetWeights['entertainment'] ?? 0.08) * 0.25,
+      },
+      {
+        'category': 'Shopping',
+        'limit': dailyBudget * 0.10,
+        'spent': dailyBudget * 0.10 * 0.15,
       },
     ];
   }
@@ -188,6 +193,44 @@ class _MainScreenState extends State<MainScreen> {
     'text': 'Great job staying within your budget this week! Consider setting aside the extra savings for your emergency fund.',
     'title': 'Weekly Budget Update',
   };
+
+  List<Map<String, dynamic>> _getDefaultTransactions() {
+    final now = DateTime.now();
+    final dailyBudget = _monthlyIncome / 30;
+    
+    return [
+      {
+        'action': 'Coffee Shop',
+        'amount': (dailyBudget * 0.08).toStringAsFixed(2),
+        'date': now.subtract(const Duration(hours: 2)).toIso8601String(),
+        'category': 'Food'
+      },
+      {
+        'action': 'Grocery Store',
+        'amount': (dailyBudget * 0.25).toStringAsFixed(2),
+        'date': now.subtract(const Duration(days: 1)).toIso8601String(),
+        'category': 'Food'
+      },
+      {
+        'action': 'Gas Station',
+        'amount': (dailyBudget * 0.20).toStringAsFixed(2),
+        'date': now.subtract(const Duration(days: 1, hours: 3)).toIso8601String(),
+        'category': 'Transportation'
+      },
+      {
+        'action': 'Lunch',
+        'amount': (dailyBudget * 0.12).toStringAsFixed(2),
+        'date': now.subtract(const Duration(days: 2)).toIso8601String(),
+        'category': 'Food'
+      },
+      {
+        'action': 'Movie Tickets',
+        'amount': (dailyBudget * 0.15).toStringAsFixed(2),
+        'date': now.subtract(const Duration(days: 3)).toIso8601String(),
+        'category': 'Entertainment'
+      },
+    ];
+  }
 
   List<Map<String, dynamic>> _generateWeekData() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

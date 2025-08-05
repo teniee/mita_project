@@ -35,7 +35,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
     // Save habits and optional comment
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();
-    Navigator.pushNamed(context, '/onboarding_motivation');
+    Navigator.pushNamed(context, '/onboarding_finish');
   }
 
   @override
@@ -148,7 +148,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                       fontSize: 16,
                     ),
                   ),
-                  child: const Text("Continue"),
+                  child: const Text("Finish onboarding"),
                 ),
               ),
             ],
