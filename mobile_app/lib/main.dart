@@ -32,6 +32,10 @@ import 'screens/onboarding_goal_screen.dart';
 import 'screens/onboarding_habits_screen.dart';
 import 'screens/onboarding_motivation_screen.dart';
 import 'screens/onboarding_finish_screen.dart';
+import 'screens/daily_budget_screen.dart';
+import 'screens/add_expense_screen.dart';
+import 'screens/insights_screen.dart';
+import 'screens/budget_settings_screen.dart';
 
 /// Initialise Firebase, Crashlytics and push notifications.
 Future<void> _initFirebase() async {
@@ -187,6 +191,22 @@ class MITAApp extends StatelessWidget {
         '/notifications': (context) => const AppErrorBoundary(
           screenName: 'Notifications',
           child: NotificationsScreen(),
+        ),
+        '/daily_budget': (context) => const AppErrorBoundary(
+          screenName: 'DailyBudget',  
+          child: DailyBudgetScreen(),
+        ),
+        '/add_expense': (context) => const AppErrorBoundary(
+          screenName: 'AddExpense',
+          child: AddExpenseScreen(),
+        ),
+        '/insights': (context) => const AppErrorBoundary(
+          screenName: 'Insights',
+          child: InsightsScreen(),
+        ),
+        '/budget_settings': (context) => const AppErrorBoundary(
+          screenName: 'BudgetSettings',
+          child: BudgetSettingsScreen(),
         ),
       },
     );

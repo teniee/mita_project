@@ -7,20 +7,7 @@
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="Fix calendar loading issues and Flutter compilation errors&#10;&#10;Backend fixes:&#10;- Fix calendar API endpoint URLs (remove duplicate /calendar/ path)&#10;- Pass user_id correctly to calendar generation engine&#10;- Fix budget_mode_shell_integration to include user_id in config&#10;&#10;Frontend fixes:&#10;- Move IncomeTier enum outside IncomeService class (Dart requirement)&#10;- Update all references from IncomeService.IncomeTier to IncomeTier&#10;- Fix CardTheme to CardThemeData for Flutter compatibility&#10;- Update calendar API endpoint URLs to match backend routes&#10;&#10;🤖 Generated with [Claude Code](https://claude.ai/code)&#10;&#10;Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/cohort_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/cohort_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/onboarding_state.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/onboarding_state.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/macos/Flutter/GeneratedPluginRegistrant.swift" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/macos/Flutter/GeneratedPluginRegistrant.swift" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugin_registrant.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/windows/flutter/generated_plugins.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
