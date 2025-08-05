@@ -16,14 +16,15 @@ class IncomeTierCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final incomeService = IncomeService();
-    final tier = incomeService.classifyIncome(monthlyIncome);
-    final tierName = incomeService.getIncomeTierName(tier);
-    final tierDescription = incomeService.getIncomeTierDescription(tier);
-    final rangeString = incomeService.getIncomeRangeString(tier);
-    final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-    final secondaryColor = incomeService.getIncomeTierSecondaryColor(tier);
-    final icon = incomeService.getIncomeTierIcon(tier);
+    try {
+      final incomeService = IncomeService();
+      final tier = incomeService.classifyIncome(monthlyIncome);
+      final tierName = incomeService.getIncomeTierName(tier);
+      final tierDescription = incomeService.getIncomeTierDescription(tier);
+      final rangeString = incomeService.getIncomeRangeString(tier);
+      final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
+      final secondaryColor = incomeService.getIncomeTierSecondaryColor(tier);
+      final icon = incomeService.getIncomeTierIcon(tier);
 
     return Card(
       elevation: 2,
@@ -107,6 +108,64 @@ class IncomeTierCard extends StatelessWidget {
         ),
       ),
     );
+    } catch (e) {
+      // Return a simple fallback card if there's an error
+      return Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Income Tier',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            fontFamily: 'Sora',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '\$${monthlyIncome.toStringAsFixed(0)} monthly',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.blue.withValues(alpha: 0.8),
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -123,13 +182,14 @@ class IncomeTierBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final incomeService = IncomeService();
-    final tier = incomeService.classifyIncome(monthlyIncome);
-    final tierName = incomeService.getIncomeTierName(tier);
-    final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-    final icon = incomeService.getIncomeTierIcon(tier);
+    try {
+      final incomeService = IncomeService();
+      final tier = incomeService.classifyIncome(monthlyIncome);
+      final tierName = incomeService.getIncomeTierName(tier);
+      final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
+      final icon = incomeService.getIncomeTierIcon(tier);
 
-    return Container(
+      return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: primaryColor.withValues(alpha: 0.1),
@@ -159,6 +219,39 @@ class IncomeTierBadge extends StatelessWidget {
         ],
       ),
     );
+    } catch (e) {
+      // Return a simple fallback badge if there's an error
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.1),
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              const Icon(
+                Icons.person,
+                size: 16,
+                color: Colors.blue,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              'User',
+              style: const TextStyle(
+                color: Colors.blue,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFamily: 'Sora',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
 
@@ -257,18 +350,19 @@ class PeerComparisonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final incomeService = IncomeService();
-    final tier = incomeService.classifyIncome(monthlyIncome);
-    final tierName = incomeService.getIncomeTierName(tier);
-    final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-    
-    final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
-    final peerAverage = comparisonData['peer_average'] as double? ?? 0.0;
-    final percentile = comparisonData['percentile'] as int? ?? 50;
-    final insights = List<String>.from(comparisonData['insights'] ?? []);
+    try {
+      final incomeService = IncomeService();
+      final tier = incomeService.classifyIncome(monthlyIncome);
+      final tierName = incomeService.getIncomeTierName(tier);
+      final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
+      
+      final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
+      final peerAverage = comparisonData['peer_average'] as double? ?? 0.0;
+      final percentile = comparisonData['percentile'] as int? ?? 50;
+      final insights = List<String>.from(comparisonData['insights'] ?? []);
 
-    final isAboveAverage = yourSpending > peerAverage;
-    final difference = ((yourSpending - peerAverage) / peerAverage * 100).abs();
+      final isAboveAverage = yourSpending > peerAverage;
+      final difference = peerAverage > 0 ? ((yourSpending - peerAverage) / peerAverage * 100).abs() : 0.0;
 
     return Card(
       elevation: 3,
@@ -428,6 +522,55 @@ class PeerComparisonCard extends StatelessWidget {
         ),
       ),
     );
+    } catch (e) {
+      // Return a simple fallback card if there's an error
+      return Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.people_rounded,
+                    color: Colors.blue,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Peer Comparison',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Sora',
+                          ),
+                        ),
+                        Text(
+                          'Data will be available after more transactions',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                            fontFamily: 'Manrope',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
 

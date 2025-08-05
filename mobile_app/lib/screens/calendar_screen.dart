@@ -196,6 +196,40 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     final colorScheme = Theme.of(context).colorScheme;
     final today = DateTime.now();
     
+    if (calendarData.isEmpty) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.calendar_month,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No calendar data available',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Complete your budget setup to view your spending calendar',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -206,43 +240,48 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             // Weekday headers
             _buildWeekdayHeaders(),
             const SizedBox(height: 12),
-            // Calendar grid
-            AnimatedBuilder(
-              animation: _redistributionAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: isRedistributing ? 1.0 - (_redistributionAnimation.value * 0.02) : 1.0,
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: calendarData.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.75, // Taller cells for more content
+            // Calendar grid - simplified without animation
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: calendarData.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+                childAspectRatio: 0.8, // Square-ish cells
+              ),
+              itemBuilder: (context, index) {
+                try {
+                  final day = calendarData[index];
+                  final dayNumber = day['day'] as int? ?? 0;
+                  final status = day['status'] as String? ?? 'good';
+                  final limit = day['limit'] as int? ?? 0;
+                  final spent = day['spent'] as int? ?? 0;
+                  final isToday = dayNumber == today.day && 
+                                 currentMonth.month == today.month && 
+                                 currentMonth.year == today.year;
+                  
+                  return _buildSimpleDayCell(
+                    dayNumber: dayNumber,
+                    limit: limit,
+                    spent: spent,
+                    status: status,
+                    isToday: isToday,
+                    colorScheme: colorScheme,
+                  );
+                } catch (e) {
+                  // Return a simple error cell
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    itemBuilder: (context, index) {
-                      final day = calendarData[index];
-                      final dayNumber = day['day'] as int;
-                      final status = day['status'] as String;
-                      final limit = day['limit'] as int;
-                      final spent = day['spent'] as int? ?? 0;
-                      final isToday = dayNumber == today.day && 
-                                     currentMonth.month == today.month && 
-                                     currentMonth.year == today.year;
-                      
-                      return _buildEnhancedDayCell(
-                        dayNumber: dayNumber,
-                        limit: limit,
-                        spent: spent,
-                        status: status,
-                        isToday: isToday,
-                        colorScheme: colorScheme,
-                      );
-                    },
-                  ),
-                );
+                    child: const Center(
+                      child: Text('?', style: TextStyle(color: Colors.grey)),
+                    ),
+                  );
+                }
               },
             ),
           ],
@@ -268,6 +307,81 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           ),
         ),
       )).toList(),
+    );
+  }
+
+  Widget _buildSimpleDayCell({
+    required int dayNumber,
+    required int limit,
+    required int spent,
+    required String status,
+    required bool isToday,
+    required ColorScheme colorScheme,
+  }) {
+    final dayColor = _getSimpleDayColor(status, isToday);
+    final textColor = _getSimpleTextColor(status, isToday);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: dayColor,
+        borderRadius: BorderRadius.circular(8),
+        border: isToday 
+          ? Border.all(color: colorScheme.primary, width: 2)
+          : null,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: dayNumber > 0 ? () => _showSimpleDayModal(dayNumber, limit, spent, status) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Day number
+              Text(
+                dayNumber > 0 ? dayNumber.toString() : '',
+                style: TextStyle(
+                  fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                  color: textColor,
+                  fontSize: isToday ? 16 : 14,
+                ),
+              ),
+              
+              if (dayNumber > 0 && limit > 0) ...[
+                // Budget amount
+                Text(
+                  '\$${limit}',
+                  style: TextStyle(
+                    color: textColor.withValues(alpha: 0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                
+                // Simple progress indicator
+                if (spent > 0)
+                  Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(1.5),
+                      color: textColor.withValues(alpha: 0.3),
+                    ),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: (spent / limit).clamp(0.0, 1.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(1.5),
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -863,6 +977,198 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       default:
         return colorScheme.onPrimaryContainer;
     }
+  }
+
+  Color _getSimpleDayColor(String status, bool isToday) {
+    if (isToday) {
+      switch (status.toLowerCase()) {
+        case 'over':
+          return Colors.red.shade100;
+        case 'warning':
+          return Colors.orange.shade100;
+        case 'good':
+        default:
+          return Colors.blue.shade100;
+      }
+    }
+    
+    switch (status.toLowerCase()) {
+      case 'over':
+        return Colors.red.shade50;
+      case 'warning':
+        return Colors.orange.shade50;
+      case 'good':
+      default:
+        return Colors.green.shade50;
+    }
+  }
+
+  Color _getSimpleTextColor(String status, bool isToday) {
+    switch (status.toLowerCase()) {
+      case 'over':
+        return Colors.red.shade700;
+      case 'warning':
+        return Colors.orange.shade700;
+      case 'good':
+      default:
+        return isToday ? Colors.blue.shade700 : Colors.green.shade700;
+    }
+  }
+
+  void _showSimpleDayModal(int dayNumber, int limit, int spent, String status) {
+    final remaining = limit - spent;
+    final spentPercentage = limit > 0 ? (spent / limit) * 100 : 0.0;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.5,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _getSimpleDayColor(status, false),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      dayNumber.toString(),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _getSimpleTextColor(status, false),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_getMonthName(currentMonth.month)} $dayNumber, ${currentMonth.year}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          _getStatusText(status),
+                          style: TextStyle(
+                            color: _getSimpleTextColor(status, false),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Budget overview
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSimpleBudgetItem('Budget', '\$${limit}', Colors.blue),
+                        _buildSimpleBudgetItem('Spent', '\$${spent}', Colors.red),
+                        _buildSimpleBudgetItem('Remaining', '\$${remaining}', Colors.green),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    LinearProgressIndicator(
+                      value: (spentPercentage / 100).clamp(0.0, 1.0),
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        spentPercentage > 100 ? Colors.red : 
+                        spentPercentage > 80 ? Colors.orange : Colors.green,
+                      ),
+                      minHeight: 8,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${spentPercentage.toStringAsFixed(1)}% of budget used',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const Spacer(),
+              
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/add_expense');
+                      },
+                      child: const Text('Add Expense'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleBudgetItem(String label, String amount, Color color) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          amount,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
   }
 
   @override

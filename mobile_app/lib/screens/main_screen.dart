@@ -242,108 +242,141 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: const Color(0xFFFFF9F0),
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading your dashboard...'),
+                  ],
+                ),
+              )
             : error != null
-                ? Center(child: Text(error!))
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth > 600;
-                      final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : 'User';
-                      final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
-                      
-                      final leftColumn = <Widget>[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Hello, $tierName!',
-                                style: TextStyle(
-                                  fontFamily: 'Sora',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 24,
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ),
-                            if (_incomeTier != null)
-                              IncomeTierBadge(
-                                monthlyIncome: _monthlyIncome,
-                                showIcon: true,
-                              ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Unable to load dashboard',
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            error!,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: fetchDashboardData,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        _buildHeader(),
                         const SizedBox(height: 20),
-                        _buildIncomeContextCard(),
-                        const SizedBox(height: 20),
+                        
+                        // Balance Card
                         _buildBalanceCard(),
                         const SizedBox(height: 20),
+                        
+                        // Budget Targets
                         _buildBudgetTargets(),
-                      ];
-                      final rightColumn = <Widget>[
+                        const SizedBox(height: 20),
+                        
+                        // Mini Calendar
                         _buildMiniCalendar(),
                         const SizedBox(height: 20),
-                        _buildPeerComparisonCard(),
-                        const SizedBox(height: 20),
+                        
+                        // AI Insights
                         _buildAIInsightsCard(),
                         const SizedBox(height: 20),
-                        _buildFinancialHealthCard(),
-                        const SizedBox(height: 20),
+                        
+                        // Recent Transactions
                         _buildRecentTransactions(),
-                      ];
-                      return Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: isWide
-                            ? Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: leftColumn,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: rightColumn,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [...leftColumn, const SizedBox(height: 20), ...rightColumn],
-                                ),
-                              ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
       ),
     );
   }
 
-  Widget _buildIncomeContextCard() {
-    if (_incomeTier == null) return Container();
+  Widget _buildHeader() {
+    final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : 'User';
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
     
-    final balance = dashboardData?['balance'] ?? 0;
-    final balancePercentage = _incomeService.getIncomePercentage(balance.toDouble(), _monthlyIncome);
-    final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
-    final secondaryColor = _incomeService.getIncomeTierSecondaryColor(_incomeTier!);
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [secondaryColor, secondaryColor.withValues(alpha: 0.7)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hello, $tierName!',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: primaryColor,
+                ),
+              ),
+              if (_monthlyIncome > 0)
+                Text(
+                  'Monthly income: \$${_monthlyIncome.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+            ],
           ),
         ),
+        if (_incomeTier != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.1),
+              border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              tierName,
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFamily: 'Sora',
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIncomeContextCard() {
+    if (_incomeTier == null) return const SizedBox.shrink();
+    
+    try {
+      final balance = dashboardData?['balance'] ?? 0;
+      final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
+      
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -358,7 +391,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Income Context',
+                    'Financial Overview',
                     style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
@@ -400,7 +433,7 @@ class _MainScreenState extends State<MainScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'Balance as % of Income',
+                          'Current Balance',
                           style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
@@ -408,7 +441,7 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ),
                         Text(
-                          '${balancePercentage.toStringAsFixed(1)}%',
+                          '\$${balance.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
@@ -424,8 +457,10 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      return const SizedBox.shrink();
+    }
   }
   
   Widget _buildBalanceCard() {
@@ -536,12 +571,44 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildPeerComparisonCard() {
-    if (peerComparison == null || _incomeTier == null) return Container();
+    if (peerComparison == null || _incomeTier == null) return const SizedBox.shrink();
     
-    return PeerComparisonCard(
-      comparisonData: peerComparison!,
-      monthlyIncome: _monthlyIncome,
-    );
+    try {
+      return PeerComparisonCard(
+        comparisonData: peerComparison!,
+        monthlyIncome: _monthlyIncome,
+      );
+    } catch (e) {
+      // Return a simple fallback card if there's an error
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Peer Comparison',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Peer comparison data will be available once you complete more transactions.',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildBudgetTargets() {
@@ -924,93 +991,86 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildFinancialHealthCard() {
-    if (financialHealthScore == null) return Container();
+    if (financialHealthScore == null) return const SizedBox.shrink();
     
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B+';
     
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.health_and_safety,
-                  color: Colors.green,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Financial Health',
-                style: TextStyle(
-                  fontFamily: 'Sora',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF193C57),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Text(
-                '$score',
-                style: const TextStyle(
-                  fontFamily: 'Sora',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 32,
-                  color: Color(0xFF193C57),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '/ 100',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getScoreColor(score).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  grade,
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontWeight: FontWeight.w600,
-                    color: _getScoreColor(score),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.health_and_safety,
+                    color: Colors.green,
+                    size: 20,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 12),
+                const Text(
+                  'Financial Health',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF193C57),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  '$score',
+                  style: const TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    color: Color(0xFF193C57),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '/ 100',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getScoreColor(score).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    grade,
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w600,
+                      color: _getScoreColor(score),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
