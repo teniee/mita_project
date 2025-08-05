@@ -1,11 +1,10 @@
-import 'habits_screen.dart';
-import 'mood_screen.dart';
-
 import 'package:flutter/material.dart';
 import 'main_screen.dart';
 import 'calendar_screen.dart';
 import 'goals_screen.dart';
 import 'insights_screen.dart';
+import 'habits_screen.dart';
+import 'mood_screen.dart';
 
 class BottomNavigation extends StatefulWidget {
   const BottomNavigation({Key? key}) : super(key: key);
