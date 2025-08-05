@@ -13,7 +13,6 @@ class OnboardingState {
   List<String> goals = [];
   List<String> habits = [];
   String? habitsComment;
-  String? motivation;
 
   void reset() {
     region = null;
@@ -25,6 +24,5 @@ class OnboardingState {
     goals = [];
     habits = [];
     habitsComment = null;
-    motivation = null;
   }
 }

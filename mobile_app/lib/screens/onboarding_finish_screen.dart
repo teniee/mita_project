@@ -32,7 +32,6 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         "expenses": state.expenses,
         "goals": state.goals,
         "habits": state.habits,
-        "motivation": state.motivation,
         if (state.habitsComment != null && state.habitsComment!.isNotEmpty)
           "habits_comment": state.habitsComment,
       };

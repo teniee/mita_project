@@ -15,7 +15,7 @@ class AdvancedOfflineService {
 
   Database? _database;
   final Connectivity _connectivity = Connectivity();
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   
   // Cache management
   final Map<String, CacheEntry> _memoryCache = {};
@@ -167,7 +167,8 @@ class AdvancedOfflineService {
 
     // Listen for connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      (ConnectivityResult result) {
+      (List<ConnectivityResult> results) {
+        final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
         final wasOnline = _isOnline;
         _isOnline = result != ConnectivityResult.none;
         
