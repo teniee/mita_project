@@ -6,12 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/goals_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/goals_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_habits_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_habits_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_motivation_screen.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -240,7 +235,15 @@
       <option name="project" value="LOCAL" />
       <updated>1754414646182</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional">
+      <option name="closed" value="true" />
+      <created>1754418683433</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1754418683433</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

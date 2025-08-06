@@ -3,6 +3,14 @@ import '../services/api_service.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
 
+extension ColorExtension on Color {
+  Color darken(double amount) {
+    final hsl = HSLColor.fromColor(this);
+    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return hslDark.toColor();
+  }
+}
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -406,65 +414,126 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   }) {
     final dayColor = _getSimpleDayColor(status, isToday);
     final textColor = _getSimpleTextColor(status, isToday);
+    final spentPercentage = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
     
     return Container(
       decoration: BoxDecoration(
         color: dayColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: isToday 
-          ? Border.all(color: colorScheme.primary, width: 2)
-          : null,
+          ? Border.all(color: colorScheme.primary, width: 3)
+          : Border.all(color: dayColor.darken(0.1), width: 1),
+        boxShadow: [
+          if (isToday || status == 'over')
+            BoxShadow(
+              color: (isToday ? colorScheme.primary : Colors.red).withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: dayNumber > 0 ? () => _showSimpleDayModal(dayNumber, limit, spent, status) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Day number
-              Text(
-                dayNumber > 0 ? dayNumber.toString() : '',
-                style: TextStyle(
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                  color: textColor,
-                  fontSize: isToday ? 16 : 14,
-                ),
-              ),
-              
-              if (dayNumber > 0 && limit > 0) ...[
-                // Budget amount
-                Text(
-                  '\$${limit}',
-                  style: TextStyle(
-                    color: textColor.withValues(alpha: 0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: dayNumber > 0 ? () => _showSimpleDayModal(dayNumber, limit, spent, status) : null,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Day number with status indicator
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      dayNumber > 0 ? dayNumber.toString() : '',
+                      style: TextStyle(
+                        fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                        color: textColor,
+                        fontSize: isToday ? 18 : 16,
+                        fontFamily: 'Sora',
+                      ),
+                    ),
+                    if (isToday)
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                    else if (status == 'over')
+                      Icon(
+                        Icons.warning,
+                        size: 12,
+                        color: Colors.red.shade700,
+                      ),
+                  ],
                 ),
                 
-                // Simple progress indicator
-                if (spent > 0)
+                if (dayNumber > 0 && limit > 0) ...[
+                  const SizedBox(height: 4),
+                  
+                  // Budget amount
+                  Text(
+                    '\$${limit}',
+                    style: TextStyle(
+                      color: textColor.withValues(alpha: 0.8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Manrope',
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 6),
+                  
+                  // Enhanced progress indicator
                   Container(
-                    height: 3,
+                    height: 4,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(1.5),
-                      color: textColor.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                      color: textColor.withValues(alpha: 0.2),
                     ),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
-                      widthFactor: (spent / limit).clamp(0.0, 1.0),
+                      widthFactor: spentPercentage,
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(1.5),
+                          borderRadius: BorderRadius.circular(2),
                           color: textColor,
                         ),
                       ),
                     ),
                   ),
+                  
+                  const SizedBox(height: 2),
+                  
+                  // Spent amount or status
+                  if (spent > 0)
+                    Text(
+                      '\$${spent}',
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.9),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Sora',
+                      ),
+                    )
+                  else if (dayNumber > DateTime.now().day)
+                    Text(
+                      'Available',
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.6),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w400,
+                        fontFamily: 'Manrope',
+                      ),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -1299,6 +1368,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Month summary card
+                if (!isLoading && calendarData.isNotEmpty) 
+                  _buildMonthSummaryCard(),
+                
                 // Status legend
                 Card(
                   elevation: 1,
@@ -1310,19 +1383,20 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Spending Status',
+                          'Daily Spending Status',
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: colorScheme.onSurface,
+                            fontFamily: 'Sora',
                           ),
                         ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildStatusIndicator('On Track', colorScheme.primary, colorScheme.onPrimary),
-                            _buildStatusIndicator('Warning', colorScheme.tertiary, colorScheme.onTertiary),
-                            _buildStatusIndicator('Over Budget', colorScheme.error, colorScheme.onError),
+                            _buildStatusIndicator('On Track', Colors.green, Colors.white),
+                            _buildStatusIndicator('Warning', Colors.orange, Colors.white),
+                            _buildStatusIndicator('Over Budget', Colors.red, Colors.white),
                           ],
                         ),
                       ],
@@ -1332,10 +1406,24 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
 
                 // Enhanced Calendar Grid
                 if (isLoading)
-                  const Center(
-                    child: Padding(
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: const Padding(
                       padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator(),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading your spending calendar...',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 else if (error != null)
@@ -1355,6 +1443,257 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         label: const Text('Add Expense'),
         tooltip: 'Add new expense',
       ),
+    );
+  }
+
+  Widget _buildMonthSummaryCard() {
+    if (calendarData.isEmpty) return const SizedBox.shrink();
+    
+    // Calculate month statistics
+    double totalBudget = 0;
+    double totalSpent = 0;
+    int onTrackDays = 0;
+    int warningDays = 0;
+    int overBudgetDays = 0;
+    int activeDays = 0;
+    
+    for (var day in calendarData) {
+      if (day['day'] != 0 && day['status'] != 'empty') {
+        final limit = (day['limit'] as num?)?.toDouble() ?? 0.0;
+        final spent = (day['spent'] as num?)?.toDouble() ?? 0.0;
+        final status = day['status'] as String? ?? 'good';
+        
+        totalBudget += limit;
+        totalSpent += spent;
+        activeDays++;
+        
+        switch (status.toLowerCase()) {
+          case 'good':
+            onTrackDays++;
+            break;
+          case 'warning':
+            warningDays++;
+            break;
+          case 'over':
+            overBudgetDays++;
+            break;
+        }
+      }
+    }
+    
+    final spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
+    final remaining = totalBudget - totalSpent;
+    
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.only(bottom: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF193C57),
+              const Color(0xFF193C57).withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_getMonthName(currentMonth.month)} Overview',
+                    style: const TextStyle(
+                      fontFamily: 'Sora',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$activeDays days tracked',
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // Budget vs Spent
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total Budget',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          '\$${totalBudget.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontFamily: 'Sora',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Spent',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          '\$${totalSpent.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontFamily: 'Sora',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Remaining',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          '\$${remaining.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontFamily: 'Sora',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Progress bar
+              Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: spentPercentage.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: spentPercentage > 1.0 ? Colors.red : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              Text(
+                '${(spentPercentage * 100).toStringAsFixed(1)}% of monthly budget used',
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Day status summary
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildStatusSummary('On Track', onTrackDays, Colors.green),
+                  _buildStatusSummary('Warning', warningDays, Colors.orange),
+                  _buildStatusSummary('Over Budget', overBudgetDays, Colors.red),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusSummary(String label, int count, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            count.toString(),
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 11,
+            color: Colors.white70,
+          ),
+        ),
+      ],
     );
   }
 

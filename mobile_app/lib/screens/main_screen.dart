@@ -119,8 +119,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Map<String, dynamic> _getDefaultDashboard() => {
-    'balance': _monthlyIncome * 0.75,
-    'spent': _monthlyIncome * 0.035, // More realistic daily spending
+    'balance': _monthlyIncome * 0.85, // Higher balance for better UX
+    'spent': (_monthlyIncome / 30) * 0.45, // 45% of daily budget spent
     'daily_targets': _getDefaultDailyTargets(),
     'week': _generateWeekData(),
     'transactions': _getDefaultTransactions(),
@@ -133,23 +133,31 @@ class _MainScreenState extends State<MainScreen> {
     return [
       {
         'category': 'Food & Dining',
-        'limit': dailyBudget * (budgetWeights['food'] ?? 0.15),
-        'spent': dailyBudget * (budgetWeights['food'] ?? 0.15) * 0.65,
+        'limit': dailyBudget * 0.35, // More realistic food budget
+        'spent': dailyBudget * 0.35 * 0.60, // 60% spent
+        'icon': Icons.restaurant,
+        'color': const Color(0xFF4CAF50),
       },
       {
         'category': 'Transportation',
-        'limit': dailyBudget * (budgetWeights['transportation'] ?? 0.15),
-        'spent': dailyBudget * (budgetWeights['transportation'] ?? 0.15) * 0.45,
+        'limit': dailyBudget * 0.25,
+        'spent': dailyBudget * 0.25 * 0.40, // 40% spent
+        'icon': Icons.directions_car,
+        'color': const Color(0xFF2196F3),
       },
       {
         'category': 'Entertainment',
-        'limit': dailyBudget * (budgetWeights['entertainment'] ?? 0.08),
-        'spent': dailyBudget * (budgetWeights['entertainment'] ?? 0.08) * 0.25,
+        'limit': dailyBudget * 0.20,
+        'spent': dailyBudget * 0.20 * 0.30, // 30% spent
+        'icon': Icons.movie,
+        'color': const Color(0xFF9C27B0),
       },
       {
         'category': 'Shopping',
-        'limit': dailyBudget * 0.10,
-        'spent': dailyBudget * 0.10 * 0.15,
+        'limit': dailyBudget * 0.20,
+        'spent': dailyBudget * 0.20 * 0.25, // 25% spent
+        'icon': Icons.shopping_bag,
+        'color': const Color(0xFFFF9800),
       },
     ];
   }
@@ -200,34 +208,44 @@ class _MainScreenState extends State<MainScreen> {
     
     return [
       {
-        'action': 'Coffee Shop',
-        'amount': (dailyBudget * 0.08).toStringAsFixed(2),
+        'action': 'Morning Coffee',
+        'amount': (12.50).toStringAsFixed(2),
         'date': now.subtract(const Duration(hours: 2)).toIso8601String(),
-        'category': 'Food'
+        'category': 'Food',
+        'icon': Icons.local_cafe,
+        'color': const Color(0xFF8D6E63),
       },
       {
-        'action': 'Grocery Store',
-        'amount': (dailyBudget * 0.25).toStringAsFixed(2),
+        'action': 'Grocery Shopping',
+        'amount': (89.32).toStringAsFixed(2),
         'date': now.subtract(const Duration(days: 1)).toIso8601String(),
-        'category': 'Food'
+        'category': 'Food',
+        'icon': Icons.local_grocery_store,
+        'color': const Color(0xFF4CAF50),
       },
       {
-        'action': 'Gas Station',
-        'amount': (dailyBudget * 0.20).toStringAsFixed(2),
-        'date': now.subtract(const Duration(days: 1, hours: 3)).toIso8601String(),
-        'category': 'Transportation'
+        'action': 'Uber Ride',
+        'amount': (24.75).toStringAsFixed(2),
+        'date': now.subtract(const Duration(hours: 6)).toIso8601String(),
+        'category': 'Transportation',
+        'icon': Icons.local_taxi,
+        'color': const Color(0xFF2196F3),
       },
       {
-        'action': 'Lunch',
-        'amount': (dailyBudget * 0.12).toStringAsFixed(2),
+        'action': 'Lunch at Work',
+        'amount': (15.80).toStringAsFixed(2),
+        'date': now.subtract(const Duration(days: 1, hours: 5)).toIso8601String(),
+        'category': 'Food',
+        'icon': Icons.restaurant,
+        'color': const Color(0xFF4CAF50),
+      },
+      {
+        'action': 'Netflix Subscription',
+        'amount': (15.99).toStringAsFixed(2),
         'date': now.subtract(const Duration(days: 2)).toIso8601String(),
-        'category': 'Food'
-      },
-      {
-        'action': 'Movie Tickets',
-        'amount': (dailyBudget * 0.15).toStringAsFixed(2),
-        'date': now.subtract(const Duration(days: 3)).toIso8601String(),
-        'category': 'Entertainment'
+        'category': 'Entertainment',
+        'icon': Icons.movie,
+        'color': const Color(0xFF9C27B0),
       },
     ];
   }
@@ -710,94 +728,152 @@ class _MainScreenState extends State<MainScreen> {
             final spent = double.tryParse(target['spent']?.toString() ?? '0') ?? 0.0;
             final progress = limit > 0 ? spent / limit : 0.0;
             final remaining = limit - spent;
-            final dailyIncomePercentage = _incomeService.getIncomePercentage(limit, _monthlyIncome / 30);
+            final categoryIcon = target['icon'] as IconData? ?? Icons.category;
+            final categoryColor = target['color'] as Color? ?? primaryColor;
             
             Color progressColor;
             if (progress <= 0.7) {
-              progressColor = const Color(0xFF84FAA1); // Green
+              progressColor = const Color(0xFF4CAF50); // Green
             } else if (progress <= 0.9) {
-              progressColor = const Color(0xFFFFD25F); // Yellow
+              progressColor = const Color(0xFFFF9800); // Orange
             } else {
-              progressColor = const Color(0xFFFF5C5C); // Red
+              progressColor = const Color(0xFFFF5722); // Red
             }
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              target['category'] ?? 'Category',
+              elevation: 3,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white,
+                      categoryColor.withOpacity(0.02),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: categoryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              categoryIcon,
+                              color: categoryColor,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  target['category'] ?? 'Category',
+                                  style: TextStyle(
+                                    fontFamily: 'Sora',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '\$${spent.toStringAsFixed(0)} of \$${limit.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontFamily: 'Manrope',
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: progressColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: progressColor.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              '${(progress * 100).toStringAsFixed(0)}%',
                               style: TextStyle(
                                 fontFamily: 'Sora',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: primaryColor,
+                                fontSize: 12,
+                                color: progressColor,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              '${dailyIncomePercentage.toStringAsFixed(1)}% of daily income',
-                              style: TextStyle(
-                                fontFamily: 'Manrope',
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                              ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.grey.shade200,
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: progress.clamp(0.0, 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              color: progressColor,
                             ),
-                          ],
-                        ),
-                        Text(
-                          '\$${spent.toStringAsFixed(2)} / \$${limit.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: primaryColor,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                      minHeight: 6,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(2)}' : 'Over budget by \$${(-remaining).toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            color: remaining > 0 ? Colors.grey[600] : const Color(0xFFFF5C5C),
-                            fontWeight: FontWeight.w500,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(0)}' : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 13,
+                              color: remaining > 0 ? Colors.grey[600] : Colors.red.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${(progress * 100).toStringAsFixed(0)}%',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            color: progressColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          if (progress <= 0.7)
+                            Icon(
+                              Icons.check_circle,
+                              color: progressColor,
+                              size: 16,
+                            )
+                          else if (progress <= 0.9)
+                            Icon(
+                              Icons.warning,
+                              color: progressColor,
+                              size: 16,
+                            )
+                          else
+                            Icon(
+                              Icons.error,
+                              color: progressColor,
+                              size: 16,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -1152,25 +1228,158 @@ class _MainScreenState extends State<MainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recent Transactions',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Recent Transactions',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF193C57),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/transactions'),
+              child: const Text(
+                'View All',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 14,
+                  color: Color(0xFFFFD25F),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        ...transactions.map<Widget>((tx) {
-          return ListTile(
-            leading: const Icon(Icons.attach_money),
-            title: Text(tx['action']),
-            subtitle: Text(tx['date']),
-            trailing: Text('-\$${tx['amount']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-          );
-        }).toList()
+        const SizedBox(height: 16),
+        if (transactions.isEmpty)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.receipt_long, size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text(
+                      'No recent transactions',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          ...transactions.map<Widget>((tx) {
+            final txIcon = tx['icon'] as IconData? ?? Icons.attach_money;
+            final txColor = tx['color'] as Color? ?? const Color(0xFF193C57);
+            final amount = double.tryParse(tx['amount']?.toString() ?? '0') ?? 0.0;
+            final timeAgo = _getTimeAgo(tx['date']);
+            
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: txColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        txIcon,
+                        color: txColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tx['action'] ?? 'Transaction',
+                            style: const TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: Color(0xFF193C57),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                tx['category'] ?? 'Other',
+                                style: TextStyle(
+                                  fontFamily: 'Manrope',
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              Text(
+                                ' • $timeAgo',
+                                style: TextStyle(
+                                  fontFamily: 'Manrope',
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '-\$${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFFFF5722),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
       ],
     );
+  }
+
+  String _getTimeAgo(String? dateString) {
+    if (dateString == null) return 'Unknown';
+    
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}m ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}d ago';
+      } else {
+        return '${(difference.inDays / 7).floor()}w ago';
+      }
+    } catch (e) {
+      return 'Unknown';
+    }
   }
 }

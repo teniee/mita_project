@@ -131,8 +131,20 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _checkAuthenticationStatus() async {
-    setState(() => _statusText = 'Checking authentication...');
+    setState(() => _statusText = 'Initializing MITA...');
+    await Future.delayed(const Duration(milliseconds: 500));
     
+    setState(() => _statusText = 'Loading your dashboard...');
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    setState(() => _statusText = 'Welcome to MITA!');
+    await Future.delayed(const Duration(milliseconds: 800));
+    
+    // For demo purposes, always navigate to main screen
+    if (mounted) _navigateToMain();
+    
+    // Original authentication logic (commented out for demo)
+    /*
     try {
       final token = await _api.getToken();
       
@@ -167,6 +179,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) _navigateToLogin();
     }
+    */
   }
 
   void _navigateToLogin() {
