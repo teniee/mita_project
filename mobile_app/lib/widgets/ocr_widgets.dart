@@ -56,9 +56,9 @@ class ConfidenceIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -271,7 +271,7 @@ class _OCRDataFieldState extends State<OCRDataField> {
             ),
             filled: widget.confidence == OCRConfidence.low,
             fillColor: widget.confidence == OCRConfidence.low
-                ? colorScheme.errorContainer.withOpacity(0.1)
+                ? colorScheme.errorContainer.withValues(alpha: 0.1)
                 : null,
           ),
         ),
@@ -281,7 +281,7 @@ class _OCRDataFieldState extends State<OCRDataField> {
             decoration: BoxDecoration(
               color: colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+              border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +342,7 @@ class ReceiptScanOverlay extends StatelessWidget {
     return Container(
       width: size.width,
       height: size.height,
-      color: Colors.black.withOpacity(0.8),
+      color: Colors.black.withValues(alpha: 0.8),
       child: Stack(
         children: [
           // Scanning frame
@@ -360,7 +360,7 @@ class ReceiptScanOverlay extends StatelessWidget {
               child: isScanning
                   ? Container(
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
+                        color: colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10.0),
                       ),
                       child: Center(
@@ -401,7 +401,7 @@ class ReceiptScanOverlay extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8.0,
                     offset: const Offset(0, 4),
                   ),
@@ -447,12 +447,14 @@ class ReceiptScanOverlay extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   FloatingActionButton(
+                    heroTag: "ocr_retake_fab",
                     onPressed: onRetake,
                     backgroundColor: colorScheme.surfaceVariant,
                     foregroundColor: colorScheme.onSurfaceVariant,
                     child: const Icon(Icons.refresh),
                   ),
                   FloatingActionButton.extended(
+                    heroTag: "ocr_confirm_fab",
                     onPressed: () => Navigator.of(context).pop(),
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
@@ -586,10 +588,10 @@ class OCRReceiptItemsList extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
+              color: colorScheme.surfaceVariant.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
-                color: colorScheme.outline.withOpacity(0.3),
+                color: colorScheme.outline.withValues(alpha: 0.3),
                 style: BorderStyle.solid,
               ),
             ),

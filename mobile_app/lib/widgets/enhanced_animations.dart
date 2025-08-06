@@ -724,6 +724,7 @@ class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
         ..._buildActionButtons(),
         const SizedBox(height: 16),
         FloatingActionButton(
+          heroTag: "enhanced_animation_main_fab",
           onPressed: _toggle,
           backgroundColor: widget.backgroundColor,
           foregroundColor: widget.foregroundColor,
@@ -762,13 +763,13 @@ class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
                   top: index == 0 ? 8.0 : 0,
                 ),
                 child: FloatingActionButton.small(
+                  heroTag: "enhanced_animation_small_fab_$index",
                   onPressed: () {
                     action.onPressed();
                     _toggle(); // Close after action
                   },
                   tooltip: action.tooltip,
                   backgroundColor: action.backgroundColor,
-                  heroTag: 'fab_${index}',
                   child: Icon(action.icon),
                 ),
               ),

@@ -740,6 +740,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "habits_fab",
         onPressed: () => _showHabitForm(),
         backgroundColor: const Color(0xFFFFD25F),
         foregroundColor: Colors.black,

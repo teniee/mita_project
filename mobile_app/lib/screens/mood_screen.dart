@@ -198,7 +198,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: _moodData[_mood.round()]!['color'],
                 thumbColor: _moodData[_mood.round()]!['color'],
-                overlayColor: _moodData[_mood.round()]!['color'].withOpacity(0.2),
+                overlayColor: _moodData[_mood.round()]!['color'].withValues(alpha: 0.2),
                 trackHeight: 8.0,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
               ),
@@ -457,7 +457,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             shape: BoxShape.circle,
             border: Border.all(color: color, width: 2),
           ),

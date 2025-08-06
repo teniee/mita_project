@@ -180,6 +180,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "goals_fab",
         onPressed: () => _showGoalForm(),
         backgroundColor: const Color(0xFFFFD25F),
         child: const Icon(Icons.add, color: Colors.black),

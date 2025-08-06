@@ -1460,13 +1460,13 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "calendar_fab",
         onPressed: () => Navigator.pushNamed(context, '/add_expense'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         tooltip: 'Add new expense',
-        heroTag: 'calendar_add_expense',
       ),
     );
   }

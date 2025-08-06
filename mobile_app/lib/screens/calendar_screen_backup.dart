@@ -853,6 +853,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "calendar_backup_fab",
         onPressed: () => Navigator.pushNamed(context, '/add_expense'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),

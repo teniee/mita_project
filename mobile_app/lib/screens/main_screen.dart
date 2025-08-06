@@ -440,13 +440,13 @@ class _MainScreenState extends State<MainScreen> {
                   ),
       ),
       floatingActionButton: error == null && !isLoading ? FloatingActionButton.extended(
+        heroTag: "main_fab",
         onPressed: () => Navigator.pushNamed(context, '/add_expense'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         tooltip: 'Add new expense',
-        heroTag: 'main_add_expense',
       ) : null,
     );
   }
