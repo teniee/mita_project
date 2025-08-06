@@ -145,7 +145,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -246,7 +246,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                                 max: _monthlyIncome * 0.5, // Max 50% of income
                                 divisions: 50,
                                 activeColor: categoryColor,
-                                inactiveColor: categoryColor.withOpacity(0.2),
+                                inactiveColor: categoryColor.withValues(alpha: 0.2),
                                 onChanged: (value) => _onAllocationChanged(category, value),
                               ),
                             ),

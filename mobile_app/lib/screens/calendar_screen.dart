@@ -443,7 +443,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         boxShadow: [
           if (isToday || status == 'over')
             BoxShadow(
-              color: (isToday ? colorScheme.primary : Colors.red).withOpacity(0.3),
+              color: (isToday ? colorScheme.primary : Colors.red).withValues(alpha: 0.3),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -1519,7 +1519,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           gradient: LinearGradient(
             colors: [
               const Color(0xFF193C57),
-              const Color(0xFF193C57).withOpacity(0.8),
+              const Color(0xFF193C57).withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -1545,7 +1545,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -1647,7 +1647,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 height: 8,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                 ),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
@@ -1696,7 +1696,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: Text(

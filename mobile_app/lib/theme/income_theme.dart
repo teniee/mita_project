@@ -210,7 +210,7 @@ class IncomeTheme {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: colorScheme.surfaceVariant.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -233,7 +233,7 @@ class IncomeTheme {
         ),
         hintStyle: TextStyle(
           fontFamily: 'Manrope',
-          color: colorScheme.onSurface.withOpacity(0.6),
+          color: colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
       
@@ -309,7 +309,7 @@ class IncomeTheme {
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w400,
           fontSize: 12,
-          color: colorScheme.onSurface.withOpacity(0.8),
+          color: colorScheme.onSurface.withValues(alpha: 0.8),
         ),
         labelLarge: TextStyle(
           fontFamily: 'Sora',
@@ -341,7 +341,7 @@ class IncomeTheme {
       'good': primary,
       'warning': Colors.orange.shade600,
       'over': Colors.red.shade600,
-      'excellent': primary.withOpacity(0.8),
+      'excellent': primary.withValues(alpha: 0.8),
     };
   }
 
@@ -419,8 +419,8 @@ class IncomeTheme {
       end: Alignment.bottomRight,
       colors: [
         secondary,
-        secondary.withOpacity(0.7),
-        secondary.withOpacity(0.5),
+        secondary.withValues(alpha: 0.7),
+        secondary.withValues(alpha: 0.5),
       ],
     );
   }
@@ -431,13 +431,13 @@ class IncomeTheme {
     
     return [
       BoxShadow(
-        color: primary.withOpacity(0.1),
+        color: primary.withValues(alpha: 0.1),
         offset: const Offset(0, 4),
         blurRadius: 12,
         spreadRadius: 0,
       ),
       BoxShadow(
-        color: primary.withOpacity(0.05),
+        color: primary.withValues(alpha: 0.05),
         offset: const Offset(0, 2),
         blurRadius: 6,
         spreadRadius: 0,

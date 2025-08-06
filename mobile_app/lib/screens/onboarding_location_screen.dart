@@ -301,7 +301,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             )
                           : null,
                       selected: _selectedState == state['code'],
-                      selectedTileColor: const Color(0xFF193C57).withOpacity(0.1),
+                      selectedTileColor: const Color(0xFF193C57).withValues(alpha: 0.1),
                       onTap: () => _selectState(state['code']!),
                     );
                   },

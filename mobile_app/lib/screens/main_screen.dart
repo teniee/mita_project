@@ -826,7 +826,7 @@ class _MainScreenState extends State<MainScreen> {
                   gradient: LinearGradient(
                     colors: [
                       Colors.white,
-                      categoryColor.withOpacity(0.02),
+                      categoryColor.withValues(alpha: 0.02),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -842,7 +842,7 @@ class _MainScreenState extends State<MainScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: categoryColor.withOpacity(0.1),
+                              color: categoryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -881,9 +881,9 @@ class _MainScreenState extends State<MainScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: progressColor.withOpacity(0.1),
+                              color: progressColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: progressColor.withOpacity(0.3)),
+                              border: Border.all(color: progressColor.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
@@ -1372,7 +1372,7 @@ class _MainScreenState extends State<MainScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: txColor.withOpacity(0.1),
+                        color: txColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(

@@ -250,8 +250,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
-              difficultyColor.withOpacity(0.05),
-              difficultyColor.withOpacity(0.02),
+              difficultyColor.withValues(alpha: 0.05),
+              difficultyColor.withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -280,7 +280,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: difficultyColor.withOpacity(0.1),
+                      color: difficultyColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -471,7 +471,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: difficultyColor.withOpacity(0.1),
+                    color: difficultyColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -887,8 +887,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              rarityColor.withOpacity(0.1),
-              rarityColor.withOpacity(0.05),
+              rarityColor.withValues(alpha: 0.1),
+              rarityColor.withValues(alpha: 0.05),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

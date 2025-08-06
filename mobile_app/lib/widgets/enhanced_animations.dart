@@ -286,7 +286,7 @@ class _GradientCircularProgressPainter extends CustomPainter {
 
     // Background circle
     final backgroundPaint = Paint()
-      ..color = backgroundColor.withOpacity(0.3)
+      ..color = backgroundColor.withValues(alpha: 0.3)
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -753,8 +753,9 @@ class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
         builder: (context, child) {
           return Transform.scale(
             scale: _scaleAnimation.value,
-            child: Opacity(
+            child: AnimatedOpacity(
               opacity: _scaleAnimation.value,
+              duration: const Duration(milliseconds: 100),
               child: Padding(
                 padding: EdgeInsets.only(
                   bottom: 8.0,

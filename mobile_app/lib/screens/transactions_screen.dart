@@ -295,7 +295,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: _getCategoryColor(item['category'] ?? '').withOpacity(0.1),
+                                      color: _getCategoryColor(item['category'] ?? '').withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(

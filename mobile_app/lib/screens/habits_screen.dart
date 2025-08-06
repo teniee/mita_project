@@ -373,14 +373,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
               Colors.white,
-              const Color(0xFFFFF9F0).withOpacity(0.3),
+              const Color(0xFFFFF9F0).withValues(alpha: 0.3),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -616,7 +616,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD25F).withOpacity(0.1),
+              color: const Color(0xFFFFD25F).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(

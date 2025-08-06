@@ -240,7 +240,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: mode['color'].withOpacity(0.1),
+                      color: mode['color'].withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -290,7 +290,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                           mode['description'],
                           style: TextStyle(
                             fontSize: 14,
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -320,7 +320,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     decoration: BoxDecoration(
                       color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: mode['color'].withOpacity(0.3)),
+                      border: Border.all(color: mode['color'].withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       feature,
@@ -580,7 +580,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         gradient: LinearGradient(
                           colors: [
                             _getBudgetModeById(_currentBudgetMode)['color'],
-                            _getBudgetModeById(_currentBudgetMode)['color'].withOpacity(0.8),
+                            _getBudgetModeById(_currentBudgetMode)['color'].withValues(alpha: 0.8),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -638,7 +638,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     'Select the budget management approach that best fits your financial goals and spending habits.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -663,7 +663,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     'Customize how MITA automatically manages your budget and provides intelligent recommendations.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -676,7 +676,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(

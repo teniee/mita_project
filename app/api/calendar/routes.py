@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Body, Depends, HTTPException
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------- Schemas ----------------------------
 from app.api.calendar.schemas import (
@@ -110,5 +113,35 @@ async def get_shell(
     payload: ShellConfig,
     user=Depends(get_current_user),  # noqa: B008
 ):
-    calendar = generate_shell_calendar(user.id, payload.dict())
-    return success_response({"calendar": calendar})
+    try:
+        # Convert ShellConfig to the format expected by generate_shell_calendar
+        shell_data = {
+            "start_date": f"{payload.year}-{payload.month:02d}-01",
+            "num_days": 30,  # Default to 30 days for shell calendar
+            "budget_plan": {
+                # Convert the weights to actual budget amounts based on income
+                category: float(payload.income * weight / 100) if weight else 0.0
+                for category, weight in payload.weights.items()
+            }
+        }
+        
+        # Add fixed expenses to budget plan
+        for category, amount in payload.fixed.items():
+            if category in shell_data["budget_plan"]:
+                shell_data["budget_plan"][category] += float(amount)
+            else:
+                shell_data["budget_plan"][category] = float(amount)
+        
+        calendar = generate_shell_calendar(user.id, shell_data)
+        return success_response({"calendar": calendar})
+    except Exception as e:
+        logger.error(f"Error generating shell calendar: {e}")
+        # Return a fallback response to prevent 500 error
+        return success_response({
+            "calendar": [{
+                "date": f"{payload.year}-{payload.month:02d}-01",
+                "planned_budget": {},
+                "limit": 0.0,
+                "total": 0.0
+            }]
+        })

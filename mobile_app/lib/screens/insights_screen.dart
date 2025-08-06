@@ -87,10 +87,12 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         _fetchIncomeBasedInsights(),
       ]);
 
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading insights: $e')),
         );
@@ -529,7 +531,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -578,7 +580,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -624,7 +626,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           borderRadius: BorderRadius.circular(6),
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF193C57).withOpacity(0.7),
+                              const Color(0xFF193C57).withValues(alpha: 0.7),
                               const Color(0xFF193C57)
                             ],
                             begin: Alignment.bottomCenter,
@@ -692,7 +694,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         gradient: LinearGradient(
           colors: [
             const Color(0xFF193C57),
-            const Color(0xFF193C57).withOpacity(0.8),
+            const Color(0xFF193C57).withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -739,14 +741,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 18,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -777,7 +779,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 children: [
                   Icon(
                     Icons.arrow_right,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -786,7 +788,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       improvement,
                       style: TextStyle(
                         fontFamily: 'Manrope',
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ),
@@ -813,7 +815,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -827,7 +829,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withOpacity(0.1),
+                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -885,7 +887,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -899,7 +901,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withOpacity(0.1),
+                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -927,7 +929,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             children: patterns.map((pattern) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF193C57).withOpacity(0.1),
+                color: const Color(0xFF193C57).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -959,7 +961,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -973,7 +975,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withOpacity(0.1),
+                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1019,10 +1021,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1036,7 +1038,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1099,7 +1101,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1113,7 +1115,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withOpacity(0.1),
+                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1202,14 +1204,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.green.withOpacity(0.1),
-            Colors.green.withOpacity(0.05),
+            Colors.green.withValues(alpha: 0.1),
+            Colors.green.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1219,7 +1221,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1287,9 +1289,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1339,7 +1341,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1424,7 +1426,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1438,7 +1440,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.1),
+                  color: primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1461,7 +1463,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getScoreColor(overallScore.toInt()).withOpacity(0.1),
+                  color: _getScoreColor(overallScore.toInt()).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
@@ -1493,9 +1495,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.05),
+                  color: primaryColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: primaryColor.withOpacity(0.2)),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -1536,7 +1538,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1550,7 +1552,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.1),
+                  color: primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1595,7 +1597,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: habit['color'].withOpacity(0.3)),
+                border: Border.all(color: habit['color'].withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1605,7 +1607,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: habit['color'].withOpacity(0.1),
+                          color: habit['color'].withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -1643,7 +1645,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1710,7 +1712,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1724,7 +1726,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.1),
+                  color: primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1769,14 +1771,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    primaryColor.withOpacity(0.05),
-                    primaryColor.withOpacity(0.02),
+                    primaryColor.withValues(alpha: 0.05),
+                    primaryColor.withValues(alpha: 0.02),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: primaryColor.withOpacity(0.2)),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1797,7 +1799,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1836,7 +1838,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
