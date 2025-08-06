@@ -444,13 +444,15 @@ class SafeExecution {
 /// Utility for showing user-friendly error messages
 class ErrorMessageUtils {
   static String getUserFriendlyMessage(dynamic error) {
-    if (error is NetworkException) {
+    final errorString = error.toString().toLowerCase();
+    
+    if (error is NetworkException || errorString.contains('network') || errorString.contains('connection')) {
       return 'Please check your internet connection and try again.';
-    } else if (error is AuthenticationException) {
-      return 'Please log in again to continue.';
-    } else if (error is ValidationException) {
+    } else if (error is AuthenticationException || errorString.contains('session expired') || errorString.contains('unauthorized')) {
+      return 'Your session has expired. Please log in again.';
+    } else if (error is ValidationException || errorString.contains('validation')) {
       return 'Please check your input and try again.';
-    } else if (error is StorageException) {
+    } else if (error is StorageException || errorString.contains('storage')) {
       return 'Unable to save your data. Please try again.';
     } else {
       return 'Something went wrong. Please try again.';
@@ -461,6 +463,7 @@ class ErrorMessageUtils {
     BuildContext context,
     dynamic error, {
     Duration duration = const Duration(seconds: 4),
+    VoidCallback? onRetry,
   }) {
     if (!context.mounted) return;
 
@@ -472,8 +475,9 @@ class ErrorMessageUtils {
         content: Row(
           children: [
             Icon(
-              Icons.error_outline,
+              Icons.error_outline_rounded,
               color: Theme.of(context).colorScheme.onError,
+              size: 20,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -481,6 +485,7 @@ class ErrorMessageUtils {
                 message,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onError,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -489,12 +494,128 @@ class ErrorMessageUtils {
         backgroundColor: Theme.of(context).colorScheme.error,
         duration: duration,
         behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Dismiss',
-          textColor: Theme.of(context).colorScheme.onError,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        action: onRetry != null 
+          ? SnackBarAction(
+              label: 'Retry',
+              textColor: Theme.of(context).colorScheme.onError,
+              onPressed: onRetry,
+            )
+          : SnackBarAction(
+              label: 'Dismiss',
+              textColor: Theme.of(context).colorScheme.onError,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+      ),
+    );
+  }
+
+  static void showErrorBanner(
+    BuildContext context,
+    dynamic error, {
+    VoidCallback? onRetry,
+    VoidCallback? onDismiss,
+  }) {
+    if (!context.mounted) return;
+
+    final message = getUserFriendlyMessage(error);
+    
+    ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        content: Row(
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              color: Theme.of(context).colorScheme.error,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        actions: [
+          if (onRetry != null)
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                onRetry();
+              },
+              child: Text(
+                'Retry',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          TextButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              onDismiss?.call();
+            },
+            child: Text(
+              'Dismiss',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void showSuccessSnackBar(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              color: Theme.of(context).colorScheme.onPrimary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

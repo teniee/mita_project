@@ -54,40 +54,70 @@ class _BottomNavigationState extends State<BottomNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: colorScheme.shadow.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          selectedItemColor: const Color(0xFF193C57),
-          unselectedItemColor: Colors.grey.shade600,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
+        child: SafeArea(
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            selectedItemColor: colorScheme.primary,
+            unselectedItemColor: colorScheme.onSurfaceVariant,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            enableFeedback: true,
+            selectedLabelStyle: TextStyle(
+              fontFamily: 'Sora',
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              color: colorScheme.primary,
+            ),
+            unselectedLabelStyle: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w400,
+              fontSize: 10,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            selectedIconTheme: IconThemeData(
+              color: colorScheme.primary,
+              size: 24,
+            ),
+            unselectedIconTheme: IconThemeData(
+              color: colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            items: _items.map((item) {
+              final index = _items.indexOf(item);
+              return BottomNavigationBarItem(
+                icon: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Icon(
+                    (item.icon as Icon).icon,
+                    size: _currentIndex == index ? 24 : 22,
+                  ),
+                ),
+                label: item.label,
+                tooltip: item.label,
+              );
+            }).toList(),
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Manrope',
-            fontWeight: FontWeight.w400,
-            fontSize: 12,
-          ),
-          items: _items,
         ),
       ),
     );

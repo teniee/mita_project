@@ -5,6 +5,7 @@ import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
+import '../core/app_error_handler.dart';
 import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -112,9 +113,20 @@ class _MainScreenState extends State<MainScreen> {
       logError('Error in fetchDashboardData: $e', tag: 'MAIN_SCREEN');
       if (!mounted) return;
       setState(() {
-        error = 'Unable to load dashboard data. Please try again.';
+        error = e.toString();
         isLoading = false;
       });
+      
+      // Show user-friendly error message
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ErrorMessageUtils.showErrorSnackBar(
+            context,
+            e,
+            onRetry: fetchDashboardData,
+          );
+        });
+      }
     }
   }
 
@@ -259,6 +271,56 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  Widget _buildErrorState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 80,
+              color: colorScheme.error,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Unable to load dashboard',
+              style: textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Please check your connection and try again',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: fetchDashboardData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Map<String, dynamic> _processDashboardData({
     required Map<String, dynamic> dashboard,
     required List<dynamic> transactions,
@@ -299,79 +361,93 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: isLoading
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Loading your dashboard...'),
+                    CircularProgressIndicator(
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading your dashboard...',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
                   ],
                 ),
               )
             : error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Unable to load dashboard',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            error!,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                ? _buildErrorState(context)
+                : RefreshIndicator(
+                    onRefresh: fetchDashboardData,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: MediaQuery.of(context).size.width > 600 ? 32.0 : 16.0,
+                                vertical: 12.0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Header
+                                  _buildHeader(),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Balance Card
+                                  _buildBalanceCard(),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Budget Targets
+                                  _buildBudgetTargets(),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Mini Calendar
+                                  _buildMiniCalendar(),
+                                  const SizedBox(height: 16),
+                                  
+                                  // AI Insights
+                                  _buildAIInsightsCard(),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Recent Transactions
+                                  _buildRecentTransactions(),
+                                  
+                                  // Bottom padding for floating action button
+                                  const SizedBox(height: 80),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: fetchDashboardData,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        _buildHeader(),
-                        const SizedBox(height: 20),
-                        
-                        // Balance Card
-                        _buildBalanceCard(),
-                        const SizedBox(height: 20),
-                        
-                        // Budget Targets
-                        _buildBudgetTargets(),
-                        const SizedBox(height: 20),
-                        
-                        // Mini Calendar
-                        _buildMiniCalendar(),
-                        const SizedBox(height: 20),
-                        
-                        // AI Insights
-                        _buildAIInsightsCard(),
-                        const SizedBox(height: 20),
-                        
-                        // Recent Transactions
-                        _buildRecentTransactions(),
-                      ],
+                        );
+                      },
                     ),
                   ),
       ),
+      floatingActionButton: error == null && !isLoading ? FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, '/add_expense'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        tooltip: 'Add new expense',
+        heroTag: 'main_add_expense',
+      ) : null,
     );
   }
 

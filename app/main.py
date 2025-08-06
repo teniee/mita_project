@@ -106,11 +106,20 @@ async def health_check():
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status"""
+    # Check environment configuration
+    config_status = {
+        "jwt_secret_configured": bool(settings.JWT_SECRET or settings.SECRET_KEY),
+        "database_configured": bool(settings.DATABASE_URL),
+        "environment": settings.ENVIRONMENT,
+        "upstash_configured": bool(os.getenv("UPSTASH_AUTH_TOKEN"))
+    }
+    
     return {
         "status": "healthy",
         "service": "Mita Finance API", 
         "version": "1.0.0",
         "database": "connected",
+        "config": config_status,
         "timestamp": time.time()
     }
 
@@ -199,34 +208,35 @@ app.include_router(
     dependencies=[Depends(RateLimiter(times=10, seconds=60))],
 )
 
-# Protected routes
+# Protected routes - Fixed duplicate path segments
+# Each router already has its own prefix, so we only add /api base
 private_routers_list = [
-    (financial_router, "/api/financial", ["Financial"]),
-    (users_router, "/api/users", ["Users"]),
-    (calendar_router, "/api/calendar", ["Calendar"]),
-    (challenge_router, "/api/challenges", ["Challenges"]),
-    (expense_router, "/api/expenses", ["Expenses"]),
-    (goal_router, "/api/goals", ["Goals"]),
+    (financial_router, "/api", ["Financial"]),
+    (users_router, "/api", ["Users"]),
+    (calendar_router, "/api", ["Calendar"]),
+    (challenge_router, "/api", ["Challenges"]),
+    (expense_router, "/api", ["Expenses"]),
+    (goal_router, "/api", ["Goals"]),
     (goals_crud_router, "/api", ["GoalsCRUD"]),
-    (plan_router, "/api/plans", ["Plans"]),
-    (budget_router, "/api/budgets", ["Budgets"]),
-    (analytics_router, "/api/analytics", ["Analytics"]),
-    (behavior_router, "/api/behavior", ["Behavior"]),
-    (spend_router, "/api/spend", ["Spend"]),
-    (style_router, "/api/styles", ["Styles"]),
+    (plan_router, "/api", ["Plans"]),
+    (budget_router, "/api", ["Budgets"]),
+    (analytics_router, "/api", ["Analytics"]),
+    (behavior_router, "/api", ["Behavior"]),
+    (spend_router, "/api", ["Spend"]),
+    (style_router, "/api", ["Styles"]),
     (insights_router, "/api", ["Insights"]),
     (habits_router, "/api", ["Habits"]),
-    (ai_router, "/api/ai", ["AI"]),
+    (ai_router, "/api", ["AI"]),
     (transactions_router, "/api", ["Transactions"]),
-    (iap_router, "/api/iap", ["IAP"]),
-    (notifications_router, "/api/notifications", ["Notifications"]),
-    (mood_router, "/api/mood", ["Mood"]),
-    (referral_router, "/api/referrals", ["Referrals"]),
-    (onboarding_router, "/api/onboarding", ["Onboarding"]),
-    (cohort_router, "/api/cohorts", ["Cohorts"]),
-    (cluster_router, "/api/clusters", ["Clusters"]),
-    (checkpoint_router, "/api/checkpoints", ["Checkpoints"]),
-    (drift_router, "/api/drift", ["Drift"]),
+    (iap_router, "/api", ["IAP"]),
+    (notifications_router, "/api", ["Notifications"]),
+    (mood_router, "/api", ["Mood"]),
+    (referral_router, "/api", ["Referrals"]),
+    (onboarding_router, "/api", ["Onboarding"]),
+    (cohort_router, "/api", ["Cohorts"]),
+    (cluster_router, "/api", ["Clusters"]),
+    (checkpoint_router, "/api", ["Checkpoints"]),
+    (drift_router, "/api", ["Drift"]),
     (audit_router, "/api", ["Audit"]),
     (db_performance_router, "/api", ["Database Performance"]),
     (cache_management_router, "/api", ["Cache Management"]),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../core/app_error_handler.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
 
@@ -91,6 +92,17 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         isLoading = false;
         error = null; // Don't show error, just use sample data
       });
+      
+      // Show user-friendly error message but don't break the UI
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ErrorMessageUtils.showErrorSnackBar(
+            context,
+            e,
+            duration: const Duration(seconds: 2),
+          );
+        });
+      }
     }
   }
 
@@ -329,17 +341,20 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
             // Weekday headers
             _buildWeekdayHeaders(),
             const SizedBox(height: 12),
-            // Calendar grid - simplified without animation
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: calendarData.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-                childAspectRatio: 0.8, // Square-ish cells
-              ),
+            // Calendar grid - responsive with better aspect ratio
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth > 600;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: calendarData.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    crossAxisSpacing: isTablet ? 8 : 4,
+                    mainAxisSpacing: isTablet ? 8 : 4,
+                    childAspectRatio: isTablet ? 0.9 : 0.75,
+                  ),
               itemBuilder: (context, index) {
                 try {
                   final day = calendarData[index];
@@ -376,6 +391,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                     ),
                   );
                 }
+              },
+                );
               },
             ),
           ],
@@ -438,106 +455,109 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           borderRadius: BorderRadius.circular(12),
           onTap: dayNumber > 0 ? () => _showSimpleDayModal(dayNumber, limit, spent, status) : null,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Day number with status indicator
-                Row(
+            padding: const EdgeInsets.all(6.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      dayNumber > 0 ? dayNumber.toString() : '',
-                      style: TextStyle(
-                        fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                        color: textColor,
-                        fontSize: isToday ? 18 : 16,
-                        fontFamily: 'Sora',
+                    // Day number with status indicator
+                    Flexible(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              dayNumber > 0 ? dayNumber.toString() : '',
+                              style: TextStyle(
+                                fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                                color: textColor,
+                                fontSize: constraints.maxWidth > 45 ? (isToday ? 16 : 14) : 12,
+                                fontFamily: 'Sora',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.clip,
+                            ),
+                          ),
+                          if (isToday && constraints.maxWidth > 35)
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          else if (status == 'over' && constraints.maxWidth > 35)
+                            Icon(
+                              Icons.warning,
+                              size: 10,
+                              color: Colors.red.shade700,
+                            ),
+                        ],
                       ),
                     ),
-                    if (isToday)
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary,
-                          shape: BoxShape.circle,
+                    
+                    if (dayNumber > 0 && limit > 0 && constraints.maxHeight > 60) ...[
+                      const SizedBox(height: 2),
+                      
+                      // Enhanced progress indicator - only show if there's room
+                      if (constraints.maxHeight > 70)
+                        Flexible(
+                          child: Container(
+                            height: 3,
+                            margin: const EdgeInsets.symmetric(vertical: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              color: textColor.withValues(alpha: 0.2),
+                            ),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: spentPercentage,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(2),
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      )
-                    else if (status == 'over')
-                      Icon(
-                        Icons.warning,
-                        size: 12,
-                        color: Colors.red.shade700,
-                      ),
+                      
+                      // Status text or amount - simplified
+                      if (constraints.maxHeight > 80)
+                        Flexible(
+                          child: Text(
+                            _getSimpleStatusText(status, spent, spentPercentage),
+                            style: TextStyle(
+                              color: textColor.withValues(alpha: 0.8),
+                              fontSize: constraints.maxWidth > 45 ? 8 : 7,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Manrope',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
                   ],
-                ),
-                
-                if (dayNumber > 0 && limit > 0) ...[
-                  const SizedBox(height: 4),
-                  
-                  // Budget amount
-                  Text(
-                    '\$${limit}',
-                    style: TextStyle(
-                      color: textColor.withValues(alpha: 0.8),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Manrope',
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 6),
-                  
-                  // Enhanced progress indicator
-                  Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      color: textColor.withValues(alpha: 0.2),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: spentPercentage,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(2),
-                          color: textColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 2),
-                  
-                  // Spent amount or status
-                  if (spent > 0)
-                    Text(
-                      '\$${spent}',
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.9),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Sora',
-                      ),
-                    )
-                  else if (dayNumber > DateTime.now().day)
-                    Text(
-                      'Available',
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.6),
-                        fontSize: 8,
-                        fontWeight: FontWeight.w400,
-                        fontFamily: 'Manrope',
-                      ),
-                    ),
-                ],
-              ],
+                );
+              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  String _getSimpleStatusText(String status, int spent, double spentPercentage) {
+    if (spent > 0) {
+      if (spentPercentage > 1.0) return 'Over';
+      if (spentPercentage > 0.8) return 'High';
+      return 'Good';
+    }
+    return 'Free';
   }
 
   Widget _buildEnhancedDayCell({
@@ -1364,7 +1384,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(
+              MediaQuery.of(context).size.width > 600 ? 24.0 : 16.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1441,7 +1463,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         onPressed: () => Navigator.pushNamed(context, '/add_expense'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         tooltip: 'Add new expense',
+        heroTag: 'calendar_add_expense',
       ),
     );
   }
