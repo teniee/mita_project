@@ -66,7 +66,33 @@ class ErrorEvent:
         data['timestamp'] = self.timestamp.isoformat()
         data['severity'] = self.severity.value
         data['category'] = self.category.value
+        # Ensure additional_context is JSON serializable
+        if self.additional_context:
+            data['additional_context'] = self._safe_serialize_context(self.additional_context)
         return data
+    
+    def _safe_serialize_context(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Safely serialize context data to prevent JSON errors"""
+        safe_context = {}
+        for key, value in context.items():
+            try:
+                # Test JSON serialization
+                json.dumps(value)
+                safe_context[key] = value
+            except (TypeError, ValueError):
+                # If not serializable, convert to string representation
+                if hasattr(value, '__dict__'):
+                    safe_context[key] = str(type(value).__name__)
+                elif hasattr(value, 'filename') and hasattr(value, 'content_type'):
+                    # Handle UploadFile objects
+                    safe_context[key] = {
+                        'type': 'UploadFile',
+                        'filename': getattr(value, 'filename', 'unknown'),
+                        'content_type': getattr(value, 'content_type', 'unknown')
+                    }
+                else:
+                    safe_context[key] = str(value)[:500]  # Truncate long strings
+        return safe_context
 
 
 class ErrorAggregator:
@@ -290,14 +316,17 @@ class ErrorMonitor:
                 ErrorSeverity.HIGH: logging.ERROR,
                 ErrorSeverity.CRITICAL: logging.CRITICAL,
             }
+            # Prepare safe logging extra data
+            safe_extra = {
+                'error_event': error_event.to_dict(),
+                'user_id': user_id,
+                'endpoint': error_event.endpoint
+            }
+            
             logger.log(
                 log_level[severity],
                 f"Error [{category.value}]: {str(exception)}",
-                extra={
-                    'error_event': error_event.to_dict(),
-                    'user_id': user_id,
-                    'endpoint': error_event.endpoint
-                }
+                extra=safe_extra
             )
             
             # Send to Sentry
@@ -307,7 +336,9 @@ class ErrorMonitor:
                 if user_id:
                     scope.set_user({"id": user_id})
                 if additional_context:
-                    for key, value in additional_context.items():
+                    # Use safe serialization for Sentry context
+                    safe_context = error_event._safe_serialize_context(additional_context)
+                    for key, value in safe_context.items():
                         scope.set_extra(key, value)
                 
                 sentry_sdk.capture_exception(exception)

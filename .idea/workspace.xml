@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding">
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/audit_logging.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/audit_logging.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/error_monitoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/error_monitoring.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -300,7 +300,15 @@
       <option name="project" value="LOCAL" />
       <updated>1754562319492</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls">
+      <option name="closed" value="true" />
+      <created>1754590627883</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1754590627883</updated>
+    </task>
+    <option name="localTasksCounter" value="30" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -327,6 +335,7 @@
     <MESSAGE value=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional" />
     <MESSAGE value=" Before vs After:&#10;  - ❌ &quot;Session expired&quot; red bar → ✅ Dismissible notifications&#10;  - ❌ &quot;Unable to load dashboard&quot; → ✅ Smooth loading with fallback data&#10;  - ❌ &quot;overbottom&quot; in calendar → ✅ Clear budget status indicators&#10;  - ❌ UI overflow errors → ✅ Responsive Material Design 3 layout&#10;  - ❌ 401/404 API errors → ✅ Reliable backend integration" />
     <MESSAGE value="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding" />
-    <option name="LAST_COMMIT_MESSAGE" value="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding" />
+    <MESSAGE value=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls" />
+    <option name="LAST_COMMIT_MESSAGE" value=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls" />
   </component>
 </project>

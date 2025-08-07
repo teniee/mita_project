@@ -395,11 +395,36 @@ class AuditLogger:
             except:
                 # Try to get form data
                 try:
-                    return await request.form()
+                    form_data = await request.form()
+                    # Convert FormData to serializable dictionary
+                    return self._serialize_form_data(form_data)
                 except:
                     return None
         except Exception:
             return None
+    
+    def _serialize_form_data(self, form_data) -> Dict[str, Any]:
+        """Convert FormData to JSON-serializable dictionary"""
+        serialized = {}
+        try:
+            for key, value in form_data.items():
+                # Handle UploadFile objects
+                if hasattr(value, 'filename') and hasattr(value, 'content_type'):
+                    # This is an UploadFile
+                    serialized[key] = {
+                        'filename': getattr(value, 'filename', 'unknown'),
+                        'content_type': getattr(value, 'content_type', 'unknown'),
+                        'size': getattr(value, 'size', 0) if hasattr(value, 'size') else 'unknown',
+                        'type': 'file_upload'
+                    }
+                else:
+                    # Regular form field
+                    serialized[key] = str(value) if value is not None else None
+        except Exception as e:
+            # If serialization fails, return a safe representation
+            return {'form_data': 'FormData object (serialization failed)', 'error': str(e)}
+        
+        return serialized
     
     async def _extract_response_body(self, response: Response) -> Any:
         """Extract response body data"""
