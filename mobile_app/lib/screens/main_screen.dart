@@ -55,24 +55,74 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     try {
-      // Use fallback data immediately if API calls fail
-      _monthlyIncome = 3000.0;
+      // Try API calls with proper timeout and fallback handling
+      final profileResponse = await _apiService.getUserProfile().timeout(
+        Duration(seconds: 5),
+        onTimeout: () => <String, dynamic>{'data': {'income': 3000.0}}
+      ).catchError((e) => <String, dynamic>{'data': {'income': 3000.0}});
+      
+      _monthlyIncome = (profileResponse['data']?['income'] as num?)?.toDouble() ?? 3000.0;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
 
-      // Use default/fallback data to avoid hanging on API calls
-      final results = [
-        _getDefaultDashboard(),
-        _getDefaultAdvice(),
-        <dynamic>[],
-        <String, dynamic>{},
-        _getDefaultIncomeClassification(),
-        _getDefaultPeerComparison(),
-        _getDefaultCohortInsights(),
-        null,
-        null,
-        null,
-        <Map<String, dynamic>>[],
-      ];
+      // Fetch data with individual timeouts and fallbacks
+      final results = await Future.wait([
+        _apiService.getDashboard(userIncome: _monthlyIncome).timeout(
+          Duration(seconds: 8),
+          onTimeout: () => _getDefaultDashboard()
+        ).catchError((e) => _getDefaultDashboard()),
+        
+        _apiService.getLatestAdvice().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => _getDefaultAdvice()
+        ).catchError((e) => _getDefaultAdvice()),
+        
+        _apiService.getExpenses().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => <dynamic>[]
+        ).catchError((e) => <dynamic>[]),
+        
+        _apiService.getMonthlyAnalytics().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => <String, dynamic>{}
+        ).catchError((e) => <String, dynamic>{}),
+        
+        // Income-based features with fallbacks
+        _apiService.getIncomeClassification().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => _getDefaultIncomeClassification()
+        ).catchError((e) => _getDefaultIncomeClassification()),
+        
+        _apiService.getPeerComparison().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => _getDefaultPeerComparison()
+        ).catchError((e) => _getDefaultPeerComparison()),
+        
+        _apiService.getCohortInsights().timeout(
+          Duration(seconds: 5),
+          onTimeout: () => _getDefaultCohortInsights()
+        ).catchError((e) => _getDefaultCohortInsights()),
+        
+        // AI Insights with shorter timeouts
+        _apiService.getLatestAISnapshot().timeout(
+          Duration(seconds: 4),
+          onTimeout: () => <String, dynamic>{}
+        ).catchError((e) => <String, dynamic>{}),
+        
+        _apiService.getAIFinancialHealthScore().timeout(
+          Duration(seconds: 4),
+          onTimeout: () => <String, dynamic>{}
+        ).catchError((e) => <String, dynamic>{}),
+        
+        _apiService.getAIWeeklyInsights().timeout(
+          Duration(seconds: 4),
+          onTimeout: () => <String, dynamic>{}
+        ).catchError((e) => <String, dynamic>{}),
+        
+        _apiService.getSpendingAnomalies().timeout(
+          Duration(seconds: 4),
+          onTimeout: () => <Map<String, dynamic>>[]
+        ).catchError((e) => <Map<String, dynamic>>[]),
+      ]);
 
       final dashboardResponse = results[0] as Map<String, dynamic>;
       final adviceResponse = results[1] as Map<String, dynamic>;
@@ -81,9 +131,9 @@ class _MainScreenState extends State<MainScreen> {
       final incomeClassificationResponse = results[4] as Map<String, dynamic>;
       final peerComparisonResponse = results[5] as Map<String, dynamic>;
       final cohortInsightsResponse = results[6] as Map<String, dynamic>;
-      final aiSnapshotResponse = results[7] as Map<String, dynamic>?;
-      final financialHealthResponse = results[8] as Map<String, dynamic>?;
-      final weeklyInsightsResponse = results[9] as Map<String, dynamic>?;
+      final aiSnapshotResponse = results[7] as Map<String, dynamic>;
+      final financialHealthResponse = results[8] as Map<String, dynamic>;
+      final weeklyInsightsResponse = results[9] as Map<String, dynamic>;
       final anomaliesResponse = results[10] as List<Map<String, dynamic>>;
 
       // Process and combine the data
@@ -101,9 +151,9 @@ class _MainScreenState extends State<MainScreen> {
         incomeClassification = incomeClassificationResponse;
         peerComparison = peerComparisonResponse;
         cohortInsights = cohortInsightsResponse;
-        aiSnapshot = aiSnapshotResponse;
-        financialHealthScore = financialHealthResponse;
-        weeklyInsights = weeklyInsightsResponse;
+        aiSnapshot = aiSnapshotResponse.isNotEmpty ? aiSnapshotResponse : null;
+        financialHealthScore = financialHealthResponse.isNotEmpty ? financialHealthResponse : null;
+        weeklyInsights = weeklyInsightsResponse.isNotEmpty ? weeklyInsightsResponse : null;
         spendingAnomalies = anomaliesResponse;
         isLoading = false;
       });

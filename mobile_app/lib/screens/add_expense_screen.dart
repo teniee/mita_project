@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import '../services/offline_queue_service.dart';
 import '../services/api_service.dart';
 import '../services/expense_state_service.dart';
@@ -193,7 +194,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       
       // 4. Try to submit to API immediately if online
       try {
-        await _apiService.createExpense(data);
+        await _apiService.createExpense(data).timeout(
+          Duration(seconds: 8),
+          onTimeout: () => throw TimeoutException('API submission timeout', Duration(seconds: 8))
+        );
         logInfo('Expense submitted to API successfully', tag: 'ADD_EXPENSE');
       } catch (apiError) {
         // API submission failed, but expense is queued for offline sync

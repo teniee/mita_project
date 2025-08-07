@@ -6,6 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -290,7 +292,15 @@
       <option name="project" value="LOCAL" />
       <updated>1754554108927</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding">
+      <option name="closed" value="true" />
+      <created>1754562319492</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1754562319492</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
