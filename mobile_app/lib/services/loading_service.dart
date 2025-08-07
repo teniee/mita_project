@@ -12,4 +12,5 @@ class LoadingService {
   void stop() {
     if (_counter.value > 0) _counter.value--;
   }
+  void reset() => _counter.value = 0;
 }

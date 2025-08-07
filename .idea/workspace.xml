@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/audit_logging.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/audit_logging.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/error_monitoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/error_monitoring.py" afterDir="false" />
-    </list>
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -308,7 +304,15 @@
       <option name="project" value="LOCAL" />
       <updated>1754590627883</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls">
+      <option name="closed" value="true" />
+      <created>1754591496546</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1754591496546</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
