@@ -106,22 +106,53 @@ async def health_check():
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status"""
+    import asyncio
+    from app.core.async_session import check_database_health
+    
     # Check environment configuration
     config_status = {
         "jwt_secret_configured": bool(settings.JWT_SECRET or settings.SECRET_KEY),
         "database_configured": bool(settings.DATABASE_URL),
         "environment": settings.ENVIRONMENT,
-        "upstash_configured": bool(os.getenv("UPSTASH_AUTH_TOKEN"))
+        "upstash_configured": bool(os.getenv("UPSTASH_AUTH_TOKEN")),
+        "openai_configured": bool(settings.OPENAI_API_KEY)
     }
     
-    return {
-        "status": "healthy",
+    # Check database health
+    database_status = "unknown"
+    database_error = None
+    
+    try:
+        db_healthy = await asyncio.wait_for(check_database_health(), timeout=5.0)
+        database_status = "connected" if db_healthy else "disconnected"
+    except asyncio.TimeoutError:
+        database_status = "timeout"
+        database_error = "Database health check timed out"
+    except Exception as e:
+        database_status = "error"
+        database_error = str(e)
+    
+    # Determine overall status
+    overall_status = "healthy"
+    if database_status != "connected":
+        overall_status = "degraded"
+    if not config_status["jwt_secret_configured"] or not config_status["database_configured"]:
+        overall_status = "unhealthy"
+    
+    response = {
+        "status": overall_status,
         "service": "Mita Finance API", 
         "version": "1.0.0",
-        "database": "connected",
+        "database": database_status,
         "config": config_status,
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "port": os.getenv("PORT", "8000")
     }
+    
+    if database_error:
+        response["database_error"] = database_error
+    
+    return response
 
 # ---- Middlewares ----
 
@@ -278,8 +309,39 @@ app.add_exception_handler(Exception, generic_exception_handler)
 @app.on_event("startup")
 async def on_startup():
     """Initialize application on startup"""
-    await init_rate_limiter(app)
-    await init_database()
+    try:
+        logging.info("🚀 Starting MITA Finance API initialization...")
+        
+        # Initialize rate limiter
+        logging.info("📊 Initializing rate limiter...")
+        await init_rate_limiter(app)
+        logging.info("✅ Rate limiter initialized successfully")
+        
+        # Initialize database with retry logic
+        logging.info("🔄 Initializing database connection...")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                await init_database()
+                logging.info("✅ Database initialized successfully")
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logging.error(f"❌ Database initialization failed after {max_retries} attempts: {e}")
+                    raise
+                else:
+                    logging.warning(f"⚠️ Database initialization attempt {attempt + 1} failed: {e}")
+                    import asyncio
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+        
+        logging.info("🎉 MITA Finance API startup completed successfully!")
+        
+    except Exception as e:
+        logging.error(f"💥 Startup failed: {e}")
+        import sentry_sdk
+        sentry_sdk.capture_exception(e)
+        # Don't exit - let the application start and show health check errors
+        logging.error("⚠️ Application starting with limited functionality")
 
 @app.on_event("shutdown")
 async def on_shutdown():

@@ -54,20 +54,20 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Copy application code
 COPY --chown=mita:mita . .
 
-# Copy and set up wait script
+# Copy and set up scripts
 COPY --chown=mita:mita ./wait-for-it.sh /app/wait-for-it.sh
-RUN chmod +x /app/wait-for-it.sh
+COPY --chown=mita:mita ./start.sh /app/start.sh
+RUN chmod +x /app/wait-for-it.sh /app/start.sh
 
 # Switch to non-root user
 USER mita
 
-# Health check endpoint
+# Health check endpoint - Use PORT environment variable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Production startup command with proper signal handling
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--workers", "1", "--access-log", "--loop", "uvloop"]
+# Production startup command with environment validation
+CMD ["/app/start.sh"]
