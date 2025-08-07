@@ -847,3 +847,361 @@ class SmoothPageIndicator extends StatelessWidget {
     );
   }
 }
+
+/// MITA-specific financial milestone celebration animation
+class FinancialMilestoneAnimation extends StatefulWidget {
+  final Widget child;
+  final bool trigger;
+  final Color celebrationColor;
+  final Duration duration;
+
+  const FinancialMilestoneAnimation({
+    Key? key,
+    required this.child,
+    required this.trigger,
+    this.celebrationColor = Colors.green,
+    this.duration = const Duration(milliseconds: 1500),
+  }) : super(key: key);
+
+  @override
+  State<FinancialMilestoneAnimation> createState() => _FinancialMilestoneAnimationState();
+}
+
+class _FinancialMilestoneAnimationState extends State<FinancialMilestoneAnimation>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late AnimationController _particleController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: widget.duration,
+      vsync: this,
+    );
+
+    _particleController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+    ));
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.2, 0.8, curve: Curves.easeInOut),
+    ));
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void didUpdateWidget(FinancialMilestoneAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.trigger && !oldWidget.trigger) {
+      _triggerCelebration();
+    }
+  }
+
+  void _triggerCelebration() {
+    _controller.forward().then((_) {
+      _controller.reverse();
+    });
+    _particleController.forward().then((_) {
+      _particleController.reset();
+    });
+    
+    // Haptic feedback for celebration
+    HapticFeedback.heavyImpact();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _particleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Transform.rotate(
+                angle: _rotationAnimation.value * 2 * pi,
+                child: widget.child,
+              ),
+            );
+          },
+        ),
+        // Celebration particles
+        AnimatedBuilder(
+          animation: _particleController,
+          builder: (context, child) {
+            return Positioned.fill(
+              child: CustomPaint(
+                painter: _CelebrationParticlesPainter(
+                  animation: _particleController,
+                  color: widget.celebrationColor,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CelebrationParticlesPainter extends CustomPainter {
+  final Animation<double> animation;
+  final Color color;
+
+  _CelebrationParticlesPainter({
+    required this.animation,
+    required this.color,
+  }) : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (animation.value == 0) return;
+
+    final paint = Paint()..color = color.withOpacity(1.0 - animation.value);
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.3 * animation.value;
+
+    for (int i = 0; i < 8; i++) {
+      final angle = (i / 8) * 2 * pi;
+      final offset = Offset(
+        center.dx + cos(angle) * radius,
+        center.dy + sin(angle) * radius,
+      );
+      canvas.drawCircle(offset, 4 * (1.0 - animation.value), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// Smart loading indicator that adapts to content size
+class SmartLoadingIndicator extends StatefulWidget {
+  final double size;
+  final Color? color;
+  final String? message;
+  final bool showMessage;
+
+  const SmartLoadingIndicator({
+    Key? key,
+    this.size = 40,
+    this.color,
+    this.message,
+    this.showMessage = true,
+  }) : super(key: key);
+
+  @override
+  State<SmartLoadingIndicator> createState() => _SmartLoadingIndicatorState();
+}
+
+class _SmartLoadingIndicatorState extends State<SmartLoadingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 2 * pi,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.linear,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.2,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final effectiveColor = widget.color ?? theme.colorScheme.primary;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.rotate(
+              angle: _rotationAnimation.value,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Container(
+                  width: widget.size,
+                  height: widget.size,
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        effectiveColor.withOpacity(0.8),
+                        effectiveColor.withOpacity(0.3),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(effectiveColor),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        if (widget.showMessage && widget.message != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            widget.message!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Performance-optimized skeleton loader for MITA cards
+class MITASkeletonCard extends StatelessWidget {
+  final double height;
+  final double width;
+  final bool showTitle;
+  final bool showSubtitle;
+  final bool showProgress;
+
+  const MITASkeletonCard({
+    Key? key,
+    this.height = 120,
+    this.width = double.infinity,
+    this.showTitle = true,
+    this.showSubtitle = true,
+    this.showProgress = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: Container(
+        height: height,
+        width: width,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showTitle)
+              Container(
+                height: 16,
+                width: width * 0.6,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            if (showTitle && showSubtitle) const SizedBox(height: 12),
+            if (showSubtitle)
+              Container(
+                height: 12,
+                width: width * 0.4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            const Spacer(),
+            if (showProgress) ...[
+              Container(
+                height: 8,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  height: 20,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                Container(
+                  height: 20,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
