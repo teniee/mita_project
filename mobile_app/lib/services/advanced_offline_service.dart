@@ -180,13 +180,18 @@ class AdvancedOfflineService {
     );
   }
 
-  /// Start periodic sync timer
+  /// Start periodic sync timer - TEMPORARILY DISABLED due to backend issues
   Future<void> _startPeriodicSync() async {
-    _syncTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      if (_isOnline && !_isSyncing) {
-        _triggerSync();
-      }
-    });
+    // Temporarily disabled periodic sync to prevent recurring server errors
+    // until backend is fixed and deployed
+    print('Periodic sync disabled due to backend server errors');
+    
+    // TODO: Re-enable when backend is stable:
+    // _syncTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    //   if (_isOnline && !_isSyncing) {
+    //     _triggerSync();
+    //   }
+    // });
   }
 
   /// Load pending syncs from database

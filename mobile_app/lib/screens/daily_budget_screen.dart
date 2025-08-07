@@ -45,11 +45,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   }
 
   void _startLiveUpdates() {
-    _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted) {
-        _fetchLiveBudgetStatus();
-      }
-    });
+    // Temporarily disabled live updates to prevent recurring server errors
+    print('Daily budget live updates disabled due to backend server errors');
+    
+    // TODO: Re-enable when backend is stable:
+    // _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    //   if (mounted) {
+    //     _fetchLiveBudgetStatus();
+    //   }
+    // });
   }
 
   Future<void> fetchBudgets() async {

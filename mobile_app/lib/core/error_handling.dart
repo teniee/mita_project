@@ -349,11 +349,15 @@ class ErrorHandler {
     }
   }
 
-  // Start periodic reporting of pending errors
+  // Start periodic reporting of pending errors - TEMPORARILY DISABLED
   void _startPeriodicReporting() {
-    _reportTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
-      await _retryPendingReports();
-    });
+    // Temporarily disabled periodic error reporting to prevent recurring server errors
+    developer.log('Periodic error reporting disabled due to backend server errors', name: 'ERROR_HANDLER');
+    
+    // TODO: Re-enable when backend is stable:
+    // _reportTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
+    //   await _retryPendingReports();
+    // });
   }
 
   // Retry sending pending error reports
