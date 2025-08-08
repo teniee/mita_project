@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import '../core/app_error_handler.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
+import 'calendar_day_details_screen.dart';
 
 extension ColorExtension on Color {
   Color darken(double amount) {
@@ -732,140 +733,23 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   }
 
   void _showDayDetailsModal(int dayNumber, int limit, int spent, String status) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final remaining = limit - spent;
-    final spentPercentage = limit > 0 ? (spent / limit) * 100 : 0.0;
+    final dayDate = DateTime(currentMonth.year, currentMonth.month, dayNumber);
+    final dayData = calendarData.isNotEmpty 
+        ? calendarData.firstWhere((day) => day['day'] == dayNumber, orElse: () => null)
+        : null;
     
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: _getEnhancedDayColor(status, false),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            dayNumber.toString(),
-                            style: textTheme.headlineMedium?.copyWith(
-                              color: _getEnhancedOnDayColor(status, false),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-'${_getMonthName(currentMonth.month)} $dayNumber, ${currentMonth.year}',
-                                style: textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: _getStatusChipColor(status),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  _getStatusText(status),
-                                  style: textTheme.labelMedium?.copyWith(
-                                    color: _getStatusChipTextColor(status),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Budget overview
-                    _buildBudgetOverviewCard(limit, spent, remaining, spentPercentage),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Category breakdown
-                    Text(
-                      'Category Breakdown',
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    Expanded(
-                      child: _buildCategoryBreakdown(limit, calendarData.isNotEmpty ? calendarData.firstWhere((day) => day['day'] == dayNumber, orElse: () => null) : null),
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                            label: const Text('Close'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              Navigator.pushNamed(context, '/add_expense');
-                            },
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Add Expense'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      enableDrag: true,
+      builder: (context) => CalendarDayDetailsScreen(
+        dayNumber: dayNumber,
+        limit: limit,
+        spent: spent,
+        status: status,
+        date: dayDate,
+        dayData: dayData,
       ),
     );
   }
@@ -1195,134 +1079,23 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   }
 
   void _showSimpleDayModal(int dayNumber, int limit, int spent, String status) {
-    final remaining = limit - spent;
-    final spentPercentage = limit > 0 ? (spent / limit) * 100 : 0.0;
+    final dayDate = DateTime(currentMonth.year, currentMonth.month, dayNumber);
+    final dayData = calendarData.isNotEmpty 
+        ? calendarData.firstWhere((day) => day['day'] == dayNumber, orElse: () => null)
+        : null;
     
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.5,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _getSimpleDayColor(status, false),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      dayNumber.toString(),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: _getSimpleTextColor(status, false),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_getMonthName(currentMonth.month)} $dayNumber, ${currentMonth.year}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          _getStatusText(status),
-                          style: TextStyle(
-                            color: _getSimpleTextColor(status, false),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Budget overview
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildSimpleBudgetItem('Budget', '\$${limit}', Colors.blue),
-                        _buildSimpleBudgetItem('Spent', '\$${spent}', Colors.red),
-                        _buildSimpleBudgetItem('Remaining', '\$${remaining}', Colors.green),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    LinearProgressIndicator(
-                      value: (spentPercentage / 100).clamp(0.0, 1.0),
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        spentPercentage > 100 ? Colors.red : 
-                        spentPercentage > 80 ? Colors.orange : Colors.green,
-                      ),
-                      minHeight: 8,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${spentPercentage.toStringAsFixed(1)}% of budget used',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const Spacer(),
-              
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, '/add_expense');
-                      },
-                      child: const Text('Add Expense'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+      enableDrag: true,
+      builder: (context) => CalendarDayDetailsScreen(
+        dayNumber: dayNumber,
+        limit: limit,
+        spent: spent,
+        status: status,
+        date: dayDate,
+        dayData: dayData,
       ),
     );
   }

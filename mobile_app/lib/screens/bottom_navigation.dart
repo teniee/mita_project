@@ -157,9 +157,16 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
           color: colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
+              color: colorScheme.primary.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -1),
+              spreadRadius: 0,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 24,
+              offset: const Offset(0, -4),
+              spreadRadius: 0,
             ),
           ],
         ),

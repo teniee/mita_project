@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -206,24 +207,217 @@ class MITAApp extends StatelessWidget {
       },
     );
 
-    // Wrap the app with a global loading overlay
-    return ValueListenableBuilder<int>(
-      valueListenable: LoadingService.instance.notifier,
-      builder: (context, value, child) {
-        return Directionality(
-          textDirection: TextDirection.ltr,
-          child: Stack(
-            children: [
-              child!,
-              if (value > 0) ...[
-                const ModalBarrier(dismissible: false, color: Colors.black45),
-                const Center(child: CircularProgressIndicator()),
-              ],
-            ],
-          ),
+    // Wrap the app with an enhanced loading overlay that auto-dismisses
+    return ValueListenableBuilder<bool>(
+      valueListenable: LoadingService.instance.forceHiddenNotifier,
+      builder: (context, forceHidden, child) {
+        return ValueListenableBuilder<int>(
+          valueListenable: LoadingService.instance.notifier,
+          builder: (context, loadingCount, child) {
+            final shouldShowLoading = loadingCount > 0 && !forceHidden;
+            
+            return Directionality(
+              textDirection: TextDirection.ltr,
+              child: Stack(
+                children: [
+                  child!,
+                  if (shouldShowLoading) ...[
+                    // Enhanced modal barrier with tap to dismiss after delay
+                    _EnhancedModalBarrier(
+                      onTap: () {
+                        // Allow emergency dismiss after 10 seconds
+                        final status = LoadingService.instance.getStatus();
+                        if (status.globalLoadingDuration != null &&
+                            status.globalLoadingDuration!.inSeconds >= 10) {
+                          LoadingService.instance.forceHide(reason: 'user_emergency_dismiss');
+                        }
+                      },
+                    ),
+                    // Enhanced loading indicator with timeout info
+                    _EnhancedLoadingIndicator(),
+                  ],
+                ],
+              ),
+            );
+          },
+          child: child,
         );
       },
       child: app,
     );
+  }
+}
+
+/// Enhanced modal barrier with tap-to-dismiss functionality
+class _EnhancedModalBarrier extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _EnhancedModalBarrier({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.5),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+/// Enhanced loading indicator with status and timeout information
+class _EnhancedLoadingIndicator extends StatefulWidget {
+  @override
+  State<_EnhancedLoadingIndicator> createState() => _EnhancedLoadingIndicatorState();
+}
+
+class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  Timer? _statusTimer;
+  LoadingStatus _status = LoadingService.instance.getStatus();
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+    
+    _controller.forward();
+    
+    // Update status periodically
+    _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _status = LoadingService.instance.getStatus();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _statusTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Loading spinner
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  color: colorScheme.primary,
+                  strokeWidth: 3,
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Loading message
+              Text(
+                _getLoadingMessage(),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              if (_status.globalLoadingDuration != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _getDurationText(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              
+              // Emergency dismiss button after 10 seconds
+              if (_status.globalLoadingDuration != null &&
+                  _status.globalLoadingDuration!.inSeconds >= 10) ...[
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    LoadingService.instance.forceHide(reason: 'user_emergency_dismiss');
+                  },
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: colorScheme.error,
+                  ),
+                  label: Text(
+                    'Dismiss',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getLoadingMessage() {
+    if (_status.operations.isNotEmpty) {
+      final operation = _status.operations.first;
+      return operation.description;
+    }
+    
+    return 'Loading...';
+  }
+
+  String _getDurationText() {
+    final duration = _status.globalLoadingDuration;
+    if (duration == null) return '';
+    
+    final seconds = duration.inSeconds;
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = duration.inMinutes;
+      final remainingSeconds = seconds % 60;
+      return '${minutes}m ${remainingSeconds}s';
+    }
   }
 }

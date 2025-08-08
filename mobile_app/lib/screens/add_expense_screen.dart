@@ -36,16 +36,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   List<Map<String, dynamic>> _aiSuggestions = [];
   bool _loadingSuggestions = false;
 
-  final List<String> _actions = [
-    'Food',
-    'Transport',
-    'Entertainment',
-    'Health',
-    'Shopping',
-    'Utilities',
-    'Education',
-    'Other',
+  final List<Map<String, dynamic>> _categories = [
+    {'name': 'Food & Dining', 'icon': Icons.restaurant, 'color': Colors.orange, 'subcategories': ['Restaurants', 'Groceries', 'Fast Food', 'Coffee', 'Delivery']},
+    {'name': 'Transportation', 'icon': Icons.directions_car, 'color': Colors.blue, 'subcategories': ['Gas', 'Public Transit', 'Taxi/Uber', 'Parking', 'Car Maintenance']},
+    {'name': 'Entertainment', 'icon': Icons.movie, 'color': Colors.purple, 'subcategories': ['Movies', 'Concerts', 'Streaming', 'Gaming', 'Books']},
+    {'name': 'Health & Fitness', 'icon': Icons.fitness_center, 'color': Colors.green, 'subcategories': ['Doctor', 'Gym', 'Medicine', 'Supplements', 'Therapy']},
+    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Colors.pink, 'subcategories': ['Clothing', 'Electronics', 'Home', 'Beauty', 'Gifts']},
+    {'name': 'Bills & Utilities', 'icon': Icons.receipt_long, 'color': Colors.red, 'subcategories': ['Electricity', 'Water', 'Internet', 'Phone', 'Insurance']},
+    {'name': 'Education', 'icon': Icons.school, 'color': Colors.indigo, 'subcategories': ['Courses', 'Books', 'Supplies', 'Tuition', 'Certifications']},
+    {'name': 'Travel', 'icon': Icons.flight, 'color': Colors.teal, 'subcategories': ['Flights', 'Hotels', 'Food', 'Activities', 'Transport']},
+    {'name': 'Personal Care', 'icon': Icons.spa, 'color': Colors.cyan, 'subcategories': ['Haircut', 'Skincare', 'Massage', 'Nails', 'Dental']},
+    {'name': 'Other', 'icon': Icons.more_horiz, 'color': Colors.grey, 'subcategories': ['Miscellaneous', 'Fees', 'Donations', 'Pets', 'Hobbies']},
   ];
+  
+  String? _selectedSubcategory;
 
   @override
   void initState() {
@@ -69,6 +73,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     _successAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),
     );
+  }
+
+  List<String> _getSelectedCategorySubcategories() {
+    if (_action == null) return [];
+    
+    final selectedCategory = _categories.firstWhere(
+      (cat) => cat['name'] == _action,
+      orElse: () => {'subcategories': <String>[]},
+    );
+    
+    return List<String>.from(selectedCategory['subcategories'] ?? []);
   }
 
   @override
@@ -172,11 +187,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     // Start submit animation
     _submitAnimationController.forward();
 
+    final selectedCategory = _categories.firstWhere(
+      (cat) => cat['name'] == _action,
+      orElse: () => _categories.last,
+    );
+
     final data = {
       'amount': _amount,
-      'action': _action,
+      'category': _action,
+      'subcategory': _selectedSubcategory ?? 'General',
       'description': _description,
       'date': _selectedDate.toIso8601String(),
+      'color': selectedCategory['color']?.value?.toString(),
+      'icon': selectedCategory['icon']?.codePoint?.toString(),
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'offline_created': true, // Mark as created offline-first
     };
 
     // Store previous calendar state for potential rollback
@@ -536,15 +561,40 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category),
                 ),
-                items: _actions.map((cat) {
+                items: _categories.map((cat) {
                   return DropdownMenuItem(
-                    value: cat,
-                    child: Text(cat, style: const TextStyle(fontFamily: 'Manrope')),
+                    value: cat['name'] as String,
+                    child: Row(
+                      children: [
+                        Icon(cat['icon'] as IconData, color: cat['color'] as Color, size: 20),
+                        const SizedBox(width: 8),
+                        Text(cat['name'] as String, style: const TextStyle(fontFamily: 'Manrope')),
+                      ],
+                    ),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _action = value),
                 validator: (value) => value == null ? 'Select category' : null,
               ),
+              
+              // Subcategory dropdown if a category is selected
+              if (_action != null) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedSubcategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Subcategory',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: _getSelectedCategorySubcategories().map((subcat) {
+                    return DropdownMenuItem(
+                      value: subcat,
+                      child: Text(subcat, style: const TextStyle(fontFamily: 'Manrope')),
+                    );
+                  }).toList(),
+                  onChanged: (value) => setState(() => _selectedSubcategory = value),
+                ),
+              ],
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/api_service.dart';
 import '../services/loading_service.dart';
+import '../services/offline_first_provider.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
@@ -19,6 +20,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
+  final OfflineFirstProvider _offlineProvider = OfflineFirstProvider();
   final IncomeService _incomeService = IncomeService();
   
   Map<String, dynamic>? dashboardData;
@@ -36,7 +38,7 @@ class _MainScreenState extends State<MainScreen> {
   Map<String, dynamic>? weeklyInsights;
   List<Map<String, dynamic>> spendingAnomalies = [];
   
-  bool isLoading = true;
+  bool isLoading = false; // Start as false - we'll show cached data immediately
   String? error;
   
   // Income tier info
@@ -46,90 +48,187 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    fetchDashboardData();
+    _initializeOfflineFirst();
   }
 
-  Future<void> fetchDashboardData() async {
-    // Reset any lingering loading states
-    LoadingService.instance.reset();
-    
-    setState(() {
-      isLoading = true;
-      error = null;
-    });
-
+  /// Initialize offline-first loading - instant UI with cached data
+  Future<void> _initializeOfflineFirst() async {
     try {
-      // Use fallback data immediately to prevent loading issues
-      _monthlyIncome = 3000.0;
-      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
-
-      // Use only fallback data for now to ensure fast loading
-      final results = [
-        _getDefaultDashboard(),
-        _getDefaultAdvice(),
-        <dynamic>[],
-        <String, dynamic>{},
-        _getDefaultIncomeClassification(),
-        _getDefaultPeerComparison(),
-        _getDefaultCohortInsights(),
-        <String, dynamic>{},
-        <String, dynamic>{},
-        <String, dynamic>{},
-        <Map<String, dynamic>>[],
-      ];
-
-      final dashboardResponse = results[0] as Map<String, dynamic>;
-      final adviceResponse = results[1] as Map<String, dynamic>;
-      final transactionsResponse = results[2] as List<dynamic>;
-      final analyticsResponse = results[3] as Map<String, dynamic>;
-      final incomeClassificationResponse = results[4] as Map<String, dynamic>;
-      final peerComparisonResponse = results[5] as Map<String, dynamic>;
-      final cohortInsightsResponse = results[6] as Map<String, dynamic>;
-      final aiSnapshotResponse = results[7] as Map<String, dynamic>;
-      final financialHealthResponse = results[8] as Map<String, dynamic>;
-      final weeklyInsightsResponse = results[9] as Map<String, dynamic>;
-      final anomaliesResponse = results[10] as List<Map<String, dynamic>>;
-
-      // Process and combine the data
-      final processedData = _processDashboardData(
-        dashboard: dashboardResponse,
-        transactions: transactionsResponse,
-        analytics: analyticsResponse,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        userProfile = {'data': {'income': _monthlyIncome}};
-        dashboardData = processedData;
-        latestAdvice = adviceResponse;
-        incomeClassification = incomeClassificationResponse;
-        peerComparison = peerComparisonResponse;
-        cohortInsights = cohortInsightsResponse;
-        aiSnapshot = aiSnapshotResponse.isNotEmpty ? aiSnapshotResponse : null;
-        financialHealthScore = financialHealthResponse.isNotEmpty ? financialHealthResponse : null;
-        weeklyInsights = weeklyInsightsResponse.isNotEmpty ? weeklyInsightsResponse : null;
-        spendingAnomalies = anomaliesResponse;
-        isLoading = false;
-      });
-    } catch (e) {
-      logError('Error in fetchDashboardData: $e', tag: 'MAIN_SCREEN');
-      if (!mounted) return;
-      setState(() {
-        error = e.toString();
-        isLoading = false;
-      });
+      // Initialize offline provider (this is very fast)
+      await _offlineProvider.initialize();
       
-      // Show user-friendly error message
+      // Load data immediately from cache/fallback
+      _loadCachedDataToUI();
+      
+      // Set up listener for background sync status
+      _offlineProvider.isBackgroundSyncing.addListener(_onBackgroundSyncChanged);
+      
+      logDebug('Offline-first initialization completed', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logError('Error in offline-first initialization: $e', tag: 'MAIN_SCREEN');
+      // Still show fallback data
+      _loadFallbackData();
+    }
+  }
+
+  /// Load cached data to UI immediately (no loading state)
+  void _loadCachedDataToUI() {
+    try {
+      // Get cached data from offline provider
+      final cachedDashboard = _offlineProvider.getDashboardData();
+      final cachedProfile = _offlineProvider.getUserProfile();
+      
+      // Extract income and set up tier
+      _monthlyIncome = (cachedProfile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+      
+      // Process the dashboard data
+      dashboardData = _processCachedDashboardData(cachedDashboard);
+      userProfile = cachedProfile;
+      latestAdvice = _getDefaultAdvice();
+      
+      // Set up income-based data
+      incomeClassification = _getDefaultIncomeClassification();
+      peerComparison = _getDefaultPeerComparison();
+      cohortInsights = _getDefaultCohortInsights();
+      
+      // Initialize other data as empty for now
+      aiSnapshot = null;
+      financialHealthScore = null;
+      weeklyInsights = null;
+      spendingAnomalies = [];
+      
+      // Update UI immediately
       if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ErrorMessageUtils.showErrorSnackBar(
-            context,
-            e,
-            onRetry: fetchDashboardData,
-          );
+        setState(() {
+          isLoading = false;
+          error = null;
         });
       }
+      
+      logDebug('Cached data loaded to UI instantly', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logWarning('Error loading cached data, using fallback', tag: 'MAIN_SCREEN');
+      _loadFallbackData();
     }
+  }
+
+  /// Load fallback data when cached data is not available
+  void _loadFallbackData() {
+    _monthlyIncome = 3000.0;
+    _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+
+    dashboardData = _getDefaultDashboard();
+    userProfile = {'data': {'income': _monthlyIncome}};
+    latestAdvice = _getDefaultAdvice();
+    incomeClassification = _getDefaultIncomeClassification();
+    peerComparison = _getDefaultPeerComparison();
+    cohortInsights = _getDefaultCohortInsights();
+    
+    aiSnapshot = null;
+    financialHealthScore = null;
+    weeklyInsights = null;
+    spendingAnomalies = [];
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        error = null;
+      });
+    }
+    
+    logDebug('Fallback data loaded to UI', tag: 'MAIN_SCREEN');
+  }
+
+  /// Process cached dashboard data for UI display
+  Map<String, dynamic> _processCachedDashboardData(Map<String, dynamic> cachedData) {
+    if (cachedData.isEmpty) {
+      return _getDefaultDashboard();
+    }
+
+    // Use cached data directly if it has the right structure
+    if (cachedData.containsKey('daily_targets') && cachedData.containsKey('transactions')) {
+      return cachedData;
+    }
+
+    // Transform cached data to expected format
+    return {
+      'balance': cachedData['balance'] ?? (_monthlyIncome * 0.85),
+      'spent': cachedData['today_spent'] ?? ((_monthlyIncome / 30) * 0.45),
+      'daily_targets': cachedData['daily_targets'] ?? _getDefaultDailyTargets(),
+      'week': cachedData['week'] ?? _generateWeekData(),
+      'transactions': cachedData['transactions'] ?? _getDefaultTransactions(),
+    };
+  }
+
+  /// Handle background sync status changes
+  void _onBackgroundSyncChanged() {
+    // Optionally show a subtle indicator that data is being synced
+    // For now, we'll just log it
+    if (_offlineProvider.isBackgroundSyncing.value) {
+      logDebug('Background sync started', tag: 'MAIN_SCREEN');
+    } else {
+      logDebug('Background sync completed', tag: 'MAIN_SCREEN');
+      // Refresh UI with potentially updated data
+      _refreshFromCache();
+    }
+  }
+
+  /// Refresh UI with updated cached data after background sync
+  void _refreshFromCache() {
+    try {
+      final updatedDashboard = _offlineProvider.getDashboardData();
+      final updatedProfile = _offlineProvider.getUserProfile();
+      
+      if (updatedDashboard.isNotEmpty && mounted) {
+        setState(() {
+          dashboardData = _processCachedDashboardData(updatedDashboard);
+          userProfile = updatedProfile;
+          
+          // Update income if it changed
+          final newIncome = (updatedProfile['data']?['income'] as num?)?.toDouble() ?? _monthlyIncome;
+          if (newIncome != _monthlyIncome) {
+            _monthlyIncome = newIncome;
+            _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+            incomeClassification = _getDefaultIncomeClassification();
+            peerComparison = _getDefaultPeerComparison();
+            cohortInsights = _getDefaultCohortInsights();
+          }
+        });
+      }
+    } catch (e) {
+      logWarning('Error refreshing from cache: $e', tag: 'MAIN_SCREEN');
+    }
+  }
+
+  /// User-initiated refresh
+  Future<void> refreshData() async {
+    try {
+      // Don't show loading for user refresh - just refresh in background
+      await _offlineProvider.refreshData();
+      
+      // Update UI with refreshed data
+      _refreshFromCache();
+      
+      // Show brief success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data refreshed'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      logWarning('Manual refresh failed: $e', tag: 'MAIN_SCREEN');
+    }
+  }
+
+  @override
+  void dispose() {
+    _offlineProvider.isBackgroundSyncing.removeListener(_onBackgroundSyncChanged);
+    super.dispose();
   }
 
   Map<String, dynamic> _getDefaultDashboard() => {
@@ -309,7 +408,7 @@ class _MainScreenState extends State<MainScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: fetchDashboardData,
+                onPressed: refreshData,
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
@@ -390,7 +489,7 @@ class _MainScreenState extends State<MainScreen> {
             : error != null
                 ? _buildErrorState(context)
                 : RefreshIndicator(
-                    onRefresh: fetchDashboardData,
+                    onRefresh: refreshData,
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         return SingleChildScrollView(

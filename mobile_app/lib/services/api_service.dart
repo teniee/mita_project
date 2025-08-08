@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config.dart';
 import 'loading_service.dart';
+import 'timeout_manager_service.dart';
 import 'message_service.dart';
 import 'logging_service.dart';
 import 'calendar_fallback_service.dart';
@@ -18,20 +19,22 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   ApiService._internal() {
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        contentType: 'application/json',
-      ),
+    // Create timeout-aware Dio instance with conservative timeouts
+    _dio = TimeoutManagerService().createTimeoutAwareDio(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+      sendTimeout: const Duration(seconds: 10),
     );
+    
+    _dio.options.baseUrl = _baseUrl;
+    _dio.options.contentType = 'application/json';
 
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          LoadingService.instance.start();
-
+          // Note: We don't start loading here as it's handled by TimeoutManagerService
+          // This prevents double-counting and ensures proper timeout handling
+          
           // Structured logging
           logDebug('API Request: ${options.method} ${options.uri}', 
             tag: 'API',
@@ -50,7 +53,7 @@ class ApiService {
           handler.next(options);
         },
         onResponse: (response, handler) {
-          LoadingService.instance.stop();
+          // Note: Loading is stopped by TimeoutManagerService automatically
           
           // Structured logging
           logDebug('API Response: ${response.statusCode} ${response.requestOptions.uri}',
@@ -64,8 +67,8 @@ class ApiService {
           
           handler.next(response);
         },
-        onError: (DioError e, handler) async {
-          LoadingService.instance.stop();
+        onError: (DioException e, handler) async {
+          // Note: Loading is stopped by TimeoutManagerService automatically
 
           // Structured error logging
           logError('API Error: ${e.response?.statusCode} ${e.requestOptions.uri}',
@@ -123,6 +126,7 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   late final Dio _dio;
+  final _timeoutManager = TimeoutManagerService();
 
   final _storage = const FlutterSecureStorage();
 
@@ -270,190 +274,249 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   Future<Map<String, dynamic>> getDashboard({double? userIncome}) async {
-    final token = await getToken();
-    
-    // Get user profile to retrieve actual income if not provided
-    double actualIncome = userIncome ?? 0.0;
-    if (actualIncome == 0.0) {
-      try {
-        final profile = await getUserProfile();
-        actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
-      } catch (e) {
-        // Fallback: use a reasonable default but warn about missing income
-        actualIncome = 3000.0;
-      }
-    }
-    
-    // Prepare shell configuration with user's actual income
-    final shellConfig = {
-      'savings_target': actualIncome * 0.2, // 20% savings target
-      'income': actualIncome,
-      'fixed': {
-        'rent': actualIncome * 0.3,     // 30% for housing
-        'utilities': actualIncome * 0.05, // 5% for utilities
-        'insurance': actualIncome * 0.04, // 4% for insurance
+    return await _timeoutManager.executeWithFallback<Map<String, dynamic>>(
+      operation: () async {
+        final token = await getToken();
+        
+        // Get user profile to retrieve actual income if not provided
+        double actualIncome = userIncome ?? 0.0;
+        if (actualIncome == 0.0) {
+          try {
+            final profile = await _timeoutManager.executeQuick(
+              operation: () => getUserProfile(),
+              operationName: 'Get User Profile for Dashboard',
+            );
+            actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+          } catch (e) {
+            logWarning('Failed to get user profile, using default income', tag: 'DASHBOARD');
+            actualIncome = 3000.0;
+          }
+        }
+        
+        // Prepare shell configuration with user's actual income
+        final shellConfig = {
+          'savings_target': actualIncome * 0.2, // 20% savings target
+          'income': actualIncome,
+          'fixed': {
+            'rent': actualIncome * 0.3,     // 30% for housing
+            'utilities': actualIncome * 0.05, // 5% for utilities
+            'insurance': actualIncome * 0.04, // 4% for insurance
+          },
+          'weights': {
+            'food': 0.15,
+            'transportation': 0.15,
+            'entertainment': 0.08,
+            'shopping': 0.10,
+            'healthcare': 0.07,
+          },
+          'year': DateTime.now().year,
+          'month': DateTime.now().month,
+        };
+        
+        Map<String, dynamic> calendarData = {};
+        
+        try {
+          final response = await _dio.post(
+            '/calendar/shell',
+            data: shellConfig,
+            options: Options(headers: {'Authorization': 'Bearer $token'}),
+          );
+          
+          calendarData = response.data['data']['calendar'] ?? {};
+        } catch (e) {
+          logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'DASHBOARD');
+          // Provide fallback calendar data based on the shell configuration
+          final income = actualIncome;
+          final weights = shellConfig['weights'] as Map<String, dynamic>;
+          calendarData = {
+            'flexible': {
+              'food': income * (weights['food'] as double),
+              'transportation': income * (weights['transportation'] as double),
+              'entertainment': income * (weights['entertainment'] as double),
+              'shopping': income * (weights['shopping'] as double),
+              'healthcare': income * (weights['healthcare'] as double),
+            },
+            'fixed': shellConfig['fixed'],
+            'savings': shellConfig['savings_target'],
+          };
+        }
+        
+        // Transform for dashboard display
+        Map<String, dynamic> dashboardData = {
+          'calendar': calendarData,
+          'today_budget': 0.0,
+          'today_spent': 0.0,
+          'monthly_budget': 0.0,
+          'monthly_spent': 0.0,
+        };
+        
+        if (calendarData is Map && calendarData.containsKey('flexible')) {
+          final flexible = calendarData['flexible'] as Map<String, dynamic>;
+          final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + (amount as num).toDouble());
+          
+          dashboardData['today_budget'] = totalDaily;
+          dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
+          dashboardData['today_spent'] = totalDaily * 0.7; // Simulated spending
+          dashboardData['monthly_spent'] = totalDaily * DateTime.now().day * 0.7;
+        }
+        
+        return dashboardData;
       },
-      'weights': {
-        'food': 0.15,
-        'transportation': 0.15,
-        'entertainment': 0.08,
-        'shopping': 0.10,
-        'healthcare': 0.07,
-      },
-      'year': DateTime.now().year,
-      'month': DateTime.now().month,
-    };
-    
-    Map<String, dynamic> calendarData = {};
-    
-    try {
-      final response = await _dio.post(
-        '/calendar/shell',
-        data: shellConfig,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      
-      calendarData = response.data['data']['calendar'] ?? {};
-    } catch (e) {
-      logError('Failed to fetch calendar data, using fallback', tag: 'DASHBOARD', error: e);
-      // Provide fallback calendar data based on the shell configuration
-      final income = actualIncome;
-      final weights = shellConfig['weights'] as Map<String, dynamic>;
-      calendarData = {
+      fallbackValue: _getDefaultDashboardFallback(userIncome ?? 3000.0),
+      timeout: const Duration(seconds: 8),
+      operationName: 'Dashboard Data',
+    );
+  }
+
+  /// Generate default dashboard fallback data
+  Map<String, dynamic> _getDefaultDashboardFallback(double income) {
+    return {
+      'calendar': {
         'flexible': {
-          'food': income * (weights['food'] as double),
-          'transportation': income * (weights['transportation'] as double),
-          'entertainment': income * (weights['entertainment'] as double),
-          'shopping': income * (weights['shopping'] as double),
-          'healthcare': income * (weights['healthcare'] as double),
+          'food': income * 0.15,
+          'transportation': income * 0.15,
+          'entertainment': income * 0.08,
+          'shopping': income * 0.10,
+          'healthcare': income * 0.07,
         },
-        'fixed': shellConfig['fixed'],
-        'savings': shellConfig['savings_target'],
-      };
-    }
-    
-    // Transform for dashboard display
-    Map<String, dynamic> dashboardData = {
-      'calendar': calendarData,
-      'today_budget': 0.0,
-      'today_spent': 0.0,
-      'monthly_budget': 0.0,
-      'monthly_spent': 0.0,
+        'fixed': {
+          'rent': income * 0.3,
+          'utilities': income * 0.05,
+          'insurance': income * 0.04,
+        },
+        'savings': income * 0.2,
+      },
+      'today_budget': (income * 0.55) / 30, // 55% of income divided by 30 days
+      'today_spent': ((income * 0.55) / 30) * 0.6, // 60% spent
+      'monthly_budget': income * 0.55,
+      'monthly_spent': (income * 0.55) * 0.6,
     };
-    
-    if (calendarData is Map && calendarData.containsKey('flexible')) {
-      final flexible = calendarData['flexible'] as Map<String, dynamic>;
-      final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + (amount as num).toDouble());
-      
-      dashboardData['today_budget'] = totalDaily;
-      dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
-      dashboardData['today_spent'] = totalDaily * 0.7; // Simulated spending
-      dashboardData['monthly_spent'] = totalDaily * DateTime.now().day * 0.7;
-    }
-    
-    return dashboardData;
   }
 
   Future<List<dynamic>> getCalendar({double? userIncome}) async {
-    final token = await getToken();
-    
-    // Get user profile to retrieve actual income and location if not provided
-    double actualIncome = userIncome ?? 0.0;
-    String? userLocation;
-    
-    if (actualIncome == 0.0) {
-      try {
-        final profile = await getUserProfile();
-        actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
-        userLocation = profile['data']?['location'] as String?;
-      } catch (e) {
-        logWarning('Failed to get user profile for calendar, using defaults', tag: 'CALENDAR');
-        actualIncome = 3000.0; // Reasonable default
-      }
-    }
-    
-    // Try to get cached calendar data first
-    final cacheKey = 'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
-    try {
-      final cachedData = await _getCachedCalendarData(cacheKey);
-      if (cachedData != null) {
-        logDebug('Using cached calendar data', tag: 'CALENDAR');
-        return cachedData;
-      }
-    } catch (e) {
-      logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
-    }
-    
-    // Prepare shell configuration with user's actual income and location-appropriate allocations
-    final shellConfig = {
-      'savings_target': actualIncome * 0.2, // 20% savings target
-      'income': actualIncome,
-      'location': userLocation,
-      'fixed': {
-        'rent': actualIncome * 0.3,     // 30% for housing
-        'utilities': actualIncome * 0.05, // 5% for utilities
-        'insurance': actualIncome * 0.04, // 4% for insurance
-      },
-      'weights': {
-        'food': 0.15,
-        'transportation': 0.15,
-        'entertainment': 0.08,
-        'shopping': 0.10,
-        'healthcare': 0.07,
-      },
-      'year': DateTime.now().year,
-      'month': DateTime.now().month,
-    };
-    
-    // Try to get data from backend
-    try {
-      final response = await _dio.post(
-        '/calendar/shell',
-        data: shellConfig,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
-      
-      final calendarData = response.data['data']['calendar'] ?? {};
-      final calendarDays = _transformCalendarData(calendarData, actualIncome);
-      
-      // Cache the successful response
-      await _cacheCalendarData(cacheKey, calendarDays);
-      
-      logDebug('Successfully fetched calendar data from backend', tag: 'CALENDAR');
-      return calendarDays;
-    } catch (e) {
-      logError('Backend calendar fetch failed, using intelligent fallback', tag: 'CALENDAR', error: e);
-      
-      // Use intelligent fallback service
-      try {
-        final fallbackService = CalendarFallbackService();
-        final fallbackData = await fallbackService.generateFallbackCalendarData(
-          monthlyIncome: actualIncome,
-          location: userLocation,
-          year: DateTime.now().year,
-          month: DateTime.now().month,
-        );
+    return await _timeoutManager.executeWithFallback<List<dynamic>>(
+      operation: () async {
+        final token = await getToken();
         
-        // Cache the fallback data with shorter expiry
-        await _cacheCalendarData(cacheKey, fallbackData, const Duration(minutes: 30));
+        // Get user profile to retrieve actual income and location if not provided
+        double actualIncome = userIncome ?? 0.0;
+        String? userLocation;
         
-        logInfo('Using intelligent fallback calendar data', tag: 'CALENDAR', extra: {
+        if (actualIncome == 0.0) {
+          try {
+            final profile = await _timeoutManager.executeQuick(
+              operation: () => getUserProfile(),
+              operationName: 'Get User Profile for Calendar',
+            );
+            actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+            userLocation = profile['data']?['location'] as String?;
+          } catch (e) {
+            logWarning('Failed to get user profile for calendar, using defaults', tag: 'CALENDAR');
+            actualIncome = 3000.0; // Reasonable default
+          }
+        }
+        
+        // Try to get cached calendar data first
+        final cacheKey = 'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
+        try {
+          final cachedData = await _getCachedCalendarData(cacheKey);
+          if (cachedData != null) {
+            logDebug('Using cached calendar data', tag: 'CALENDAR');
+            return cachedData;
+          }
+        } catch (e) {
+          logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
+        }
+        
+        // Prepare shell configuration with user's actual income and location-appropriate allocations
+        final shellConfig = {
+          'savings_target': actualIncome * 0.2, // 20% savings target
           'income': actualIncome,
           'location': userLocation,
-          'days_generated': fallbackData.length,
-        });
+          'fixed': {
+            'rent': actualIncome * 0.3,     // 30% for housing
+            'utilities': actualIncome * 0.05, // 5% for utilities
+            'insurance': actualIncome * 0.04, // 4% for insurance
+          },
+          'weights': {
+            'food': 0.15,
+            'transportation': 0.15,
+            'entertainment': 0.08,
+            'shopping': 0.10,
+            'healthcare': 0.07,
+          },
+          'year': DateTime.now().year,
+          'month': DateTime.now().month,
+        };
         
-        return fallbackData;
-      } catch (fallbackError) {
-        logError('Fallback calendar generation failed', tag: 'CALENDAR', error: fallbackError);
-        
-        // Last resort: basic fallback
-        return _generateBasicFallbackCalendar(actualIncome);
-      }
+        // Try to get data from backend
+        try {
+          final response = await _dio.post(
+            '/calendar/shell',
+            data: shellConfig,
+            options: Options(
+              headers: {'Authorization': 'Bearer $token'},
+              sendTimeout: const Duration(seconds: 8),
+              receiveTimeout: const Duration(seconds: 8),
+            ),
+          );
+          
+          final calendarData = response.data['data']['calendar'] ?? {};
+          final calendarDays = _transformCalendarData(calendarData, actualIncome);
+          
+          // Cache the successful response
+          await _cacheCalendarData(cacheKey, calendarDays);
+          
+          logDebug('Successfully fetched calendar data from backend', tag: 'CALENDAR');
+          return calendarDays;
+        } catch (e) {
+          logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'CALENDAR');
+          
+          // Use intelligent fallback service
+          try {
+            final fallbackService = CalendarFallbackService();
+            final fallbackData = await fallbackService.generateFallbackCalendarData(
+              monthlyIncome: actualIncome,
+              location: userLocation,
+              year: DateTime.now().year,
+              month: DateTime.now().month,
+            );
+            
+            // Cache the fallback data with shorter expiry
+            await _cacheCalendarData(cacheKey, fallbackData, const Duration(minutes: 30));
+            
+            logInfo('Using intelligent fallback calendar data', tag: 'CALENDAR', extra: {
+              'income': actualIncome,
+              'location': userLocation,
+              'days_generated': fallbackData.length,
+            });
+            
+            return fallbackData;
+          } catch (fallbackError) {
+            logError('Fallback calendar generation failed', tag: 'CALENDAR', error: fallbackError);
+            
+            // Last resort: basic fallback
+            return _generateBasicFallbackCalendar(actualIncome);
+          }
+        }
+      },
+      fallbackValue: _generateBasicFallbackCalendar(userIncome ?? 3000.0),
+      timeout: const Duration(seconds: 10),
+      operationName: 'Calendar Data',
+    );
+  }
+
+  /// Generate calendar fallback data
+  Future<List<dynamic>> _getCalendarFallback(double income) async {
+    try {
+      final fallbackService = CalendarFallbackService();
+      return await fallbackService.generateFallbackCalendarData(
+        monthlyIncome: income,
+        year: DateTime.now().year,
+        month: DateTime.now().month,
+      );
+    } catch (e) {
+      return _generateBasicFallbackCalendar(income);
     }
   }
 
@@ -2503,6 +2566,208 @@ class ApiService {
       data: {'income': monthlyIncome},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CALENDAR DAY DETAILS ENDPOINTS
+  // ---------------------------------------------------------------------------
+
+  /// Get detailed transactions for a specific date
+  Future<List<Map<String, dynamic>>> getTransactionsByDate(String date) async {
+    try {
+      logInfo('Fetching transactions for date: $date', tag: 'API_TRANSACTIONS');
+      
+      final response = await _dio.get('/transactions/by-date', queryParameters: {
+        'date': date,
+      });
+
+      if (response.statusCode == 200 && response.data is List) {
+        final transactions = List<Map<String, dynamic>>.from(response.data);
+        logInfo('Successfully fetched ${transactions.length} transactions for $date', tag: 'API_TRANSACTIONS');
+        return transactions;
+      } else {
+        logWarning('Unexpected response format for transactions by date', tag: 'API_TRANSACTIONS');
+        return _generateMockTransactionsForDate(date);
+      }
+    } catch (e) {
+      logError('Failed to fetch transactions for date $date: $e', tag: 'API_TRANSACTIONS', error: e);
+      return _generateMockTransactionsForDate(date);
+    }
+  }
+
+  /// Get seasonal spending patterns for predictions
+  Future<Map<String, dynamic>> getSeasonalSpendingPatterns() async {
+    try {
+      logInfo('Fetching seasonal spending patterns', tag: 'API_SEASONAL');
+      
+      final response = await _dio.get('/analytics/seasonal-patterns');
+
+      if (response.statusCode == 200 && response.data is Map) {
+        final patterns = Map<String, dynamic>.from(response.data);
+        logInfo('Successfully fetched seasonal patterns', tag: 'API_SEASONAL');
+        return patterns;
+      } else {
+        logWarning('Unexpected response format for seasonal patterns', tag: 'API_SEASONAL');
+        return _generateMockSeasonalPatterns();
+      }
+    } catch (e) {
+      logError('Failed to fetch seasonal patterns: $e', tag: 'API_SEASONAL', error: e);
+      return _generateMockSeasonalPatterns();
+    }
+  }
+
+  /// Generate mock transactions for demonstration
+  List<Map<String, dynamic>> _generateMockTransactionsForDate(String date) {
+    final random = Random();
+    final transactionTypes = [
+      {'description': 'Coffee Shop', 'category': 'Food & Dining', 'amount': 4.50 + random.nextDouble() * 10},
+      {'description': 'Lunch', 'category': 'Food & Dining', 'amount': 12.00 + random.nextDouble() * 15},
+      {'description': 'Gas Station', 'category': 'Transportation', 'amount': 35.00 + random.nextDouble() * 25},
+      {'description': 'Grocery Store', 'category': 'Food & Dining', 'amount': 45.00 + random.nextDouble() * 30},
+      {'description': 'Bus Fare', 'category': 'Transportation', 'amount': 2.50 + random.nextDouble() * 5},
+      {'description': 'Movie Ticket', 'category': 'Entertainment', 'amount': 12.00 + random.nextDouble() * 8},
+      {'description': 'Online Shopping', 'category': 'Shopping', 'amount': 25.00 + random.nextDouble() * 50},
+    ];
+
+    final transactions = <Map<String, dynamic>>[];
+    final numTransactions = random.nextInt(4) + 1; // 1-4 transactions
+
+    for (int i = 0; i < numTransactions; i++) {
+      final transaction = transactionTypes[random.nextInt(transactionTypes.length)];
+      transactions.add({
+        'id': 'mock_${date}_$i',
+        'amount': double.parse((transaction['amount']! as double).toStringAsFixed(2)),
+        'description': transaction['description'],
+        'category': transaction['category'],
+        'date': date,
+        'time': '${8 + random.nextInt(12)}:${random.nextInt(60).toString().padLeft(2, '0')}',
+        'merchant': transaction['description'],
+        'payment_method': random.nextBool() ? 'Card' : 'Cash',
+      });
+    }
+
+    return transactions;
+  }
+
+  /// Get behavioral insights for spending patterns
+  Future<Map<String, dynamic>> getBehavioralInsights() async {
+    try {
+      logInfo('Fetching behavioral insights', tag: 'API_BEHAVIORAL');
+      
+      final response = await _dio.get('/analytics/behavioral-insights');
+
+      if (response.statusCode == 200 && response.data is Map) {
+        final insights = Map<String, dynamic>.from(response.data);
+        logInfo('Successfully fetched behavioral insights', tag: 'API_BEHAVIORAL');
+        return insights;
+      } else {
+        logWarning('Unexpected response format for behavioral insights', tag: 'API_BEHAVIORAL');
+        return _generateMockBehavioralInsights();
+      }
+    } catch (e) {
+      logError('Failed to fetch behavioral insights: $e', tag: 'API_BEHAVIORAL', error: e);
+      return _generateMockBehavioralInsights();
+    }
+  }
+
+  /// Generate mock behavioral insights for demonstration
+  Map<String, dynamic> _generateMockBehavioralInsights() {
+    return {
+      'spending_personality': 'Conservative Spender',
+      'risk_tolerance': 'moderate',
+      'patterns': {
+        'weekend_increase': 1.2,
+        'weekday_discipline': 0.8,
+        'impulse_spending': 0.15,
+      },
+      'insights': [
+        {
+          'id': 'weekend_spending',
+          'type': 'pattern',
+          'title': 'Weekend Spending Increase',
+          'message': 'You tend to spend 20% more on weekends',
+          'category': 'Entertainment',
+          'impact': 'medium',
+          'confidence': 0.85,
+          'actionable': true,
+          'recommendations': ['Set weekend budget limits', 'Plan weekend activities in advance'],
+          'related_patterns': ['social_spending', 'leisure_activities'],
+          'timeframe': 'current',
+        },
+        {
+          'id': 'weekday_discipline',
+          'type': 'positive',
+          'title': 'Good Weekday Control',
+          'message': 'You show excellent spending discipline on weekdays',
+          'category': null,
+          'impact': 'high',
+          'confidence': 0.92,
+          'actionable': false,
+          'recommendations': ['Continue current weekday habits'],
+          'related_patterns': ['routine_spending'],
+          'timeframe': 'current',
+        },
+      ],
+      'recommendations': [
+        'Set aside weekend entertainment budget',
+        'Use the 24-hour rule for purchases over \$50',
+        'Track emotional triggers for spending',
+      ],
+      'confidence': 0.78,
+    };
+  }
+
+  /// Generate mock seasonal patterns for demonstration
+  Map<String, dynamic> _generateMockSeasonalPatterns() {
+    return {
+      'monthly_patterns': {
+        '1': 1.1, // January - post-holiday spending increase
+        '2': 0.9, // February - lower spending
+        '3': 1.0, // March - normal
+        '4': 1.05, // April - spring spending
+        '5': 1.0, // May - normal
+        '6': 1.15, // June - summer increase
+        '7': 1.2, // July - vacation spending
+        '8': 1.1, // August - continued summer spending
+        '9': 0.95, // September - back to school, lower discretionary
+        '10': 1.0, // October - normal
+        '11': 1.3, // November - holiday shopping
+        '12': 1.4, // December - peak holiday spending
+      },
+      'category_seasonality': {
+        'Food & Dining': {
+          '1': 0.9, '2': 0.85, '3': 1.0, '4': 1.05, '5': 1.1, '6': 1.2,
+          '7': 1.25, '8': 1.2, '9': 1.0, '10': 1.05, '11': 1.15, '12': 1.3,
+        },
+        'Transportation': {
+          '1': 0.95, '2': 0.9, '3': 1.0, '4': 1.05, '5': 1.1, '6': 1.2,
+          '7': 1.3, '8': 1.25, '9': 1.0, '10': 1.0, '11': 1.05, '12': 1.1,
+        },
+        'Entertainment': {
+          '1': 0.8, '2': 0.75, '3': 0.9, '4': 1.0, '5': 1.1, '6': 1.3,
+          '7': 1.4, '8': 1.3, '9': 0.9, '10': 1.1, '11': 1.2, '12': 1.5,
+        },
+        'Shopping': {
+          '1': 0.7, '2': 0.8, '3': 0.9, '4': 1.0, '5': 1.0, '6': 1.1,
+          '7': 1.1, '8': 1.0, '9': 1.0, '10': 1.1, '11': 1.8, '12': 2.0,
+        },
+      },
+      'holiday_impact': {
+        'New Year': 1.2,
+        'Valentine\'s Day': 1.15,
+        'Spring Break': 1.3,
+        'Easter': 1.1,
+        'Memorial Day': 1.2,
+        'Summer Vacation': 1.4,
+        'Labor Day': 1.1,
+        'Halloween': 1.15,
+        'Thanksgiving': 1.25,
+        'Black Friday': 2.0,
+        'Christmas': 1.8,
+      },
+      'yoy_growth': 0.03, // 3% year-over-year growth
+      'confidence': 0.85,
+    };
   }
 
   // ---------------------------------------------------------------------------
