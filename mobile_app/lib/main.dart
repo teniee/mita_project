@@ -210,10 +210,6 @@ class MITAApp extends StatelessWidget {
           screenName: 'UserProfile',
           child: UserProfileScreen(),
         ),
-        '/profile_settings': (context) => const AppErrorBoundary(
-          screenName: 'ProfileSettings',
-          child: ProfileSettingsScreen(),
-        ),
         '/settings': (context) => const AppErrorBoundary(
           screenName: 'UserSettings',
           child: UserSettingsScreen(),
