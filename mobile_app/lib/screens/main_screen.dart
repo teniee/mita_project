@@ -583,24 +583,47 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
         ),
-        if (_incomeTier != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.1),
-              border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              tierName,
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                fontFamily: 'Sora',
+        
+        // Profile and Settings buttons
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Profile button
+            Container(
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pushNamed(context, '/profile'),
+                icon: Icon(
+                  Icons.person_outline,
+                  color: primaryColor,
+                  size: 24,
+                ),
+                tooltip: 'Profile',
               ),
             ),
-          ),
+            const SizedBox(width: 8),
+            
+            // Settings button
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.pushNamed(context, '/settings'),
+                icon: Icon(
+                  Icons.settings_outlined,
+                  color: Colors.grey[600],
+                  size: 24,
+                ),
+                tooltip: 'Settings',
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

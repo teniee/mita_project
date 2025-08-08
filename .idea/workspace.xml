@@ -6,12 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/loading_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/loading_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

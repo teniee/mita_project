@@ -226,13 +226,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             decoration: isSelected ? BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorScheme.primary.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              color: colorScheme.primaryContainer.withValues(alpha: 0.1),
                             ) : null,
                             child: Icon(
                               (item.icon as Icon).icon,
