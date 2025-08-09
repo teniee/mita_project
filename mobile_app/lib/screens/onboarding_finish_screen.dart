@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
 import '../services/logging_service.dart';
+import '../services/user_data_manager.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({Key? key}) : super(key: key);
@@ -28,7 +29,10 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       final state = OnboardingState.instance;
       final onboardingData = {
         "region": state.region,
+        "countryCode": state.countryCode,
+        "stateCode": state.stateCode,
         "income": state.income,
+        "incomeTier": state.incomeTier?.name,
         "expenses": state.expenses,
         "goals": state.goals,
         "habits": state.habits,
@@ -36,16 +40,26 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
           "habits_comment": state.habitsComment,
       };
 
-      logInfo('Submitting onboarding data: $onboardingData');
+      logInfo('Submitting onboarding data: $onboardingData', tag: 'ONBOARDING_FINISH');
 
+      // Cache onboarding data immediately for main app use
+      await UserDataManager.instance.cacheOnboardingData(onboardingData);
+      logInfo('Onboarding data cached for immediate use', tag: 'ONBOARDING_FINISH');
+
+      // Try to submit to backend
       try {
         await _api.submitOnboarding(onboardingData);
-        logInfo('Onboarding submitted successfully');
+        logInfo('Onboarding submitted to backend successfully', tag: 'ONBOARDING_FINISH');
+        
+        // Force refresh user data from API to get latest state
+        await UserDataManager.instance.refreshUserData();
+        
       } catch (e) {
-        logInfo('Onboarding submission failed (but continuing): $e');
-        // Continue anyway since the backend endpoint might not be ready
+        logWarning('Backend submission failed (but continuing with cached data): $e', tag: 'ONBOARDING_FINISH');
+        // Continue with cached data - user can still use the app
       }
 
+      // Clear temporary onboarding state only after successful caching
       OnboardingState.instance.reset();
 
       if (!mounted) return;
@@ -53,10 +67,11 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         _loading = false;
       });
 
-      // Always go to main screen after onboarding
+      // Navigate to main screen with user data ready
       Navigator.pushReplacementNamed(context, '/main');
+      
     } catch (e) {
-      logError('Critical error in onboarding: $e');
+      logError('Critical error in onboarding: $e', tag: 'ONBOARDING_FINISH');
       setState(() {
         _loading = false;
         _error = "Unable to complete onboarding. Please try again.";

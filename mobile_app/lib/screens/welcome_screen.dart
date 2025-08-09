@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../services/user_data_manager.dart';
 
 /// Welcome screen with splash animation and auto-navigation
 /// Provides a professional first impression with smooth Material 3 animations
@@ -131,36 +132,39 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _checkAuthenticationStatus() async {
-    setState(() => _statusText = 'Initializing MITA...');
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    setState(() => _statusText = 'Loading your dashboard...');
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    setState(() => _statusText = 'Welcome to MITA!');
-    await Future.delayed(const Duration(milliseconds: 800));
-    
-    // For demo purposes, always navigate to main screen
-    if (mounted) _navigateToMain();
-    
-    // Original authentication logic (commented out for demo)
-    /*
     try {
+      setState(() => _statusText = 'Initializing MITA...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Initialize UserDataManager for production-level data flow
+      await UserDataManager.instance.initialize();
+      logInfo('UserDataManager initialized successfully', tag: 'WELCOME_SCREEN');
+      
+      setState(() => _statusText = 'Checking authentication...');
+      await Future.delayed(const Duration(milliseconds: 300));
+      
       final token = await _api.getToken();
       
       if (token == null) {
+        // No token - new user, go to login
+        logInfo('No authentication token found - redirecting to login', tag: 'WELCOME_SCREEN');
         setState(() => _statusText = 'Welcome to MITA');
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToLogin();
         return;
       }
-
-      setState(() => _statusText = 'Validating session...');
       
-      // Validate token and check onboarding status
-      final hasOnboarded = await _api.hasCompletedOnboarding();
+      setState(() => _statusText = 'Verifying session...');
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // Check if user has completed onboarding
+      final hasOnboarded = await UserDataManager.instance.hasCompletedOnboarding();
+      logInfo('Onboarding status checked: $hasOnboarded', tag: 'WELCOME_SCREEN');
       
       if (hasOnboarded) {
+        setState(() => _statusText = 'Loading your dashboard...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        
         setState(() => _statusText = 'Welcome back!');
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToMain();
@@ -171,15 +175,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
       
     } catch (e) {
-      print('Authentication check failed: $e');
+      logError('Authentication check failed: $e', tag: 'WELCOME_SCREEN');
       
       // Clear invalid tokens and redirect to login
       await _api.clearTokens();
-      setState(() => _statusText = 'Session expired');
-      await Future.delayed(const Duration(milliseconds: 800));
+      await UserDataManager.instance.clearUserData();
+      
+      setState(() => _statusText = 'Please log in to continue');
+      await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) _navigateToLogin();
     }
-    */
   }
 
   void _navigateToLogin() {

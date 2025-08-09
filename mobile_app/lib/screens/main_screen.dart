@@ -6,6 +6,8 @@ import '../services/loading_service.dart';
 import '../services/offline_first_provider.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
+import '../services/budget_adapter_service.dart';
+import '../services/user_data_manager.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
 import '../core/app_error_handler.dart';
@@ -22,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
   final OfflineFirstProvider _offlineProvider = OfflineFirstProvider();
   final IncomeService _incomeService = IncomeService();
+  final BudgetAdapterService _budgetService = BudgetAdapterService();
   
   Map<String, dynamic>? dashboardData;
   Map<String, dynamic>? latestAdvice;
@@ -74,12 +77,82 @@ class _MainScreenState extends State<MainScreen> {
   /// Load cached data to UI immediately (no loading state)
   void _loadCachedDataToUI() {
     try {
-      // Get cached data from offline provider
+      // Load data using new production budget engine
+      _loadProductionBudgetData();
+      
+      logDebug('Production budget data loaded to UI instantly', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logWarning('Error loading production budget data, using fallback', tag: 'MAIN_SCREEN');
+      _loadFallbackData();
+    }
+  }
+
+  /// Load data using production budget engine with real user data
+  Future<void> _loadProductionBudgetData() async {
+    try {
+      // Get real user financial context from onboarding/profile data
+      final financialContext = await UserDataManager.instance.getFinancialContext();
+      
+      // Extract actual user income (not hardcoded)
+      _monthlyIncome = financialContext['income'] as double;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+      
+      // Get personalized dashboard data using real user data
+      final productionDashboard = await _budgetService.getDashboardData();
+      final budgetInsights = await _budgetService.getBudgetInsights();
+      
+      // Set up data using production calculations
+      dashboardData = productionDashboard;
+      userProfile = {'data': {'income': _monthlyIncome}};
+      latestAdvice = _getDefaultAdvice();
+      
+      // Set up income-based data
+      incomeClassification = _getDefaultIncomeClassification();
+      peerComparison = _getDefaultPeerComparison();
+      cohortInsights = _getDefaultCohortInsights();
+      
+      // Initialize AI data from production insights
+      aiSnapshot = null;
+      financialHealthScore = budgetInsights['confidence'] != null ? {
+        'score': (budgetInsights['confidence'] * 100).round(),
+        'grade': _getGradeFromConfidence(budgetInsights['confidence']),
+      } : null;
+      weeklyInsights = null;
+      spendingAnomalies = [];
+      
+      // Update UI immediately
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          error = null;
+        });
+      }
+      
+      logDebug('Production budget data loaded successfully', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logError('Error loading production budget data: $e', tag: 'MAIN_SCREEN', error: e);
+      // Fall back to cached data approach
+      _loadCachedDataFromProvider();
+    }
+  }
+
+  /// Fallback to original cached data approach with user data
+  Future<void> _loadCachedDataFromProvider() async {
+    try {
+      // Try to get real user data first
+      final financialContext = await UserDataManager.instance.getFinancialContext().timeout(
+        Duration(seconds: 2),
+        onTimeout: () => <String, dynamic>{},
+      );
+      
+      // Get cached data from offline provider as backup
       final cachedDashboard = _offlineProvider.getDashboardData();
       final cachedProfile = _offlineProvider.getUserProfile();
       
-      // Extract income and set up tier
-      _monthlyIncome = (cachedProfile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      // Extract income - prefer user data, fall back to cached, then default
+      _monthlyIncome = financialContext['income'] as double? ?? 
+                     (cachedProfile['data']?['income'] as num?)?.toDouble() ?? 
+                     3000.0;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
       
       // Process the dashboard data
@@ -204,7 +277,10 @@ class _MainScreenState extends State<MainScreen> {
   /// User-initiated refresh
   Future<void> refreshData() async {
     try {
-      // Don't show loading for user refresh - just refresh in background
+      // Refresh using production budget data first
+      await _refreshProductionBudgetData();
+      
+      // Fallback to offline provider refresh
       await _offlineProvider.refreshData();
       
       // Update UI with refreshed data
@@ -214,7 +290,7 @@ class _MainScreenState extends State<MainScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Data refreshed'),
+            content: Text('Budget data refreshed'),
             duration: Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
           ),
@@ -222,6 +298,33 @@ class _MainScreenState extends State<MainScreen> {
       }
     } catch (e) {
       logWarning('Manual refresh failed: $e', tag: 'MAIN_SCREEN');
+    }
+  }
+
+  /// Refresh production budget data
+  Future<void> _refreshProductionBudgetData() async {
+    try {
+      logDebug('Refreshing production budget data', tag: 'MAIN_SCREEN');
+      
+      // Get fresh data from budget adapter
+      final refreshedDashboard = await _budgetService.getDashboardData();
+      final refreshedInsights = await _budgetService.getBudgetInsights();
+      
+      if (mounted) {
+        setState(() {
+          dashboardData = refreshedDashboard;
+          
+          // Update financial health score from insights
+          financialHealthScore = refreshedInsights['confidence'] != null ? {
+            'score': (refreshedInsights['confidence'] * 100).round(),
+            'grade': _getGradeFromConfidence(refreshedInsights['confidence']),
+          } : financialHealthScore;
+        });
+      }
+      
+      logDebug('Production budget data refreshed successfully', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logWarning('Failed to refresh production budget data: $e', tag: 'MAIN_SCREEN');
     }
   }
 
@@ -1180,9 +1283,11 @@ class _MainScreenState extends State<MainScreen> {
               _buildSnapshotPreview()
             else if (weeklyInsights != null)
               _buildWeeklyInsightsPreview()
+            else if (financialHealthScore != null)
+              _buildBudgetEngineInsightsPreview()
             else
               Text(
-                latestAdvice?['text'] ?? 'Tap to view personalized AI insights about your financial health',
+                latestAdvice?['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
                 style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
@@ -1298,6 +1403,47 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            color: Colors.white.withValues(alpha: 0.9),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBudgetEngineInsightsPreview() {
+    final score = financialHealthScore!['score'] ?? 75;
+    final grade = financialHealthScore!['grade'] ?? 'B';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'Budget Score: $grade',
+                style: const TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your personalized budget is ${score >= 80 ? 'excellent' : score >= 70 ? 'good' : 'needs improvement'} and based on your real income, goals, and spending habits.',
           style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
@@ -1581,5 +1727,19 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       return 'Unknown';
     }
+  }
+
+  /// Convert confidence score to letter grade
+  String _getGradeFromConfidence(double confidence) {
+    if (confidence >= 0.9) return 'A+';
+    if (confidence >= 0.85) return 'A';
+    if (confidence >= 0.8) return 'A-';
+    if (confidence >= 0.75) return 'B+';
+    if (confidence >= 0.7) return 'B';
+    if (confidence >= 0.65) return 'B-';
+    if (confidence >= 0.6) return 'C+';
+    if (confidence >= 0.55) return 'C';
+    if (confidence >= 0.5) return 'C-';
+    return 'D';
   }
 }

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../services/predictive_analytics_service.dart';
 import '../services/expense_state_service.dart';
 import '../services/api_service.dart';
+import '../services/budget_adapter_service.dart';
 import '../services/logging_service.dart';
 
 class CalendarDayDetailsScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class CalendarDayDetailsScreen extends StatefulWidget {
   final String status;
   final DateTime date;
   final Map<String, dynamic>? dayData;
+  final BudgetAdapterService? budgetService;
 
   const CalendarDayDetailsScreen({
     Key? key,
@@ -22,6 +24,7 @@ class CalendarDayDetailsScreen extends StatefulWidget {
     required this.status,
     required this.date,
     this.dayData,
+    this.budgetService,
   }) : super(key: key);
 
   @override

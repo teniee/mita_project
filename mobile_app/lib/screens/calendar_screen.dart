@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/budget_adapter_service.dart';
+import '../services/user_data_manager.dart';
 import '../core/app_error_handler.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
@@ -22,6 +24,7 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  final BudgetAdapterService _budgetService = BudgetAdapterService();
   List<dynamic> calendarData = [];
   bool isLoading = true;
   bool isRedistributing = false;
@@ -82,32 +85,52 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     });
 
     try {
-      final data = await _apiService.getCalendar();
+      // First try to get data from production budget engine
+      logInfo('Loading calendar data from production budget engine', tag: 'CALENDAR_SCREEN');
+      final productionData = await _budgetService.getCalendarData();
+      
       if (!mounted) return;
       setState(() {
-        calendarData = data;
+        calendarData = productionData;
         isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading calendar: $e');
-      if (!mounted) return;
-      // Try to generate user-based data as fallback
-      final userBasedData = await _generateUserBasedCalendarData();
-      setState(() {
-        calendarData = userBasedData;
-        isLoading = false;
-        error = null; // Don't show error, just use user-based data
       });
       
-      // Show user-friendly error message but don't break the UI
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ErrorMessageUtils.showErrorSnackBar(
-            context,
-            e,
-            duration: const Duration(seconds: 2),
-          );
+      logInfo('Calendar data loaded from production budget engine successfully', tag: 'CALENDAR_SCREEN');
+    } catch (e) {
+      logError('Error loading production calendar data: $e', tag: 'CALENDAR_SCREEN');
+      
+      try {
+        // Fallback to API
+        final data = await _apiService.getCalendar();
+        if (!mounted) return;
+        setState(() {
+          calendarData = data;
+          isLoading = false;
         });
+      } catch (apiError) {
+        logError('Error loading API calendar: $apiError', tag: 'CALENDAR_SCREEN');
+        if (!mounted) return;
+        
+        // Final fallback to user-based data generation
+        final userBasedData = await _generateUserBasedCalendarData();
+        setState(() {
+          calendarData = userBasedData;
+          isLoading = false;
+          error = null; // Don't show error, just use user-based data
+        });
+        
+        // Show user-friendly error message but don't break the UI
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Using personalized budget calculations'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          });
+        }
       }
     }
   }
@@ -120,21 +143,24 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     
     List<Map<String, dynamic>> calendarDays = [];
     
-    // Load user profile to get income and budget preferences
-    Map<String, dynamic> userProfile = {};
+    // Load user financial context from UserDataManager (includes onboarding data)
+    Map<String, dynamic> userFinancialContext = {};
     try {
-      userProfile = await _apiService.getUserProfile().timeout(
+      userFinancialContext = await UserDataManager.instance.getFinancialContext().timeout(
         Duration(seconds: 3),
         onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
+      );
+      logInfo('Loaded user financial context for calendar: income=${userFinancialContext['income']}', tag: 'CALENDAR_USER_DATA');
     } catch (e) {
-      logWarning('Failed to load user profile for calendar: $e', tag: 'CALENDAR_USER_DATA');
+      logWarning('Failed to load user financial context for calendar: $e', tag: 'CALENDAR_USER_DATA');
     }
     
-    // Calculate daily budget based on user's income and preferences
-    final monthlyIncome = (userProfile['income'] as num?)?.toDouble() ?? 3500.0;
-    final savingsGoal = (userProfile['savings_goal'] as num?)?.toDouble() ?? 700.0;
-    final budgetMethod = userProfile['budget_method'] as String? ?? '50/30/20 Rule';
+    // Calculate daily budget based on user's actual financial data from onboarding
+    final monthlyIncome = (userFinancialContext['income'] as num?)?.toDouble() ?? 3500.0;
+    final savingsGoal = monthlyIncome * 0.20; // Default to 20% savings rate if not specified
+    final budgetMethod = userFinancialContext['budgetMethod'] as String? ?? '50/30/20 Rule';
+    final userGoals = userFinancialContext['goals'] as List? ?? ['budgeting'];
+    final userHabits = userFinancialContext['habits'] as List? ?? [];
     
     final spendableIncome = monthlyIncome - savingsGoal;
     final dailyBudget = _calculateDailyBudget(spendableIncome, budgetMethod);
@@ -920,6 +946,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         status: status,
         date: dayDate,
         dayData: dayData,
+        budgetService: _budgetService, // Pass budget service for enhanced details
       ),
     );
   }
@@ -1266,6 +1293,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         status: status,
         date: dayDate,
         dayData: dayData,
+        budgetService: _budgetService, // Pass budget service for enhanced details
       ),
     );
   }
