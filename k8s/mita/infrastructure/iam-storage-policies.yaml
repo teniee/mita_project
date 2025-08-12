@@ -1,0 +1,865 @@
+# AWS IAM Policies and Roles for MITA Storage Infrastructure
+# This configuration implements least privilege access controls for
+# secure storage access with financial compliance requirements
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iam-storage-policies-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # IAM Policies Configuration Template
+  terraform-config.tf: |
+    # IAM Policies and Roles for MITA Storage Infrastructure
+    
+    # Data sources
+    data "aws_caller_identity" "current" {}
+    data "aws_region" "current" {}
+    
+    # EKS cluster information
+    data "aws_eks_cluster" "mita_cluster" {
+      name = var.eks_cluster_name
+    }
+    
+    # OIDC provider for EKS
+    data "aws_iam_openid_connect_provider" "mita_eks" {
+      arn = var.eks_oidc_provider_arn
+    }
+    
+    # Primary application service account IAM role
+    resource "aws_iam_role" "mita_app_storage" {
+      name = "mita-app-storage-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Principal = {
+              Federated = data.aws_iam_openid_connect_provider.mita_eks.arn
+            }
+            Action = "sts:AssumeRoleWithWebIdentity"
+            Condition = {
+              StringEquals = {
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:sub" = "system:serviceaccount:mita-production:mita"
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-app-storage-role"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "application-storage-access"
+      }
+    }
+    
+    # IAM policy for S3 document access (read/write receipts and profiles)
+    resource "aws_iam_policy" "mita_s3_documents" {
+      name        = "mita-s3-documents-policy"
+      description = "Policy for MITA application to access S3 documents bucket"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "ListBucketAccess"
+            Effect = "Allow"
+            Action = [
+              "s3:ListBucket",
+              "s3:ListBucketVersions"
+            ]
+            Resource = var.documents_bucket_arn
+            Condition = {
+              StringLike = {
+                "s3:prefix" = [
+                  "receipts/*",
+                  "profiles/*",
+                  "temp/*"
+                ]
+              }
+            }
+          },
+          {
+            Sid    = "ObjectAccess"
+            Effect = "Allow"
+            Action = [
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:DeleteObject"
+            ]
+            Resource = [
+              "${var.documents_bucket_arn}/receipts/*",
+              "${var.documents_bucket_arn}/profiles/*",
+              "${var.documents_bucket_arn}/temp/*"
+            ]
+          },
+          {
+            Sid    = "KMSAccess"
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ]
+            Resource = var.s3_kms_key_arn
+            Condition = {
+              StringEquals = {
+                "kms:ViaService" = "s3.${data.aws_region.current.name}.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-s3-documents-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for SQS document processing access
+    resource "aws_iam_policy" "mita_sqs_documents" {
+      name        = "mita-sqs-documents-policy"
+      description = "Policy for MITA application to access SQS document processing queues"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "SQSQueueAccess"
+            Effect = "Allow"
+            Action = [
+              "sqs:ReceiveMessage",
+              "sqs:DeleteMessage",
+              "sqs:GetQueueAttributes",
+              "sqs:ChangeMessageVisibility"
+            ]
+            Resource = [
+              var.document_processing_queue_arn,
+              var.document_processing_dlq_arn
+            ]
+          },
+          {
+            Sid    = "SQSKMSAccess"
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:DescribeKey"
+            ]
+            Resource = var.s3_kms_key_arn
+            Condition = {
+              StringEquals = {
+                "kms:ViaService" = "sqs.${data.aws_region.current.name}.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-sqs-documents-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for RDS access (connection only, credentials via Secrets Manager)
+    resource "aws_iam_policy" "mita_rds_connect" {
+      name        = "mita-rds-connect-policy"
+      description = "Policy for MITA application to connect to RDS"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "RDSConnect"
+            Effect = "Allow"
+            Action = [
+              "rds-db:connect"
+            ]
+            Resource = "arn:aws:rds-db:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:dbuser:${var.rds_instance_identifier}/mita_app"
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-rds-connect-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for Secrets Manager access (database and Redis credentials)
+    resource "aws_iam_policy" "mita_secrets_access" {
+      name        = "mita-secrets-access-policy"
+      description = "Policy for MITA application to access secrets"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "GetSecretValue"
+            Effect = "Allow"
+            Action = [
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:DescribeSecret"
+            ]
+            Resource = [
+              var.database_secret_arn,
+              var.redis_secret_arn,
+              var.redis_taskqueue_secret_arn,
+              "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:mita-finance/production/*"
+            ]
+          },
+          {
+            Sid    = "KMSSecretsAccess"
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:DescribeKey"
+            ]
+            Resource = [
+              var.rds_kms_key_arn,
+              var.redis_kms_key_arn
+            ]
+            Condition = {
+              StringEquals = {
+                "kms:ViaService" = "secretsmanager.${data.aws_region.current.name}.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-secrets-access-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Attach policies to application role
+    resource "aws_iam_role_policy_attachment" "mita_app_s3_documents" {
+      role       = aws_iam_role.mita_app_storage.name
+      policy_arn = aws_iam_policy.mita_s3_documents.arn
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_app_sqs_documents" {
+      role       = aws_iam_role.mita_app_storage.name
+      policy_arn = aws_iam_policy.mita_sqs_documents.arn
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_app_rds_connect" {
+      role       = aws_iam_role.mita_app_storage.name
+      policy_arn = aws_iam_policy.mita_rds_connect.arn
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_app_secrets_access" {
+      role       = aws_iam_role.mita_app_storage.name
+      policy_arn = aws_iam_policy.mita_secrets_access.arn
+    }
+    
+    # Backup service account IAM role
+    resource "aws_iam_role" "mita_backup_storage" {
+      name = "mita-backup-storage-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Principal = {
+              Federated = data.aws_iam_openid_connect_provider.mita_eks.arn
+            }
+            Action = "sts:AssumeRoleWithWebIdentity"
+            Condition = {
+              StringEquals = {
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:sub" = "system:serviceaccount:mita-production:mita-backup"
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-storage-role"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-operations"
+      }
+    }
+    
+    # IAM policy for backup operations
+    resource "aws_iam_policy" "mita_backup_operations" {
+      name        = "mita-backup-operations-policy"
+      description = "Policy for MITA backup operations"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "BackupBucketAccess"
+            Effect = "Allow"
+            Action = [
+              "s3:ListBucket",
+              "s3:ListBucketVersions"
+            ]
+            Resource = [
+              var.backup_bucket_arn,
+              var.backup_dr_bucket_arn
+            ]
+          },
+          {
+            Sid    = "BackupObjectAccess"
+            Effect = "Allow"
+            Action = [
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:DeleteObject",
+              "s3:DeleteObjectVersion"
+            ]
+            Resource = [
+              "${var.backup_bucket_arn}/*",
+              "${var.backup_dr_bucket_arn}/*"
+            ]
+          },
+          {
+            Sid    = "BackupKMSAccess"
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ]
+            Resource = [
+              var.backup_kms_key_arn,
+              var.backup_dr_kms_key_arn
+            ]
+          },
+          {
+            Sid    = "RDSBackupAccess"
+            Effect = "Allow"
+            Action = [
+              "rds:DescribeDBInstances",
+              "rds:DescribeDBSnapshots",
+              "rds:CreateDBSnapshot",
+              "rds:DescribeDBClusters",
+              "rds:DescribeDBClusterSnapshots",
+              "rds:CreateDBClusterSnapshot"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          },
+          {
+            Sid    = "ElastiCacheBackupAccess"
+            Effect = "Allow"
+            Action = [
+              "elasticache:DescribeCacheClusters",
+              "elasticache:DescribeSnapshots",
+              "elasticache:CreateSnapshot",
+              "elasticache:DescribeReplicationGroups"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-operations-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Attach backup policy to backup role
+    resource "aws_iam_role_policy_attachment" "mita_backup_operations" {
+      role       = aws_iam_role.mita_backup_storage.name
+      policy_arn = aws_iam_policy.mita_backup_operations.arn
+    }
+    
+    # Monitoring service account IAM role
+    resource "aws_iam_role" "mita_monitoring_storage" {
+      name = "mita-monitoring-storage-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Principal = {
+              Federated = data.aws_iam_openid_connect_provider.mita_eks.arn
+            }
+            Action = "sts:AssumeRoleWithWebIdentity"
+            Condition = {
+              StringEquals = {
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:sub" = "system:serviceaccount:mita-production:mita-monitoring"
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-monitoring-storage-role"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "monitoring-metrics"
+      }
+    }
+    
+    # IAM policy for monitoring access
+    resource "aws_iam_policy" "mita_monitoring_access" {
+      name        = "mita-monitoring-access-policy"
+      description = "Policy for MITA monitoring to access CloudWatch and storage metrics"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "CloudWatchMetricsAccess"
+            Effect = "Allow"
+            Action = [
+              "cloudwatch:GetMetricStatistics",
+              "cloudwatch:ListMetrics",
+              "cloudwatch:GetMetricData"
+            ]
+            Resource = "*"
+          },
+          {
+            Sid    = "RDSMonitoring"
+            Effect = "Allow"
+            Action = [
+              "rds:DescribeDBInstances",
+              "rds:DescribeDBClusters",
+              "rds:DescribeEvents"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          },
+          {
+            Sid    = "ElastiCacheMonitoring"
+            Effect = "Allow"
+            Action = [
+              "elasticache:DescribeCacheClusters",
+              "elasticache:DescribeReplicationGroups",
+              "elasticache:DescribeEvents"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          },
+          {
+            Sid    = "S3Monitoring"
+            Effect = "Allow"
+            Action = [
+              "s3:GetBucketLocation",
+              "s3:GetBucketTagging",
+              "s3:ListAllMyBuckets"
+            ]
+            Resource = "*"
+          },
+          {
+            Sid    = "CloudFrontMonitoring"
+            Effect = "Allow"
+            Action = [
+              "cloudfront:GetDistribution",
+              "cloudfront:ListDistributions"
+            ]
+            Resource = "*"
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-monitoring-access-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Attach monitoring policy to monitoring role
+    resource "aws_iam_role_policy_attachment" "mita_monitoring_access" {
+      role       = aws_iam_role.mita_monitoring_storage.name
+      policy_arn = aws_iam_policy.mita_monitoring_access.arn
+    }
+    
+    # External Secrets Operator IAM role
+    resource "aws_iam_role" "mita_external_secrets" {
+      name = "mita-external-secrets-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Principal = {
+              Federated = data.aws_iam_openid_connect_provider.mita_eks.arn
+            }
+            Action = "sts:AssumeRoleWithWebIdentity"
+            Condition = {
+              StringEquals = {
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:sub" = "system:serviceaccount:external-secrets-system:external-secrets"
+                "${replace(data.aws_iam_openid_connect_provider.mita_eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-external-secrets-role"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "secret-management"
+      }
+    }
+    
+    # IAM policy for External Secrets access
+    resource "aws_iam_policy" "mita_external_secrets_access" {
+      name        = "mita-external-secrets-access-policy"
+      description = "Policy for External Secrets Operator to access MITA secrets"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "SecretsManagerAccess"
+            Effect = "Allow"
+            Action = [
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:ListSecrets"
+            ]
+            Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:mita-finance/production/*"
+          },
+          {
+            Sid    = "KMSSecretsAccess"
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:DescribeKey"
+            ]
+            Resource = [
+              var.rds_kms_key_arn,
+              var.redis_kms_key_arn,
+              var.s3_kms_key_arn
+            ]
+            Condition = {
+              StringEquals = {
+                "kms:ViaService" = "secretsmanager.${data.aws_region.current.name}.amazonaws.com"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-external-secrets-access-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Attach External Secrets policy
+    resource "aws_iam_role_policy_attachment" "mita_external_secrets_access" {
+      role       = aws_iam_role.mita_external_secrets.name
+      policy_arn = aws_iam_policy.mita_external_secrets_access.arn
+    }
+    
+    # CloudTrail for audit logging (financial compliance)
+    resource "aws_cloudtrail" "mita_storage_audit" {
+      name           = "mita-storage-audit-trail"
+      s3_bucket_name = aws_s3_bucket.mita_audit_logs.bucket
+      s3_key_prefix  = "storage-audit/"
+      
+      # Include management events
+      include_global_service_events = true
+      is_multi_region_trail        = true
+      enable_logging               = true
+      
+      # Enable log file validation for integrity
+      enable_log_file_validation = true
+      
+      # KMS encryption for audit logs
+      kms_key_id = aws_kms_key.mita_audit_encryption.arn
+      
+      # Event selectors for storage operations
+      event_selector {
+        read_write_type                 = "All"
+        include_management_events       = true
+        exclude_management_event_sources = []
+        
+        # S3 data events
+        data_resource {
+          type   = "AWS::S3::Object"
+          values = [
+            "${var.documents_bucket_arn}/*",
+            "${var.backup_bucket_arn}/*"
+          ]
+        }
+        
+        data_resource {
+          type   = "AWS::S3::Bucket"
+          values = [
+            var.documents_bucket_arn,
+            var.backup_bucket_arn
+          ]
+        }
+      }
+      
+      tags = {
+        Name        = "mita-storage-audit-trail"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+        Purpose     = "audit-logging"
+      }
+    }
+    
+    # S3 bucket for audit logs
+    resource "aws_s3_bucket" "mita_audit_logs" {
+      bucket = "mita-finance-audit-logs-${random_string.audit_suffix.result}"
+      
+      tags = {
+        Name        = "mita-audit-logs"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+        Purpose     = "audit-logging"
+      }
+    }
+    
+    resource "random_string" "audit_suffix" {
+      length  = 8
+      special = false
+      upper   = false
+    }
+    
+    # KMS key for audit log encryption
+    resource "aws_kms_key" "mita_audit_encryption" {
+      description             = "KMS key for MITA audit log encryption"
+      deletion_window_in_days = 30
+      enable_key_rotation     = true
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "EnableIAMUserPermissions"
+            Effect = "Allow"
+            Principal = {
+              AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+            }
+            Action   = "kms:*"
+            Resource = "*"
+          },
+          {
+            Sid    = "AllowCloudTrailEncryption"
+            Effect = "Allow"
+            Principal = {
+              Service = "cloudtrail.amazonaws.com"
+            }
+            Action = [
+              "kms:GenerateDataKey*",
+              "kms:DescribeKey"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/mita-storage-audit-trail"
+              }
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-audit-encryption-key"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    # Audit logs bucket policy for CloudTrail
+    resource "aws_s3_bucket_policy" "mita_audit_logs" {
+      bucket = aws_s3_bucket.mita_audit_logs.id
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "AWSCloudTrailAclCheck"
+            Effect = "Allow"
+            Principal = {
+              Service = "cloudtrail.amazonaws.com"
+            }
+            Action   = "s3:GetBucketAcl"
+            Resource = aws_s3_bucket.mita_audit_logs.arn
+            Condition = {
+              StringEquals = {
+                "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/mita-storage-audit-trail"
+              }
+            }
+          },
+          {
+            Sid    = "AWSCloudTrailWrite"
+            Effect = "Allow"
+            Principal = {
+              Service = "cloudtrail.amazonaws.com"
+            }
+            Action   = "s3:PutObject"
+            Resource = "${aws_s3_bucket.mita_audit_logs.arn}/*"
+            Condition = {
+              StringEquals = {
+                "s3:x-amz-acl" = "bucket-owner-full-control"
+                "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/mita-storage-audit-trail"
+              }
+            }
+          }
+        ]
+      })
+    }
+    
+    # Variables
+    variable "eks_cluster_name" {
+      description = "Name of the EKS cluster"
+      type        = string
+    }
+    
+    variable "eks_oidc_provider_arn" {
+      description = "ARN of the EKS OIDC provider"
+      type        = string
+    }
+    
+    variable "documents_bucket_arn" {
+      description = "ARN of the documents S3 bucket"
+      type        = string
+    }
+    
+    variable "backup_bucket_arn" {
+      description = "ARN of the backup S3 bucket"
+      type        = string
+    }
+    
+    variable "backup_dr_bucket_arn" {
+      description = "ARN of the DR backup S3 bucket"
+      type        = string
+    }
+    
+    variable "document_processing_queue_arn" {
+      description = "ARN of the document processing SQS queue"
+      type        = string
+    }
+    
+    variable "document_processing_dlq_arn" {
+      description = "ARN of the document processing DLQ"
+      type        = string
+    }
+    
+    variable "database_secret_arn" {
+      description = "ARN of the database credentials secret"
+      type        = string
+    }
+    
+    variable "redis_secret_arn" {
+      description = "ARN of the Redis credentials secret"
+      type        = string
+    }
+    
+    variable "redis_taskqueue_secret_arn" {
+      description = "ARN of the Redis task queue credentials secret"
+      type        = string
+    }
+    
+    variable "rds_instance_identifier" {
+      description = "Identifier of the RDS instance"
+      type        = string
+    }
+    
+    variable "s3_kms_key_arn" {
+      description = "ARN of the S3 KMS key"
+      type        = string
+    }
+    
+    variable "rds_kms_key_arn" {
+      description = "ARN of the RDS KMS key"
+      type        = string
+    }
+    
+    variable "redis_kms_key_arn" {
+      description = "ARN of the Redis KMS key"
+      type        = string
+    }
+    
+    variable "backup_kms_key_arn" {
+      description = "ARN of the backup KMS key"
+      type        = string
+    }
+    
+    variable "backup_dr_kms_key_arn" {
+      description = "ARN of the DR backup KMS key"
+      type        = string
+    }
+    
+    # Outputs
+    output "app_storage_role_arn" {
+      description = "ARN of the application storage IAM role"
+      value       = aws_iam_role.mita_app_storage.arn
+    }
+    
+    output "backup_storage_role_arn" {
+      description = "ARN of the backup storage IAM role"
+      value       = aws_iam_role.mita_backup_storage.arn
+    }
+    
+    output "monitoring_storage_role_arn" {
+      description = "ARN of the monitoring storage IAM role"
+      value       = aws_iam_role.mita_monitoring_storage.arn
+    }
+    
+    output "external_secrets_role_arn" {
+      description = "ARN of the External Secrets IAM role"
+      value       = aws_iam_role.mita_external_secrets.arn
+    }
+    
+    output "cloudtrail_arn" {
+      description = "ARN of the CloudTrail for audit logging"
+      value       = aws_cloudtrail.mita_storage_audit.arn
+    }
+    
+    output "audit_logs_bucket_name" {
+      description = "Name of the audit logs S3 bucket"
+      value       = aws_s3_bucket.mita_audit_logs.bucket
+    }

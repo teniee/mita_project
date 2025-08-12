@@ -1,0 +1,584 @@
+{{- if .Values.highPriorityWorker.enabled }}
+# High Priority Workers - Critical Tasks (OCR, AI Analysis, Real-time Features)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-high-priority
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-high-priority
+    worker-tier: high-priority
+  annotations:
+    business/impact: "user-experience-critical"
+    sla/response-time: "< 30s"
+spec:
+  {{- if not .Values.highPriorityWorker.autoscaling.enabled }}
+  replicas: {{ .Values.highPriorityWorker.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker-high-priority
+  template:
+    metadata:
+      labels:
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker-high-priority
+        worker-tier: high-priority
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+
+      # Pod Anti-Affinity (spread across nodes for high availability)
+      {{- if .Values.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.podAntiAffinity.rule "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+          {{- end }}
+              labelSelector:
+                matchExpressions:
+                - key: worker-tier
+                  operator: In
+                  values:
+                  - high-priority
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+
+      # Priority for high-priority workers
+      priorityClassName: high-priority
+      
+      containers:
+        - name: worker-high-priority
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          command:
+            - python
+            - -m
+            - app.worker
+          
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: DEBUG
+              value: {{ .Values.debug | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-credentials
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-redis-credentials
+                  key: REDIS_URL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mita-external-api-secrets
+                  key: OPENAI_API_KEY
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: WORKER_TYPE
+              value: "high-priority"
+            - name: WORKER_QUEUES
+              value: {{ .Values.highPriorityWorker.queues | join "," | quote }}
+            - name: WORKER_MAX_JOBS
+              value: "{{ .Values.highPriorityWorker.maxJobs }}"
+            - name: WORKER_JOB_TIMEOUT
+              value: "{{ .Values.highPriorityWorker.jobTimeout }}"
+            - name: WORKER_PRIORITY
+              value: "high"
+            - name: ENABLE_WORKER_AUTOSCALING
+              value: "false"  # Handled by K8s HPA
+            - name: WORKER_HEARTBEAT_INTERVAL
+              value: "15"  # Faster heartbeat for critical workers
+            - name: ENABLE_TASK_METRICS
+              value: "true"
+            - name: METRICS_COLLECTION_INTERVAL
+              value: "30"  # More frequent metrics
+            - name: TASK_RETRY_ATTEMPTS
+              value: "3"
+            - name: TASK_RETRY_DELAY
+              value: "5"  # Faster retries for high priority
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: mita-external-api-secrets
+                  key: SENTRY_DSN
+                  optional: true
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          # Health Checks - Aggressive for high priority
+          livenessProbe:
+            httpGet:
+              path: /health/tasks/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/tasks/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 2
+          startupProbe:
+            httpGet:
+              path: /health/tasks/startup
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 20
+
+          # Resource Management - More resources for critical tasks
+          resources:
+            {{- toYaml .Values.highPriorityWorker.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+            - name: prometheus-metrics
+              mountPath: /tmp/prometheus_multiproc
+            - name: secrets
+              mountPath: /app/secrets
+              readOnly: true
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: logs
+          emptyDir:
+            sizeLimit: 500Mi
+        - name: prometheus-metrics
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: secrets
+          projected:
+            sources:
+            - secret:
+                name: mita-external-api-secrets
+            - secret:
+                name: mita-firebase-service-account
+                optional: true
+            - secret:
+                name: mita-apns-key-file
+                optional: true
+
+      # Tolerations and node selectors for high performance nodes
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      
+      # Prefer nodes with high CPU/memory
+      {{- if .Values.nodeAffinity.enabled }}
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+            - key: node.kubernetes.io/instance-type
+              operator: In
+              values:
+              - c5.xlarge
+              - c5.2xlarge
+              - c5.4xlarge
+        - weight: 50
+          preference:
+            matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+              - amd64
+      {{- end }}
+
+      terminationGracePeriodSeconds: 60  # Allow time for task completion
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+
+---
+{{- if .Values.highPriorityWorker.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-high-priority-hpa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-high-priority-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mita.fullname" . }}-worker-high-priority
+  minReplicas: {{ .Values.highPriorityWorker.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.highPriorityWorker.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.highPriorityWorker.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.highPriorityWorker.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.highPriorityWorker.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.highPriorityWorker.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    # Custom metrics for high priority queue depth
+    - type: Pods
+      pods:
+        metric:
+          name: rq_high_priority_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "2"  # Scale up aggressively for high priority tasks
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60  # Faster scale down
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleUp:
+      stabilizationWindowSeconds: 30  # Very fast scale up
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 3
+        periodSeconds: 30
+      selectPolicy: Max
+{{- end }}
+{{- end }}
+
+---
+{{- if .Values.lowPriorityWorker.enabled }}
+# Low Priority Workers - Background Tasks (Reports, Cleanup, Analytics)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-low-priority
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-low-priority
+    worker-tier: low-priority
+  annotations:
+    business/impact: "background-processing"
+    sla/response-time: "< 15m"
+spec:
+  {{- if not .Values.lowPriorityWorker.autoscaling.enabled }}
+  replicas: {{ .Values.lowPriorityWorker.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  # Can afford some downtime for low priority
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker-low-priority
+  template:
+    metadata:
+      labels:
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker-low-priority
+        worker-tier: low-priority
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+
+      # Lower priority for background tasks
+      priorityClassName: low-priority
+      
+      # Prefer preemptible nodes for cost optimization
+      {{- if .Values.nodeAffinity.enabled }}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node.kubernetes.io/instance-type
+                operator: In
+                values:
+                - t3.medium
+                - t3.large
+                - m5.large
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: karpenter.sh/capacity-type
+                operator: In
+                values:
+                - spot
+      {{- end }}
+      
+      containers:
+        - name: worker-low-priority
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          command:
+            - python
+            - -m
+            - app.worker
+          
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: DEBUG
+              value: {{ .Values.debug | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-credentials
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-redis-credentials
+                  key: REDIS_URL
+            - name: WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: WORKER_TYPE
+              value: "low-priority"
+            - name: WORKER_QUEUES
+              value: {{ .Values.lowPriorityWorker.queues | join "," | quote }}
+            - name: WORKER_MAX_JOBS
+              value: "{{ .Values.lowPriorityWorker.maxJobs }}"
+            - name: WORKER_JOB_TIMEOUT
+              value: "{{ .Values.lowPriorityWorker.jobTimeout }}"
+            - name: WORKER_PRIORITY
+              value: "low"
+            - name: ENABLE_WORKER_AUTOSCALING
+              value: "false"  # Handled by K8s HPA
+            - name: WORKER_HEARTBEAT_INTERVAL
+              value: "60"  # Slower heartbeat for background workers
+            - name: ENABLE_TASK_METRICS
+              value: "true"
+            - name: METRICS_COLLECTION_INTERVAL
+              value: "120"  # Less frequent metrics
+            - name: TASK_RETRY_ATTEMPTS
+              value: "5"  # More retries for background tasks
+            - name: TASK_RETRY_DELAY
+              value: "30"  # Longer delays between retries
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: mita-external-api-secrets
+                  key: SENTRY_DSN
+                  optional: true
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          # Health Checks - More lenient for background tasks
+          livenessProbe:
+            httpGet:
+              path: /health/tasks/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 45
+            timeoutSeconds: 15
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health/tasks/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/tasks/startup
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+
+          # Resource Management - Lower resources for background tasks
+          resources:
+            {{- toYaml .Values.lowPriorityWorker.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+            - name: prometheus-metrics
+              mountPath: /tmp/prometheus_multiproc
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 500Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 200Mi
+        - name: prometheus-metrics
+          emptyDir:
+            sizeLimit: 50Mi
+
+      # Tolerations for spot instances
+      tolerations:
+      - key: "karpenter.sh/capacity-type"
+        operator: "Equal"
+        value: "spot"
+        effect: "NoSchedule"
+      {{- if .Values.tolerations }}
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      
+      terminationGracePeriodSeconds: 120  # Allow longer for background task completion
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+
+---
+{{- if .Values.lowPriorityWorker.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-low-priority-hpa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-low-priority-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mita.fullname" . }}-worker-low-priority
+  minReplicas: {{ .Values.lowPriorityWorker.autoscaling.minReplicas | default 0 }}
+  maxReplicas: {{ .Values.lowPriorityWorker.autoscaling.maxReplicas | default 5 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.lowPriorityWorker.autoscaling.targetCPUUtilizationPercentage | default 80 }}
+    # Custom metrics for low priority queue depth
+    - type: Pods
+      pods:
+        metric:
+          name: rq_low_priority_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "10"  # Scale up only when significant backlog
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Slow scale down for cost optimization
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 180  # Gradual scale up
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+{{- end }}
+{{- end }}

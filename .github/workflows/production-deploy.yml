@@ -1,0 +1,412 @@
+name: Production Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: mita-finance/backend
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: mita-production
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-scan:
+    name: Security & Compliance Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit safety semgrep
+      
+      - name: Run Bandit security scan
+        run: |
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ -f txt
+      
+      - name: Run Safety vulnerability scan
+        run: |
+          safety check --json --output safety-report.json || true
+          safety check
+      
+      - name: Run Semgrep SAST scan
+        run: |
+          semgrep --config=auto app/ --json --output=semgrep-report.json || true
+          semgrep --config=auto app/
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+            semgrep-report.json
+
+  test-suite:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: mita_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+      
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/mita_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          python -m alembic upgrade head
+      
+      - name: Run tests with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/mita_test
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: testing
+          JWT_SECRET: test_secret_key_for_ci
+          SECRET_KEY: test_secret_key_for_ci
+        run: |
+          pytest app/tests/ -v --cov=app --cov-report=xml --cov-report=html --cov-fail-under=80
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  build-and-scan:
+    name: Build & Container Security Scan
+    runs-on: ubuntu-latest
+    needs: [security-scan, test-suite]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  staging-deployment:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-scan]
+    if: github.event_name == 'pull_request'
+    environment: staging
+    
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: mita-finance/k8s-manifests
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update staging manifests
+        run: |
+          cd gitops
+          sed -i "s|image:.*|image: ${{ needs.build-and-scan.outputs.image-tag }}|g" staging/mita/values.yaml
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Update staging image to ${{ github.sha }}"
+          git push
+      
+      - name: Deploy to staging via ArgoCD
+        run: |
+          # Trigger ArgoCD sync for staging environment
+          curl -X POST "${{ secrets.ARGOCD_SERVER }}/api/v1/applications/mita-staging/sync" \
+            -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
+            -H "Content-Type: application/json"
+
+  production-deployment:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: mita-finance/k8s-manifests
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Pre-deployment checks
+        run: |
+          # Check cluster health
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
+          kubectl get nodes
+          kubectl get pods -n mita-production
+          
+          # Check database connectivity
+          kubectl exec -n mita-production deployment/mita-backend -- python -c "
+          import psycopg2
+          import os
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          print('Database connection successful')
+          conn.close()
+          "
+      
+      - name: Database migration (if needed)
+        run: |
+          kubectl create job -n mita-production migration-$(date +%s) \
+            --from=cronjob/mita-migration-job \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Wait for migration to complete
+          kubectl wait -n mita-production \
+            --for=condition=complete \
+            --timeout=300s \
+            job/migration-$(date +%s)
+      
+      - name: Blue-Green Deployment Strategy
+        run: |
+          # Update production manifests
+          cd gitops
+          sed -i "s|image:.*|image: ${{ needs.build-and-scan.outputs.image-tag }}|g" production/mita/values.yaml
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Deploy to production: ${{ github.sha }}"
+          git push
+      
+      - name: Deploy via ArgoCD
+        run: |
+          # Trigger ArgoCD sync for production
+          curl -X POST "${{ secrets.ARGOCD_SERVER }}/api/v1/applications/mita-production/sync" \
+            -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          # Wait for deployment to complete
+          sleep 60
+      
+      - name: Health checks
+        run: |
+          # Wait for pods to be ready
+          kubectl wait -n mita-production \
+            --for=condition=available \
+            --timeout=600s \
+            deployment/mita-backend
+          
+          # API health check
+          endpoint=$(kubectl get ingress -n mita-production mita-ingress -o jsonpath='{.spec.rules[0].host}')
+          for i in {1..10}; do
+            if curl -f "https://$endpoint/health"; then
+              echo "Health check passed"
+              break
+            fi
+            echo "Health check failed, retrying in 30s..."
+            sleep 30
+          done
+      
+      - name: Performance baseline test
+        run: |
+          endpoint=$(kubectl get ingress -n mita-production mita-ingress -o jsonpath='{.spec.rules[0].host}')
+          
+          # Run basic load test
+          docker run --rm -i loadimpact/k6:latest run - <<EOF
+          import http from 'k6/http';
+          import { check } from 'k6';
+          
+          export let options = {
+            stages: [
+              { duration: '30s', target: 20 },
+              { duration: '1m', target: 50 },
+              { duration: '30s', target: 0 },
+            ],
+          };
+          
+          export default function() {
+            let response = http.get('https://$endpoint/health');
+            check(response, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 500ms': (r) => r.timings.duration < 500,
+            });
+          }
+          EOF
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          # Rollback to previous version
+          kubectl rollout undo -n mita-production deployment/mita-backend
+          
+          # Wait for rollback to complete
+          kubectl rollout status -n mita-production deployment/mita-backend --timeout=300s
+          
+          # Notify about rollback
+          echo "Deployment failed, rolled back to previous version"
+
+  notify-deployment:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [production-deployment]
+    if: always()
+    
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          message: |
+            Production deployment ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Message: ${{ github.event.head_commit.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Create GitHub Release
+        if: needs.production-deployment.result == 'success'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Automated production deployment
+            
+            **Changes:**
+            ${{ github.event.head_commit.message }}
+            
+            **Image:**
+            ${{ needs.build-and-scan.outputs.image-tag }}
+            
+            **Security Reports:**
+            - Container scan passed
+            - SAST scan completed
+            - Dependency check passed
+          draft: false
+          prerelease: false

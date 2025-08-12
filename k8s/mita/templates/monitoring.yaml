@@ -1,0 +1,272 @@
+{{- if .Values.monitoring.enabled }}
+# ServiceMonitor for Backend API Metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    monitoring.coreos.com/prometheus: "production"
+  annotations:
+    business/impact: "operational-monitoring"
+    compliance/framework: "SOX,PCI-DSS"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  endpoints:
+    - port: http
+      path: {{ .Values.monitoring.serviceMonitor.path | default "/metrics" }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: "10s"
+      scheme: http
+      metricRelabelings:
+        # Keep only financial services relevant metrics
+        - sourceLabels: [__name__]
+          regex: '(mita_.*|http_.*|db_.*|redis_.*|task_.*|auth_.*|security_.*)'
+          action: keep
+        # Add environment label
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        # Add service label
+        - targetLabel: service
+          replacement: "mita-backend"
+      relabelings:
+        # Add instance label based on pod name
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: instance
+        # Add node label
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+
+---
+{{- if .Values.worker.enabled }}
+# ServiceMonitor for Regular Workers
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      component: worker
+  endpoints:
+    - port: metrics
+      path: "/metrics"
+      interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: "10s"
+      scheme: http
+      metricRelabelings:
+        # Keep only task queue relevant metrics
+        - sourceLabels: [__name__]
+          regex: '(rq_.*|task_.*|worker_.*|job_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-worker"
+        - targetLabel: worker_tier
+          replacement: "regular"
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+---
+{{- if .Values.highPriorityWorker.enabled }}
+# ServiceMonitor for High Priority Workers
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-high-priority
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-high-priority-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker-high-priority
+  endpoints:
+    - port: metrics
+      path: "/metrics"
+      interval: "15s"  # More frequent scraping for critical workers
+      scrapeTimeout: "10s"
+      scheme: http
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: '(rq_.*|task_.*|worker_.*|job_.*|ocr_.*|ai_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-worker-high-priority"
+        - targetLabel: worker_tier
+          replacement: "high-priority"
+        - targetLabel: sla_critical
+          replacement: "true"
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+---
+{{- if .Values.lowPriorityWorker.enabled }}
+# ServiceMonitor for Low Priority Workers
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-worker-low-priority
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-low-priority-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker-low-priority
+  endpoints:
+    - port: metrics
+      path: "/metrics"
+      interval: "60s"  # Less frequent scraping for background workers
+      scrapeTimeout: "15s"
+      scheme: http
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: '(rq_.*|task_.*|worker_.*|job_.*|report_.*|cleanup_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-worker-low-priority"
+        - targetLabel: worker_tier
+          replacement: "low-priority"
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+---
+{{- if .Values.scheduler.enabled }}
+# ServiceMonitor for Task Scheduler
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  endpoints:
+    - port: metrics
+      path: "/metrics"
+      interval: "30s"
+      scrapeTimeout: "10s"
+      scheme: http
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: '(scheduler_.*|queue_.*|job_.*|task_scheduling_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-scheduler"
+        - targetLabel: criticality
+          replacement: "high"
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+---
+# PodMonitor for collecting metrics from pods without services
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-cronjobs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cronjob-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+  podMetricsEndpoints:
+    - port: http
+      path: "/metrics"
+      interval: "60s"  # CronJobs don't run continuously
+      scrapeTimeout: "30s"
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: '(cronjob_.*|backup_.*|maintenance_.*|subscription_refresh_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-cronjobs"
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+
+---
+{{- if .Values.ingress.monitoring.enabled | default true }}
+# ServiceMonitor for Ingress NGINX metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mita.fullname" . }}-ingress-nginx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress-monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ingress-metrics
+  endpoints:
+    - port: http-metrics
+      path: "/metrics"
+      interval: "30s"
+      scrapeTimeout: "10s"
+      scheme: http
+      metricRelabelings:
+        # Keep only ingress relevant metrics
+        - sourceLabels: [__name__]
+          regex: '(nginx_.*|http_.*|ingress_.*)'
+          action: keep
+        - targetLabel: environment
+          replacement: {{ .Values.environment | quote }}
+        - targetLabel: service
+          replacement: "mita-ingress"
+  namespaceSelector:
+    matchNames:
+      - ingress-nginx
+      - {{ .Release.Namespace }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,733 @@
+# Storage Monitoring and Alerting for MITA Financial Application
+# This configuration integrates storage infrastructure monitoring
+# with existing Prometheus setup and provides comprehensive alerting
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-monitoring-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # AWS CloudWatch Exporter Configuration for Prometheus
+  cloudwatch-config.yaml: |
+    # CloudWatch Exporter configuration for AWS storage services
+    region: us-east-1
+    period_seconds: 300
+    delay_seconds: 300
+    
+    metrics:
+      # RDS Metrics
+      - aws_namespace: AWS/RDS
+        aws_metric_name: CPUUtilization
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: DatabaseConnections
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: FreeableMemory
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Minimum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: FreeStorageSpace
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Minimum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReadLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: WriteLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReadThroughput
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: WriteThroughput
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReplicaLag
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average, Maximum]
+        
+      # ElastiCache Metrics
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: CPUUtilization
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: DatabaseMemoryUsagePercentage
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: NetworkBytesIn
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Sum, Average]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: NetworkBytesOut
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Sum, Average]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: CurrConnections
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: Evictions
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: CacheHits
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: CacheMisses
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/ElastiCache
+        aws_metric_name: ReplicationLag
+        aws_dimensions: [CacheClusterId, CacheNodeId]
+        aws_statistics: [Average, Maximum]
+        
+      # S3 Metrics
+      - aws_namespace: AWS/S3
+        aws_metric_name: BucketSizeBytes
+        aws_dimensions: [BucketName, StorageType]
+        aws_statistics: [Average]
+        
+      - aws_namespace: AWS/S3
+        aws_metric_name: NumberOfObjects
+        aws_dimensions: [BucketName, StorageType]
+        aws_statistics: [Average]
+        
+      # CloudFront Metrics
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: Requests
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: BytesDownloaded
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: 4xxErrorRate
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: 5xxErrorRate
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: CacheHitRate
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Average]
+        
+      - aws_namespace: AWS/CloudFront
+        aws_metric_name: OriginLatency
+        aws_dimensions: [DistributionId]
+        aws_statistics: [Average, Maximum]
+        
+      # SQS Metrics
+      - aws_namespace: AWS/SQS
+        aws_metric_name: ApproximateNumberOfMessages
+        aws_dimensions: [QueueName]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/SQS
+        aws_metric_name: ApproximateNumberOfMessagesVisible
+        aws_dimensions: [QueueName]
+        aws_statistics: [Average, Maximum]
+        
+      - aws_namespace: AWS/SQS
+        aws_metric_name: NumberOfMessagesSent
+        aws_dimensions: [QueueName]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/SQS
+        aws_metric_name: NumberOfMessagesReceived
+        aws_dimensions: [QueueName]
+        aws_statistics: [Sum]
+        
+      - aws_namespace: AWS/SQS
+        aws_metric_name: NumberOfMessagesDeleted
+        aws_dimensions: [QueueName]
+        aws_statistics: [Sum]
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-prometheus-rules
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: mita-finance
+data:
+  storage-rules.yaml: |
+    groups:
+    - name: mita.storage.critical
+      interval: 30s
+      rules:
+      # RDS Critical Alerts
+      - alert: MitaPostgreSQLDown
+        expr: up{job="cloudwatch-exporter", aws_namespace="AWS/RDS"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+          environment: production
+          compliance: PCI-DSS
+        annotations:
+          summary: "MITA PostgreSQL instance is down"
+          description: "PostgreSQL RDS instance {{ $labels.dbinstance_identifier }} has been down for more than 1 minute. This is a critical financial service outage."
+          runbook: "https://runbooks.mita.finance/postgresql/instance-down"
+          
+      - alert: MitaPostgreSQLHighCPU
+        expr: aws_rds_cpu_utilization_average{dbinstance_identifier=~"mita-postgresql.*"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL CPU utilization is high"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has CPU utilization of {{ $value }}% for more than 5 minutes."
+          
+      - alert: MitaPostgreSQLLowFreeableMemory
+        expr: aws_rds_freeable_memory_average{dbinstance_identifier=~"mita-postgresql.*"} < 1073741824  # 1GB
+        for: 5m
+        labels:
+          severity: critical
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL freeable memory is critically low"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has only {{ $value | humanize1024 }}B of freeable memory."
+          
+      - alert: MitaPostgreSQLLowFreeStorage
+        expr: aws_rds_free_storage_space_average{dbinstance_identifier=~"mita-postgresql.*"} < 10737418240  # 10GB
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL free storage is low"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has only {{ $value | humanize1024 }}B of free storage space."
+          
+      - alert: MitaPostgreSQLHighConnections
+        expr: aws_rds_database_connections_average{dbinstance_identifier=~"mita-postgresql.*"} > 160  # 80% of 200
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL connection count is high"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has {{ $value }} active connections (80% of limit)."
+          
+      - alert: MitaPostgreSQLReplicaLag
+        expr: aws_rds_replica_lag_average{dbinstance_identifier=~"mita-postgresql-read-replica.*"} > 60
+        for: 3m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL read replica lag is high"
+          description: "PostgreSQL read replica has {{ $value }} seconds of lag behind the primary instance."
+          
+      - alert: MitaPostgreSQLHighLatency
+        expr: (aws_rds_read_latency_average{dbinstance_identifier=~"mita-postgresql.*"} > 0.2) or (aws_rds_write_latency_average{dbinstance_identifier=~"mita-postgresql.*"} > 0.2)
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "MITA PostgreSQL latency is high"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has high read/write latency: {{ $value }}s."
+          
+      # Redis Critical Alerts
+      - alert: MitaRedisDown
+        expr: up{job="cloudwatch-exporter", aws_namespace="AWS/ElastiCache"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+          environment: production
+          compliance: PCI-DSS
+        annotations:
+          summary: "MITA Redis cluster is down"
+          description: "Redis ElastiCache cluster {{ $labels.cache_cluster_id }} has been down for more than 1 minute."
+          runbook: "https://runbooks.mita.finance/redis/cluster-down"
+          
+      - alert: MitaRedisHighCPU
+        expr: aws_elasticache_cpu_utilization_average{cache_cluster_id=~"mita-redis.*"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis CPU utilization is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has CPU utilization of {{ $value }}% for more than 5 minutes."
+          
+      - alert: MitaRedisHighMemory
+        expr: aws_elasticache_database_memory_usage_percentage_average{cache_cluster_id=~"mita-redis.*"} > 85
+        for: 5m
+        labels:
+          severity: critical
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis memory utilization is critically high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has memory utilization of {{ $value }}% for more than 5 minutes."
+          
+      - alert: MitaRedisHighEvictions
+        expr: increase(aws_elasticache_evictions_sum{cache_cluster_id=~"mita-redis.*"}[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis eviction rate is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has evicted {{ $value }} keys in the last 5 minutes."
+          
+      - alert: MitaRedisHighConnections
+        expr: aws_elasticache_curr_connections_average{cache_cluster_id=~"mita-redis.*"} > 8000
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis connection count is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has {{ $value }} active connections (80% of limit)."
+          
+      - alert: MitaRedisLowCacheHitRate
+        expr: (aws_elasticache_cache_hits_sum{cache_cluster_id=~"mita-redis.*"} / (aws_elasticache_cache_hits_sum{cache_cluster_id=~"mita-redis.*"} + aws_elasticache_cache_misses_sum{cache_cluster_id=~"mita-redis.*"})) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis cache hit rate is low"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has a cache hit rate of {{ $value | humanizePercentage }} (below 80%)."
+          
+      - alert: MitaRedisReplicationLag
+        expr: aws_elasticache_replication_lag_average{cache_cluster_id=~"mita-redis.*"} > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "MITA Redis replication lag is high"
+          description: "Redis replica {{ $labels.cache_cluster_id }} has replication lag of {{ $value }} seconds."
+          
+    - name: mita.storage.s3
+      interval: 300s  # S3 metrics are less frequent
+      rules:
+      # S3 Alerts
+      - alert: MitaS3BucketSizeGrowthHigh
+        expr: increase(aws_s3_bucket_size_bytes_average{bucket_name=~"mita-finance-documents.*", storage_type="StandardStorage"}[24h]) > 107374182400  # 100GB growth per day
+        for: 0m
+        labels:
+          severity: warning
+          service: s3
+          environment: production
+        annotations:
+          summary: "MITA S3 bucket size growth is high"
+          description: "S3 bucket {{ $labels.bucket_name }} has grown by {{ $value | humanize1024 }}B in the last 24 hours."
+          
+      - alert: MitaS3ObjectCountHigh
+        expr: aws_s3_number_of_objects_average{bucket_name=~"mita-finance-documents.*", storage_type="AllStorageTypes"} > 10000000  # 10M objects
+        for: 0m
+        labels:
+          severity: info
+          service: s3
+          environment: production
+        annotations:
+          summary: "MITA S3 object count is high"
+          description: "S3 bucket {{ $labels.bucket_name }} contains {{ $value }} objects."
+          
+    - name: mita.storage.cloudfront
+      interval: 60s
+      rules:
+      # CloudFront Alerts
+      - alert: MitaCloudFrontHighErrorRate
+        expr: aws_cloudfront_4xx_error_rate_average{distribution_id=~".*"} > 5 or aws_cloudfront_5xx_error_rate_average{distribution_id=~".*"} > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: cloudfront
+          environment: production
+        annotations:
+          summary: "MITA CloudFront error rate is high"
+          description: "CloudFront distribution {{ $labels.distribution_id }} has a {{ $labels.__name__ }} of {{ $value }}%."
+          
+      - alert: MitaCloudFrontLowCacheHitRate
+        expr: aws_cloudfront_cache_hit_rate_average{distribution_id=~".*"} < 80
+        for: 10m
+        labels:
+          severity: warning
+          service: cloudfront
+          environment: production
+        annotations:
+          summary: "MITA CloudFront cache hit rate is low"
+          description: "CloudFront distribution {{ $labels.distribution_id }} has a cache hit rate of {{ $value }}% (below 80%)."
+          
+      - alert: MitaCloudFrontHighOriginLatency
+        expr: aws_cloudfront_origin_latency_average{distribution_id=~".*"} > 2000  # 2 seconds
+        for: 5m
+        labels:
+          severity: warning
+          service: cloudfront
+          environment: production
+        annotations:
+          summary: "MITA CloudFront origin latency is high"
+          description: "CloudFront distribution {{ $labels.distribution_id }} has origin latency of {{ $value }}ms."
+          
+    - name: mita.storage.sqs
+      interval: 60s
+      rules:
+      # SQS Alerts
+      - alert: MitaSQSQueueDepthHigh
+        expr: aws_sqs_approximate_number_of_messages_average{queue_name=~"mita-document-processing.*"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: sqs
+          environment: production
+        annotations:
+          summary: "MITA SQS queue depth is high"
+          description: "SQS queue {{ $labels.queue_name }} has {{ $value }} messages pending processing."
+          
+      - alert: MitaSQSQueueDepthCritical
+        expr: aws_sqs_approximate_number_of_messages_average{queue_name=~"mita-document-processing.*"} > 5000
+        for: 5m
+        labels:
+          severity: critical
+          service: sqs
+          environment: production
+        annotations:
+          summary: "MITA SQS queue depth is critically high"
+          description: "SQS queue {{ $labels.queue_name }} has {{ $value }} messages pending processing. Document processing may be severely delayed."
+          
+      - alert: MitaSQSDLQMessages
+        expr: aws_sqs_approximate_number_of_messages_average{queue_name=~".*-dlq"} > 10
+        for: 1m
+        labels:
+          severity: warning
+          service: sqs
+          environment: production
+        annotations:
+          summary: "MITA SQS dead letter queue has messages"
+          description: "SQS dead letter queue {{ $labels.queue_name }} has {{ $value }} messages that failed processing."
+          
+    - name: mita.storage.financial-compliance
+      interval: 300s
+      rules:
+      # Financial Compliance Alerts
+      - alert: MitaStorageComplianceDataRetention
+        expr: time() - aws_s3_bucket_size_bytes_average{bucket_name=~"mita-finance-documents.*"} > 220838400  # 7 years in seconds
+        for: 0m
+        labels:
+          severity: info
+          service: compliance
+          environment: production
+          compliance: PCI-DSS
+        annotations:
+          summary: "MITA storage compliance: Data retention review required"
+          description: "S3 bucket {{ $labels.bucket_name }} contains data approaching 7-year retention limit. Review required for financial compliance."
+          
+      - alert: MitaStorageEncryptionStatus
+        expr: |
+          (
+            label_replace(
+              up{job="cloudwatch-exporter", aws_namespace="AWS/RDS"} == 1,
+              "encryption_status", "unknown", "", ""
+            )
+            or
+            label_replace(
+              up{job="cloudwatch-exporter", aws_namespace="AWS/ElastiCache"} == 1,
+              "encryption_status", "unknown", "", ""
+            )
+          ) * 0 + 1
+        for: 0m
+        labels:
+          severity: info
+          service: compliance
+          environment: production
+          compliance: PCI-DSS
+        annotations:
+          summary: "MITA storage encryption status check"
+          description: "Regular encryption status verification for {{ $labels.aws_namespace }} resources."
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-grafana-dashboard
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: mita-finance
+    grafana_dashboard: "1"
+data:
+  mita-storage-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "MITA Storage Infrastructure",
+        "tags": ["mita", "storage", "production"],
+        "timezone": "UTC",
+        "panels": [
+          {
+            "id": 1,
+            "title": "PostgreSQL Overview",
+            "type": "row",
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "PostgreSQL CPU Utilization",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "aws_rds_cpu_utilization_average{dbinstance_identifier=~\"mita-postgresql.*\"}",
+                "legendFormat": "{{dbinstance_identifier}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100,
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 70},
+                    {"color": "red", "value": 80}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 1}
+          },
+          {
+            "id": 3,
+            "title": "PostgreSQL Connections",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "aws_rds_database_connections_average{dbinstance_identifier=~\"mita-postgresql.*\"}",
+                "legendFormat": "{{dbinstance_identifier}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "min": 0,
+                "max": 200,
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 120},
+                    {"color": "red", "value": 160}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 1}
+          },
+          {
+            "id": 4,
+            "title": "PostgreSQL Freeable Memory",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "aws_rds_freeable_memory_average{dbinstance_identifier=~\"mita-postgresql.*\"}",
+                "legendFormat": "{{dbinstance_identifier}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes",
+                "min": 0,
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "yellow", "value": 1073741824},
+                    {"color": "green", "value": 5368709120}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 12, "y": 1}
+          },
+          {
+            "id": 5,
+            "title": "PostgreSQL Free Storage",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "aws_rds_free_storage_space_average{dbinstance_identifier=~\"mita-postgresql.*\"}",
+                "legendFormat": "{{dbinstance_identifier}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "bytes",
+                "min": 0,
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "yellow", "value": 10737418240},
+                    {"color": "green", "value": 53687091200}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 18, "y": 1}
+          },
+          {
+            "id": 6,
+            "title": "Redis Overview",
+            "type": "row",
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9}
+          },
+          {
+            "id": 7,
+            "title": "Redis CPU Utilization",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "aws_elasticache_cpu_utilization_average{cache_cluster_id=~\"mita-redis.*\"}",
+                "legendFormat": "{{cache_cluster_id}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10}
+          },
+          {
+            "id": 8,
+            "title": "Redis Memory Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "aws_elasticache_database_memory_usage_percentage_average{cache_cluster_id=~\"mita-redis.*\"}",
+                "legendFormat": "{{cache_cluster_id}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10}
+          },
+          {
+            "id": 9,
+            "title": "S3 & CloudFront Overview",
+            "type": "row",
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18}
+          },
+          {
+            "id": 10,
+            "title": "CloudFront Requests",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(aws_cloudfront_requests_sum[5m])",
+                "legendFormat": "{{distribution_id}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "reqps",
+                "min": 0
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19}
+          },
+          {
+            "id": 11,
+            "title": "CloudFront Cache Hit Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "aws_cloudfront_cache_hit_rate_average",
+                "legendFormat": "{{distribution_id}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100,
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "yellow", "value": 70},
+                    {"color": "green", "value": 85}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19}
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }

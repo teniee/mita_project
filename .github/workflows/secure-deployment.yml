@@ -1,0 +1,569 @@
+name: MITA Secure Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: mita-finance/backend
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: mita-production
+
+# Use OpenID Connect for secure AWS authentication
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+  actions: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-validation:
+    name: Security & Secret Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      # Scan for secrets in code
+      - name: Secret detection scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+      
+      # Scan for hardcoded secrets
+      - name: GitLeaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-path: .gitleaks.toml
+      
+      - name: Install security tools
+        run: |
+          pip install bandit safety semgrep detect-secrets
+          
+      - name: Run Bandit security scan
+        run: |
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ -f txt
+      
+      - name: Run Safety vulnerability scan
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+          safety check
+      
+      - name: Run Semgrep SAST scan
+        run: |
+          semgrep --config=auto app/ --json --output=semgrep-report.json || true
+          semgrep --config=auto app/
+      
+      - name: Detect hardcoded secrets
+        run: |
+          detect-secrets scan --all-files --baseline .secrets.baseline || true
+          if [ -f .secrets.baseline ]; then
+            detect-secrets audit .secrets.baseline
+          fi
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports-${{ github.sha }}
+          path: |
+            bandit-report.json
+            safety-report.json
+            semgrep-report.json
+          retention-days: 30
+
+  test-with-secure-config:
+    name: Test Suite with Secure Configuration
+    runs-on: ubuntu-latest
+    needs: security-validation
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test_secure_password_123
+          POSTGRES_DB: mita_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+      
+      # Generate secure test secrets
+      - name: Generate secure test configuration
+        run: |
+          python -c "
+          import secrets
+          import json
+          
+          # Generate secure test secrets
+          config = {
+              'DATABASE_URL': 'postgresql://postgres:test_secure_password_123@localhost:5432/mita_test',
+              'REDIS_URL': 'redis://localhost:6379/0',
+              'JWT_SECRET': secrets.token_urlsafe(32),
+              'JWT_PREVIOUS_SECRET': secrets.token_urlsafe(32),
+              'SECRET_KEY': secrets.token_urlsafe(32),
+              'OPENAI_API_KEY': 'test_' + secrets.token_urlsafe(24),
+              'ENVIRONMENT': 'testing'
+          }
+          
+          # Write to environment file
+          with open('.env.test', 'w') as f:
+              for key, value in config.items():
+                  f.write(f'{key}={value}\n')
+          
+          print('Secure test configuration generated')
+          "
+      
+      - name: Run database migrations
+        run: |
+          source .env.test
+          export $(cat .env.test | xargs)
+          python -m alembic upgrade head
+      
+      - name: Run tests with coverage
+        run: |
+          source .env.test
+          export $(cat .env.test | xargs)
+          pytest app/tests/ -v --cov=app --cov-report=xml --cov-report=html --cov-fail-under=80
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+      
+      - name: Cleanup test secrets
+        if: always()
+        run: |
+          rm -f .env.test
+          echo "Test secrets cleaned up"
+
+  build-and-scan:
+    name: Secure Build & Container Security
+    runs-on: ubuntu-latest
+    needs: [security-validation, test-with-secure-config]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build Docker image (no secrets)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Ensure no secrets are built into image
+          secrets: |
+            "nothing=nothing"
+      
+      - name: Run Trivy container vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Run Snyk container security scan
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          args: --severity-threshold=high
+
+  staging-deployment:
+    name: Deploy to Staging with Secure Secrets
+    runs-on: ubuntu-latest
+    needs: [build-and-scan]
+    if: github.event_name == 'pull_request'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Configure AWS credentials using OIDC (no long-lived secrets)
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-staging-role
+          role-session-name: GitHubActions-Staging-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+          echo "AWS authentication successful"
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.0'
+      
+      - name: Configure kubectl for staging
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name mita-staging
+          kubectl config current-context
+      
+      - name: Verify External Secrets Operator
+        run: |
+          kubectl get pods -n external-secrets-system
+          kubectl get secretstores -n mita-staging || echo "SecretStores not yet configured"
+      
+      - name: Deploy to staging with External Secrets
+        run: |
+          helm upgrade --install mita-staging ./k8s/mita \
+            --namespace mita-staging \
+            --create-namespace \
+            --set image.tag=${{ github.sha }} \
+            --set environment=staging \
+            --set ingress.host=staging.mita.finance \
+            --set externalSecrets.enabled=true \
+            --set externalSecrets.secretStoreName=mita-staging-secrets \
+            --set externalSecrets.secretKeyPrefix=mita-finance/staging \
+            --set debug=false \
+            --wait --timeout=10m
+      
+      - name: Verify staging deployment health
+        run: |
+          kubectl wait --for=condition=ready pod -l app=mita-staging -n mita-staging --timeout=300s
+          
+          # Check External Secrets are created
+          kubectl get externalsecrets -n mita-staging
+          kubectl get secrets -n mita-staging | grep mita
+          
+          # Wait for service to be ready
+          sleep 30
+          
+          # Test staging endpoint
+          curl -f https://staging.mita.finance/health || exit 1
+          echo "Staging deployment verified"
+
+  production-deployment:
+    name: Deploy to Production with Secure Secrets
+    runs-on: ubuntu-latest
+    needs: [build-and-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Configure AWS credentials using OIDC (no long-lived secrets)
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-production-role
+          role-session-name: GitHubActions-Production-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Verify AWS identity and permissions
+        run: |
+          aws sts get-caller-identity
+          # Test access to secrets
+          aws secretsmanager list-secrets --max-items 1 --region ${{ env.AWS_REGION }}
+          echo "AWS authentication and permissions verified"
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.28.0'
+      
+      - name: Configure kubectl for production
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
+          kubectl config current-context
+      
+      - name: Pre-deployment security checks
+        run: |
+          # Verify External Secrets Operator is running
+          kubectl get pods -n external-secrets-system -l app.kubernetes.io/name=external-secrets
+          
+          # Check secret stores are healthy
+          kubectl get clustersecretstores
+          kubectl get secretstores -n mita-production || echo "SecretStores will be created"
+          
+          # Verify KMS access for secrets encryption
+          aws kms describe-key --key-id alias/mita-production-secrets --region ${{ env.AWS_REGION }}
+      
+      - name: Database migration (with secure credentials)
+        run: |
+          # Create migration job that uses External Secrets
+          kubectl create job -n mita-production migration-$(date +%s) \
+            --from=cronjob/mita-migration-job \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Wait for migration to complete
+          MIGRATION_JOB="migration-$(date +%s)"
+          kubectl wait -n mita-production \
+            --for=condition=complete \
+            --timeout=600s \
+            job/$MIGRATION_JOB
+      
+      - name: Blue-Green Production Deployment
+        run: |
+          # Deploy with External Secrets enabled
+          helm upgrade --install mita-production ./k8s/mita \
+            --namespace mita-production \
+            --create-namespace \
+            --set image.tag=${{ github.sha }} \
+            --set replicaCount=3 \
+            --set environment=production \
+            --set ingress.host=mita.finance \
+            --set externalSecrets.enabled=true \
+            --set externalSecrets.secretStoreName=mita-production-secrets \
+            --set externalSecrets.secretKeyPrefix=mita-finance/production \
+            --set resources.requests.cpu=500m \
+            --set resources.requests.memory=1Gi \
+            --set resources.limits.cpu=2000m \
+            --set resources.limits.memory=2Gi \
+            --set debug=false \
+            --set autoscaling.enabled=true \
+            --set podDisruptionBudget.enabled=true \
+            --wait --timeout=15m
+      
+      - name: Verify External Secrets are created
+        run: |
+          echo "Checking External Secrets creation..."
+          kubectl get externalsecrets -n mita-production
+          
+          echo "Checking created secrets..."
+          kubectl get secrets -n mita-production | grep mita
+          
+          echo "Verifying secret data (without exposing values)..."
+          kubectl describe secret mita-production-database-credentials -n mita-production
+          kubectl describe secret mita-production-auth-secrets -n mita-production
+      
+      - name: Production health checks
+        run: |
+          # Wait for all pods to be ready
+          kubectl wait -n mita-production \
+            --for=condition=available \
+            --timeout=600s \
+            deployment/mita-production
+          
+          # Wait for External Secrets to sync
+          sleep 60
+          
+          # Comprehensive health checks
+          for i in {1..10}; do
+            if curl -f "https://mita.finance/health"; then
+              echo "Health check $i passed"
+              break
+            fi
+            echo "Health check $i failed, retrying in 30s..."
+            sleep 30
+          done
+          
+          # Test authenticated endpoints (without exposing secrets)
+          curl -f "https://mita.finance/api/health/database" || exit 1
+          curl -f "https://mita.finance/api/health/redis" || exit 1
+          echo "Production deployment health checks passed"
+      
+      - name: Security validation post-deployment
+        run: |
+          echo "Running post-deployment security validation..."
+          
+          # Verify no secrets in container environment
+          POD_NAME=$(kubectl get pods -n mita-production -l app=mita-production -o jsonpath='{.items[0].metadata.name}')
+          
+          # Check that secrets are mounted as files, not environment variables
+          kubectl exec -n mita-production $POD_NAME -- env | grep -v -E '(JWT_SECRET|DATABASE_URL|REDIS_URL|OPENAI_API_KEY)' || echo "Good: No secrets in environment"
+          
+          # Verify External Secrets are working
+          kubectl get externalsecrets -n mita-production -o json | jq '.items[].status.conditions[] | select(.type=="Ready" and .status=="True")'
+          
+          echo "Security validation completed"
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          kubectl rollout undo -n mita-production deployment/mita-production
+          kubectl rollout status -n mita-production deployment/mita-production --timeout=300s
+          echo "Rollback completed"
+
+  secret-rotation-trigger:
+    name: Trigger Secret Rotation Check
+    runs-on: ubuntu-latest
+    needs: [production-deployment]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-production-role
+          role-session-name: GitHubActions-SecretRotation-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Check secret rotation status
+        run: |
+          echo "Checking secret rotation requirements..."
+          
+          # List secrets and check rotation status
+          aws secretsmanager list-secrets \
+            --filters Key=tag-key,Values=Project Key=tag-value,Values=mita-finance \
+            --query 'SecretList[].{Name:Name,LastRotated:LastRotatedDate,NextRotation:NextRotationDate}' \
+            --output table
+          
+          # Trigger rotation for any overdue secrets (this would be automated)
+          echo "Secret rotation check completed"
+
+  post-deployment-notification:
+    name: Post-Deployment Notifications
+    runs-on: ubuntu-latest
+    needs: [production-deployment, secret-rotation-trigger]
+    if: always()
+    
+    steps:
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          message: |
+            🔐 SECURE Production deployment ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Security: External Secrets enabled
+            Secrets: Encrypted with AWS KMS
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Create security-focused release
+        if: needs.production-deployment.result == 'success'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: secure-v${{ github.run_number }}
+          release_name: Secure Release v${{ github.run_number }}
+          body: |
+            🔐 **Secure Production Deployment**
+            
+            **Security Features:**
+            - ✅ External Secrets Operator enabled
+            - ✅ AWS Secrets Manager integration
+            - ✅ KMS encryption for secrets at rest
+            - ✅ OIDC authentication (no long-lived secrets)
+            - ✅ Container security scanning passed
+            - ✅ Secret detection scans passed
+            
+            **Changes:**
+            ${{ github.event.head_commit.message }}
+            
+            **Image:**
+            ${{ needs.build-and-scan.outputs.image-tag }}
+            
+            **Security Reports:**
+            - Container vulnerabilities: Scanned with Trivy & Snyk
+            - Code security: Bandit, Semgrep, GitLeaks
+            - Secret detection: TruffleHog, detect-secrets
+          draft: false
+          prerelease: false

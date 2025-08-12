@@ -1,0 +1,692 @@
+# Connection Pooling and Performance Optimization for MITA Financial Application
+# This configuration implements PgBouncer for PostgreSQL connection pooling
+# and Redis connection optimization for high-performance financial operations
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connection-pooling-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: connection-pooling
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # PgBouncer Configuration for PostgreSQL Connection Pooling
+  pgbouncer.ini: |
+    [databases]
+    mita = host=mita-postgresql-prod.cluster-xxxxx.us-east-1.rds.amazonaws.com port=5432 dbname=mita
+    mita_read = host=mita-postgresql-read-replica.cluster-xxxxx.us-east-1.rds.amazonaws.com port=5432 dbname=mita
+    
+    [pgbouncer]
+    # Connection pool settings optimized for financial workloads
+    pool_mode = transaction
+    max_client_conn = 1000
+    default_pool_size = 50
+    min_pool_size = 10
+    reserve_pool_size = 10
+    reserve_pool_timeout = 3
+    max_db_connections = 200
+    max_user_connections = 100
+    
+    # Authentication
+    auth_type = scram-sha-256
+    auth_file = /etc/pgbouncer/userlist.txt
+    auth_query = SELECT username, password FROM pgbouncer.get_auth($1)
+    
+    # Logging and monitoring
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+    stats_period = 60
+    
+    # Performance tuning
+    listen_port = 5432
+    listen_addr = 0.0.0.0
+    unix_socket_dir = /var/run/postgresql
+    
+    # Security settings
+    ignore_startup_parameters = extra_float_digits
+    
+    # Timeouts (optimized for financial transactions)
+    server_reset_query = DISCARD ALL
+    server_check_delay = 30
+    server_check_query = SELECT 1
+    server_lifetime = 3600
+    server_idle_timeout = 600
+    query_timeout = 30
+    query_wait_timeout = 120
+    client_idle_timeout = 0
+    idle_transaction_timeout = 60
+    
+    # Memory management
+    pkt_buf = 8192
+    sbuf_loopcnt = 5
+    
+    # Application name for monitoring
+    application_name_add_host = 1
+    
+  # User authentication list
+  userlist.txt: |
+    "mita_app" "md5<password_hash>"
+    "mita_read" "md5<password_hash>"
+    "mita_monitoring" "md5<password_hash>"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: connection-pooling
+    app.kubernetes.io/part-of: mita-finance
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pgbouncer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pgbouncer
+        app.kubernetes.io/component: connection-pooling
+        app.kubernetes.io/part-of: mita-finance
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9127"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: pgbouncer
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        fsGroup: 70
+      containers:
+      - name: pgbouncer
+        image: pgbouncer/pgbouncer:1.21.0
+        ports:
+        - containerPort: 5432
+          name: pgbouncer
+          protocol: TCP
+        - containerPort: 6432
+          name: admin
+          protocol: TCP
+        env:
+        - name: DATABASES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: mita-database-config
+              key: host
+        - name: DATABASES_PORT
+          value: "5432"
+        - name: DATABASES_USER
+          valueFrom:
+            secretKeyRef:
+              name: mita-database-config
+              key: username
+        - name: DATABASES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mita-database-config
+              key: password
+        - name: DATABASES_DBNAME
+          valueFrom:
+            secretKeyRef:
+              name: mita-database-config
+              key: database
+        - name: POOL_MODE
+          value: "transaction"
+        - name: MAX_CLIENT_CONN
+          value: "1000"
+        - name: DEFAULT_POOL_SIZE
+          value: "50"
+        - name: MIN_POOL_SIZE
+          value: "10"
+        - name: RESERVE_POOL_SIZE
+          value: "10"
+        - name: MAX_DB_CONNECTIONS
+          value: "200"
+        - name: AUTH_TYPE
+          value: "scram-sha-256"
+        - name: AUTH_FILE
+          value: "/etc/pgbouncer/userlist.txt"
+        - name: ADMIN_USERS
+          value: "mita_admin"
+        - name: STATS_USERS
+          value: "mita_monitoring"
+        - name: SERVER_RESET_QUERY
+          value: "DISCARD ALL"
+        - name: SERVER_CHECK_DELAY
+          value: "30"
+        - name: SERVER_LIFETIME
+          value: "3600"
+        - name: SERVER_IDLE_TIMEOUT
+          value: "600"
+        - name: QUERY_TIMEOUT
+          value: "30"
+        - name: QUERY_WAIT_TIMEOUT
+          value: "120"
+        - name: CLIENT_IDLE_TIMEOUT
+          value: "0"
+        - name: IDLE_TRANSACTION_TIMEOUT
+          value: "60"
+        - name: LOG_CONNECTIONS
+          value: "1"
+        - name: LOG_DISCONNECTIONS
+          value: "1"
+        - name: LOG_POOLER_ERRORS
+          value: "1"
+        - name: STATS_PERIOD
+          value: "60"
+        volumeMounts:
+        - name: pgbouncer-config
+          mountPath: /etc/pgbouncer/pgbouncer.ini
+          subPath: pgbouncer.ini
+          readOnly: true
+        - name: pgbouncer-config
+          mountPath: /etc/pgbouncer/userlist.txt
+          subPath: userlist.txt
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        - name: var-run
+          mountPath: /var/run/postgresql
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "killall -TERM pgbouncer && sleep 15"]
+      
+      # PgBouncer Exporter for Prometheus monitoring
+      - name: pgbouncer-exporter
+        image: spreaker/prometheus-pgbouncer-exporter:2.2.0
+        ports:
+        - containerPort: 9127
+          name: metrics
+          protocol: TCP
+        env:
+        - name: PGBOUNCER_EXPORTER_HOST
+          value: "127.0.0.1"
+        - name: PGBOUNCER_EXPORTER_PORT
+          value: "6432"
+        - name: PGBOUNCER_USER
+          value: "mita_monitoring"
+        - name: PGBOUNCER_PASS
+          valueFrom:
+            secretKeyRef:
+              name: pgbouncer-monitoring
+              key: password
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9127
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9127
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      
+      volumes:
+      - name: pgbouncer-config
+        configMap:
+          name: connection-pooling-config
+          defaultMode: 0444
+      - name: tmp
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - pgbouncer
+              topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: connection-pooling
+    app.kubernetes.io/part-of: mita-finance
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9127"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: pgbouncer
+  - port: 9127
+    targetPort: 9127
+    protocol: TCP
+    name: metrics
+  selector:
+    app.kubernetes.io/name: pgbouncer
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pgbouncer
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: connection-pooling
+    app.kubernetes.io/part-of: mita-finance
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: connection-pooling
+    app.kubernetes.io/part-of: mita-finance
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pgbouncer
+
+---
+# Redis Connection Pool Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-connection-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: redis-connection
+    app.kubernetes.io/part-of: mita-finance
+data:
+  redis-pool.conf: |
+    # Redis connection pool configuration for MITA Finance
+    
+    # Connection pool settings
+    maxactive: 200
+    maxidle: 50
+    minidle: 10
+    
+    # Connection timeout settings (milliseconds)
+    connect_timeout: 5000
+    read_timeout: 3000
+    write_timeout: 3000
+    
+    # Pool management
+    test_on_borrow: true
+    test_on_return: false
+    test_while_idle: true
+    time_between_eviction_runs: 30000
+    min_evictable_idle_time: 60000
+    
+    # Retry configuration
+    max_attempts: 3
+    retry_delay: 100
+    
+    # Security
+    ssl_enabled: true
+    ssl_verify_peer: true
+    
+    # Performance tuning
+    tcp_keepalive: true
+    tcp_nodelay: true
+    socket_buffer_size: 65536
+    
+    # Monitoring
+    enable_monitoring: true
+    metrics_port: 8080
+
+---
+# Redis Sentinel Configuration for High Availability
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-sentinel-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: redis-sentinel
+    app.kubernetes.io/component: redis-ha
+    app.kubernetes.io/part-of: mita-finance
+data:
+  sentinel.conf: |
+    # Redis Sentinel configuration for MITA Finance
+    
+    # Basic configuration
+    port 26379
+    bind 0.0.0.0
+    
+    # Monitor the main Redis instance
+    sentinel monitor mita-redis mita-redis-primary 6379 2
+    sentinel auth-pass mita-redis ${REDIS_PASSWORD}
+    
+    # Failover configuration
+    sentinel down-after-milliseconds mita-redis 5000
+    sentinel parallel-syncs mita-redis 1
+    sentinel failover-timeout mita-redis 10000
+    
+    # Notification scripts
+    sentinel notification-script mita-redis /etc/redis-sentinel/notify.sh
+    sentinel client-reconfig-script mita-redis /etc/redis-sentinel/reconfig.sh
+    
+    # Security
+    requirepass ${SENTINEL_PASSWORD}
+    
+    # Logging
+    logfile /var/log/redis-sentinel/sentinel.log
+    loglevel notice
+    
+    # Performance
+    tcp-keepalive 60
+    
+  notify.sh: |
+    #!/bin/bash
+    # Notification script for Redis Sentinel events
+    
+    EVENT_TYPE=$1
+    EVENT_DESCRIPTION=$2
+    
+    # Send notification to monitoring system
+    curl -X POST "${WEBHOOK_URL}" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"text\": \"Redis Sentinel Event: $EVENT_TYPE - $EVENT_DESCRIPTION\",
+        \"severity\": \"warning\",
+        \"service\": \"redis-sentinel\",
+        \"environment\": \"production\"
+      }"
+    
+    # Log the event
+    echo "$(date): $EVENT_TYPE - $EVENT_DESCRIPTION" >> /var/log/redis-sentinel/events.log
+    
+  reconfig.sh: |
+    #!/bin/bash
+    # Reconfiguration script for Redis client updates
+    
+    MASTER_NAME=$1
+    ROLE=$2
+    STATE=$3
+    FROM_IP=$4
+    FROM_PORT=$5
+    TO_IP=$6
+    TO_PORT=$7
+    
+    # Update application configuration
+    if [ "$ROLE" = "master" ] && [ "$STATE" = "start" ]; then
+      echo "New master detected: $TO_IP:$TO_PORT"
+      
+      # Update Kubernetes service endpoints
+      kubectl patch endpoints mita-redis-primary -p "{
+        \"subsets\": [{
+          \"addresses\": [{\"ip\": \"$TO_IP\"}],
+          \"ports\": [{\"port\": $TO_PORT}]
+        }]
+      }"
+      
+      # Restart application pods to pick up new configuration
+      kubectl rollout restart deployment/mita -n mita-production
+    fi
+
+---
+# Database Performance Monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-performance-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: performance-monitoring
+    app.kubernetes.io/part-of: mita-finance
+data:
+  performance-monitoring.sql: |
+    -- MITA Database Performance Monitoring Queries
+    
+    -- Create monitoring schema
+    CREATE SCHEMA IF NOT EXISTS monitoring;
+    
+    -- Connection pool monitoring view
+    CREATE OR REPLACE VIEW monitoring.connection_stats AS
+    SELECT 
+      state,
+      COUNT(*) as connection_count,
+      AVG(EXTRACT(EPOCH FROM (now() - state_change))) as avg_duration_seconds
+    FROM pg_stat_activity 
+    WHERE datname = 'mita'
+    GROUP BY state;
+    
+    -- Query performance monitoring
+    CREATE OR REPLACE VIEW monitoring.slow_queries AS
+    SELECT 
+      query,
+      calls,
+      total_time,
+      mean_time,
+      max_time,
+      stddev_time,
+      rows,
+      100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0) AS hit_percent
+    FROM pg_stat_statements 
+    WHERE mean_time > 1000  -- Queries taking more than 1 second on average
+    ORDER BY mean_time DESC;
+    
+    -- Index usage monitoring
+    CREATE OR REPLACE VIEW monitoring.index_usage AS
+    SELECT 
+      schemaname,
+      tablename,
+      indexname,
+      idx_tup_read,
+      idx_tup_fetch,
+      CASE 
+        WHEN idx_tup_read = 0 THEN 0
+        ELSE (idx_tup_fetch / idx_tup_read::float) * 100
+      END as index_hit_rate
+    FROM pg_stat_user_indexes
+    ORDER BY idx_tup_read DESC;
+    
+    -- Table statistics
+    CREATE OR REPLACE VIEW monitoring.table_stats AS
+    SELECT 
+      schemaname,
+      tablename,
+      n_tup_ins,
+      n_tup_upd,
+      n_tup_del,
+      n_live_tup,
+      n_dead_tup,
+      last_vacuum,
+      last_autovacuum,
+      last_analyze,
+      last_autoanalyze
+    FROM pg_stat_user_tables
+    ORDER BY n_live_tup DESC;
+    
+    -- Lock monitoring
+    CREATE OR REPLACE VIEW monitoring.locks AS
+    SELECT 
+      l.mode,
+      l.locktype,
+      l.relation::regclass,
+      l.page,
+      l.tuple,
+      l.virtualxid,
+      l.transactionid,
+      l.granted,
+      a.usename,
+      a.query,
+      a.query_start,
+      age(now(), a.query_start) AS query_age
+    FROM pg_locks l 
+    LEFT JOIN pg_stat_activity a ON l.pid = a.pid
+    WHERE l.granted = false;
+    
+    -- Create monitoring user
+    CREATE USER IF NOT EXISTS mita_monitoring WITH PASSWORD 'monitoring_password';
+    GRANT CONNECT ON DATABASE mita TO mita_monitoring;
+    GRANT USAGE ON SCHEMA monitoring TO mita_monitoring;
+    GRANT SELECT ON ALL TABLES IN SCHEMA monitoring TO mita_monitoring;
+    GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO mita_monitoring;
+    GRANT SELECT ON ALL TABLES IN SCHEMA information_schema TO mita_monitoring;
+    
+    -- Grant access to pg_stat_statements
+    GRANT EXECUTE ON FUNCTION pg_stat_statements_reset() TO mita_monitoring;
+
+---
+# Performance Optimization CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-performance-optimization
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: performance-optimization
+    app.kubernetes.io/part-of: mita-finance
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: db-performance-optimization
+            app.kubernetes.io/component: performance-optimization
+            app.kubernetes.io/part-of: mita-finance
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: mita-maintenance
+          containers:
+          - name: db-optimizer
+            image: postgres:15-alpine
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Connect to database and run optimization tasks
+              export PGPASSWORD="$DB_PASSWORD"
+              
+              echo "Starting database optimization tasks..."
+              
+              # Update table statistics
+              echo "Updating table statistics..."
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "ANALYZE;"
+              
+              # Reindex frequently used tables
+              echo "Reindexing critical tables..."
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+                REINDEX TABLE users;
+                REINDEX TABLE transactions;
+                REINDEX TABLE receipts;
+                REINDEX TABLE accounts;
+              "
+              
+              # Clean up old statistics
+              echo "Cleaning up old statistics..."
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+                SELECT pg_stat_statements_reset();
+              "
+              
+              # Vacuum analyze on critical tables
+              echo "Running vacuum analyze on critical tables..."
+              psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+                VACUUM ANALYZE users;
+                VACUUM ANALYZE transactions;
+                VACUUM ANALYZE receipts;
+                VACUUM ANALYZE accounts;
+              "
+              
+              echo "Database optimization completed successfully."
+            
+            env:
+            - name: DB_HOST
+              value: "pgbouncer.mita-production.svc.cluster.local"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-config
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-config
+                  key: password
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-config
+                  key: database
+            
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"

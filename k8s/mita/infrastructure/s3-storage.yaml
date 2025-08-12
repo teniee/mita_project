@@ -1,0 +1,941 @@
+# AWS S3 Storage Infrastructure for MITA Financial Application
+# This configuration sets up production-grade S3 buckets with
+# lifecycle policies, encryption, and compliance controls for financial data
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3-storage-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # S3 Storage Configuration Template
+  terraform-config.tf: |
+    # S3 Storage Configuration for MITA Finance
+    
+    # Data sources
+    data "aws_caller_identity" "current" {}
+    data "aws_region" "current" {}
+    
+    # KMS Key for S3 encryption
+    resource "aws_kms_key" "mita_s3_encryption" {
+      description             = "KMS key for MITA S3 bucket encryption"
+      deletion_window_in_days = 7
+      enable_key_rotation     = true
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "EnableIAMUserPermissions"
+            Effect = "Allow"
+            Principal = {
+              AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+            }
+            Action   = "kms:*"
+            Resource = "*"
+          },
+          {
+            Sid    = "AllowS3Service"
+            Effect = "Allow"
+            Principal = {
+              Service = "s3.amazonaws.com"
+            }
+            Action = [
+              "kms:Decrypt",
+              "kms:DescribeKey",
+              "kms:Encrypt",
+              "kms:GenerateDataKey*",
+              "kms:ReEncrypt*"
+            ]
+            Resource = "*"
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-s3-encryption-key"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_kms_alias" "mita_s3_encryption" {
+      name          = "alias/mita-s3-encryption"
+      target_key_id = aws_kms_key.mita_s3_encryption.key_id
+    }
+    
+    # Primary S3 Bucket for Receipt Images and Documents
+    resource "aws_s3_bucket" "mita_documents" {
+      bucket = "mita-finance-documents-prod-${random_string.bucket_suffix.result}"
+      
+      tags = {
+        Name        = "mita-documents-production"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "user-documents"
+        Compliance  = "PCI-DSS"
+        Backup      = "required"
+      }
+    }
+    
+    # Random suffix for bucket naming
+    resource "random_string" "bucket_suffix" {
+      length  = 8
+      special = false
+      upper   = false
+    }
+    
+    # S3 Bucket versioning
+    resource "aws_s3_bucket_versioning" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      versioning_configuration {
+        status = "Enabled"
+      }
+    }
+    
+    # S3 Bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = aws_kms_key.mita_s3_encryption.arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # S3 Bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # S3 Bucket lifecycle configuration for cost optimization
+    resource "aws_s3_bucket_lifecycle_configuration" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      
+      # Receipt images lifecycle
+      rule {
+        id     = "receipt_images_lifecycle"
+        status = "Enabled"
+        
+        filter {
+          prefix = "receipts/"
+        }
+        
+        # Transition to IA after 30 days
+        transition {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        }
+        
+        # Transition to Glacier Flexible Retrieval after 90 days
+        transition {
+          days          = 90
+          storage_class = "GLACIER"
+        }
+        
+        # Transition to Deep Archive after 1 year
+        transition {
+          days          = 365
+          storage_class = "DEEP_ARCHIVE"
+        }
+        
+        # Non-current version transitions for cost optimization
+        noncurrent_version_transition {
+          noncurrent_days = 30
+          storage_class   = "STANDARD_IA"
+        }
+        
+        noncurrent_version_transition {
+          noncurrent_days = 90
+          storage_class   = "GLACIER"
+        }
+        
+        # Delete non-current versions after 7 years (financial compliance)
+        noncurrent_version_expiration {
+          noncurrent_days = 2555  # 7 years
+        }
+      }
+      
+      # Profile images lifecycle (less aggressive)
+      rule {
+        id     = "profile_images_lifecycle"
+        status = "Enabled"
+        
+        filter {
+          prefix = "profiles/"
+        }
+        
+        # Transition to IA after 60 days (accessed more frequently)
+        transition {
+          days          = 60
+          storage_class = "STANDARD_IA"
+        }
+        
+        # Transition to Glacier after 180 days
+        transition {
+          days          = 180
+          storage_class = "GLACIER"
+        }
+        
+        # Non-current version management
+        noncurrent_version_transition {
+          noncurrent_days = 30
+          storage_class   = "STANDARD_IA"
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 365  # Delete old profile versions after 1 year
+        }
+      }
+      
+      # Temporary upload cleanup
+      rule {
+        id     = "temp_uploads_cleanup"
+        status = "Enabled"
+        
+        filter {
+          prefix = "temp/"
+        }
+        
+        # Delete temporary files after 7 days
+        expiration {
+          days = 7
+        }
+        
+        # Clean up incomplete multipart uploads after 1 day
+        abort_incomplete_multipart_upload {
+          days_after_initiation = 1
+        }
+      }
+      
+      # Multipart upload cleanup for all objects
+      rule {
+        id     = "multipart_upload_cleanup"
+        status = "Enabled"
+        
+        abort_incomplete_multipart_upload {
+          days_after_initiation = 7
+        }
+      }
+    }
+    
+    # S3 Bucket logging
+    resource "aws_s3_bucket" "mita_access_logs" {
+      bucket = "mita-finance-access-logs-${random_string.bucket_suffix.result}"
+      
+      tags = {
+        Name        = "mita-access-logs"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "access-logs"
+      }
+    }
+    
+    # Access logs bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_access_logs" {
+      bucket = aws_s3_bucket.mita_access_logs.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = aws_kms_key.mita_s3_encryption.arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # Access logs bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_access_logs" {
+      bucket = aws_s3_bucket.mita_access_logs.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # Enable access logging on documents bucket
+    resource "aws_s3_bucket_logging" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      
+      target_bucket = aws_s3_bucket.mita_access_logs.id
+      target_prefix = "access-logs/"
+    }
+    
+    # S3 Bucket notification for document processing
+    resource "aws_s3_bucket_notification" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      
+      # SQS notification for OCR processing
+      queue {
+        id            = "receipt_upload_notification"
+        queue_arn     = aws_sqs_queue.mita_document_processing.arn
+        events        = ["s3:ObjectCreated:*"]
+        filter_prefix = "receipts/"
+        filter_suffix = ".jpg"
+      }
+      
+      queue {
+        id            = "receipt_upload_notification_png"
+        queue_arn     = aws_sqs_queue.mita_document_processing.arn
+        events        = ["s3:ObjectCreated:*"]
+        filter_prefix = "receipts/"
+        filter_suffix = ".png"
+      }
+      
+      depends_on = [aws_sqs_queue_policy.mita_document_processing]
+    }
+    
+    # SQS Queue for document processing notifications
+    resource "aws_sqs_queue" "mita_document_processing" {
+      name = "mita-document-processing"
+      
+      # Message retention for 14 days
+      message_retention_seconds = 1209600
+      
+      # Encryption
+      kms_master_key_id                 = aws_kms_key.mita_s3_encryption.arn
+      kms_data_key_reuse_period_seconds = 300
+      
+      tags = {
+        Name        = "mita-document-processing"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "document-processing"
+      }
+    }
+    
+    # Dead letter queue for failed processing
+    resource "aws_sqs_queue" "mita_document_processing_dlq" {
+      name = "mita-document-processing-dlq"
+      
+      # Long retention for analysis
+      message_retention_seconds = 1209600  # 14 days
+      
+      # Encryption
+      kms_master_key_id                 = aws_kms_key.mita_s3_encryption.arn
+      kms_data_key_reuse_period_seconds = 300
+      
+      tags = {
+        Name        = "mita-document-processing-dlq"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "document-processing-dlq"
+      }
+    }
+    
+    # Redrive policy for main queue
+    resource "aws_sqs_queue_redrive_policy" "mita_document_processing" {
+      queue_url = aws_sqs_queue.mita_document_processing.id
+      redrive_policy = jsonencode({
+        deadLetterTargetArn = aws_sqs_queue.mita_document_processing_dlq.arn
+        maxReceiveCount     = 3
+      })
+    }
+    
+    # SQS Queue policy to allow S3 to publish messages
+    resource "aws_sqs_queue_policy" "mita_document_processing" {
+      queue_url = aws_sqs_queue.mita_document_processing.id
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "AllowS3Publish"
+            Effect = "Allow"
+            Principal = {
+              Service = "s3.amazonaws.com"
+            }
+            Action   = "sqs:SendMessage"
+            Resource = aws_sqs_queue.mita_document_processing.arn
+            Condition = {
+              ArnEquals = {
+                "aws:SourceArn" = aws_s3_bucket.mita_documents.arn
+              }
+            }
+          }
+        ]
+      })
+    }
+    
+    # CloudWatch Log Group for S3 access patterns
+    resource "aws_cloudwatch_log_group" "mita_s3_access_patterns" {
+      name              = "/aws/s3/mita-documents/access-patterns"
+      retention_in_days = 90
+      kms_key_id        = aws_kms_key.mita_s3_encryption.arn
+      
+      tags = {
+        Name        = "mita-s3-access-patterns"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # S3 Bucket inventory for compliance reporting
+    resource "aws_s3_bucket_inventory" "mita_documents" {
+      bucket = aws_s3_bucket.mita_documents.id
+      name   = "mita-documents-inventory"
+      
+      included_object_versions = "Current"
+      
+      optional_fields = [
+        "Size",
+        "LastModifiedDate",
+        "StorageClass",
+        "ETag",
+        "IsMultipartUploaded",
+        "ReplicationStatus",
+        "EncryptionStatus"
+      ]
+      
+      schedule {
+        frequency = "Weekly"
+      }
+      
+      destination {
+        bucket {
+          format     = "CSV"
+          bucket_arn = aws_s3_bucket.mita_inventory_reports.arn
+          prefix     = "inventory-reports/"
+          encryption {
+            sse_kms {
+              key_id = aws_kms_key.mita_s3_encryption.arn
+            }
+          }
+        }
+      }
+    }
+    
+    # S3 Bucket for inventory reports
+    resource "aws_s3_bucket" "mita_inventory_reports" {
+      bucket = "mita-finance-inventory-reports-${random_string.bucket_suffix.result}"
+      
+      tags = {
+        Name        = "mita-inventory-reports"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "compliance-reporting"
+      }
+    }
+    
+    # Inventory reports bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_inventory_reports" {
+      bucket = aws_s3_bucket.mita_inventory_reports.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = aws_kms_key.mita_s3_encryption.arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # Inventory reports bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_inventory_reports" {
+      bucket = aws_s3_bucket.mita_inventory_reports.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # Outputs for application integration
+    output "documents_bucket_name" {
+      description = "Name of the S3 bucket for documents"
+      value       = aws_s3_bucket.mita_documents.bucket
+    }
+    
+    output "documents_bucket_arn" {
+      description = "ARN of the S3 bucket for documents"
+      value       = aws_s3_bucket.mita_documents.arn
+    }
+    
+    output "documents_bucket_domain_name" {
+      description = "Domain name of the S3 bucket for documents"
+      value       = aws_s3_bucket.mita_documents.bucket_domain_name
+    }
+    
+    output "documents_bucket_regional_domain_name" {
+      description = "Regional domain name of the S3 bucket for documents"
+      value       = aws_s3_bucket.mita_documents.bucket_regional_domain_name
+    }
+    
+    output "document_processing_queue_url" {
+      description = "URL of the SQS queue for document processing"
+      value       = aws_sqs_queue.mita_document_processing.url
+    }
+    
+    output "document_processing_queue_arn" {
+      description = "ARN of the SQS queue for document processing"
+      value       = aws_sqs_queue.mita_document_processing.arn
+    }
+    
+    output "s3_kms_key_arn" {
+      description = "ARN of the KMS key used for S3 encryption"
+      value       = aws_kms_key.mita_s3_encryption.arn
+    }
+    
+    output "access_logs_bucket_name" {
+      description = "Name of the S3 bucket for access logs"
+      value       = aws_s3_bucket.mita_access_logs.bucket
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3-backup-storage-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: backup-storage
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # S3 Backup Storage Configuration Template
+  terraform-backup-config.tf: |
+    # S3 Backup Storage Configuration for MITA Finance
+    
+    # Primary backup bucket
+    resource "aws_s3_bucket" "mita_backups" {
+      bucket = "mita-finance-backups-prod-${random_string.backup_bucket_suffix.result}"
+      
+      tags = {
+        Name        = "mita-backups-production"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "database-application-backups"
+        Compliance  = "PCI-DSS"
+        Retention   = "7-years"
+      }
+    }
+    
+    # Random suffix for backup bucket
+    resource "random_string" "backup_bucket_suffix" {
+      length  = 8
+      special = false
+      upper   = false
+    }
+    
+    # Backup bucket versioning (critical for backup integrity)
+    resource "aws_s3_bucket_versioning" "mita_backups" {
+      bucket = aws_s3_bucket.mita_backups.id
+      versioning_configuration {
+        status = "Enabled"
+      }
+    }
+    
+    # Backup bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_backups" {
+      bucket = aws_s3_bucket.mita_backups.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = aws_kms_key.mita_backup_encryption.arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # Separate KMS key for backups
+    resource "aws_kms_key" "mita_backup_encryption" {
+      description             = "KMS key for MITA backup encryption"
+      deletion_window_in_days = 30  # Longer window for backup key
+      enable_key_rotation     = true
+      
+      tags = {
+        Name        = "mita-backup-encryption-key"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-encryption"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_kms_alias" "mita_backup_encryption" {
+      name          = "alias/mita-backup-encryption"
+      target_key_id = aws_kms_key.mita_backup_encryption.key_id
+    }
+    
+    # Backup bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_backups" {
+      bucket = aws_s3_bucket.mita_backups.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # Cross-region replication bucket (DR)
+    resource "aws_s3_bucket" "mita_backups_dr" {
+      provider = aws.dr_region
+      bucket   = "mita-finance-backups-dr-${random_string.backup_bucket_suffix.result}"
+      
+      tags = {
+        Name        = "mita-backups-dr"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "disaster-recovery-backups"
+        Compliance  = "PCI-DSS"
+        Region      = "disaster-recovery"
+      }
+    }
+    
+    # DR bucket versioning
+    resource "aws_s3_bucket_versioning" "mita_backups_dr" {
+      provider = aws.dr_region
+      bucket   = aws_s3_bucket.mita_backups_dr.id
+      versioning_configuration {
+        status = "Enabled"
+      }
+    }
+    
+    # DR bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_backups_dr" {
+      provider = aws.dr_region
+      bucket   = aws_s3_bucket.mita_backups_dr.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = aws_kms_key.mita_backup_encryption_dr.arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # DR region KMS key
+    resource "aws_kms_key" "mita_backup_encryption_dr" {
+      provider                = aws.dr_region
+      description             = "KMS key for MITA backup encryption in DR region"
+      deletion_window_in_days = 30
+      enable_key_rotation     = true
+      
+      tags = {
+        Name        = "mita-backup-encryption-key-dr"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-encryption-dr"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    # DR bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_backups_dr" {
+      provider = aws.dr_region
+      bucket   = aws_s3_bucket.mita_backups_dr.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # IAM role for cross-region replication
+    resource "aws_iam_role" "mita_backup_replication" {
+      name = "mita-backup-replication-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Action = "sts:AssumeRole"
+            Effect = "Allow"
+            Principal = {
+              Service = "s3.amazonaws.com"
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-replication-role"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-replication"
+      }
+    }
+    
+    # IAM policy for replication
+    resource "aws_iam_role_policy" "mita_backup_replication" {
+      name = "mita-backup-replication-policy"
+      role = aws_iam_role.mita_backup_replication.id
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "s3:GetObjectVersionForReplication",
+              "s3:GetObjectVersionAcl",
+              "s3:GetObjectVersionTagging"
+            ]
+            Resource = "${aws_s3_bucket.mita_backups.arn}/*"
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "s3:ListBucket"
+            ]
+            Resource = aws_s3_bucket.mita_backups.arn
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "s3:ReplicateObject",
+              "s3:ReplicateDelete",
+              "s3:ReplicateTags"
+            ]
+            Resource = "${aws_s3_bucket.mita_backups_dr.arn}/*"
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:GenerateDataKey"
+            ]
+            Resource = [
+              aws_kms_key.mita_backup_encryption.arn,
+              aws_kms_key.mita_backup_encryption_dr.arn
+            ]
+          }
+        ]
+      })
+    }
+    
+    # Cross-region replication configuration
+    resource "aws_s3_bucket_replication_configuration" "mita_backups" {
+      role   = aws_iam_role.mita_backup_replication.arn
+      bucket = aws_s3_bucket.mita_backups.id
+      
+      rule {
+        id     = "backup_replication_to_dr"
+        status = "Enabled"
+        
+        priority = 1
+        
+        delete_marker_replication {
+          status = "Enabled"
+        }
+        
+        filter {
+          prefix = ""
+        }
+        
+        destination {
+          bucket        = aws_s3_bucket.mita_backups_dr.arn
+          storage_class = "STANDARD"
+          
+          encryption_configuration {
+            replica_kms_key_id = aws_kms_key.mita_backup_encryption_dr.arn
+          }
+          
+          replication_time {
+            status = "Enabled"
+            time {
+              minutes = 15
+            }
+          }
+          
+          metrics {
+            status = "Enabled"
+            event_threshold {
+              minutes = 15
+            }
+          }
+        }
+      }
+      
+      depends_on = [aws_s3_bucket_versioning.mita_backups]
+    }
+    
+    # Backup lifecycle configuration
+    resource "aws_s3_bucket_lifecycle_configuration" "mita_backups" {
+      bucket = aws_s3_bucket.mita_backups.id
+      
+      # Database backups lifecycle
+      rule {
+        id     = "database_backups_lifecycle"
+        status = "Enabled"
+        
+        filter {
+          prefix = "database/"
+        }
+        
+        # Keep current versions in Standard for 30 days
+        transition {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        }
+        
+        # Move to Glacier after 90 days
+        transition {
+          days          = 90
+          storage_class = "GLACIER"
+        }
+        
+        # Move to Deep Archive after 1 year
+        transition {
+          days          = 365
+          storage_class = "DEEP_ARCHIVE"
+        }
+        
+        # Non-current version management
+        noncurrent_version_transition {
+          noncurrent_days = 7
+          storage_class   = "STANDARD_IA"
+        }
+        
+        noncurrent_version_transition {
+          noncurrent_days = 30
+          storage_class   = "GLACIER"
+        }
+        
+        # Keep backups for 7 years (financial compliance)
+        expiration {
+          days = 2555  # 7 years
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 2555
+        }
+      }
+      
+      # Application backups lifecycle
+      rule {
+        id     = "application_backups_lifecycle"
+        status = "Enabled"
+        
+        filter {
+          prefix = "application/"
+        }
+        
+        # Faster transition for application backups
+        transition {
+          days          = 7
+          storage_class = "STANDARD_IA"
+        }
+        
+        transition {
+          days          = 30
+          storage_class = "GLACIER"
+        }
+        
+        transition {
+          days          = 90
+          storage_class = "DEEP_ARCHIVE"
+        }
+        
+        # Keep application backups for 3 years
+        expiration {
+          days = 1095  # 3 years
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 30
+        }
+      }
+      
+      # Log backups lifecycle (shorter retention)
+      rule {
+        id     = "log_backups_lifecycle"
+        status = "Enabled"
+        
+        filter {
+          prefix = "logs/"
+        }
+        
+        transition {
+          days          = 7
+          storage_class = "GLACIER"
+        }
+        
+        # Keep log backups for 1 year
+        expiration {
+          days = 365
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 7
+        }
+      }
+    }
+    
+    # DR bucket lifecycle (similar but more aggressive)
+    resource "aws_s3_bucket_lifecycle_configuration" "mita_backups_dr" {
+      provider = aws.dr_region
+      bucket   = aws_s3_bucket.mita_backups_dr.id
+      
+      rule {
+        id     = "dr_backups_lifecycle"
+        status = "Enabled"
+        
+        # Move to Glacier faster in DR region for cost optimization
+        transition {
+          days          = 7
+          storage_class = "GLACIER"
+        }
+        
+        transition {
+          days          = 30
+          storage_class = "DEEP_ARCHIVE"
+        }
+        
+        # Same retention as primary
+        expiration {
+          days = 2555  # 7 years
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 90
+        }
+      }
+    }
+    
+    # Outputs for backup configuration
+    output "backup_bucket_name" {
+      description = "Name of the S3 backup bucket"
+      value       = aws_s3_bucket.mita_backups.bucket
+    }
+    
+    output "backup_bucket_arn" {
+      description = "ARN of the S3 backup bucket"
+      value       = aws_s3_bucket.mita_backups.arn
+    }
+    
+    output "backup_dr_bucket_name" {
+      description = "Name of the S3 DR backup bucket"
+      value       = aws_s3_bucket.mita_backups_dr.bucket
+    }
+    
+    output "backup_dr_bucket_arn" {
+      description = "ARN of the S3 DR backup bucket"
+      value       = aws_s3_bucket.mita_backups_dr.arn
+    }
+    
+    output "backup_kms_key_arn" {
+      description = "ARN of the backup KMS key"
+      value       = aws_kms_key.mita_backup_encryption.arn
+    }
+    
+    output "backup_dr_kms_key_arn" {
+      description = "ARN of the DR backup KMS key"
+      value       = aws_kms_key.mita_backup_encryption_dr.arn
+    }

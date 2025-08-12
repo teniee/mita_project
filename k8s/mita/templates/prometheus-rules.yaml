@@ -1,0 +1,353 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+# PrometheusRule for MITA Financial Application Monitoring and Alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mita.fullname" . }}-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alerting
+    monitoring.coreos.com/prometheus: "production"
+    compliance/framework: "SOX,PCI-DSS"
+spec:
+  groups:
+    # Critical Business Logic Alerts - Financial Services
+    - name: mita.financial.critical
+      interval: 30s
+      rules:
+        - alert: MitaHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{service="mita-backend",code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{service="mita-backend"}[5m]))
+            ) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+            team: sre
+            compliance: "SOX,PCI-DSS"
+            business_impact: "high"
+          annotations:
+            summary: "High error rate detected in MITA backend"
+            description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes, which exceeds the 5% threshold for financial services."
+            runbook_url: "https://runbooks.mita.finance/alerts/high-error-rate"
+            impact: "Users may experience transaction failures or data inconsistencies"
+            action: "Check application logs and database connectivity immediately"
+
+        - alert: MitaTransactionProcessingDown
+          expr: |
+            (
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*"}[5m]))
+            ) == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: sre
+            compliance: "SOX,PCI-DSS"
+            business_impact: "revenue-critical"
+          annotations:
+            summary: "No transaction processing requests detected"
+            description: "Transaction processing appears to be down - no requests in the last 5 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/transaction-down"
+            impact: "Revenue-critical functionality is unavailable"
+            action: "Immediate escalation required - check API health and database connectivity"
+
+        - alert: MitaDatabaseConnectionPool
+          expr: |
+            mita_db_active_connections > 80
+          for: 5m
+          labels:
+            severity: critical
+            team: sre
+            compliance: "SOX"
+          annotations:
+            summary: "Database connection pool near exhaustion"
+            description: "Database has {{ $value }} active connections, approaching the limit."
+            runbook_url: "https://runbooks.mita.finance/alerts/db-connections"
+            impact: "New user requests may fail due to database unavailability"
+            action: "Scale database connections or investigate connection leaks"
+
+        - alert: MitaAuthenticationFailureSpike
+          expr: |
+            (
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*auth.*",code="401"}[5m]))
+            ) > 10
+          for: 2m
+          labels:
+            severity: warning
+            team: security
+            compliance: "PCI-DSS"
+            security_incident: "potential"
+          annotations:
+            summary: "Spike in authentication failures detected"
+            description: "Authentication failure rate is {{ $value }} requests/second, which may indicate a security incident."
+            runbook_url: "https://runbooks.mita.finance/alerts/auth-failures"
+            impact: "Potential security incident - brute force or credential stuffing attack"
+            action: "Review authentication logs and consider implementing additional rate limiting"
+
+    # Task Queue and Worker Alerts
+    - name: mita.workers.critical
+      interval: 30s
+      rules:
+        - alert: MitaHighPriorityQueueBacklog
+          expr: |
+            rq_high_priority_queue_depth > 10
+          for: 1m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "High priority task queue has significant backlog"
+            description: "High priority queue depth is {{ $value }}, indicating worker capacity issues."
+            runbook_url: "https://runbooks.mita.finance/alerts/queue-backlog"
+            impact: "Critical features like OCR and AI analysis may be delayed"
+            action: "Scale high priority workers immediately"
+
+        - alert: MitaWorkerDown
+          expr: |
+            up{service=~"mita-worker.*"} == 0
+          for: 3m
+          labels:
+            severity: critical
+            team: sre
+          annotations:
+            summary: "MITA worker instance is down"
+            description: "Worker {{ $labels.instance }} has been down for more than 3 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/worker-down"
+            impact: "Background task processing capacity reduced"
+            action: "Check worker logs and restart if necessary"
+
+        - alert: MitaTaskFailureRate
+          expr: |
+            (
+              sum(rate(task_failures_total[5m]))
+              /
+              sum(rate(task_executions_total[5m]))
+            ) > 0.10
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "High task failure rate detected"
+            description: "Task failure rate is {{ $value | humanizePercentage }}, exceeding 10% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/task-failures"
+            impact: "Background processing may be unreliable"
+            action: "Investigate task error logs and resource constraints"
+
+    # Resource and Performance Alerts
+    - name: mita.performance.warning
+      interval: 60s
+      rules:
+        - alert: MitaHighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{container="backend"}
+              /
+              container_spec_memory_limit_bytes{container="backend"}
+            ) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "High memory usage in MITA backend"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limit in pod {{ $labels.pod }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/high-memory"
+            impact: "Performance degradation and potential OOM kills"
+            action: "Monitor for memory leaks and consider scaling resources"
+
+        - alert: MitaHighCPUUsage
+          expr: |
+            (
+              rate(container_cpu_usage_seconds_total{container="backend"}[5m])
+              /
+              container_spec_cpu_quota{container="backend"} * container_spec_cpu_period{container="backend"}
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "High CPU usage in MITA backend"
+            description: "CPU usage is {{ $value | humanizePercentage }} in pod {{ $labels.pod }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/high-cpu"
+            impact: "Performance degradation and increased response times"
+            action: "Investigate CPU bottlenecks and consider horizontal scaling"
+
+        - alert: MitaSlowResponseTime
+          expr: |
+            histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service="mita-backend"}[5m])) > 2.0
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "Slow API response times detected"
+            description: "95th percentile response time is {{ $value }}s, exceeding 2 second SLA."
+            runbook_url: "https://runbooks.mita.finance/alerts/slow-response"
+            impact: "User experience degraded - slow app performance"
+            action: "Investigate database queries and API performance bottlenecks"
+
+    # Security and Compliance Alerts
+    - name: mita.security.critical
+      interval: 30s
+      rules:
+        - alert: MitaSecretRotationOverdue
+          expr: |
+            (time() - mita_secret_rotation_last_success) > (7 * 24 * 3600)  # 7 days
+          for: 0m
+          labels:
+            severity: critical
+            team: security
+            compliance: "SOX,PCI-DSS"
+            security_incident: "compliance-violation"
+          annotations:
+            summary: "Secret rotation is overdue"
+            description: "Secrets have not been rotated for {{ $value | humanizeDuration }}, violating financial compliance requirements."
+            runbook_url: "https://runbooks.mita.finance/alerts/secret-rotation"
+            impact: "Compliance violation - financial audit risk"
+            action: "Execute emergency secret rotation procedure immediately"
+
+        - alert: MitaBackupFailure
+          expr: |
+            (time() - mita_backup_last_success) > (25 * 3600)  # 25 hours
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            compliance: "SOX"
+          annotations:
+            summary: "Database backup has failed"
+            description: "Last successful backup was {{ $value | humanizeDuration }} ago."
+            runbook_url: "https://runbooks.mita.finance/alerts/backup-failure"
+            impact: "Data loss risk - compliance violation"
+            action: "Investigate backup system immediately and ensure data protection"
+
+        - alert: MitaUnauthorizedAPIAccess
+          expr: |
+            increase(http_requests_total{service="mita-backend",code="403"}[10m]) > 50
+          for: 0m
+          labels:
+            severity: warning
+            team: security
+            security_incident: "potential"
+          annotations:
+            summary: "Spike in unauthorized API access attempts"
+            description: "{{ $value }} unauthorized access attempts in the last 10 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/unauthorized-access"
+            impact: "Potential security incident - API abuse or attack"
+            action: "Review access logs and implement additional security measures if needed"
+
+    # Business Logic and Financial Compliance
+    - name: mita.business.critical
+      interval: 60s
+      rules:
+        - alert: MitaSubscriptionRefreshFailure
+          expr: |
+            (time() - mita_subscription_refresh_last_success) > (20 * 60)  # 20 minutes
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "revenue-critical"
+            compliance: "business-continuity"
+          annotations:
+            summary: "Subscription refresh has failed"
+            description: "Subscription refresh has not succeeded for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/subscription-refresh"
+            impact: "Premium features may be incorrectly disabled - revenue impact"
+            action: "Check subscription refresh CronJob and IAP connectivity immediately"
+
+        - alert: MitaAIPredictionFailureRate
+          expr: |
+            (
+              sum(rate(ai_predictions_failed_total[10m]))
+              /
+              sum(rate(ai_predictions_total[10m]))
+            ) > 0.20
+          for: 5m
+          labels:
+            severity: warning
+            team: data-science
+            business_impact: "feature-degradation"
+          annotations:
+            summary: "High AI prediction failure rate"
+            description: "AI prediction failure rate is {{ $value | humanizePercentage }}, exceeding 20% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/ai-failures"
+            impact: "Core AI features may be unavailable or providing poor recommendations"
+            action: "Check OpenAI API connectivity and model performance"
+
+    # Infrastructure Health Alerts
+    - name: mita.infrastructure.warning
+      interval: 60s
+      rules:
+        - alert: MitaPodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}"}[10m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "Pod is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently."
+            runbook_url: "https://runbooks.mita.finance/alerts/crash-looping"
+            impact: "Service instability and potential downtime"
+            action: "Check pod logs and resource limits"
+
+        - alert: MitaPersistentVolumeUsage
+          expr: |
+            (
+              kubelet_volume_stats_used_bytes
+              /
+              kubelet_volume_stats_capacity_bytes
+            ) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "Persistent volume usage is high"
+            description: "PV {{ $labels.persistentvolumeclaim }} usage is {{ $value | humanizePercentage }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/pv-usage"
+            impact: "Storage capacity issues may cause service disruption"
+            action: "Clean up old files or expand volume capacity"
+
+    # External Dependencies
+    - name: mita.external.warning
+      interval: 120s
+      rules:
+        - alert: MitaExternalServiceDown
+          expr: |
+            probe_success{job="blackbox"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+          annotations:
+            summary: "External service is down"
+            description: "External service {{ $labels.instance }} has been down for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/external-service"
+            impact: "Dependent functionality may be impaired"
+            action: "Check service status and implement fallback procedures if available"
+
+        - alert: MitaCertificateExpiry
+          expr: |
+            (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+          for: 0m
+          labels:
+            severity: warning
+            team: sre
+            compliance: "security"
+          annotations:
+            summary: "SSL certificate expiring soon"
+            description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days."
+            runbook_url: "https://runbooks.mita.finance/alerts/cert-expiry"
+            impact: "Service may become inaccessible due to certificate expiry"
+            action: "Renew SSL certificate before expiration"
+{{- end }}

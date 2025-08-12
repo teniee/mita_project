@@ -97,36 +97,97 @@ spec:
               value: {{ .Values.debug | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.logLevel | quote }}
+            # Database configuration from External Secrets
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-database-credentials
+                  key: DATABASE_URL
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: database-url
+                  {{- end }}
+            
+            # Redis configuration from External Secrets
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-redis-credentials
+                  key: REDIS_URL
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: redis-url
+                  {{- end }}
+            
+            # Authentication secrets from External Secrets
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-auth-secrets
+                  key: JWT_SECRET
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: jwt-secret
+                  {{- end }}
+            - name: JWT_PREVIOUS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-auth-secrets
+                  key: JWT_PREVIOUS_SECRET
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
+                  key: jwt-previous-secret
+                  {{- end }}
+                  optional: true
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-auth-secrets
+                  key: SECRET_KEY
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: secret-key
+                  {{- end }}
+            
+            # External API secrets from External Secrets
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-external-api-secrets
+                  key: OPENAI_API_KEY
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: openai-api-key
+                  {{- end }}
             - name: SENTRY_DSN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "mita.fullname" . }}-secrets
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-external-api-secrets
+                  key: SENTRY_DSN
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
                   key: sentry-dsn
+                  {{- end }}
+                  optional: true
+            
+            # Notification service secrets
+            - name: APPSTORE_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.externalSecrets.enabled }}
+                  name: {{ include "mita.fullname" . }}-notification-secrets
+                  key: APPSTORE_SHARED_SECRET
+                  {{- else }}
+                  name: {{ include "mita.fullname" . }}-secrets-legacy
+                  key: appstore-shared-secret
+                  {{- end }}
                   optional: true
 
           # Ports

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from app.api.transactions.services import (
 # isort: on
 from app.core.session import get_db
 from app.utils.response_wrapper import success_response
+from app.services.task_manager import task_manager
 
 current_user_dep = Depends(get_current_user)  # noqa: B008
 db_dep = Depends(get_db)  # noqa: B008
@@ -67,20 +68,57 @@ async def process_receipt(
     user=current_user_dep,
     db: Session = db_dep,
 ):
-    """Extract and parse receipt data."""
+    """
+    Extract and parse receipt data using async OCR processing.
+    Returns task ID for tracking processing status.
+    """
     import os
     import tempfile
-
-    temp = tempfile.NamedTemporaryFile(delete=False)
+    
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=400, 
+            detail="File must be an image (JPEG, PNG, etc.)"
+        )
+    
+    # Save uploaded file to temporary location
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
     try:
-        temp.write(await file.read())
+        content = await file.read()
+        temp.write(content)
         temp.close()
-        service = OCRReceiptService()
-        data = service.process_image(temp.name)
-    finally:
+        
+        # Check if user is premium (simplified check)
+        is_premium = hasattr(user, 'premium_until') and getattr(user, 'premium_until', None)
+        if is_premium and isinstance(is_premium, datetime):
+            is_premium = is_premium > datetime.utcnow()
+        else:
+            is_premium = False
+        
+        # Submit OCR task for async processing
+        task_info = task_manager.submit_ocr_task(
+            user_id=user.id,
+            image_path=temp.name,
+            is_premium_user=is_premium
+        )
+        
+        return success_response({
+            'task_id': task_info.task_id,
+            'status': task_info.status.value,
+            'estimated_completion': task_info.estimated_completion,
+            'message': 'Receipt processing started. Use /tasks/{task_id} to check status.'
+        })
+        
+    except Exception as e:
+        # Clean up temp file on error
         try:
-            os.unlink(temp.name)
+            if os.path.exists(temp.name):
+                os.unlink(temp.name)
         except Exception:
             pass
-
-    return success_response(data)
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process receipt: {str(e)}"
+        )

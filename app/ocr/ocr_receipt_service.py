@@ -7,6 +7,9 @@ import pytesseract
 from PIL import Image
 
 from app.ocr.ocr_parser import parse_receipt_details
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class OCRReceiptService:
@@ -35,7 +38,7 @@ class OCRReceiptService:
             try:
                 os.remove(image_path)
             except Exception as e:  # pragma: no cover - best effort cleanup
-                print(f"Warning: Could not delete temporary image file: {e}")
+                logger.warning(f"Could not delete temporary image file: {e}")
 
         parsed = parse_receipt_details(raw_text)
 

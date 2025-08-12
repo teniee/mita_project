@@ -185,3 +185,244 @@ podAffinity:
 podAntiAffinity:
   enabled: true
   rule: soft  # soft or hard
+
+# Task Queue Worker Configuration
+worker:
+  enabled: true
+  replicaCount: 6
+  queues: ["default"]
+  maxJobs: 100
+  jobTimeout: 600
+  
+  # Auto-scaling configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    targetQueueDepth: "5"
+  
+  # Resource allocation
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+      ephemeral-storage: 1Gi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 512Mi
+  
+  # Environment variables specific to workers
+  env:
+    ENABLE_WORKER_AUTOSCALING: "false"  # Handled by K8s HPA
+    WORKER_HEARTBEAT_INTERVAL: "30"
+    ENABLE_TASK_METRICS: "true"
+    METRICS_COLLECTION_INTERVAL: "60"
+
+# High Priority Workers (for critical tasks like OCR, AI analysis)
+highPriorityWorker:
+  enabled: true
+  replicaCount: 2
+  queues: ["critical", "high"]
+  maxJobs: 50
+  jobTimeout: 600
+  
+  resources:
+    limits:
+      cpu: 1500m
+      memory: 1Gi
+      ephemeral-storage: 1Gi
+    requests:
+      cpu: 750m
+      memory: 512Mi
+      ephemeral-storage: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+# Low Priority Workers (for background tasks)
+lowPriorityWorker:
+  enabled: true
+  replicaCount: 1
+  queues: ["low"]
+  maxJobs: 200
+  jobTimeout: 1800  # 30 minutes for long-running tasks
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 512Mi
+    requests:
+      cpu: 250m
+      memory: 128Mi
+      ephemeral-storage: 256Mi
+
+# Task Scheduler Configuration
+scheduler:
+  enabled: true
+  replicaCount: 1
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+      ephemeral-storage: 256Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+      ephemeral-storage: 128Mi
+
+# External Secrets Configuration
+externalSecrets:
+  # Enable External Secrets Operator integration
+  enabled: true
+  
+  # Secret store configuration
+  secretStoreName: "mita-production-secrets"
+  secretStoreKind: "SecretStore"
+  
+  # AWS Secrets Manager configuration
+  secretKeyPrefix: "mita-finance/production"
+  
+  # Refresh intervals based on secret criticality (financial compliance)
+  refreshIntervals:
+    critical: "5m"   # Critical secrets (DB, JWT) - every 5 minutes
+    high: "15m"      # High priority secrets (API keys) - every 15 minutes
+    medium: "30m"    # Medium priority secrets (SMTP, etc.) - every 30 minutes
+    low: "60m"       # Low priority secrets (monitoring) - every hour
+  
+  # Backup secret store (disaster recovery)
+  backupSecretStore:
+    enabled: true
+    name: "aws-secrets-manager-dr"
+    region: "us-west-2"
+  
+  # Secret validation and monitoring
+  validation:
+    enabled: true
+    webhookUrl: "https://webhook.mita.finance/secrets/validate"
+  
+  # Compliance settings
+  compliance:
+    auditEnabled: true
+    retentionDays: 2555  # 7 years for financial compliance
+    encryptionRequired: true
+
+# Legacy secrets configuration (for migration period)
+# WARNING: These will be deprecated once External Secrets is fully deployed
+secrets:
+  # Legacy secret values - only used when externalSecrets.enabled=false
+  jwtSecret: ""
+  jwtPreviousSecret: ""
+  secretKey: ""
+  openaiApiKey: ""
+  sentryDsn: ""
+  appStoreSharedSecret: ""
+  smtpPassword: ""
+  apnsKey: ""
+  apnsKeyId: ""
+  apnsTeamId: ""
+
+# Task Queue Specific Monitoring
+taskQueueMonitoring:
+  enabled: true
+  alerts:
+    noWorkers: true
+    highFailureRate: true
+    queueBacklog: true
+    slowTasks: true
+    deadLetterQueue: true
+  
+  # SLA monitoring thresholds
+  sla:
+    ocrProcessingMaxSeconds: 300      # 5 minutes
+    aiAnalysisMaxSeconds: 600         # 10 minutes
+    notificationMaxSeconds: 60        # 1 minute
+    budgetRedistributionMaxSeconds: 180  # 3 minutes
+
+# Maintenance and Operational Tasks
+maintenance:
+  enabled: true
+  
+  # Subscription refresh configuration
+  subscriptionRefresh:
+    batchSize: 100
+    timeout: 300
+  
+  # Log cleanup configuration
+  logCleanup:
+    retentionDays: 7  # Financial compliance requirement
+  
+  # Secret rotation configuration
+  secretRotation:
+    dryRun: false
+    auditLog: true
+
+# RBAC Configuration
+rbac:
+  create: true
+  createClusterRole: false  # Set to true for cluster-wide monitoring
+
+# AWS Integration Configuration
+aws:
+  serviceAccount:
+    roleArn: ""  # EKS IRSA role for main application
+  
+  externalSecrets:
+    roleArn: ""  # EKS IRSA role for External Secrets Operator
+  
+  backup:
+    roleArn: ""  # EKS IRSA role for backup operations
+
+# SMTP Configuration
+smtp:
+  host: "smtp.sendgrid.net"
+  port: "587"
+  from: "noreply@mita.finance"
+
+# OpenAI Configuration
+openai:
+  model: "gpt-4o-mini"
+
+# Security Configuration
+security:
+  allowedOrigins:
+    - "https://mita.finance"
+    - "https://app.mita.finance"
+  apnsUseSandbox: false
+
+# Ingress Enhanced Configuration  
+ingress:
+  monitoring:
+    enabled: true
+  networkPolicy:
+    enabled: true
+
+# Task Queue Redis Configuration (if using internal Redis)
+taskQueueRedis:
+  enabled: false  # Use external Redis by default
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "task-queue-redis-password"
+  
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: "fast-ssd"
+    
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi

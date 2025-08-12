@@ -1,0 +1,411 @@
+# RBAC Resources for MITA Financial Application
+# Service accounts, roles, and bindings for secure Kubernetes operations
+
+# Main Service Account for Backend and Workers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "mita.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: service-account
+  annotations:
+    compliance/framework: "SOX,PCI-DSS"
+    security/principle: "least-privilege"
+    # AWS IAM Role for Service Account (IRSA) integration
+    {{- if .Values.aws.serviceAccount.roleArn }}
+    eks.amazonaws.com/role-arn: {{ .Values.aws.serviceAccount.roleArn }}
+    {{- end }}
+automountServiceAccountToken: true
+imagePullSecrets:
+{{- if .Values.image.pullSecrets }}
+  {{- toYaml .Values.image.pullSecrets | nindent 2 }}
+{{- end }}
+
+---
+# Service Account for External Secrets Operator Integration
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "mita.fullname" . }}-external-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: external-secrets
+  annotations:
+    compliance/framework: "SOX,PCI-DSS"
+    security/purpose: "secret-management"
+    # AWS IAM Role for External Secrets
+    {{- if .Values.aws.externalSecrets.roleArn }}
+    eks.amazonaws.com/role-arn: {{ .Values.aws.externalSecrets.roleArn }}
+    {{- end }}
+automountServiceAccountToken: true
+
+---
+# Service Account for Backup Operations
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "mita.fullname" . }}-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+  annotations:
+    compliance/framework: "SOX"
+    security/purpose: "backup-operations"
+    # AWS IAM Role for Backup Operations
+    {{- if .Values.aws.backup.roleArn }}
+    eks.amazonaws.com/role-arn: {{ .Values.aws.backup.roleArn }}
+    {{- end }}
+automountServiceAccountToken: true
+
+---
+# Service Account for Monitoring and Metrics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "mita.fullname" . }}-monitoring
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    security/purpose: "observability"
+automountServiceAccountToken: true
+
+---
+# Role for Application Operations (Pods, ConfigMaps, Secrets)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mita.fullname" . }}-app
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rbac
+  annotations:
+    compliance/framework: "SOX"
+    security/principle: "least-privilege"
+rules:
+  # Read access to own pods for health checks and metrics
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: []
+  
+  # Read access to ConfigMaps for application configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+    resourceNames: 
+      - {{ include "mita.fullname" . }}-config
+  
+  # Read access to own Secrets (limited to specific secrets)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+    resourceNames:
+      - {{ include "mita.fullname" . }}-database-credentials
+      - {{ include "mita.fullname" . }}-auth-secrets
+      - {{ include "mita.fullname" . }}-redis-credentials
+      - {{ include "mita.fullname" . }}-external-api-secrets
+      - {{ include "mita.fullname" . }}-notification-secrets
+      - {{ include "mita.fullname" . }}-secrets-legacy
+  
+  # Access to own Services for service discovery
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list"]
+    resourceNames:
+      - {{ include "mita.fullname" . }}
+      - {{ include "mita.fullname" . }}-worker
+      - {{ include "mita.fullname" . }}-scheduler
+  
+  # Read endpoints for service discovery
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch"]
+  
+  # Lease management for leader election (scheduler)
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+# Role for External Secrets Operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mita.fullname" . }}-external-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: external-secrets-rbac
+  annotations:
+    compliance/framework: "SOX,PCI-DSS"
+    security/purpose: "secret-synchronization"
+rules:
+  # Manage Secrets created by External Secrets Operator
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    resourceNames:
+      - {{ include "mita.fullname" . }}-database-credentials
+      - {{ include "mita.fullname" . }}-auth-secrets
+      - {{ include "mita.fullname" . }}-redis-credentials
+      - {{ include "mita.fullname" . }}-external-api-secrets
+      - {{ include "mita.fullname" . }}-notification-secrets
+  
+  # Read ExternalSecrets custom resources
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets", "secretstores", "clustersecretstores"]
+    verbs: ["get", "list", "watch"]
+  
+  # Update status on ExternalSecrets
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets/status"]
+    verbs: ["update", "patch"]
+  
+  # Events for troubleshooting
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+
+---
+# Role for Backup Operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mita.fullname" . }}-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup-rbac
+  annotations:
+    compliance/framework: "SOX"
+    security/purpose: "data-protection"
+rules:
+  # Read database credentials for backup operations
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+    resourceNames:
+      - {{ include "mita.fullname" . }}-database-credentials
+      - {{ include "mita.fullname" . }}-aws-credentials
+  
+  # Read backup configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+    resourceNames:
+      - {{ include "mita.fullname" . }}-backup-config
+  
+  # Create events for backup status
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  
+  # Access to backup jobs and pods for monitoring
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+# Role for Monitoring Operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "mita.fullname" . }}-monitoring
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring-rbac
+rules:
+  # Read pods, services, and endpoints for service discovery
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  
+  # Access to metrics endpoints
+  - apiGroups: [""]
+    resources: ["pods/metrics", "services/metrics"]
+    verbs: ["get"]
+  
+  # Read ServiceMonitors and PrometheusRules
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "prometheusrules"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for Application Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mita.fullname" . }}-app
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rbac
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mita.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "mita.fullname" . }}-app
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for External Secrets Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mita.fullname" . }}-external-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: external-secrets-rbac
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mita.fullname" . }}-external-secrets
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "mita.fullname" . }}-external-secrets
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for Backup Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mita.fullname" . }}-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup-rbac
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mita.fullname" . }}-backup
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "mita.fullname" . }}-backup
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for Monitoring Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mita.fullname" . }}-monitoring
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring-rbac
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mita.fullname" . }}-monitoring
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "mita.fullname" . }}-monitoring
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ClusterRole for Node and Pod Metrics (if needed)
+{{- if .Values.rbac.createClusterRole }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "mita.fullname" . }}-metrics
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-rbac
+  annotations:
+    security/scope: "read-only-metrics"
+rules:
+  # Read node metrics for cluster monitoring
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/metrics", "nodes/stats"]
+    verbs: ["get", "list"]
+  
+  # Read pod metrics across namespaces (for cluster-wide monitoring)
+  - apiGroups: [""]
+    resources: ["pods", "pods/metrics"]
+    verbs: ["get", "list"]
+  
+  # Non-resource URLs for metrics
+  - nonResourceURLs: ["/metrics", "/metrics/*"]
+    verbs: ["get"]
+
+---
+# ClusterRoleBinding for Metrics Access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "mita.fullname" . }}-metrics
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-rbac
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "mita.fullname" . }}-monitoring
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "mita.fullname" . }}-metrics
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+
+---
+# Priority Classes for Workload Scheduling
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ include "mita.fullname" . }}-critical
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: priority-class
+  annotations:
+    business/impact: "revenue-critical"
+value: 1000000000  # Very high priority for financial services
+description: "Critical priority for MITA financial application components"
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ include "mita.fullname" . }}-high
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: priority-class
+  annotations:
+    business/impact: "high"
+value: 100000  # High priority
+description: "High priority for MITA application worker components"
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ include "mita.fullname" . }}-low
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: priority-class
+  annotations:
+    business/impact: "background"
+value: 1000  # Low priority
+description: "Low priority for MITA background processing components"
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority

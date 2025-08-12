@@ -1,0 +1,619 @@
+# AWS ElastiCache Redis Infrastructure for MITA Financial Application
+# This configuration sets up a production-grade Redis cluster with
+# high availability, backup policies, and security controls for financial compliance
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticache-redis-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # ElastiCache Redis Configuration Template
+  terraform-config.tf: |
+    # ElastiCache Redis Configuration for MITA Finance
+    
+    # Data sources for VPC and subnet information
+    data "aws_vpc" "mita_vpc" {
+      filter {
+        name   = "tag:Name"
+        values = ["mita-production-vpc"]
+      }
+    }
+    
+    data "aws_subnets" "private_subnets" {
+      filter {
+        name   = "vpc-id"
+        values = [data.aws_vpc.mita_vpc.id]
+      }
+      filter {
+        name   = "tag:Type"
+        values = ["Private"]
+      }
+    }
+    
+    # KMS Key for Redis encryption
+    resource "aws_kms_key" "mita_redis_encryption" {
+      description             = "KMS key for MITA ElastiCache Redis encryption"
+      deletion_window_in_days = 7
+      enable_key_rotation     = true
+      
+      tags = {
+        Name        = "mita-redis-encryption-key"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_kms_alias" "mita_redis_encryption" {
+      name          = "alias/mita-redis-encryption"
+      target_key_id = aws_kms_key.mita_redis_encryption.key_id
+    }
+    
+    # Subnet Group for Redis
+    resource "aws_elasticache_subnet_group" "mita_redis" {
+      name       = "mita-redis-subnet-group"
+      subnet_ids = data.aws_subnets.private_subnets.ids
+      
+      tags = {
+        Name        = "mita-redis-subnet-group"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Security Group for Redis
+    resource "aws_security_group" "mita_redis" {
+      name_prefix = "mita-redis-"
+      vpc_id      = data.aws_vpc.mita_vpc.id
+      description = "Security group for MITA Redis ElastiCache cluster"
+      
+      # Ingress rules
+      ingress {
+        description     = "Redis from EKS cluster"
+        from_port       = 6379
+        to_port         = 6379
+        protocol        = "tcp"
+        security_groups = [aws_security_group.mita_eks_to_redis.id]
+      }
+      
+      # Redis Cluster ports
+      ingress {
+        description     = "Redis Cluster bus from EKS"
+        from_port       = 16379
+        to_port         = 16379
+        protocol        = "tcp"
+        security_groups = [aws_security_group.mita_eks_to_redis.id]
+      }
+      
+      # Egress rules (minimal for security)
+      egress {
+        description = "All outbound traffic for updates"
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+      
+      tags = {
+        Name        = "mita-redis-sg"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Security Group for EKS to Redis communication
+    resource "aws_security_group" "mita_eks_to_redis" {
+      name_prefix = "mita-eks-to-redis-"
+      vpc_id      = data.aws_vpc.mita_vpc.id
+      description = "Security group for EKS pods to access Redis"
+      
+      tags = {
+        Name        = "mita-eks-to-redis-sg"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Parameter Group for Redis optimization
+    resource "aws_elasticache_parameter_group" "mita_redis" {
+      family = "redis7.x"
+      name   = "mita-redis-params"
+      description = "Parameter group for MITA Redis cluster"
+      
+      # Memory and performance optimization
+      parameter {
+        name  = "maxmemory-policy"
+        value = "allkeys-lru"  # Evict least recently used keys when memory limit is reached
+      }
+      
+      parameter {
+        name  = "timeout"
+        value = "300"  # Client idle timeout in seconds
+      }
+      
+      parameter {
+        name  = "tcp-keepalive"
+        value = "60"   # TCP keepalive
+      }
+      
+      parameter {
+        name  = "maxclients"
+        value = "10000"  # Maximum number of connected clients
+      }
+      
+      # Persistence configuration for financial data
+      parameter {
+        name  = "save"
+        value = "900 1 300 10 60 10000"  # Background save configuration
+      }
+      
+      parameter {
+        name  = "stop-writes-on-bgsave-error"
+        value = "yes"  # Stop writes if background save fails
+      }
+      
+      # Security parameters
+      parameter {
+        name  = "rename-commands"
+        value = "FLUSHDB=MITA_FLUSHDB FLUSHALL=MITA_FLUSHALL DEBUG=MITA_DEBUG CONFIG=MITA_CONFIG SHUTDOWN=MITA_SHUTDOWN"
+      }
+      
+      tags = {
+        Name        = "mita-redis-params"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Random password for Redis auth
+    resource "random_password" "mita_redis_auth_token" {
+      length  = 64
+      special = false  # ElastiCache doesn't support special characters in auth token
+      upper   = true
+      lower   = true
+      numeric = true
+    }
+    
+    # Store Redis credentials in AWS Secrets Manager
+    resource "aws_secretsmanager_secret" "mita_redis_credentials" {
+      name                    = "mita-finance/production/redis-credentials"
+      description             = "Redis credentials for MITA ElastiCache cluster"
+      recovery_window_in_days = 7
+      kms_key_id              = aws_kms_key.mita_redis_encryption.arn
+      
+      tags = {
+        Name        = "mita-redis-credentials"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_secretsmanager_secret_version" "mita_redis_credentials" {
+      secret_id = aws_secretsmanager_secret.mita_redis_credentials.id
+      secret_string = jsonencode({
+        auth_token         = random_password.mita_redis_auth_token.result
+        primary_endpoint   = aws_elasticache_replication_group.mita_redis.primary_endpoint
+        reader_endpoint    = aws_elasticache_replication_group.mita_redis.reader_endpoint_address
+        port              = 6379
+        configuration_endpoint = aws_elasticache_replication_group.mita_redis.configuration_endpoint_address
+      })
+    }
+    
+    # Primary Redis Replication Group (Cluster Mode)
+    resource "aws_elasticache_replication_group" "mita_redis" {
+      replication_group_id       = "mita-redis-prod"
+      description               = "MITA Finance Redis cluster for session storage and caching"
+      
+      # Redis version and node configuration
+      engine               = "redis"
+      engine_version       = "7.0"
+      node_type           = "cache.r7g.large"  # 2 vCPU, 13.31 GB RAM
+      port                = 6379
+      
+      # Cluster configuration
+      num_cache_clusters = 3  # 3 nodes for high availability
+      
+      # Parameter group
+      parameter_group_name = aws_elasticache_parameter_group.mita_redis.name
+      
+      # Network configuration
+      subnet_group_name  = aws_elasticache_subnet_group.mita_redis.name
+      security_group_ids = [aws_security_group.mita_redis.id]
+      
+      # Security configuration
+      auth_token                    = random_password.mita_redis_auth_token.result
+      transit_encryption_enabled    = true
+      at_rest_encryption_enabled    = true
+      kms_key_id                   = aws_kms_key.mita_redis_encryption.arn
+      
+      # Multi-AZ configuration
+      multi_az_enabled           = true
+      automatic_failover_enabled = true
+      
+      # Backup configuration (financial compliance)
+      snapshot_retention_limit = 7      # 7 days of snapshots
+      snapshot_window         = "03:00-05:00"  # During low traffic hours
+      
+      # Maintenance configuration
+      maintenance_window = "sun:05:00-sun:06:00"  # Sunday 5-6 AM UTC
+      
+      # Notification configuration
+      notification_topic_arn = aws_sns_topic.mita_redis_notifications.arn
+      
+      # Final snapshot
+      final_snapshot_identifier = "mita-redis-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+      
+      # Logging configuration
+      log_delivery_configuration {
+        destination      = aws_cloudwatch_log_group.mita_redis_slow_logs.name
+        destination_type = "cloudwatch-logs"
+        log_format       = "text"
+        log_type         = "slow-log"
+      }
+      
+      tags = {
+        Name        = "mita-redis-prod"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+        Backup      = "required"
+        Monitoring  = "enhanced"
+      }
+    }
+    
+    # Additional Redis cluster for task queues (separate from session cache)
+    resource "aws_elasticache_replication_group" "mita_redis_taskqueue" {
+      replication_group_id       = "mita-redis-taskqueue"
+      description               = "MITA Finance Redis cluster for task queue processing"
+      
+      # Redis version and node configuration
+      engine               = "redis"
+      engine_version       = "7.0"
+      node_type           = "cache.r7g.xlarge"  # 4 vCPU, 26.32 GB RAM for heavy task processing
+      port                = 6379
+      
+      # Cluster configuration
+      num_cache_clusters = 2  # 2 nodes for task queue redundancy
+      
+      # Parameter group
+      parameter_group_name = aws_elasticache_parameter_group.mita_redis_taskqueue.name
+      
+      # Network configuration
+      subnet_group_name  = aws_elasticache_subnet_group.mita_redis.name
+      security_group_ids = [aws_security_group.mita_redis.id]
+      
+      # Security configuration
+      auth_token                    = random_password.mita_redis_taskqueue_auth_token.result
+      transit_encryption_enabled    = true
+      at_rest_encryption_enabled    = true
+      kms_key_id                   = aws_kms_key.mita_redis_encryption.arn
+      
+      # Multi-AZ configuration
+      multi_az_enabled           = true
+      automatic_failover_enabled = true
+      
+      # Backup configuration
+      snapshot_retention_limit = 5      # 5 days of snapshots for task queue
+      snapshot_window         = "03:30-05:30"  # Offset from main Redis
+      
+      # Maintenance configuration
+      maintenance_window = "sun:06:00-sun:07:00"  # Sunday 6-7 AM UTC
+      
+      # Notification configuration
+      notification_topic_arn = aws_sns_topic.mita_redis_notifications.arn
+      
+      tags = {
+        Name        = "mita-redis-taskqueue"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "task-queue"
+        Monitoring  = "enhanced"
+      }
+    }
+    
+    # Task Queue Redis Parameter Group
+    resource "aws_elasticache_parameter_group" "mita_redis_taskqueue" {
+      family = "redis7.x"
+      name   = "mita-redis-taskqueue-params"
+      description = "Parameter group for MITA Redis task queue cluster"
+      
+      # Optimized for task queue processing
+      parameter {
+        name  = "maxmemory-policy"
+        value = "volatile-lru"  # Only evict keys with expiration for task queues
+      }
+      
+      parameter {
+        name  = "timeout"
+        value = "0"  # Never timeout idle clients for task workers
+      }
+      
+      parameter {
+        name  = "tcp-keepalive"
+        value = "60"
+      }
+      
+      parameter {
+        name  = "maxclients"
+        value = "20000"  # More clients for task workers
+      }
+      
+      # Persistence for task durability
+      parameter {
+        name  = "save"
+        value = "60 1000"  # Save if at least 1000 keys changed in 60 seconds
+      }
+      
+      tags = {
+        Name        = "mita-redis-taskqueue-params"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "task-queue"
+      }
+    }
+    
+    # Auth token for task queue Redis
+    resource "random_password" "mita_redis_taskqueue_auth_token" {
+      length  = 64
+      special = false
+      upper   = true
+      lower   = true
+      numeric = true
+    }
+    
+    # Store task queue Redis credentials
+    resource "aws_secretsmanager_secret" "mita_redis_taskqueue_credentials" {
+      name                    = "mita-finance/production/redis-taskqueue-credentials"
+      description             = "Redis task queue credentials for MITA ElastiCache cluster"
+      recovery_window_in_days = 7
+      kms_key_id              = aws_kms_key.mita_redis_encryption.arn
+      
+      tags = {
+        Name        = "mita-redis-taskqueue-credentials"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "task-queue"
+      }
+    }
+    
+    resource "aws_secretsmanager_secret_version" "mita_redis_taskqueue_credentials" {
+      secret_id = aws_secretsmanager_secret.mita_redis_taskqueue_credentials.id
+      secret_string = jsonencode({
+        auth_token         = random_password.mita_redis_taskqueue_auth_token.result
+        primary_endpoint   = aws_elasticache_replication_group.mita_redis_taskqueue.primary_endpoint
+        reader_endpoint    = aws_elasticache_replication_group.mita_redis_taskqueue.reader_endpoint_address
+        port              = 6379
+        configuration_endpoint = aws_elasticache_replication_group.mita_redis_taskqueue.configuration_endpoint_address
+      })
+    }
+    
+    # SNS Topic for Redis notifications
+    resource "aws_sns_topic" "mita_redis_notifications" {
+      name         = "mita-redis-notifications"
+      display_name = "MITA Redis Cluster Notifications"
+      kms_master_key_id = aws_kms_key.mita_redis_encryption.arn
+      
+      tags = {
+        Name        = "mita-redis-notifications"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # CloudWatch Log Groups for Redis
+    resource "aws_cloudwatch_log_group" "mita_redis_slow_logs" {
+      name              = "/aws/elasticache/mita-redis-prod/slow-log"
+      retention_in_days = 30
+      kms_key_id        = aws_kms_key.mita_redis_encryption.arn
+      
+      tags = {
+        Name        = "mita-redis-slow-logs"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    resource "aws_cloudwatch_log_group" "mita_redis_taskqueue_slow_logs" {
+      name              = "/aws/elasticache/mita-redis-taskqueue/slow-log"
+      retention_in_days = 30
+      kms_key_id        = aws_kms_key.mita_redis_encryption.arn
+      
+      tags = {
+        Name        = "mita-redis-taskqueue-slow-logs"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Outputs for Kubernetes integration
+    output "redis_primary_endpoint" {
+      description = "Redis primary endpoint"
+      value       = aws_elasticache_replication_group.mita_redis.primary_endpoint
+      sensitive   = false
+    }
+    
+    output "redis_reader_endpoint" {
+      description = "Redis reader endpoint"
+      value       = aws_elasticache_replication_group.mita_redis.reader_endpoint_address
+      sensitive   = false
+    }
+    
+    output "redis_taskqueue_primary_endpoint" {
+      description = "Redis task queue primary endpoint"
+      value       = aws_elasticache_replication_group.mita_redis_taskqueue.primary_endpoint
+      sensitive   = false
+    }
+    
+    output "redis_taskqueue_reader_endpoint" {
+      description = "Redis task queue reader endpoint"
+      value       = aws_elasticache_replication_group.mita_redis_taskqueue.reader_endpoint_address
+      sensitive   = false
+    }
+    
+    output "redis_port" {
+      description = "Redis port"
+      value       = 6379
+      sensitive   = false
+    }
+    
+    output "redis_secret_arn" {
+      description = "ARN of the secret containing Redis credentials"
+      value       = aws_secretsmanager_secret.mita_redis_credentials.arn
+      sensitive   = false
+    }
+    
+    output "redis_taskqueue_secret_arn" {
+      description = "ARN of the secret containing Redis task queue credentials"
+      value       = aws_secretsmanager_secret.mita_redis_taskqueue_credentials.arn
+      sensitive   = false
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-monitoring-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: mita-finance
+data:
+  cloudwatch-config.yaml: |
+    # CloudWatch Alarms for Redis ElastiCache
+    redis_cpu_alarm:
+      alarm_name: "mita-redis-high-cpu"
+      alarm_description: "Redis CPU utilization is too high"
+      metric_name: "CPUUtilization"
+      namespace: "AWS/ElastiCache"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 80
+      comparison_operator: "GreaterThanThreshold"
+      dimensions:
+        CacheClusterId: "mita-redis-prod"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-critical-alerts"
+    
+    redis_memory_alarm:
+      alarm_name: "mita-redis-high-memory"
+      alarm_description: "Redis memory utilization is too high"
+      metric_name: "DatabaseMemoryUsagePercentage"
+      namespace: "AWS/ElastiCache"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 85
+      comparison_operator: "GreaterThanThreshold"
+      dimensions:
+        CacheClusterId: "mita-redis-prod"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-critical-alerts"
+    
+    redis_evictions_alarm:
+      alarm_name: "mita-redis-high-evictions"
+      alarm_description: "Redis eviction rate is too high"
+      metric_name: "Evictions"
+      namespace: "AWS/ElastiCache"
+      statistic: "Sum"
+      period: 300
+      evaluation_periods: 2
+      threshold: 100
+      comparison_operator: "GreaterThanThreshold"
+      dimensions:
+        CacheClusterId: "mita-redis-prod"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-warning-alerts"
+    
+    redis_connection_alarm:
+      alarm_name: "mita-redis-high-connections"
+      alarm_description: "Redis connection count is too high"
+      metric_name: "CurrConnections"
+      namespace: "AWS/ElastiCache"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 8000  # 80% of maxclients (10000)
+      comparison_operator: "GreaterThanThreshold"
+      dimensions:
+        CacheClusterId: "mita-redis-prod"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-warning-alerts"
+
+  prometheus-rules.yaml: |
+    # Custom Prometheus rules for Redis monitoring
+    groups:
+    - name: mita.redis.rules
+      rules:
+      - alert: RedisHighCPU
+        expr: aws_elasticache_cpu_utilization_average{cache_cluster_id="mita-redis-prod"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "Redis CPU utilization is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has CPU utilization of {{ $value }}% for more than 5 minutes."
+      
+      - alert: RedisHighMemory
+        expr: aws_elasticache_database_memory_usage_percentage_average{cache_cluster_id="mita-redis-prod"} > 85
+        for: 5m
+        labels:
+          severity: critical
+          service: redis
+          environment: production
+        annotations:
+          summary: "Redis memory utilization is critically high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has memory utilization of {{ $value }}% for more than 5 minutes."
+      
+      - alert: RedisHighEvictions
+        expr: increase(aws_elasticache_evictions_sum{cache_cluster_id="mita-redis-prod"}[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "Redis eviction rate is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has evicted {{ $value }} keys in the last 5 minutes."
+      
+      - alert: RedisHighConnections
+        expr: aws_elasticache_curr_connections_average{cache_cluster_id="mita-redis-prod"} > 8000
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "Redis connection count is high"
+          description: "Redis cluster {{ $labels.cache_cluster_id }} has {{ $value }} active connections (80% of limit)."
+      
+      - alert: RedisTaskQueueHighMemory
+        expr: aws_elasticache_database_memory_usage_percentage_average{cache_cluster_id="mita-redis-taskqueue"} > 85
+        for: 5m
+        labels:
+          severity: critical
+          service: redis-taskqueue
+          environment: production
+        annotations:
+          summary: "Redis task queue memory utilization is critically high"
+          description: "Redis task queue cluster has memory utilization of {{ $value }}% for more than 5 minutes."
+      
+      - alert: RedisReplicationLag
+        expr: aws_elasticache_replication_lag_average{cache_cluster_id=~"mita-redis-.*"} > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: redis
+          environment: production
+        annotations:
+          summary: "Redis replication lag is high"
+          description: "Redis replica {{ $labels.cache_cluster_id }} has replication lag of {{ $value }} seconds."

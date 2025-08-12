@@ -32,10 +32,73 @@ jobs:
             sleep 2
           done
 
-      - name: Migration smoke test
+      - name: Enhanced migration testing
         env:
           DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/mita
-        run: alembic upgrade head
+          TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/mita_test
+        run: |
+          # Create test database for migration validation
+          docker exec pg createdb -U postgres mita_test
+          
+          # Test migration from clean state
+          echo "Testing migration from clean state..."
+          alembic upgrade head
+          
+          # Test idempotency - run migrations again
+          echo "Testing migration idempotency..."
+          alembic upgrade head
+          
+          # Test rollback functionality
+          echo "Testing rollback functionality..."
+          alembic downgrade 0003_goals
+          alembic upgrade head
+          
+          # Validate financial data types
+          echo "Validating financial data types..."
+          python -c "
+          import psycopg2
+          import os
+          conn = psycopg2.connect(os.environ['DATABASE_URL'])
+          cur = conn.cursor()
+          
+          # Check that financial columns use Numeric, not Float
+          cur.execute('''
+              SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+              FROM information_schema.columns 
+              WHERE table_schema = 'public' 
+              AND column_name IN ('amount', 'target_amount', 'saved_amount', 'annual_income')
+              AND data_type != 'numeric'
+          ''')
+          
+          float_columns = cur.fetchall()
+          if float_columns:
+              print('ERROR: Found non-numeric columns for financial data:')
+              for row in float_columns:
+                  print(f'  {row[0]}.{row[1]} is {row[2]}')
+              exit(1)
+          
+          print('✅ All financial columns use proper Numeric type')
+          
+          # Check for required precision/scale
+          cur.execute('''
+              SELECT table_name, column_name, numeric_precision, numeric_scale
+              FROM information_schema.columns 
+              WHERE table_schema = 'public' 
+              AND column_name IN ('amount', 'target_amount', 'saved_amount', 'annual_income')
+              AND data_type = 'numeric'
+              AND (numeric_precision IS NULL OR numeric_scale IS NULL)
+          ''')
+          
+          imprecise_columns = cur.fetchall()
+          if imprecise_columns:
+              print('WARNING: Found numeric columns without explicit precision/scale:')
+              for row in imprecise_columns:
+                  print(f'  {row[0]}.{row[1]} precision={row[2]}, scale={row[3]}')
+          
+          conn.close()
+          "
+          
+          echo "✅ Migration testing completed successfully"
 
       - name: Lint & style
         run: |

@@ -1,0 +1,276 @@
+{{- if .Values.scheduler.enabled }}
+# Task Scheduler Deployment - Orchestration and Management
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mita.fullname" . }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+  annotations:
+    business/impact: "operational-critical"
+    sla/availability: "99.9%"
+spec:
+  replicas: {{ .Values.scheduler.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        {{- include "mita.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # Security Context
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        runAsGroup: {{ .Values.security.runAsGroup }}
+        fsGroup: {{ .Values.security.fsGroup }}
+
+      # Ensure scheduler runs on different node than workers when possible
+      {{- if .Values.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - worker
+                  - worker-high-priority
+                  - worker-low-priority
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
+
+      # High priority for scheduler
+      priorityClassName: system-cluster-critical
+      
+      containers:
+        - name: scheduler
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          # Security Context for Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            {{- if .Values.security.capabilities }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+            {{- end }}
+
+          command:
+            - python
+            - scripts/rq_scheduler.py
+          
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: DEBUG
+              value: {{ .Values.debug | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-database-credentials
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mita-redis-credentials
+                  key: REDIS_URL
+            - name: SCHEDULER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: SCHEDULER_HEARTBEAT_INTERVAL
+              value: "30"
+            - name: SCHEDULER_JOB_TIMEOUT
+              value: "3600"
+            - name: SCHEDULER_POLL_INTERVAL
+              value: "5"
+            - name: SCHEDULER_MAX_JOBS_PER_QUEUE
+              value: "1000"
+            - name: ENABLE_SCHEDULER_METRICS
+              value: "true"
+            - name: METRICS_COLLECTION_INTERVAL
+              value: "60"
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: SCHEDULER_QUEUE_PRIORITIES
+              value: "critical:10,high:5,default:1,low:0"
+            - name: ENABLE_TASK_VALIDATION
+              value: "true"
+            - name: ENABLE_DEAD_LETTER_QUEUE
+              value: "true"
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: mita-external-api-secrets
+                  key: SENTRY_DSN
+                  optional: true
+            # Financial compliance settings
+            - name: ENABLE_AUDIT_LOGGING
+              value: "true"
+            - name: AUDIT_LOG_LEVEL
+              value: "INFO"
+            - name: COMPLIANCE_MODE
+              value: "financial"
+            - name: RETENTION_POLICY_DAYS
+              value: "2555"  # 7 years for financial compliance
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          # Health Checks - Critical for scheduler
+          livenessProbe:
+            httpGet:
+              path: /health/scheduler/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/scheduler/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/scheduler/startup
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 40  # Allow longer startup time
+
+          # Resource Management
+          resources:
+            {{- toYaml .Values.scheduler.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+            - name: audit-logs
+              mountPath: /app/audit-logs
+            - name: prometheus-metrics
+              mountPath: /tmp/prometheus_multiproc
+            - name: scheduler-state
+              mountPath: /app/scheduler-state
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 500Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: audit-logs
+          emptyDir:
+            sizeLimit: 2Gi  # More space for compliance logs
+        - name: prometheus-metrics
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: scheduler-state
+          emptyDir:
+            sizeLimit: 100Mi
+
+      # Node selection for reliable nodes
+      {{- if .Values.nodeAffinity.enabled }}
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+            - key: node.kubernetes.io/instance-type
+              operator: In
+              values:
+              - m5.large
+              - m5.xlarge
+              - c5.large
+              - c5.xlarge
+        - weight: 50
+          preference:
+            matchExpressions:
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values:
+              - on-demand  # Prefer on-demand for reliability
+      {{- end }}
+
+      terminationGracePeriodSeconds: 120  # Allow scheduler to complete current operations
+      restartPolicy: Always
+      dnsPolicy: ClusterFirst
+
+---
+# Scheduler Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mita.fullname" . }}-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+    - port: 9090
+      targetPort: 9090
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "mita.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+
+---
+# Pod Disruption Budget for Scheduler
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mita.fullname" . }}-scheduler-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "mita.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+{{- end }}

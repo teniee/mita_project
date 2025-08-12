@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'logging_service.dart';
 
 /// Location service for detecting user's country and region
 class LocationService {
@@ -42,14 +43,14 @@ class LocationService {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('Location services are disabled');
+        logWarning('Location services are disabled', tag: 'LOCATION_SERVICE');
         return {'country': null, 'state': null, 'error': 'Location services disabled'};
       }
 
       // Check/request permissions
       bool hasPermission = await requestLocationPermission();
       if (!hasPermission) {
-        debugPrint('Location permission denied');
+        logWarning('Location permission denied', tag: 'LOCATION_SERVICE');
         return {'country': null, 'state': null, 'error': 'Location permission denied'};
       }
 
@@ -70,7 +71,7 @@ class LocationService {
         final countryCode = placemark.isoCountryCode?.toUpperCase();
         final stateCode = placemark.administrativeArea?.toUpperCase();
         
-        debugPrint('Detected location: Country=$countryCode, State=$stateCode');
+        logInfo('Detected location: Country=$countryCode, State=$stateCode', tag: 'LOCATION_SERVICE');
         
         return {
           'country': countryCode,
@@ -81,7 +82,7 @@ class LocationService {
 
       return {'country': null, 'state': null, 'error': 'Unable to determine location'};
     } catch (e) {
-      debugPrint('Location detection error: $e');
+      logError('Location detection error: $e', tag: 'LOCATION_SERVICE');
       return {'country': null, 'state': null, 'error': e.toString()};
     }
   }
@@ -98,7 +99,7 @@ class LocationService {
     }
     
     await prefs.setBool(_locationSetKey, manuallySet);
-    debugPrint('Saved user location: $countryCode, $stateCode (manual: $manuallySet)');
+    logInfo('Saved user location: $countryCode, $stateCode (manual: $manuallySet)', tag: 'LOCATION_SERVICE');
   }
 
   /// Get saved user location from preferences
@@ -121,7 +122,7 @@ class LocationService {
     if (!forceDetection) {
       final saved = await getSavedUserLocation();
       if (saved['country'] != null) {
-        debugPrint('Using saved location: ${saved['country']}, ${saved['state']}');
+        logInfo('Using saved location: ${saved['country']}, ${saved['state']}', tag: 'LOCATION_SERVICE');
         return saved;
       }
     }
@@ -135,12 +136,12 @@ class LocationService {
         stateCode: detected['state'],
         manuallySet: false,
       );
-      debugPrint('Using detected location: ${detected['country']}, ${detected['state']}');
+      logInfo('Using detected location: ${detected['country']}, ${detected['state']}', tag: 'LOCATION_SERVICE');
       return detected;
     }
 
     // Fallback to US if no location can be determined
-    debugPrint('Using fallback location: US');
+    logInfo('Using fallback location: US', tag: 'LOCATION_SERVICE');
     return {'country': 'US', 'state': null, 'error': detected['error']};
   }
 
@@ -150,7 +151,7 @@ class LocationService {
     await prefs.remove(_countryCodeKey);
     await prefs.remove(_stateCodeKey);
     await prefs.remove(_locationSetKey);
-    debugPrint('Cleared saved location data');
+    logInfo('Cleared saved location data', tag: 'LOCATION_SERVICE');
   }
 
   /// Check if location was manually set by user

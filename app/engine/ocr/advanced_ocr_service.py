@@ -8,6 +8,9 @@ import pytesseract
 from PIL import Image
 
 from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
+from app.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AdvancedOCRService:
@@ -47,7 +50,7 @@ class AdvancedOCRService:
         try:
             os.remove(image_path)
         except Exception as e:
-            print(f"Warning: Could not delete temporary image file: {str(e)}")
+            logger.warning(f"Could not delete temporary image file: {str(e)}")
 
         return result
 

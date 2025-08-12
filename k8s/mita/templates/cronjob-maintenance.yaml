@@ -1,0 +1,622 @@
+{{- if .Values.maintenance.enabled }}
+# Subscription Refresh CronJob - Critical for Premium Feature Management
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mita.fullname" . }}-subscription-refresh
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: subscription-refresh
+  annotations:
+    compliance/framework: "SOX,PCI-DSS"
+    security/criticality: "high"
+    business/impact: "revenue-critical"
+spec:
+  schedule: "*/10 * * * *"  # Every 10 minutes for financial compliance
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600  # 10 minutes timeout
+      template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: subscription-refresh
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8000"
+            prometheus.io/path: "/metrics"
+        spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
+          containers:
+            - name: subscription-refresh
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["python", "scripts/refresh_premium_status.py"]
+              
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-database-credentials
+                      key: DATABASE_URL
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-redis-credentials
+                      key: REDIS_URL
+                - name: APPSTORE_SHARED_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-notification-secrets
+                      key: APPSTORE_SHARED_SECRET
+                - name: ENVIRONMENT
+                  value: {{ .Values.environment | quote }}
+                - name: LOG_LEVEL
+                  value: {{ .Values.logLevel | quote }}
+                - name: SUBSCRIPTION_REFRESH_BATCH_SIZE
+                  value: "{{ .Values.maintenance.subscriptionRefresh.batchSize | default 100 }}"
+                - name: SUBSCRIPTION_REFRESH_TIMEOUT
+                  value: "{{ .Values.maintenance.subscriptionRefresh.timeout | default 300 }}"
+                - name: SENTRY_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-external-api-secrets
+                      key: SENTRY_DSN
+                      optional: true
+
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                  ephemeral-storage: 512Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+                  ephemeral-storage: 1Gi
+
+              volumeMounts:
+                - name: logs
+                  mountPath: /app/logs
+                - name: tmp
+                  mountPath: /tmp
+
+          volumes:
+            - name: logs
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+
+---
+# Log Cleanup CronJob - Maintenance and Compliance
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mita.fullname" . }}-log-cleanup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: log-cleanup
+  annotations:
+    compliance/framework: "GDPR,SOX"
+    security/criticality: "medium"
+spec:
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800  # 30 minutes timeout
+      template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: log-cleanup
+        spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
+          containers:
+            - name: log-cleanup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["/bin/bash"]
+              args:
+                - "-c"
+                - |
+                  echo "Starting log cleanup for financial compliance..."
+                  
+                  # Cleanup application logs older than 7 days (financial compliance)
+                  find /app/logs -name "*.log" -type f -mtime +7 -delete || true
+                  
+                  # Cleanup temporary files older than 1 day
+                  find /tmp -name "*.tmp" -type f -mtime +1 -delete || true
+                  find /tmp -name "*temp*" -type f -mtime +1 -delete || true
+                  
+                  # Cleanup Prometheus metrics files older than 1 day
+                  find /tmp/prometheus_multiproc -name "*.db" -type f -mtime +1 -delete || true
+                  
+                  # Report cleanup stats
+                  echo "Log cleanup completed successfully"
+                  
+                  # Send metrics to monitoring
+                  python3 -c "
+                  import os
+                  import time
+                  from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+                  
+                  registry = CollectorRegistry()
+                  cleanup_timestamp = Gauge('mita_log_cleanup_last_success', 'Last successful log cleanup timestamp', registry=registry)
+                  cleanup_timestamp.set(time.time())
+                  
+                  try:
+                      push_to_gateway('prometheus-pushgateway:9091', job='log-cleanup', registry=registry)
+                  except Exception as e:
+                      print(f'Failed to push metrics: {e}')
+                  "
+              
+              env:
+                - name: ENVIRONMENT
+                  value: {{ .Values.environment | quote }}
+                - name: LOG_LEVEL
+                  value: INFO
+                - name: RETENTION_DAYS
+                  value: "{{ .Values.maintenance.logCleanup.retentionDays | default 7 }}"
+
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                  ephemeral-storage: 256Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                  ephemeral-storage: 512Mi
+
+              volumeMounts:
+                - name: logs
+                  mountPath: /app/logs
+                - name: tmp
+                  mountPath: /tmp
+                - name: prometheus-metrics
+                  mountPath: /tmp/prometheus_multiproc
+
+          volumes:
+            - name: logs
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+            - name: prometheus-metrics
+              emptyDir: {}
+
+---
+# Metric Collection CronJob - Performance and Monitoring
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mita.fullname" . }}-metric-collection
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metric-collection
+  annotations:
+    monitoring/framework: "Prometheus,Grafana"
+    security/criticality: "medium"
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 180
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300  # 5 minutes timeout
+      template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: metric-collection
+        spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
+          containers:
+            - name: metric-collection
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["python"]
+              args:
+                - "-c"
+                - |
+                  import sys
+                  sys.path.insert(0, '/app')
+                  
+                  import asyncio
+                  import time
+                  import logging
+                  from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+                  from app.core.database_monitoring import DatabasePerformanceMonitor
+                  from app.core.task_metrics import TaskMetricsCollector
+                  from app.services.performance_monitor import PerformanceMonitor
+                  
+                  logging.basicConfig(level=logging.INFO)
+                  logger = logging.getLogger(__name__)
+                  
+                  async def collect_metrics():
+                      try:
+                          registry = CollectorRegistry()
+                          
+                          # Database performance metrics
+                          db_monitor = DatabasePerformanceMonitor()
+                          db_metrics = await db_monitor.collect_performance_metrics()
+                          
+                          # Create Prometheus metrics
+                          db_connections = Gauge('mita_db_active_connections', 'Active database connections', registry=registry)
+                          db_query_time = Gauge('mita_db_avg_query_time_seconds', 'Average database query time', registry=registry)
+                          
+                          db_connections.set(db_metrics.get('active_connections', 0))
+                          db_query_time.set(db_metrics.get('avg_query_time', 0))
+                          
+                          # Task queue metrics
+                          task_collector = TaskMetricsCollector()
+                          task_metrics = await task_collector.collect_queue_metrics()
+                          
+                          queue_depth = Gauge('mita_task_queue_depth', 'Task queue depth', registry=registry)
+                          queue_depth.set(task_metrics.get('queue_depth', 0))
+                          
+                          # System health metrics
+                          health_check = Gauge('mita_system_health_score', 'Overall system health score', registry=registry)
+                          health_check.set(1.0 if db_metrics.get('healthy', False) else 0.0)
+                          
+                          # Collection timestamp
+                          collection_time = Gauge('mita_metric_collection_timestamp', 'Last metric collection time', registry=registry)
+                          collection_time.set(time.time())
+                          
+                          # Push to Prometheus
+                          push_to_gateway('prometheus-pushgateway:9091', job='metric-collection', registry=registry)
+                          
+                          logger.info("Metric collection completed successfully")
+                          
+                      except Exception as e:
+                          logger.error(f"Metric collection failed: {e}")
+                          raise
+                  
+                  # Run the collection
+                  asyncio.run(collect_metrics())
+              
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-database-credentials
+                      key: DATABASE_URL
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-redis-credentials
+                      key: REDIS_URL
+                - name: ENVIRONMENT
+                  value: {{ .Values.environment | quote }}
+                - name: LOG_LEVEL
+                  value: {{ .Values.logLevel | quote }}
+                - name: PROMETHEUS_MULTIPROC_DIR
+                  value: "/tmp/prometheus_multiproc"
+
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                  ephemeral-storage: 256Mi
+                limits:
+                  cpu: 300m
+                  memory: 512Mi
+                  ephemeral-storage: 512Mi
+
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                - name: prometheus-metrics
+                  mountPath: /tmp/prometheus_multiproc
+
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            - name: prometheus-metrics
+              emptyDir: {}
+
+---
+# Secret Rotation Automation CronJob - Security Critical
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "mita.fullname" . }}-secret-rotation
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: secret-rotation
+  annotations:
+    compliance/framework: "SOX,PCI-DSS,GDPR"
+    security/criticality: "critical"
+    business/impact: "security-critical"
+spec:
+  schedule: "0 3 * * 1"  # Weekly on Monday at 3 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 10  # Keep more history for audit
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800  # 30 minutes timeout
+      template:
+        metadata:
+          labels:
+            {{- include "mita.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: secret-rotation
+          annotations:
+            compliance/audit-required: "true"
+        spec:
+          restartPolicy: OnFailure
+          
+          # Security Context
+          securityContext:
+            runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+            runAsUser: {{ .Values.security.runAsUser }}
+            runAsGroup: {{ .Values.security.runAsGroup }}
+            fsGroup: {{ .Values.security.fsGroup }}
+
+          containers:
+            - name: secret-rotation
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              
+              # Security Context for Container
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                {{- if .Values.security.capabilities }}
+                capabilities:
+                  {{- toYaml .Values.security.capabilities | nindent 18 }}
+                {{- end }}
+
+              command: ["python"]
+              args:
+                - "-c"
+                - |
+                  import sys
+                  sys.path.insert(0, '/app')
+                  
+                  import asyncio
+                  import logging
+                  import time
+                  from app.core.secret_rotation import SecretRotationManager
+                  from app.core.audit_logging import AuditLogger
+                  from prometheus_client import CollectorRegistry, Gauge, Counter, push_to_gateway
+                  
+                  logging.basicConfig(
+                      level=logging.INFO,
+                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                  )
+                  logger = logging.getLogger('secret-rotation')
+                  audit_logger = AuditLogger()
+                  
+                  async def rotate_secrets():
+                      try:
+                          # Initialize metrics
+                          registry = CollectorRegistry()
+                          rotation_success = Counter('mita_secret_rotation_success_total', 'Successful secret rotations', ['secret_type'], registry=registry)
+                          rotation_failure = Counter('mita_secret_rotation_failure_total', 'Failed secret rotations', ['secret_type'], registry=registry)
+                          rotation_timestamp = Gauge('mita_secret_rotation_last_success', 'Last successful rotation timestamp', registry=registry)
+                          
+                          # Initialize rotation manager
+                          rotation_manager = SecretRotationManager()
+                          
+                          # Define rotation schedule (only rotate based on age and criticality)
+                          rotation_policies = {
+                              'jwt_secret': {'max_age_days': 30, 'criticality': 'critical'},
+                              'database_password': {'max_age_days': 90, 'criticality': 'critical'},
+                              'redis_password': {'max_age_days': 60, 'criticality': 'high'},
+                              'api_keys': {'max_age_days': 45, 'criticality': 'high'},
+                              'encryption_keys': {'max_age_days': 180, 'criticality': 'critical'}
+                          }
+                          
+                          rotation_results = []
+                          
+                          for secret_type, policy in rotation_policies.items():
+                              try:
+                                  logger.info(f"Checking rotation for {secret_type}...")
+                                  
+                                  # Check if rotation is needed
+                                  needs_rotation = await rotation_manager.check_rotation_needed(
+                                      secret_type, policy['max_age_days']
+                                  )
+                                  
+                                  if needs_rotation:
+                                      logger.info(f"Rotating {secret_type}...")
+                                      
+                                      # Audit log before rotation
+                                      await audit_logger.log_security_event(
+                                          event_type='secret_rotation_initiated',
+                                          resource=secret_type,
+                                          details={'policy': policy, 'trigger': 'scheduled'}
+                                      )
+                                      
+                                      # Perform rotation
+                                      success = await rotation_manager.rotate_secret(
+                                          secret_type, policy['criticality']
+                                      )
+                                      
+                                      if success:
+                                          logger.info(f"Successfully rotated {secret_type}")
+                                          rotation_success.labels(secret_type=secret_type).inc()
+                                          
+                                          # Audit log success
+                                          await audit_logger.log_security_event(
+                                              event_type='secret_rotation_success',
+                                              resource=secret_type,
+                                              details={'timestamp': time.time()}
+                                          )
+                                          
+                                          rotation_results.append(f"✓ {secret_type}")
+                                      else:
+                                          logger.error(f"Failed to rotate {secret_type}")
+                                          rotation_failure.labels(secret_type=secret_type).inc()
+                                          
+                                          # Audit log failure
+                                          await audit_logger.log_security_event(
+                                              event_type='secret_rotation_failure',
+                                              resource=secret_type,
+                                              details={'timestamp': time.time()}
+                                          )
+                                          
+                                          rotation_results.append(f"✗ {secret_type}")
+                                  else:
+                                      logger.info(f"No rotation needed for {secret_type}")
+                                      rotation_results.append(f"- {secret_type} (not due)")
+                                      
+                              except Exception as e:
+                                  logger.error(f"Error processing {secret_type}: {e}")
+                                  rotation_failure.labels(secret_type=secret_type).inc()
+                                  rotation_results.append(f"✗ {secret_type} (error)")
+                          
+                          # Update timestamp if any rotations were successful
+                          if any('✓' in result for result in rotation_results):
+                              rotation_timestamp.set(time.time())
+                          
+                          # Push metrics to Prometheus
+                          try:
+                              push_to_gateway('prometheus-pushgateway:9091', job='secret-rotation', registry=registry)
+                          except Exception as e:
+                              logger.warning(f"Failed to push metrics: {e}")
+                          
+                          # Summary
+                          logger.info(f"Secret rotation completed. Results: {', '.join(rotation_results)}")
+                          
+                      except Exception as e:
+                          logger.error(f"Secret rotation failed with error: {e}")
+                          # Still try to push failure metrics
+                          try:
+                              registry = CollectorRegistry()
+                              failure_gauge = Gauge('mita_secret_rotation_job_failure', 'Secret rotation job failure', registry=registry)
+                              failure_gauge.set(1.0)
+                              push_to_gateway('prometheus-pushgateway:9091', job='secret-rotation', registry=registry)
+                          except:
+                              pass
+                          raise
+                  
+                  # Run the rotation
+                  asyncio.run(rotate_secrets())
+              
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-database-credentials
+                      key: DATABASE_URL
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-redis-credentials
+                      key: REDIS_URL
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-aws-credentials
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mita-aws-credentials
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_DEFAULT_REGION
+                  value: "us-east-1"
+                - name: ENVIRONMENT
+                  value: {{ .Values.environment | quote }}
+                - name: LOG_LEVEL
+                  value: {{ .Values.logLevel | quote }}
+                - name: ROTATION_DRY_RUN
+                  value: "{{ .Values.maintenance.secretRotation.dryRun | default false }}"
+                - name: PROMETHEUS_MULTIPROC_DIR
+                  value: "/tmp/prometheus_multiproc"
+
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 512Mi
+                  ephemeral-storage: 512Mi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+                  ephemeral-storage: 1Gi
+
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                - name: audit-logs
+                  mountPath: /app/audit-logs
+                - name: prometheus-metrics
+                  mountPath: /tmp/prometheus_multiproc
+
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            - name: audit-logs
+              emptyDir: {}
+            - name: prometheus-metrics
+              emptyDir: {}
+{{- end }}

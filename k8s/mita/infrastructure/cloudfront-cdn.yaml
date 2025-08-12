@@ -1,0 +1,680 @@
+# AWS CloudFront CDN Infrastructure for MITA Financial Application
+# This configuration sets up a production-grade CDN with
+# security headers, caching policies, and compliance controls for financial data
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudfront-cdn-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: cdn
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # CloudFront CDN Configuration Template
+  terraform-config.tf: |
+    # CloudFront CDN Configuration for MITA Finance
+    
+    # Origin Access Control for S3 bucket security
+    resource "aws_cloudfront_origin_access_control" "mita_documents" {
+      name                              = "mita-documents-oac"
+      description                       = "OAC for MITA documents bucket"
+      origin_access_control_origin_type = "s3"
+      signing_behavior                  = "always"
+      signing_protocol                  = "sigv4"
+    }
+    
+    # Cache policy for document delivery
+    resource "aws_cloudfront_cache_policy" "mita_documents" {
+      name        = "mita-documents-cache-policy"
+      comment     = "Cache policy for MITA document delivery"
+      default_ttl = 86400     # 1 day default TTL
+      max_ttl     = 31536000  # 1 year max TTL
+      min_ttl     = 0         # No minimum TTL
+      
+      parameters_in_cache_key_and_forwarded_to_origin {
+        enable_accept_encoding_gzip   = true
+        enable_accept_encoding_brotli = true
+        
+        query_strings_config {
+          query_string_behavior = "whitelist"
+          query_strings {
+            items = ["version", "width", "height", "quality"]  # Image processing parameters
+          }
+        }
+        
+        headers_config {
+          header_behavior = "whitelist"
+          headers {
+            items = [
+              "Authorization",
+              "CloudFront-Viewer-Country",
+              "CloudFront-Is-Mobile-Viewer",
+              "CloudFront-Is-Tablet-Viewer"
+            ]
+          }
+        }
+        
+        cookies_config {
+          cookie_behavior = "none"  # No cookies for document delivery
+        }
+      }
+    }
+    
+    # Origin request policy for document delivery
+    resource "aws_cloudfront_origin_request_policy" "mita_documents" {
+      name    = "mita-documents-origin-request-policy"
+      comment = "Origin request policy for MITA document delivery"
+      
+      cookies_config {
+        cookie_behavior = "none"
+      }
+      
+      headers_config {
+        header_behavior = "whitelist"
+        headers {
+          items = [
+            "Authorization",
+            "x-amz-request-id",
+            "x-amz-content-sha256",
+            "x-amz-date",
+            "x-amz-security-token"
+          ]
+        }
+      }
+      
+      query_strings_config {
+        query_string_behavior = "all"
+      }
+    }
+    
+    # Response headers policy for security
+    resource "aws_cloudfront_response_headers_policy" "mita_documents" {
+      name    = "mita-documents-security-headers"
+      comment = "Security headers policy for MITA document delivery"
+      
+      # CORS configuration for web application
+      cors_config {
+        access_control_allow_credentials = false
+        access_control_max_age_sec       = 600
+        origin_override                  = false
+        
+        access_control_allow_headers {
+          items = ["Authorization", "Content-Type", "x-amz-date", "x-amz-content-sha256"]
+        }
+        
+        access_control_allow_methods {
+          items = ["GET", "HEAD", "OPTIONS"]
+        }
+        
+        access_control_allow_origins {
+          items = ["https://mita.finance", "https://app.mita.finance"]
+        }
+        
+        access_control_expose_headers {
+          items = ["x-amz-request-id"]
+        }
+      }
+      
+      # Security headers for financial application
+      security_headers_config {
+        content_security_policy {
+          content_security_policy = "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline';"
+          override                = false
+        }
+        
+        content_type_options {
+          override = false
+        }
+        
+        frame_options {
+          frame_option = "DENY"
+          override     = false
+        }
+        
+        referrer_policy {
+          referrer_policy = "strict-origin-when-cross-origin"
+          override        = false
+        }
+        
+        strict_transport_security {
+          access_control_max_age_sec = 31536000  # 1 year
+          include_subdomains         = true
+          preload                    = true
+          override                   = false
+        }
+      }
+      
+      # Custom headers for financial compliance
+      custom_headers_config {
+        items {
+          header   = "X-Financial-App"
+          value    = "MITA-Finance"
+          override = false
+        }
+        
+        items {
+          header   = "X-Content-Security"
+          value    = "protected"
+          override = false
+        }
+        
+        items {
+          header   = "Cache-Control"
+          value    = "public, max-age=86400, must-revalidate"
+          override = true
+        }
+      }
+    }
+    
+    # WAF Web ACL for additional security
+    resource "aws_wafv2_web_acl" "mita_cloudfront" {
+      name  = "mita-cloudfront-waf"
+      scope = "CLOUDFRONT"
+      
+      default_action {
+        allow {}
+      }
+      
+      # Rate limiting rule
+      rule {
+        name     = "RateLimitRule"
+        priority = 1
+        
+        action {
+          block {}
+        }
+        
+        statement {
+          rate_based_statement {
+            limit              = 2000  # 2000 requests per 5-minute window
+            aggregate_key_type = "IP"
+          }
+        }
+        
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "RateLimitRule"
+          sampled_requests_enabled   = true
+        }
+      }
+      
+      # AWS Managed Rules for common attacks
+      rule {
+        name     = "AWSManagedRulesCommonRuleSet"
+        priority = 2
+        
+        override_action {
+          none {}
+        }
+        
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesCommonRuleSet"
+            vendor_name = "AWS"
+          }
+        }
+        
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "CommonRuleSetMetric"
+          sampled_requests_enabled   = true
+        }
+      }
+      
+      # Known bad inputs rule set
+      rule {
+        name     = "AWSManagedRulesKnownBadInputsRuleSet"
+        priority = 3
+        
+        override_action {
+          none {}
+        }
+        
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesKnownBadInputsRuleSet"
+            vendor_name = "AWS"
+          }
+        }
+        
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "KnownBadInputsRuleSetMetric"
+          sampled_requests_enabled   = true
+        }
+      }
+      
+      # Reputation list rule set
+      rule {
+        name     = "AWSManagedRulesAmazonIpReputationList"
+        priority = 4
+        
+        override_action {
+          none {}
+        }
+        
+        statement {
+          managed_rule_group_statement {
+            name        = "AWSManagedRulesAmazonIpReputationList"
+            vendor_name = "AWS"
+          }
+        }
+        
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "IpReputationListMetric"
+          sampled_requests_enabled   = true
+        }
+      }
+      
+      # Block requests from specific countries (compliance requirement)
+      rule {
+        name     = "GeoBlockingRule"
+        priority = 5
+        
+        action {
+          block {}
+        }
+        
+        statement {
+          geo_match_statement {
+            # Block sanctioned countries for financial compliance
+            country_codes = ["IR", "KP", "SY", "CU"]  # Example: Iran, North Korea, Syria, Cuba
+          }
+        }
+        
+        visibility_config {
+          cloudwatch_metrics_enabled = true
+          metric_name                = "GeoBlockingRule"
+          sampled_requests_enabled   = true
+        }
+      }
+      
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "MitaCloudFrontWAF"
+        sampled_requests_enabled   = true
+      }
+      
+      tags = {
+        Name        = "mita-cloudfront-waf"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "cdn-security"
+      }
+    }
+    
+    # CloudFront Distribution for document delivery
+    resource "aws_cloudfront_distribution" "mita_documents" {
+      comment             = "MITA Finance - Document and Image Delivery CDN"
+      default_root_object = "index.html"
+      enabled             = true
+      http_version        = "http2and3"
+      is_ipv6_enabled     = true
+      price_class         = "PriceClass_100"  # Use only North America and Europe for compliance
+      web_acl_id          = aws_wafv2_web_acl.mita_cloudfront.arn
+      
+      # S3 origin for documents
+      origin {
+        domain_name              = data.aws_s3_bucket.mita_documents.bucket_regional_domain_name
+        origin_id                = "mita-documents-s3"
+        origin_access_control_id = aws_cloudfront_origin_access_control.mita_documents.id
+        
+        custom_header {
+          name  = "x-mita-origin"
+          value = "documents-bucket"
+        }
+      }
+      
+      # API origin for authenticated requests
+      origin {
+        domain_name = "api.mita.finance"
+        origin_id   = "mita-api"
+        
+        custom_origin_config {
+          http_port              = 80
+          https_port             = 443
+          origin_protocol_policy = "https-only"
+          origin_ssl_protocols   = ["TLSv1.2"]
+        }
+        
+        custom_header {
+          name  = "x-mita-origin"
+          value = "api-server"
+        }
+      }
+      
+      # Default cache behavior for API requests
+      default_cache_behavior {
+        allowed_methods                = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+        cached_methods                 = ["GET", "HEAD", "OPTIONS"]
+        target_origin_id               = "mita-api"
+        compress                       = true
+        viewer_protocol_policy         = "redirect-to-https"
+        
+        # Use managed policies for API requests
+        cache_policy_id            = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"  # CachingDisabled
+        origin_request_policy_id   = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"  # CORS-S3Origin
+        response_headers_policy_id = aws_cloudfront_response_headers_policy.mita_documents.id
+      }
+      
+      # Cache behavior for document images
+      ordered_cache_behavior {
+        path_pattern               = "/documents/*"
+        allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+        cached_methods             = ["GET", "HEAD"]
+        target_origin_id           = "mita-documents-s3"
+        compress                   = true
+        viewer_protocol_policy     = "redirect-to-https"
+        
+        cache_policy_id            = aws_cloudfront_cache_policy.mita_documents.id
+        origin_request_policy_id   = aws_cloudfront_origin_request_policy.mita_documents.id
+        response_headers_policy_id = aws_cloudfront_response_headers_policy.mita_documents.id
+        
+        # Lambda@Edge function for image processing (if needed)
+        # lambda_function_association {
+        #   event_type   = "origin-request"
+        #   lambda_arn   = aws_lambda_function.image_processor.qualified_arn
+        #   include_body = false
+        # }
+      }
+      
+      # Cache behavior for receipt images with higher TTL
+      ordered_cache_behavior {
+        path_pattern               = "/receipts/*"
+        allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+        cached_methods             = ["GET", "HEAD"]
+        target_origin_id           = "mita-documents-s3"
+        compress                   = true
+        viewer_protocol_policy     = "redirect-to-https"
+        
+        cache_policy_id            = aws_cloudfront_cache_policy.mita_documents.id
+        origin_request_policy_id   = aws_cloudfront_origin_request_policy.mita_documents.id
+        response_headers_policy_id = aws_cloudfront_response_headers_policy.mita_documents.id
+        
+        # Longer TTL for receipts (they don't change often)
+        min_ttl     = 86400    # 1 day
+        default_ttl = 604800   # 1 week
+        max_ttl     = 31536000 # 1 year
+      }
+      
+      # Cache behavior for profile images
+      ordered_cache_behavior {
+        path_pattern               = "/profiles/*"
+        allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+        cached_methods             = ["GET", "HEAD"]
+        target_origin_id           = "mita-documents-s3"
+        compress                   = true
+        viewer_protocol_policy     = "redirect-to-https"
+        
+        cache_policy_id            = aws_cloudfront_cache_policy.mita_documents.id
+        origin_request_policy_id   = aws_cloudfront_origin_request_policy.mita_documents.id
+        response_headers_policy_id = aws_cloudfront_response_headers_policy.mita_documents.id
+        
+        # Shorter TTL for profile images (they may change)
+        min_ttl     = 0
+        default_ttl = 86400   # 1 day
+        max_ttl     = 604800  # 1 week
+      }
+      
+      # Geo restrictions for compliance
+      restrictions {
+        geo_restriction {
+          restriction_type = "blacklist"
+          locations        = ["IR", "KP", "SY", "CU"]  # Sanctioned countries
+        }
+      }
+      
+      # SSL certificate configuration
+      viewer_certificate {
+        acm_certificate_arn            = aws_acm_certificate.mita_cdn.arn
+        ssl_support_method             = "sni-only"
+        minimum_protocol_version       = "TLSv1.2_2021"
+        cloudfront_default_certificate = false
+      }
+      
+      # Custom error pages
+      custom_error_response {
+        error_code            = 403
+        response_code         = 403
+        response_page_path    = "/errors/403.html"
+        error_caching_min_ttl = 300
+      }
+      
+      custom_error_response {
+        error_code            = 404
+        response_code         = 404
+        response_page_path    = "/errors/404.html"
+        error_caching_min_ttl = 300
+      }
+      
+      custom_error_response {
+        error_code            = 500
+        response_code         = 500
+        response_page_path    = "/errors/500.html"
+        error_caching_min_ttl = 60
+      }
+      
+      # Logging configuration
+      logging_config {
+        bucket          = aws_s3_bucket.mita_cloudfront_logs.bucket_domain_name
+        prefix          = "cloudfront-logs/"
+        include_cookies = false
+      }
+      
+      # Aliases for custom domain
+      aliases = ["cdn.mita.finance", "assets.mita.finance"]
+      
+      tags = {
+        Name        = "mita-documents-cdn"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "document-delivery"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    # S3 bucket for CloudFront access logs
+    resource "aws_s3_bucket" "mita_cloudfront_logs" {
+      bucket = "mita-finance-cloudfront-logs-${random_string.cdn_logs_suffix.result}"
+      
+      tags = {
+        Name        = "mita-cloudfront-logs"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "cdn-access-logs"
+      }
+    }
+    
+    resource "random_string" "cdn_logs_suffix" {
+      length  = 8
+      special = false
+      upper   = false
+    }
+    
+    # CloudFront logs bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_cloudfront_logs" {
+      bucket = aws_s3_bucket.mita_cloudfront_logs.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          sse_algorithm = "AES256"
+        }
+      }
+    }
+    
+    # CloudFront logs bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_cloudfront_logs" {
+      bucket = aws_s3_bucket.mita_cloudfront_logs.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # CloudFront logs lifecycle
+    resource "aws_s3_bucket_lifecycle_configuration" "mita_cloudfront_logs" {
+      bucket = aws_s3_bucket.mita_cloudfront_logs.id
+      
+      rule {
+        id     = "cloudfront_logs_lifecycle"
+        status = "Enabled"
+        
+        # Move to IA after 30 days
+        transition {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        }
+        
+        # Move to Glacier after 90 days
+        transition {
+          days          = 90
+          storage_class = "GLACIER"
+        }
+        
+        # Delete after 2 years
+        expiration {
+          days = 730
+        }
+      }
+    }
+    
+    # ACM Certificate for CloudFront
+    resource "aws_acm_certificate" "mita_cdn" {
+      provider          = aws.us_east_1  # CloudFront requires certificates in us-east-1
+      domain_name       = "cdn.mita.finance"
+      validation_method = "DNS"
+      
+      subject_alternative_names = [
+        "assets.mita.finance"
+      ]
+      
+      lifecycle {
+        create_before_destroy = true
+      }
+      
+      tags = {
+        Name        = "mita-cdn-certificate"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Data source to get the S3 bucket information
+    data "aws_s3_bucket" "mita_documents" {
+      bucket = var.documents_bucket_name
+    }
+    
+    # S3 bucket policy to allow CloudFront OAC access
+    resource "aws_s3_bucket_policy" "mita_documents_cloudfront" {
+      bucket = data.aws_s3_bucket.mita_documents.id
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "AllowCloudFrontServicePrincipal"
+            Effect = "Allow"
+            Principal = {
+              Service = "cloudfront.amazonaws.com"
+            }
+            Action   = "s3:GetObject"
+            Resource = "${data.aws_s3_bucket.mita_documents.arn}/*"
+            Condition = {
+              StringEquals = {
+                "AWS:SourceArn" = aws_cloudfront_distribution.mita_documents.arn
+              }
+            }
+          }
+        ]
+      })
+    }
+    
+    # CloudWatch Dashboard for CDN monitoring
+    resource "aws_cloudwatch_dashboard" "mita_cdn" {
+      dashboard_name = "MITA-CDN-Production"
+      
+      dashboard_body = jsonencode({
+        widgets = [
+          {
+            type   = "metric"
+            x      = 0
+            y      = 0
+            width  = 12
+            height = 6
+            
+            properties = {
+              metrics = [
+                ["AWS/CloudFront", "Requests", "DistributionId", aws_cloudfront_distribution.mita_documents.id],
+                [".", "BytesDownloaded", ".", "."],
+                [".", "4xxErrorRate", ".", "."],
+                [".", "5xxErrorRate", ".", "."],
+              ]
+              view    = "timeSeries"
+              stacked = false
+              region  = "us-east-1"
+              title   = "CloudFront Metrics"
+              period  = 300
+            }
+          },
+          {
+            type   = "metric"
+            x      = 0
+            y      = 6
+            width  = 12
+            height = 6
+            
+            properties = {
+              metrics = [
+                ["AWS/CloudFront", "CacheHitRate", "DistributionId", aws_cloudfront_distribution.mita_documents.id],
+                [".", "OriginLatency", ".", "."]
+              ]
+              view   = "timeSeries"
+              region = "us-east-1"
+              title  = "Cache Performance"
+              period = 300
+            }
+          }
+        ]
+      })
+    }
+    
+    # Variables
+    variable "documents_bucket_name" {
+      description = "Name of the S3 bucket containing documents"
+      type        = string
+    }
+    
+    # Outputs
+    output "cloudfront_distribution_id" {
+      description = "ID of the CloudFront distribution"
+      value       = aws_cloudfront_distribution.mita_documents.id
+    }
+    
+    output "cloudfront_distribution_arn" {
+      description = "ARN of the CloudFront distribution"
+      value       = aws_cloudfront_distribution.mita_documents.arn
+    }
+    
+    output "cloudfront_distribution_domain_name" {
+      description = "Domain name of the CloudFront distribution"
+      value       = aws_cloudfront_distribution.mita_documents.domain_name
+    }
+    
+    output "cloudfront_distribution_hosted_zone_id" {
+      description = "CloudFront Route 53 zone ID"
+      value       = aws_cloudfront_distribution.mita_documents.hosted_zone_id
+    }
+    
+    output "waf_web_acl_arn" {
+      description = "ARN of the WAF Web ACL"
+      value       = aws_wafv2_web_acl.mita_cloudfront.arn
+    }
+    
+    output "acm_certificate_arn" {
+      description = "ARN of the ACM certificate"
+      value       = aws_acm_certificate.mita_cdn.arn
+    }

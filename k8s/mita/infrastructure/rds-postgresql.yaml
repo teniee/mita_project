@@ -1,0 +1,536 @@
+# AWS RDS PostgreSQL Infrastructure for MITA Financial Application
+# This configuration sets up a production-grade PostgreSQL database with
+# high availability, automated backups, and security controls for financial compliance
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rds-postgresql-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # RDS Configuration Template
+  terraform-config.tf: |
+    # PostgreSQL RDS Instance Configuration for MITA Finance
+    
+    # Data sources for VPC and subnet information
+    data "aws_vpc" "mita_vpc" {
+      filter {
+        name   = "tag:Name"
+        values = ["mita-production-vpc"]
+      }
+    }
+    
+    data "aws_subnets" "private_subnets" {
+      filter {
+        name   = "vpc-id"
+        values = [data.aws_vpc.mita_vpc.id]
+      }
+      filter {
+        name   = "tag:Type"
+        values = ["Private"]
+      }
+    }
+    
+    data "aws_availability_zones" "available" {
+      state = "available"
+    }
+    
+    # KMS Key for PostgreSQL encryption
+    resource "aws_kms_key" "mita_rds_encryption" {
+      description             = "KMS key for MITA RDS PostgreSQL encryption"
+      deletion_window_in_days = 7
+      enable_key_rotation     = true
+      
+      tags = {
+        Name        = "mita-rds-encryption-key"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_kms_alias" "mita_rds_encryption" {
+      name          = "alias/mita-rds-encryption"
+      target_key_id = aws_kms_key.mita_rds_encryption.key_id
+    }
+    
+    # DB Subnet Group for Multi-AZ deployment
+    resource "aws_db_subnet_group" "mita_postgresql" {
+      name       = "mita-postgresql-subnet-group"
+      subnet_ids = data.aws_subnets.private_subnets.ids
+      
+      tags = {
+        Name        = "mita-postgresql-subnet-group"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Security Group for PostgreSQL
+    resource "aws_security_group" "mita_postgresql" {
+      name_prefix = "mita-postgresql-"
+      vpc_id      = data.aws_vpc.mita_vpc.id
+      description = "Security group for MITA PostgreSQL RDS instance"
+      
+      # Ingress rules
+      ingress {
+        description     = "PostgreSQL from EKS cluster"
+        from_port       = 5432
+        to_port         = 5432
+        protocol        = "tcp"
+        security_groups = [aws_security_group.mita_eks_to_rds.id]
+      }
+      
+      # Enhanced monitoring ingress
+      ingress {
+        description = "Enhanced monitoring"
+        from_port   = 5432
+        to_port     = 5432
+        protocol    = "tcp"
+        cidr_blocks = ["10.0.0.0/8"]  # Private VPC CIDR
+      }
+      
+      # Egress rules (minimal for security)
+      egress {
+        description = "All outbound traffic for updates"
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+      
+      tags = {
+        Name        = "mita-postgresql-sg"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Security Group for EKS to RDS communication
+    resource "aws_security_group" "mita_eks_to_rds" {
+      name_prefix = "mita-eks-to-rds-"
+      vpc_id      = data.aws_vpc.mita_vpc.id
+      description = "Security group for EKS pods to access RDS"
+      
+      tags = {
+        Name        = "mita-eks-to-rds-sg"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # DB Parameter Group for PostgreSQL optimization
+    resource "aws_db_parameter_group" "mita_postgresql" {
+      family = "postgres15"
+      name   = "mita-postgresql-params"
+      
+      # Performance optimization parameters
+      parameter {
+        name  = "shared_preload_libraries"
+        value = "pg_stat_statements,pg_hint_plan"
+      }
+      
+      parameter {
+        name  = "log_statement"
+        value = "all"
+      }
+      
+      parameter {
+        name  = "log_duration"
+        value = "1"
+      }
+      
+      parameter {
+        name  = "log_min_duration_statement"
+        value = "1000"  # Log queries taking more than 1 second
+      }
+      
+      parameter {
+        name  = "max_connections"
+        value = "200"
+      }
+      
+      parameter {
+        name  = "shared_buffers"
+        value = "{DBInstanceClassMemory/4}"
+      }
+      
+      parameter {
+        name  = "effective_cache_size"
+        value = "{DBInstanceClassMemory*3/4}"
+      }
+      
+      parameter {
+        name  = "work_mem"
+        value = "4096"
+      }
+      
+      parameter {
+        name  = "maintenance_work_mem"
+        value = "65536"
+      }
+      
+      parameter {
+        name  = "checkpoint_completion_target"
+        value = "0.9"
+      }
+      
+      parameter {
+        name  = "wal_buffers"
+        value = "16384"
+      }
+      
+      parameter {
+        name  = "default_statistics_target"
+        value = "100"
+      }
+      
+      # Security parameters
+      parameter {
+        name  = "ssl"
+        value = "1"
+      }
+      
+      parameter {
+        name  = "rds.force_ssl"
+        value = "1"
+      }
+      
+      tags = {
+        Name        = "mita-postgresql-params"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Random password for database
+    resource "random_password" "mita_db_password" {
+      length  = 32
+      special = true
+    }
+    
+    # Store password in AWS Secrets Manager
+    resource "aws_secretsmanager_secret" "mita_db_credentials" {
+      name                    = "mita-finance/production/database-credentials"
+      description             = "Database credentials for MITA PostgreSQL"
+      recovery_window_in_days = 7
+      kms_key_id              = aws_kms_key.mita_rds_encryption.arn
+      
+      tags = {
+        Name        = "mita-db-credentials"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "aws_secretsmanager_secret_version" "mita_db_credentials" {
+      secret_id = aws_secretsmanager_secret.mita_db_credentials.id
+      secret_string = jsonencode({
+        username = "mita_admin"
+        password = random_password.mita_db_password.result
+        engine   = "postgres"
+        host     = aws_db_instance.mita_postgresql.endpoint
+        port     = 5432
+        dbname   = "mita"
+      })
+    }
+    
+    # Primary PostgreSQL RDS Instance
+    resource "aws_db_instance" "mita_postgresql" {
+      # Basic configuration
+      identifier     = "mita-postgresql-prod"
+      engine         = "postgres"
+      engine_version = "15.4"
+      instance_class = "db.r6g.2xlarge"  # 8 vCPU, 64 GB RAM for financial workloads
+      
+      # Database configuration
+      db_name  = "mita"
+      username = "mita_admin"
+      password = random_password.mita_db_password.result
+      
+      # Storage configuration
+      allocated_storage     = 500     # 500 GB initial storage
+      max_allocated_storage = 2000    # Auto-scale up to 2 TB
+      storage_type          = "gp3"   # General Purpose SSD v3
+      storage_throughput    = 250     # 250 MB/s throughput
+      iops                  = 3000    # 3000 IOPS for consistent performance
+      
+      # Security configuration
+      storage_encrypted   = true
+      kms_key_id         = aws_kms_key.mita_rds_encryption.arn
+      ca_cert_identifier = "rds-ca-rsa2048-g1"
+      
+      # Network configuration
+      db_subnet_group_name   = aws_db_subnet_group.mita_postgresql.name
+      vpc_security_group_ids = [aws_security_group.mita_postgresql.id]
+      publicly_accessible    = false
+      port                   = 5432
+      
+      # Multi-AZ for high availability
+      multi_az = true
+      
+      # Backup configuration (financial compliance)
+      backup_retention_period = 35          # 35 days retention for financial compliance
+      backup_window          = "03:00-04:00" # During low traffic hours
+      copy_tags_to_snapshot  = true
+      
+      # Maintenance configuration
+      maintenance_window         = "sun:04:00-sun:05:00" # Sunday 4-5 AM UTC
+      auto_minor_version_upgrade = true
+      
+      # Monitoring configuration
+      monitoring_interval = 60  # Enhanced monitoring every minute
+      monitoring_role_arn = aws_iam_role.mita_rds_monitoring.arn
+      
+      # Performance insights
+      performance_insights_enabled          = true
+      performance_insights_retention_period = 7
+      performance_insights_kms_key_id      = aws_kms_key.mita_rds_encryption.arn
+      
+      # Parameter group
+      parameter_group_name = aws_db_parameter_group.mita_postgresql.name
+      
+      # Deletion protection for production
+      deletion_protection = true
+      
+      # Final snapshot configuration
+      final_snapshot_identifier = "mita-postgresql-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+      skip_final_snapshot       = false
+      
+      tags = {
+        Name        = "mita-postgresql-prod"
+        Environment = "production"
+        Application = "mita-finance"
+        Compliance  = "PCI-DSS"
+        Backup      = "required"
+        Monitoring  = "enhanced"
+      }
+    }
+    
+    # Read Replica for read-heavy operations
+    resource "aws_db_instance" "mita_postgresql_read_replica" {
+      identifier             = "mita-postgresql-read-replica"
+      replicate_source_db    = aws_db_instance.mita_postgresql.identifier
+      instance_class         = "db.r6g.xlarge"  # Smaller instance for read replica
+      
+      # Storage configuration (inherited from source)
+      storage_encrypted = true
+      
+      # Network configuration
+      publicly_accessible = false
+      
+      # Monitoring configuration
+      monitoring_interval = 60
+      monitoring_role_arn = aws_iam_role.mita_rds_monitoring.arn
+      
+      # Performance insights
+      performance_insights_enabled          = true
+      performance_insights_retention_period = 7
+      performance_insights_kms_key_id      = aws_kms_key.mita_rds_encryption.arn
+      
+      tags = {
+        Name        = "mita-postgresql-read-replica"
+        Environment = "production"
+        Application = "mita-finance"
+        Type        = "read-replica"
+        Monitoring  = "enhanced"
+      }
+    }
+    
+    # IAM Role for Enhanced Monitoring
+    resource "aws_iam_role" "mita_rds_monitoring" {
+      name = "mita-rds-monitoring-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Action = "sts:AssumeRole"
+            Effect = "Allow"
+            Principal = {
+              Service = "monitoring.rds.amazonaws.com"
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-rds-monitoring-role"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_rds_monitoring" {
+      role       = aws_iam_role.mita_rds_monitoring.name
+      policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+    }
+    
+    # CloudWatch Log Groups for RDS
+    resource "aws_cloudwatch_log_group" "mita_postgresql_logs" {
+      name              = "/aws/rds/instance/mita-postgresql-prod/postgresql"
+      retention_in_days = 30
+      kms_key_id        = aws_kms_key.mita_rds_encryption.arn
+      
+      tags = {
+        Name        = "mita-postgresql-logs"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # Outputs for Kubernetes integration
+    output "rds_endpoint" {
+      description = "RDS instance endpoint"
+      value       = aws_db_instance.mita_postgresql.endpoint
+      sensitive   = false
+    }
+    
+    output "rds_read_replica_endpoint" {
+      description = "RDS read replica endpoint"
+      value       = aws_db_instance.mita_postgresql_read_replica.endpoint
+      sensitive   = false
+    }
+    
+    output "rds_port" {
+      description = "RDS instance port"
+      value       = aws_db_instance.mita_postgresql.port
+      sensitive   = false
+    }
+    
+    output "database_name" {
+      description = "Database name"
+      value       = aws_db_instance.mita_postgresql.db_name
+      sensitive   = false
+    }
+    
+    output "secret_arn" {
+      description = "ARN of the secret containing database credentials"
+      value       = aws_secretsmanager_secret.mita_db_credentials.arn
+      sensitive   = false
+    }
+    
+    output "kms_key_arn" {
+      description = "ARN of the KMS key used for encryption"
+      value       = aws_kms_key.mita_rds_encryption.arn
+      sensitive   = false
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rds-monitoring-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: mita-finance
+data:
+  cloudwatch-config.yaml: |
+    # CloudWatch Alarms for PostgreSQL RDS
+    postgresql_cpu_alarm:
+      alarm_name: "mita-postgresql-high-cpu"
+      alarm_description: "PostgreSQL CPU utilization is too high"
+      metric_name: "CPUUtilization"
+      namespace: "AWS/RDS"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 80
+      comparison_operator: "GreaterThanThreshold"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-critical-alerts"
+    
+    postgresql_memory_alarm:
+      alarm_name: "mita-postgresql-high-memory"
+      alarm_description: "PostgreSQL memory utilization is too high"
+      metric_name: "FreeableMemory"
+      namespace: "AWS/RDS"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 1073741824  # 1 GB in bytes
+      comparison_operator: "LessThanThreshold"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-critical-alerts"
+    
+    postgresql_connection_alarm:
+      alarm_name: "mita-postgresql-high-connections"
+      alarm_description: "PostgreSQL connection count is too high"
+      metric_name: "DatabaseConnections"
+      namespace: "AWS/RDS"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 160  # 80% of max_connections (200)
+      comparison_operator: "GreaterThanThreshold"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-warning-alerts"
+    
+    postgresql_replica_lag_alarm:
+      alarm_name: "mita-postgresql-replica-lag"
+      alarm_description: "PostgreSQL read replica lag is too high"
+      metric_name: "ReplicaLag"
+      namespace: "AWS/RDS"
+      statistic: "Average"
+      period: 300
+      evaluation_periods: 2
+      threshold: 60  # 60 seconds
+      comparison_operator: "GreaterThanThreshold"
+      alarm_actions:
+        - "arn:aws:sns:us-east-1:ACCOUNT-ID:mita-warning-alerts"
+
+  prometheus-rules.yaml: |
+    # Custom Prometheus rules for PostgreSQL monitoring
+    groups:
+    - name: mita.postgresql.rules
+      rules:
+      - alert: PostgreSQLHighCPU
+        expr: aws_rds_cpu_utilization_average{dbinstance_identifier="mita-postgresql-prod"} > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "PostgreSQL CPU utilization is high"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has CPU utilization of {{ $value }}% for more than 5 minutes."
+      
+      - alert: PostgreSQLHighConnections
+        expr: aws_rds_database_connections_average{dbinstance_identifier="mita-postgresql-prod"} > 160
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "PostgreSQL connection count is high"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has {{ $value }} active connections (80% of limit)."
+      
+      - alert: PostgreSQLReplicaLag
+        expr: aws_rds_replica_lag_average{dbinstance_identifier="mita-postgresql-read-replica"} > 60
+        for: 3m
+        labels:
+          severity: warning
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "PostgreSQL read replica lag is high"
+          description: "PostgreSQL read replica has {{ $value }} seconds of lag behind the primary instance."
+      
+      - alert: PostgreSQLLowFreeableMemory
+        expr: aws_rds_freeable_memory_average{dbinstance_identifier="mita-postgresql-prod"} < 1073741824
+        for: 5m
+        labels:
+          severity: critical
+          service: postgresql
+          environment: production
+        annotations:
+          summary: "PostgreSQL freeable memory is low"
+          description: "PostgreSQL instance {{ $labels.dbinstance_identifier }} has only {{ $value | humanize1024 }}B of freeable memory."

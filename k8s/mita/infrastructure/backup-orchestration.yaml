@@ -1,0 +1,1416 @@
+# Advanced Backup Orchestration for MITA Financial Application
+# This configuration implements comprehensive backup strategies with
+# automated testing, verification, and compliance reporting
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-orchestration-config
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: mita-finance
+data:
+  # Backup Orchestration Configuration Template
+  terraform-config.tf: |
+    # Backup Orchestration Infrastructure for MITA Finance
+    
+    # Data sources
+    data "aws_caller_identity" "current" {}
+    data "aws_region" "current" {}
+    
+    # Step Functions State Machine for Backup Orchestration
+    resource "aws_sfn_state_machine" "mita_backup_orchestration" {
+      name     = "mita-backup-orchestration"
+      role_arn = aws_iam_role.mita_backup_step_functions.arn
+      
+      definition = jsonencode({
+        Comment = "MITA Financial Application Backup Orchestration"
+        StartAt = "InitiateBackup"
+        States = {
+          InitiateBackup = {
+            Type = "Parallel"
+            Branches = [
+              {
+                StartAt = "BackupDatabase"
+                States = {
+                  BackupDatabase = {
+                    Type = "Task"
+                    Resource = aws_lambda_function.mita_backup_database.arn
+                    TimeoutSeconds = 3600
+                    Retry = [
+                      {
+                        ErrorEquals = ["States.TaskFailed"]
+                        IntervalSeconds = 30
+                        MaxAttempts = 3
+                        BackoffRate = 2.0
+                      }
+                    ]
+                    Catch = [
+                      {
+                        ErrorEquals = ["States.ALL"]
+                        Next = "NotifyBackupFailure"
+                        ResultPath = "$.error"
+                      }
+                    ]
+                    End = true
+                  }
+                  NotifyBackupFailure = {
+                    Type = "Task"
+                    Resource = aws_lambda_function.mita_backup_notification.arn
+                    End = true
+                  }
+                }
+              },
+              {
+                StartAt = "BackupRedis"
+                States = {
+                  BackupRedis = {
+                    Type = "Task"
+                    Resource = aws_lambda_function.mita_backup_redis.arn
+                    TimeoutSeconds = 1800
+                    Retry = [
+                      {
+                        ErrorEquals = ["States.TaskFailed"]
+                        IntervalSeconds = 30
+                        MaxAttempts = 3
+                        BackoffRate = 2.0
+                      }
+                    ]
+                    End = true
+                  }
+                }
+              },
+              {
+                StartAt = "BackupApplicationData"
+                States = {
+                  BackupApplicationData = {
+                    Type = "Task"
+                    Resource = aws_lambda_function.mita_backup_application.arn
+                    TimeoutSeconds = 1800
+                    Retry = [
+                      {
+                        ErrorEquals = ["States.TaskFailed"]
+                        IntervalSeconds = 30
+                        MaxAttempts = 3
+                        BackoffRate = 2.0
+                      }
+                    ]
+                    End = true
+                  }
+                }
+              }
+            ]
+            Next = "VerifyBackups"
+          }
+          VerifyBackups = {
+            Type = "Task"
+            Resource = aws_lambda_function.mita_backup_verification.arn
+            TimeoutSeconds = 1800
+            Next = "GenerateComplianceReport"
+            Catch = [
+              {
+                ErrorEquals = ["States.ALL"]
+                Next = "NotifyVerificationFailure"
+                ResultPath = "$.verification_error"
+              }
+            ]
+          }
+          GenerateComplianceReport = {
+            Type = "Task"
+            Resource = aws_lambda_function.mita_compliance_report.arn
+            TimeoutSeconds = 600
+            Next = "NotifyBackupSuccess"
+          }
+          NotifyBackupSuccess = {
+            Type = "Task"
+            Resource = aws_lambda_function.mita_backup_notification.arn
+            End = true
+          }
+          NotifyVerificationFailure = {
+            Type = "Task"
+            Resource = aws_lambda_function.mita_backup_notification.arn
+            End = true
+          }
+        }
+      })
+      
+      tags = {
+        Name        = "mita-backup-orchestration"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-automation"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    # IAM role for Step Functions
+    resource "aws_iam_role" "mita_backup_step_functions" {
+      name = "mita-backup-step-functions-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Action = "sts:AssumeRole"
+            Effect = "Allow"
+            Principal = {
+              Service = "states.amazonaws.com"
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-step-functions-role"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for Step Functions to invoke Lambda functions
+    resource "aws_iam_policy" "mita_backup_step_functions_policy" {
+      name        = "mita-backup-step-functions-policy"
+      description = "Policy for backup orchestration Step Functions"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "lambda:InvokeFunction"
+            ]
+            Resource = [
+              aws_lambda_function.mita_backup_database.arn,
+              aws_lambda_function.mita_backup_redis.arn,
+              aws_lambda_function.mita_backup_application.arn,
+              aws_lambda_function.mita_backup_verification.arn,
+              aws_lambda_function.mita_compliance_report.arn,
+              aws_lambda_function.mita_backup_notification.arn
+            ]
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "logs:CreateLogGroup",
+              "logs:CreateLogStream",
+              "logs:PutLogEvents"
+            ]
+            Resource = "arn:aws:logs:*:*:*"
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-step-functions-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_backup_step_functions" {
+      role       = aws_iam_role.mita_backup_step_functions.name
+      policy_arn = aws_iam_policy.mita_backup_step_functions_policy.arn
+    }
+    
+    # Lambda function for database backup
+    resource "aws_lambda_function" "mita_backup_database" {
+      filename         = "mita_backup_database.zip"
+      function_name    = "mita-backup-database"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 3600  # 1 hour
+      memory_size     = 1024
+      
+      environment {
+        variables = {
+          BACKUP_BUCKET_NAME      = var.backup_bucket_name
+          RDS_INSTANCE_IDENTIFIER = var.rds_instance_identifier
+          BACKUP_RETENTION_DAYS   = "35"
+          KMS_KEY_ID             = var.backup_kms_key_arn
+          SNS_TOPIC_ARN          = aws_sns_topic.mita_backup_notifications.arn
+        }
+      }
+      
+      tags = {
+        Name        = "mita-backup-database"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "database-backup"
+      }
+    }
+    
+    # Lambda function for Redis backup
+    resource "aws_lambda_function" "mita_backup_redis" {
+      filename         = "mita_backup_redis.zip"
+      function_name    = "mita-backup-redis"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 1800  # 30 minutes
+      memory_size     = 512
+      
+      environment {
+        variables = {
+          BACKUP_BUCKET_NAME    = var.backup_bucket_name
+          REDIS_CLUSTER_ID      = var.redis_cluster_id
+          BACKUP_RETENTION_DAYS = "7"
+          KMS_KEY_ID           = var.backup_kms_key_arn
+          SNS_TOPIC_ARN        = aws_sns_topic.mita_backup_notifications.arn
+        }
+      }
+      
+      tags = {
+        Name        = "mita-backup-redis"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "redis-backup"
+      }
+    }
+    
+    # Lambda function for application data backup
+    resource "aws_lambda_function" "mita_backup_application" {
+      filename         = "mita_backup_application.zip"
+      function_name    = "mita-backup-application"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 1800  # 30 minutes
+      memory_size     = 1024
+      
+      environment {
+        variables = {
+          BACKUP_BUCKET_NAME    = var.backup_bucket_name
+          SOURCE_BUCKET_NAME    = var.documents_bucket_name
+          BACKUP_RETENTION_DAYS = "2555"  # 7 years for financial compliance
+          KMS_KEY_ID           = var.backup_kms_key_arn
+          SNS_TOPIC_ARN        = aws_sns_topic.mita_backup_notifications.arn
+        }
+      }
+      
+      tags = {
+        Name        = "mita-backup-application"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "application-backup"
+      }
+    }
+    
+    # Lambda function for backup verification
+    resource "aws_lambda_function" "mita_backup_verification" {
+      filename         = "mita_backup_verification.zip"
+      function_name    = "mita-backup-verification"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 1800  # 30 minutes
+      memory_size     = 1024
+      
+      environment {
+        variables = {
+          BACKUP_BUCKET_NAME = var.backup_bucket_name
+          KMS_KEY_ID        = var.backup_kms_key_arn
+          SNS_TOPIC_ARN     = aws_sns_topic.mita_backup_notifications.arn
+        }
+      }
+      
+      tags = {
+        Name        = "mita-backup-verification"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-verification"
+      }
+    }
+    
+    # Lambda function for compliance reporting
+    resource "aws_lambda_function" "mita_compliance_report" {
+      filename         = "mita_compliance_report.zip"
+      function_name    = "mita-compliance-report"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 600   # 10 minutes
+      memory_size     = 512
+      
+      environment {
+        variables = {
+          BACKUP_BUCKET_NAME    = var.backup_bucket_name
+          COMPLIANCE_BUCKET_NAME = aws_s3_bucket.mita_compliance_reports.bucket
+          KMS_KEY_ID           = var.backup_kms_key_arn
+          SNS_TOPIC_ARN        = aws_sns_topic.mita_backup_notifications.arn
+        }
+      }
+      
+      tags = {
+        Name        = "mita-compliance-report"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "compliance-reporting"
+      }
+    }
+    
+    # Lambda function for backup notifications
+    resource "aws_lambda_function" "mita_backup_notification" {
+      filename         = "mita_backup_notification.zip"
+      function_name    = "mita-backup-notification"
+      role            = aws_iam_role.mita_backup_lambda.arn
+      handler         = "index.handler"
+      runtime         = "python3.11"
+      timeout         = 300   # 5 minutes
+      memory_size     = 256
+      
+      environment {
+        variables = {
+          SNS_TOPIC_ARN = aws_sns_topic.mita_backup_notifications.arn
+          SLACK_WEBHOOK_URL = var.slack_webhook_url
+        }
+      }
+      
+      tags = {
+        Name        = "mita-backup-notification"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-notification"
+      }
+    }
+    
+    # IAM role for backup Lambda functions
+    resource "aws_iam_role" "mita_backup_lambda" {
+      name = "mita-backup-lambda-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Action = "sts:AssumeRole"
+            Effect = "Allow"
+            Principal = {
+              Service = "lambda.amazonaws.com"
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-lambda-role"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for backup Lambda functions
+    resource "aws_iam_policy" "mita_backup_lambda_policy" {
+      name        = "mita-backup-lambda-policy"
+      description = "Policy for backup Lambda functions"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "logs:CreateLogGroup",
+              "logs:CreateLogStream",
+              "logs:PutLogEvents"
+            ]
+            Resource = "arn:aws:logs:*:*:*"
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "rds:CreateDBSnapshot",
+              "rds:DescribeDBInstances",
+              "rds:DescribeDBSnapshots",
+              "rds:DeleteDBSnapshot",
+              "rds:CopyDBSnapshot",
+              "rds:AddTagsToResource"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "elasticache:CreateSnapshot",
+              "elasticache:DescribeSnapshots",
+              "elasticache:DeleteSnapshot",
+              "elasticache:DescribeReplicationGroups",
+              "elasticache:AddTagsToResource"
+            ]
+            Resource = "*"
+            Condition = {
+              StringEquals = {
+                "aws:ResourceTag/Application" = "mita-finance"
+              }
+            }
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "s3:ListBucket",
+              "s3:GetObject",
+              "s3:GetObjectVersion",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:DeleteObject",
+              "s3:DeleteObjectVersion"
+            ]
+            Resource = [
+              var.backup_bucket_arn,
+              "${var.backup_bucket_arn}/*",
+              var.documents_bucket_arn,
+              "${var.documents_bucket_arn}/*",
+              aws_s3_bucket.mita_compliance_reports.arn,
+              "${aws_s3_bucket.mita_compliance_reports.arn}/*"
+            ]
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "kms:Decrypt",
+              "kms:GenerateDataKey",
+              "kms:DescribeKey"
+            ]
+            Resource = [
+              var.backup_kms_key_arn,
+              var.s3_kms_key_arn
+            ]
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "sns:Publish"
+            ]
+            Resource = aws_sns_topic.mita_backup_notifications.arn
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "cloudwatch:PutMetricData"
+            ]
+            Resource = "*"
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-backup-lambda-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_backup_lambda" {
+      role       = aws_iam_role.mita_backup_lambda.name
+      policy_arn = aws_iam_policy.mita_backup_lambda_policy.arn
+    }
+    
+    # S3 bucket for compliance reports
+    resource "aws_s3_bucket" "mita_compliance_reports" {
+      bucket = "mita-finance-compliance-reports-${random_string.compliance_suffix.result}"
+      
+      tags = {
+        Name        = "mita-compliance-reports"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "compliance-reporting"
+        Compliance  = "PCI-DSS"
+      }
+    }
+    
+    resource "random_string" "compliance_suffix" {
+      length  = 8
+      special = false
+      upper   = false
+    }
+    
+    # Compliance reports bucket encryption
+    resource "aws_s3_bucket_server_side_encryption_configuration" "mita_compliance_reports" {
+      bucket = aws_s3_bucket.mita_compliance_reports.id
+      
+      rule {
+        apply_server_side_encryption_by_default {
+          kms_master_key_id = var.backup_kms_key_arn
+          sse_algorithm     = "aws:kms"
+        }
+        bucket_key_enabled = true
+      }
+    }
+    
+    # Compliance reports bucket versioning
+    resource "aws_s3_bucket_versioning" "mita_compliance_reports" {
+      bucket = aws_s3_bucket.mita_compliance_reports.id
+      versioning_configuration {
+        status = "Enabled"
+      }
+    }
+    
+    # Compliance reports bucket public access block
+    resource "aws_s3_bucket_public_access_block" "mita_compliance_reports" {
+      bucket = aws_s3_bucket.mita_compliance_reports.id
+      
+      block_public_acls       = true
+      block_public_policy     = true
+      ignore_public_acls      = true
+      restrict_public_buckets = true
+    }
+    
+    # Compliance reports lifecycle
+    resource "aws_s3_bucket_lifecycle_configuration" "mita_compliance_reports" {
+      bucket = aws_s3_bucket.mita_compliance_reports.id
+      
+      rule {
+        id     = "compliance_reports_lifecycle"
+        status = "Enabled"
+        
+        # Move to IA after 30 days
+        transition {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        }
+        
+        # Move to Glacier after 90 days
+        transition {
+          days          = 90
+          storage_class = "GLACIER"
+        }
+        
+        # Keep compliance reports for 10 years
+        expiration {
+          days = 3650
+        }
+        
+        noncurrent_version_expiration {
+          noncurrent_days = 365
+        }
+      }
+    }
+    
+    # SNS topic for backup notifications
+    resource "aws_sns_topic" "mita_backup_notifications" {
+      name         = "mita-backup-notifications"
+      display_name = "MITA Backup and Compliance Notifications"
+      kms_master_key_id = var.backup_kms_key_arn
+      
+      tags = {
+        Name        = "mita-backup-notifications"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-notification"
+      }
+    }
+    
+    # EventBridge rules for backup scheduling
+    resource "aws_cloudwatch_event_rule" "mita_daily_backup" {
+      name                = "mita-daily-backup"
+      description         = "Trigger daily backup orchestration"
+      schedule_expression = "cron(0 2 * * ? *)"  # Daily at 2 AM UTC
+      
+      tags = {
+        Name        = "mita-daily-backup"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-scheduling"
+      }
+    }
+    
+    resource "aws_cloudwatch_event_target" "mita_daily_backup" {
+      rule      = aws_cloudwatch_event_rule.mita_daily_backup.name
+      target_id = "TriggerDailyBackup"
+      arn       = aws_sfn_state_machine.mita_backup_orchestration.arn
+      role_arn  = aws_iam_role.mita_eventbridge.arn
+      
+      input = jsonencode({
+        backup_type = "daily"
+        retention_days = 35
+        include_application_data = true
+      })
+    }
+    
+    # Weekly comprehensive backup
+    resource "aws_cloudwatch_event_rule" "mita_weekly_backup" {
+      name                = "mita-weekly-backup"
+      description         = "Trigger weekly comprehensive backup"
+      schedule_expression = "cron(0 1 ? * SUN *)"  # Weekly on Sunday at 1 AM UTC
+      
+      tags = {
+        Name        = "mita-weekly-backup"
+        Environment = "production"
+        Application = "mita-finance"
+        Purpose     = "backup-scheduling"
+      }
+    }
+    
+    resource "aws_cloudwatch_event_target" "mita_weekly_backup" {
+      rule      = aws_cloudwatch_event_rule.mita_weekly_backup.name
+      target_id = "TriggerWeeklyBackup"
+      arn       = aws_sfn_state_machine.mita_backup_orchestration.arn
+      role_arn  = aws_iam_role.mita_eventbridge.arn
+      
+      input = jsonencode({
+        backup_type = "weekly"
+        retention_days = 365
+        include_application_data = true
+        generate_compliance_report = true
+      })
+    }
+    
+    # IAM role for EventBridge
+    resource "aws_iam_role" "mita_eventbridge" {
+      name = "mita-eventbridge-backup-role"
+      
+      assume_role_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Action = "sts:AssumeRole"
+            Effect = "Allow"
+            Principal = {
+              Service = "events.amazonaws.com"
+            }
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-eventbridge-backup-role"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    # IAM policy for EventBridge to invoke Step Functions
+    resource "aws_iam_policy" "mita_eventbridge_policy" {
+      name        = "mita-eventbridge-backup-policy"
+      description = "Policy for EventBridge to trigger backup orchestration"
+      
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "states:StartExecution"
+            ]
+            Resource = aws_sfn_state_machine.mita_backup_orchestration.arn
+          }
+        ]
+      })
+      
+      tags = {
+        Name        = "mita-eventbridge-backup-policy"
+        Environment = "production"
+        Application = "mita-finance"
+      }
+    }
+    
+    resource "aws_iam_role_policy_attachment" "mita_eventbridge" {
+      role       = aws_iam_role.mita_eventbridge.name
+      policy_arn = aws_iam_policy.mita_eventbridge_policy.arn
+    }
+    
+    # CloudWatch dashboard for backup monitoring
+    resource "aws_cloudwatch_dashboard" "mita_backup_monitoring" {
+      dashboard_name = "MITA-Backup-Operations"
+      
+      dashboard_body = jsonencode({
+        widgets = [
+          {
+            type   = "metric"
+            x      = 0
+            y      = 0
+            width  = 12
+            height = 6
+            
+            properties = {
+              metrics = [
+                ["MITA/Backup", "BackupSuccess", "BackupType", "Database"],
+                [".", "BackupFailure", ".", "."],
+                [".", "BackupDuration", ".", "."],
+                [".", "BackupSize", ".", "."]
+              ]
+              view    = "timeSeries"
+              stacked = false
+              region  = data.aws_region.current.name
+              title   = "Database Backup Metrics"
+              period  = 86400  # Daily
+            }
+          },
+          {
+            type   = "metric"
+            x      = 12
+            y      = 0
+            width  = 12
+            height = 6
+            
+            properties = {
+              metrics = [
+                ["MITA/Backup", "BackupSuccess", "BackupType", "Redis"],
+                [".", "BackupFailure", ".", "."],
+                [".", "BackupSuccess", "BackupType", "Application"],
+                [".", "BackupFailure", ".", "."]
+              ]
+              view   = "timeSeries"
+              region = data.aws_region.current.name
+              title  = "Redis and Application Backup Metrics"
+              period = 86400
+            }
+          },
+          {
+            type   = "log"
+            x      = 0
+            y      = 6
+            width  = 24
+            height = 6
+            
+            properties = {
+              query   = "SOURCE '/aws/lambda/mita-backup-database' | SOURCE '/aws/lambda/mita-backup-redis' | SOURCE '/aws/lambda/mita-backup-application' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 50"
+              region  = data.aws_region.current.name
+              title   = "Recent Backup Errors"
+              view    = "table"
+            }
+          }
+        ]
+      })
+    }
+    
+    # Variables
+    variable "backup_bucket_name" {
+      description = "Name of the backup S3 bucket"
+      type        = string
+    }
+    
+    variable "backup_bucket_arn" {
+      description = "ARN of the backup S3 bucket"
+      type        = string
+    }
+    
+    variable "documents_bucket_name" {
+      description = "Name of the documents S3 bucket"
+      type        = string
+    }
+    
+    variable "documents_bucket_arn" {
+      description = "ARN of the documents S3 bucket"
+      type        = string
+    }
+    
+    variable "rds_instance_identifier" {
+      description = "Identifier of the RDS instance"
+      type        = string
+    }
+    
+    variable "redis_cluster_id" {
+      description = "ID of the Redis cluster"
+      type        = string
+    }
+    
+    variable "backup_kms_key_arn" {
+      description = "ARN of the backup KMS key"
+      type        = string
+    }
+    
+    variable "s3_kms_key_arn" {
+      description = "ARN of the S3 KMS key"
+      type        = string
+    }
+    
+    variable "slack_webhook_url" {
+      description = "Slack webhook URL for notifications"
+      type        = string
+      default     = ""
+    }
+    
+    # Outputs
+    output "backup_state_machine_arn" {
+      description = "ARN of the backup orchestration state machine"
+      value       = aws_sfn_state_machine.mita_backup_orchestration.arn
+    }
+    
+    output "backup_sns_topic_arn" {
+      description = "ARN of the backup notifications SNS topic"
+      value       = aws_sns_topic.mita_backup_notifications.arn
+    }
+    
+    output "compliance_reports_bucket_name" {
+      description = "Name of the compliance reports S3 bucket"
+      value       = aws_s3_bucket.mita_compliance_reports.bucket
+    }
+    
+    output "backup_lambda_functions" {
+      description = "ARNs of backup Lambda functions"
+      value = {
+        database_backup   = aws_lambda_function.mita_backup_database.arn
+        redis_backup     = aws_lambda_function.mita_backup_redis.arn
+        application_backup = aws_lambda_function.mita_backup_application.arn
+        verification     = aws_lambda_function.mita_backup_verification.arn
+        compliance_report = aws_lambda_function.mita_compliance_report.arn
+        notification     = aws_lambda_function.mita_backup_notification.arn
+      }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-lambda-functions
+  namespace: mita-production
+  labels:
+    app.kubernetes.io/name: mita
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: mita-finance
+data:
+  database_backup.py: |
+    import json
+    import boto3
+    import os
+    import logging
+    from datetime import datetime, timedelta
+    from typing import Dict, Any
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    
+    rds = boto3.client('rds')
+    s3 = boto3.client('s3')
+    sns = boto3.client('sns')
+    cloudwatch = boto3.client('cloudwatch')
+    
+    def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+        """Lambda function to backup RDS database."""
+        try:
+            db_instance_id = os.environ['RDS_INSTANCE_IDENTIFIER']
+            backup_bucket = os.environ['BACKUP_BUCKET_NAME']
+            retention_days = int(os.environ.get('BACKUP_RETENTION_DAYS', '35'))
+            
+            backup_start = datetime.utcnow()
+            snapshot_id = f"mita-db-backup-{backup_start.strftime('%Y%m%d-%H%M%S')}"
+            
+            logger.info(f"Starting database backup for {db_instance_id}")
+            
+            # Create RDS snapshot
+            response = rds.create_db_snapshot(
+                DBSnapshotIdentifier=snapshot_id,
+                DBInstanceIdentifier=db_instance_id,
+                Tags=[
+                    {'Key': 'Application', 'Value': 'mita-finance'},
+                    {'Key': 'Environment', 'Value': 'production'},
+                    {'Key': 'BackupType', 'Value': 'automated'},
+                    {'Key': 'BackupDate', 'Value': backup_start.isoformat()},
+                    {'Key': 'RetentionDays', 'Value': str(retention_days)}
+                ]
+            )
+            
+            snapshot_arn = response['DBSnapshot']['DBSnapshotArn']
+            logger.info(f"Database snapshot created: {snapshot_id}")
+            
+            # Wait for snapshot completion with timeout
+            waiter = rds.get_waiter('db_snapshot_completed')
+            try:
+                waiter.wait(
+                    DBSnapshotIdentifier=snapshot_id,
+                    WaiterConfig={'Delay': 30, 'MaxAttempts': 120}  # 1 hour max
+                )
+                logger.info(f"Database snapshot completed: {snapshot_id}")
+                
+                # Get snapshot details
+                snapshot_info = rds.describe_db_snapshots(
+                    DBSnapshotIdentifier=snapshot_id
+                )['DBSnapshots'][0]
+                
+                backup_size_gb = snapshot_info.get('AllocatedStorage', 0)
+                
+            except Exception as e:
+                logger.error(f"Snapshot creation failed: {e}")
+                raise
+            
+            # Clean up old snapshots
+            cleanup_old_snapshots(db_instance_id, retention_days)
+            
+            backup_end = datetime.utcnow()
+            backup_duration = (backup_end - backup_start).total_seconds() / 60  # minutes
+            
+            # Record metrics
+            record_backup_metrics('Database', True, backup_duration, backup_size_gb)
+            
+            # Store backup metadata in S3
+            metadata = {
+                'snapshot_id': snapshot_id,
+                'snapshot_arn': snapshot_arn,
+                'db_instance_id': db_instance_id,
+                'backup_start': backup_start.isoformat(),
+                'backup_end': backup_end.isoformat(),
+                'backup_duration_minutes': backup_duration,
+                'backup_size_gb': backup_size_gb,
+                'retention_days': retention_days,
+                'status': 'completed'
+            }
+            
+            s3.put_object(
+                Bucket=backup_bucket,
+                Key=f"database/metadata/{snapshot_id}.json",
+                Body=json.dumps(metadata, indent=2),
+                ServerSideEncryption='aws:kms',
+                SSEKMSKeyId=os.environ['KMS_KEY_ID']
+            )
+            
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'backup_type': 'database',
+                    'status': 'success',
+                    'snapshot_id': snapshot_id,
+                    'duration_minutes': backup_duration,
+                    'size_gb': backup_size_gb
+                })
+            }
+            
+        except Exception as e:
+            error_msg = f"Database backup failed: {str(e)}"
+            logger.error(error_msg)
+            
+            # Record failure metrics
+            record_backup_metrics('Database', False, 0, 0)
+            
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'error': error_msg})
+            }
+    
+    def cleanup_old_snapshots(db_instance_id: str, retention_days: int):
+        """Clean up snapshots older than retention period."""
+        try:
+            cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
+            
+            snapshots = rds.describe_db_snapshots(
+                DBInstanceIdentifier=db_instance_id,
+                SnapshotType='manual'
+            )['DBSnapshots']
+            
+            for snapshot in snapshots:
+                if (snapshot['SnapshotCreateTime'].replace(tzinfo=None) < cutoff_date and
+                    snapshot['DBSnapshotIdentifier'].startswith('mita-db-backup-')):
+                    
+                    logger.info(f"Deleting old snapshot: {snapshot['DBSnapshotIdentifier']}")
+                    rds.delete_db_snapshot(
+                        DBSnapshotIdentifier=snapshot['DBSnapshotIdentifier']
+                    )
+                    
+        except Exception as e:
+            logger.warning(f"Failed to cleanup old snapshots: {e}")
+    
+    def record_backup_metrics(backup_type: str, success: bool, duration: float, size_gb: float):
+        """Record backup metrics to CloudWatch."""
+        try:
+            metrics = [
+                {
+                    'MetricName': 'BackupSuccess' if success else 'BackupFailure',
+                    'Value': 1,
+                    'Unit': 'Count',
+                    'Dimensions': [{'Name': 'BackupType', 'Value': backup_type}]
+                }
+            ]
+            
+            if success:
+                metrics.extend([
+                    {
+                        'MetricName': 'BackupDuration',
+                        'Value': duration,
+                        'Unit': 'Count',
+                        'Dimensions': [{'Name': 'BackupType', 'Value': backup_type}]
+                    },
+                    {
+                        'MetricName': 'BackupSize',
+                        'Value': size_gb,
+                        'Unit': 'Count',
+                        'Dimensions': [{'Name': 'BackupType', 'Value': backup_type}]
+                    }
+                ])
+            
+            cloudwatch.put_metric_data(
+                Namespace='MITA/Backup',
+                MetricData=metrics
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to record metrics: {e}")
+
+  verification_functions.py: |
+    import json
+    import boto3
+    import os
+    import logging
+    from datetime import datetime, timedelta
+    from typing import Dict, Any, List
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    
+    s3 = boto3.client('s3')
+    rds = boto3.client('rds')
+    elasticache = boto3.client('elasticache')
+    cloudwatch = boto3.client('cloudwatch')
+    
+    def verification_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+        """Lambda function to verify backup integrity and completeness."""
+        try:
+            backup_bucket = os.environ['BACKUP_BUCKET_NAME']
+            verification_start = datetime.utcnow()
+            
+            logger.info("Starting backup verification")
+            
+            verification_results = {
+                'timestamp': verification_start.isoformat(),
+                'database': verify_database_backups(backup_bucket),
+                'redis': verify_redis_backups(backup_bucket),
+                'application': verify_application_backups(backup_bucket),
+                'compliance': verify_compliance_requirements(backup_bucket)
+            }
+            
+            # Overall verification status
+            all_passed = all(
+                result.get('status') == 'pass' 
+                for result in verification_results.values() 
+                if isinstance(result, dict)
+            )
+            
+            verification_results['overall_status'] = 'pass' if all_passed else 'fail'
+            verification_results['verification_end'] = datetime.utcnow().isoformat()
+            
+            # Store verification report
+            report_key = f"verification/reports/verification-{verification_start.strftime('%Y%m%d-%H%M%S')}.json"
+            s3.put_object(
+                Bucket=backup_bucket,
+                Key=report_key,
+                Body=json.dumps(verification_results, indent=2),
+                ServerSideEncryption='aws:kms',
+                SSEKMSKeyId=os.environ['KMS_KEY_ID']
+            )
+            
+            # Record verification metrics
+            cloudwatch.put_metric_data(
+                Namespace='MITA/Backup',
+                MetricData=[
+                    {
+                        'MetricName': 'VerificationSuccess' if all_passed else 'VerificationFailure',
+                        'Value': 1,
+                        'Unit': 'Count'
+                    }
+                ]
+            )
+            
+            if not all_passed:
+                logger.error(f"Backup verification failed: {verification_results}")
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps(verification_results)
+                }
+            
+            logger.info("Backup verification completed successfully")
+            return {
+                'statusCode': 200,
+                'body': json.dumps(verification_results)
+            }
+            
+        except Exception as e:
+            error_msg = f"Backup verification failed: {str(e)}"
+            logger.error(error_msg)
+            
+            cloudwatch.put_metric_data(
+                Namespace='MITA/Backup',
+                MetricData=[
+                    {
+                        'MetricName': 'VerificationFailure',
+                        'Value': 1,
+                        'Unit': 'Count'
+                    }
+                ]
+            )
+            
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'error': error_msg})
+            }
+    
+    def verify_database_backups(bucket: str) -> Dict[str, Any]:
+        """Verify database backup integrity."""
+        try:
+            # Check recent snapshots
+            today = datetime.utcnow().date()
+            recent_snapshots = rds.describe_db_snapshots(
+                SnapshotType='manual',
+                MaxRecords=50
+            )['DBSnapshots']
+            
+            # Filter MITA snapshots from today
+            mita_snapshots = [
+                s for s in recent_snapshots
+                if (s['DBSnapshotIdentifier'].startswith('mita-db-backup-') and
+                    s['SnapshotCreateTime'].date() == today)
+            ]
+            
+            if not mita_snapshots:
+                return {
+                    'status': 'fail',
+                    'message': 'No recent database snapshots found',
+                    'last_backup': None
+                }
+            
+            latest_snapshot = max(mita_snapshots, key=lambda x: x['SnapshotCreateTime'])
+            
+            # Verify snapshot is available
+            if latest_snapshot['Status'] != 'available':
+                return {
+                    'status': 'fail',
+                    'message': f"Latest snapshot status: {latest_snapshot['Status']}",
+                    'snapshot_id': latest_snapshot['DBSnapshotIdentifier']
+                }
+            
+            # Check metadata file exists
+            metadata_key = f"database/metadata/{latest_snapshot['DBSnapshotIdentifier']}.json"
+            try:
+                metadata_obj = s3.get_object(Bucket=bucket, Key=metadata_key)
+                metadata = json.loads(metadata_obj['Body'].read())
+            except Exception:
+                return {
+                    'status': 'fail',
+                    'message': 'Backup metadata file not found',
+                    'snapshot_id': latest_snapshot['DBSnapshotIdentifier']
+                }
+            
+            return {
+                'status': 'pass',
+                'message': 'Database backup verification successful',
+                'snapshot_id': latest_snapshot['DBSnapshotIdentifier'],
+                'backup_size_gb': latest_snapshot.get('AllocatedStorage', 0),
+                'backup_time': latest_snapshot['SnapshotCreateTime'].isoformat()
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error',
+                'message': f"Database verification error: {str(e)}"
+            }
+    
+    def verify_redis_backups(bucket: str) -> Dict[str, Any]:
+        """Verify Redis backup integrity."""
+        try:
+            # Check recent Redis snapshots
+            today = datetime.utcnow().date()
+            
+            snapshots = elasticache.describe_snapshots()['Snapshots']
+            
+            # Filter recent MITA Redis snapshots
+            recent_snapshots = [
+                s for s in snapshots
+                if (s['SnapshotName'].startswith('mita-redis-backup-') and
+                    s['SnapshotCreateTime'].date() == today)
+            ]
+            
+            if not recent_snapshots:
+                return {
+                    'status': 'fail',
+                    'message': 'No recent Redis snapshots found',
+                    'last_backup': None
+                }
+            
+            latest_snapshot = max(recent_snapshots, key=lambda x: x['SnapshotCreateTime'])
+            
+            if latest_snapshot['SnapshotStatus'] != 'available':
+                return {
+                    'status': 'fail',
+                    'message': f"Latest Redis snapshot status: {latest_snapshot['SnapshotStatus']}",
+                    'snapshot_name': latest_snapshot['SnapshotName']
+                }
+            
+            return {
+                'status': 'pass',
+                'message': 'Redis backup verification successful',
+                'snapshot_name': latest_snapshot['SnapshotName'],
+                'backup_time': latest_snapshot['SnapshotCreateTime'].isoformat()
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error',
+                'message': f"Redis verification error: {str(e)}"
+            }
+    
+    def verify_application_backups(bucket: str) -> Dict[str, Any]:
+        """Verify application data backup integrity."""
+        try:
+            # Check for recent application backup files
+            today = datetime.utcnow().strftime('%Y/%m/%d')
+            
+            response = s3.list_objects_v2(
+                Bucket=bucket,
+                Prefix=f"application/{today}/",
+                MaxKeys=1000
+            )
+            
+            if 'Contents' not in response or len(response['Contents']) == 0:
+                return {
+                    'status': 'fail',
+                    'message': 'No application backup files found for today',
+                    'backup_date': today
+                }
+            
+            # Check total backup size
+            total_size = sum(obj['Size'] for obj in response['Contents'])
+            file_count = len(response['Contents'])
+            
+            # Minimum expected size (adjust based on your application)
+            min_expected_size = 1024 * 1024  # 1 MB minimum
+            
+            if total_size < min_expected_size:
+                return {
+                    'status': 'warning',
+                    'message': f'Application backup size seems small: {total_size} bytes',
+                    'file_count': file_count,
+                    'total_size_bytes': total_size
+                }
+            
+            return {
+                'status': 'pass',
+                'message': 'Application backup verification successful',
+                'file_count': file_count,
+                'total_size_bytes': total_size,
+                'backup_date': today
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error',
+                'message': f"Application verification error: {str(e)}"
+            }
+    
+    def verify_compliance_requirements(bucket: str) -> Dict[str, Any]:
+        """Verify backup compliance with financial regulations."""
+        try:
+            compliance_checks = {
+                'encryption_at_rest': check_encryption_compliance(bucket),
+                'retention_policy': check_retention_compliance(bucket),
+                'backup_frequency': check_backup_frequency(bucket),
+                'geographic_distribution': check_geographic_distribution(bucket)
+            }
+            
+            all_compliant = all(
+                check.get('compliant', False) 
+                for check in compliance_checks.values()
+            )
+            
+            return {
+                'status': 'pass' if all_compliant else 'fail',
+                'message': 'Compliance verification completed',
+                'checks': compliance_checks,
+                'overall_compliant': all_compliant
+            }
+            
+        except Exception as e:
+            return {
+                'status': 'error',
+                'message': f"Compliance verification error: {str(e)}"
+            }
+    
+    def check_encryption_compliance(bucket: str) -> Dict[str, Any]:
+        """Check if backups are properly encrypted."""
+        try:
+            # Check bucket encryption
+            encryption = s3.get_bucket_encryption(Bucket=bucket)
+            rules = encryption['ServerSideEncryptionConfiguration']['Rules']
+            
+            kms_encrypted = any(
+                rule['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'] == 'aws:kms'
+                for rule in rules
+            )
+            
+            return {
+                'compliant': kms_encrypted,
+                'message': 'KMS encryption enabled' if kms_encrypted else 'KMS encryption not found'
+            }
+            
+        except Exception as e:
+            return {
+                'compliant': False,
+                'message': f"Encryption check failed: {str(e)}"
+            }
+    
+    def check_retention_compliance(bucket: str) -> Dict[str, Any]:
+        """Check if retention policies meet financial compliance requirements."""
+        try:
+            # Check lifecycle configuration
+            lifecycle = s3.get_bucket_lifecycle_configuration(Bucket=bucket)
+            rules = lifecycle['Rules']
+            
+            # Look for rules with appropriate retention (7 years for financial data)
+            long_retention_rules = [
+                rule for rule in rules
+                if (rule.get('Expiration', {}).get('Days', 0) >= 2555 or  # 7 years
+                    any(transition.get('Days', 0) >= 365 for transition in rule.get('Transitions', [])))
+            ]
+            
+            return {
+                'compliant': len(long_retention_rules) > 0,
+                'message': f"Found {len(long_retention_rules)} long-term retention rules"
+            }
+            
+        except Exception as e:
+            return {
+                'compliant': False,
+                'message': f"Retention check failed: {str(e)}"
+            }
+    
+    def check_backup_frequency(bucket: str) -> Dict[str, Any]:
+        """Check if backups are being created frequently enough."""
+        try:
+            # Check for backups in the last 24 hours
+            yesterday = datetime.utcnow() - timedelta(days=1)
+            
+            response = s3.list_objects_v2(
+                Bucket=bucket,
+                Prefix="database/metadata/",
+                MaxKeys=1000
+            )
+            
+            recent_backups = [
+                obj for obj in response.get('Contents', [])
+                if obj['LastModified'].replace(tzinfo=None) > yesterday
+            ]
+            
+            return {
+                'compliant': len(recent_backups) > 0,
+                'message': f"Found {len(recent_backups)} backups in last 24 hours"
+            }
+            
+        except Exception as e:
+            return {
+                'compliant': False,
+                'message': f"Frequency check failed: {str(e)}"
+            }
+    
+    def check_geographic_distribution(bucket: str) -> Dict[str, Any]:
+        """Check if backups are distributed across multiple regions."""
+        try:
+            # Check replication configuration
+            replication = s3.get_bucket_replication(Bucket=bucket)
+            rules = replication['ReplicationConfiguration']['Rules']
+            
+            active_rules = [rule for rule in rules if rule['Status'] == 'Enabled']
+            
+            return {
+                'compliant': len(active_rules) > 0,
+                'message': f"Found {len(active_rules)} active replication rules"
+            }
+            
+        except Exception as e:
+            return {
+                'compliant': False,
+                'message': f"Geographic distribution check failed: {str(e)}"
+            }
