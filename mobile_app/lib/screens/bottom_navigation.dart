@@ -10,7 +10,7 @@ import 'habits_screen.dart';
 import 'mood_screen.dart';
 
 class BottomNavigation extends StatefulWidget {
-  const BottomNavigation({Key? key}) : super(key: key);
+  const BottomNavigation({super.key});
 
   @override
   State<BottomNavigation> createState() => _BottomNavigationState();
@@ -145,7 +145,6 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     
     return Scaffold(
       body: IndexedStack(

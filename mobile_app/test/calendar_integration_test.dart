@@ -1,7 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/services/calendar_fallback_service.dart';
-import 'package:mita/services/api_service.dart';
 
 void main() {
   group('Calendar Integration Tests', () {
@@ -60,7 +58,7 @@ void main() {
           'Rural Iowa',        // Low cost
         ];
 
-        final income = 5000.0;
+        const income = 5000.0;
         final results = <String, List<Map<String, dynamic>>>{};
 
         // Generate calendar data for each location
@@ -88,7 +86,7 @@ void main() {
 
     group('Data Quality and Financial Accuracy', () {
       test('Calendar data maintains financial precision', () async {
-        final income = 5432.67; // Decimal income to test precision
+        const income = 5432.67; // Decimal income to test precision
         final calendarData = await fallbackService.generateFallbackCalendarData(
           monthlyIncome: income,
         );
@@ -99,8 +97,8 @@ void main() {
             .reduce((a, b) => a + b);
 
         // Should be reasonable percentage of income (around 50-60% for flexible spending)
-        final expectedRange = income * 0.4; // 40% minimum
-        final maxRange = income * 0.7; // 70% maximum
+        const expectedRange = income * 0.4; // 40% minimum
+        const maxRange = income * 0.7; // 70% maximum
 
         expect(totalMonthlyBudget, greaterThan(expectedRange));
         expect(totalMonthlyBudget, lessThan(maxRange));

@@ -1,0 +1,388 @@
+# Production-grade Prometheus configuration for MITA Financial Services
+# High availability setup with financial compliance requirements
+
+# Global configuration for financial services monitoring
+global:
+  imageRegistry: ""
+  storageClass: "fast-ssd"
+  
+# Prometheus Operator configuration
+prometheusOperator:
+  enabled: true
+  
+  # Multi-replica for high availability
+  replicas: 2
+  
+  # Resource allocation for operator
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  
+  # Node affinity for distribution
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+          - key: node.kubernetes.io/instance-type
+            operator: NotIn
+            values: ["t3.nano", "t3.micro"]
+  
+  # Anti-affinity to distribute replicas
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["prometheus-operator"]
+          topologyKey: kubernetes.io/hostname
+
+# Prometheus server configuration
+prometheus:
+  enabled: true
+  
+  prometheusSpec:
+    # High availability configuration
+    replicas: 2
+    
+    # Resource allocation for financial workloads
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 4Gi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+    
+    # Data retention for financial compliance (7 years)
+    retention: "2555d"  # 7 years for SOX compliance
+    retentionSize: "900GB"
+    
+    # Storage configuration with high IOPS for financial data
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "fast-ssd"
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1000Gi
+    
+    # External URL for Prometheus (ALB integration)
+    externalUrl: "https://prometheus.mita.finance"
+    
+    # Security configuration
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 2000
+      seccompProfile:
+        type: RuntimeDefault
+    
+    # Pod disruption budget
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    
+    # Service monitor selector for MITA services
+    serviceMonitorSelector:
+      matchLabels:
+        monitoring.coreos.com/prometheus: "production"
+    
+    # Pod monitor selector
+    podMonitorSelector:
+      matchLabels:
+        monitoring.coreos.com/prometheus: "production"
+    
+    # Rule selector for custom alerts
+    ruleSelector:
+      matchLabels:
+        monitoring.coreos.com/prometheus: "production"
+    
+    # Additional scrape configs for external services
+    additionalScrapeConfigs:
+      - job_name: 'redis-exporter'
+        static_configs:
+          - targets: ['redis-exporter:9121']
+        scrape_interval: 30s
+        metrics_path: /metrics
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: service
+            replacement: redis
+          - source_labels: [__address__]
+            target_label: environment
+            replacement: production
+      
+      - job_name: 'postgres-exporter'
+        static_configs:
+          - targets: ['postgres-exporter:9187']
+        scrape_interval: 30s
+        metrics_path: /metrics
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: service
+            replacement: postgresql
+          - source_labels: [__address__]
+            target_label: environment
+            replacement: production
+      
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            target_label: __address__
+            replacement: '${1}:9100'
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+    
+    # Remote write for long-term storage (Cortex/Thanos)
+    remoteWrite: []
+    
+    # Alert manager configuration
+    alerting:
+      alertmanagers:
+        - namespace: monitoring
+          name: alertmanager-operated
+          port: web
+    
+    # Enable admin API for management
+    enableAdminAPI: true
+    
+    # Web configuration
+    web:
+      enableLifecycle: true
+    
+    # Node affinity and anti-affinity
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+              - key: node.kubernetes.io/instance-type
+                operator: NotIn
+                values: ["t3.nano", "t3.micro", "t3.small"]
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: ["prometheus"]
+              topologyKey: kubernetes.io/hostname
+    
+    # Tolerations for dedicated monitoring nodes
+    tolerations:
+      - key: "monitoring"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+
+# AlertManager configuration
+alertmanager:
+  enabled: true
+  
+  alertmanagerSpec:
+    # High availability
+    replicas: 2
+    
+    # Resource allocation
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    
+    # Data retention
+    retention: "720h"  # 30 days
+    
+    # Storage configuration
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "fast-ssd"
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    
+    # External URL
+    externalUrl: "https://alertmanager.mita.finance"
+    
+    # Security configuration
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 2000
+      seccompProfile:
+        type: RuntimeDefault
+    
+    # Pod disruption budget
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    
+    # Configuration for alertmanager
+    configSecret: alertmanager-config
+    
+    # Node affinity and anti-affinity
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: ["alertmanager"]
+              topologyKey: kubernetes.io/hostname
+
+# Node Exporter for system metrics
+nodeExporter:
+  enabled: true
+  
+  # Resource allocation
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+  
+  # Host network access for node metrics
+  hostNetwork: true
+  hostPID: true
+
+# Kube State Metrics for Kubernetes cluster metrics
+kubeStateMetrics:
+  enabled: true
+  
+  # Resource allocation
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+
+# Grafana configuration (basic - detailed config in separate file)
+grafana:
+  enabled: false  # Will be deployed separately
+
+# Service monitor for monitoring stack itself
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverSlos: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeScheduler: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Additional configuration for financial compliance
+additionalPrometheusRulesMap:
+  mita-financial-compliance:
+    groups:
+      - name: financial.compliance
+        interval: 60s
+        rules:
+          # Data retention compliance check
+          - record: mita:data_retention_compliance
+            expr: |
+              (time() - prometheus_tsdb_lowest_timestamp_seconds) / 86400
+          
+          # Backup compliance check
+          - record: mita:backup_compliance_hours
+            expr: |
+              (time() - mita_backup_last_success) / 3600
+          
+          # Secret rotation compliance
+          - record: mita:secret_rotation_compliance_days
+            expr: |
+              (time() - mita_secret_rotation_last_success) / 86400
+          
+          # Financial SLA metrics
+          - record: mita:transaction_success_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*",code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*"}[5m]))
+          
+          - record: mita:authentication_failure_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*auth.*",code="401"}[5m]))
+
+# Network policies for monitoring stack
+networkPolicy:
+  enabled: true
+  egress:
+    - to: []  # Allow all egress for metrics collection
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 9090  # Prometheus
+        - protocol: TCP
+          port: 9093  # AlertManager
+
+# Persistent volume configuration
+persistentVolume:
+  enabled: true
+  storageClass: "fast-ssd"
+  size: "1000Gi"
+  accessModes:
+    - ReadWriteOnce

@@ -19,7 +19,7 @@ void main() {
     group('Floating Point Precision Tests', () {
       test('Exact threshold boundary precision', () {
         // Test California's exact low threshold: $44,935 annually = $3,744.58333... monthly
-        final exactMonthlyLow = 44935.0 / 12; // 3744.5833333...
+        const exactMonthlyLow = 44935.0 / 12; // 3744.5833333...
         
         // Test exact boundary
         final resultExact = incomeService.classifyIncomeForLocation(
@@ -88,7 +88,7 @@ void main() {
 
     group('State Boundary Edge Cases', () {
       test('Extreme state differences for same income', () {
-        final testIncome = 3500.0; // $42,000 annually
+        const testIncome = 3500.0; // $42,000 annually
         
         // Get lowest and highest threshold states
         final states = countryService.getSubregions('US');
@@ -121,7 +121,7 @@ void main() {
         );
         
         // Same income should potentially classify differently in extreme states
-        print('$testIncome monthly income: ${lowestState} -> $lowestStateTier, ${highestState} -> $highestStateTier');
+        print('$testIncome monthly income: $lowestState -> $lowestStateTier, $highestState -> $highestStateTier');
         
         // Both should be valid tiers
         expect([IncomeTier.low, IncomeTier.lowerMiddle, IncomeTier.middle, IncomeTier.upperMiddle, IncomeTier.high]
@@ -271,7 +271,7 @@ void main() {
       for (final testCase in testCases) {
         final result = locationService.formatLocationForDisplay(
           testCase['country'] as String,
-          stateCode: testCase['state'] as String?
+          stateCode: testCase['state']
         );
         expect(result, equals(testCase['expected']),
                reason: 'Formatting failed for ${testCase['country']}, ${testCase['state']}');
@@ -437,7 +437,7 @@ void main() {
 
     test('Concurrent classification consistency', () {
       // Simulate concurrent classifications of the same income
-      final testIncome = 5000.0;
+      const testIncome = 5000.0;
       final results = <IncomeTier>[];
       
       // Perform same classification multiple times rapidly

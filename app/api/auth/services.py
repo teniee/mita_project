@@ -9,8 +9,11 @@ from app.db.models import User
 from app.services.auth_jwt_service import (
     create_access_token,
     create_refresh_token,
+    create_token_pair,
     hash_password,
     verify_password,
+    get_user_scopes,
+    UserRole
 )
 from app.services.google_auth_service import authenticate_google_user
 from app.utils.response_wrapper import success_response
@@ -33,9 +36,20 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
     db.commit()
     db.refresh(user)
 
+    # Determine user role and create tokens with appropriate scopes
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": user.country
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )
 
 
@@ -46,9 +60,20 @@ def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+    # Determine user role and create tokens with appropriate scopes  
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": user.country
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )
 
 
@@ -56,9 +81,20 @@ def refresh_token_for_user(user: User) -> TokenOut:
     if not user:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
+    # Determine user role and create tokens with appropriate scopes
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": getattr(user, 'country', 'US')
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )
 
 
@@ -73,9 +109,20 @@ def revoke_token(user: User):
 
 async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
     user = await authenticate_google_user(data.id_token, db)
+    # Determine user role and create tokens with appropriate scopes
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": getattr(user, 'country', 'US')
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )
 
 
@@ -132,9 +179,20 @@ async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
     await db.commit()
     await db.refresh(user)
     
+    # Determine user role and create tokens with appropriate scopes
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": user.country
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )
 
 
@@ -152,7 +210,18 @@ async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
             detail="Invalid email or password",
         )
     
+    # Determine user role and create tokens with appropriate scopes
+    user_role = "premium_user" if user.is_premium else "basic_user"
+    user_data = {
+        "sub": str(user.id),
+        "is_premium": user.is_premium,
+        "country": user.country
+    }
+    
+    tokens = create_token_pair(user_data, user_role=user_role)
+    
     return TokenOut(
-        access_token=create_access_token({"sub": str(user.id)}),
-        refresh_token=create_refresh_token({"sub": str(user.id)}),
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        token_type=tokens["token_type"]
     )

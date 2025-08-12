@@ -54,10 +54,50 @@ class SecurityConfig:
     MAX_PASSWORD_LENGTH = 128
     PASSWORD_HASH_ROUNDS = 12
     
-    # Rate limiting
-    DEFAULT_RATE_LIMIT = 100  # requests per hour
-    LOGIN_RATE_LIMIT = 5      # login attempts per 15 minutes
-    API_RATE_LIMIT = 1000     # API calls per hour
+    # Rate limiting - Production financial app settings
+    DEFAULT_RATE_LIMIT = 100        # requests per hour for general endpoints
+    API_RATE_LIMIT = 1000          # API calls per hour for authenticated users
+    ANONYMOUS_RATE_LIMIT = 50      # Stricter limit for anonymous users
+    
+    # Authentication rate limits (critical for financial security)
+    LOGIN_RATE_LIMIT = 5           # login attempts per 15 minutes
+    REGISTER_RATE_LIMIT = 3        # registrations per hour per IP
+    PASSWORD_RESET_RATE_LIMIT = 2  # password resets per 30 minutes
+    TOKEN_REFRESH_RATE_LIMIT = 10  # token refreshes per 5 minutes
+    
+    # Advanced rate limiting settings
+    SLIDING_WINDOW_PRECISION = 100  # Higher precision for sliding window
+    RATE_LIMIT_REDIS_KEY_TTL = 7200  # 2 hours TTL for rate limit keys
+    PROGRESSIVE_PENALTY_TTL = 3600   # 1 hour for progressive penalties
+    
+    # Financial security thresholds
+    SUSPICIOUS_EMAIL_THRESHOLD = 10   # Max different emails per IP per hour
+    MAX_CONCURRENT_SESSIONS = 5       # Max concurrent sessions per user
+    BRUTE_FORCE_LOCKOUT_DURATION = 1800  # 30 minutes lockout after repeated violations
+    
+    # Rate limit tiers for different user types
+    RATE_LIMIT_TIERS = {
+        'anonymous': {
+            'requests_per_hour': 50,
+            'burst_limit': 10,
+            'window_size': 3600
+        },
+        'basic_user': {
+            'requests_per_hour': 500,
+            'burst_limit': 20,
+            'window_size': 3600
+        },
+        'premium_user': {
+            'requests_per_hour': 1500,
+            'burst_limit': 50,
+            'window_size': 3600
+        },
+        'admin_user': {
+            'requests_per_hour': 5000,
+            'burst_limit': 100,
+            'window_size': 3600
+        }
+    }
     
     # JWT settings
     JWT_EXPIRY_HOURS = 24
@@ -227,90 +267,348 @@ class XSSProtector:
 
 
 class AdvancedRateLimiter:
-    """Advanced rate limiting with multiple strategies"""
+    """Production-grade rate limiting with sliding window algorithm and comprehensive security"""
     
     def __init__(self):
         self.redis = redis_client
         self.memory_store = rate_limit_memory
+        self.fail_secure_mode = getattr(settings, 'RATE_LIMIT_FAIL_SECURE', True)
     
     def _get_client_identifier(self, request: Request) -> str:
-        """Get unique client identifier"""
-        # Try to get real IP from headers (for load balancers/proxies)
-        forwarded_for = request.headers.get('X-Forwarded-For')
-        if forwarded_for:
-            client_ip = forwarded_for.split(',')[0].strip()
-        else:
-            client_ip = request.client.host if request.client else 'unknown'
+        """Get unique client identifier with enhanced IP detection"""
+        # Try multiple headers for real IP (common in production)
+        real_ip = None
+        ip_headers = [
+            'X-Forwarded-For',
+            'X-Real-IP', 
+            'CF-Connecting-IP',  # Cloudflare
+            'X-Client-IP',
+            'True-Client-IP'
+        ]
         
-        # Include user agent for more specific identification
-        user_agent = request.headers.get('User-Agent', '')
-        user_agent_hash = hashlib.md5(user_agent.encode()).hexdigest()[:8]
+        for header in ip_headers:
+            header_value = request.headers.get(header)
+            if header_value:
+                # Take first IP if comma-separated
+                real_ip = header_value.split(',')[0].strip()
+                # Basic validation - should be valid IP format
+                import re
+                if re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', real_ip) or ':' in real_ip:  # IPv4 or IPv6
+                    break
+                real_ip = None
+        
+        client_ip = real_ip or (request.client.host if request.client else 'unknown')
+        
+        # Include user agent hash for more specific identification
+        user_agent = request.headers.get('User-Agent', 'unknown')
+        user_agent_hash = hashlib.sha256(user_agent.encode()).hexdigest()[:12]
         
         return f"{client_ip}:{user_agent_hash}"
     
-    def _increment_counter(self, key: str, window_seconds: int, limit: int) -> tuple[int, int]:
-        """Increment counter and return (current_count, ttl_seconds)"""
+    def _sliding_window_counter(self, key: str, window_seconds: int, limit: int) -> tuple[int, int, bool]:
+        """Implement sliding window rate limiting with Redis sorted sets"""
+        if self.redis:
+            try:
+                now = datetime.utcnow().timestamp()
+                window_start = now - window_seconds
+                
+                pipe = self.redis.pipeline()
+                # Remove old entries outside window
+                pipe.zremrangebyscore(key, '-inf', window_start)
+                # Add current request
+                pipe.zadd(key, {str(now): now})
+                # Count requests in current window
+                pipe.zcard(key)
+                # Set expiry
+                pipe.expire(key, window_seconds + 1)
+                
+                results = pipe.execute()
+                current_count = results[2]  # zcard result
+                
+                # Calculate time until window resets
+                oldest_score = self.redis.zrange(key, 0, 0, withscores=True)
+                if oldest_score:
+                    time_until_reset = int(window_seconds - (now - oldest_score[0][1]))
+                else:
+                    time_until_reset = 0
+                
+                return current_count, max(0, time_until_reset), current_count > limit
+                
+            except Exception as e:
+                logger.warning(f"Redis sliding window error, falling back: {e}")
+                if self.fail_secure_mode:
+                    # Fail secure: deny request if Redis unavailable
+                    logger.error(f"Rate limiting unavailable - failing secure for key: {key[:20]}...")
+                    raise RateLimitException("Service temporarily unavailable. Please try again later.")
+        
+        # Memory fallback with simple sliding window
+        return self._memory_sliding_window(key, window_seconds, limit)
+    
+    def _memory_sliding_window(self, key: str, window_seconds: int, limit: int) -> tuple[int, int, bool]:
+        """Memory-based sliding window fallback"""
+        now = datetime.utcnow().timestamp()
+        window_start = now - window_seconds
+        
+        if key not in self.memory_store:
+            self.memory_store[key] = []
+        
+        # Remove old entries
+        self.memory_store[key] = [ts for ts in self.memory_store[key] if ts > window_start]
+        # Add current request
+        self.memory_store[key].append(now)
+        
+        current_count = len(self.memory_store[key])
+        # Calculate time until oldest request expires
+        if self.memory_store[key]:
+            time_until_reset = int(window_seconds - (now - min(self.memory_store[key])))
+        else:
+            time_until_reset = 0
+        
+        return current_count, max(0, time_until_reset), current_count > limit
+    
+    def check_rate_limit(self, request: Request, limit: int, window_seconds: int, 
+                        identifier_suffix: str = "", user_id: Optional[str] = None) -> dict:
+        """Check rate limit with comprehensive monitoring and progressive penalties"""
+        client_id = self._get_client_identifier(request)
+        base_key = f"rate_limit:{identifier_suffix}:{client_id}"
+        
+        # Also rate limit by user if authenticated
+        user_key = None
+        if user_id:
+            user_key = f"rate_limit:user:{identifier_suffix}:{user_id}"
+        
+        # Check client-based limit
+        client_count, client_ttl, client_exceeded = self._sliding_window_counter(base_key, window_seconds, limit)
+        
+        # Check user-based limit if applicable
+        user_count, user_ttl, user_exceeded = 0, 0, False
+        if user_key:
+            user_count, user_ttl, user_exceeded = self._sliding_window_counter(
+                user_key, window_seconds, limit * 2  # Higher limit for authenticated users
+            )
+        
+        # Check for progressive penalties
+        penalty_multiplier = self._check_progressive_penalties(client_id, identifier_suffix)
+        effective_limit = max(1, int(limit / penalty_multiplier))
+        
+        # Determine if rate limited
+        is_limited = client_exceeded or user_exceeded or client_count > effective_limit
+        
+        if is_limited:
+            self._log_rate_limit_violation(request, client_id, user_id, {
+                'client_count': client_count,
+                'user_count': user_count,
+                'limit': limit,
+                'effective_limit': effective_limit,
+                'penalty_multiplier': penalty_multiplier,
+                'window_seconds': window_seconds
+            })
+            
+            # Apply progressive penalty
+            self._apply_progressive_penalty(client_id, identifier_suffix)
+            
+            raise RateLimitException(f"Rate limit exceeded. Try again in {max(client_ttl, user_ttl)} seconds.")
+        
+        return {
+            'client_count': client_count,
+            'user_count': user_count,
+            'limit': limit,
+            'effective_limit': effective_limit,
+            'reset_time': max(client_ttl, user_ttl),
+            'penalty_multiplier': penalty_multiplier
+        }
+    
+    def _check_progressive_penalties(self, client_id: str, endpoint: str) -> float:
+        """Check for progressive penalty multipliers for repeat offenders"""
+        penalty_key = f"penalties:{endpoint}:{SecurityUtils.hash_sensitive_data(client_id)}"
+        
+        if self.redis:
+            try:
+                violations = self.redis.get(penalty_key)
+                violations = int(violations) if violations else 0
+                
+                # Progressive penalty: 1x, 2x, 4x, 8x (max)
+                if violations >= 10:
+                    return 8.0
+                elif violations >= 5:
+                    return 4.0
+                elif violations >= 2:
+                    return 2.0
+                return 1.0
+                
+            except Exception:
+                pass
+        
+        return 1.0
+    
+    def _apply_progressive_penalty(self, client_id: str, endpoint: str) -> None:
+        """Apply progressive penalty for rate limit violations"""
+        penalty_key = f"penalties:{endpoint}:{SecurityUtils.hash_sensitive_data(client_id)}"
+        
         if self.redis:
             try:
                 pipe = self.redis.pipeline()
-                pipe.incr(key)
-                pipe.expire(key, window_seconds)
-                results = pipe.execute()
-                
-                current_count = results[0]
-                ttl = self.redis.ttl(key)
-                return current_count, ttl
+                pipe.incr(penalty_key)
+                pipe.expire(penalty_key, 3600)  # Penalties last 1 hour
+                pipe.execute()
             except Exception as e:
-                logger.warning(f"Redis error, falling back to memory: {e}")
-        
-        # Memory fallback
-        now = datetime.utcnow()
-        if key not in self.memory_store:
-            self.memory_store[key] = {'count': 0, 'window_start': now}
-        
-        entry = self.memory_store[key]
-        
-        # Reset if window expired
-        if (now - entry['window_start']).total_seconds() > window_seconds:
-            entry['count'] = 0
-            entry['window_start'] = now
-        
-        entry['count'] += 1
-        ttl = window_seconds - int((now - entry['window_start']).total_seconds())
-        
-        return entry['count'], max(0, ttl)
+                logger.warning(f"Failed to apply progressive penalty: {e}")
     
-    def check_rate_limit(self, request: Request, limit: int, window_seconds: int, 
-                        identifier_suffix: str = "") -> None:
-        """Check if request exceeds rate limit"""
-        client_id = self._get_client_identifier(request)
-        key = f"rate_limit:{client_id}:{identifier_suffix}:{request.url.path}"
+    def _log_rate_limit_violation(self, request: Request, client_id: str, user_id: Optional[str], details: dict) -> None:
+        """Log rate limit violation with comprehensive details"""
+        logger.warning(
+            f"Rate limit violation - Client: {SecurityUtils.hash_sensitive_data(client_id)}, "
+            f"User: {user_id or 'anonymous'}, Path: {request.url.path}, "
+            f"Count: {details['client_count']}/{details['limit']}, "
+            f"Penalty: {details['penalty_multiplier']}x"
+        )
         
-        current_count, ttl = self._increment_counter(key, window_seconds, limit)
-        
-        if current_count > limit:
-            logger.warning(f"Rate limit exceeded for {SecurityUtils.hash_sensitive_data(client_id)} on {request.url.path}")
-            raise RateLimitException(f"Rate limit exceeded. Try again in {ttl} seconds.")
-        
-        # Add headers to response (this would be done in middleware)
-        logger.info(f"Rate limit check: {current_count}/{limit} for {SecurityUtils.hash_sensitive_data(client_id)}")
+        # Log security event
+        from app.core.audit_logging import log_security_event
+        log_security_event("rate_limit_violation", {
+            "client_hash": SecurityUtils.hash_sensitive_data(client_id)[:16],
+            "user_id": user_id,
+            "path": request.url.path,
+            "method": request.method,
+            "client_count": details['client_count'],
+            "user_count": details['user_count'],
+            "limit": details['limit'],
+            "penalty_multiplier": details['penalty_multiplier'],
+            "user_agent_hash": hashlib.sha256(
+                request.headers.get('User-Agent', '').encode()
+            ).hexdigest()[:16]
+        })
     
-    def check_login_rate_limit(self, request: Request, email: str) -> None:
-        """Check login attempt rate limit"""
+    def check_auth_rate_limit(self, request: Request, email: str, endpoint_type: str = "login") -> None:
+        """Specialized rate limiting for authentication endpoints"""
         email_hash = SecurityUtils.hash_sensitive_data(email)
         client_id = self._get_client_identifier(request)
         
-        # Rate limit by IP
-        ip_key = f"login_attempts:ip:{client_id}"
-        ip_count, _ = self._increment_counter(ip_key, 900, SecurityConfig.LOGIN_RATE_LIMIT)  # 15 minutes
+        # Different limits based on endpoint type
+        limits = {
+            "login": {"limit": 5, "window": 900},  # 5 attempts per 15 minutes
+            "register": {"limit": 3, "window": 3600},  # 3 registrations per hour
+            "password_reset": {"limit": 2, "window": 1800},  # 2 resets per 30 minutes
+            "token_refresh": {"limit": 10, "window": 300}  # 10 refreshes per 5 minutes
+        }
+        
+        config = limits.get(endpoint_type, limits["login"])
+        
+        # Rate limit by client IP
+        client_key = f"auth:{endpoint_type}:client:{SecurityUtils.hash_sensitive_data(client_id)}"
+        client_count, client_ttl, client_exceeded = self._sliding_window_counter(
+            client_key, config["window"], config["limit"]
+        )
         
         # Rate limit by email
-        email_key = f"login_attempts:email:{email_hash}"
-        email_count, ttl = self._increment_counter(email_key, 900, SecurityConfig.LOGIN_RATE_LIMIT)
+        email_key = f"auth:{endpoint_type}:email:{email_hash}"
+        email_count, email_ttl, email_exceeded = self._sliding_window_counter(
+            email_key, config["window"], config["limit"] // 2  # Stricter email-based limit
+        )
         
-        if ip_count > SecurityConfig.LOGIN_RATE_LIMIT or email_count > SecurityConfig.LOGIN_RATE_LIMIT:
-            logger.warning(f"Login rate limit exceeded for {email_hash} from {SecurityUtils.hash_sensitive_data(client_id)}")
-            raise RateLimitException(f"Too many login attempts. Try again in {ttl // 60} minutes.")
+        # Check for suspicious patterns (too many different emails from same IP)
+        if endpoint_type in ["login", "register"]:
+            self._check_suspicious_auth_patterns(client_id, email_hash, endpoint_type)
+        
+        if client_exceeded or email_exceeded:
+            # Log security event
+            from app.core.audit_logging import log_security_event
+            log_security_event(f"auth_rate_limit_exceeded", {
+                "endpoint": endpoint_type,
+                "client_hash": SecurityUtils.hash_sensitive_data(client_id)[:16],
+                "email_hash": email_hash[:16],
+                "client_count": client_count,
+                "email_count": email_count,
+                "limit": config["limit"]
+            })
+            
+            reset_time_minutes = max(client_ttl, email_ttl) // 60
+            raise RateLimitException(
+                f"Too many {endpoint_type} attempts. Try again in {reset_time_minutes} minutes."
+            )
+    
+    def _check_suspicious_auth_patterns(self, client_id: str, email_hash: str, endpoint_type: str) -> None:
+        """Check for suspicious authentication patterns"""
+        if not self.redis:
+            return
+        
+        try:
+            # Track unique emails per client
+            pattern_key = f"auth_pattern:{endpoint_type}:{SecurityUtils.hash_sensitive_data(client_id)}"
+            
+            pipe = self.redis.pipeline()
+            pipe.sadd(pattern_key, email_hash)
+            pipe.scard(pattern_key)
+            pipe.expire(pattern_key, 3600)  # 1 hour tracking window
+            results = pipe.execute()
+            
+            unique_emails_count = results[1]
+            
+            # Alert if too many different emails from same client
+            if unique_emails_count > 10:  # More than 10 different emails in 1 hour
+                from app.core.audit_logging import log_security_event
+                log_security_event("suspicious_auth_pattern", {
+                    "pattern": "multiple_emails_per_client",
+                    "endpoint": endpoint_type,
+                    "client_hash": SecurityUtils.hash_sensitive_data(client_id)[:16],
+                    "unique_emails_count": unique_emails_count,
+                    "severity": "high"
+                })
+                
+                # Apply additional rate limiting for suspicious clients
+                suspicious_key = f"suspicious:{SecurityUtils.hash_sensitive_data(client_id)}"
+                self.redis.setex(suspicious_key, 1800, "flagged")  # 30 minutes
+                
+        except Exception as e:
+            logger.warning(f"Failed to check suspicious auth patterns: {e}")
+    
+    def is_client_suspicious(self, request: Request) -> bool:
+        """Check if client is flagged as suspicious"""
+        if not self.redis:
+            return False
+        
+        try:
+            client_id = self._get_client_identifier(request)
+            suspicious_key = f"suspicious:{SecurityUtils.hash_sensitive_data(client_id)}"
+            return self.redis.exists(suspicious_key) > 0
+        except Exception:
+            return False
+    
+    def get_rate_limit_status(self, request: Request, endpoint_type: str, user_id: Optional[str] = None) -> dict:
+        """Get current rate limit status for monitoring"""
+        client_id = self._get_client_identifier(request)
+        
+        # Get different rate limit statuses
+        statuses = {}
+        
+        # General API limits
+        api_key = f"rate_limit:api:{client_id}"
+        if self.redis:
+            try:
+                api_count = self.redis.zcard(api_key) if self.redis.exists(api_key) else 0
+                statuses['api_requests'] = {'count': api_count, 'limit': SecurityConfig.API_RATE_LIMIT}
+            except Exception:
+                statuses['api_requests'] = {'count': 0, 'limit': SecurityConfig.API_RATE_LIMIT}
+        
+        # Auth-specific limits
+        if endpoint_type.startswith('auth_'):
+            auth_type = endpoint_type.replace('auth_', '')
+            auth_key = f"auth:{auth_type}:client:{SecurityUtils.hash_sensitive_data(client_id)}"
+            if self.redis:
+                try:
+                    auth_count = self.redis.zcard(auth_key) if self.redis.exists(auth_key) else 0
+                    statuses[f'{auth_type}_attempts'] = {'count': auth_count, 'limit': SecurityConfig.LOGIN_RATE_LIMIT}
+                except Exception:
+                    statuses[f'{auth_type}_attempts'] = {'count': 0, 'limit': SecurityConfig.LOGIN_RATE_LIMIT}
+        
+        # Penalty status
+        penalty_multiplier = self._check_progressive_penalties(client_id, endpoint_type)
+        statuses['penalty_multiplier'] = penalty_multiplier
+        
+        # Suspicious status
+        statuses['is_suspicious'] = self.is_client_suspicious(request)
+        
+        return statuses
 
 
 class SecurityMonitor:

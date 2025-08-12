@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../services/user_data_manager.dart';
+import '../l10n/generated/app_localizations.dart';
 
 /// Welcome screen with splash animation and auto-navigation
 /// Provides a professional first impression with smooth Material 3 animations
@@ -29,14 +30,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation<double> _progressValue;
   
   final ApiService _api = ApiService();
-  String _statusText = 'Initializing...';
+  String _statusText = 'Initializing...'; // Will be updated with localized text in initState
   bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _startWelcomeSequence();
+    
+    // Set initial localized text and start sequence
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        setState(() => _statusText = l10n.initializing);
+        _startWelcomeSequence();
+      }
+    });
   }
 
   void _initializeAnimations() {
@@ -100,6 +109,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _startWelcomeSequence() async {
+    final l10n = AppLocalizations.of(context);
+    
     try {
       // Start logo animation immediately
       _logoController.forward();
@@ -115,12 +126,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       // Check authentication status
       await _checkAuthenticationStatus();
       
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('Welcome screen initialization failed: $e');
       
       setState(() {
         _hasError = true;
-        _statusText = 'Initialization failed';
+        _statusText = l10n.initializationFailed;
       });
       
       // Navigate to login after error delay
@@ -132,15 +143,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Future<void> _checkAuthenticationStatus() async {
+    final l10n = AppLocalizations.of(context);
+    
     try {
-      setState(() => _statusText = 'Initializing MITA...');
+      setState(() => _statusText = l10n.initializingMita);
       await Future.delayed(const Duration(milliseconds: 500));
       
       // Initialize UserDataManager for production-level data flow
       await UserDataManager.instance.initialize();
       logInfo('UserDataManager initialized successfully', tag: 'WELCOME_SCREEN');
       
-      setState(() => _statusText = 'Checking authentication...');
+      setState(() => _statusText = l10n.checkingAuthentication);
       await Future.delayed(const Duration(milliseconds: 300));
       
       final token = await _api.getToken();
@@ -148,13 +161,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       if (token == null) {
         // No token - new user, go to login
         logInfo('No authentication token found - redirecting to login', tag: 'WELCOME_SCREEN');
-        setState(() => _statusText = 'Welcome to MITA');
+        setState(() => _statusText = l10n.welcomeToMita);
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToLogin();
         return;
       }
       
-      setState(() => _statusText = 'Verifying session...');
+      setState(() => _statusText = l10n.verifyingSession);
       await Future.delayed(const Duration(milliseconds: 300));
       
       // Check if user has completed onboarding
@@ -162,14 +175,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       logInfo('Onboarding status checked: $hasOnboarded', tag: 'WELCOME_SCREEN');
       
       if (hasOnboarded) {
-        setState(() => _statusText = 'Loading your dashboard...');
+        setState(() => _statusText = l10n.loadingDashboard);
         await Future.delayed(const Duration(milliseconds: 500));
         
-        setState(() => _statusText = 'Welcome back!');
+        setState(() => _statusText = l10n.welcomeBackExclamation);
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToMain();
       } else {
-        setState(() => _statusText = 'Continuing setup...');
+        setState(() => _statusText = l10n.continuingSetup);
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToOnboarding();
       }
@@ -181,7 +194,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       await _api.clearTokens();
       await UserDataManager.instance.clearUserData();
       
-      setState(() => _statusText = 'Please log in to continue');
+      setState(() => _statusText = l10n.pleaseLoginToContinue);
       await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) _navigateToLogin();
     }

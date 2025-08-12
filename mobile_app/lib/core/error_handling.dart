@@ -7,10 +7,6 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-// import 'package:device_info_plus/device_info_plus.dart';
-// import 'package:package_info_plus/package_info_plus.dart';
-// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -234,7 +230,7 @@ class ErrorHandler {
     );
 
     // Check connectivity - simplified without connectivity_plus
-    final isConnected = true; // Assume connected for now
+    const isConnected = true; // Assume connected for now
     
     final updatedReport = ErrorReport(
       id: report.id,
@@ -262,6 +258,9 @@ class ErrorHandler {
       // Store for later if offline
       await _storePendingReport(updatedReport);
     }
+    
+    // Try to retry pending reports after new report is processed
+    _retryPendingReports();
   }
 
   // Send error report to backend
@@ -354,19 +353,14 @@ class ErrorHandler {
     // Temporarily disabled periodic error reporting to prevent recurring server errors
     developer.log('Periodic error reporting disabled due to backend server errors', name: 'ERROR_HANDLER');
     
-    // TODO: Re-enable when backend is stable:
-    // _reportTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
-    //   await _retryPendingReports();
-    // });
+    // TODO: Re-enable when backend is stable
   }
 
   // Retry sending pending error reports
   Future<void> _retryPendingReports() async {
     if (_pendingReports.isEmpty) return;
 
-    // Skip connectivity check for now
-    // final connectivity = await Connectivity().checkConnectivity();
-    // if (connectivity == ConnectivityResult.none) return;
+    // Skip connectivity check for now - simplified without connectivity_plus
 
     final successfulReports = <ErrorReport>[];
     
@@ -492,11 +486,11 @@ class ErrorBoundary extends StatefulWidget {
   final void Function(Object error, StackTrace? stackTrace)? onError;
 
   const ErrorBoundary({
-    Key? key,
+    super.key,
     required this.child,
     this.errorBuilder,
     this.onError,
-  }) : super(key: key);
+  });
 
   @override
   State<ErrorBoundary> createState() => _ErrorBoundaryState();
@@ -615,10 +609,10 @@ class ErrorCapture extends StatefulWidget {
   final void Function(Object error, StackTrace stackTrace) onError;
 
   const ErrorCapture({
-    Key? key,
+    super.key,
     required this.child,
     required this.onError,
-  }) : super(key: key);
+  });
 
   @override
   State<ErrorCapture> createState() => _ErrorCaptureState();
@@ -662,9 +656,14 @@ class ErrorUtils {
       severity = ErrorSeverity.medium;
     }
 
-    ErrorHandler.reportNetworkError(
+    ErrorHandler.reportError(
       errorMessage,
-      endpoint: endpoint,
+      severity: severity,
+      category: ErrorCategory.network,
+      context: {
+        'endpoint': endpoint,
+        'error_type': error.runtimeType.toString(),
+      },
     );
   }
 

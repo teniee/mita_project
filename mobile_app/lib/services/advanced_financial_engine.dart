@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'income_service.dart';
 import 'api_service.dart';
@@ -37,9 +35,9 @@ class AdvancedFinancialEngine extends ChangeNotifier {
   Timer? _behaviorLearningTimer;
   
   // Configuration
-  bool _enableRealTimeAnalysis = true;
-  bool _enableBehavioralLearning = true;
-  bool _enablePredictiveAlerts = true;
+  final bool _enableRealTimeAnalysis = true;
+  final bool _enableBehavioralLearning = true;
+  final bool _enablePredictiveAlerts = true;
   
   // Getters for real-time financial data
   Map<String, dynamic>? get currentFinancialProfile => _currentFinancialProfile;
@@ -672,7 +670,7 @@ class AdvancedFinancialEngine extends ChangeNotifier {
     int remainingDays,
   ) {
     final velocity = <String, double>{};
-    final daysInMonth = 30; // Approximate
+    const daysInMonth = 30; // Approximate
     final daysPassed = daysInMonth - remainingDays;
     
     actualSpending.forEach((category, spent) {
@@ -720,7 +718,7 @@ class AdvancedFinancialEngine extends ChangeNotifier {
         final transferAmount = math.min(surplus, deficit).abs();
         
         if (transferAmount > 10.0) { // Minimum transfer threshold
-          opportunities['${fromCategory}_to_${toCategory}'] = RedistributionOpportunity(
+          opportunities['${fromCategory}_to_$toCategory'] = RedistributionOpportunity(
             fromCategory: fromCategory,
             toCategory: toCategory,
             amount: transferAmount,
@@ -1071,9 +1069,9 @@ class AdvancedFinancialEngine extends ChangeNotifier {
         _apiService.getAIBudgetOptimization().catchError((e) => <String, dynamic>{}),
       ]);
 
-      final aiSnapshot = futures[0] as Map<String, dynamic>?;
-      final healthScore = futures[1] as Map<String, dynamic>?;
-      final personalizedFeedback = futures[2] as Map<String, dynamic>?;
+      final aiSnapshot = futures[0];
+      final healthScore = futures[1];
+      final personalizedFeedback = futures[2];
       final spendingPatterns = futures[3] as Map<String, dynamic>;
       final savingsOptimization = futures[4] as Map<String, dynamic>;
       final budgetOptimization = futures[5] as Map<String, dynamic>;
@@ -1516,7 +1514,7 @@ class AdvancedFinancialEngine extends ChangeNotifier {
             'type': 'improvement',
             'priority': 'high',
             'title': 'Improve Financial Health',
-            'description': 'Your financial health score is ${score}/100. Focus on budget adherence and savings.',
+            'description': 'Your financial health score is $score/100. Focus on budget adherence and savings.',
             'action': 'Review spending patterns and increase savings rate',
             'impact': 'high',
           });

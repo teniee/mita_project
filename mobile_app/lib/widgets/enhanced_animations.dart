@@ -15,12 +15,12 @@ class FadeInListItem extends StatefulWidget {
   final Duration duration;
 
   const FadeInListItem({
-    Key? key,
+    super.key,
     required this.child,
     this.index = 0,
     this.delay = const Duration(milliseconds: 100),
     this.duration = const Duration(milliseconds: 600),
-  }) : super(key: key);
+  });
 
   @override
   State<FadeInListItem> createState() => _FadeInListItemState();
@@ -95,14 +95,14 @@ class AnimatedCounter extends StatefulWidget {
   final int decimalPlaces;
 
   const AnimatedCounter({
-    Key? key,
+    super.key,
     required this.value,
     this.prefix = '',
     this.suffix = '',
     this.textStyle,
     this.duration = const Duration(milliseconds: 1500),
     this.decimalPlaces = 2,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedCounter> createState() => _AnimatedCounterState();
@@ -181,7 +181,7 @@ class GradientCircularProgress extends StatefulWidget {
   final Widget? child;
 
   const GradientCircularProgress({
-    Key? key,
+    super.key,
     required this.progress,
     this.size = 120,
     this.strokeWidth = 8,
@@ -189,7 +189,7 @@ class GradientCircularProgress extends StatefulWidget {
     this.backgroundColor = Colors.grey,
     this.animationDuration = const Duration(milliseconds: 1200),
     this.child,
-  }) : super(key: key);
+  });
 
   @override
   State<GradientCircularProgress> createState() =>
@@ -332,13 +332,13 @@ class BouncyButton extends StatefulWidget {
   final bool enableHapticFeedback;
 
   const BouncyButton({
-    Key? key,
+    super.key,
     required this.child,
     this.onPressed,
     this.duration = const Duration(milliseconds: 150),
     this.scaleFactor = 0.95,
     this.enableHapticFeedback = true,
-  }) : super(key: key);
+  });
 
   @override
   State<BouncyButton> createState() => _BouncyButtonState();
@@ -415,12 +415,12 @@ class ShimmerLoading extends StatefulWidget {
   final Color highlightColor;
 
   const ShimmerLoading({
-    Key? key,
+    super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 1500),
     this.baseColor = const Color(0xFFE0E0E0),
     this.highlightColor = const Color(0xFFF5F5F5),
-  }) : super(key: key);
+  });
 
   @override
   State<ShimmerLoading> createState() => _ShimmerLoadingState();
@@ -471,7 +471,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
                 widget.highlightColor,
                 widget.baseColor,
               ],
-              stops: [
+              stops: const [
                 0.0,
                 0.5,
                 1.0,
@@ -498,7 +498,7 @@ class EnhancedCard extends StatefulWidget {
   final bool enableHoverEffect;
 
   const EnhancedCard({
-    Key? key,
+    super.key,
     required this.child,
     this.onTap,
     this.padding,
@@ -507,7 +507,7 @@ class EnhancedCard extends StatefulWidget {
     this.elevation = 2,
     this.borderRadius,
     this.enableHoverEffect = true,
-  }) : super(key: key);
+  });
 
   @override
   State<EnhancedCard> createState() => _EnhancedCardState();
@@ -641,12 +641,12 @@ class AnimatedMultiFAB extends StatefulWidget {
   final Color? foregroundColor;
 
   const AnimatedMultiFAB({
-    Key? key,
+    super.key,
     required this.actions,
     this.mainIcon = Icons.add,
     this.backgroundColor,
     this.foregroundColor,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedMultiFAB> createState() => _AnimatedMultiFABState();
@@ -788,11 +788,11 @@ class LoadingSkeleton extends StatelessWidget {
   final BorderRadiusGeometry? borderRadius;
 
   const LoadingSkeleton({
-    Key? key,
+    super.key,
     required this.width,
     required this.height,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -819,14 +819,14 @@ class SmoothPageIndicator extends StatelessWidget {
   final double spacing;
 
   const SmoothPageIndicator({
-    Key? key,
+    super.key,
     required this.currentPage,
     required this.totalPages,
     this.activeColor = Colors.blue,
     this.inactiveColor = Colors.grey,
     this.dotSize = 8,
     this.spacing = 8,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -856,12 +856,12 @@ class FinancialMilestoneAnimation extends StatefulWidget {
   final Duration duration;
 
   const FinancialMilestoneAnimation({
-    Key? key,
+    super.key,
     required this.child,
     required this.trigger,
     this.celebrationColor = Colors.green,
     this.duration = const Duration(milliseconds: 1500),
-  }) : super(key: key);
+  });
 
   @override
   State<FinancialMilestoneAnimation> createState() => _FinancialMilestoneAnimationState();
@@ -1014,12 +1014,12 @@ class SmartLoadingIndicator extends StatefulWidget {
   final bool showMessage;
 
   const SmartLoadingIndicator({
-    Key? key,
+    super.key,
     this.size = 40,
     this.color,
     this.message,
     this.showMessage = true,
-  }) : super(key: key);
+  });
 
   @override
   State<SmartLoadingIndicator> createState() => _SmartLoadingIndicatorState();
@@ -1124,13 +1124,13 @@ class MITASkeletonCard extends StatelessWidget {
   final bool showProgress;
 
   const MITASkeletonCard({
-    Key? key,
+    super.key,
     this.height = 120,
     this.width = double.infinity,
     this.showTitle = true,
     this.showSubtitle = true,
     this.showProgress = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

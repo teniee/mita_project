@@ -12,7 +12,7 @@ import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
 
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({Key? key}) : super(key: key);
+  const InsightsScreen({super.key});
 
   @override
   State<InsightsScreen> createState() => _InsightsScreenState();
@@ -48,7 +48,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   
   // Income-based insights
   Map<String, dynamic>? _peerComparison;
-  Map<String, dynamic>? _cohortInsights;
   List<String> _incomeBasedTips = [];
   Map<String, dynamic>? _budgetOptimization;
 
@@ -103,12 +102,15 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Future<void> _fetchUserProfile() async {
     try {
       _userProfile = await _apiService.getUserProfile();
-      _monthlyIncome = (_userProfile?['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      final incomeValue = (_userProfile?['data']?['income'] as num?)?.toDouble();
+      if (incomeValue == null || incomeValue <= 0) {
+        throw Exception('Income data required for insights. Please complete onboarding.');
+      }
+      _monthlyIncome = incomeValue;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
     } catch (e) {
       logError('Error fetching user profile: $e');
-      _monthlyIncome = 3000.0;
-      _incomeTier = IncomeTier.middle;
+      throw Exception('Income data required for insights. Please complete onboarding.');
     }
   }
 
@@ -121,7 +123,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ]);
       
       _peerComparison = futures[0] as Map<String, dynamic>;
-      _cohortInsights = futures[1] as Map<String, dynamic>;
+      // Note: futures[1] was _cohortInsights but it was unused, so removed
       _incomeBasedTips = List<String>.from(futures[2] as List);
       
       // Generate budget optimization insights
@@ -269,7 +271,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
     
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
@@ -589,7 +590,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               child: BarChart(
                 BarChartData(
                   borderData: FlBorderData(show: false),
-                  gridData: FlGridData(show: false),
+                  gridData: const FlGridData(show: false),
                   backgroundColor: Colors.transparent,
                   titlesData: FlTitlesData(
                     bottomTitles: AxisTitles(
@@ -612,9 +613,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         interval: 1,
                       ),
                     ),
-                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
                   barGroups: List.generate(dailyTotals.length, (i) {
                     return BarChartGroupData(
@@ -704,15 +705,15 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.health_and_safety,
                 color: Colors.white,
                 size: 24,
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Financial Health Score',
                 style: TextStyle(
                   fontFamily: 'Sora',
@@ -1414,7 +1415,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Widget _buildBudgetOptimizationCard() {
     if (_budgetOptimization == null) return Container();
     
-    final optimizations = _budgetOptimization!['optimizations'] as Map<String, dynamic>? ?? {};
     final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);

@@ -1,0 +1,50 @@
+apiVersion: v2
+name: mita-production
+version: 1.0.0
+appVersion: "1.0.0"
+description: MITA Finance - Production Deployment Chart
+
+dependencies:
+  - name: redis
+    version: "17.11.3"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  
+  - name: postgresql
+    version: "12.6.6"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+    
+  - name: prometheus
+    version: "23.1.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.prometheus.enabled
+    
+  - name: grafana
+    version: "6.57.4"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: monitoring.grafana.enabled
+    
+  - name: elasticsearch
+    version: "19.10.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: logging.elasticsearch.enabled
+
+maintainers:
+  - name: MITA DevOps Team
+    email: devops@mita.finance
+
+keywords:
+  - fintech
+  - financial-services
+  - kubernetes
+  - microservices
+  - production
+
+home: https://mita.finance
+sources:
+  - https://github.com/mita-finance/backend
+
+annotations:
+  category: Financial Services
+  licenses: Proprietary

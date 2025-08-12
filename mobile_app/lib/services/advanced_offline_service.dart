@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -180,18 +179,16 @@ class AdvancedOfflineService {
     );
   }
 
-  /// Start periodic sync timer - TEMPORARILY DISABLED due to backend issues
+  /// Start periodic sync timer
   Future<void> _startPeriodicSync() async {
-    // Temporarily disabled periodic sync to prevent recurring server errors
-    // until backend is fixed and deployed
-    print('Periodic sync disabled due to backend server errors');
+    logInfo('Starting periodic sync timer', tag: 'OFFLINE_SERVICE');
     
-    // TODO: Re-enable when backend is stable:
-    // _syncTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-    //   if (_isOnline && !_isSyncing) {
-    //     _triggerSync();
-    //   }
-    // });
+    _syncTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (_isOnline && !_isSyncing) {
+        logDebug('Triggering scheduled sync', tag: 'OFFLINE_SERVICE');
+        _triggerSync();
+      }
+    });
   }
 
   /// Load pending syncs from database

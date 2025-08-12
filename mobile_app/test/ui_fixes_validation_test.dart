@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/screens/calendar_screen.dart';
 import 'package:mita/screens/main_screen.dart';
-import 'package:mita/core/app_error_handler.dart';
 
 /// UI Fixes Validation Test
 /// Tests the specific UI fixes mentioned in the QA requirements:

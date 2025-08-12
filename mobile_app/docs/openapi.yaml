@@ -1,0 +1,2303 @@
+openapi: 3.0.3
+info:
+  title: MITA Financial API
+  description: |
+    ## Enterprise-grade financial intelligence API for MITA mobile application
+    
+    **MITA (Money Intelligence Task Assistant)** provides comprehensive financial management
+    with AI-powered insights, secure authentication, and real-time budget tracking.
+    
+    ### Key Features
+    - **JWT Authentication** with token revocation support
+    - **Device Fingerprinting** for enhanced security
+    - **Rate Limiting** with Redis-backed protection
+    - **Real-time Budget Management** with AI insights
+    - **Multi-currency Support** with 50+ currencies
+    - **OCR Receipt Processing** with ML categorization
+    - **Predictive Analytics** for spending patterns
+    
+    ### Security
+    - **Enterprise-grade Security**: AES-256 encryption, secure device IDs
+    - **Financial Compliance**: PCI DSS, SOX, GDPR compliant
+    - **Rate Limiting**: Protection against abuse and DDoS
+    - **Input Validation**: XSS and SQL injection prevention
+    
+    ### Performance
+    - **High Availability**: 99.9% uptime SLA
+    - **Low Latency**: <200ms average response time
+    - **Scalable**: Auto-scaling infrastructure
+    - **Monitoring**: Real-time metrics and alerting
+  version: 2.1.0
+  contact:
+    name: MITA API Support
+    email: api-support@mita.com
+    url: https://docs.mita.com
+  license:
+    name: Proprietary
+    url: https://mita.com/license
+  termsOfService: https://mita.com/terms
+
+servers:
+  - url: https://api.mita.com/v1
+    description: Production Server
+  - url: https://staging-api.mita.com/v1
+    description: Staging Server
+  - url: https://dev-api.mita.com/v1
+    description: Development Server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      summary: User Authentication
+      description: |
+        Authenticate user with email/password and register secure device.
+        
+        **Security Features:**
+        - Device fingerprinting for fraud prevention
+        - Rate limiting (5 attempts per minute)
+        - JWT tokens with expiration
+        - Secure push token registration
+        
+        **Rate Limits:**
+        - 5 login attempts per minute per IP
+        - 3 failed attempts trigger temporary lockout
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              standard_login:
+                summary: Standard Login
+                value:
+                  email: "john.doe@example.com"
+                  password: "SecurePassword123!"
+                  deviceId: "mita_abc123def456ghi789jkl012"
+                  deviceFingerprint:
+                    model: "iPhone 14 Pro"
+                    platform: "iOS"
+                    version: "16.4.1"
+                    screenResolution: "1179x2556"
+                    timezone: "America/New_York"
+      responses:
+        '200':
+          description: Authentication successful
+          headers:
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: Remaining login attempts
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+              description: Rate limit reset timestamp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                success_response:
+                  summary: Successful Login
+                  value:
+                    success: true
+                    data:
+                      accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      expiresIn: 3600
+                      tokenType: "Bearer"
+                      user:
+                        id: "user_123abc456def"
+                        email: "john.doe@example.com"
+                        firstName: "John"
+                        lastName: "Doe"
+                        incomeTier: "middle"
+                        createdAt: "2024-01-15T10:00:00Z"
+                        lastLoginAt: "2024-01-20T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/register:
+    post:
+      summary: User Registration
+      description: |
+        Register new user account with comprehensive validation.
+        
+        **Security Features:**
+        - Password strength validation (entropy analysis)
+        - Device fingerprinting
+        - Email verification required
+        - Terms of service agreement tracking
+        
+        **Password Requirements:**
+        - Minimum 8 characters, recommended 12+
+        - Mix of uppercase, lowercase, numbers, symbols
+        - Minimum entropy: 40 bits
+        - No common passwords or keyboard patterns
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              new_user_registration:
+                summary: New User Registration
+                value:
+                  email: "jane.smith@example.com"
+                  password: "MySecure!Pass2024"
+                  firstName: "Jane"
+                  lastName: "Smith"
+                  deviceId: "mita_xyz789abc123def456ghi"
+                  agreedToTerms: true
+                  marketingOptIn: false
+                  referralCode: "FRIEND2024"
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: "EMAIL_EXISTS"
+                  message: "An account with this email already exists"
+                  timestamp: "2024-01-20T15:00:00Z"
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/refresh:
+    post:
+      summary: Refresh Authentication Token
+      description: |
+        Refresh expired access token using refresh token.
+        
+        **Security Features:**
+        - Refresh token rotation
+        - Device verification
+        - Automatic revocation of old tokens
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: User Logout
+      description: |
+        Logout user and revoke all tokens for the device.
+        
+        **Security Features:**
+        - Token blacklisting
+        - Push token cleanup
+        - Device session termination
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password/reset:
+    post:
+      summary: Password Reset Request
+      description: |
+        Request password reset via email.
+        
+        **Security Features:**
+        - Rate limiting (3 requests per hour)
+        - Secure reset tokens
+        - Email verification
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+      responses:
+        '200':
+          description: Reset email sent (always returns 200 for security)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  # Budget & Financial Endpoints
+  /budget/current:
+    get:
+      summary: Get Current Budget Status
+      description: |
+        Retrieve current budget information with real-time calculations.
+        
+        **Features:**
+        - Real-time budget tracking
+        - AI-powered insights
+        - Multi-currency support
+        - Spending pattern analysis
+      tags:
+        - Budget
+      responses:
+        '200':
+          description: Current budget information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BudgetStatus'
+              examples:
+                healthy_budget:
+                  summary: Healthy Budget Status
+                  value:
+                    success: true
+                    data:
+                      monthlyIncome: 5000.00
+                      monthlyExpenses: 3200.00
+                      dailyBudget: 58.33
+                      currentSpent: 23.45
+                      remainingToday: 34.88
+                      budgetStatus: "on_track"
+                      currency: "USD"
+                      nextResetDate: "2024-02-01T00:00:00Z"
+                      aiInsights:
+                        - "You're spending 15% less than last month"
+                        - "Consider allocating more to savings"
+                      categories:
+                        food: 450.00
+                        transportation: 200.00
+                        entertainment: 150.00
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      summary: Update Budget Settings
+      description: |
+        Update monthly budget configuration with AI optimization suggestions.
+      tags:
+        - Budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetUpdateRequest'
+      responses:
+        '200':
+          description: Budget updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/BudgetStatus'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /expenses:
+    get:
+      summary: List Expenses
+      description: |
+        Retrieve user expenses with filtering and pagination.
+        
+        **Features:**
+        - Advanced filtering by date, category, amount
+        - Pagination for large datasets
+        - Real-time categorization
+        - Receipt image URLs
+      tags:
+        - Expenses
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [food, transportation, entertainment, shopping, utilities, healthcare, other]
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: min_amount
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: max_amount
+          in: query
+          schema:
+            type: number
+            format: float
+      responses:
+        '200':
+          description: List of expenses
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+              description: Total number of expenses
+            X-Page-Count:
+              schema:
+                type: integer
+              description: Total number of pages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      summary: Add New Expense
+      description: |
+        Add new expense with optional OCR receipt processing.
+        
+        **Features:**
+        - OCR receipt scanning
+        - Automatic categorization with ML
+        - Location tracking
+        - Real-time budget impact calculation
+      tags:
+        - Expenses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreateRequest'
+            examples:
+              manual_expense:
+                summary: Manual Expense Entry
+                value:
+                  amount: 23.45
+                  category: "food"
+                  description: "Coffee and pastry"
+                  date: "2024-01-20T09:15:00Z"
+                  location:
+                    latitude: 37.7749
+                    longitude: -122.4194
+                    address: "123 Main St, San Francisco, CA"
+                  tags: ["coffee", "morning", "work"]
+              receipt_expense:
+                summary: Receipt-Based Expense
+                value:
+                  amount: 67.89
+                  category: "food"
+                  description: "Grocery shopping"
+                  receiptImageUrl: "https://storage.mita.com/receipts/abc123.jpg"
+                  ocrData:
+                    merchantName: "SuperMart"
+                    items:
+                      - name: "Organic Apples"
+                        amount: 4.99
+                      - name: "Whole Milk"
+                        amount: 3.49
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Expense'
+                  budgetImpact:
+                    $ref: '#/components/schemas/BudgetImpact'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /expenses/{expenseId}:
+    get:
+      summary: Get Expense Details
+      description: Get detailed information about a specific expense
+      tags:
+        - Expenses
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "exp_123abc456def"
+      responses:
+        '200':
+          description: Expense details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Expense'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update Expense
+      description: Update existing expense information
+      tags:
+        - Expenses
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseUpdateRequest'
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Expense'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      summary: Delete Expense
+      description: |
+        Delete expense and recalculate budget impact.
+        
+        **Security:** Soft delete with audit trail
+      tags:
+        - Expenses
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Analytics & Insights
+  /analytics/insights:
+    get:
+      summary: Get AI Financial Insights
+      description: |
+        Get personalized financial insights powered by AI.
+        
+        **Features:**
+        - Spending pattern analysis
+        - Budget optimization suggestions
+        - Peer comparison (anonymized)
+        - Predictive forecasting
+      tags:
+        - Analytics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, quarter, year]
+            default: month
+        - name: include_predictions
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Financial insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/FinancialInsights'
+
+  /analytics/spending-patterns:
+    get:
+      summary: Get Spending Pattern Analysis
+      description: |
+        Analyze spending patterns with ML-powered categorization.
+      tags:
+        - Analytics
+      parameters:
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [30d, 90d, 1y]
+            default: 30d
+      responses:
+        '200':
+          description: Spending pattern analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/SpendingPatterns'
+
+  # Security Endpoints
+  /security/device/register:
+    post:
+      summary: Register Secure Device
+      description: |
+        Register device with cryptographic fingerprinting.
+        
+        **Security Features:**
+        - SHA-256 device fingerprinting
+        - Hardware entropy collection
+        - Anti-tampering detection
+        - Risk assessment scoring
+      tags:
+        - Security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistrationRequest'
+      responses:
+        '201':
+          description: Device registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Device already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /security/tokens/revoke:
+    post:
+      summary: Revoke Authentication Tokens
+      description: |
+        Revoke specific tokens or all tokens for security purposes.
+        
+        **Use Cases:**
+        - Device compromised
+        - User logout
+        - Security incident response
+      tags:
+        - Security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRevocationRequest'
+      responses:
+        '200':
+          description: Tokens revoked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # User Management
+  /users/profile:
+    get:
+      summary: Get User Profile
+      description: Get current user profile information
+      tags:
+        - User Management
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+
+    patch:
+      summary: Update User Profile
+      description: Update user profile information
+      tags:
+        - User Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+
+  /users/preferences:
+    get:
+      summary: Get User Preferences
+      description: Get user application preferences and settings
+      tags:
+        - User Management
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserPreferences'
+
+    patch:
+      summary: Update User Preferences
+      description: Update user application preferences
+      tags:
+        - User Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferencesUpdateRequest'
+      responses:
+        '200':
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserPreferences'
+
+  # Push Notifications
+  /notifications/push/register:
+    post:
+      summary: Register Push Notification Token
+      description: |
+        Register FCM/APNS push notification token for the device.
+        
+        **Security:** Only allowed after authentication
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenRequest'
+      responses:
+        '200':
+          description: Push token registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /notifications/preferences:
+    get:
+      summary: Get Notification Preferences
+      description: Get user notification preferences
+      tags:
+        - Notifications
+      responses:
+        '200':
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/NotificationPreferences'
+
+    patch:
+      summary: Update Notification Preferences
+      description: Update user notification preferences
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferencesRequest'
+      responses:
+        '200':
+          description: Preferences updated successfully
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token authentication.
+        
+        **Format:** `Bearer <jwt_token>`
+        
+        **Security Features:**
+        - 1 hour expiration (3600 seconds)
+        - Automatic refresh with refresh tokens
+        - Token revocation support
+        - Device binding for enhanced security
+        
+        **Headers Required:**
+        ```
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+        X-Device-ID: mita_abc123def456ghi789jkl012
+        ```
+
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API Key authentication for service-to-service calls.
+        
+        **Usage:** Internal services and webhooks only
+        **Security:** Rate limited and IP restricted
+
+  schemas:
+    # Authentication Schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+        - deviceId
+        - deviceFingerprint
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
+          format: password
+          example: "SecurePassword123!"
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+          example: "mita_abc123def456ghi789jkl012"
+          description: "Cryptographically secure device identifier"
+        deviceFingerprint:
+          $ref: '#/components/schemas/DeviceFingerprint'
+        rememberMe:
+          type: boolean
+          default: false
+          description: "Extended session duration (30 days)"
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+        - deviceId
+        - agreedToTerms
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 255
+          format: password
+          description: |
+            **Password Requirements:**
+            - Minimum 8 characters (recommended 12+)
+            - At least one uppercase letter
+            - At least one lowercase letter
+            - At least one number
+            - At least one special character
+            - Minimum entropy: 40 bits
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '^[a-zA-ZÀ-ÿ\s\-\.'']+$'
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '^[a-zA-ZÀ-ÿ\s\-\.'']+$'
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+        agreedToTerms:
+          type: boolean
+          enum: [true]
+          description: "Must be true to register"
+        marketingOptIn:
+          type: boolean
+          default: false
+        referralCode:
+          type: string
+          minLength: 6
+          maxLength: 20
+          pattern: '^[A-Z0-9]+$'
+
+    RefreshRequest:
+      type: object
+      required:
+        - refreshToken
+        - deviceId
+      properties:
+        refreshToken:
+          type: string
+          description: "JWT refresh token"
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+
+    LogoutRequest:
+      type: object
+      required:
+        - deviceId
+      properties:
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+        pushToken:
+          type: string
+          description: "FCM/APNS push token to unregister"
+        logoutAllDevices:
+          type: boolean
+          default: false
+          description: "Logout from all devices"
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: "JWT access token (1 hour expiration)"
+            refreshToken:
+              type: string
+              description: "JWT refresh token (30 days expiration)"
+            expiresIn:
+              type: integer
+              example: 3600
+              description: "Token expiration time in seconds"
+            tokenType:
+              type: string
+              example: "Bearer"
+            user:
+              $ref: '#/components/schemas/User'
+
+    # Device & Security Schemas
+    DeviceFingerprint:
+      type: object
+      required:
+        - model
+        - platform
+        - version
+      properties:
+        model:
+          type: string
+          example: "iPhone 14 Pro"
+          description: "Device model"
+        platform:
+          type: string
+          enum: [iOS, Android, Web]
+          example: "iOS"
+        version:
+          type: string
+          example: "16.4.1"
+          description: "OS version"
+        screenResolution:
+          type: string
+          example: "1179x2556"
+          description: "Screen resolution"
+        timezone:
+          type: string
+          example: "America/New_York"
+          description: "Device timezone"
+        locale:
+          type: string
+          example: "en-US"
+          description: "Device locale"
+
+    DeviceRegistrationRequest:
+      type: object
+      required:
+        - deviceId
+        - fingerprint
+      properties:
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+        fingerprint:
+          type: object
+          properties:
+            hardwareId:
+              type: string
+              description: "SHA-256 hash of hardware identifiers"
+            securityFeatures:
+              type: array
+              items:
+                type: string
+                enum: [biometric, secure_enclave, keystore, keychain]
+              description: "Available security features"
+            riskScore:
+              type: number
+              format: float
+              minimum: 0.0
+              maximum: 1.0
+              description: "Device risk assessment (0.0 = low risk, 1.0 = high risk)"
+            jailbroken:
+              type: boolean
+              description: "Jailbreak/root detection result"
+        pushToken:
+          type: string
+          description: "FCM/APNS push notification token"
+
+    TokenRevocationRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        tokenId:
+          type: string
+          description: "Specific token ID to revoke (optional)"
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+          description: "Revoke all tokens for specific device"
+        revokeAll:
+          type: boolean
+          default: false
+          description: "Revoke all tokens for user"
+        reason:
+          type: string
+          enum: [user_logout, device_compromised, security_incident, admin_action]
+          description: "Reason for token revocation"
+
+    # User Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "user_123abc456def"
+          description: "Unique user identifier"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        incomeTier:
+          type: string
+          enum: [low, middle, high, premium]
+          example: "middle"
+          description: "Income classification for personalized features"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:00:00Z"
+        lastLoginAt:
+          type: string
+          format: date-time
+          example: "2024-01-20T14:30:00Z"
+        emailVerified:
+          type: boolean
+          example: true
+        profileComplete:
+          type: boolean
+          example: true
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+          pattern: '^\+?[\d\s\-\(\)]+$'
+        dateOfBirth:
+          type: string
+          format: date
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: "US"
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          example: "USD"
+        timezone:
+          type: string
+          example: "America/New_York"
+        avatar:
+          type: string
+          format: uri
+          description: "Profile picture URL"
+
+    UserProfileUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        phone:
+          type: string
+          pattern: '^\+?[\d\s\-\(\)]+$'
+        dateOfBirth:
+          type: string
+          format: date
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        timezone:
+          type: string
+
+    UserPreferences:
+      type: object
+      properties:
+        currency:
+          type: string
+          example: "USD"
+        language:
+          type: string
+          example: "en"
+        theme:
+          type: string
+          enum: [light, dark, system]
+          default: system
+        notifications:
+          $ref: '#/components/schemas/NotificationPreferences'
+        privacy:
+          type: object
+          properties:
+            dataSharing:
+              type: boolean
+              default: false
+            analytics:
+              type: boolean
+              default: true
+            marketing:
+              type: boolean
+              default: false
+
+    UserPreferencesUpdateRequest:
+      type: object
+      properties:
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        language:
+          type: string
+          minLength: 2
+          maxLength: 5
+        theme:
+          type: string
+          enum: [light, dark, system]
+        notifications:
+          $ref: '#/components/schemas/NotificationPreferencesRequest'
+        privacy:
+          type: object
+          properties:
+            dataSharing:
+              type: boolean
+            analytics:
+              type: boolean
+            marketing:
+              type: boolean
+
+    # Budget & Financial Schemas
+    BudgetStatus:
+      type: object
+      properties:
+        monthlyIncome:
+          type: number
+          format: float
+          minimum: 0
+          example: 5000.00
+          description: "Monthly income in user's currency"
+        monthlyExpenses:
+          type: number
+          format: float
+          minimum: 0
+          example: 3200.00
+          description: "Planned monthly expenses"
+        dailyBudget:
+          type: number
+          format: float
+          minimum: 0
+          example: 58.33
+          description: "Calculated daily spending limit"
+        currentSpent:
+          type: number
+          format: float
+          minimum: 0
+          example: 23.45
+          description: "Amount spent today"
+        remainingToday:
+          type: number
+          format: float
+          example: 34.88
+          description: "Remaining budget for today"
+        budgetStatus:
+          type: string
+          enum: [under_budget, on_track, approaching_limit, over_budget, critical]
+          example: "on_track"
+          description: "Overall budget health status"
+        currency:
+          type: string
+          example: "USD"
+          description: "Currency code (ISO 4217)"
+        nextResetDate:
+          type: string
+          format: date-time
+          example: "2024-02-01T00:00:00Z"
+          description: "Next monthly budget reset"
+        aiInsights:
+          type: array
+          items:
+            type: string
+          example: ["You're spending 15% less than last month", "Consider allocating more to savings"]
+          description: "AI-generated financial insights"
+        categories:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+          example:
+            food: 450.00
+            transportation: 200.00
+            entertainment: 150.00
+          description: "Budget allocation by category"
+        trends:
+          type: object
+          properties:
+            weeklyAverage:
+              type: number
+              format: float
+            monthlyProjection:
+              type: number
+              format: float
+            comparedToLastMonth:
+              type: number
+              format: float
+              description: "Percentage change from last month"
+
+    BudgetUpdateRequest:
+      type: object
+      required:
+        - monthlyIncome
+      properties:
+        monthlyIncome:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1000000
+        monthlyExpenses:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1000000
+        categories:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+            minimum: 0
+        savingsGoal:
+          type: number
+          format: float
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+
+    BudgetImpact:
+      type: object
+      properties:
+        previousRemaining:
+          type: number
+          format: float
+        newRemaining:
+          type: number
+          format: float
+        impactAmount:
+          type: number
+          format: float
+        statusChange:
+          type: string
+          enum: [none, warning, critical]
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: "AI-generated recommendations"
+
+    # Expense Schemas
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "exp_123abc456def"
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 23.45
+          description: "Expense amount in user's currency"
+        category:
+          type: string
+          enum: [food, transportation, entertainment, shopping, utilities, healthcare, education, travel, other]
+          example: "food"
+        description:
+          type: string
+          maxLength: 255
+          example: "Coffee and pastry"
+        date:
+          type: string
+          format: date-time
+          example: "2024-01-20T09:15:00Z"
+        location:
+          $ref: '#/components/schemas/ExpenseLocation'
+        receiptImageUrl:
+          type: string
+          format: uri
+          example: "https://storage.mita.com/receipts/abc123.jpg"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["coffee", "morning", "work"]
+        merchantName:
+          type: string
+          example: "Starbucks"
+        paymentMethod:
+          type: string
+          enum: [cash, credit_card, debit_card, mobile_payment, other]
+          example: "credit_card"
+        currency:
+          type: string
+          example: "USD"
+        exchangeRate:
+          type: number
+          format: float
+          description: "Exchange rate if different from user's base currency"
+        ocrData:
+          $ref: '#/components/schemas/OCRData'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExpenseCreateRequest:
+      type: object
+      required:
+        - amount
+        - category
+      properties:
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          maximum: 100000
+        category:
+          type: string
+          enum: [food, transportation, entertainment, shopping, utilities, healthcare, education, travel, other]
+        description:
+          type: string
+          maxLength: 255
+        date:
+          type: string
+          format: date-time
+          description: "Defaults to current time if not provided"
+        location:
+          $ref: '#/components/schemas/ExpenseLocation'
+        receiptImageUrl:
+          type: string
+          format: uri
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 10
+        merchantName:
+          type: string
+          maxLength: 100
+        paymentMethod:
+          type: string
+          enum: [cash, credit_card, debit_card, mobile_payment, other]
+        ocrData:
+          $ref: '#/components/schemas/OCRData'
+
+    ExpenseUpdateRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          maximum: 100000
+        category:
+          type: string
+          enum: [food, transportation, entertainment, shopping, utilities, healthcare, education, travel, other]
+        description:
+          type: string
+          maxLength: 255
+        date:
+          type: string
+          format: date-time
+        location:
+          $ref: '#/components/schemas/ExpenseLocation'
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 10
+        merchantName:
+          type: string
+          maxLength: 100
+        paymentMethod:
+          type: string
+          enum: [cash, credit_card, debit_card, mobile_payment, other]
+
+    ExpenseLocation:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: float
+          minimum: -90
+          maximum: 90
+          example: 37.7749
+        longitude:
+          type: number
+          format: float
+          minimum: -180
+          maximum: 180
+          example: -122.4194
+        address:
+          type: string
+          maxLength: 255
+          example: "123 Main St, San Francisco, CA"
+        city:
+          type: string
+          maxLength: 100
+          example: "San Francisco"
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+          example: "US"
+
+    OCRData:
+      type: object
+      properties:
+        merchantName:
+          type: string
+          example: "SuperMart"
+        merchantAddress:
+          type: string
+        totalAmount:
+          type: number
+          format: float
+        taxAmount:
+          type: number
+          format: float
+        date:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              quantity:
+                type: number
+                format: float
+              price:
+                type: number
+                format: float
+              amount:
+                type: number
+                format: float
+        confidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: "OCR confidence score"
+
+    # Analytics Schemas
+    FinancialInsights:
+      type: object
+      properties:
+        spendingTrends:
+          type: object
+          properties:
+            weeklyAverage:
+              type: number
+              format: float
+            monthlyProjection:
+              type: number
+              format: float
+            yearOverYear:
+              type: number
+              format: float
+              description: "Percentage change from same period last year"
+        categoryBreakdown:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              amount:
+                type: number
+                format: float
+              percentage:
+                type: number
+                format: float
+              trend:
+                type: string
+                enum: [increasing, decreasing, stable]
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [save_money, optimize_category, budget_adjustment, goal_setting]
+              title:
+                type: string
+              description:
+                type: string
+              priority:
+                type: string
+                enum: [high, medium, low]
+              potentialSavings:
+                type: number
+                format: float
+        peerComparison:
+          type: object
+          properties:
+            percentile:
+              type: integer
+              minimum: 1
+              maximum: 100
+              description: "User's spending percentile compared to similar users"
+            averageSpending:
+              type: number
+              format: float
+              description: "Average spending for similar users"
+            categories:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  userAmount:
+                    type: number
+                    format: float
+                  peerAverage:
+                    type: number
+                    format: float
+        predictions:
+          type: object
+          properties:
+            nextMonthSpending:
+              type: number
+              format: float
+            budgetRisk:
+              type: string
+              enum: [low, medium, high]
+            goalAchievementProbability:
+              type: number
+              format: float
+              minimum: 0.0
+              maximum: 1.0
+
+    SpendingPatterns:
+      type: object
+      properties:
+        timePatterns:
+          type: object
+          properties:
+            hourly:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            daily:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            weekly:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+        locationPatterns:
+          type: array
+          items:
+            type: object
+            properties:
+              location:
+                type: string
+              amount:
+                type: number
+                format: float
+              frequency:
+                type: integer
+        merchantPatterns:
+          type: array
+          items:
+            type: object
+            properties:
+              merchantName:
+                type: string
+              totalAmount:
+                type: number
+                format: float
+              transactionCount:
+                type: integer
+              averageAmount:
+                type: number
+                format: float
+        seasonality:
+          type: object
+          properties:
+            monthly:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+            quarterly:
+              type: object
+              additionalProperties:
+                type: number
+                format: float
+
+    # Notification Schemas
+    NotificationPreferences:
+      type: object
+      properties:
+        budgetAlerts:
+          type: boolean
+          default: true
+          description: "Budget threshold and overspending alerts"
+        dailySummary:
+          type: boolean
+          default: true
+          description: "Daily spending summary notifications"
+        weeklyReport:
+          type: boolean
+          default: true
+          description: "Weekly financial report"
+        insights:
+          type: boolean
+          default: true
+          description: "AI-generated financial insights"
+        security:
+          type: boolean
+          default: true
+          description: "Security and login notifications"
+        marketing:
+          type: boolean
+          default: false
+          description: "Marketing and promotional notifications"
+        pushNotifications:
+          type: boolean
+          default: true
+          description: "Enable push notifications"
+        emailNotifications:
+          type: boolean
+          default: true
+          description: "Enable email notifications"
+
+    NotificationPreferencesRequest:
+      type: object
+      properties:
+        budgetAlerts:
+          type: boolean
+        dailySummary:
+          type: boolean
+        weeklyReport:
+          type: boolean
+        insights:
+          type: boolean
+        security:
+          type: boolean
+        marketing:
+          type: boolean
+        pushNotifications:
+          type: boolean
+        emailNotifications:
+          type: boolean
+
+    PushTokenRequest:
+      type: object
+      required:
+        - token
+        - platform
+        - deviceId
+      properties:
+        token:
+          type: string
+          description: "FCM registration token (Android) or APNS device token (iOS)"
+        platform:
+          type: string
+          enum: [ios, android]
+        deviceId:
+          type: string
+          pattern: '^mita_[a-zA-Z0-9]{24}$'
+        appVersion:
+          type: string
+          example: "2.1.0"
+
+    # Common Schemas
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-20T15:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_REQUEST"
+              description: "Machine-readable error code"
+            message:
+              type: string
+              example: "The request is invalid"
+              description: "Human-readable error message"
+            details:
+              type: object
+              description: "Additional error context"
+            timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-20T15:30:00Z"
+            requestId:
+              type: string
+              example: "req_123abc456def"
+              description: "Unique request identifier for tracking"
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Validation failed"
+            details:
+              type: object
+              properties:
+                field_errors:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                  example:
+                    email: ["Email is required", "Invalid email format"]
+                    password: ["Password must be at least 8 characters"]
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+
+    PaginationInfo:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          minimum: 1
+          example: 1
+        totalPages:
+          type: integer
+          minimum: 1
+          example: 5
+        totalItems:
+          type: integer
+          minimum: 0
+          example: 87
+        itemsPerPage:
+          type: integer
+          minimum: 1
+          example: 20
+        hasNextPage:
+          type: boolean
+          example: true
+        hasPreviousPage:
+          type: boolean
+          example: false
+
+  responses:
+    # Common Responses
+    Unauthorized:
+      description: |
+        Unauthorized request. Token missing, expired, or invalid.
+        
+        **Common Causes:**
+        - Missing Authorization header
+        - Expired JWT token
+        - Invalid token signature
+        - Token has been revoked
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_token:
+              summary: Missing Authorization Header
+              value:
+                success: false
+                error:
+                  code: "MISSING_TOKEN"
+                  message: "Authorization header is required"
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+            expired_token:
+              summary: Expired Token
+              value:
+                success: false
+                error:
+                  code: "TOKEN_EXPIRED"
+                  message: "Access token has expired"
+                  details:
+                    expires_at: "2024-01-20T14:30:00Z"
+                    refresh_required: true
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+            revoked_token:
+              summary: Revoked Token
+              value:
+                success: false
+                error:
+                  code: "TOKEN_REVOKED"
+                  message: "Access token has been revoked"
+                  details:
+                    reason: "user_logout"
+                    revoked_at: "2024-01-20T13:00:00Z"
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+
+    Forbidden:
+      description: |
+        Forbidden. User lacks permission for the requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "INSUFFICIENT_PERMISSIONS"
+              message: "You don't have permission to access this resource"
+              timestamp: "2024-01-20T15:30:00Z"
+              requestId: "req_123abc456def"
+
+    NotFound:
+      description: |
+        Resource not found or user doesn't have access to it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "RESOURCE_NOT_FOUND"
+              message: "The requested resource was not found"
+              timestamp: "2024-01-20T15:30:00Z"
+              requestId: "req_123abc456def"
+
+    RateLimited:
+      description: |
+        Rate limit exceeded. Too many requests in a given time window.
+        
+        **Rate Limits:**
+        - Authentication: 5 attempts per minute per IP
+        - API calls: 100 requests per minute per user
+        - Password reset: 3 attempts per hour per email
+        
+        **Headers:**
+        - `X-RateLimit-Limit`: Maximum requests allowed
+        - `X-RateLimit-Remaining`: Requests remaining in current window
+        - `X-RateLimit-Reset`: Unix timestamp when limit resets
+        - `Retry-After`: Seconds to wait before retrying
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Maximum requests allowed in time window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requests remaining in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when rate limit resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before making another request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            login_rate_limit:
+              summary: Login Rate Limit
+              value:
+                success: false
+                error:
+                  code: "LOGIN_RATE_LIMIT_EXCEEDED"
+                  message: "Too many login attempts. Please try again in 5 minutes."
+                  details:
+                    limit: 5
+                    window: "1 minute"
+                    reset_at: "2024-01-20T15:35:00Z"
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+            api_rate_limit:
+              summary: API Rate Limit
+              value:
+                success: false
+                error:
+                  code: "API_RATE_LIMIT_EXCEEDED"
+                  message: "API rate limit exceeded. Please slow down your requests."
+                  details:
+                    limit: 100
+                    window: "1 minute"
+                    reset_at: "2024-01-20T15:31:00Z"
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+
+    ValidationError:
+      description: |
+        Request validation failed. Invalid or missing required fields.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            registration_validation:
+              summary: Registration Validation Errors
+              value:
+                success: false
+                error:
+                  code: "VALIDATION_ERROR"
+                  message: "Request validation failed"
+                  details:
+                    field_errors:
+                      email:
+                        - "Email is required"
+                        - "Invalid email format"
+                      password:
+                        - "Password must be at least 8 characters"
+                        - "Password must contain at least one uppercase letter"
+                        - "Password must contain at least one special character"
+                      deviceId:
+                        - "Device ID must start with 'mita_'"
+                  timestamp: "2024-01-20T15:30:00Z"
+                  requestId: "req_123abc456def"
+
+    ServerError:
+      description: |
+        Internal server error. Something went wrong on our end.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "INTERNAL_SERVER_ERROR"
+              message: "An unexpected error occurred. Please try again later."
+              timestamp: "2024-01-20T15:30:00Z"
+              requestId: "req_123abc456def"
+
+  # Request/Response Examples
+  examples:
+    # Budget Examples
+    HealthyBudgetResponse:
+      summary: Healthy Budget Status
+      description: User is within budget limits with positive trends
+      value:
+        success: true
+        data:
+          monthlyIncome: 5000.00
+          monthlyExpenses: 3200.00
+          dailyBudget: 58.33
+          currentSpent: 23.45
+          remainingToday: 34.88
+          budgetStatus: "on_track"
+          currency: "USD"
+          nextResetDate: "2024-02-01T00:00:00Z"
+          aiInsights:
+            - "You're spending 15% less than last month"
+            - "Great job staying within your food budget"
+            - "Consider increasing your savings goal"
+          categories:
+            food: 450.00
+            transportation: 200.00
+            entertainment: 150.00
+            utilities: 300.00
+            savings: 800.00
+
+    OverBudgetResponse:
+      summary: Over Budget Warning
+      description: User has exceeded daily or category budgets
+      value:
+        success: true
+        data:
+          monthlyIncome: 4000.00
+          monthlyExpenses: 3800.00
+          dailyBudget: 6.67
+          currentSpent: 45.30
+          remainingToday: -38.63
+          budgetStatus: "over_budget"
+          currency: "USD"
+          nextResetDate: "2024-02-01T00:00:00Z"
+          aiInsights:
+            - "You've exceeded your daily budget by $38.63"
+            - "Consider skipping non-essential purchases today"
+            - "Your food spending is 40% above average"
+          categories:
+            food: 650.00
+            transportation: 200.00
+            entertainment: 50.00
+
+tags:
+  - name: Authentication
+    description: |
+      **User authentication and authorization endpoints**
+      
+      Secure authentication system with JWT tokens, device fingerprinting,
+      and comprehensive security measures for financial applications.
+      
+      **Security Features:**
+      - Enterprise-grade password validation
+      - Device-bound JWT tokens
+      - Rate limiting and fraud detection
+      - Token revocation support
+      - Multi-factor authentication ready
+
+  - name: Budget
+    description: |
+      **Budget management and financial planning**
+      
+      AI-powered budget management with real-time tracking, smart
+      redistribution, and personalized financial insights.
+      
+      **Features:**
+      - Real-time budget calculations
+      - AI-powered spending insights
+      - Category-based budget allocation
+      - Predictive analytics
+      - Multi-currency support
+
+  - name: Expenses
+    description: |
+      **Expense tracking and categorization**
+      
+      Comprehensive expense management with OCR receipt processing,
+      automatic categorization, and detailed analytics.
+      
+      **Features:**
+      - OCR receipt scanning
+      - ML-powered categorization
+      - Location-based expense tracking
+      - Bulk expense import
+      - Advanced filtering and search
+
+  - name: Analytics
+    description: |
+      **Financial analytics and insights**
+      
+      Advanced analytics powered by AI and machine learning to provide
+      personalized financial insights and recommendations.
+      
+      **Features:**
+      - Spending pattern analysis
+      - Peer comparison (anonymized)
+      - Predictive forecasting
+      - Goal tracking and recommendations
+      - Financial health scoring
+
+  - name: Security
+    description: |
+      **Security and device management**
+      
+      Enterprise-grade security features including device fingerprinting,
+      token management, and fraud prevention.
+      
+      **Features:**
+      - Cryptographic device fingerprinting
+      - Real-time fraud detection
+      - Token lifecycle management
+      - Security incident response
+      - Compliance monitoring
+
+  - name: User Management
+    description: |
+      **User profile and preference management**
+      
+      Comprehensive user management with profile customization,
+      preferences, and personalization features.
+      
+      **Features:**
+      - Profile management
+      - Multi-language support
+      - Currency preferences
+      - Privacy controls
+      - Accessibility settings
+
+  - name: Notifications
+    description: |
+      **Push notifications and messaging**
+      
+      Intelligent notification system with personalized alerts,
+      financial insights, and security notifications.
+      
+      **Features:**
+      - Smart budget alerts
+      - Personalized insights
+      - Security notifications
+      - Multi-channel delivery
+      - Preference management
+
+# Webhook Events (Future)
+webhooks:
+  BudgetThresholdExceeded:
+    post:
+      summary: Budget threshold exceeded webhook
+      description: Triggered when user exceeds budget thresholds
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  example: "budget.threshold_exceeded"
+                data:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    budgetType:
+                      type: string
+                      enum: [daily, category, monthly]
+                    threshold:
+                      type: number
+                      format: float
+                    currentAmount:
+                      type: number
+                      format: float
+                timestamp:
+                  type: string
+                  format: date-time

@@ -6,7 +6,7 @@ import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
 
 class BudgetSettingsScreen extends StatefulWidget {
-  const BudgetSettingsScreen({Key? key}) : super(key: key);
+  const BudgetSettingsScreen({super.key});
 
   @override
   State<BudgetSettingsScreen> createState() => _BudgetSettingsScreenState();
@@ -24,7 +24,6 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   // Income-related data
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
-  Map<String, dynamic>? _userProfile;
   Map<String, dynamic>? _budgetRecommendations;
 
   final List<Map<String, dynamic>> _budgetModes = [
@@ -41,7 +40,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Flexible Budget',
       'description': 'Adaptive budget that adjusts to your spending patterns',
       'icon': Icons.auto_fix_high,
-      'color': Color(0xFF84FAA1),
+      'color': const Color(0xFF84FAA1),
       'features': ['Auto-adjustment', 'Smart redistribution', 'Flexible limits'],
     },
     {
@@ -49,7 +48,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Strict Budget',
       'description': 'Rigid budget control with firm spending limits',
       'icon': Icons.lock,
-      'color': Color(0xFFFF5C5C),
+      'color': const Color(0xFFFF5C5C),
       'features': ['Hard limits', 'Strict alerts', 'No overspending'],
     },
     {
@@ -57,7 +56,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Behavioral Adaptive',
       'description': 'AI-powered budget that learns from your behavior',
       'icon': Icons.psychology,
-      'color': Color(0xFF6B73FF),
+      'color': const Color(0xFF6B73FF),
       'features': ['AI learning', 'Behavioral insights', 'Predictive adjustments'],
     },
     {
@@ -65,7 +64,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Goal-Oriented',
       'description': 'Budget optimized for achieving your savings goals',
       'icon': Icons.flag,
-      'color': Color(0xFFFFD25F),
+      'color': const Color(0xFFFFD25F),
       'features': ['Goal tracking', 'Savings priority', 'Target optimization'],
     },
   ];
@@ -84,7 +83,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     try {
       // Load user profile for income data
       final profileResponse = await _apiService.getUserProfile();
-      _monthlyIncome = (profileResponse['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+      final incomeValue = (profileResponse['data']?['income'] as num?)?.toDouble();
+      
+      if (incomeValue == null || incomeValue <= 0) {
+        throw Exception('Income data required for budget settings. Please complete onboarding.');
+      }
+      
+      _monthlyIncome = incomeValue;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
       
       final futures = await Future.wait([
@@ -99,7 +104,6 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       
       if (mounted) {
         setState(() {
-          _userProfile = profileResponse;
           _currentBudgetMode = budgetMode;
           _automationSettings = automationSettings;
           _budgetRecommendations = budgetRecommendations;
@@ -644,7 +648,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   const SizedBox(height: 20),
                   
                   // Budget mode cards
-                  ..._budgetModes.map((mode) => _buildBudgetModeCard(mode)).toList(),
+                  ..._budgetModes.map((mode) => _buildBudgetModeCard(mode)),
                   
                   const SizedBox(height: 24),
                   

@@ -1,0 +1,416 @@
+# =====================================================================
+# MITA Subscription Management Monitoring Configuration
+# =====================================================================
+# This configuration defines monitoring rules, alerts, and dashboards
+# for the MITA subscription management system to ensure 99.9% uptime
+# and proper premium feature access control.
+
+# Prometheus Configuration
+prometheus:
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+    external_labels:
+      cluster: 'mita-production'
+      service: 'subscription-management'
+
+  rule_files:
+    - "subscription_alerts.yml"
+    - "business_metrics.yml"
+
+  scrape_configs:
+    - job_name: 'subscription-manager'
+      static_configs:
+        - targets: ['localhost:8080']
+      scrape_interval: 30s
+      metrics_path: '/metrics'
+      params:
+        format: ['prometheus']
+
+    - job_name: 'subscription-health'
+      static_configs:
+        - targets: ['localhost:8081']
+      scrape_interval: 60s
+      metrics_path: '/health/metrics'
+
+    - job_name: 'database-subscriptions'
+      static_configs:
+        - targets: ['postgres-exporter:9187']
+      scrape_interval: 30s
+
+# Grafana Dashboard Configuration
+grafana:
+  dashboards:
+    subscription_overview:
+      title: "MITA Subscription Overview"
+      panels:
+        - title: "Active Subscriptions"
+          type: "stat"
+          targets:
+            - expr: "sum(subscription_status{status='active'})"
+        
+        - title: "Subscription Status Distribution"
+          type: "pie"
+          targets:
+            - expr: "sum by (status) (subscription_status)"
+        
+        - title: "Revenue Tracking (Last 30 Days)"
+          type: "timeseries"
+          targets:
+            - expr: "sum(increase(subscription_revenue_usd[30d]))"
+        
+        - title: "Churn Rate"
+          type: "stat"
+          targets:
+            - expr: "(sum(rate(subscription_cancelled[7d])) / sum(rate(subscription_total[7d]))) * 100"
+
+    subscription_health:
+      title: "Subscription System Health"
+      panels:
+        - title: "Receipt Validation Success Rate"
+          type: "stat"
+          targets:
+            - expr: "(sum(rate(receipt_validation_success[5m])) / sum(rate(receipt_validation_total[5m]))) * 100"
+        
+        - title: "API Response Time"
+          type: "timeseries"
+          targets:
+            - expr: "histogram_quantile(0.95, rate(subscription_api_duration_seconds_bucket[5m]))"
+        
+        - title: "Feature Access Violations"
+          type: "timeseries"
+          targets:
+            - expr: "sum(rate(premium_feature_access_denied[5m]))"
+        
+        - title: "Database Connection Pool"
+          type: "stat"
+          targets:
+            - expr: "subscription_db_connections_active / subscription_db_connections_max * 100"
+
+    business_metrics:
+      title: "Business & Financial Metrics"
+      panels:
+        - title: "Monthly Recurring Revenue (MRR)"
+          type: "stat"
+          targets:
+            - expr: "sum(subscription_mrr_usd)"
+        
+        - title: "New vs Churned Subscriptions"
+          type: "timeseries"
+          targets:
+            - expr: "sum(rate(subscription_new[1d]))"
+            - expr: "sum(rate(subscription_churned[1d]))"
+        
+        - title: "Premium Feature Usage"
+          type: "heatmap"
+          targets:
+            - expr: "sum by (feature) (rate(premium_feature_usage[1h]))"
+        
+        - title: "Conversion Rate (Trial to Paid)"
+          type: "stat"
+          targets:
+            - expr: "(sum(rate(subscription_converted_from_trial[7d])) / sum(rate(trial_started[7d]))) * 100"
+
+# Alert Rules
+alerting:
+  alert_rules:
+    - name: "subscription_critical_alerts"
+      rules:
+        - alert: "SubscriptionServiceDown"
+          expr: "up{job='subscription-manager'} == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+            team: "devops"
+          annotations:
+            summary: "Subscription management service is down"
+            description: "The subscription management service has been down for more than 1 minute."
+            runbook_url: "https://docs.mita.com/runbooks/subscription-service-down"
+
+        - alert: "HighReceiptValidationFailureRate"
+          expr: "(sum(rate(receipt_validation_failed[5m])) / sum(rate(receipt_validation_total[5m]))) * 100 > 10"
+          for: "2m"
+          labels:
+            severity: "critical"
+            team: "devops"
+          annotations:
+            summary: "High receipt validation failure rate detected"
+            description: "Receipt validation failure rate is {{ $value }}% over the last 5 minutes."
+            impact: "Users may not be able to access premium features"
+
+        - alert: "DatabaseConnectionExhaustion"
+          expr: "subscription_db_connections_active / subscription_db_connections_max * 100 > 90"
+          for: "30s"
+          labels:
+            severity: "critical"
+            team: "devops"
+          annotations:
+            summary: "Database connection pool nearly exhausted"
+            description: "Database connection pool utilization is {{ $value }}%"
+
+    - name: "subscription_warning_alerts"
+      rules:
+        - alert: "HighSubscriptionChurnRate"
+          expr: "(sum(rate(subscription_cancelled[24h])) / sum(rate(subscription_total[24h]))) * 100 > 5"
+          for: "1h"
+          labels:
+            severity: "warning"
+            team: "business"
+          annotations:
+            summary: "High subscription churn rate detected"
+            description: "Churn rate is {{ $value }}% over the last 24 hours."
+            impact: "Potential revenue impact"
+
+        - alert: "LowReceiptValidationSuccessRate"
+          expr: "(sum(rate(receipt_validation_success[15m])) / sum(rate(receipt_validation_total[15m]))) * 100 < 95"
+          for: "5m"
+          labels:
+            severity: "warning"
+            team: "devops"
+          annotations:
+            summary: "Low receipt validation success rate"
+            description: "Receipt validation success rate is {{ $value }}% over the last 15 minutes."
+
+        - alert: "SubscriptionExpiringWithoutRenewal"
+          expr: "sum(subscription_expiring_24h{auto_renew='false'}) > 100"
+          for: "0s"
+          labels:
+            severity: "warning"
+            team: "business"
+          annotations:
+            summary: "Many subscriptions expiring without auto-renewal"
+            description: "{{ $value }} subscriptions are expiring in 24 hours without auto-renewal enabled."
+
+        - alert: "SlowReceiptProcessing"
+          expr: "histogram_quantile(0.95, rate(receipt_processing_duration_seconds_bucket[5m])) > 10"
+          for: "5m"
+          labels:
+            severity: "warning"
+            team: "devops"
+          annotations:
+            summary: "Slow receipt processing detected"
+            description: "95th percentile receipt processing time is {{ $value }} seconds."
+
+    - name: "business_alerts"
+      rules:
+        - alert: "RevenueDropSignificant"
+          expr: "sum(increase(subscription_revenue_usd[24h])) < sum(increase(subscription_revenue_usd[24h] offset 7d)) * 0.8"
+          for: "1h"
+          labels:
+            severity: "warning"
+            team: "business"
+          annotations:
+            summary: "Significant revenue drop detected"
+            description: "Daily revenue is down more than 20% compared to last week."
+
+        - alert: "LowConversionRate"
+          expr: "(sum(rate(subscription_converted_from_trial[7d])) / sum(rate(trial_started[7d]))) * 100 < 15"
+          for: "2h"
+          labels:
+            severity: "warning"
+            team: "business"
+          annotations:
+            summary: "Low trial-to-paid conversion rate"
+            description: "Conversion rate is {{ $value }}% over the last 7 days."
+
+# PagerDuty Integration
+pagerduty:
+  routing_key: "${PAGERDUTY_ROUTING_KEY}"
+  severity_mapping:
+    critical: "critical"
+    warning: "warning"
+  
+  alert_templates:
+    subscription_service_down:
+      title: "CRITICAL: MITA Subscription Service Down"
+      description: "The subscription management service is not responding. Users cannot purchase or validate premium features."
+      urgency: "high"
+      
+    high_validation_failure:
+      title: "CRITICAL: High Receipt Validation Failures"
+      description: "Many receipt validations are failing. Premium features may be inaccessible."
+      urgency: "high"
+
+# Slack Integration
+slack:
+  webhook_url: "${SLACK_WEBHOOK_URL}"
+  channel: "#mita-alerts"
+  
+  alert_templates:
+    default:
+      color: "danger"
+      fields:
+        - title: "Alert"
+          value: "{{ .GroupLabels.alertname }}"
+          short: true
+        - title: "Severity"
+          value: "{{ .GroupLabels.severity }}"
+          short: true
+        - title: "Instance"
+          value: "{{ .GroupLabels.instance }}"
+          short: true
+
+# Metrics Export Configuration
+metrics:
+  subscription_metrics:
+    - name: "subscription_status"
+      help: "Current subscription status by user"
+      type: "gauge"
+      labels: ["user_id", "platform", "status", "product_id"]
+
+    - name: "subscription_revenue_usd"
+      help: "Revenue from subscriptions in USD"
+      type: "counter"
+      labels: ["platform", "product_id", "currency"]
+
+    - name: "receipt_validation_total"
+      help: "Total receipt validation attempts"
+      type: "counter"
+      labels: ["platform", "product_id"]
+
+    - name: "receipt_validation_success"
+      help: "Successful receipt validations"
+      type: "counter"
+      labels: ["platform", "product_id"]
+
+    - name: "receipt_validation_failed"
+      help: "Failed receipt validations"
+      type: "counter"
+      labels: ["platform", "product_id", "error_type"]
+
+    - name: "premium_feature_usage"
+      help: "Premium feature usage events"
+      type: "counter"
+      labels: ["feature", "user_id", "success"]
+
+    - name: "premium_feature_access_denied"
+      help: "Premium feature access denied events"
+      type: "counter"
+      labels: ["feature", "reason"]
+
+    - name: "subscription_processing_duration_seconds"
+      help: "Time spent processing subscription updates"
+      type: "histogram"
+      buckets: [0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
+
+    - name: "database_query_duration_seconds"
+      help: "Database query execution time"
+      type: "histogram"
+      labels: ["query_type"]
+      buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+
+    - name: "subscription_db_connections_active"
+      help: "Active database connections"
+      type: "gauge"
+
+    - name: "subscription_db_connections_max"
+      help: "Maximum database connections"
+      type: "gauge"
+
+# Health Check Configuration
+health_checks:
+  endpoints:
+    - name: "subscription_service"
+      url: "http://localhost:8080/health"
+      interval: "30s"
+      timeout: "10s"
+      expected_status: 200
+
+    - name: "database"
+      url: "http://localhost:8081/health/database"
+      interval: "60s"
+      timeout: "15s"
+      expected_status: 200
+
+    - name: "apple_store_api"
+      url: "https://buy.itunes.apple.com/verifyReceipt"
+      interval: "300s"
+      timeout: "30s"
+      expected_status: 200
+      method: "POST"
+      headers:
+        Content-Type: "application/json"
+      body: '{"receipt-data": "test", "password": "test"}'
+
+    - name: "google_play_api"
+      url: "https://www.googleapis.com/androidpublisher/v3/applications/test"
+      interval: "300s"
+      timeout: "30s"
+      expected_status: 401  # Expected without auth
+
+# Log Aggregation Configuration
+logging:
+  elasticsearch:
+    hosts: ["${ELASTICSEARCH_HOST}:9200"]
+    index_pattern: "mita-subscription-logs-*"
+    
+  kibana:
+    dashboards:
+      - name: "Subscription Logs"
+        queries:
+          - "level:ERROR AND service:subscription-manager"
+          - "message:*receipt*validation*failed*"
+          - "tag:API_PREMIUM AND level:WARN"
+
+  log_levels:
+    root: "INFO"
+    subscription_manager: "DEBUG"
+    receipt_validation: "INFO"
+    database: "WARN"
+
+# Retention Policies
+retention:
+  metrics: "90d"
+  logs: "30d"
+  audit_logs: "7y"  # Financial compliance requirement
+  alerts: "365d"
+
+# Backup and Recovery
+backup:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  encryption: true
+  
+  targets:
+    - subscription_data
+    - audit_logs
+    - configuration
+
+# Performance Baselines
+baselines:
+  receipt_validation_success_rate: 99.5
+  api_response_time_p95: 2.0  # seconds
+  database_query_time_p95: 0.1  # seconds
+  subscription_processing_time_p95: 5.0  # seconds
+  uptime_target: 99.9  # percent
+
+# Capacity Planning
+capacity:
+  scaling_thresholds:
+    cpu_utilization: 70
+    memory_utilization: 80
+    database_connections: 80
+    
+  auto_scaling:
+    min_instances: 2
+    max_instances: 10
+    scale_up_threshold: 80
+    scale_down_threshold: 30
+    cooldown_period: "5m"
+
+# Security Monitoring
+security:
+  suspicious_activity:
+    - multiple_failed_validations: 10  # per user per hour
+    - unusual_subscription_patterns: true
+    - potential_fraud_indicators: true
+    
+  compliance:
+    gdpr: true
+    pci_dss: true
+    financial_regulations: true
+    
+  audit_trail:
+    all_subscription_changes: true
+    premium_feature_access: true
+    payment_processing: true

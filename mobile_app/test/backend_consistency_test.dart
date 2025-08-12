@@ -59,7 +59,7 @@ void main() {
     group('5-Tier Classification Consistency', () {
       test('Frontend enum matches backend tier names', () {
         // Test that our enum values can be converted to backend format
-        final frontendTiers = IncomeTier.values;
+        const frontendTiers = IncomeTier.values;
         final expectedTierNames = [
           'low', 'lowerMiddle', 'middle', 'upperMiddle', 'high'
         ];
@@ -147,7 +147,7 @@ void main() {
           }
           
           // Document the inconsistency
-          print('Income: \$${monthlyIncome}/month');
+          print('Income: \$$monthlyIncome/month');
           print('5-tier (CA): ${fiveTierResult.toString().split('.').last}');
           print('3-tier (problematic): $threeTierResult');
           print('---');
@@ -208,7 +208,7 @@ void main() {
           // Check precision loss
           final precision = (backToAnnual - annualValue).abs();
           expect(precision, lessThan(0.01),
-                 reason: 'Precision loss of \$${precision.toStringAsFixed(2)} for \$${annualValue}');
+                 reason: 'Precision loss of \$${precision.toStringAsFixed(2)} for \$$annualValue');
           
           // Test classification consistency
           final directClassification = _simulateBackendClassification(annualValue, 'CA');

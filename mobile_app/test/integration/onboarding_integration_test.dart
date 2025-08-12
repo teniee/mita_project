@@ -13,7 +13,7 @@ void main() {
 
     testWidgets('Complete location selection flow', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
@@ -58,7 +58,7 @@ void main() {
 
     testWidgets('Auto-detection UI states', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
@@ -68,7 +68,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       // Wait for auto-detection to complete (mock would be better)
-      await tester.pump(Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
       
       // Should show either success or error state
       // (Exact outcome depends on LocationService mock/implementation)
@@ -76,7 +76,7 @@ void main() {
 
     testWidgets('State list contains all 50 states', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
@@ -91,7 +91,7 @@ void main() {
       for (int i = 0; i < 60; i++) { // Extra iterations to ensure we see all
         await tester.drag(
           find.byType(ListView),
-          Offset(0, -100),
+          const Offset(0, -100),
         );
         await tester.pump();
         
@@ -113,7 +113,7 @@ void main() {
 
     testWidgets('State selection persistence', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
@@ -154,7 +154,7 @@ void main() {
 
     testWidgets('Accessibility features', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
@@ -172,13 +172,13 @@ void main() {
       testWidgets('Handle location detection failure gracefully', (WidgetTester tester) async {
         // This test would need a mocked LocationService that fails
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: OnboardingLocationScreen(),
           ),
         );
 
         // Wait for auto-detection to complete
-        await tester.pump(Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 3));
 
         // Should show error state without crashing
         // (Implementation depends on how LocationService handles errors)
@@ -187,7 +187,7 @@ void main() {
 
       testWidgets('Handle invalid state selection', (WidgetTester tester) async {
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: OnboardingLocationScreen(),
           ),
         );
@@ -203,7 +203,7 @@ void main() {
     group('Performance Tests', () {
       testWidgets('State list scrolling performance', (WidgetTester tester) async {
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: OnboardingLocationScreen(),
           ),
         );
@@ -214,7 +214,7 @@ void main() {
         for (int i = 0; i < 10; i++) {
           await tester.drag(
             find.byType(ListView),
-            Offset(0, -200),
+            const Offset(0, -200),
           );
           await tester.pump();
         }
@@ -227,7 +227,7 @@ void main() {
 
       testWidgets('Memory usage during state selection', (WidgetTester tester) async {
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: OnboardingLocationScreen(),
           ),
         );
@@ -250,7 +250,7 @@ void main() {
     group('Visual Regression Tests', () {
       testWidgets('UI layout consistency', (WidgetTester tester) async {
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             home: OnboardingLocationScreen(),
           ),
         );

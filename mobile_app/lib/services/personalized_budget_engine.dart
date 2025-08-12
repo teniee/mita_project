@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'income_service.dart';
 import 'logging_service.dart';
@@ -539,7 +537,7 @@ class PersonalizedBudgetEngine {
     int remainingDays
   ) {
     final analysis = <String, Map<String, dynamic>>{};
-    final daysInMonth = 30;
+    const daysInMonth = 30;
     final daysPassed = daysInMonth - remainingDays;
     
     budget.forEach((category, budgetAmount) {

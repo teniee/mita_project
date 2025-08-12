@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
-import '../theme/income_theme.dart';
 
 class OnboardingIncomeScreen extends StatefulWidget {
-  const OnboardingIncomeScreen({Key? key}) : super(key: key);
+  const OnboardingIncomeScreen({super.key});
 
   @override
   State<OnboardingIncomeScreen> createState() => _OnboardingIncomeScreenState();
@@ -241,10 +240,10 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                             ),
                           ),
                           const SizedBox(height: 18),
-                          Text(
+                          const Text(
                             "We'll create a personalized budget plan based on your income level.",
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               color: Colors.black54,
                               fontSize: 14,

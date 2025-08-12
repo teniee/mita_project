@@ -261,7 +261,7 @@ class CohortService {
             'difference': difference,
             'suggestion': _getOverspendingSuggestion(tier, category, difference),
           };
-          suggestions.add('Consider reducing ${category} spending by \$${difference.toStringAsFixed(0)}');
+          suggestions.add('Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
         } else {
           // Underspending in this category
           optimizations[category] = {
@@ -271,7 +271,7 @@ class CohortService {
             'difference': difference.abs(),
             'suggestion': _getUnderspendingSuggestion(tier, category, difference.abs()),
           };
-          suggestions.add('You have room to increase ${category} spending by \$${difference.abs().toStringAsFixed(0)}');
+          suggestions.add('You have room to increase $category spending by \$${difference.abs().toStringAsFixed(0)}');
         }
       }
     });
@@ -300,9 +300,9 @@ class CohortService {
       final userAmount = currentSpending?[category] ?? 0.0;
       
       if (userAmount > peerAverage * 1.2) {
-        recommendations.add('Your ${category} spending is 20% above peer average. Consider reducing by \$${(userAmount - peerAverage).toStringAsFixed(0)}');
+        recommendations.add('Your $category spending is 20% above peer average. Consider reducing by \$${(userAmount - peerAverage).toStringAsFixed(0)}');
       } else if (userAmount < peerAverage * 0.8) {
-        recommendations.add('Your ${category} spending is below peer average. You may have room to optimize this category');
+        recommendations.add('Your $category spending is below peer average. You may have room to optimize this category');
       }
     });
     
@@ -332,9 +332,9 @@ class CohortService {
         
         if (difference > monthlyIncome * 0.05) { // If difference is > 5% of income
           if (current > recommended) {
-            recommendations.add('Consider reducing ${category} spending by \$${difference.toStringAsFixed(0)}');
+            recommendations.add('Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
           } else {
-            recommendations.add('You have room to allocate \$${difference.toStringAsFixed(0)} more to ${category}');
+            recommendations.add('You have room to allocate \$${difference.toStringAsFixed(0)} more to $category');
           }
         }
       });
@@ -427,7 +427,7 @@ class CohortService {
       final recommendedPercentage = (weights[category] ?? 0.1) * 100;
       
       if (percentage > recommendedPercentage * 1.3) {
-        insights.add('Your ${category} spending (${percentage.toStringAsFixed(1)}%) is above the recommended ${recommendedPercentage.toStringAsFixed(1)}%');
+        insights.add('Your $category spending (${percentage.toStringAsFixed(1)}%) is above the recommended ${recommendedPercentage.toStringAsFixed(1)}%');
       }
     });
     

@@ -1,0 +1,173 @@
+# Task Queue Alert Rules for MITA Production
+
+groups:
+  - name: task_queue_alerts
+    rules:
+      # Critical Alerts
+      - alert: NoWorkersAvailable
+        expr: rq_workers_total == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: task-queue
+        annotations:
+          summary: "No RQ workers available"
+          description: "All task queue workers are down. Tasks will not be processed."
+          runbook_url: "https://docs.mita.finance/runbooks/no-workers"
+
+      - alert: HighTaskFailureRate
+        expr: rate(rq_jobs_failed_total[5m]) / rate(rq_jobs_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: task-queue
+        annotations:
+          summary: "High task failure rate detected"
+          description: "Task failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.mita.finance/runbooks/high-failure-rate"
+
+      - alert: QueueBacklogCritical
+        expr: rq_queue_depth{queue!="low"} > 100
+        for: 2m
+        labels:
+          severity: critical
+          service: task-queue
+        annotations:
+          summary: "Critical queue backlog on {{ $labels.queue }} queue"
+          description: "Queue {{ $labels.queue }} has {{ $value }} pending tasks"
+          runbook_url: "https://docs.mita.finance/runbooks/queue-backlog"
+
+      - alert: RedisConnectionDown
+        expr: up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: task-queue
+        annotations:
+          summary: "Redis connection is down"
+          description: "Redis server is not responding, task queue is unavailable"
+          runbook_url: "https://docs.mita.finance/runbooks/redis-down"
+
+      # Warning Alerts
+      - alert: HighWorkerUtilization
+        expr: (rq_workers_busy / rq_workers_total) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: task-queue
+        annotations:
+          summary: "High worker utilization detected"
+          description: "{{ $value | humanizePercentage }} of workers are busy. Consider scaling up."
+          runbook_url: "https://docs.mita.finance/runbooks/scale-workers"
+
+      - alert: LongRunningTasks
+        expr: rq_job_duration_seconds{quantile="0.95"} > 600
+        for: 5m
+        labels:
+          severity: warning
+          service: task-queue
+        annotations:
+          summary: "Tasks taking too long to complete"
+          description: "95th percentile task duration is {{ $value }}s"
+          runbook_url: "https://docs.mita.finance/runbooks/slow-tasks"
+
+      - alert: DeadLetterQueueGrowing
+        expr: rq_queue_depth{queue="failed"} > 20
+        for: 10m
+        labels:
+          severity: warning
+          service: task-queue
+        annotations:
+          summary: "Dead letter queue is growing"
+          description: "Failed queue has {{ $value }} tasks. Investigate and retry or remove."
+          runbook_url: "https://docs.mita.finance/runbooks/dead-letter-queue"
+
+      # Financial Operations Specific Alerts
+      - alert: OCRProcessingDelayed
+        expr: rq_queue_depth{queue="high"} > 10 and on() rq_jobs_by_function{function="process_ocr_task"} > 5
+        for: 3m
+        labels:
+          severity: warning
+          service: financial-operations
+        annotations:
+          summary: "OCR processing is delayed"
+          description: "Multiple OCR tasks are queued, affecting receipt processing"
+          runbook_url: "https://docs.mita.finance/runbooks/ocr-delays"
+
+      - alert: AIAnalysisBacklog
+        expr: rq_jobs_by_function{function="generate_ai_analysis_task"} > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: financial-operations
+        annotations:
+          summary: "AI analysis tasks are backing up"
+          description: "{{ $value }} AI analysis tasks are queued"
+          runbook_url: "https://docs.mita.finance/runbooks/ai-analysis-backlog"
+
+      - alert: BudgetRedistributionFailing
+        expr: rate(rq_jobs_failed_total{function="budget_redistribution_task"}[1h]) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          service: financial-operations
+        annotations:
+          summary: "Budget redistribution tasks are failing"
+          description: "Critical financial operation is failing at {{ $value | humanizePercentage }} rate"
+          runbook_url: "https://docs.mita.finance/runbooks/budget-redistribution-failures"
+
+      # Performance Alerts
+      - alert: HighMemoryUsageWorkers
+        expr: container_memory_usage_bytes{container="worker"} / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: task-queue
+        annotations:
+          summary: "Worker memory usage is high"
+          description: "Worker {{ $labels.pod }} is using {{ $value | humanizePercentage }} of allocated memory"
+          runbook_url: "https://docs.mita.finance/runbooks/worker-memory"
+
+      - alert: TaskQueueLatencyHigh
+        expr: histogram_quantile(0.95, rq_task_wait_duration_seconds_bucket) > 60
+        for: 5m
+        labels:
+          severity: warning
+          service: task-queue
+        annotations:
+          summary: "High task queue latency"
+          description: "95th percentile task wait time is {{ $value }}s"
+          runbook_url: "https://docs.mita.finance/runbooks/queue-latency"
+
+  - name: task_sla_alerts
+    rules:
+      # SLA Monitoring
+      - alert: ReceiptProcessingSLABreach
+        expr: histogram_quantile(0.95, rq_task_duration_seconds_bucket{function="process_ocr_task"}) > 300
+        for: 2m
+        labels:
+          severity: warning
+          service: sla
+        annotations:
+          summary: "Receipt processing SLA breach"
+          description: "95% of receipt processing tasks are taking more than 5 minutes"
+
+      - alert: AIAnalysisSLABreach
+        expr: histogram_quantile(0.95, rq_task_duration_seconds_bucket{function="generate_ai_analysis_task"}) > 600
+        for: 5m
+        labels:
+          severity: warning
+          service: sla
+        annotations:
+          summary: "AI analysis SLA breach"
+          description: "95% of AI analysis tasks are taking more than 10 minutes"
+
+      - alert: NotificationDeliveryDelayed
+        expr: histogram_quantile(0.95, rq_task_duration_seconds_bucket{function=~"send_.*_notification_task"}) > 60
+        for: 2m
+        labels:
+          severity: warning
+          service: sla
+        annotations:
+          summary: "Notification delivery is delayed"
+          description: "95% of notifications are taking more than 1 minute to send"

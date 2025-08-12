@@ -1,0 +1,399 @@
+# Enhanced PrometheusRules for comprehensive MITA Financial Services monitoring
+# This supplements the existing rules with additional financial-specific alerting
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mita-enhanced-financial-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: rules
+    monitoring.coreos.com/prometheus: "production"
+    compliance: "SOX,PCI-DSS"
+    business-function: "financial-monitoring"
+spec:
+  groups:
+    # Enhanced Financial Services Business Logic Alerts
+    - name: mita.financial.enhanced
+      interval: 30s
+      rules:
+        - alert: MitaIncomeClassificationAccuracyLow
+          expr: |
+            mita:income_classification_accuracy_5m < 0.85
+          for: 5m
+          labels:
+            severity: warning
+            team: data-science
+            business_impact: "feature-quality"
+            compliance: "business-logic"
+          annotations:
+            summary: "Income classification accuracy below threshold"
+            description: "Income classification accuracy is {{ $value | humanizePercentage }}, below the 85% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/classification-accuracy"
+            impact: "Users may receive inaccurate financial insights and recommendations"
+            action: "Review AI model performance and retrain if necessary"
+
+        - alert: MitaFinancialCalculationFailureRate
+          expr: |
+            (
+              sum(rate(financial_calculations_total{status="failed"}[5m]))
+              /
+              sum(rate(financial_calculations_total[5m]))
+            ) > 0.05
+          for: 3m
+          labels:
+            severity: critical
+            team: backend
+            business_impact: "revenue-critical"
+            compliance: "SOX"
+          annotations:
+            summary: "High financial calculation failure rate"
+            description: "Financial calculation failure rate is {{ $value | humanizePercentage }}, exceeding 5% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/calculation-failures"
+            impact: "Users may receive incorrect financial data - potential compliance violation"
+            action: "Investigate calculation engine immediately - data integrity at risk"
+
+        - alert: MitaDataProcessingLag
+          expr: |
+            (time() - mita_last_data_processing_timestamp) > 1800  # 30 minutes
+          for: 1m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "Data processing lag detected"
+            description: "Data processing has been delayed for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/data-processing-lag"
+            impact: "Users may see stale financial data and delayed insights"
+            action: "Check data pipeline and worker health"
+
+        - alert: MitaPremiumFeatureAccessFailure
+          expr: |
+            (
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*premium.*",code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*premium.*"}[5m]))
+            ) > 0.02
+          for: 2m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "revenue-critical"
+          annotations:
+            summary: "Premium feature access failures detected"
+            description: "Premium feature error rate is {{ $value | humanizePercentage }}, exceeding 2% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/premium-features"
+            impact: "Paying customers cannot access premium features - revenue impact"
+            action: "Investigate premium feature endpoints and subscription validation"
+
+    # Enhanced Worker and Queue Monitoring
+    - name: mita.workers.enhanced
+      interval: 30s
+      rules:
+        - alert: MitaOCRProcessingTimeout
+          expr: |
+            mita:ocr_processing_duration_p95_5m > 300  # 5 minutes
+          for: 2m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "OCR processing times exceed SLA"
+            description: "95th percentile OCR processing time is {{ $value }}s, exceeding 5-minute SLA."
+            runbook_url: "https://runbooks.mita.finance/alerts/ocr-timeout"
+            impact: "Users experience slow receipt processing"
+            action: "Check OCR worker capacity and external service performance"
+
+        - alert: MitaAIAnalysisTimeout
+          expr: |
+            mita:ai_analysis_duration_p95_5m > 600  # 10 minutes
+          for: 2m
+          labels:
+            severity: warning
+            team: data-science
+            business_impact: "user-experience"
+          annotations:
+            summary: "AI analysis processing times exceed SLA"
+            description: "95th percentile AI analysis time is {{ $value }}s, exceeding 10-minute SLA."
+            runbook_url: "https://runbooks.mita.finance/alerts/ai-timeout"
+            impact: "Users experience delayed financial insights"
+            action: "Check AI processing workers and OpenAI API performance"
+
+        - alert: MitaCriticalQueueStalled
+          expr: |
+            (
+              rate(task_executions_total{queue="critical"}[5m]) == 0
+              and
+              rq_queue_depth{queue_name="critical"} > 0
+            )
+          for: 3m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "Critical queue has stalled"
+            description: "Critical queue has {{ $value }} items but no processing activity for 5 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/queue-stalled"
+            impact: "Critical financial operations are not processing"
+            action: "Restart critical workers and investigate queue health"
+
+        - alert: MitaDeadLetterQueueGrowth
+          expr: |
+            increase(rq_dead_letter_queue_depth[10m]) > 5
+          for: 1m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "data-integrity"
+          annotations:
+            summary: "Dead letter queue growing rapidly"
+            description: "Dead letter queue has grown by {{ $value }} items in the last 10 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/dead-letter-queue"
+            impact: "Failed tasks are accumulating - potential data loss"
+            action: "Investigate failed tasks and replay if necessary"
+
+    # Enhanced Security and Compliance Monitoring
+    - name: mita.security.enhanced
+      interval: 30s
+      rules:
+        - alert: MitaSuspiciousUserBehavior
+          expr: |
+            (
+              sum by (user_id) (rate(http_requests_total{service="mita-backend"}[5m]))
+            ) > 50  # More than 50 requests per second from single user
+          for: 2m
+          labels:
+            severity: warning
+            team: security
+            security_incident: "potential"
+          annotations:
+            summary: "Suspicious user activity detected"
+            description: "User {{ $labels.user_id }} is making {{ $value }} requests/second, indicating potential abuse."
+            runbook_url: "https://runbooks.mita.finance/alerts/suspicious-activity"
+            impact: "Potential API abuse or compromised account"
+            action: "Review user activity logs and implement rate limiting if necessary"
+
+        - alert: MitaUnusualLoginPatterns
+          expr: |
+            (
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*login.*"}[1h]))
+              /
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*login.*"}[1h] offset 24h))
+            ) > 3  # 3x increase in login attempts
+          for: 5m
+          labels:
+            severity: warning
+            team: security
+            security_incident: "potential"
+          annotations:
+            summary: "Unusual login pattern detected"
+            description: "Login attempts are {{ $value }}x higher than the same time yesterday."
+            runbook_url: "https://runbooks.mita.finance/alerts/unusual-logins"
+            impact: "Potential coordinated attack or security incident"
+            action: "Review login patterns and implement additional security measures"
+
+        - alert: MitaDataExfiltrationAttempt
+          expr: |
+            (
+              sum(rate(container_network_transmit_bytes_total{pod=~"mita-backend.*"}[5m]))
+            ) > 100000000  # 100MB/s outbound traffic
+          for: 2m
+          labels:
+            severity: critical
+            team: security
+            security_incident: "confirmed"
+            compliance: "PCI-DSS"
+          annotations:
+            summary: "Potential data exfiltration detected"
+            description: "Outbound network traffic from backend pods is {{ $value | humanizeBytes }}/s."
+            runbook_url: "https://runbooks.mita.finance/alerts/data-exfiltration"
+            impact: "Potential security breach - financial data may be compromised"
+            action: "IMMEDIATE: Isolate affected pods and investigate network traffic"
+
+        - alert: MitaComplianceViolationWindow
+          expr: |
+            (time() - mita_last_compliance_check) > 86400  # 24 hours
+          for: 0m
+          labels:
+            severity: critical
+            team: compliance
+            compliance: "SOX,PCI-DSS"
+            security_incident: "compliance-violation"
+          annotations:
+            summary: "Compliance monitoring window exceeded"
+            description: "Compliance checks have not run for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/compliance-window"
+            impact: "Regulatory compliance violation - audit risk"
+            action: "Execute compliance checks immediately and document any gaps"
+
+    # Enhanced Business Continuity and Disaster Recovery
+    - name: mita.business-continuity.enhanced
+      interval: 60s
+      rules:
+        - alert: MitaReplicationLag
+          expr: |
+            (
+              time() - mita_database_replica_last_sync_timestamp
+            ) > 300  # 5 minutes
+          for: 1m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "disaster-recovery"
+          annotations:
+            summary: "Database replication lag detected"
+            description: "Database replica is {{ $value | humanizeDuration }} behind primary."
+            runbook_url: "https://runbooks.mita.finance/alerts/replication-lag"
+            impact: "Disaster recovery capabilities compromised"
+            action: "Check database replication health and network connectivity"
+
+        - alert: MitaDisasterRecoveryTestOverdue
+          expr: |
+            (time() - mita_last_dr_test_timestamp) > 2592000  # 30 days
+          for: 0m
+          labels:
+            severity: warning
+            team: sre
+            compliance: "business-continuity"
+          annotations:
+            summary: "Disaster recovery test overdue"
+            description: "Disaster recovery test has not been performed for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/dr-test-overdue"
+            impact: "DR capabilities not validated - business continuity risk"
+            action: "Schedule and execute disaster recovery test"
+
+        - alert: MitaRTOObjectiveViolation
+          expr: |
+            (time() - mita_last_service_recovery_timestamp) > 3600  # 1 hour RTO
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "sla-violation"
+          annotations:
+            summary: "Recovery Time Objective (RTO) violated"
+            description: "Service has been down for {{ $value | humanizeDuration }}, exceeding 1-hour RTO."
+            runbook_url: "https://runbooks.mita.finance/alerts/rto-violation"
+            impact: "SLA violation - business continuity objective not met"
+            action: "Escalate to executive team and accelerate recovery efforts"
+
+    # Enhanced Performance and Capacity Planning
+    - name: mita.performance.enhanced
+      interval: 60s
+      rules:
+        - alert: MitaPredictedCapacityExhaustion
+          expr: |
+            predict_linear(mita:pod_cpu_utilization[6h], 24*3600) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "capacity-planning"
+          annotations:
+            summary: "CPU capacity exhaustion predicted"
+            description: "CPU utilization trend indicates capacity exhaustion within 24 hours."
+            runbook_url: "https://runbooks.mita.finance/alerts/capacity-prediction"
+            impact: "Service performance degradation expected"
+            action: "Scale resources proactively to prevent performance issues"
+
+        - alert: MitaMemoryLeakDetected
+          expr: |
+            (
+              increase(container_memory_working_set_bytes{container="backend"}[1h])
+              /
+              container_memory_working_set_bytes{container="backend"}
+            ) > 0.1  # 10% memory growth per hour
+          for: 3h
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "performance"
+          annotations:
+            summary: "Potential memory leak detected"
+            description: "Memory usage has grown by {{ $value | humanizePercentage }} per hour for 3 hours."
+            runbook_url: "https://runbooks.mita.finance/alerts/memory-leak"
+            impact: "Progressive performance degradation and potential OOM kills"
+            action: "Investigate memory usage patterns and consider pod restart"
+
+        - alert: MitaDatabaseConnectionLeaks
+          expr: |
+            (
+              mita_db_active_connections
+              /
+              mita_db_max_connections
+            ) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "performance"
+          annotations:
+            summary: "Database connection pool near exhaustion"
+            description: "Database connection utilization is {{ $value | humanizePercentage }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/db-connection-leak"
+            impact: "New requests may fail due to connection exhaustion"
+            action: "Investigate connection leaks and scale connection pool if necessary"
+
+    # Financial Application Specific Enhanced Monitoring
+    - name: mita.financial-app.enhanced
+      interval: 60s
+      rules:
+        - alert: MitaBudgetCalculationDrift
+          expr: |
+            abs(
+              mita_budget_calculation_current_total
+              -
+              mita_budget_calculation_expected_total
+            ) / mita_budget_calculation_expected_total > 0.05  # 5% drift
+          for: 5m
+          labels:
+            severity: critical
+            team: backend
+            business_impact: "data-integrity"
+            compliance: "SOX"
+          annotations:
+            summary: "Budget calculation drift detected"
+            description: "Budget calculations have drifted {{ $value | humanizePercentage }} from expected values."
+            runbook_url: "https://runbooks.mita.finance/alerts/budget-drift"
+            impact: "Financial calculations may be incorrect - potential compliance violation"
+            action: "URGENT: Validate calculation logic and data integrity"
+
+        - alert: MitaReceiptProcessingBacklog
+          expr: |
+            (
+              sum(rq_queue_depth{queue_name=~".*ocr.*|.*receipt.*"})
+            ) > 100
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "Receipt processing backlog building"
+            description: "Receipt processing queue has {{ $value }} items waiting."
+            runbook_url: "https://runbooks.mita.finance/alerts/receipt-backlog"
+            impact: "Users experiencing delays in receipt processing and categorization"
+            action: "Scale OCR workers or investigate processing bottlenecks"
+
+        - alert: MitaSubscriptionValidationFailure
+          expr: |
+            (
+              sum(rate(subscription_validation_failures_total[5m]))
+              /
+              sum(rate(subscription_validation_attempts_total[5m]))
+            ) > 0.1  # 10% failure rate
+          for: 3m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "revenue-critical"
+          annotations:
+            summary: "High subscription validation failure rate"
+            description: "Subscription validation failure rate is {{ $value | humanizePercentage }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/subscription-validation"
+            impact: "Premium users may lose access to paid features"
+            action: "Check IAP connectivity and subscription refresh mechanisms"

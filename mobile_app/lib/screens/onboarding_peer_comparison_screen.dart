@@ -6,7 +6,7 @@ import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
 
 class OnboardingPeerComparisonScreen extends StatefulWidget {
-  const OnboardingPeerComparisonScreen({Key? key}) : super(key: key);
+  const OnboardingPeerComparisonScreen({super.key});
 
   @override
   State<OnboardingPeerComparisonScreen> createState() => _OnboardingPeerComparisonScreenState();
@@ -32,7 +32,10 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
     super.initState();
     
     // Get income data from onboarding state
-    _monthlyIncome = OnboardingState.instance.income ?? 3000.0;
+    if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
+      throw Exception('Income must be provided before peer comparison. Please go back and complete income entry.');
+    }
+    _monthlyIncome = OnboardingState.instance.income!;
     _incomeTier = OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
     
     _animationController = AnimationController(
@@ -482,10 +485,10 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Complete Setup',
                           style: TextStyle(
                             fontFamily: 'Sora',
@@ -493,7 +496,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                             fontSize: 18,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Icon(
                           Icons.arrow_forward_rounded,
                           size: 20,

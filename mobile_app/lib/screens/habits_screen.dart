@@ -52,7 +52,7 @@ class Habit {
 }
 
 class HabitsScreen extends StatefulWidget {
-  const HabitsScreen({Key? key}) : super(key: key);
+  const HabitsScreen({super.key});
 
   @override
   State<HabitsScreen> createState() => _HabitsScreenState();
@@ -116,6 +116,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       }
       
       // Show success feedback
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -134,6 +135,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       // Refresh the habits list to get updated data
       _fetchHabits();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to update habit: $e'),
@@ -268,13 +270,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
 
                 try {
                   if (isEditing) {
-                    await _apiService.updateHabit(habit!.id, data);
+                    await _apiService.updateHabit(habit.id, data);
                   } else {
                     await _apiService.createHabit(data);
                   }
                   if (!mounted) return;
                   Navigator.pop(context, true);
                 } catch (e) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Failed to save habit: $e'),
@@ -346,6 +349,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
     if (confirm == true) {
       try {
         await _apiService.deleteHabit(habit.id);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('"${habit.title}" deleted successfully'),
@@ -356,6 +360,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         );
         _fetchHabits();
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to delete habit: $e'),

@@ -1,0 +1,733 @@
+{
+  "@@locale": "en",
+  "@@context": "MITA - Money Intelligence Task Assistant - Financial App",
+  
+  "appTitle": "MITA",
+  "@appTitle": {
+    "description": "The name of the MITA financial application"
+  },
+
+  "appTagline": "Money Intelligence Task Assistant",
+  "@appTagline": {
+    "description": "MITA's official tagline"
+  },
+
+  "welcome": "Welcome to MITA",
+  "@welcome": {
+    "description": "Welcome screen main title"
+  },
+
+  "welcomeSubtitle": "Your personal financial companion for smarter money management",
+  "@welcomeSubtitle": {
+    "description": "Welcome screen subtitle describing MITA's purpose"
+  },
+
+  "getStarted": "Get Started",
+  "@getStarted": {
+    "description": "Call-to-action button text for starting onboarding"
+  },
+
+  "signIn": "Sign In",
+  "@signIn": {
+    "description": "Sign in button text"
+  },
+
+  "signUp": "Sign Up",
+  "@signUp": {
+    "description": "Sign up button text"
+  },
+
+  "email": "Email",
+  "@email": {
+    "description": "Email input field label"
+  },
+
+  "password": "Password",
+  "@password": {
+    "description": "Password input field label"
+  },
+
+  "emailHint": "Enter your email address",
+  "@emailHint": {
+    "description": "Placeholder text for email input field"
+  },
+
+  "passwordHint": "Enter your password",
+  "@passwordHint": {
+    "description": "Placeholder text for password input field"
+  },
+
+  "forgotPassword": "Forgot Password?",
+  "@forgotPassword": {
+    "description": "Link text for password recovery"
+  },
+
+  "rememberMe": "Remember me",
+  "@rememberMe": {
+    "description": "Remember login checkbox label"
+  },
+
+  "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": {
+    "description": "Google sign-in button text"
+  },
+
+  "dontHaveAccount": "Don't have an account?",
+  "@dontHaveAccount": {
+    "description": "Text prompting user to register"
+  },
+
+  "createAccount": "Create Account",
+  "@createAccount": {
+    "description": "Link text to registration screen"
+  },
+
+  "alreadyHaveAccount": "Already have an account?",
+  "@alreadyHaveAccount": {
+    "description": "Text prompting user to sign in"
+  },
+
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Generic loading indicator text"
+  },
+
+  "dailyBudget": "Daily Budget",
+  "@dailyBudget": {
+    "description": "Daily budget screen title and navigation label"
+  },
+
+  "todaysAllowance": "Today's Allowance",
+  "@todaysAllowance": {
+    "description": "Daily spending allowance section title"
+  },
+
+  "remaining": "Remaining",
+  "@remaining": {
+    "description": "Remaining budget amount label"
+  },
+
+  "spent": "Spent",
+  "@spent": {
+    "description": "Amount spent label"
+  },
+
+  "budget": "Budget",
+  "@budget": {
+    "description": "Total budget amount label"
+  },
+
+  "addExpense": "Add Expense",
+  "@addExpense": {
+    "description": "Add new expense button and screen title"
+  },
+
+  "expenseAmount": "Expense Amount",
+  "@expenseAmount": {
+    "description": "Expense amount input field label"
+  },
+
+  "expenseDescription": "Description",
+  "@expenseDescription": {
+    "description": "Expense description input field label"
+  },
+
+  "category": "Category",
+  "@category": {
+    "description": "Expense category selection label"
+  },
+
+  "date": "Date",
+  "@date": {
+    "description": "Date field label"
+  },
+
+  "save": "Save",
+  "@save": {
+    "description": "Save button text"
+  },
+
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button text"
+  },
+
+  "delete": "Delete",
+  "@delete": {
+    "description": "Delete button text"
+  },
+
+  "edit": "Edit",
+  "@edit": {
+    "description": "Edit button text"
+  },
+
+  "transactions": "Transactions",
+  "@transactions": {
+    "description": "Transactions screen title and navigation label"
+  },
+
+  "noTransactionsYet": "No transactions yet",
+  "@noTransactionsYet": {
+    "description": "Empty state message for transactions"
+  },
+
+  "startTrackingExpenses": "Start tracking your expenses to see them here",
+  "@startTrackingExpenses": {
+    "description": "Empty state subtitle for transactions"
+  },
+
+  "insights": "Insights",
+  "@insights": {
+    "description": "Insights screen title and navigation label"
+  },
+
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile screen title and navigation label"
+  },
+
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings screen title"
+  },
+
+  "currency": "Currency",
+  "@currency": {
+    "description": "Currency setting label"
+  },
+
+  "currencyFormat": "${amount}",
+  "@currencyFormat": {
+    "description": "Template for currency formatting",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "$123.45"
+      }
+    }
+  },
+
+  "currencySymbol": "$",
+  "@currencySymbol": {
+    "description": "Default currency symbol for USD"
+  },
+
+  "monthlyBudget": "Monthly Budget",
+  "@monthlyBudget": {
+    "description": "Monthly budget setting label"
+  },
+
+  "weeklySpending": "Weekly Spending",
+  "@weeklySpending": {
+    "description": "Weekly spending display label"
+  },
+
+  "monthlySpending": "Monthly Spending",
+  "@monthlySpending": {
+    "description": "Monthly spending display label"
+  },
+
+  "overBudget": "Over Budget",
+  "@overBudget": {
+    "description": "Status indicator when spending exceeds budget"
+  },
+
+  "underBudget": "Under Budget",
+  "@underBudget": {
+    "description": "Status indicator when spending is within budget"
+  },
+
+  "onTrack": "On Track",
+  "@onTrack": {
+    "description": "Status indicator when spending is as planned"
+  },
+
+  "budgetExceeded": "Budget exceeded by {amount}",
+  "@budgetExceeded": {
+    "description": "Message when daily budget is exceeded",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "$25.50"
+      }
+    }
+  },
+
+  "daysUntilNextPay": "{days} days until next pay",
+  "@daysUntilNextPay": {
+    "description": "Days remaining until next payday",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "7"
+      }
+    }
+  },
+
+  "spendingCategories": "Spending Categories",
+  "@spendingCategories": {
+    "description": "Spending categories section title"
+  },
+
+  "food": "Food",
+  "@food": {
+    "description": "Food expense category"
+  },
+
+  "transportation": "Transportation",
+  "@transportation": {
+    "description": "Transportation expense category"
+  },
+
+  "entertainment": "Entertainment",
+  "@entertainment": {
+    "description": "Entertainment expense category"
+  },
+
+  "shopping": "Shopping",
+  "@shopping": {
+    "description": "Shopping expense category"
+  },
+
+  "utilities": "Utilities",
+  "@utilities": {
+    "description": "Utilities expense category"
+  },
+
+  "health": "Health",
+  "@health": {
+    "description": "Health expense category"
+  },
+
+  "other": "Other",
+  "@other": {
+    "description": "Other/miscellaneous expense category"
+  },
+
+  "selectCategory": "Select Category",
+  "@selectCategory": {
+    "description": "Category selection prompt"
+  },
+
+  "receiptCapture": "Receipt Capture",
+  "@receiptCapture": {
+    "description": "Receipt capture feature title"
+  },
+
+  "takePhoto": "Take Photo",
+  "@takePhoto": {
+    "description": "Take photo button text"
+  },
+
+  "selectFromGallery": "Select from Gallery",
+  "@selectFromGallery": {
+    "description": "Select image from gallery button text"
+  },
+
+  "processingReceipt": "Processing receipt...",
+  "@processingReceipt": {
+    "description": "Loading message while processing receipt OCR"
+  },
+
+  "receiptProcessed": "Receipt processed successfully",
+  "@receiptProcessed": {
+    "description": "Success message after receipt processing"
+  },
+
+  "receiptProcessingError": "Unable to process receipt. Please try again.",
+  "@receiptProcessingError": {
+    "description": "Error message when receipt processing fails"
+  },
+
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications screen title"
+  },
+
+  "goals": "Goals",
+  "@goals": {
+    "description": "Goals screen title and navigation label"
+  },
+
+  "savingsGoal": "Savings Goal",
+  "@savingsGoal": {
+    "description": "Savings goal section title"
+  },
+
+  "targetAmount": "Target Amount",
+  "@targetAmount": {
+    "description": "Goal target amount field label"
+  },
+
+  "currentSaved": "Current Saved",
+  "@currentSaved": {
+    "description": "Current savings amount label"
+  },
+
+  "progressToGoal": "Progress to Goal",
+  "@progressToGoal": {
+    "description": "Goal progress section title"
+  },
+
+  "logout": "Logout",
+  "@logout": {
+    "description": "Logout button text"
+  },
+
+  "confirmLogout": "Are you sure you want to logout?",
+  "@confirmLogout": {
+    "description": "Logout confirmation dialog message"
+  },
+
+  "yes": "Yes",
+  "@yes": {
+    "description": "Confirmation dialog yes button"
+  },
+
+  "no": "No",
+  "@no": {
+    "description": "Confirmation dialog no button"
+  },
+
+  "error": "Error",
+  "@error": {
+    "description": "Generic error title"
+  },
+
+  "networkError": "Network connection error. Please check your internet connection.",
+  "@networkError": {
+    "description": "Network connectivity error message"
+  },
+
+  "serverError": "Server error. Please try again later.",
+  "@serverError": {
+    "description": "Server error message"
+  },
+
+  "validationError": "Please check your input and try again.",
+  "@validationError": {
+    "description": "Form validation error message"
+  },
+
+  "invalidEmail": "Please enter a valid email address.",
+  "@invalidEmail": {
+    "description": "Invalid email validation message"
+  },
+
+  "passwordTooShort": "Password must be at least 8 characters long.",
+  "@passwordTooShort": {
+    "description": "Password length validation message"
+  },
+
+  "passwordsDoNotMatch": "Passwords do not match.",
+  "@passwordsDoNotMatch": {
+    "description": "Password confirmation validation message"
+  },
+
+  "fieldRequired": "This field is required.",
+  "@fieldRequired": {
+    "description": "Required field validation message"
+  },
+
+  "invalidAmount": "Please enter a valid amount.",
+  "@invalidAmount": {
+    "description": "Invalid amount validation message"
+  },
+
+  "amountTooLarge": "Amount cannot exceed {max}.",
+  "@amountTooLarge": {
+    "description": "Maximum amount validation message",
+    "placeholders": {
+      "max": {
+        "type": "String",
+        "example": "$10,000.00"
+      }
+    }
+  },
+
+  "retry": "Retry",
+  "@retry": {
+    "description": "Retry button text"
+  },
+
+  "dismiss": "Dismiss",
+  "@dismiss": {
+    "description": "Dismiss button text for dialogs and notifications"
+  },
+
+  "success": "Success",
+  "@success": {
+    "description": "Generic success title"
+  },
+
+  "expenseAdded": "Expense added successfully!",
+  "@expenseAdded": {
+    "description": "Success message when expense is added"
+  },
+
+  "expenseUpdated": "Expense updated successfully!",
+  "@expenseUpdated": {
+    "description": "Success message when expense is updated"
+  },
+
+  "expenseDeleted": "Expense deleted successfully!",
+  "@expenseDeleted": {
+    "description": "Success message when expense is deleted"
+  },
+
+  "budgetUpdated": "Budget updated successfully!",
+  "@budgetUpdated": {
+    "description": "Success message when budget is updated"
+  },
+
+  "profileUpdated": "Profile updated successfully!",
+  "@profileUpdated": {
+    "description": "Success message when profile is updated"
+  },
+
+  "totalSpent": "Total Spent",
+  "@totalSpent": {
+    "description": "Total spending summary label"
+  },
+
+  "averageDaily": "Average Daily",
+  "@averageDaily": {
+    "description": "Average daily spending label"
+  },
+
+  "thisMonth": "This Month",
+  "@thisMonth": {
+    "description": "Current month filter label"
+  },
+
+  "lastMonth": "Last Month",
+  "@lastMonth": {
+    "description": "Previous month filter label"
+  },
+
+  "thisWeek": "This Week",
+  "@thisWeek": {
+    "description": "Current week filter label"
+  },
+
+  "lastWeek": "Last Week",
+  "@lastWeek": {
+    "description": "Previous week filter label"
+  },
+
+  "today": "Today",
+  "@today": {
+    "description": "Today filter label"
+  },
+
+  "yesterday": "Yesterday",
+  "@yesterday": {
+    "description": "Yesterday filter label"
+  },
+
+  "calendar": "Calendar",
+  "@calendar": {
+    "description": "Calendar view screen title"
+  },
+
+  "onboarding": "Getting Started",
+  "@onboarding": {
+    "description": "Onboarding process title"
+  },
+
+  "next": "Next",
+  "@next": {
+    "description": "Next button in onboarding and forms"
+  },
+
+  "back": "Back",
+  "@back": {
+    "description": "Back button text"
+  },
+
+  "skip": "Skip",
+  "@skip": {
+    "description": "Skip button text"
+  },
+
+  "finish": "Finish",
+  "@finish": {
+    "description": "Finish button text"
+  },
+
+  "income": "Income",
+  "@income": {
+    "description": "Income input and display label"
+  },
+
+  "monthlyIncome": "Monthly Income",
+  "@monthlyIncome": {
+    "description": "Monthly income field label"
+  },
+
+  "expenses": "Expenses",
+  "@expenses": {
+    "description": "Expenses section title"
+  },
+
+  "monthlyExpenses": "Monthly Expenses",
+  "@monthlyExpenses": {
+    "description": "Monthly expenses total label"
+  },
+
+  "welcomeBack": "Welcome back",
+  "@welcomeBack": {
+    "description": "Login screen welcome header"
+  },
+
+  "signInToContinue": "Sign in to continue managing your finances",
+  "@signInToContinue": {
+    "description": "Login screen subtitle"
+  },
+
+  "emailAddress": "Email address",
+  "@emailAddress": {
+    "description": "Email field label"
+  },
+
+  "enterYourEmail": "Enter your email",
+  "@enterYourEmail": {
+    "description": "Email field hint text"
+  },
+
+  "enterYourPassword": "Enter your password",
+  "@enterYourPassword": {
+    "description": "Password field hint text"
+  },
+
+  "pleaseEnterEmail": "Please enter your email",
+  "@pleaseEnterEmail": {
+    "description": "Email validation error message"
+  },
+
+  "pleaseEnterValidEmail": "Please enter a valid email",
+  "@pleaseEnterValidEmail": {
+    "description": "Email format validation error message"
+  },
+
+  "pleaseEnterPassword": "Please enter your password",
+  "@pleaseEnterPassword": {
+    "description": "Password validation error message"
+  },
+
+  "showPassword": "Show password",
+  "@showPassword": {
+    "description": "Accessibility label for show password button"
+  },
+
+  "hidePassword": "Hide password",
+  "@hidePassword": {
+    "description": "Accessibility label for hide password button"
+  },
+
+  "passwordHidden": "Password hidden",
+  "@passwordHidden": {
+    "description": "Accessibility announcement when password is hidden"
+  },
+
+  "passwordShown": "Password shown",
+  "@passwordShown": {
+    "description": "Accessibility announcement when password is shown"
+  },
+
+  "forgot": "Forgot?",
+  "@forgot": {
+    "description": "Forgot password link text"
+  },
+
+  "signingIn": "Signing in...",
+  "@signingIn": {
+    "description": "Loading message during sign in"
+  },
+
+  "or": "or",
+  "@or": {
+    "description": "Divider text between login options"
+  },
+
+  "signInCancelled": "Sign-in cancelled",
+  "@signInCancelled": {
+    "description": "Error message when Google sign-in is cancelled"
+  },
+
+  "missingGoogleToken": "Missing Google ID token",
+  "@missingGoogleToken": {
+    "description": "Error message when Google authentication fails"
+  },
+
+  "loginFailed": "Login failed. Please check your credentials and try again.",
+  "@loginFailed": {
+    "description": "Generic login error message"
+  },
+
+  "dontHaveAccountQuestion": "Don't have an account? ",
+  "@dontHaveAccountQuestion": {
+    "description": "Text prompting user to register - first part"
+  },
+
+  "rememberMeEnabled": "Remember me enabled",
+  "@rememberMeEnabled": {
+    "description": "Accessibility announcement when remember me is enabled"
+  },
+
+  "rememberMeDisabled": "Remember me disabled",
+  "@rememberMeDisabled": {
+    "description": "Accessibility announcement when remember me is disabled"
+  },
+
+  "initializing": "Initializing...",
+  "@initializing": {
+    "description": "Loading message during app initialization"
+  },
+
+  "initializationFailed": "Initialization failed",
+  "@initializationFailed": {
+    "description": "Error message when app initialization fails"
+  },
+
+  "initializingMita": "Initializing MITA...",
+  "@initializingMita": {
+    "description": "Loading message during MITA app initialization"
+  },
+
+  "checkingAuthentication": "Checking authentication...",
+  "@checkingAuthentication": {
+    "description": "Loading message during authentication check"
+  },
+
+  "welcomeToMita": "Welcome to MITA",
+  "@welcomeToMita": {
+    "description": "Welcome message for new users"
+  },
+
+  "verifyingSession": "Verifying session...",
+  "@verifyingSession": {
+    "description": "Loading message during session verification"
+  },
+
+  "loadingDashboard": "Loading your dashboard...",
+  "@loadingDashboard": {
+    "description": "Loading message when loading user dashboard"
+  },
+
+  "welcomeBackExclamation": "Welcome back!",
+  "@welcomeBackExclamation": {
+    "description": "Enthusiastic welcome message for returning users"
+  },
+
+  "continuingSetup": "Continuing setup...",
+  "@continuingSetup": {
+    "description": "Loading message during onboarding continuation"
+  },
+
+  "pleaseLoginToContinue": "Please log in to continue",
+  "@pleaseLoginToContinue": {
+    "description": "Message prompting user to log in"
+  }
+}

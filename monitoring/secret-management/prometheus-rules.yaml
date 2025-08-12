@@ -1,0 +1,364 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mita-secret-management-alerts
+  namespace: mita-production
+  labels:
+    app: mita
+    component: secret-management
+    compliance: "SOX,PCI-DSS,GDPR"
+spec:
+  groups:
+    - name: mita.secret_management.critical
+      interval: 30s
+      rules:
+        # Critical: External Secrets Operator is down
+        - alert: ExternalSecretsOperatorDown
+          expr: up{job="external-secrets-controller"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            component: external-secrets
+            compliance: "SOX,PCI-DSS"
+            pagerduty: "true"
+          annotations:
+            summary: "External Secrets Operator is down"
+            description: "The External Secrets Operator has been down for more than 1 minute. This affects secret synchronization from AWS Secrets Manager."
+            runbook: "https://runbooks.mita.finance/external-secrets-operator-down"
+            action: "Immediate intervention required"
+        
+        # Critical: Secret sync failures
+        - alert: ExternalSecretSyncFailure
+          expr: increase(externalsecret_sync_calls_total{status="error"}[5m]) > 0
+          for: 2m
+          labels:
+            severity: critical
+            component: external-secrets
+            compliance: "SOX,PCI-DSS"
+            pagerduty: "true"
+          annotations:
+            summary: "External Secret synchronization failing"
+            description: "Secret synchronization from AWS Secrets Manager is failing for {{ $labels.secret_name }} in namespace {{ $labels.namespace }}"
+            runbook: "https://runbooks.mita.finance/external-secret-sync-failure"
+            action: "Check AWS Secrets Manager connectivity and permissions"
+        
+        # Critical: Database secrets unavailable
+        - alert: DatabaseSecretsUnavailable
+          expr: absent(kube_secret_info{secret="mita-production-database-credentials", namespace="mita-production"})
+          for: 1m
+          labels:
+            severity: critical
+            component: database-secrets
+            compliance: "SOX,PCI-DSS"
+            pagerduty: "true"
+          annotations:
+            summary: "Database secrets are unavailable"
+            description: "Critical database secrets are missing from Kubernetes. Applications cannot connect to the database."
+            runbook: "https://runbooks.mita.finance/database-secrets-unavailable"
+            action: "Immediate intervention required - check External Secrets Operator"
+        
+        # Critical: JWT secrets unavailable
+        - alert: JWTSecretsUnavailable
+          expr: absent(kube_secret_info{secret="mita-production-auth-secrets", namespace="mita-production"})
+          for: 1m
+          labels:
+            severity: critical
+            component: auth-secrets
+            compliance: "SOX,PCI-DSS"
+            pagerduty: "true"
+          annotations:
+            summary: "JWT authentication secrets are unavailable"
+            description: "JWT secrets are missing from Kubernetes. User authentication is compromised."
+            runbook: "https://runbooks.mita.finance/jwt-secrets-unavailable"
+            action: "Immediate intervention required - authentication system down"
+        
+        # Critical: AWS Secrets Manager access denied
+        - alert: SecretsManagerAccessDenied
+          expr: increase(externalsecret_sync_calls_total{status="error", error_type="access_denied"}[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: aws-secrets-manager
+            compliance: "SOX,PCI-DSS"
+            pagerduty: "true"
+          annotations:
+            summary: "AWS Secrets Manager access denied"
+            description: "External Secrets Operator cannot access AWS Secrets Manager. Check IAM permissions for service account."
+            runbook: "https://runbooks.mita.finance/secrets-manager-access-denied"
+            action: "Check IAM role permissions and service account configuration"
+
+    - name: mita.secret_management.high
+      interval: 60s
+      rules:
+        # High: Secret rotation overdue
+        - alert: SecretRotationOverdue
+          expr: (time() - aws_secretsmanager_secret_last_rotated_timestamp) > (aws_secretsmanager_secret_rotation_interval_days * 86400 * 1.1)
+          for: 5m
+          labels:
+            severity: high
+            component: secret-rotation
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "Secret rotation is overdue"
+            description: "Secret {{ $labels.secret_name }} has not been rotated for {{ $value | humanizeDuration }} and is overdue for rotation."
+            runbook: "https://runbooks.mita.finance/secret-rotation-overdue"
+            action: "Trigger manual rotation or check automated rotation schedule"
+        
+        # High: Secret access rate anomaly
+        - alert: SecretAccessRateAnomaly
+          expr: rate(aws_secretsmanager_get_secret_value_total[5m]) > (avg_over_time(aws_secretsmanager_get_secret_value_total[1h]) * 5)
+          for: 3m
+          labels:
+            severity: high
+            component: secret-access
+            security: "anomaly"
+          annotations:
+            summary: "Unusual secret access pattern detected"
+            description: "Secret access rate is 5x higher than normal average. Possible security incident."
+            runbook: "https://runbooks.mita.finance/secret-access-anomaly"
+            action: "Investigate potential security breach"
+        
+        # High: KMS key access failures
+        - alert: KMSKeyAccessFailure
+          expr: increase(aws_kms_decrypt_errors_total[5m]) > 0
+          for: 2m
+          labels:
+            severity: high
+            component: kms
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "KMS key access failures detected"
+            description: "Failed to decrypt secrets using KMS key. Check key permissions and availability."
+            runbook: "https://runbooks.mita.finance/kms-key-access-failure"
+            action: "Check KMS key status and IAM permissions"
+        
+        # High: Secret store connectivity issues
+        - alert: SecretStoreConnectivityIssue
+          expr: externalsecret_store_connection_status == 0
+          for: 5m
+          labels:
+            severity: high
+            component: secret-store
+          annotations:
+            summary: "Secret store connectivity issues"
+            description: "Cannot connect to secret store {{ $labels.store_name }} in namespace {{ $labels.namespace }}"
+            runbook: "https://runbooks.mita.finance/secret-store-connectivity"
+            action: "Check network connectivity and credentials"
+
+    - name: mita.secret_management.medium
+      interval: 300s
+      rules:
+        # Medium: Secret refresh delays
+        - alert: SecretRefreshDelay
+          expr: (time() - externalsecret_last_sync_timestamp) > 900  # 15 minutes
+          for: 10m
+          labels:
+            severity: medium
+            component: external-secrets
+          annotations:
+            summary: "Secret refresh is delayed"
+            description: "External Secret {{ $labels.secret_name }} has not been refreshed for {{ $value | humanizeDuration }}"
+            runbook: "https://runbooks.mita.finance/secret-refresh-delay"
+            action: "Check External Secrets Operator health"
+        
+        # Medium: High secret access frequency
+        - alert: HighSecretAccessFrequency
+          expr: rate(externalsecret_sync_calls_total[1h]) > 100
+          for: 15m
+          labels:
+            severity: medium
+            component: external-secrets
+            cost: "optimization"
+          annotations:
+            summary: "High secret access frequency"
+            description: "Secret {{ $labels.secret_name }} is being accessed very frequently ({{ $value }} times/hour). Consider optimizing refresh intervals."
+            runbook: "https://runbooks.mita.finance/high-secret-access"
+            action: "Review and optimize secret refresh intervals"
+        
+        # Medium: Secret version mismatch
+        - alert: SecretVersionMismatch
+          expr: externalsecret_secret_version != aws_secretsmanager_secret_latest_version
+          for: 5m
+          labels:
+            severity: medium
+            component: external-secrets
+          annotations:
+            summary: "Secret version mismatch detected"
+            description: "External Secret {{ $labels.secret_name }} version does not match AWS Secrets Manager latest version"
+            runbook: "https://runbooks.mita.finance/secret-version-mismatch"
+            action: "Check secret synchronization and force refresh if needed"
+        
+        # Medium: Unused secrets detected
+        - alert: UnusedSecretsDetected
+          expr: (time() - kube_secret_last_used_timestamp) > 86400 * 30  # 30 days
+          for: 1h
+          labels:
+            severity: medium
+            component: secret-lifecycle
+            cost: "optimization"
+          annotations:
+            summary: "Unused secrets detected"
+            description: "Secret {{ $labels.secret }} has not been used for 30 days and may be safe to remove"
+            runbook: "https://runbooks.mita.finance/unused-secrets"
+            action: "Review secret usage and consider removal"
+
+    - name: mita.secret_management.compliance
+      interval: 3600s  # Check hourly
+      rules:
+        # Compliance: Secret audit trail
+        - alert: SecretAuditLogGap
+          expr: absent_over_time(aws_cloudtrail_secret_access_events[2h])
+          for: 1h
+          labels:
+            severity: high
+            component: audit
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "Secret audit log gap detected"
+            description: "No secret access events have been logged to CloudTrail for 2 hours. Compliance audit trail may be broken."
+            runbook: "https://runbooks.mita.finance/secret-audit-log-gap"
+            action: "Check CloudTrail configuration and log delivery"
+        
+        # Compliance: Secret encryption validation
+        - alert: SecretEncryptionValidationFailure
+          expr: aws_secretsmanager_secret_encrypted != 1
+          for: 5m
+          labels:
+            severity: critical
+            component: encryption
+            compliance: "SOX,PCI-DSS,GDPR"
+          annotations:
+            summary: "Secret encryption validation failed"
+            description: "Secret {{ $labels.secret_name }} is not properly encrypted. Compliance violation."
+            runbook: "https://runbooks.mita.finance/secret-encryption-failure"
+            action: "Immediate remediation required for compliance"
+        
+        # Compliance: Secret retention policy violation
+        - alert: SecretRetentionPolicyViolation
+          expr: (time() - aws_secretsmanager_secret_created_timestamp) > (2555 * 86400)  # 7 years
+          for: 1h
+          labels:
+            severity: medium
+            component: retention
+            compliance: "SOX"
+          annotations:
+            summary: "Secret retention policy violation"
+            description: "Secret {{ $labels.secret_name }} exceeds 7-year retention policy requirement"
+            runbook: "https://runbooks.mita.finance/secret-retention-violation"
+            action: "Review secret lifecycle and archive if appropriate"
+
+    - name: mita.secret_management.performance
+      interval: 120s
+      rules:
+        # Performance: Slow secret retrieval
+        - alert: SlowSecretRetrieval
+          expr: histogram_quantile(0.95, rate(externalsecret_sync_duration_seconds_bucket[5m])) > 10
+          for: 5m
+          labels:
+            severity: medium
+            component: performance
+          annotations:
+            summary: "Slow secret retrieval detected"
+            description: "95th percentile secret retrieval time is {{ $value }}s, which is above the 10s threshold"
+            runbook: "https://runbooks.mita.finance/slow-secret-retrieval"
+            action: "Investigate External Secrets Operator performance"
+        
+        # Performance: High memory usage by External Secrets Operator
+        - alert: ExternalSecretsHighMemoryUsage
+          expr: container_memory_usage_bytes{container="external-secrets"} / container_spec_memory_limit_bytes > 0.8
+          for: 10m
+          labels:
+            severity: medium
+            component: external-secrets
+            resource: "memory"
+          annotations:
+            summary: "External Secrets Operator high memory usage"
+            description: "External Secrets Operator memory usage is {{ $value | humanizePercentage }} of limit"
+            runbook: "https://runbooks.mita.finance/external-secrets-high-memory"
+            action: "Consider increasing memory limits or investigate memory leaks"
+        
+        # Performance: External Secrets Operator restart frequency
+        - alert: ExternalSecretsFrequentRestarts
+          expr: increase(kube_pod_container_status_restarts_total{container="external-secrets"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: medium
+            component: external-secrets
+            stability: "restarts"
+          annotations:
+            summary: "External Secrets Operator restarting frequently"
+            description: "External Secrets Operator has restarted {{ $value }} times in the last hour"
+            runbook: "https://runbooks.mita.finance/external-secrets-frequent-restarts"
+            action: "Investigate External Secrets Operator stability issues"
+
+    - name: mita.secret_management.business
+      interval: 3600s
+      rules:
+        # Business: Secret-related application errors
+        - alert: SecretRelatedApplicationErrors
+          expr: increase(mita_application_errors_total{error_type="secret_unavailable"}[1h]) > 5
+          for: 5m
+          labels:
+            severity: high
+            component: application
+            business_impact: "high"
+          annotations:
+            summary: "Application errors due to secret unavailability"
+            description: "{{ $value }} application errors in the last hour due to secret unavailability"
+            runbook: "https://runbooks.mita.finance/secret-related-app-errors"
+            action: "Check secret availability and application secret handling"
+        
+        # Business: Authentication failures due to JWT issues
+        - alert: AuthenticationFailuresDueToJWT
+          expr: increase(mita_auth_failures_total{reason="invalid_jwt"}[5m]) > 10
+          for: 2m
+          labels:
+            severity: critical
+            component: authentication
+            business_impact: "critical"
+            pagerduty: "true"
+          annotations:
+            summary: "High authentication failures due to JWT issues"
+            description: "{{ $value }} authentication failures in 5 minutes due to JWT problems. User access is impacted."
+            runbook: "https://runbooks.mita.finance/jwt-auth-failures"
+            action: "Check JWT secret availability and validity immediately"
+
+---
+# ServiceMonitor for External Secrets Operator metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: external-secrets-operator
+  namespace: external-secrets-system
+  labels:
+    app: external-secrets
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-secrets
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+
+---
+# ServiceMonitor for AWS Secrets Manager metrics (via CloudWatch exporter)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aws-secrets-manager
+  namespace: monitoring
+  labels:
+    app: aws-secrets-manager
+spec:
+  selector:
+    matchLabels:
+      app: cloudwatch-exporter
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 30s

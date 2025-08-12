@@ -1,6 +1,8 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../services/accessibility_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
@@ -14,6 +16,7 @@ class DailyBudgetScreen extends StatefulWidget {
 
 class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   final ApiService _apiService = ApiService();
+  final AccessibilityService _accessibilityService = AccessibilityService.instance;
   bool _isLoading = true;
   bool _isRedistributing = false;
   List<dynamic> _budgets = [];
@@ -26,6 +29,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   @override
   void initState() {
     super.initState();
+    _accessibilityService.initialize().then((_) {
+      _accessibilityService.announceNavigation(
+        'Daily Budget Dashboard',
+        description: 'Smart budget tracking and financial insights',
+      );
+    });
     _initializeData();
     _startLiveUpdates();
   }
@@ -46,7 +55,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
 
   void _startLiveUpdates() {
     // Temporarily disabled live updates to prevent recurring server errors
-    print('Daily budget live updates disabled due to backend server errors');
+    logWarning('Daily budget live updates disabled due to backend server errors', tag: 'DAILY_BUDGET_UPDATES');
     
     // TODO: Re-enable when backend is stable:
     // _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
@@ -131,6 +140,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
       _isRedistributing = true;
     });
 
+    _accessibilityService.announceToScreenReader(
+      'Starting budget redistribution',
+      financialContext: 'Budget Management',
+      isImportant: true,
+    );
+
     try {
       // Get current calendar data for redistribution
       final calendarData = await _apiService.getCalendar();
@@ -152,22 +167,42 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
       await _initializeData();
       
       if (mounted) {
+        _accessibilityService.announceToScreenReader(
+          'Budget successfully redistributed. Budget amounts have been updated.',
+          financialContext: 'Budget Management',
+          isImportant: true,
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Budget successfully redistributed!'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Color(0xFF84FAA1),
+          SnackBar(
+            content: Semantics(
+              liveRegion: true,
+              label: 'Success: Budget successfully redistributed',
+              child: const Text('Budget successfully redistributed!'),
+            ),
+            duration: const Duration(seconds: 3),
+            backgroundColor: const Color(0xFF84FAA1),
           ),
         );
       }
     } catch (e) {
       logError('Error during budget redistribution: $e');
       if (mounted) {
+        _accessibilityService.announceToScreenReader(
+          'Failed to redistribute budget. Please try again.',
+          financialContext: 'Budget Management Error',
+          isImportant: true,
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to redistribute budget. Please try again.'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Color(0xFFFF5C5C),
+          SnackBar(
+            content: Semantics(
+              liveRegion: true,
+              label: 'Error: Failed to redistribute budget',
+              child: const Text('Failed to redistribute budget. Please try again.'),
+            ),
+            duration: const Duration(seconds: 3),
+            backgroundColor: const Color(0xFFFF5C5C),
           ),
         );
       }
@@ -182,20 +217,43 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
 
   Future<void> _triggerAutoBudgetAdaptation() async {
     try {
+      _accessibilityService.announceToScreenReader(
+        'Starting automatic budget adaptation',
+        financialContext: 'Budget Management',
+        isImportant: true,
+      );
+      
       await _apiService.triggerBudgetAdaptation();
       await _initializeData();
       
       if (mounted) {
+        _accessibilityService.announceToScreenReader(
+          'Budget adapted based on your spending patterns. Budget amounts have been updated.',
+          financialContext: 'Budget Management',
+          isImportant: true,
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Budget adapted based on your spending patterns!'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Color(0xFF84FAA1),
+          SnackBar(
+            content: Semantics(
+              liveRegion: true,
+              label: 'Success: Budget adapted based on spending patterns',
+              child: const Text('Budget adapted based on your spending patterns!'),
+            ),
+            duration: const Duration(seconds: 3),
+            backgroundColor: const Color(0xFF84FAA1),
           ),
         );
       }
     } catch (e) {
       logError('Error during auto adaptation: $e');
+      if (mounted) {
+        _accessibilityService.announceToScreenReader(
+          'Failed to adapt budget automatically. Please try again.',
+          financialContext: 'Budget Management Error',
+          isImportant: true,
+        );
+      }
     }
   }
 
@@ -267,51 +325,74 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
     final remaining = totalBudget - totalSpent;
     final percentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: percentage > 0.8 
-              ? [const Color(0xFFFF5C5C), const Color(0xFFFF8A65)]
-              : percentage > 0.6 
-                ? [const Color(0xFFFFD25F), const Color(0xFFFFE082)]
-                : [const Color(0xFF84FAA1), const Color(0xFFA8E6A0)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    String statusDescription;
+    if (percentage > 0.8) {
+      statusDescription = 'Warning: Over 80% of budget used';
+    } else if (percentage > 0.6) {
+      statusDescription = 'Caution: Over 60% of budget used';
+    } else {
+      statusDescription = 'Good: Budget within safe limits';
+    }
+    
+    return Semantics(
+      label: _accessibilityService.createProgressSemanticLabel(
+        category: 'Total Budget',
+        spent: totalSpent,
+        limit: totalBudget,
+        status: statusDescription,
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: percentage > 0.8 
+                ? [const Color(0xFFFF5C5C), const Color(0xFFFF8A65)]
+                : percentage > 0.6 
+                  ? [const Color(0xFFFFD25F), const Color(0xFFFFE082)]
+                  : [const Color(0xFF84FAA1), const Color(0xFFA8E6A0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Live Budget Status',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontFamily: 'Sora',
+                Semantics(
+                  header: true,
+                  label: 'Live Budget Status',
+                  child: const Text(
+                    'Live Budget Status',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFamily: 'Sora',
+                    ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _getBudgetModeDisplayName(_budgetMode),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
+                Semantics(
+                  label: 'Budget Mode: ${_getBudgetModeDisplayName(_budgetMode)}',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _getBudgetModeDisplayName(_budgetMode),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -321,67 +402,92 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Total Budget',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    Text(
-                      '\$${totalBudget.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                Semantics(
+                  label: _accessibilityService.createFinancialSemanticLabel(
+                    label: 'Total Budget',
+                    amount: totalBudget,
+                    isBalance: true,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Budget',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
-                    ),
-                  ],
+                      Text(
+                        '\$${totalBudget.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Spent',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    Text(
-                      '\$${totalSpent.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                Semantics(
+                  label: _accessibilityService.createFinancialSemanticLabel(
+                    label: 'Total Spent',
+                    amount: totalSpent,
+                    isBalance: false,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Spent',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
-                    ),
-                  ],
+                      Text(
+                        '\$${totalSpent.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Remaining',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    Text(
-                      '\$${remaining.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                Semantics(
+                  label: _accessibilityService.createFinancialSemanticLabel(
+                    label: 'Remaining Budget',
+                    amount: remaining,
+                    status: remaining >= 0 ? 'Available' : 'Over budget',
+                    isBalance: true,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Remaining',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
-                    ),
-                  ],
+                      Text(
+                        '\$${remaining.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: percentage.clamp(0.0, 1.0),
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                minHeight: 8,
+            Semantics(
+              label: 'Budget progress bar. ${(percentage * 100).toStringAsFixed(1)} percent of budget used',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: percentage.clamp(0.0, 1.0),
+                  backgroundColor: Colors.white.withValues(alpha: 0.3),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  minHeight: 8,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -405,45 +511,65 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Smart Budget Actions',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Sora',
-                color: Color(0xFF193C57),
+            Semantics(
+              header: true,
+              child: const Text(
+                'Smart Budget Actions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Sora',
+                  color: Color(0xFF193C57),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isRedistributing ? null : _triggerBudgetRedistribution,
-                    icon: _isRedistributing 
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.balance, size: 18),
-                    label: Text(_isRedistributing ? 'Redistributing...' : 'Redistribute'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B73FF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Semantics(
+                    label: _accessibilityService.createButtonSemanticLabel(
+                      action: _isRedistributing ? 'Redistributing budget' : 'Redistribute Budget',
+                      context: _isRedistributing 
+                        ? 'Budget redistribution in progress, please wait'
+                        : 'Reallocate budget between days based on spending patterns',
+                      isDisabled: _isRedistributing,
                     ),
+                    button: true,
+                    child: ElevatedButton.icon(
+                      onPressed: _isRedistributing ? null : _triggerBudgetRedistribution,
+                      icon: _isRedistributing 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.balance, size: 18),
+                      label: Text(_isRedistributing ? 'Redistributing...' : 'Redistribute'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B73FF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ).withMinimumTouchTarget(),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _triggerAutoBudgetAdaptation,
-                    icon: const Icon(Icons.auto_fix_high, size: 18),
-                    label: const Text('Auto Adapt'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF84FAA1),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Semantics(
+                    label: _accessibilityService.createButtonSemanticLabel(
+                      action: 'Auto Adapt Budget',
+                      context: 'Automatically adjust budget based on your spending patterns and behavior',
                     ),
+                    button: true,
+                    child: ElevatedButton.icon(
+                      onPressed: _triggerAutoBudgetAdaptation,
+                      icon: const Icon(Icons.auto_fix_high, size: 18),
+                      label: const Text('Auto Adapt'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF84FAA1),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ).withMinimumTouchTarget(),
                   ),
                 ),
               ],
@@ -469,11 +595,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.lightbulb, color: Color(0xFFFFD25F)),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.lightbulb, color: Color(0xFFFFD25F)),
+                SizedBox(width: 8),
+                Text(
                   'AI Budget Suggestions',
                   style: TextStyle(
                     fontSize: 16,
@@ -507,7 +633,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                   ],
                 ),
               ),
-            ).toList(),
+            ),
           ],
         ),
       ),
@@ -526,11 +652,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.history, color: Color(0xFF6B73FF)),
-                const SizedBox(width: 8),
-                const Text(
+                Icon(Icons.history, color: Color(0xFF6B73FF)),
+                SizedBox(width: 8),
+                Text(
                   'Recent Redistribution',
                   style: TextStyle(
                     fontSize: 16,
@@ -568,7 +694,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                   ],
                 ),
               ),
-            ).toList(),
+            ),
           ],
         ),
       ),
@@ -580,12 +706,16 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
       appBar: AppBar(
-        title: const Text(
-          'Smart Daily Budget',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+        title: Semantics(
+          header: true,
+          label: 'Smart Daily Budget Dashboard',
+          child: const Text(
+            'Smart Daily Budget',
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF193C57),
+            ),
           ),
         ),
         backgroundColor: const Color(0xFFFFF9F0),
@@ -593,17 +723,31 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to budget settings/mode selection
-              Navigator.pushNamed(context, '/budget_settings');
-            },
+          Semantics(
+            label: _accessibilityService.createButtonSemanticLabel(
+              action: 'Budget Settings',
+              context: 'Configure budget modes and preferences',
+            ),
+            button: true,
+            child: IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.pushNamed(context, '/budget_settings');
+                _accessibilityService.announceNavigation(
+                  'Budget Settings',
+                  description: 'Configure your budget preferences',
+                );
+              },
+            ).withMinimumTouchTarget(),
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Semantics(
+              label: 'Loading budget data. Please wait.',
+              liveRegion: true,
+              child: const Center(child: CircularProgressIndicator()),
+            )
           : RefreshIndicator(
               onRefresh: _initializeData,
               child: SingleChildScrollView(
@@ -618,30 +762,36 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     
                     // Original budget list
                     if (_budgets.isEmpty)
-                      Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 3,
-                        child: const Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text(
-                                'No budget data available',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
+                      Semantics(
+                        label: 'No budget data available. Your intelligent budget tracking will appear here when data is loaded.',
+                        child: Card(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 3,
+                          child: const Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Column(
+                              children: [
+                                Semantics(
+                                  label: 'Empty wallet icon',
+                                  child: Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
                                 ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Your intelligent budget tracking will appear here',
-                                style: TextStyle(color: Colors.grey),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                                SizedBox(height: 16),
+                                Text(
+                                  'No budget data available',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Your intelligent budget tracking will appear here',
+                                  style: TextStyle(color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       )
@@ -649,48 +799,79 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                       ...(_budgets.map<Widget>((budget) {
                         final date = DateFormat('MMMM d, yyyy').format(DateTime.parse(budget['date']));
                         final status = budget['status'] ?? 'unknown';
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 3,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            leading: Icon(getStatusIcon(status), color: getStatusColor(status), size: 32),
-                            title: Text(
-                              date,
-                              style: const TextStyle(
-                                fontFamily: 'Sora',
-                                fontWeight: FontWeight.bold,
+                        final spent = (budget['spent'] ?? 0).toDouble();
+                        final limit = (budget['limit'] ?? 1).toDouble();
+                        final percentage = ((spent / limit) * 100).round();
+                        
+                        return Semantics(
+                          label: _accessibilityService.createProgressSemanticLabel(
+                            category: 'Budget for $date',
+                            spent: spent,
+                            limit: limit,
+                            status: status,
+                          ),
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 3,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: Semantics(
+                                label: 'Status icon: $status',
+                                child: Icon(getStatusIcon(status), color: getStatusColor(status), size: 32),
                               ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
-                                  style: const TextStyle(fontFamily: 'Manrope'),
+                              title: Semantics(
+                                label: 'Date: $date',
+                                child: Text(
+                                  date,
+                                  style: const TextStyle(
+                                    fontFamily: 'Sora',
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                LinearProgressIndicator(
-                                  value: ((budget['spent'] ?? 0) / (budget['limit'] ?? 1)).clamp(0.0, 1.0),
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: AlwaysStoppedAnimation<Color>(getStatusColor(status)),
-                                ),
-                              ],
-                            ),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: getStatusColor(status).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                status.toUpperCase(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: getStatusColor(status),
-                                  fontSize: 12,
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Semantics(
+                                    label: _accessibilityService.createFinancialSemanticLabel(
+                                      label: 'Spending summary',
+                                      amount: spent,
+                                      category: 'out of ${_accessibilityService.formatCurrency(limit)} limit',
+                                    ),
+                                    child: Text(
+                                      'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
+                                      style: const TextStyle(fontFamily: 'Manrope'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Semantics(
+                                    label: 'Progress indicator: $percentage percent of budget used',
+                                    child: LinearProgressIndicator(
+                                      value: ((budget['spent'] ?? 0) / (budget['limit'] ?? 1)).clamp(0.0, 1.0),
+                                      backgroundColor: Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(getStatusColor(status)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: Semantics(
+                                label: 'Budget status: $status',
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: getStatusColor(status).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status.toUpperCase(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: getStatusColor(status),
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

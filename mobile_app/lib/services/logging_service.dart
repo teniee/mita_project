@@ -2,8 +2,13 @@
 /// Replaces debug print statements with structured logging
 /// Supports multiple log levels and proper production handling
 ///
+library;
 import 'dart:developer' as developer;
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Log levels for different types of messages
 enum LogLevel {
@@ -160,16 +165,166 @@ class LoggingService {
     );
   }
 
-  /// Log to file (future implementation)
+  /// Log to file for production debugging
   void _logToFile(LogEntry entry) {
-    // TODO: Implement file logging for production
-    // This would write to a local file for debugging purposes
+    try {
+      // Only log WARNING and above to file to avoid excessive file growth
+      if (entry.level.index < LogLevel.warning.index) return;
+      
+      _writeLogToFile(entry);
+    } catch (e) {
+      // Fallback to developer log if file logging fails
+      developer.log(
+        'Failed to write to log file: $e',
+        name: 'LOGGING_SERVICE',
+        level: 1000,
+      );
+    }
+  }
+
+  /// Write log entry to file with rotation
+  Future<void> _writeLogToFile(LogEntry entry) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final logFile = File('${directory.path}/mita_logs.txt');
+      
+      // Check file size and rotate if needed (max 5MB)
+      if (await logFile.exists()) {
+        final fileSize = await logFile.length();
+        if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+          await _rotateLogFile(logFile);
+        }
+      }
+      
+      // Format log entry for file
+      final timestamp = DateTime.now().toIso8601String();
+      final logLine = jsonEncode({
+        'timestamp': timestamp,
+        'level': entry.level.name.toUpperCase(),
+        'tag': entry.tag,
+        'message': entry.message,
+        'extra': entry.extra,
+        'error': entry.error?.toString(),
+        'stackTrace': entry.stackTrace?.toString(),
+      });
+      
+      // Append to log file
+      await logFile.writeAsString('$logLine\n', mode: FileMode.append);
+      
+    } catch (e) {
+      developer.log(
+        'Error writing to log file: $e',
+        name: 'LOGGING_SERVICE',
+        level: 1000,
+      );
+    }
+  }
+
+  /// Rotate log file when it gets too large
+  Future<void> _rotateLogFile(File currentFile) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final backupFile = File('${directory.path}/mita_logs_old.txt');
+      
+      // Remove old backup if exists
+      if (await backupFile.exists()) {
+        await backupFile.delete();
+      }
+      
+      // Move current to backup
+      await currentFile.rename(backupFile.path);
+      
+      developer.log(
+        'Log file rotated due to size limit',
+        name: 'LOGGING_SERVICE',
+        level: 800,
+      );
+    } catch (e) {
+      developer.log(
+        'Failed to rotate log file: $e',
+        name: 'LOGGING_SERVICE',
+        level: 1000,
+      );
+    }
   }
 
   /// Report critical errors to crash reporting
   void _reportToCrashlytics(LogEntry entry) {
-    // TODO: Integrate with Firebase Crashlytics or Sentry
-    // This would send error reports in production
+    try {
+      // Only report ERROR and CRITICAL level logs to avoid spam
+      if (entry.level.index < LogLevel.error.index) return;
+      
+      // Don't report to Crashlytics in debug mode
+      if (kDebugMode) return;
+      
+      _sendToCrashlytics(entry);
+    } catch (e) {
+      developer.log(
+        'Failed to report to Crashlytics: $e',
+        name: 'LOGGING_SERVICE',
+        level: 1000,
+      );
+    }
+  }
+
+  /// Send error report to Firebase Crashlytics
+  Future<void> _sendToCrashlytics(LogEntry entry) async {
+    try {
+      final crashlytics = FirebaseCrashlytics.instance;
+      
+      // Set user context for correlation
+      if (entry.extra != null && entry.extra!['user_id'] != null) {
+        await crashlytics.setUserIdentifier(entry.extra!['user_id'].toString());
+      }
+      
+      // Add custom keys for context
+      await crashlytics.setCustomKey('log_tag', entry.tag ?? 'UNKNOWN');
+      await crashlytics.setCustomKey('log_level', entry.level.name.toUpperCase());
+      await crashlytics.setCustomKey('timestamp', DateTime.now().toIso8601String());
+      
+      // Add extra context data
+      if (entry.extra != null) {
+        for (final key in entry.extra!.keys) {
+          if (key != 'user_id') { // user_id already set above
+            final value = entry.extra![key];
+            if (value != null) {
+              await crashlytics.setCustomKey('extra_$key', value.toString());
+            }
+          }
+        }
+      }
+      
+      // Report the error
+      if (entry.error != null) {
+        // Report with exception and stack trace
+        await crashlytics.recordError(
+          entry.error,
+          entry.stackTrace,
+          reason: '${entry.tag ?? 'UNKNOWN'}: ${entry.message}',
+          printDetails: false, // Don't print to console in production
+        );
+      } else {
+        // Report as a non-fatal message
+        await crashlytics.log('${entry.tag ?? 'UNKNOWN'}: ${entry.message}');
+        
+        // For CRITICAL level without exception, create a custom error
+        if (entry.level == LogLevel.critical) {
+          await crashlytics.recordError(
+            Exception('Critical Error: ${entry.message}'),
+            null, // No stack trace available
+            reason: '${entry.tag ?? 'UNKNOWN'}: Critical Error',
+            printDetails: false,
+          );
+        }
+      }
+      
+    } catch (e) {
+      developer.log(
+        'Error sending to Crashlytics: $e',
+        name: 'LOGGING_SERVICE',
+        level: 1000,
+      );
+    }
   }
 
   /// Get icon for log level

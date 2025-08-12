@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'logging_service.dart';
 
 /// Confidence levels for OCR results
 enum OCRConfidence { low, medium, high }
@@ -309,7 +309,7 @@ class OCRService {
 
       return suggestions.take(5).toList();
     } catch (e) {
-      debugPrint('Error getting merchant suggestions: $e');
+      logError('Error getting merchant suggestions: $e', tag: 'OCR_SERVICE');
       return [];
     }
   }
@@ -326,7 +326,7 @@ class OCRService {
         amount: amount,
       );
     } catch (e) {
-      debugPrint('Error getting category suggestions: $e');
+      logError('Error getting category suggestions: $e', tag: 'OCR_SERVICE');
       return [];
     }
   }
@@ -341,7 +341,7 @@ class OCRService {
       // In a real implementation, this would use AI to improve accuracy
       return result;
     } catch (e) {
-      debugPrint('Error validating OCR result: $e');
+      logError('Error validating OCR result: $e', tag: 'OCR_SERVICE');
       return result;
     }
   }

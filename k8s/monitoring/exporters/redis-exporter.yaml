@@ -1,0 +1,469 @@
+# Redis Exporter for monitoring Redis performance and health
+# Production-grade monitoring for MITA Financial Services Redis instances
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: monitoring
+    environment: production
+    service: redis-monitoring
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: redis-exporter
+        app.kubernetes.io/component: monitoring
+        environment: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.55.0
+          ports:
+            - name: http-metrics
+              containerPort: 9121
+              protocol: TCP
+          env:
+            # Redis connection configuration
+            - name: REDIS_ADDR
+              value: "redis://redis-host:6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: password
+            - name: REDIS_USER
+              value: "default"
+            
+            # Exporter configuration
+            - name: REDIS_EXPORTER_LOG_FORMAT
+              value: "json"
+            - name: REDIS_EXPORTER_DEBUG
+              value: "false"
+            - name: REDIS_EXPORTER_CHECK_KEYS
+              value: "mita:*,session:*,task:*,queue:*"
+            - name: REDIS_EXPORTER_CHECK_KEY_GROUPS
+              value: "mita:session:*=session_keys,mita:task:*=task_keys,mita:queue:*=queue_keys"
+            - name: REDIS_EXPORTER_COUNT_KEYS
+              value: "mita:*,session:*,task:*,queue:*"
+            - name: REDIS_EXPORTER_SCRIPT_PATH
+              value: "/scripts"
+            
+            # Financial services specific monitoring
+            - name: REDIS_EXPORTER_NAMESPACE
+              value: "mita_redis"
+            - name: REDIS_EXPORTER_CONNECTION_TIMEOUT
+              value: "15s"
+            - name: REDIS_EXPORTER_PING_ON_CONNECT
+              value: "true"
+            - name: REDIS_EXPORTER_INCL_SYSTEM_METRICS
+              value: "true"
+            - name: REDIS_EXPORTER_SKIP_TLS_VERIFICATION
+              value: "false"
+          
+          args:
+            - "--log-format=json"
+            - "--namespace=mita_redis"
+            - "--check-keys=mita:*,session:*,task:*,queue:*"
+            - "--check-key-groups=mita:session:*=session_keys,mita:task:*=task_keys,mita:queue:*=queue_keys"
+            - "--count-keys=mita:*,session:*,task:*,queue:*"
+            - "--include-system-metrics"
+            - "--redis.password-file=/etc/redis/password"
+          
+          volumeMounts:
+            - name: redis-credentials
+              mountPath: /etc/redis
+              readOnly: true
+            - name: redis-scripts
+              mountPath: /scripts
+              readOnly: true
+          
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9121
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9121
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      
+      volumes:
+        - name: redis-credentials
+          secret:
+            secretName: redis-credentials
+            defaultMode: 0400
+        - name: redis-scripts
+          configMap:
+            name: redis-exporter-scripts
+            defaultMode: 0555
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values: ["redis-exporter"]
+                topologyKey: kubernetes.io/hostname
+      
+      tolerations:
+        - key: "monitoring"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http-metrics
+      port: 9121
+      targetPort: 9121
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: redis-exporter
+
+---
+# Custom Redis monitoring scripts for financial metrics
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-exporter-scripts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: scripts
+data:
+  financial_metrics.lua: |
+    -- Financial services specific Redis metrics collection
+    local results = {}
+    
+    -- Session metrics
+    local session_count = redis.call('eval', 'return #redis.call("keys", "session:*")', 0)
+    results['mita_redis_sessions_total'] = session_count
+    
+    -- Task queue metrics
+    local task_queues = {'critical', 'high', 'default', 'low'}
+    for _, queue in ipairs(task_queues) do
+      local queue_depth = redis.call('llen', 'rq:queue:' .. queue)
+      results['mita_redis_queue_depth{queue="' .. queue .. '"}'] = queue_depth
+      
+      local failed_jobs = redis.call('llen', 'rq:failed:' .. queue)
+      results['mita_redis_failed_jobs{queue="' .. queue .. '"}'] = failed_jobs
+    end
+    
+    -- Cache hit/miss metrics
+    local cache_hits = redis.call('get', 'mita:cache:hits') or 0
+    local cache_misses = redis.call('get', 'mita:cache:misses') or 0
+    results['mita_redis_cache_hits_total'] = cache_hits
+    results['mita_redis_cache_misses_total'] = cache_misses
+    
+    -- Financial data cache metrics
+    local financial_cache_keys = redis.call('eval', 'return #redis.call("keys", "mita:financial:*")', 0)
+    results['mita_redis_financial_cache_keys'] = financial_cache_keys
+    
+    -- User session analytics
+    local active_sessions = redis.call('eval', 'return #redis.call("keys", "mita:active:*")', 0)
+    results['mita_redis_active_sessions'] = active_sessions
+    
+    return results
+  
+  queue_health.lua: |
+    -- Queue health monitoring script
+    local results = {}
+    
+    -- Check for stalled queues (no activity in last 5 minutes)
+    local current_time = redis.call('time')[1]
+    local five_minutes_ago = current_time - 300
+    
+    local queues = {'critical', 'high', 'default', 'low'}
+    for _, queue in ipairs(queues) do
+      local last_activity = redis.call('get', 'rq:queue:' .. queue .. ':last_activity') or 0
+      local is_stalled = (last_activity < five_minutes_ago) and 
+                        (redis.call('llen', 'rq:queue:' .. queue) > 0) and 1 or 0
+      results['mita_redis_queue_stalled{queue="' .. queue .. '"}'] = is_stalled
+    end
+    
+    -- Dead letter queue monitoring
+    local dlq_size = redis.call('llen', 'rq:dlq')
+    results['mita_redis_dead_letter_queue_size'] = dlq_size
+    
+    return results
+
+---
+# ServiceMonitor for Redis Exporter
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis-exporter
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      metricRelabelings:
+        # Keep only relevant Redis metrics
+        - sourceLabels: [__name__]
+          regex: '(redis_.*|mita_redis_.*)'
+          action: keep
+        # Add environment label
+        - targetLabel: environment
+          replacement: "production"
+        # Add service label
+        - targetLabel: service
+          replacement: "redis"
+        # Add instance type
+        - targetLabel: instance_type
+          replacement: "cache"
+
+---
+# PrometheusRule for Redis monitoring alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: redis-monitoring-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: alerts
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  groups:
+    - name: redis.rules
+      interval: 30s
+      rules:
+        # Redis availability
+        - alert: RedisDown
+          expr: redis_up == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "service-disruption"
+          annotations:
+            summary: "Redis instance is down"
+            description: "Redis instance {{ $labels.instance }} has been down for more than 1 minute."
+            runbook_url: "https://runbooks.mita.finance/alerts/redis-down"
+            impact: "Session management and caching unavailable - app performance severely degraded"
+            action: "Check Redis service health and restart if necessary"
+
+        # Redis memory usage
+        - alert: RedisHighMemoryUsage
+          expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "performance"
+          annotations:
+            summary: "Redis memory usage is high"
+            description: "Redis instance {{ $labels.instance }} memory usage is {{ $value | humanizePercentage }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/redis-memory"
+            impact: "Cache performance degradation and potential data eviction"
+            action: "Review memory usage patterns and consider scaling Redis"
+
+        # Redis connection issues
+        - alert: RedisHighConnectionCount
+          expr: redis_connected_clients > 1000
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "performance"
+          annotations:
+            summary: "High number of Redis connections"
+            description: "Redis instance {{ $labels.instance }} has {{ $value }} connected clients."
+            runbook_url: "https://runbooks.mita.finance/alerts/redis-connections"
+            impact: "Potential connection exhaustion and performance issues"
+            action: "Investigate connection leaks and scale Redis if necessary"
+
+        # Queue monitoring
+        - alert: MitaQueueBacklog
+          expr: mita_redis_queue_depth > 100
+          for: 5m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "High queue depth in Redis"
+            description: "Queue {{ $labels.queue }} has {{ $value }} items pending."
+            runbook_url: "https://runbooks.mita.finance/alerts/queue-backlog"
+            impact: "Background tasks delayed - user experience may be affected"
+            action: "Scale workers or investigate queue processing issues"
+
+        # Queue stalled
+        - alert: MitaQueueStalled
+          expr: mita_redis_queue_stalled == 1
+          for: 3m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "service-disruption"
+          annotations:
+            summary: "Queue processing has stalled"
+            description: "Queue {{ $labels.queue }} appears to be stalled with pending items."
+            runbook_url: "https://runbooks.mita.finance/alerts/queue-stalled"
+            impact: "Critical background processing not functioning"
+            action: "Restart queue workers and investigate processing issues"
+
+        # Dead letter queue growth
+        - alert: MitaDeadLetterQueueGrowth
+          expr: increase(mita_redis_dead_letter_queue_size[10m]) > 5
+          for: 1m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "data-integrity"
+          annotations:
+            summary: "Dead letter queue is growing"
+            description: "Dead letter queue has grown by {{ $value }} items in the last 10 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/dead-letter-queue"
+            impact: "Failed tasks accumulating - potential data loss"
+            action: "Investigate failed tasks and implement fixes"
+
+        # Cache performance
+        - alert: MitaCacheHitRateDecline
+          expr: |
+            (
+              mita_redis_cache_hits_total
+              /
+              (mita_redis_cache_hits_total + mita_redis_cache_misses_total)
+            ) < 0.7
+          for: 10m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "performance"
+          annotations:
+            summary: "Cache hit rate is low"
+            description: "Cache hit rate is {{ $value | humanizePercentage }}, below 70% threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/cache-hit-rate"
+            impact: "Increased database load and slower response times"
+            action: "Review caching strategy and patterns"
+
+        # Redis persistence issues
+        - alert: RedisRDBSaveFailed
+          expr: redis_rdb_last_save_timestamp == 0
+          for: 1h
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "data-integrity"
+          annotations:
+            summary: "Redis RDB save has failed"
+            description: "Redis instance {{ $labels.instance }} has not completed a successful RDB save."
+            runbook_url: "https://runbooks.mita.finance/alerts/redis-persistence"
+            impact: "Data persistence issues - risk of data loss"
+            action: "Check Redis persistence configuration and disk space"
+
+---
+# Network policy for Redis Exporter
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-exporter-network-policy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis-exporter
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Prometheus to scrape metrics
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9121
+    # Allow access from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9121
+  egress:
+    # Allow connection to Redis
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

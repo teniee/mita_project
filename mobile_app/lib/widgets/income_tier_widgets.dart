@@ -8,11 +8,11 @@ class IncomeTierCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const IncomeTierCard({
-    Key? key,
+    super.key,
     required this.monthlyIncome,
     this.showDetails = true,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -175,10 +175,10 @@ class IncomeTierBadge extends StatelessWidget {
   final bool showIcon;
 
   const IncomeTierBadge({
-    Key? key,
+    super.key,
     required this.monthlyIncome,
     this.showIcon = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -239,9 +239,9 @@ class IncomeTierBadge extends StatelessWidget {
               ),
               const SizedBox(width: 6),
             ],
-            Text(
+            const Text(
               'User',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.blue,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -263,12 +263,12 @@ class IncomePercentageIndicator extends StatelessWidget {
   final bool showProgressBar;
 
   const IncomePercentageIndicator({
-    Key? key,
+    super.key,
     required this.amount,
     required this.monthlyIncome,
     required this.label,
     this.showProgressBar = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -343,10 +343,10 @@ class PeerComparisonCard extends StatelessWidget {
   final double monthlyIncome;
 
   const PeerComparisonCard({
-    Key? key,
+    super.key,
     required this.comparisonData,
     required this.monthlyIncome,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -581,11 +581,11 @@ class IncomeBasedGoalCard extends StatelessWidget {
   final VoidCallback? onAddGoal;
 
   const IncomeBasedGoalCard({
-    Key? key,
+    super.key,
     required this.goalData,
     required this.monthlyIncome,
     this.onAddGoal,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -764,10 +764,10 @@ class IncomeCategoryBreakdown extends StatelessWidget {
   final double monthlyIncome;
 
   const IncomeCategoryBreakdown({
-    Key? key,
+    super.key,
     required this.categorySpending,
     required this.monthlyIncome,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -857,7 +857,7 @@ class IncomeCategoryBreakdown extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

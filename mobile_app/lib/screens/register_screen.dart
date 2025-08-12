@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../services/password_validation_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -20,8 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
   }
 
-  bool _isValidPassword(String password) {
-    return password.length >= 8;
+  PasswordValidationResult _validatePassword(String password) {
+    return PasswordValidationService.validatePassword(password);
   }
 
   String? _validateInputs() {
@@ -37,9 +38,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (password.isEmpty) {
       return 'Please enter a password';
     }
-    if (!_isValidPassword(password)) {
-      return 'Password must be at least 8 characters long';
+    
+    final passwordValidation = _validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return passwordValidation.issues.first;
     }
+    if (!passwordValidation.isStrong) {
+      return 'Password does not meet security requirements. ${passwordValidation.issues.join('; ')}';
+    }
+    
     return null;
   }
 

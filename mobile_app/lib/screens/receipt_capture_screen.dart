@@ -13,10 +13,10 @@ class ReceiptCaptureScreen extends StatefulWidget {
   final List<File>? initialImages;
 
   const ReceiptCaptureScreen({
-    Key? key,
+    super.key,
     this.enableBatchProcessing = false,
     this.initialImages,
-  }) : super(key: key);
+  });
 
   @override
   State<ReceiptCaptureScreen> createState() => _ReceiptCaptureScreenState();
@@ -33,7 +33,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   BatchOCRResult? _batchResult;
   String? _error;
   bool _isPremiumUser = false;
-  bool _showScanOverlay = false;
+  final bool _showScanOverlay = false;
   List<String> _merchantSuggestions = [];
   
   // Animation controllers
@@ -396,7 +396,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
             right: 0,
             child: LinearProgressIndicator(
               value: (_currentStep + 1) / 4,
-              backgroundColor: colorScheme.surfaceVariant,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(colorScheme.primary),
             ),
           ),

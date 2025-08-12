@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class ReferralScreen extends StatefulWidget {
-  const ReferralScreen({Key? key}) : super(key: key);
+  const ReferralScreen({super.key});
 
   @override
   State<ReferralScreen> createState() => _ReferralScreenState();

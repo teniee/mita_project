@@ -3,6 +3,10 @@ uvicorn[standard]==0.27.0.post1
 pydantic
 pydantic[email]
 pydantic-settings==2.2.1
+email-validator==2.1.0.post1
+phonenumbers==8.13.24
+pycountry==23.12.7
+bleach==6.1.0
 python-dotenv
 python-multipart
 numpy

@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 class EditExpenseScreen extends StatefulWidget {
   final Map<String, dynamic> expense;
 
-  const EditExpenseScreen({Key? key, required this.expense}) : super(key: key);
+  const EditExpenseScreen({super.key, required this.expense});
 
   @override
   State<EditExpenseScreen> createState() => _EditExpenseScreenState();
@@ -49,7 +49,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update expense: \$e')),
+        const SnackBar(content: Text('Failed to update expense: \$e')),
       );
     }
   }
@@ -71,11 +71,14 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       try {
         await _apiService.deleteExpense(widget.expense['id']);
         if (!mounted) return;
-        Navigator.pop(context, true);
+        final navigator = Navigator.of(context);
+        navigator.pop(true);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: \$e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete: \$e')),
+          );
+        }
       }
     }
   }

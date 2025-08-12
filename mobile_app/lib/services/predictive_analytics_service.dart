@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
@@ -106,7 +105,7 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   ) async {
     try {
       // Get category patterns
-      final patterns = await _patternAnalyzer.patterns;
+      final patterns = _patternAnalyzer.patterns;
       final categoryPattern = patterns?[category];
       
       if (categoryPattern == null) {
@@ -424,7 +423,7 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   Future<Map<String, FinancialPrediction>> _generateLocalPredictions(int daysAhead) async {
     final predictions = <String, FinancialPrediction>{};
     
-    final patterns = await _patternAnalyzer.patterns;
+    final patterns = _patternAnalyzer.patterns;
     if (patterns == null) return predictions;
 
     for (final pattern in patterns.entries) {

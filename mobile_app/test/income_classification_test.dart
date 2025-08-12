@@ -43,7 +43,7 @@ void main() {
       });
 
       test('Mississippi vs California comparison', () {
-        final monthlyIncome = 5000.0; // $60k annually
+        const monthlyIncome = 5000.0; // $60k annually
         
         // MS thresholds are much lower: low=26000, upper_middle=104000
         final msClassification = incomeService.classifyIncomeForLocation(
@@ -108,8 +108,8 @@ void main() {
 
       test('Floating point precision in classification', () {
         // Test income that exactly hits boundary after conversion
-        final caLowThreshold = 44935.0;
-        final monthlyIncome = caLowThreshold / 12;
+        const caLowThreshold = 44935.0;
+        const monthlyIncome = caLowThreshold / 12;
         
         final result = incomeService.classifyIncomeForLocation(
           monthlyIncome, 'US', stateCode: 'CA'
@@ -207,7 +207,7 @@ void main() {
       });
 
       test('Income range string accuracy', () {
-        final tier = IncomeTier.middle;
+        const tier = IncomeTier.middle;
         
         // Test legacy method
         final legacyRange = incomeService.getIncomeRangeString(tier);

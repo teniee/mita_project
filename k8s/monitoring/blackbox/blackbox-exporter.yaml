@@ -1,0 +1,543 @@
+# Blackbox Exporter for external service monitoring
+# Monitors external dependencies and SSL certificates for MITA Financial Services
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: monitoring
+    environment: production
+    compliance: "SOX,PCI-DSS"
+data:
+  blackbox.yml: |
+    modules:
+      # HTTP probes for API endpoints
+      http_2xx:
+        prober: http
+        timeout: 10s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200, 201, 202]
+          method: GET
+          headers:
+            Host: "mita.finance"
+            User-Agent: "MITA-HealthCheck/1.0"
+          no_follow_redirects: false
+          fail_if_ssl: false
+          fail_if_not_ssl: true
+          tls_config:
+            insecure_skip_verify: false
+          preferred_ip_protocol: "ip4"
+          ip_protocol_fallback: true
+      
+      # HTTP probe for health endpoints
+      http_health_check:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200]
+          method: GET
+          headers:
+            User-Agent: "MITA-HealthCheck/1.0"
+          no_follow_redirects: true
+          fail_if_ssl: false
+          fail_if_not_ssl: true
+          tls_config:
+            insecure_skip_verify: false
+      
+      # API endpoint probe with authentication
+      http_api_authenticated:
+        prober: http
+        timeout: 15s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200, 201, 401]  # 401 is expected without auth
+          method: GET
+          headers:
+            User-Agent: "MITA-API-HealthCheck/1.0"
+            Content-Type: "application/json"
+          no_follow_redirects: false
+          fail_if_ssl: false
+          fail_if_not_ssl: true
+          tls_config:
+            insecure_skip_verify: false
+      
+      # HTTPS probe with certificate validation
+      https_certificate:
+        prober: http
+        timeout: 10s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          method: GET
+          no_follow_redirects: true
+          fail_if_not_ssl: true
+          tls_config:
+            insecure_skip_verify: false
+          preferred_ip_protocol: "ip4"
+      
+      # TCP probe for database connectivity
+      tcp_connect:
+        prober: tcp
+        timeout: 5s
+        tcp:
+          preferred_ip_protocol: "ip4"
+      
+      # DNS probe for domain resolution
+      dns:
+        prober: dns
+        timeout: 5s
+        dns:
+          query_name: "mita.finance"
+          query_type: "A"
+          valid_rcodes:
+            - NOERROR
+          validate_answer_rrs:
+            fail_if_matches_regexp:
+              - ".*127.0.0.1"
+            fail_if_not_matches_regexp:
+              - ".*"
+      
+      # ICMP probe for network connectivity
+      icmp:
+        prober: icmp
+        timeout: 5s
+        icmp:
+          preferred_ip_protocol: "ip4"
+          source_ip_address: ""
+      
+      # External service dependency probes
+      openai_api_check:
+        prober: http
+        timeout: 30s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200, 401]  # 401 expected without API key
+          method: GET
+          headers:
+            User-Agent: "MITA-Dependency-Check/1.0"
+          no_follow_redirects: false
+          fail_if_ssl: false
+          fail_if_not_ssl: true
+          tls_config:
+            insecure_skip_verify: false
+      
+      # Email service probe
+      smtp_check:
+        prober: tcp
+        timeout: 10s
+        tcp:
+          preferred_ip_protocol: "ip4"
+          query_response:
+            - expect: "^220.*"
+              send: "EHLO mita.finance"
+            - expect: "^250.*"
+              send: "QUIT"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: monitoring
+    environment: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+        app.kubernetes.io/component: monitoring
+        environment: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9115"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: blackbox-exporter
+          image: prom/blackbox-exporter:v0.24.0
+          ports:
+            - name: http
+              containerPort: 9115
+              protocol: TCP
+          args:
+            - "--config.file=/etc/blackbox_exporter/config.yml"
+            - "--log.level=info"
+            - "--log.format=json"
+            - "--web.listen-address=:9115"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox_exporter
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_RAW  # Required for ICMP probes
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9115
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values: ["blackbox-exporter"]
+                topologyKey: kubernetes.io/hostname
+      tolerations:
+        - key: "monitoring"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9115"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9115
+      targetPort: 9115
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+
+---
+# ServiceMonitor for Blackbox Exporter
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+---
+# ServiceMonitor for external endpoint monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-external-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-external
+    app.kubernetes.io/component: monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  endpoints:
+    - port: http
+      path: /probe
+      interval: 60s
+      scrapeTimeout: 30s
+      params:
+        module: [http_2xx]
+        target: [https://mita.finance]
+      relabelings:
+        - sourceLabels: [__param_target]
+          targetLabel: instance
+        - sourceLabels: [__param_module]
+          targetLabel: module
+        - targetLabel: __address__
+          replacement: blackbox-exporter:9115
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'probe_.*'
+          action: keep
+        - targetLabel: service
+          replacement: "mita-website"
+        - targetLabel: environment
+          replacement: "production"
+
+---
+# PrometheusRule for Blackbox monitoring alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: blackbox-monitoring-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: alerts
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  groups:
+    - name: blackbox.rules
+      interval: 60s
+      rules:
+        # Website availability
+        - alert: MitaWebsiteDown
+          expr: probe_success{job="blackbox-external-monitoring", instance="https://mita.finance"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "customer-facing"
+          annotations:
+            summary: "MITA website is down"
+            description: "The main MITA website at {{ $labels.instance }} has been down for more than 2 minutes."
+            runbook_url: "https://runbooks.mita.finance/alerts/website-down"
+            impact: "Customers cannot access the website or create accounts"
+            action: "Check website infrastructure and CDN status immediately"
+
+        - alert: MitaWebsiteSlowResponse
+          expr: probe_duration_seconds{job="blackbox-external-monitoring", instance="https://mita.finance"} > 5
+          for: 3m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "user-experience"
+          annotations:
+            summary: "MITA website response time is slow"
+            description: "Website response time is {{ $value }}s, exceeding 5 second threshold."
+            runbook_url: "https://runbooks.mita.finance/alerts/slow-website"
+            impact: "Poor user experience accessing the website"
+            action: "Check website performance and CDN configuration"
+
+        # SSL certificate monitoring
+        - alert: MitaSSLCertificateExpiring
+          expr: (probe_ssl_earliest_cert_expiry{job="blackbox-external-monitoring"} - time()) / 86400 < 30
+          for: 1m
+          labels:
+            severity: warning
+            team: sre
+            compliance: "security"
+          annotations:
+            summary: "SSL certificate expiring soon"
+            description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days."
+            runbook_url: "https://runbooks.mita.finance/alerts/ssl-expiring"
+            impact: "Website will become inaccessible when certificate expires"
+            action: "Renew SSL certificate before expiration"
+
+        - alert: MitaSSLCertificateExpired
+          expr: (probe_ssl_earliest_cert_expiry{job="blackbox-external-monitoring"} - time()) / 86400 < 0
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            compliance: "security"
+          annotations:
+            summary: "SSL certificate has expired"
+            description: "SSL certificate for {{ $labels.instance }} has expired."
+            runbook_url: "https://runbooks.mita.finance/alerts/ssl-expired"
+            impact: "Website is inaccessible due to expired certificate"
+            action: "URGENT: Renew SSL certificate immediately"
+
+        # HTTP status code monitoring
+        - alert: MitaWebsiteHTTPErrors
+          expr: probe_http_status_code{job="blackbox-external-monitoring"} < 200 or probe_http_status_code{job="blackbox-external-monitoring"} >= 400
+          for: 2m
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "customer-facing"
+          annotations:
+            summary: "MITA website returning HTTP errors"
+            description: "Website {{ $labels.instance }} is returning HTTP status code {{ $value }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/http-errors"
+            impact: "Users may experience website errors or inaccessibility"
+            action: "Check website application and infrastructure health"
+
+---
+# Targets for external service monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-targets
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-targets
+    app.kubernetes.io/component: monitoring
+data:
+  targets.yml: |
+    # MITA Financial Services external monitoring targets
+    
+    # Main website and application endpoints
+    - targets:
+        - https://mita.finance
+        - https://app.mita.finance
+        - https://api.mita.finance
+      labels:
+        service: "mita-frontend"
+        environment: "production"
+        business_critical: "true"
+    
+    # Health check endpoints
+    - targets:
+        - https://api.mita.finance/health
+        - https://api.mita.finance/metrics
+      labels:
+        service: "mita-api"
+        environment: "production"
+        business_critical: "true"
+        probe_type: "health"
+    
+    # External dependencies
+    - targets:
+        - https://api.openai.com/v1/models
+      labels:
+        service: "openai-api"
+        environment: "production"
+        dependency: "true"
+        probe_type: "external_api"
+    
+    # Email service endpoints
+    - targets:
+        - smtp.sendgrid.net:587
+      labels:
+        service: "sendgrid-smtp"
+        environment: "production"
+        dependency: "true"
+        probe_type: "smtp"
+    
+    # DNS resolution checks
+    - targets:
+        - mita.finance
+        - app.mita.finance
+        - api.mita.finance
+      labels:
+        service: "dns-resolution"
+        environment: "production"
+        probe_type: "dns"
+    
+    # CDN and static assets
+    - targets:
+        - https://cdn.mita.finance
+      labels:
+        service: "cdn"
+        environment: "production"
+        business_critical: "true"
+        probe_type: "cdn"
+
+---
+# Network policy for Blackbox Exporter
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: blackbox-exporter-network-policy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Prometheus to scrape metrics
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9115
+    # Allow access from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9115
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS outbound for probes
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow HTTP outbound for probes
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow SMTP outbound for email probes
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 587
+        - protocol: TCP
+          port: 25
+    # Allow ICMP for ping probes
+    - to: []
+      protocols:
+        - ICMP

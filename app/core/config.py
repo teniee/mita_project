@@ -32,6 +32,27 @@ class Settings(BaseSettings):
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_PASSWORD: str = ""
+    
+    # Task Queue Configuration
+    WORKER_MAX_JOBS: int = 100
+    WORKER_JOB_TIMEOUT: int = 600  # 10 minutes
+    WORKER_HEARTBEAT_INTERVAL: int = 30  # seconds
+    
+    # Queue Configuration  
+    TASK_RESULT_TTL: int = 24 * 3600  # 24 hours
+    FAILED_TASK_TTL: int = 7 * 24 * 3600  # 7 days
+    
+    # Auto-scaling Configuration
+    ENABLE_WORKER_AUTOSCALING: bool = True
+    MIN_WORKERS_PER_QUEUE: int = 1
+    MAX_WORKERS_PER_QUEUE: int = 5
+    SCALE_UP_THRESHOLD: int = 10  # Queue depth to scale up
+    SCALE_DOWN_THRESHOLD: int = 2  # Queue depth to scale down
+    
+    # Monitoring Configuration
+    ENABLE_TASK_METRICS: bool = True
+    METRICS_COLLECTION_INTERVAL: int = 60  # seconds
 
     # Auth / JWT - MUST be provided via environment variables for security
     JWT_SECRET: str = ""

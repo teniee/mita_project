@@ -527,7 +527,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 ),
               ],
             ),
-          )).toList(),
+          )),
         ],
       ],
     );

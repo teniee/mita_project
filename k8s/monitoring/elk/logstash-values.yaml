@@ -1,0 +1,531 @@
+# Production Logstash configuration for MITA Financial Services
+# High-throughput log processing with financial compliance parsing
+
+# Replica configuration for high availability
+replicas: 3
+
+# Image configuration
+image: "docker.elastic.co/logstash/logstash"
+imageTag: "8.11.0"
+imagePullPolicy: "IfNotPresent"
+
+# Resource allocation for log processing
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+# JVM heap settings
+logstashJavaOpts: "-Xmx2g -Xms2g"
+
+# Persistent volumes for pipeline state
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: "fast-ssd"
+  accessModes:
+    - ReadWriteOnce
+
+# Service configuration
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    - name: beats
+      port: 5044
+      protocol: TCP
+      targetPort: 5044
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: monitoring
+      port: 9600
+      protocol: TCP
+      targetPort: 9600
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9600"
+    prometheus.io/path: "/_node/stats"
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Pod security context  
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Environment variables
+extraEnvs:
+  - name: ELASTICSEARCH_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: username
+  - name: ELASTICSEARCH_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
+  - name: XPACK_MONITORING_ELASTICSEARCH_HOSTS
+    value: "https://elasticsearch-master:9200"
+  - name: XPACK_MONITORING_ENABLED
+    value: "true"
+
+# Logstash configuration files
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.monitoring.enabled: true
+    xpack.monitoring.elasticsearch.hosts: ["https://elasticsearch-master:9200"]
+    xpack.monitoring.elasticsearch.username: ${ELASTICSEARCH_USERNAME}
+    xpack.monitoring.elasticsearch.password: ${ELASTICSEARCH_PASSWORD}
+    xpack.monitoring.elasticsearch.ssl.verification_mode: none
+    
+    # Pipeline configuration
+    pipeline.workers: 4
+    pipeline.batch.size: 1000
+    pipeline.batch.delay: 50
+    
+    # JVM settings
+    pipeline.java_execution: true
+    
+    # Dead letter queue for failed events
+    dead_letter_queue.enable: true
+    dead_letter_queue.max_bytes: 1gb
+    
+    # Queue configuration
+    queue.type: persisted
+    queue.max_bytes: 4gb
+    queue.checkpoint.writes: 1024
+    
+    # API settings
+    api.http.host: 0.0.0.0
+    api.http.port: 9600
+
+# Logstash pipeline configuration for MITA financial services
+logstashPipeline:
+  main.conf: |
+    input {
+      beats {
+        port => 5044
+        host => "0.0.0.0"
+      }
+      
+      # HTTP input for webhook logs
+      http {
+        port => 8080
+        host => "0.0.0.0"
+        codec => json
+        additional_codecs => {
+          "application/json" => "json"
+        }
+      }
+    }
+    
+    filter {
+      # Parse timestamp
+      date {
+        match => [ "timestamp", "ISO8601" ]
+        target => "@timestamp"
+      }
+      
+      # Add environment and service labels
+      mutate {
+        add_field => {
+          "environment" => "production"
+          "application" => "mita-financial"
+        }
+      }
+      
+      # Parse MITA backend logs
+      if [fields][service] == "mita-backend" {
+        if [message] =~ /^{/ {
+          json {
+            source => "message"
+          }
+        }
+        
+        # Extract financial transaction logs
+        if [level] == "INFO" and [message] =~ /transaction/ {
+          grok {
+            match => {
+              "message" => "Transaction %{DATA:transaction_type} for user %{DATA:user_id} amount %{NUMBER:amount:float} status %{WORD:transaction_status}"
+            }
+            add_tag => ["financial_transaction"]
+          }
+        }
+        
+        # Extract authentication events
+        if [message] =~ /auth|login|logout/ {
+          grok {
+            match => {
+              "message" => "%{WORD:auth_action} %{WORD:auth_result} for user %{DATA:user_id} from IP %{IP:client_ip}"
+            }
+            add_tag => ["authentication_event"]
+          }
+        }
+        
+        # Extract API performance metrics
+        if [message] =~ /api_call/ {
+          grok {
+            match => {
+              "message" => "API call %{DATA:endpoint} method %{WORD:http_method} duration %{NUMBER:duration_ms:float}ms status %{INT:status_code}"
+            }
+            add_tag => ["api_performance"]
+          }
+        }
+        
+        # Extract error events
+        if [level] == "ERROR" {
+          mutate {
+            add_tag => ["error_event"]
+          }
+          
+          # Parse stack traces
+          if [message] =~ /Traceback|Exception/ {
+            multiline {
+              pattern => "^Traceback"
+              negate => true
+              what => "previous"
+            }
+          }
+        }
+        
+        # Security event detection
+        if [message] =~ /security|unauthorized|forbidden|suspicious/ {
+          mutate {
+            add_tag => ["security_event"]
+          }
+          
+          # Extract security-related information
+          grok {
+            match => {
+              "message" => "Security event: %{DATA:security_event_type} from IP %{IP:client_ip} user %{DATA:user_id}"
+            }
+          }
+        }
+      }
+      
+      # Parse worker logs
+      if [fields][service] =~ /worker/ {
+        if [message] =~ /task/ {
+          grok {
+            match => {
+              "message" => "Task %{DATA:task_type} %{WORD:task_status} duration %{NUMBER:task_duration:float}s queue %{DATA:queue_name}"
+            }
+            add_tag => ["worker_task"]
+          }
+        }
+        
+        # OCR processing logs
+        if [message] =~ /ocr/ {
+          grok {
+            match => {
+              "message" => "OCR processing %{WORD:ocr_status} for receipt %{DATA:receipt_id} confidence %{NUMBER:confidence:float}"
+            }
+            add_tag => ["ocr_processing"]
+          }
+        }
+        
+        # AI analysis logs
+        if [message] =~ /ai_analysis|classification/ {
+          grok {
+            match => {
+              "message" => "AI analysis %{WORD:analysis_status} for transaction %{DATA:transaction_id} category %{DATA:category} confidence %{NUMBER:confidence:float}"
+            }
+            add_tag => ["ai_analysis"]
+          }
+        }
+      }
+      
+      # Parse nginx access logs
+      if [fields][service] == "nginx" {
+        grok {
+          match => {
+            "message" => "%{COMBINEDAPACHELOG}"
+          }
+        }
+        
+        # Extract additional fields
+        mutate {
+          convert => {
+            "response" => "integer"
+            "bytes" => "integer"
+          }
+        }
+        
+        # GeoIP lookup for security monitoring
+        geoip {
+          source => "clientip"
+          target => "geoip"
+        }
+        
+        # Detect suspicious patterns
+        if [response] >= 400 {
+          mutate {
+            add_tag => ["http_error"]
+          }
+        }
+        
+        if [response] == 401 or [response] == 403 {
+          mutate {
+            add_tag => ["authentication_failure", "security_event"]
+          }
+        }
+      }
+      
+      # Financial compliance enrichment
+      if "financial_transaction" in [tags] {
+        # Add compliance flags
+        mutate {
+          add_field => {
+            "compliance_required" => "true"
+            "retention_period" => "2555"  # 7 years for SOX
+            "data_classification" => "financial"
+          }
+        }
+        
+        # Mask sensitive data for logs
+        mutate {
+          replace => {
+            "amount" => "[REDACTED]"
+          }
+        }
+      }
+      
+      # Add financial business metrics
+      if "api_performance" in [tags] {
+        if [endpoint] =~ /transaction|payment|budget/ {
+          mutate {
+            add_field => {
+              "business_critical" => "true"
+            }
+          }
+        }
+      }
+      
+      # Security event enrichment
+      if "security_event" in [tags] {
+        mutate {
+          add_field => {
+            "alert_priority" => "high"
+            "security_team_notify" => "true"
+          }
+        }
+      }
+      
+      # Remove sensitive fields from logs
+      mutate {
+        remove_field => ["password", "token", "secret", "key"]
+      }
+    }
+    
+    output {
+      # Main Elasticsearch output
+      elasticsearch {
+        hosts => ["https://elasticsearch-master:9200"]
+        user => "${ELASTICSEARCH_USERNAME}"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
+        
+        # Index strategy for compliance and performance
+        index => "mita-logs-%{+YYYY.MM.dd}"
+        
+        # Document type based on log source
+        document_type => "_doc"
+        
+        # Template for index settings
+        template_name => "mita-logs"
+        template => "/usr/share/logstash/templates/mita-logs-template.json"
+        template_overwrite => true
+        
+        # Failure handling
+        action => "index"
+        retry_on_conflict => 3
+        retry_on_failure => 5
+      }
+      
+      # Separate index for financial transactions (enhanced retention)
+      if "financial_transaction" in [tags] {
+        elasticsearch {
+          hosts => ["https://elasticsearch-master:9200"]
+          user => "${ELASTICSEARCH_USERNAME}"
+          password => "${ELASTICSEARCH_PASSWORD}"
+          ssl => true
+          ssl_certificate_verification => false
+          index => "mita-financial-transactions-%{+YYYY.MM.dd}"
+          document_type => "_doc"
+        }
+      }
+      
+      # Separate index for security events (immediate alerting)
+      if "security_event" in [tags] {
+        elasticsearch {
+          hosts => ["https://elasticsearch-master:9200"]
+          user => "${ELASTICSEARCH_USERNAME}"
+          password => "${ELASTICSEARCH_PASSWORD}"
+          ssl => true
+          ssl_certificate_verification => false
+          index => "mita-security-events-%{+YYYY.MM.dd}"
+          document_type => "_doc"
+        }
+      }
+      
+      # Dead letter queue for failed processing
+      if "_grokparsefailure" in [tags] {
+        elasticsearch {
+          hosts => ["https://elasticsearch-master:9200"]
+          user => "${ELASTICSEARCH_USERNAME}"
+          password => "${ELASTICSEARCH_PASSWORD}"
+          ssl => true
+          ssl_certificate_verification => false
+          index => "mita-parse-failures-%{+YYYY.MM.dd}"
+          document_type => "_doc"
+        }
+      }
+      
+      # Output to stdout for debugging (remove in production)
+      # stdout { codec => rubydebug }
+    }
+
+# Index template for log management
+extraVolumes:
+  - name: logstash-templates
+    configMap:
+      name: logstash-templates
+
+extraVolumeMounts:
+  - name: logstash-templates
+    mountPath: /usr/share/logstash/templates
+    readOnly: true
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Node affinity and anti-affinity
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+      - matchExpressions:
+        - key: node.kubernetes.io/instance-type
+          operator: NotIn
+          values: ["t3.nano", "t3.micro", "t3.small"]
+
+# Pod anti-affinity
+podAntiAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values: ["logstash"]
+        topologyKey: kubernetes.io/hostname
+
+# Tolerations for dedicated logging nodes
+tolerations:
+  - key: "logging"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Lifecycle hooks
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - /bin/bash
+        - -c
+        - |
+          # Graceful shutdown - stop accepting new events
+          curl -XPOST 'localhost:9600/_node/hot_threads?pretty'
+          sleep 30
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: "/"
+    port: 9600
+  initialDelaySeconds: 300
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: "/"
+    port: 9600
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Service monitor for Prometheus metrics
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  labels:
+    monitoring.coreos.com/prometheus: "production"
+  interval: 30s
+  path: /_node/stats
+  scrapeTimeout: 30s
+
+# Labels
+labels:
+  app.kubernetes.io/name: logstash
+  app.kubernetes.io/component: log-processor
+  environment: production
+  compliance: "SOX,PCI-DSS"
+  business-function: "financial-logging"
+
+# Network policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: filebeat
+      ports:
+        - port: 5044
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - port: 9600
+          protocol: TCP
+    - from: []  # Allow webhook inputs
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: elasticsearch-master
+      ports:
+        - port: 9200
+          protocol: TCP
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        - port: 443
+          protocol: TCP

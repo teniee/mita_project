@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'logging_service.dart';
 import 'loading_service.dart';
 
@@ -301,17 +299,17 @@ class TimeoutManagerService {
   Duration getRecommendedTimeout(OperationType type) {
     switch (type) {
       case OperationType.authentication:
-        return Duration(seconds: 10);
+        return const Duration(seconds: 10);
       case OperationType.dataSync:
-        return Duration(seconds: 15);
+        return const Duration(seconds: 15);
       case OperationType.fileUpload:
-        return Duration(seconds: 30);
+        return const Duration(seconds: 30);
       case OperationType.backgroundSync:
-        return Duration(seconds: 5);
+        return const Duration(seconds: 5);
       case OperationType.userAction:
-        return Duration(seconds: 8);
+        return const Duration(seconds: 8);
       case OperationType.criticalData:
-        return Duration(seconds: 20);
+        return const Duration(seconds: 20);
       default:
         return _mediumTimeout;
     }

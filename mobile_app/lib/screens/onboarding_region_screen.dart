@@ -44,9 +44,9 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
+                  const Text(
                     "Where do you live?",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w700,
                       fontSize: 24,

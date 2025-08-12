@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 
 class OnboardingGoalScreen extends StatefulWidget {
-  const OnboardingGoalScreen({Key? key}) : super(key: key);
+  const OnboardingGoalScreen({super.key});
 
   @override
   State<OnboardingGoalScreen> createState() => _OnboardingGoalScreenState();

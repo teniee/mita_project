@@ -4,7 +4,7 @@ import '../services/country_profiles_service.dart';
 import '../services/onboarding_state.dart';
 
 class OnboardingLocationScreen extends StatefulWidget {
-  const OnboardingLocationScreen({Key? key}) : super(key: key);
+  const OnboardingLocationScreen({super.key});
 
   @override
   State<OnboardingLocationScreen> createState() => _OnboardingLocationScreenState();
@@ -105,16 +105,16 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                   borderRadius: BorderRadius.circular(28),
                 ),
                 color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40, horizontal: 28),
                   child: Column(
                     children: [
                       Icon(
                         Icons.location_on_rounded,
                         size: 64,
-                        color: const Color(0xFF193C57),
+                        color: Color(0xFF193C57),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Text(
                         'Which US state are you in?',
                         textAlign: TextAlign.center,
@@ -122,14 +122,14 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.w700,
                           fontSize: 28,
-                          color: const Color(0xFF193C57),
+                          color: Color(0xFF193C57),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         'We\'ll customize income thresholds and financial advice based on your state\'s cost of living.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           color: Colors.black54,
                           fontSize: 16,
@@ -149,20 +149,20 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(20),
                     child: Row(
                       children: [
                         CircularProgressIndicator(
-                          color: const Color(0xFF193C57),
+                          color: Color(0xFF193C57),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         Text(
                           'Detecting your location...',
                           style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 16,
-                            color: const Color(0xFF193C57),
+                            color: Color(0xFF193C57),
                           ),
                         ),
                       ],
@@ -247,9 +247,9 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'Please select your location manually below.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 14,
                           ),
@@ -262,13 +262,13 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
               const SizedBox(height: 24),
 
               // State selection
-              Text(
+              const Text(
                 'Select your state:',
                 style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
-                  color: const Color(0xFF193C57),
+                  color: Color(0xFF193C57),
                 ),
               ),
               const SizedBox(height: 16),
@@ -295,9 +295,9 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         ),
                       ),
                       trailing: _selectedState == state['code']
-                          ? Icon(
+                          ? const Icon(
                               Icons.check_circle_rounded,
-                              color: const Color(0xFF193C57),
+                              color: Color(0xFF193C57),
                             )
                           : null,
                       selected: _selectedState == state['code'],
@@ -330,11 +330,11 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       fontSize: 18,
                     ),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Continue'),
-                      const SizedBox(width: 8),
+                      Text('Continue'),
+                      SizedBox(width: 8),
                       Icon(
                         Icons.arrow_forward_rounded,
                         size: 20,

@@ -1,15 +1,12 @@
 /// Advanced Performance Service for MITA Flutter App
 /// Provides performance monitoring, memory management, and optimization
 /// 
+library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'logging_service.dart';
 
 /// Performance metric data point
@@ -186,7 +183,7 @@ class PerformanceService {
   int _totalFrames = 0;
   
   // Memory monitoring
-  int _lastHeapSize = 0;
+  final int _lastHeapSize = 0;
   int _memoryWarningCount = 0;
   
   // Performance thresholds

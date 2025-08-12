@@ -44,15 +44,18 @@ from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
 from app.api.style.routes import router as style_router
+from app.api.tasks.routes import router as tasks_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.api.endpoints.audit import router as audit_router
 from app.api.endpoints.database_performance import router as db_performance_router
 from app.api.endpoints.cache_management import router as cache_management_router
+from app.api.endpoints.feature_flags import router as feature_flags_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
 from app.core.logging_config import setup_logging
+from app.core.feature_flags import get_feature_flag_manager, is_feature_enabled
 from app.middleware.audit_middleware import audit_middleware
 from app.core.error_handler import (
     MITAException, ValidationException, 
@@ -255,6 +258,7 @@ private_routers_list = [
     (behavior_router, "/api", ["Behavior"]),
     (spend_router, "/api", ["Spend"]),
     (style_router, "/api", ["Styles"]),
+    (tasks_router, "/api", ["Tasks"]),
     (insights_router, "/api", ["Insights"]),
     (habits_router, "/api", ["Habits"]),
     (ai_router, "/api", ["AI"]),
@@ -271,6 +275,7 @@ private_routers_list = [
     (audit_router, "/api", ["Audit"]),
     (db_performance_router, "/api", ["Database Performance"]),
     (cache_management_router, "/api", ["Cache Management"]),
+    (feature_flags_router, "/api", ["Feature Flags"]),
 ]
 
 for router, prefix, tags in private_routers_list:
@@ -311,6 +316,11 @@ async def on_startup():
     """Initialize application on startup"""
     try:
         logging.info("🚀 Starting MITA Finance API initialization...")
+        
+        # Initialize feature flags
+        logging.info("🚩 Initializing feature flag system...")
+        get_feature_flag_manager()  # Initialize the global manager
+        logging.info("✅ Feature flag system initialized successfully")
         
         # Initialize rate limiter
         logging.info("📊 Initializing rate limiter...")

@@ -10,12 +10,12 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
   final Map<String, dynamic>? peerData;
 
   const PeerSpendingInsightsWidget({
-    Key? key,
+    super.key,
     required this.category,
     required this.userAmount,
     required this.monthlyIncome,
     this.peerData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -173,9 +173,9 @@ class CohortInsightsWidget extends StatefulWidget {
   final double monthlyIncome;
 
   const CohortInsightsWidget({
-    Key? key,
+    super.key,
     required this.monthlyIncome,
-  }) : super(key: key);
+  });
 
   @override
   State<CohortInsightsWidget> createState() => _CohortInsightsWidgetState();
@@ -464,11 +464,11 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
   final Map<String, dynamic>? peerData;
 
   const SpendingTrendsComparisonWidget({
-    Key? key,
+    super.key,
     required this.userSpending,
     required this.monthlyIncome,
     this.peerData,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +632,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

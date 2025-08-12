@@ -1,0 +1,759 @@
+# Comprehensive backup monitoring and data retention policies
+# For MITA Financial Services - SOX and PCI-DSS compliance
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-monitoring-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: monitoring
+    environment: production
+    compliance: "SOX,PCI-DSS"
+data:
+  backup-check.sh: |
+    #!/bin/bash
+    # Backup monitoring script for financial compliance
+    
+    set -euo pipefail
+    
+    # Configuration
+    PROMETHEUS_GATEWAY="http://prometheus-pushgateway:9091"
+    JOB_NAME="backup-monitoring"
+    BACKUP_BUCKET="s3://mita-production-backups"
+    COMPLIANCE_RETENTION_DAYS=2555  # 7 years for SOX compliance
+    
+    # Metrics collection
+    collect_metric() {
+        local metric_name="$1"
+        local metric_value="$2"
+        local metric_help="$3"
+        local labels="${4:-}"
+        
+        cat <<EOF | curl -X POST --data-binary @- "${PROMETHEUS_GATEWAY}/metrics/job/${JOB_NAME}/instance/$(hostname)${labels}"
+    # HELP ${metric_name} ${metric_help}
+    # TYPE ${metric_name} gauge
+    ${metric_name} ${metric_value}
+    EOF
+    }
+    
+    # Check database backups
+    check_database_backups() {
+        echo "Checking database backups..."
+        
+        # Get latest backup timestamp from S3
+        local latest_backup=$(aws s3 ls ${BACKUP_BUCKET}/database/ --recursive | \
+                             grep "\.sql\.gz$" | \
+                             sort | tail -1 | awk '{print $1" "$2}')
+        
+        if [[ -n "$latest_backup" ]]; then
+            local backup_timestamp=$(date -d "$latest_backup" +%s)
+            local current_timestamp=$(date +%s)
+            local backup_age=$((current_timestamp - backup_timestamp))
+            
+            collect_metric "mita_backup_last_success" "$backup_timestamp" \
+                          "Timestamp of last successful database backup"
+            collect_metric "mita_backup_age_seconds" "$backup_age" \
+                          "Age of last database backup in seconds"
+            
+            # Check if backup is within SLA (24 hours)
+            if [[ $backup_age -gt 86400 ]]; then
+                collect_metric "mita_backup_sla_violation" "1" \
+                              "Database backup SLA violation (>24h)" "/type/database"
+            else
+                collect_metric "mita_backup_sla_violation" "0" \
+                              "Database backup SLA violation (>24h)" "/type/database"
+            fi
+        else
+            collect_metric "mita_backup_last_success" "0" \
+                          "Timestamp of last successful database backup"
+            collect_metric "mita_backup_sla_violation" "1" \
+                          "Database backup SLA violation (>24h)" "/type/database"
+        fi
+    }
+    
+    # Check configuration backups
+    check_config_backups() {
+        echo "Checking configuration backups..."
+        
+        local latest_config_backup=$(aws s3 ls ${BACKUP_BUCKET}/config/ --recursive | \
+                                   grep "\.tar\.gz$" | \
+                                   sort | tail -1 | awk '{print $1" "$2}')
+        
+        if [[ -n "$latest_config_backup" ]]; then
+            local backup_timestamp=$(date -d "$latest_config_backup" +%s)
+            local current_timestamp=$(date +%s)
+            local backup_age=$((current_timestamp - backup_timestamp))
+            
+            collect_metric "mita_config_backup_last_success" "$backup_timestamp" \
+                          "Timestamp of last successful config backup"
+            collect_metric "mita_config_backup_age_seconds" "$backup_age" \
+                          "Age of last config backup in seconds"
+        fi
+    }
+    
+    # Check monitoring data retention
+    check_monitoring_retention() {
+        echo "Checking monitoring data retention..."
+        
+        # Check Prometheus data retention
+        local prometheus_retention_days=$(curl -s http://prometheus-operated:9090/api/v1/status/config | \
+                                        jq -r '.data.yaml' | grep 'retention:' | \
+                                        sed 's/.*retention: *//; s/d.*//')
+        
+        collect_metric "mita_monitoring_retention_days" "$prometheus_retention_days" \
+                      "Prometheus data retention in days"
+        
+        # Check if retention meets compliance requirements
+        if [[ $prometheus_retention_days -ge $COMPLIANCE_RETENTION_DAYS ]]; then
+            collect_metric "mita_monitoring_retention_compliance" "1" \
+                          "Monitoring retention compliance status"
+        else
+            collect_metric "mita_monitoring_retention_compliance" "0" \
+                          "Monitoring retention compliance status"
+        fi
+    }
+    
+    # Check log retention
+    check_log_retention() {
+        echo "Checking log retention..."
+        
+        # Check Elasticsearch indices age
+        local es_url="https://elasticsearch-master:9200"
+        local oldest_index_age=$(curl -sk "${es_url}/_cat/indices/mita-*?h=creation.date.string" | \
+                               head -1 | xargs -I {} date -d {} +%s)
+        
+        if [[ -n "$oldest_index_age" ]]; then
+            local current_timestamp=$(date +%s)
+            local retention_age=$((current_timestamp - oldest_index_age))
+            local retention_days=$((retention_age / 86400))
+            
+            collect_metric "mita_log_retention_days" "$retention_days" \
+                          "Current log retention in days"
+            
+            if [[ $retention_days -ge $COMPLIANCE_RETENTION_DAYS ]]; then
+                collect_metric "mita_log_retention_compliance" "1" \
+                              "Log retention compliance status"
+            else
+                collect_metric "mita_log_retention_compliance" "0" \
+                              "Log retention compliance status"
+            fi
+        fi
+    }
+    
+    # Check backup integrity
+    check_backup_integrity() {
+        echo "Checking backup integrity..."
+        
+        # Test restore capability (sample check)
+        local test_backup_file=$(aws s3 ls ${BACKUP_BUCKET}/database/ --recursive | \
+                               grep "\.sql\.gz$" | \
+                               sort | tail -1 | awk '{print $4}')
+        
+        if [[ -n "$test_backup_file" ]]; then
+            # Download and verify backup file integrity
+            aws s3 cp "s3://${BACKUP_BUCKET}/${test_backup_file}" /tmp/test_backup.sql.gz
+            
+            if gzip -t /tmp/test_backup.sql.gz 2>/dev/null; then
+                collect_metric "mita_backup_integrity_check" "1" \
+                              "Backup file integrity check result"
+            else
+                collect_metric "mita_backup_integrity_check" "0" \
+                              "Backup file integrity check result"
+            fi
+            
+            rm -f /tmp/test_backup.sql.gz
+        fi
+    }
+    
+    # Check DR test status
+    check_dr_test_status() {
+        echo "Checking disaster recovery test status..."
+        
+        # Check last DR test timestamp (from external system or file)
+        local dr_test_file="/var/run/secrets/mita/dr-test-timestamp"
+        
+        if [[ -f "$dr_test_file" ]]; then
+            local last_dr_test=$(cat "$dr_test_file")
+            local current_timestamp=$(date +%s)
+            local dr_test_age=$((current_timestamp - last_dr_test))
+            local dr_test_age_days=$((dr_test_age / 86400))
+            
+            collect_metric "mita_last_dr_test_timestamp" "$last_dr_test" \
+                          "Timestamp of last disaster recovery test"
+            collect_metric "mita_dr_test_age_days" "$dr_test_age_days" \
+                          "Days since last disaster recovery test"
+            
+            # DR tests should be performed monthly (30 days)
+            if [[ $dr_test_age_days -gt 30 ]]; then
+                collect_metric "mita_dr_test_overdue" "1" \
+                              "Disaster recovery test overdue status"
+            else
+                collect_metric "mita_dr_test_overdue" "0" \
+                              "Disaster recovery test overdue status"
+            fi
+        else
+            collect_metric "mita_dr_test_overdue" "1" \
+                          "Disaster recovery test overdue status"
+        fi
+    }
+    
+    # Check compliance audit readiness
+    check_compliance_audit() {
+        echo "Checking compliance audit readiness..."
+        
+        # Check if all required data is available for audit
+        local audit_ready=1
+        
+        # Check database backups coverage
+        local backup_coverage_days=$(aws s3 ls ${BACKUP_BUCKET}/database/ --recursive | \
+                                   grep "\.sql\.gz$" | wc -l)
+        
+        if [[ $backup_coverage_days -lt 30 ]]; then
+            audit_ready=0
+        fi
+        
+        # Check monitoring data availability
+        local monitoring_data_age=$(curl -s http://prometheus-operated:9090/api/v1/query?query=up | \
+                                  jq -r '.data.result[0].value[0]')
+        local monitoring_coverage_days=$(echo "scale=0; ($(date +%s) - $monitoring_data_age) / 86400" | bc)
+        
+        if [[ $monitoring_coverage_days -lt 30 ]]; then
+            audit_ready=0
+        fi
+        
+        collect_metric "mita_audit_readiness" "$audit_ready" \
+                      "Compliance audit readiness status"
+    }
+    
+    # Main execution
+    main() {
+        echo "Starting backup monitoring checks..."
+        
+        check_database_backups
+        check_config_backups
+        check_monitoring_retention
+        check_log_retention
+        check_backup_integrity
+        check_dr_test_status
+        check_compliance_audit
+        
+        echo "Backup monitoring checks completed"
+    }
+    
+    main "$@"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: monitoring
+    environment: production
+    compliance: "SOX,PCI-DSS"
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: backup-monitoring
+            app.kubernetes.io/component: monitoring-job
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            fsGroup: 65534
+          serviceAccountName: backup-monitoring
+          containers:
+            - name: backup-monitor
+              image: amazon/aws-cli:2.13.0
+              command: ["/bin/bash"]
+              args: ["/scripts/backup-check.sh"]
+              env:
+                - name: AWS_REGION
+                  value: "us-east-1"
+                - name: AWS_DEFAULT_REGION
+                  value: "us-east-1"
+              volumeMounts:
+                - name: backup-scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: aws-credentials
+                  mountPath: /root/.aws
+                  readOnly: true
+                - name: dr-test-status
+                  mountPath: /var/run/secrets/mita
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+          volumes:
+            - name: backup-scripts
+              configMap:
+                name: backup-monitoring-config
+                defaultMode: 0555
+            - name: aws-credentials
+              secret:
+                secretName: aws-backup-credentials
+                defaultMode: 0400
+            - name: dr-test-status
+              secret:
+                secretName: dr-test-status
+                defaultMode: 0400
+
+---
+# ServiceAccount for backup monitoring
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: monitoring
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/backup-monitoring-role"
+
+---
+# RBAC for backup monitoring
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: rbac
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: rbac
+subjects:
+  - kind: ServiceAccount
+    name: backup-monitoring
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: backup-monitoring
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Prometheus Push Gateway for backup metrics
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-pushgateway
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus-pushgateway
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-pushgateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus-pushgateway
+        app.kubernetes.io/component: monitoring
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: pushgateway
+          image: prom/pushgateway:v1.6.2
+          ports:
+            - name: http
+              containerPort: 9091
+              protocol: TCP
+          args:
+            - "--web.listen-address=:9091"
+            - "--web.route-prefix=/"
+            - "--log.level=info"
+            - "--log.format=json"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-pushgateway
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus-pushgateway
+    app.kubernetes.io/component: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9091"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9091
+      targetPort: 9091
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: prometheus-pushgateway
+
+---
+# ServiceMonitor for Push Gateway
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-pushgateway
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus-pushgateway
+    app.kubernetes.io/component: monitoring
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-pushgateway
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+---
+# PrometheusRule for backup monitoring alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backup-monitoring-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: alerts
+    monitoring.coreos.com/prometheus: "production"
+spec:
+  groups:
+    - name: backup.rules
+      interval: 60s
+      rules:
+        # Database backup alerts
+        - alert: MitaDatabaseBackupFailed
+          expr: (time() - mita_backup_last_success) > 86400  # 24 hours
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "disaster-recovery"
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "Database backup has failed or is overdue"
+            description: "Database backup has not succeeded for {{ $value | humanizeDuration }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/backup-failure"
+            impact: "Data loss risk - compliance violation"
+            action: "Check backup system immediately and ensure data protection"
+
+        - alert: MitaBackupSLAViolation
+          expr: mita_backup_sla_violation == 1
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "compliance"
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "Backup SLA violation detected"
+            description: "Backup SLA has been violated for backup type {{ $labels.type }}."
+            runbook_url: "https://runbooks.mita.finance/alerts/backup-sla"
+            impact: "SLA violation - compliance risk"
+            action: "Execute backup immediately and investigate root cause"
+
+        # Data retention compliance
+        - alert: MitaDataRetentionNonCompliance
+          expr: mita_monitoring_retention_compliance == 0 or mita_log_retention_compliance == 0
+          for: 1h
+          labels:
+            severity: critical
+            team: compliance
+            business_impact: "compliance"
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "Data retention does not meet compliance requirements"
+            description: "Data retention period is below required {{ $value }} days for financial compliance."
+            runbook_url: "https://runbooks.mita.finance/alerts/retention-compliance"
+            impact: "Regulatory compliance violation - audit risk"
+            action: "Adjust retention policies to meet 7-year SOX requirement"
+
+        # Backup integrity
+        - alert: MitaBackupIntegrityFailure
+          expr: mita_backup_integrity_check == 0
+          for: 0m
+          labels:
+            severity: critical
+            team: sre
+            business_impact: "data-integrity"
+            compliance: "SOX"
+          annotations:
+            summary: "Backup integrity check failed"
+            description: "Backup file integrity verification has failed."
+            runbook_url: "https://runbooks.mita.finance/alerts/backup-integrity"
+            impact: "Backups may be corrupted - restore capability at risk"
+            action: "Verify backup system integrity and create new backup"
+
+        # Disaster recovery test overdue
+        - alert: MitaDRTestOverdue
+          expr: mita_dr_test_overdue == 1
+          for: 1h
+          labels:
+            severity: warning
+            team: sre
+            business_impact: "business-continuity"
+            compliance: "business-continuity"
+          annotations:
+            summary: "Disaster recovery test is overdue"
+            description: "Disaster recovery test has not been performed within required timeframe."
+            runbook_url: "https://runbooks.mita.finance/alerts/dr-test-overdue"
+            impact: "DR capabilities not validated - business continuity risk"
+            action: "Schedule and execute disaster recovery test"
+
+        # Audit readiness
+        - alert: MitaAuditReadinessFailure
+          expr: mita_audit_readiness == 0
+          for: 2h
+          labels:
+            severity: warning
+            team: compliance
+            business_impact: "compliance"
+            compliance: "SOX,PCI-DSS"
+          annotations:
+            summary: "System not ready for compliance audit"
+            description: "Required data for compliance audit is not available or incomplete."
+            runbook_url: "https://runbooks.mita.finance/alerts/audit-readiness"
+            impact: "Compliance audit may fail - regulatory risk"
+            action: "Ensure all required audit data is available and accessible"
+
+---
+# Data retention policy enforcement job
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: data-retention-enforcement
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: data-retention
+    app.kubernetes.io/component: compliance
+    environment: production
+    compliance: "SOX,PCI-DSS"
+spec:
+  schedule: "0 2 * * 0"  # Weekly on Sunday at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: data-retention
+            app.kubernetes.io/component: enforcement-job
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            fsGroup: 65534
+          serviceAccountName: backup-monitoring
+          containers:
+            - name: retention-enforcement
+              image: curlimages/curl:8.1.0
+              command: ["/bin/sh"]
+              args:
+                - -c
+                - |
+                  # Elasticsearch index lifecycle management
+                  # Keep financial transaction logs for 7 years (SOX compliance)
+                  # Keep general application logs for 1 year
+                  # Keep security logs for 3 years (PCI-DSS compliance)
+                  
+                  ES_URL="https://elasticsearch-master:9200"
+                  
+                  # Create ILM policies for different data types
+                  curl -X PUT "${ES_URL}/_ilm/policy/mita-financial-policy" \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                      "policy": {
+                        "phases": {
+                          "hot": {
+                            "actions": {
+                              "rollover": {
+                                "max_size": "10GB",
+                                "max_age": "30d"
+                              }
+                            }
+                          },
+                          "warm": {
+                            "min_age": "30d",
+                            "actions": {
+                              "allocate": {
+                                "number_of_replicas": 0
+                              },
+                              "shrink": {
+                                "number_of_shards": 1
+                              }
+                            }
+                          },
+                          "cold": {
+                            "min_age": "365d",
+                            "actions": {
+                              "allocate": {
+                                "number_of_replicas": 0
+                              }
+                            }
+                          },
+                          "delete": {
+                            "min_age": "2555d"
+                          }
+                        }
+                      }
+                    }'
+                  
+                  # Apply policy to financial transaction indices
+                  curl -X PUT "${ES_URL}/_template/mita-financial-transactions" \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                      "index_patterns": ["mita-financial-transactions-*"],
+                      "settings": {
+                        "index.lifecycle.name": "mita-financial-policy",
+                        "index.lifecycle.rollover_alias": "mita-financial-transactions"
+                      }
+                    }'
+                  
+                  echo "Data retention policies updated successfully"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+
+---
+# Network policy for backup monitoring
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backup-monitoring-network-policy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: backup-monitoring
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: backup-monitoring
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []  # No ingress needed for jobs
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS outbound for AWS S3
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow access to Prometheus and Elasticsearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    - to:
+        - podSelector:
+            matchLabels:
+              app: elasticsearch-master
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow access to Push Gateway
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus-pushgateway
+      ports:
+        - protocol: TCP
+          port: 9091

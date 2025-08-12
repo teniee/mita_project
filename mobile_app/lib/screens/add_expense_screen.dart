@@ -4,11 +4,12 @@ import 'dart:async';
 import '../services/offline_queue_service.dart';
 import '../services/api_service.dart';
 import '../services/expense_state_service.dart';
+import '../services/accessibility_service.dart';
 import 'receipt_capture_screen.dart';
 import '../services/logging_service.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({Key? key}) : super(key: key);
+  const AddExpenseScreen({super.key});
 
   @override
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -17,9 +18,18 @@ class AddExpenseScreen extends StatefulWidget {
 class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
+  final _amountController = TextEditingController();
   final OfflineQueueService _queue = OfflineQueueService.instance;
   final ApiService _apiService = ApiService();
   final ExpenseStateService _expenseStateService = ExpenseStateService();
+  final AccessibilityService _accessibilityService = AccessibilityService.instance;
+  
+  // Focus nodes for proper navigation
+  final FocusNode _amountFocusNode = FocusNode();
+  final FocusNode _descriptionFocusNode = FocusNode();
+  final FocusNode _categoryFocusNode = FocusNode();
+  final FocusNode _subcategoryFocusNode = FocusNode();
+  final FocusNode _dateFocusNode = FocusNode();
   
   // Animation controllers for feedback
   late AnimationController _submitAnimationController;
@@ -55,11 +65,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   void initState() {
     super.initState();
     _initializeAnimations();
+    _initializeAccessibility();
+  }
+  
+  /// Initialize accessibility features
+  Future<void> _initializeAccessibility() async {
+    await _accessibilityService.initialize();
+    
+    // Announce screen arrival
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _accessibilityService.announceNavigation(
+        'Add Expense Screen',
+        description: 'Record a new financial transaction with amount, category, and description',
+      );
+      
+      // Set initial focus to amount field for screen readers
+      if (_accessibilityService.isScreenReaderEnabled) {
+        _accessibilityService.manageFocus(_amountFocusNode);
+      }
+    });
   }
 
   void _initializeAnimations() {
+    final submitDuration = _accessibilityService.getAnimationDuration(
+      const Duration(milliseconds: 600),
+    );
+    final successDuration = _accessibilityService.getAnimationDuration(
+      const Duration(milliseconds: 800),
+    );
+    
     _submitAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: submitDuration,
       vsync: this,
     );
     _submitAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
@@ -67,7 +103,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     );
     
     _successAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: successDuration,
       vsync: this,
     );
     _successAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -89,8 +125,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   @override
   void dispose() {
     _descriptionController.dispose();
+    _amountController.dispose();
+    _amountFocusNode.dispose();
+    _descriptionFocusNode.dispose();
+    _categoryFocusNode.dispose();
+    _subcategoryFocusNode.dispose();
+    _dateFocusNode.dispose();
     _submitAnimationController.dispose();
     _successAnimationController.dispose();
+    _accessibilityService.clearFocusHistory();
     super.dispose();
   }
 
@@ -130,21 +173,35 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   }
 
   void _selectAISuggestion(Map<String, dynamic> suggestion) {
+    final category = suggestion['category'] as String?;
+    final confidence = suggestion['confidence'] as double? ?? 0.0;
+    
     setState(() {
-      _action = suggestion['category'] as String?;
+      _action = category;
       if (suggestion['confidence'] != null) {
+        final confidencePercent = (confidence * 100).toInt();
+        final message = 'AI suggestion applied with $confidencePercent% confidence';
+        
+        // Announce to screen readers
+        _accessibilityService.announceToScreenReader(
+          'Category suggestion applied: $category with $confidencePercent percent confidence',
+          financialContext: 'AI Assistant',
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.psychology, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'AI suggestion applied with ${(suggestion['confidence'] * 100).toInt()}% confidence',
+            content: Semantics(
+              liveRegion: true,
+              label: 'AI suggestion: $message',
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(message),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
@@ -158,12 +215,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   Future<void> _submitExpense() async {
     if (!_formKey.currentState!.validate() || _action == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.warning, color: Colors.white),
-              const SizedBox(width: 8),
-              const Expanded(
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
                 child: Text(
                   'Please fill in all required fields',
                   style: TextStyle(fontFamily: 'Manrope'),
@@ -173,7 +230,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
           ),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
       return;
@@ -220,8 +277,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       // 4. Try to submit to API immediately if online
       try {
         await _apiService.createExpense(data).timeout(
-          Duration(seconds: 8),
-          onTimeout: () => throw TimeoutException('API submission timeout', Duration(seconds: 8))
+          const Duration(seconds: 8),
+          onTimeout: () => throw TimeoutException('API submission timeout', const Duration(seconds: 8))
         );
         logInfo('Expense submitted to API successfully', tag: 'ADD_EXPENSE');
       } catch (apiError) {
@@ -233,12 +290,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
         // Show offline mode notification
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.cloud_off, color: Colors.white),
-                  const SizedBox(width: 8),
-                  const Expanded(
+                  Icon(Icons.cloud_off, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: Text(
                       'Expense saved offline and will sync when online',
                       style: TextStyle(fontFamily: 'Manrope'),
@@ -248,7 +305,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
               ),
               backgroundColor: Colors.blue,
               behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -256,14 +313,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       
       // 5. Navigate back with success result
       if (mounted) {
+        final navigator = Navigator.of(context);
         // Wait a bit for animations to complete
         await Future.delayed(const Duration(milliseconds: 500));
-        Navigator.pop(context, {
-          'success': true,
-          'expense_data': data,
-          'amount': _amount,
-          'category': _action,
-        });
+        if (mounted) {
+          navigator.pop({
+            'success': true,
+            'expense_data': data,
+            'amount': _amount,
+            'category': _action,
+          });
+        }
       }
       
     } catch (e, stackTrace) {
@@ -283,11 +343,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
+            content: const Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                const Expanded(
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
                   child: Text(
                     'Failed to add expense. Please try again.',
                     style: TextStyle(fontFamily: 'Manrope'),
@@ -380,18 +440,36 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
       appBar: AppBar(
-        title: const Text(
-          'Add Expense',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+        title: Semantics(
+          header: true,
+          label: 'Add Expense Screen',
+          child: const Text(
+            'Add Expense',
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF193C57),
+            ),
           ),
         ),
         backgroundColor: const Color(0xFFFFF9F0),
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
+        leading: Semantics(
+          button: true,
+          label: _accessibilityService.createButtonSemanticLabel(
+            action: 'Back',
+            context: 'Return to previous screen',
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              _accessibilityService.clearFocusHistory();
+              Navigator.of(context).pop();
+            },
+          ).withMinimumTouchTarget(),
+        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -464,11 +542,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
                           Icon(Icons.psychology, color: Colors.blue, size: 20),
-                          const SizedBox(width: 8),
-                          const Text(
+                          SizedBox(width: 8),
+                          Text(
                             'AI Category Suggestions',
                             style: TextStyle(
                               fontFamily: 'Sora',
@@ -486,7 +564,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                         children: _aiSuggestions.map((suggestion) {
                           final category = suggestion['category'] as String;
                           final confidence = suggestion['confidence'] as double? ?? 0.0;
-                          final reason = suggestion['reason'] as String? ?? '';
                           
                           return GestureDetector(
                             onTap: () => _selectAISuggestion(suggestion),

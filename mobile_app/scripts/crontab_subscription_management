@@ -1,0 +1,171 @@
+# =====================================================================
+# MITA Subscription Management Cron Jobs
+# =====================================================================
+# This crontab configuration manages automated subscription verification,
+# premium feature management, and maintenance tasks for the MITA financial
+# application.
+#
+# Installation:
+# crontab -u mita-service scripts/crontab_subscription_management
+#
+# IMPORTANT: Ensure proper environment variables are set in /etc/environment
+# or use a wrapper script that sources the environment.
+
+# Environment variables
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=devops@mita.com
+HOME=/var/lib/mita
+
+# =====================================================================
+# Subscription Status Refresh - High Frequency
+# =====================================================================
+# Run every 15 minutes during business hours (8 AM - 10 PM UTC)
+# This ensures active subscriptions are verified regularly
+*/15 8-22 * * * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --batch-size 50 --max-runtime 600 >> /var/log/mita/subscription_refresh.log 2>&1
+
+# Run every hour during off-hours (10 PM - 8 AM UTC)
+# Lower frequency during low-activity periods
+0 23,0-7 * * * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --batch-size 100 --max-runtime 1800 >> /var/log/mita/subscription_refresh.log 2>&1
+
+# =====================================================================
+# Emergency Subscription Verification - Very High Frequency
+# =====================================================================
+# Run every 5 minutes for subscriptions in grace period or billing retry
+# These are critical for customer experience
+*/5 * * * * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --priority-mode --batch-size 25 --max-runtime 240 >> /var/log/mita/subscription_priority.log 2>&1
+
+# =====================================================================
+# Comprehensive Daily Verification
+# =====================================================================
+# Full subscription database sweep at 2 AM UTC daily
+# Ensures no subscriptions are missed
+0 2 * * * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --full-sweep --max-runtime 3600 >> /var/log/mita/subscription_daily.log 2>&1
+
+# =====================================================================
+# Data Maintenance and Cleanup
+# =====================================================================
+# Archive old audit logs and clean up expired data (runs at 3 AM)
+0 3 * * * /usr/local/bin/python3 /opt/mita/scripts/cleanup_subscription_data.py >> /var/log/mita/subscription_cleanup.log 2>&1
+
+# Update subscription metrics and analytics (runs at 4 AM)
+0 4 * * * /usr/local/bin/python3 /opt/mita/scripts/update_subscription_metrics.py >> /var/log/mita/subscription_metrics.log 2>&1
+
+# Generate daily subscription reports (runs at 5 AM)
+0 5 * * * /usr/local/bin/python3 /opt/mita/scripts/generate_subscription_reports.py --report-type daily >> /var/log/mita/subscription_reports.log 2>&1
+
+# =====================================================================
+# Weekly Tasks
+# =====================================================================
+# Comprehensive subscription health check (Mondays at 1 AM)
+0 1 * * 1 /usr/local/bin/python3 /opt/mita/scripts/subscription_health_check.py >> /var/log/mita/subscription_health.log 2>&1
+
+# Generate weekly business reports (Mondays at 6 AM)
+0 6 * * 1 /usr/local/bin/python3 /opt/mita/scripts/generate_subscription_reports.py --report-type weekly >> /var/log/mita/subscription_reports.log 2>&1
+
+# Database performance optimization (Sundays at 2 AM)
+0 2 * * 0 /usr/local/bin/python3 /opt/mita/scripts/optimize_subscription_db.py >> /var/log/mita/subscription_optimization.log 2>&1
+
+# =====================================================================
+# Monthly Tasks
+# =====================================================================
+# Generate monthly financial reports (1st day of month at 7 AM)
+0 7 1 * * /usr/local/bin/python3 /opt/mita/scripts/generate_subscription_reports.py --report-type monthly >> /var/log/mita/subscription_reports.log 2>&1
+
+# Subscription data analytics and insights (1st day of month at 8 AM)
+0 8 1 * * /usr/local/bin/python3 /opt/mita/scripts/analyze_subscription_trends.py >> /var/log/mita/subscription_analytics.log 2>&1
+
+# Archive old subscription data for compliance (1st day of month at 3 AM)
+0 3 1 * * /usr/local/bin/python3 /opt/mita/scripts/archive_subscription_data.py >> /var/log/mita/subscription_archive.log 2>&1
+
+# =====================================================================
+# Monitoring and Health Checks
+# =====================================================================
+# System health monitoring (every 5 minutes)
+*/5 * * * * /usr/local/bin/bash /opt/mita/scripts/check_system_health.sh >> /var/log/mita/system_health.log 2>&1
+
+# Receipt validation API health check (every 10 minutes)
+*/10 * * * * /usr/local/bin/python3 /opt/mita/scripts/check_api_health.py >> /var/log/mita/api_health.log 2>&1
+
+# Database connectivity check (every 2 minutes)
+*/2 * * * * /usr/local/bin/python3 /opt/mita/scripts/check_db_health.py >> /var/log/mita/db_health.log 2>&1
+
+# =====================================================================
+# Log Management
+# =====================================================================
+# Rotate and compress old logs (daily at midnight)
+0 0 * * * /usr/local/bin/logrotate /etc/logrotate.d/mita-subscription >> /var/log/mita/logrotate.log 2>&1
+
+# Clean up old log files (weekly on Sunday at 23:30)
+30 23 * * 0 find /var/log/mita -name "*.log.*" -type f -mtime +30 -delete
+
+# =====================================================================
+# Backup Tasks
+# =====================================================================
+# Backup subscription data (daily at 1:30 AM)
+30 1 * * * /usr/local/bin/bash /opt/mita/scripts/backup_subscription_data.sh >> /var/log/mita/backup.log 2>&1
+
+# Backup configuration files (weekly on Sunday at 1:15 AM)
+15 1 * * 0 /usr/local/bin/bash /opt/mita/scripts/backup_config.sh >> /var/log/mita/backup.log 2>&1
+
+# =====================================================================
+# Security and Compliance
+# =====================================================================
+# Scan for suspicious subscription activity (every 30 minutes)
+*/30 * * * * /usr/local/bin/python3 /opt/mita/scripts/detect_subscription_fraud.py >> /var/log/mita/security.log 2>&1
+
+# Generate compliance reports (daily at 6 AM)
+0 6 * * * /usr/local/bin/python3 /opt/mita/scripts/generate_compliance_reports.py >> /var/log/mita/compliance.log 2>&1
+
+# =====================================================================
+# Error Recovery and Alerts
+# =====================================================================
+# Check for failed subscription updates and retry (every 30 minutes)
+*/30 * * * * /usr/local/bin/python3 /opt/mita/scripts/retry_failed_subscriptions.py >> /var/log/mita/subscription_retry.log 2>&1
+
+# Monitor alert system health (every 5 minutes)
+*/5 * * * * /usr/local/bin/bash /opt/mita/scripts/check_alerting_system.sh >> /var/log/mita/alerting_health.log 2>&1
+
+# =====================================================================
+# Performance and Capacity Planning
+# =====================================================================
+# Collect performance metrics (every 10 minutes)
+*/10 * * * * /usr/local/bin/python3 /opt/mita/scripts/collect_performance_metrics.py >> /var/log/mita/performance.log 2>&1
+
+# Analyze capacity trends (daily at 4:30 AM)
+30 4 * * * /usr/local/bin/python3 /opt/mita/scripts/analyze_capacity_trends.py >> /var/log/mita/capacity.log 2>&1
+
+# =====================================================================
+# Development and Testing (Non-Production Only)
+# =====================================================================
+# The following jobs should only be enabled in development/staging environments
+# Uncomment for non-production environments:
+
+# # Test receipt validation endpoints (every 2 hours)
+# 0 */2 * * * /usr/local/bin/python3 /opt/mita/scripts/test_receipt_validation.py >> /var/log/mita/testing.log 2>&1
+
+# # Validate subscription data integrity (daily at 11 PM)
+# 0 23 * * * /usr/local/bin/python3 /opt/mita/scripts/validate_data_integrity.py >> /var/log/mita/data_validation.log 2>&1
+
+# =====================================================================
+# Emergency Response (Disabled by Default)
+# =====================================================================
+# These jobs are for emergency situations only. Enable manually when needed:
+
+# # Force refresh all subscriptions (DO NOT ENABLE REGULARLY)
+# # 0 * * * * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --force-all --max-runtime 1800 >> /var/log/mita/emergency_refresh.log 2>&1
+
+# # Emergency database recovery (DO NOT ENABLE REGULARLY)
+# # 0 */6 * * * /usr/local/bin/bash /opt/mita/scripts/emergency_db_recovery.sh >> /var/log/mita/emergency_recovery.log 2>&1
+
+# =====================================================================
+# Seasonal Adjustments
+# =====================================================================
+# Increase frequency during high-traffic periods (Black Friday, etc.)
+# These should be enabled temporarily during expected high-load periods:
+
+# # Black Friday / Cyber Monday (Thanksgiving week - increase frequency)
+# # */10 * 22-28 11 * test $(date +\%w) -eq 4 -o $(date +\%w) -eq 5 -o $(date +\%w) -eq 1 && /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --batch-size 25 --max-runtime 300 >> /var/log/mita/subscription_high_load.log 2>&1
+
+# # End of year processing (December 29-31, January 1-2)
+# # */10 * 29-31 12,1-2 * /usr/local/bin/python3 /opt/mita/scripts/refresh_premium_status.py --batch-size 25 --max-runtime 300 >> /var/log/mita/subscription_year_end.log 2>&1

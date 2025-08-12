@@ -38,12 +38,12 @@ class ExpenseIntegrationHelper {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                const Expanded(
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
                   child: Text(
                     'Failed to open expense form. Please try again.',
                     style: TextStyle(fontFamily: 'Manrope'),
@@ -164,9 +164,9 @@ class ExpenseIntegrationHelper {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    const Text(
                       'Budget Updated!',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

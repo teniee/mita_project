@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../core/app_error_handler.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
-  const ProfileSettingsScreen({Key? key}) : super(key: key);
+  const ProfileSettingsScreen({super.key});
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
@@ -51,7 +50,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       
       // Try to load from API with timeout
       final profileData = await _apiService.getUserProfile().timeout(
-        Duration(seconds: 5),
+        const Duration(seconds: 5),
         onTimeout: () => <String, dynamic>{},
       ).catchError((e) => <String, dynamic>{});
       
@@ -60,7 +59,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         setState(() {
           _nameController.text = data['name'] ?? 'John Doe';
           _emailController.text = data['email'] ?? 'user@example.com';
-          _incomeController.text = (data['income'] ?? 3000).toString();
+          final income = data['income'];
+          if (income == null || income <= 0) {
+            throw Exception('Income data is required. Please complete onboarding.');
+          }
+          _incomeController.text = income.toString();
           _savingsGoalController.text = (data['savings_goal'] ?? 500).toString();
           _selectedCurrency = data['currency'] ?? 'USD';
           _selectedRegion = data['region'] ?? 'US';
@@ -82,10 +85,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     setState(() => _isSaving = true);
     
     try {
+      final parsedIncome = double.tryParse(_incomeController.text) ?? 0.0;
+      if (parsedIncome <= 0) {
+        throw Exception('Valid income is required');
+      }
+      
       final profileData = {
         'name': _nameController.text,
         'email': _emailController.text,
-        'income': double.tryParse(_incomeController.text) ?? 3000,
+        'income': parsedIncome,
         'savings_goal': double.tryParse(_savingsGoalController.text) ?? 500,
         'currency': _selectedCurrency,
         'region': _selectedRegion,
@@ -95,18 +103,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       };
 
       // Save locally first for instant feedback
-      await Future.delayed(Duration(milliseconds: 200)); // Simulate local save
+      await Future.delayed(const Duration(milliseconds: 200)); // Simulate local save
       
       // Try to sync with backend
       try {
         await _apiService.updateUserProfile(profileData).timeout(
-          Duration(seconds: 8),
+          const Duration(seconds: 8),
           onTimeout: () => throw Exception('Profile update timeout'),
         );
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
@@ -123,7 +131,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         // Backend failed, but we saved locally
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Row(
                 children: [
                   Icon(Icons.cloud_off, color: Colors.white),
@@ -150,26 +158,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile Settings', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
+        title: const Text('Profile Settings', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
           if (_isSaving)
-            Padding(
+            const Padding(
               padding: EdgeInsets.only(right: 16),
               child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
             )
           else
             TextButton(
               onPressed: _saveProfile,
-              child: Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
         ],
       ),
       body: _isLoading 
-        ? Center(child: CircularProgressIndicator())
+        ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Form(
               key: _formKey,
               child: Column(
@@ -192,18 +200,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                               color: colorScheme.primary,
                               shape: BoxShape.circle,
                             ),
-                            padding: EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
                             child: Icon(Icons.camera_alt, size: 20, color: colorScheme.onPrimary),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Personal Information
                   _buildSectionHeader('Personal Information'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildTextField(
                     controller: _nameController,
@@ -211,7 +219,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     icon: Icons.person_outline,
                     validator: (value) => value?.isEmpty ?? true ? 'Please enter your name' : null,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildTextField(
                     controller: _emailController,
@@ -224,39 +232,39 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Financial Information
                   _buildSectionHeader('Financial Information'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildTextField(
                     controller: _incomeController,
                     label: 'Monthly Income',
                     icon: Icons.attach_money,
                     keyboardType: TextInputType.number,
-                    prefix: Text('\$'),
+                    prefix: const Text('\$'),
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Please enter your income';
                       if (double.tryParse(value!) == null) return 'Please enter a valid amount';
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildTextField(
                     controller: _savingsGoalController,
                     label: 'Monthly Savings Goal',
                     icon: Icons.savings_outlined,
                     keyboardType: TextInputType.number,
-                    prefix: Text('\$'),
+                    prefix: const Text('\$'),
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Please enter your savings goal';
                       if (double.tryParse(value!) == null) return 'Please enter a valid amount';
                       return null;
                     },
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildDropdownField(
                     value: _selectedCurrency,
@@ -265,7 +273,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     items: _currencies,
                     onChanged: (value) => setState(() => _selectedCurrency = value!),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildDropdownField(
                     value: _selectedRegion,
@@ -274,20 +282,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     items: _regions,
                     onChanged: (value) => setState(() => _selectedRegion = value!),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildDropdownField(
                     value: _budgetMethod,
                     label: 'Budget Method',
-                    icon: Icons.pie_chart_outlined,
+                    icon: Icons.pie_chart_outline,
                     items: _budgetMethods,
                     onChanged: (value) => setState(() => _budgetMethod = value!),
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Preferences
                   _buildSectionHeader('Preferences'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   
                   _buildSwitchTile(
                     title: 'Push Notifications',
@@ -305,7 +313,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     onChanged: (value) => setState(() => _darkModeEnabled = value),
                   ),
                   
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   
                   // Action Buttons
                   Row(
@@ -316,29 +324,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             // Reset to defaults
                             _loadUserProfile();
                           },
-                          icon: Icon(Icons.refresh),
-                          label: Text('Reset'),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Reset'),
                           style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: _isSaving ? null : _saveProfile,
                           icon: _isSaving 
-                            ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Icon(Icons.save),
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.save),
                           label: Text(_isSaving ? 'Saving...' : 'Save Profile'),
                           style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -378,7 +386,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
     );
   }
@@ -400,7 +408,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       items: items.map((item) => DropdownMenuItem(
         value: item,
@@ -418,7 +426,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }) {
     return Card(
       child: SwitchListTile(
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(subtitle),
         secondary: Icon(icon),
         value: value,

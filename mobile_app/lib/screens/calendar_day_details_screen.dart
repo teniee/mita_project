@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import '../services/predictive_analytics_service.dart';
-import '../services/expense_state_service.dart';
 import '../services/api_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/logging_service.dart';
@@ -17,7 +16,7 @@ class CalendarDayDetailsScreen extends StatefulWidget {
   final BudgetAdapterService? budgetService;
 
   const CalendarDayDetailsScreen({
-    Key? key,
+    super.key,
     required this.dayNumber,
     required this.limit,
     required this.spent,
@@ -25,7 +24,7 @@ class CalendarDayDetailsScreen extends StatefulWidget {
     required this.date,
     this.dayData,
     this.budgetService,
-  }) : super(key: key);
+  });
 
   @override
   State<CalendarDayDetailsScreen> createState() => _CalendarDayDetailsScreenState();
@@ -35,7 +34,6 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     with TickerProviderStateMixin {
   
   final PredictiveAnalyticsService _predictiveService = PredictiveAnalyticsService();
-  final ExpenseStateService _expenseService = ExpenseStateService();
   final ApiService _apiService = ApiService();
   
   late AnimationController _slideController;
@@ -463,7 +461,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   Expanded(
                     child: _buildBudgetStat(
                       isFuture ? 'Predicted' : 'Remaining',
-                      isFuture ? '\$${_getPredictedSpending().toStringAsFixed(0)}' : '\$${remaining}',
+                      isFuture ? '\$${_getPredictedSpending().toStringAsFixed(0)}' : '\$$remaining',
                       isFuture ? Icons.trending_up_outlined : Icons.account_balance_outlined,
                       isFuture ? colorScheme.secondary : colorScheme.tertiary,
                       textTheme,

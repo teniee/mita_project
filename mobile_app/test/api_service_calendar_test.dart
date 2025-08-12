@@ -97,7 +97,7 @@ void main() {
 
     group('Financial Accuracy Tests', () {
       test('should ensure no money is lost in calculations', () {
-        final monthlyIncome = 5000.0;
+        const monthlyIncome = 5000.0;
         final weights = {
           'food': 0.15,
           'transportation': 0.15,
@@ -134,13 +134,13 @@ void main() {
       });
 
       test('should maintain budget consistency across days', () {
-        final monthlyIncome = 6000.0;
-        final flexiblePercentage = 0.55;
-        final monthlyFlexible = monthlyIncome * flexiblePercentage;
-        final daysInMonth = 30;
+        const monthlyIncome = 6000.0;
+        const flexiblePercentage = 0.55;
+        const monthlyFlexible = monthlyIncome * flexiblePercentage;
+        const daysInMonth = 30;
         
         // Calculate daily budgets with variation
-        final baseDailyBudget = monthlyFlexible / daysInMonth;
+        const baseDailyBudget = monthlyFlexible / daysInMonth;
         final dailyBudgets = <int>[];
         
         for (int day = 1; day <= daysInMonth; day++) {
@@ -163,7 +163,7 @@ void main() {
 
     group('Category Distribution Tests', () {
       test('should distribute categories proportionally', () {
-        final dailyBudget = 200;
+        const dailyBudget = 200;
         final categoryWeights = {
           'food': 0.4,
           'transportation': 0.25,
@@ -188,7 +188,7 @@ void main() {
       });
 
       test('should handle minimum category amounts', () {
-        final smallDailyBudget = 20; // Very small budget
+        const smallDailyBudget = 20; // Very small budget
         final categoryWeights = {
           'food': 0.5,
           'transportation': 0.3,
@@ -203,9 +203,9 @@ void main() {
         });
 
         // All categories should have at least some allocation
-        categoryAmounts.values.forEach((amount) {
+        for (var amount in categoryAmounts.values) {
           expect(amount, greaterThan(0));
-        });
+        }
       });
     });
 
@@ -268,24 +268,24 @@ void main() {
 
     group('Edge Case Handling', () {
       test('should handle zero income', () {
-        final income = 0.0;
-        final fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
+        const income = 0.0;
+        const fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
         
         expect(fallbackIncome, equals(3000.0));
         expect(fallbackIncome, greaterThan(0));
       });
 
       test('should handle negative income', () {
-        final income = -1000.0;
-        final fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
+        const income = -1000.0;
+        const fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
         
         expect(fallbackIncome, equals(3000.0));
         expect(fallbackIncome, greaterThan(0));
       });
 
       test('should handle extremely high income', () {
-        final income = 1000000.0; // $1M monthly
-        final maxReasonableDaily = 10000; // $10k daily limit
+        const income = 1000000.0; // $1M monthly
+        const maxReasonableDaily = 10000; // $10k daily limit
         
         final dailyBudget = ((income * 0.55) / 30).round(); // 55% flexible, 30 days
         final cappedDailyBudget = dailyBudget > maxReasonableDaily ? maxReasonableDaily : dailyBudget;
@@ -303,8 +303,8 @@ void main() {
         expect(normalYearDays, equals(28));
         
         // Verify budget calculations work for both
-        final monthlyIncome = 5000.0;
-        final flexibleBudget = monthlyIncome * 0.55;
+        const monthlyIncome = 5000.0;
+        const flexibleBudget = monthlyIncome * 0.55;
         
         final leapYearDaily = (flexibleBudget / leapYearDays).round();
         final normalYearDaily = (flexibleBudget / normalYearDays).round();
@@ -320,8 +320,8 @@ void main() {
         final stopwatch = Stopwatch()..start();
         
         // Simulate calendar data generation
-        final monthlyIncome = 5000.0;
-        final daysInMonth = 31;
+        const monthlyIncome = 5000.0;
+        const daysInMonth = 31;
         final calendarData = <Map<String, dynamic>>[];
         
         for (int day = 1; day <= daysInMonth; day++) {
@@ -372,8 +372,8 @@ void main() {
     group('Data Consistency Tests', () {
       test('should maintain consistent data across calls', () {
         // Simulate consistent data generation with same input
-        final income = 5000.0;
-        final day = 15; // Fixed day for consistency
+        const income = 5000.0;
+        const day = 15; // Fixed day for consistency
         
         final result1 = _generateMockDayData(income, day);
         final result2 = _generateMockDayData(income, day);

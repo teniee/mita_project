@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'income_service.dart';
 import 'advanced_financial_engine.dart';
@@ -384,7 +383,7 @@ class BehavioralCalendarEngine {
         milestones.add({
           'type': 'adherence_streak',
           'value': adherenceStreak,
-          'title': '${adherenceStreak} Days On Track!',
+          'title': '$adherenceStreak Days On Track!',
           'description': 'You\'ve stayed within budget for $adherenceStreak consecutive days',
           'reward_points': adherenceStreak * 10,
           'tier_bonus': _getTierBonusMultiplier(incomeTier),
@@ -565,7 +564,7 @@ class BehavioralCalendarEngine {
     }
     
     // Convert to percentage adjustment
-    final baseDaily = 100.0; // Assume $100 base daily budget for calculation
+    const baseDaily = 100.0; // Assume $100 base daily budget for calculation
     return totalGoalAdjustment / baseDaily;
   }
 

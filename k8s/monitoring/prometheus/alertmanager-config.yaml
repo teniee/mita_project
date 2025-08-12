@@ -1,0 +1,366 @@
+# AlertManager configuration for MITA Financial Services
+# Production-grade alerting with multiple notification channels
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: config
+    environment: production
+    compliance: "SOX,PCI-DSS"
+type: Opaque
+stringData:
+  alertmanager.yml: |
+    global:
+      # SMTP configuration for email notifications
+      smtp_smarthost: 'smtp.sendgrid.net:587'
+      smtp_from: 'alerts@mita.finance'
+      smtp_auth_username: 'apikey'
+      smtp_auth_password: '{{ .Values.smtp.apiKey }}'
+      smtp_require_tls: true
+      
+      # Default notification settings
+      resolve_timeout: 5m
+      
+      # Slack global configuration
+      slack_api_url: '{{ .Values.slack.webhookUrl }}'
+      
+      # PagerDuty global configuration
+      pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+    # Template definitions for financial services
+    templates:
+      - '/etc/alertmanager/templates/*.tmpl'
+
+    # Routing configuration with escalation for financial services
+    route:
+      group_by: ['alertname', 'severity', 'service', 'business_impact']
+      group_wait: 30s
+      group_interval: 2m
+      repeat_interval: 12h
+      receiver: 'default-receiver'
+      
+      routes:
+        # Critical business impact alerts - immediate escalation
+        - match:
+            business_impact: "revenue-critical"
+          receiver: 'critical-escalation'
+          group_wait: 10s
+          group_interval: 30s
+          repeat_interval: 5m
+          routes:
+            - match:
+                severity: "critical"
+              receiver: 'pagerduty-critical'
+              continue: true
+            - receiver: 'slack-critical'
+              continue: true
+            - receiver: 'email-executives'
+        
+        # Security incidents - immediate security team notification
+        - match_re:
+            security_incident: ".*"
+          receiver: 'security-team'
+          group_wait: 10s
+          group_interval: 1m
+          repeat_interval: 10m
+          routes:
+            - match:
+                severity: "critical"
+              receiver: 'security-escalation'
+              continue: true
+        
+        # Compliance violations - audit and compliance team
+        - match_re:
+            compliance: ".*"
+          receiver: 'compliance-team'
+          group_wait: 15s
+          group_interval: 2m
+          repeat_interval: 30m
+        
+        # Critical alerts - SRE team with escalation
+        - match:
+            severity: "critical"
+          receiver: 'sre-critical'
+          group_wait: 15s
+          group_interval: 1m
+          repeat_interval: 10m
+          routes:
+            - match:
+                team: "sre"
+              receiver: 'pagerduty-sre'
+              continue: true
+        
+        # Warning alerts - standard SRE notification
+        - match:
+            severity: "warning"
+          receiver: 'sre-warning'
+          group_wait: 2m
+          group_interval: 5m
+          repeat_interval: 2h
+        
+        # Data science team alerts
+        - match:
+            team: "data-science"
+          receiver: 'data-science-team'
+          group_wait: 1m
+          group_interval: 3m
+          repeat_interval: 1h
+
+    # Inhibition rules to prevent alert spam
+    inhibit_rules:
+      # Inhibit warning alerts when critical alerts are firing
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'service', 'instance']
+      
+      # Inhibit individual component alerts when service is down
+      - source_match:
+          alertname: 'MitaTransactionProcessingDown'
+        target_match_re:
+          alertname: 'Mita.*'
+        equal: ['service']
+      
+      # Inhibit database connection alerts when database is down
+      - source_match:
+          alertname: 'MitaDatabaseConnectionPool'
+        target_match:
+          alertname: 'MitaHighErrorRate'
+        equal: ['service']
+
+    # Receiver definitions for different notification channels
+    receivers:
+      # Default receiver for unmatched alerts
+      - name: 'default-receiver'
+        slack_configs:
+          - api_url: '{{ .Values.slack.webhookUrl }}'
+            channel: '#mita-alerts'
+            title: 'MITA Production Alert'
+            text: |
+              {{ range .Alerts }}
+              *Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Severity:* {{ .Labels.severity }}
+              *Service:* {{ .Labels.service | default "unknown" }}
+              *Environment:* {{ .Labels.environment | default "production" }}
+              {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+              {{ end }}
+            color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+            send_resolved: true
+
+      # Critical business impact escalation
+      - name: 'critical-escalation'
+        email_configs:
+          - to: 'cto@mita.finance,ceo@mita.finance'
+            subject: 'CRITICAL: Revenue Impact Alert - {{ .GroupLabels.alertname }}'
+            body: |
+              CRITICAL BUSINESS IMPACT ALERT
+              ==============================
+              
+              {{ range .Alerts }}
+              Alert: {{ .Annotations.summary }}
+              Description: {{ .Annotations.description }}
+              Business Impact: {{ .Labels.business_impact }}
+              Compliance: {{ .Labels.compliance | default "N/A" }}
+              
+              Impact: {{ .Annotations.impact }}
+              Action Required: {{ .Annotations.action }}
+              
+              {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+              
+              Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+              {{ end }}
+              
+              This alert requires immediate executive attention due to potential revenue impact.
+            headers:
+              X-Priority: '1'
+              X-MSMail-Priority: 'High'
+              Importance: 'high'
+
+      # PagerDuty for critical alerts
+      - name: 'pagerduty-critical'
+        pagerduty_configs:
+          - routing_key: '{{ .Values.pagerduty.integrationKey }}'
+            description: 'CRITICAL: {{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}'
+            severity: 'critical'
+            details:
+              alert_count: '{{ len .Alerts }}'
+              service: '{{ .GroupLabels.service | default "unknown" }}'
+              environment: '{{ .GroupLabels.environment | default "production" }}'
+              business_impact: '{{ .GroupLabels.business_impact | default "unknown" }}'
+              compliance: '{{ .GroupLabels.compliance | default "none" }}'
+            links:
+              - href: '{{ .CommonAnnotations.runbook_url }}'
+                text: 'Runbook'
+              - href: 'https://grafana.mita.finance'
+                text: 'Grafana Dashboard'
+              - href: 'https://prometheus.mita.finance'
+                text: 'Prometheus'
+
+      # Slack for critical alerts
+      - name: 'slack-critical'
+        slack_configs:
+          - api_url: '{{ .Values.slack.webhookUrl }}'
+            channel: '#mita-critical'
+            title: ':rotating_light: CRITICAL ALERT :rotating_light:'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              
+              *Service:* {{ .Labels.service | default "unknown" }}
+              *Business Impact:* {{ .Labels.business_impact | default "unknown" }}
+              *Compliance:* {{ .Labels.compliance | default "none" }}
+              
+              *Description:* {{ .Annotations.description }}
+              *Impact:* {{ .Annotations.impact }}
+              *Action Required:* {{ .Annotations.action }}
+              
+              {{ if .Annotations.runbook_url }}:book: <{{ .Annotations.runbook_url }}|Runbook>{{ end }}
+              :chart_with_upwards_trend: <https://grafana.mita.finance|Grafana> | :mag: <https://prometheus.mita.finance|Prometheus>
+              {{ end }}
+            color: 'danger'
+            send_resolved: true
+            actions:
+              - type: 'button'
+                text: 'Acknowledge'
+                url: 'https://pagerduty.com'
+              - type: 'button'
+                text: 'View Logs'
+                url: 'https://kibana.mita.finance'
+
+      # Email for executives
+      - name: 'email-executives'
+        email_configs:
+          - to: 'executives@mita.finance'
+            subject: 'Executive Alert: {{ .GroupLabels.alertname }}'
+            body: |
+              Executive Notification - Critical System Alert
+              ============================================
+              
+              {{ range .Alerts }}
+              Alert: {{ .Annotations.summary }}
+              Service: {{ .Labels.service | default "unknown" }}
+              Business Impact: {{ .Labels.business_impact }}
+              Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+              
+              {{ .Annotations.description }}
+              
+              Required Action: {{ .Annotations.action }}
+              {{ end }}
+
+      # Security team notifications
+      - name: 'security-team'
+        email_configs:
+          - to: 'security@mita.finance'
+            subject: 'Security Alert: {{ .GroupLabels.alertname }}'
+            body: |
+              SECURITY INCIDENT ALERT
+              ======================
+              
+              {{ range .Alerts }}
+              Alert: {{ .Annotations.summary }}
+              Security Classification: {{ .Labels.security_incident }}
+              Compliance Framework: {{ .Labels.compliance | default "General" }}
+              
+              Description: {{ .Annotations.description }}
+              Impact: {{ .Annotations.impact }}
+              Required Action: {{ .Annotations.action }}
+              
+              {{ if .Annotations.runbook_url }}Security Runbook: {{ .Annotations.runbook_url }}{{ end }}
+              {{ end }}
+        slack_configs:
+          - api_url: '{{ .Values.slack.securityWebhookUrl }}'
+            channel: '#security-alerts'
+            title: ':warning: Security Alert'
+            text: |
+              {{ range .Alerts }}
+              *Security Incident:* {{ .Annotations.summary }}
+              *Classification:* {{ .Labels.security_incident }}
+              *Compliance:* {{ .Labels.compliance | default "General" }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+            color: 'warning'
+
+      # Security escalation for critical security incidents
+      - name: 'security-escalation'
+        pagerduty_configs:
+          - routing_key: '{{ .Values.pagerduty.securityIntegrationKey }}'
+            description: 'CRITICAL SECURITY: {{ .GroupLabels.alertname }}'
+            severity: 'critical'
+
+      # Compliance team notifications
+      - name: 'compliance-team'
+        email_configs:
+          - to: 'compliance@mita.finance,audit@mita.finance'
+            subject: 'Compliance Alert: {{ .GroupLabels.alertname }}'
+            body: |
+              COMPLIANCE VIOLATION ALERT
+              =========================
+              
+              {{ range .Alerts }}
+              Alert: {{ .Annotations.summary }}
+              Compliance Framework: {{ .Labels.compliance }}
+              Service: {{ .Labels.service | default "unknown" }}
+              
+              Description: {{ .Annotations.description }}
+              Business Impact: {{ .Annotations.impact }}
+              
+              This alert indicates a potential compliance violation that requires immediate attention.
+              Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+              {{ end }}
+
+      # SRE critical alerts
+      - name: 'sre-critical'
+        slack_configs:
+          - api_url: '{{ .Values.slack.webhookUrl }}'
+            channel: '#sre-critical'
+            title: 'SRE Critical Alert'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              *Service:* {{ .Labels.service | default "unknown" }}
+              *Description:* {{ .Annotations.description }}
+              *Action:* {{ .Annotations.action }}
+              {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+              {{ end }}
+            color: 'danger'
+
+      # PagerDuty for SRE
+      - name: 'pagerduty-sre'
+        pagerduty_configs:
+          - routing_key: '{{ .Values.pagerduty.sreIntegrationKey }}'
+            description: 'SRE Critical: {{ .GroupLabels.alertname }}'
+            severity: 'critical'
+
+      # SRE warning alerts
+      - name: 'sre-warning'
+        slack_configs:
+          - api_url: '{{ .Values.slack.webhookUrl }}'
+            channel: '#sre-alerts'
+            title: 'SRE Warning'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              *Service:* {{ .Labels.service | default "unknown" }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+            color: 'warning'
+            send_resolved: true
+
+      # Data science team alerts
+      - name: 'data-science-team'
+        slack_configs:
+          - api_url: '{{ .Values.slack.webhookUrl }}'
+            channel: '#data-science-alerts'
+            title: 'AI/ML System Alert'
+            text: |
+              {{ range .Alerts }}
+              *AI/ML Alert:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              *Impact:* {{ .Annotations.impact }}
+              {{ end }}
+            color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'

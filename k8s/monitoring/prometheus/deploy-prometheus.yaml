@@ -1,0 +1,367 @@
+# Deployment script for Prometheus monitoring stack
+# This deploys the complete monitoring infrastructure for MITA Financial Services
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    app.kubernetes.io/name: monitoring
+    environment: production
+    compliance: "SOX,PCI-DSS"
+    business-function: "infrastructure-monitoring"
+  annotations:
+    description: "Production monitoring infrastructure for MITA Financial Services"
+    compliance/framework: "SOX,PCI-DSS"
+    data-classification: "internal"
+
+---
+# Service account for Prometheus with necessary RBAC permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: server
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/prometheus-monitoring-role"
+
+---
+# Cluster role for Prometheus to access cluster-wide metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: server
+rules:
+  # Core Kubernetes API access
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+      - configmaps
+      - secrets
+    verbs: ["get", "list", "watch"]
+  
+  # Extensions API access
+  - apiGroups: ["extensions"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  
+  # Apps API access
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list", "watch"]
+  
+  # Networking API access
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+  
+  # Monitoring API access
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - servicemonitors
+      - podmonitors
+      - prometheusrules
+    verbs: ["get", "list", "watch"]
+  
+  # Non-resource URLs
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+
+---
+# Cluster role binding for Prometheus
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+
+---
+# Storage class for high-performance monitoring storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+  labels:
+    app.kubernetes.io/name: monitoring-storage
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "16000"
+  throughput: "1000"
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+---
+# ConfigMap for Prometheus recording rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-recording-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: rules
+    monitoring.coreos.com/prometheus: "production"
+data:
+  financial-recording-rules.yaml: |
+    groups:
+      # Financial Services Performance Recording Rules
+      - name: mita.financial.performance
+        interval: 30s
+        rules:
+          # API performance metrics
+          - record: mita:api_request_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend"}[5m])) by (service, method, endpoint)
+          
+          - record: mita:api_error_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",code=~"5.."}[5m])) by (service, method, endpoint)
+              /
+              sum(rate(http_requests_total{service="mita-backend"}[5m])) by (service, method, endpoint)
+          
+          - record: mita:api_latency_p95_5m
+            expr: |
+              histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="mita-backend"}[5m])) by (service, method, endpoint, le))
+          
+          - record: mita:api_latency_p99_5m
+            expr: |
+              histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service="mita-backend"}[5m])) by (service, method, endpoint, le))
+          
+          # Transaction processing metrics
+          - record: mita:transaction_success_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*",code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*"}[5m]))
+          
+          - record: mita:transaction_processing_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*transaction.*"}[5m]))
+          
+          # Authentication metrics
+          - record: mita:auth_success_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*auth.*",code!="401"}[5m]))
+              /
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*auth.*"}[5m]))
+          
+          - record: mita:auth_failure_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*auth.*",code="401"}[5m]))
+
+      # Worker and Queue Performance
+      - name: mita.workers.performance
+        interval: 30s
+        rules:
+          # Queue depth metrics
+          - record: mita:queue_depth_by_priority
+            expr: |
+              sum(rq_queue_depth) by (queue_name, priority)
+          
+          # Worker performance
+          - record: mita:worker_job_success_rate_5m
+            expr: |
+              sum(rate(task_executions_total{status="success"}[5m])) by (worker_tier, queue)
+              /
+              sum(rate(task_executions_total[5m])) by (worker_tier, queue)
+          
+          - record: mita:worker_job_failure_rate_5m
+            expr: |
+              sum(rate(task_executions_total{status="failed"}[5m])) by (worker_tier, queue)
+              /
+              sum(rate(task_executions_total[5m])) by (worker_tier, queue)
+          
+          # Task processing times
+          - record: mita:task_duration_p95_5m
+            expr: |
+              histogram_quantile(0.95, sum(rate(task_duration_seconds_bucket[5m])) by (task_type, worker_tier, le))
+          
+          # OCR and AI specific metrics
+          - record: mita:ocr_processing_duration_p95_5m
+            expr: |
+              histogram_quantile(0.95, sum(rate(task_duration_seconds_bucket{task_type="ocr"}[5m])) by (le))
+          
+          - record: mita:ai_analysis_duration_p95_5m
+            expr: |
+              histogram_quantile(0.95, sum(rate(task_duration_seconds_bucket{task_type="ai_analysis"}[5m])) by (le))
+
+      # Resource Utilization Recording Rules
+      - name: mita.resources.utilization
+        interval: 60s
+        rules:
+          # CPU utilization
+          - record: mita:pod_cpu_utilization
+            expr: |
+              sum(rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])) by (pod, namespace, container)
+              /
+              sum(container_spec_cpu_quota{container!="POD",container!=""} / container_spec_cpu_period{container!="POD",container!=""}) by (pod, namespace, container)
+          
+          # Memory utilization
+          - record: mita:pod_memory_utilization
+            expr: |
+              sum(container_memory_working_set_bytes{container!="POD",container!=""}) by (pod, namespace, container)
+              /
+              sum(container_spec_memory_limit_bytes{container!="POD",container!=""}) by (pod, namespace, container)
+          
+          # Network I/O
+          - record: mita:pod_network_receive_bytes_rate_5m
+            expr: |
+              sum(rate(container_network_receive_bytes_total[5m])) by (pod, namespace)
+          
+          - record: mita:pod_network_transmit_bytes_rate_5m
+            expr: |
+              sum(rate(container_network_transmit_bytes_total[5m])) by (pod, namespace)
+
+      # Business Metrics Recording Rules
+      - name: mita.business.metrics
+        interval: 300s  # 5 minutes for business metrics
+        rules:
+          # Premium user activity
+          - record: mita:premium_user_activity_rate_5m
+            expr: |
+              sum(rate(http_requests_total{service="mita-backend",endpoint=~".*premium.*"}[5m]))
+          
+          # Financial calculation accuracy (if metric is available)
+          - record: mita:calculation_accuracy_rate_5m
+            expr: |
+              sum(rate(financial_calculations_total{status="accurate"}[5m]))
+              /
+              sum(rate(financial_calculations_total[5m]))
+          
+          # Data processing volume
+          - record: mita:data_processing_volume_5m
+            expr: |
+              sum(rate(data_records_processed_total[5m])) by (data_type)
+          
+          # Income classification accuracy (if available)
+          - record: mita:income_classification_accuracy_5m
+            expr: |
+              sum(rate(income_classifications_total{status="correct"}[5m]))
+              /
+              sum(rate(income_classifications_total[5m]))
+
+---
+# Network Policy for monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-network-policy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/component: network-security
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # Ingress rules
+  ingress:
+    # Allow ingress from nginx-ingress for Prometheus and Grafana web UI
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 9090  # Prometheus
+        - protocol: TCP
+          port: 3000  # Grafana
+        - protocol: TCP
+          port: 9093  # AlertManager
+    
+    # Allow internal monitoring communication
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090  # Prometheus
+        - protocol: TCP
+          port: 9093  # AlertManager
+        - protocol: TCP
+          port: 3000  # Grafana
+    
+    # Allow scraping from application namespaces
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: mita-production
+      ports:
+        - protocol: TCP
+          port: 8000  # Application metrics
+  
+  # Egress rules
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    
+    # Allow HTTPS outbound for webhooks and external services
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    
+    # Allow SMTP for email notifications
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 587
+        - protocol: TCP
+          port: 25
+    
+    # Allow access to Kubernetes API
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+    
+    # Allow scraping application pods
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: mita-production
+      ports:
+        - protocol: TCP
+          port: 8000  # Application metrics port

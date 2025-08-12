@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({Key? key}) : super(key: key);
+  const UserProfileScreen({super.key});
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -54,7 +54,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       
       // Load user profile data
       final profileData = await _apiService.getUserProfile().timeout(
-        Duration(seconds: 5),
+        const Duration(seconds: 5),
         onTimeout: () => <String, dynamic>{},
       ).catchError((e) => <String, dynamic>{});
       
@@ -81,15 +81,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
   }
   
   Map<String, dynamic> _getDefaultProfile() {
+    throw Exception('Default profile should not be used. Please complete onboarding.');
+  }
+
+  Map<String, dynamic> _getEmptyProfile() {
     return {
       'name': 'MITA User',
       'email': 'user@mita.finance',
-      'income': 3500.0,
-      'savings_goal': 700.0,
       'currency': 'USD',
       'region': 'US',
       'budget_method': '50/30/20 Rule',
-      'member_since': DateTime.now().subtract(Duration(days: 30)).toIso8601String(),
+      'member_since': DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
       'profile_completion': 85,
       'verified_email': true,
       'dark_mode': false,
@@ -114,7 +116,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     try {
       // Try to get real stats from API
       final monthlyAnalytics = await _apiService.getMonthlyAnalytics().timeout(
-        Duration(seconds: 3),
+        const Duration(seconds: 3),
         onTimeout: () => <String, dynamic>{},
       ).catchError((e) => <String, dynamic>{});
       
@@ -262,7 +264,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       try {
         joinDate = DateTime.parse(memberSince);
       } catch (e) {
-        joinDate = DateTime.now().subtract(Duration(days: 30));
+        joinDate = DateTime.now().subtract(const Duration(days: 30));
       }
     }
     
@@ -349,7 +351,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.verified, color: Colors.green, size: 16),
+                                  const Icon(Icons.verified, color: Colors.green, size: 16),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Verified',
@@ -453,7 +455,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           children: [
             _buildStatCard(
               'Monthly Income',
-              '\$${(_userProfile['income'] as num? ?? 3500).toStringAsFixed(0)}',
+              _userProfile['income'] != null 
+                ? '\$${(_userProfile['income'] as num).toStringAsFixed(0)}'
+                : 'Complete onboarding',
               Icons.trending_up,
               Colors.green,
               colorScheme,

@@ -1,6 +1,6 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'logging_service.dart';
+import 'income_service.dart';
 
 /// Service that provides realistic fallback calendar data when backend is unavailable
 class CalendarFallbackService {
@@ -107,11 +107,9 @@ class CalendarFallbackService {
 
   /// Determine income tier for budget calculations
   String _getIncomeTier(double monthlyIncome) {
-    if (monthlyIncome < 2500) return 'low';
-    if (monthlyIncome < 5000) return 'mid_low';
-    if (monthlyIncome < 7500) return 'mid';
-    if (monthlyIncome < 12000) return 'mid_high';
-    return 'high';
+    final incomeService = IncomeService();
+    final tier = incomeService.classifyIncome(monthlyIncome);
+    return incomeService.getTierString(tier);
   }
 
   /// Get location-based cost multiplier

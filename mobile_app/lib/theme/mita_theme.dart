@@ -32,17 +32,12 @@ class MitaTheme {
     // Surface colors
     surface: _mitaSurface,
     onSurface: Color(0xFF1A1B1E),
-    surfaceVariant: Color(0xFFE7E0EC),
     onSurfaceVariant: Color(0xFF49454F),
     surfaceContainerHighest: Color(0xFFF7F2FA),
     surfaceContainerHigh: Color(0xFFF2EEFA),
     surfaceContainer: Color(0xFFECE6F0),
     surfaceContainerLow: Color(0xFFF7F2FA),
     surfaceContainerLowest: Colors.white,
-    
-    // Background
-    background: _mitaBackground,
-    onBackground: Color(0xFF1A1B1E),
     
     // Error colors
     error: Color(0xFFBA1A1A),
@@ -80,17 +75,12 @@ class MitaTheme {
     // Surface colors
     surface: Color(0xFF101214),
     onSurface: Color(0xFFE2E2E9),
-    surfaceVariant: Color(0xFF49454F),
     onSurfaceVariant: Color(0xFFCAC4D0),
     surfaceContainerHighest: Color(0xFF36343B),
     surfaceContainerHigh: Color(0xFF2B2930),
     surfaceContainer: Color(0xFF211F26),
     surfaceContainerLow: Color(0xFF1A1B1E),
     surfaceContainerLowest: Color(0xFF0F0D13),
-    
-    // Background
-    background: Color(0xFF101214),
-    onBackground: Color(0xFFE2E2E9),
     
     // Error colors
     error: Color(0xFFFFB4AB),
@@ -202,7 +192,7 @@ class MitaTheme {
       // Input Decoration Theme with Material 3 styling
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: _lightColorScheme.surfaceVariant.withValues(alpha: 0.3),
+        fillColor: _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
@@ -255,9 +245,9 @@ class MitaTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
         ),
-        checkColor: MaterialStateProperty.all(_lightColorScheme.onPrimary),
-        fillColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        checkColor: WidgetStateProperty.all(_lightColorScheme.onPrimary),
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return _lightColorScheme.primary;
           }
           return _lightColorScheme.outline;
@@ -266,9 +256,9 @@ class MitaTheme {
       
       // Chip Theme
       chipTheme: ChipThemeData(
-        backgroundColor: _lightColorScheme.surfaceVariant,
+        backgroundColor: _lightColorScheme.surfaceContainerHighest,
         selectedColor: _lightColorScheme.secondaryContainer,
-        disabledColor: _lightColorScheme.surfaceVariant.withValues(alpha: 0.12),
+        disabledColor: _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.12),
         labelStyle: const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
@@ -302,22 +292,22 @@ class MitaTheme {
       
       // Search Bar Theme
       searchBarTheme: SearchBarThemeData(
-        backgroundColor: MaterialStateProperty.all(_lightColorScheme.surfaceContainer),
-        surfaceTintColor: MaterialStateProperty.all(_lightColorScheme.surfaceTint),
-        overlayColor: MaterialStateProperty.all(_lightColorScheme.surfaceVariant.withValues(alpha: 0.8)),
-        shape: MaterialStateProperty.all(
+        backgroundColor: WidgetStateProperty.all(_lightColorScheme.surfaceContainer),
+        surfaceTintColor: WidgetStateProperty.all(_lightColorScheme.surfaceTint),
+        overlayColor: WidgetStateProperty.all(_lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.8)),
+        shape: WidgetStateProperty.all(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
         ),
-        textStyle: MaterialStateProperty.all(
+        textStyle: WidgetStateProperty.all(
           const TextStyle(
             fontFamily: 'Manrope',
             fontWeight: FontWeight.w400,
             fontSize: 16,
           ),
         ),
-        hintStyle: MaterialStateProperty.all(
+        hintStyle: WidgetStateProperty.all(
           TextStyle(
             fontFamily: 'Manrope',
             color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
@@ -341,8 +331,8 @@ class MitaTheme {
       // Progress Indicator Theme
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: _lightColorScheme.primary,
-        linearTrackColor: _lightColorScheme.surfaceVariant,
-        circularTrackColor: _lightColorScheme.surfaceVariant,
+        linearTrackColor: _lightColorScheme.surfaceContainerHighest,
+        circularTrackColor: _lightColorScheme.surfaceContainerHighest,
       ),
     );
   }
@@ -351,7 +341,7 @@ class MitaTheme {
   static ThemeData get darkTheme {
     return lightTheme.copyWith(
       colorScheme: _darkColorScheme,
-      scaffoldBackgroundColor: _darkColorScheme.background,
+      scaffoldBackgroundColor: _darkColorScheme.surface,
     );
   }
 

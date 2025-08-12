@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 class ChallengesScreen extends StatefulWidget {
-  const ChallengesScreen({Key? key}) : super(key: key);
+  const ChallengesScreen({super.key});
 
   @override
   State<ChallengesScreen> createState() => _ChallengesScreenState();
@@ -64,11 +64,13 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Future<void> _joinChallenge(String challengeId) async {
     try {
       await _apiService.joinChallenge(challengeId);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Successfully joined challenge!')),
       );
       _loadChallengeData(); // Refresh data
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to join challenge: $e')),
       );
@@ -97,11 +99,13 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     if (confirmed == true) {
       try {
         await _apiService.leaveChallenge(challengeId);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Successfully left challenge')),
         );
         _loadChallengeData(); // Refresh data
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to leave challenge: $e')),
         );
@@ -354,7 +358,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.stars, color: Colors.amber, size: 16),
+                            const Icon(Icons.stars, color: Colors.amber, size: 16),
                             const SizedBox(width: 4),
                             Text(
                               '${challenge['reward_points']} points',
@@ -369,7 +373,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.attach_money, color: Colors.green, size: 16),
+                            const Icon(Icons.attach_money, color: Colors.green, size: 16),
                             Text(
                               '\$${challenge['reward_amount']} reward',
                               style: const TextStyle(
@@ -542,7 +546,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.stars, color: Colors.amber, size: 20),
+                      const Icon(Icons.stars, color: Colors.amber, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         '${challenge['reward_points']} points',
@@ -556,7 +560,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                   Row(
                     children: [
-                      Icon(Icons.attach_money, color: Colors.green, size: 20),
+                      const Icon(Icons.attach_money, color: Colors.green, size: 20),
                       Text(
                         '\$${challenge['reward_amount']}',
                         style: const TextStyle(

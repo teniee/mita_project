@@ -316,7 +316,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                         ),
                       ],
                     ),
-                  )).toList(),
+                  )),
                 ],
               ],
             ),

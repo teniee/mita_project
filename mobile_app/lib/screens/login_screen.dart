@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/api_service.dart';
+import '../services/secure_push_token_manager.dart';
+import '../services/password_validation_service.dart';
+import '../services/accessibility_service.dart';
 import '../theme/mita_theme.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,8 +18,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final ApiService _api = ApiService();
+  final AccessibilityService _accessibilityService = AccessibilityService.instance;
   bool _loading = false;
-  String? _error;
   
   // Form controllers and validation
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -43,12 +48,24 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void initState() {
     super.initState();
     
+    // Initialize accessibility service
+    _accessibilityService.initialize().then((_) {
+      _accessibilityService.announceNavigation(
+        'Login Screen',
+        description: 'Sign in to MITA financial app',
+      );
+    });
+    
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: _accessibilityService.getAnimationDuration(
+        const Duration(milliseconds: 800),
+      ),
       vsync: this,
     );
     _errorAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: _accessibilityService.getAnimationDuration(
+        const Duration(milliseconds: 600),
+      ),
       vsync: this,
     );
     
@@ -94,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   
   void _validatePassword() {
     final password = _passwordController.text;
-    final isValid = password.length >= 6;
+    final validation = PasswordValidationService.validatePassword(password);
+    final isValid = validation.isValid && password.isNotEmpty;
     if (_isPasswordValid != isValid) {
       setState(() {
         _isPasswordValid = isValid;
@@ -103,9 +121,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
   
   void _showError(String message) {
-    setState(() {
-      _error = message;
-    });
     _errorAnimationController.forward().then((_) {
       _errorAnimationController.reverse();
     });
@@ -113,14 +128,26 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     // Provide haptic feedback for errors
     HapticFeedback.vibrate();
     
+    // Announce error to screen readers
+    _accessibilityService.announceToScreenReader(
+      'Login error: $message',
+      financialContext: 'Authentication Error',
+      isImportant: true,
+    );
+    
     // Show snackbar with retry option
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Semantics(
+          liveRegion: true,
+          label: 'Error message: $message',
+          child: Text(message),
+        ),
         action: SnackBarAction(
-          label: 'Dismiss',
+          label: AppLocalizations.of(context).dismiss,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            _accessibilityService.announceToScreenReader('Error message dismissed');
           },
         ),
         behavior: SnackBarBehavior.floating,
@@ -134,7 +161,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     
     setState(() {
       _loading = true;
-      _error = null;
     });
     
     // Provide haptic feedback
@@ -145,8 +171,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (googleUser == null) {
         setState(() {
           _loading = false;
-          _error = 'Sign-in cancelled';
         });
+        _showError(l10n.signInCancelled);
         return;
       }
 
@@ -156,8 +182,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (idToken == null) {
         setState(() {
           _loading = false;
-          _error = 'Missing Google ID token';
         });
+        _showError(l10n.missingGoogleToken);
         return;
       }
 
@@ -171,11 +197,31 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
       if (!mounted) return;
       
+      // SECURITY: Initialize push tokens AFTER successful authentication
+      try {
+        await SecurePushTokenManager.instance.initializePostAuthentication();
+      } catch (e) {
+        // Log but don't block login for push token issues
+        // Using proper logging instead of print for production
+        if (kDebugMode) {
+          debugPrint('Warning: Push token initialization failed: $e');
+        }
+      }
+      
       // Check if user has completed onboarding
       final hasOnboarded = await _api.hasCompletedOnboarding();
+      if (!mounted) return;
       if (hasOnboarded) {
+        _accessibilityService.announceToScreenReader(
+          'Google sign-in successful. Navigating to dashboard.',
+          isImportant: true,
+        );
         Navigator.pushReplacementNamed(context, '/main');
       } else {
+        _accessibilityService.announceToScreenReader(
+          'Google sign-in successful. Navigating to onboarding.',
+          isImportant: true,
+        );
         Navigator.pushReplacementNamed(context, '/onboarding_region');
       }
     } catch (e) {
@@ -187,11 +233,28 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Future<void> _handleEmailLogin() async {
-    if (_loading || !_formKey.currentState!.validate()) return;
+    if (_loading) return;
+    
+    if (!_formKey.currentState!.validate()) {
+      // Collect validation errors for accessibility announcement
+      List<String> errors = [];
+      if (_emailController.text.isEmpty) {
+        errors.add('Email is required');
+      } else if (!_emailController.text.contains('@') || !_emailController.text.contains('.')) {
+        errors.add('Email format is invalid');
+      }
+      if (_passwordController.text.isEmpty) {
+        errors.add('Password is required');
+      }
+      
+      if (errors.isNotEmpty) {
+        _accessibilityService.announceFormErrors(errors);
+      }
+      return;
+    }
     
     setState(() {
       _loading = true;
-      _error = null;
     });
     
     // Provide haptic feedback
@@ -211,18 +274,38 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
       if (!mounted) return;
       
+      // SECURITY: Initialize push tokens AFTER successful authentication
+      try {
+        await SecurePushTokenManager.instance.initializePostAuthentication();
+      } catch (e) {
+        // Log but don't block login for push token issues
+        // Using proper logging instead of print for production
+        if (kDebugMode) {
+          debugPrint('Warning: Push token initialization failed: $e');
+        }
+      }
+      
       // Check if user has completed onboarding
       final hasOnboarded = await _api.hasCompletedOnboarding();
+      if (!mounted) return;
       if (hasOnboarded) {
+        _accessibilityService.announceToScreenReader(
+          'Login successful. Navigating to dashboard.',
+          isImportant: true,
+        );
         Navigator.pushReplacementNamed(context, '/main');
       } else {
+        _accessibilityService.announceToScreenReader(
+          'Login successful. Navigating to onboarding.',
+          isImportant: true,
+        );
         Navigator.pushReplacementNamed(context, '/onboarding_region');
       }
     } catch (e) {
       setState(() {
         _loading = false;
       });
-      _showError('Login failed. Please check your credentials and try again.');
+      _showError(l10n.loginFailed);
     }
   }
 
@@ -230,9 +313,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -249,41 +333,51 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       const SizedBox(height: 60),
                       
                       // App logo and welcome header
-                      MitaTheme.createElevatedCard(
-                        elevation: 2,
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          children: [
-                            // Logo container
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(24),
+                      Semantics(
+                        header: true,
+                        label: 'MITA Login. Welcome back. Sign in to continue managing your finances',
+                        child: MitaTheme.createElevatedCard(
+                          elevation: 2,
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              // Logo container
+                              Semantics(
+                                label: 'MITA app logo. Financial wallet icon',
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: Icon(
+                                    Icons.account_balance_wallet_rounded,
+                                    size: 48,
+                                    color: colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
                               ),
-                              child: Icon(
-                                Icons.account_balance_wallet_rounded,
-                                size: 48,
-                                color: colorScheme.onPrimaryContainer,
+                              const SizedBox(height: 24),
+                              Semantics(
+                                header: true,
+                                child: Text(
+                                  l10n.welcomeBack,
+                                  style: theme.textTheme.displaySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
-                            Text(
-                              'Welcome back',
-                              style: theme.textTheme.displaySmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colorScheme.onSurface,
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.signInToContinue,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.8),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Sign in to continue managing your finances',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       
@@ -310,97 +404,138 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 // Email field with validation
-                                TextFormField(
-                                  controller: _emailController,
-                                  focusNode: _emailFocusNode,
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  decoration: InputDecoration(
-                                    labelText: 'Email address',
-                                    hintText: 'Enter your email',
-                                    prefixIcon: Icon(
-                                      Icons.email_rounded,
-                                      color: _isEmailValid 
-                                        ? colorScheme.primary 
-                                        : colorScheme.onSurface.withValues(alpha: 0.6),
-                                    ),
-                                    suffixIcon: _isEmailValid
-                                      ? Icon(
-                                          Icons.check_circle,
-                                          color: MitaTheme.statusColors['success'],
-                                        )
-                                      : null,
+                                Semantics(
+                                  label: _accessibilityService.createTextFieldSemanticLabel(
+                                    label: 'Email address',
+                                    isRequired: true,
+                                    helperText: 'Enter your email to sign in to MITA',
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!value.contains('@') || !value.contains('.')) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                  onFieldSubmitted: (_) {
-                                    _passwordFocusNode.requestFocus();
-                                  },
-                                ),
+                                  child: TextFormField(
+                                    controller: _emailController,
+                                    focusNode: _emailFocusNode,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: InputDecoration(
+                                      labelText: l10n.emailAddress,
+                                      hintText: l10n.enterYourEmail,
+                                      prefixIcon: Semantics(
+                                        label: 'Email icon',
+                                        child: Icon(
+                                          Icons.email_rounded,
+                                          color: _isEmailValid 
+                                            ? colorScheme.primary 
+                                            : colorScheme.onSurface.withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                      suffixIcon: _isEmailValid
+                                        ? Semantics(
+                                            label: 'Valid email address entered',
+                                            child: Icon(
+                                              Icons.check_circle,
+                                              color: MitaTheme.statusColors['success'],
+                                            ),
+                                          )
+                                        : null,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return l10n.pleaseEnterEmail;
+                                      }
+                                      if (!value.contains('@') || !value.contains('.')) {
+                                        return l10n.pleaseEnterValidEmail;
+                                      }
+                                      return null;
+                                    },
+                                    onFieldSubmitted: (_) {
+                                      _passwordFocusNode.requestFocus();
+                                    },
+                                  ),
+                                ).withMinimumTouchTarget(),
                                 
                                 const SizedBox(height: 20),
                                 
                                 // Password field with show/hide toggle
-                                TextFormField(
-                                  controller: _passwordController,
-                                  focusNode: _passwordFocusNode,
-                                  obscureText: _obscurePassword,
-                                  textInputAction: TextInputAction.done,
-                                  decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    hintText: 'Enter your password',
-                                    prefixIcon: Icon(
-                                      Icons.lock_rounded,
-                                      color: _isPasswordValid 
-                                        ? colorScheme.primary 
-                                        : colorScheme.onSurface.withValues(alpha: 0.6),
-                                    ),
-                                    suffixIcon: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (_isPasswordValid)
-                                          Icon(
-                                            Icons.check_circle,
-                                            color: MitaTheme.statusColors['success'],
-                                          ),
-                                        IconButton(
-                                          icon: Icon(
-                                            _obscurePassword 
-                                              ? Icons.visibility_rounded 
-                                              : Icons.visibility_off_rounded,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _obscurePassword = !_obscurePassword;
-                                            });
-                                            HapticFeedback.selectionClick();
-                                          },
-                                        ),
-                                      ],
-                                    ),
+                                Semantics(
+                                  label: _accessibilityService.createTextFieldSemanticLabel(
+                                    label: 'Password',
+                                    isRequired: true,
+                                    helperText: 'Enter your password to sign in',
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
-                                    }
-                                    if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
-                                    return null;
-                                  },
-                                  onFieldSubmitted: (_) {
-                                    if (_formKey.currentState!.validate()) {
-                                      _handleEmailLogin();
-                                    }
-                                  },
-                                ),
+                                  child: TextFormField(
+                                    controller: _passwordController,
+                                    focusNode: _passwordFocusNode,
+                                    obscureText: _obscurePassword,
+                                    textInputAction: TextInputAction.done,
+                                    decoration: InputDecoration(
+                                      labelText: l10n.password,
+                                      hintText: l10n.enterYourPassword,
+                                      prefixIcon: Semantics(
+                                        label: 'Password icon',
+                                        child: Icon(
+                                          Icons.lock_rounded,
+                                          color: _isPasswordValid 
+                                            ? colorScheme.primary 
+                                            : colorScheme.onSurface.withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                      suffixIcon: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_isPasswordValid)
+                                            Semantics(
+                                              label: 'Valid password entered',
+                                              child: Icon(
+                                                Icons.check_circle,
+                                                color: MitaTheme.statusColors['success'],
+                                              ),
+                                            ),
+                                          Semantics(
+                                            label: _obscurePassword 
+                                              ? l10n.showPassword 
+                                              : l10n.hidePassword,
+                                            button: true,
+                                            child: IconButton(
+                                              icon: Icon(
+                                                _obscurePassword 
+                                                  ? Icons.visibility_rounded 
+                                                  : Icons.visibility_off_rounded,
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _obscurePassword = !_obscurePassword;
+                                                });
+                                                HapticFeedback.selectionClick();
+                                                _accessibilityService.announceToScreenReader(
+                                                  _obscurePassword 
+                                                    ? l10n.passwordHidden 
+                                                    : l10n.passwordShown,
+                                                );
+                                              },
+                                            ).withMinimumTouchTarget(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return l10n.pleaseEnterPassword;
+                                      }
+                                      
+                                      final validation = PasswordValidationService.validatePassword(value);
+                                      if (!validation.isValid && validation.issues.isNotEmpty) {
+                                        // Return first critical issue for login screen
+                                        return validation.issues.first;
+                                      }
+                                      
+                                      return null;
+                                    },
+                                    onFieldSubmitted: (_) {
+                                      if (_formKey.currentState!.validate()) {
+                                        _handleEmailLogin();
+                                      }
+                                    },
+                                  ),
+                                ).withMinimumTouchTarget(),
                                 
                                 const SizedBox(height: 20),
                                 
@@ -410,47 +545,76 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     Expanded(
                                       child: Row(
                                         children: [
-                                          Transform.scale(
-                                            scale: 1.1,
-                                            child: Checkbox(
-                                              value: _rememberMe,
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  _rememberMe = value ?? true;
-                                                });
-                                                HapticFeedback.selectionClick();
-                                              },
-                                            ),
+                                          Semantics(
+                                            label: _rememberMe 
+                                              ? 'Remember me, checked checkbox' 
+                                              : 'Remember me, unchecked checkbox',
+                                            child: Transform.scale(
+                                              scale: 1.1,
+                                              child: Checkbox(
+                                                value: _rememberMe,
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    _rememberMe = value ?? true;
+                                                  });
+                                                  HapticFeedback.selectionClick();
+                                                  _accessibilityService.announceToScreenReader(
+                                                    _rememberMe 
+                                                      ? l10n.rememberMeEnabled 
+                                                      : l10n.rememberMeDisabled,
+                                                  );
+                                                },
+                                              ),
+                                            ).withMinimumTouchTarget(),
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(
-                                            child: Text(
-                                              'Remember me',
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                fontWeight: FontWeight.w500,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  _rememberMe = !_rememberMe;
+                                                });
+                                                HapticFeedback.selectionClick();
+                                                _accessibilityService.announceToScreenReader(
+                                                  _rememberMe 
+                                                    ? l10n.rememberMeEnabled 
+                                                    : l10n.rememberMeDisabled,
+                                                );
+                                              },
+                                              child: Semantics(
+                                                label: 'Remember me checkbox label. Tap to toggle',
+                                                button: true,
+                                                child: Text(
+                                                  l10n.rememberMe,
+                                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () {
-                                        // TODO: Implement forgot password
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Forgot password feature coming soon'),
-                                            behavior: SnackBarBehavior.floating,
+                                    Semantics(
+                                      label: 'Forgot password. Navigate to password reset',
+                                      button: true,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pushNamed('/forgot-password');
+                                          _accessibilityService.announceNavigation(
+                                            'Forgot Password',
+                                            description: 'Reset your password screen',
+                                          );
+                                        },
+                                        child: Text(
+                                          l10n.forgot,
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.w600,
                                           ),
-                                        );
-                                      },
-                                      child: Text(
-                                        'Forgot?',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
                                         ),
-                                      ),
+                                      ).withMinimumTouchTarget(),
                                     ),
                                   ],
                                 ),
@@ -459,35 +623,51 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 
                                 // Sign in button
                                 AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
+                                  duration: _accessibilityService.getAnimationDuration(
+                                    const Duration(milliseconds: 200),
+                                  ),
                                   child: _loading 
-                                    ? Center(
-                                        child: MitaTheme.createLoadingIndicator(
-                                          message: 'Signing in...',
-                                        ),
-                                      )
-                                    : FilledButton(
-                                        focusNode: _signInButtonFocusNode,
-                                        onPressed: (_isEmailValid && _isPasswordValid) 
-                                          ? _handleEmailLogin 
-                                          : null,
-                                        style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 20),
-                                          textStyle: theme.textTheme.titleLarge?.copyWith(
-                                            fontWeight: FontWeight.w700,
+                                    ? Semantics(
+                                        label: 'Signing in to MITA. Please wait',
+                                        liveRegion: true,
+                                        child: Center(
+                                          child: MitaTheme.createLoadingIndicator(
+                                            message: l10n.signingIn,
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            const Text('Sign In'),
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.arrow_forward_rounded,
-                                              size: 20,
-                                            ),
-                                          ],
+                                      )
+                                    : Semantics(
+                                        label: _accessibilityService.createButtonSemanticLabel(
+                                          action: 'Sign in to MITA',
+                                          context: (_isEmailValid && _isPasswordValid) 
+                                            ? 'Ready to sign in with email and password'
+                                            : 'Enter valid email and password to enable',
+                                          isDisabled: !(_isEmailValid && _isPasswordValid),
                                         ),
+                                        button: true,
+                                        child: FilledButton(
+                                          focusNode: _signInButtonFocusNode,
+                                          onPressed: (_isEmailValid && _isPasswordValid) 
+                                            ? _handleEmailLogin 
+                                            : null,
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(vertical: 20),
+                                            textStyle: theme.textTheme.titleLarge?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(l10n.signIn),
+                                              const SizedBox(width: 8),
+                                              const Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 20,
+                                              ),
+                                            ],
+                                          ),
+                                        ).withMinimumTouchTarget(),
                                       ),
                                 ),
                                 
@@ -504,7 +684,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 16),
                                       child: Text(
-                                        'or',
+                                        l10n.or,
                                         style: theme.textTheme.bodySmall?.copyWith(
                                           color: colorScheme.onSurface.withValues(alpha: 0.6),
                                         ),
@@ -521,38 +701,50 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 const SizedBox(height: 16),
                                 
                                 // Google sign-in button
-                                OutlinedButton.icon(
-                                  onPressed: _loading ? null : _handleGoogleSignIn,
-                                  icon: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Image.asset(
-                                      'assets/logo/mitalogo.png',
-                                      width: 20,
-                                      height: 20,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Icon(
-                                          Icons.g_mobiledata,
-                                          size: 20,
-                                          color: colorScheme.primary,
-                                        );
-                                      },
-                                    ),
+                                Semantics(
+                                  label: _accessibilityService.createButtonSemanticLabel(
+                                    action: 'Continue with Google',
+                                    context: 'Alternative sign in method using your Google account',
+                                    isDisabled: _loading,
                                   ),
-                                  label: const Text('Continue with Google'),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    side: BorderSide(
-                                      color: colorScheme.outline,
-                                      width: 1,
+                                  button: true,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _loading ? null : _handleGoogleSignIn,
+                                    icon: Semantics(
+                                      label: 'Google logo',
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Image.asset(
+                                          'assets/logo/mitalogo.png',
+                                          width: 20,
+                                          height: 20,
+                                          semanticLabel: 'Google logo',
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Icon(
+                                              Icons.g_mobiledata,
+                                              size: 20,
+                                              color: colorScheme.primary,
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
-                                    textStyle: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                    label: Text(l10n.continueWithGoogle),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      side: BorderSide(
+                                        color: colorScheme.outline,
+                                        width: 1,
+                                      ),
+                                      textStyle: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
+                                  ).withMinimumTouchTarget(),
                                 ),
                               ],
                             ),
@@ -563,26 +755,39 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                       const SizedBox(height: 24),
                       
                       // Sign up option
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Don\'t have an account? ',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pushNamed(context, '/register'),
-                            child: Text(
-                              'Sign up',
+                      Semantics(
+                        label: 'Don\'t have an account? Sign up for MITA',
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              l10n.dontHaveAccountQuestion,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w700,
+                                color: colorScheme.onSurface.withValues(alpha: 0.8),
                               ),
                             ),
-                          ),
-                        ],
+                            Semantics(
+                              label: 'Sign up for new MITA account',
+                              button: true,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/register');
+                                  _accessibilityService.announceNavigation(
+                                    'Registration',
+                                    description: 'Create new MITA account',
+                                  );
+                                },
+                                child: Text(
+                                  l10n.signUp,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ).withMinimumTouchTarget(),
+                            ),
+                          ],
+                        ),
                       ),
                       
                       const SizedBox(height: 40),

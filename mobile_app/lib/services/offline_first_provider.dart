@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'advanced_offline_service.dart';
-import 'calendar_fallback_service.dart';
 import 'logging_service.dart';
 import 'timeout_manager_service.dart';
 
@@ -100,84 +99,7 @@ class OfflineFirstProvider {
 
   /// Generate fallback data when no cache is available
   Future<void> _generateFallbackData() async {
-    const defaultIncome = 3000.0;
-    
-    // Generate fallback dashboard data
-    _cachedDashboard = {
-      'balance': defaultIncome * 0.85,
-      'today_budget': (defaultIncome * 0.55) / 30,
-      'today_spent': ((defaultIncome * 0.55) / 30) * 0.6,
-      'monthly_budget': defaultIncome * 0.55,
-      'monthly_spent': (defaultIncome * 0.55) * 0.6,
-      'daily_targets': [
-        {
-          'category': 'Food & Dining',
-          'limit': (defaultIncome * 0.15) / 30,
-          'spent': ((defaultIncome * 0.15) / 30) * 0.60,
-        },
-        {
-          'category': 'Transportation',
-          'limit': (defaultIncome * 0.15) / 30,
-          'spent': ((defaultIncome * 0.15) / 30) * 0.40,
-        },
-        {
-          'category': 'Entertainment',
-          'limit': (defaultIncome * 0.08) / 30,
-          'spent': ((defaultIncome * 0.08) / 30) * 0.30,
-        },
-        {
-          'category': 'Shopping',
-          'limit': (defaultIncome * 0.12) / 30,
-          'spent': ((defaultIncome * 0.12) / 30) * 0.25,
-        },
-      ],
-      'week': [
-        {'day': 'Mon', 'status': 'good'},
-        {'day': 'Tue', 'status': 'good'},
-        {'day': 'Wed', 'status': 'warning'},
-        {'day': 'Thu', 'status': 'good'},
-        {'day': 'Fri', 'status': 'good'},
-        {'day': 'Sat', 'status': 'over'},
-        {'day': 'Sun', 'status': 'good'},
-      ],
-      'transactions': [
-        {
-          'action': 'Morning Coffee',
-          'amount': '12.50',
-          'category': 'Food',
-          'date': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        },
-        {
-          'action': 'Grocery Shopping',
-          'amount': '89.32',
-          'category': 'Food',
-          'date': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-        },
-      ],
-    };
-    
-    // Generate fallback calendar data
-    try {
-      final fallbackService = CalendarFallbackService();
-      _cachedCalendar = await fallbackService.generateFallbackCalendarData(
-        monthlyIncome: defaultIncome,
-        year: DateTime.now().year,
-        month: DateTime.now().month,
-      );
-    } catch (e) {
-      _cachedCalendar = _generateBasicCalendar(defaultIncome);
-    }
-    
-    // Generate fallback user profile
-    _cachedUserProfile = {
-      'data': {
-        'income': defaultIncome,
-        'name': 'User',
-        'location': null,
-      }
-    };
-    
-    logDebug('Generated fallback data for instant UI', tag: 'OFFLINE_FIRST');
+    throw Exception('Fallback data should not be generated. Please complete onboarding to provide income data.');
   }
 
   /// Generate basic calendar fallback
@@ -215,7 +137,10 @@ class OfflineFirstProvider {
 
   /// Get user profile (instant from cache)
   Map<String, dynamic> getUserProfile() {
-    return _cachedUserProfile ?? {'data': {'income': 3000.0}};
+    if (_cachedUserProfile == null) {
+      throw Exception('User profile not available. Please complete onboarding.');
+    }
+    return _cachedUserProfile!;
   }
 
   /// Start background sync to update cached data

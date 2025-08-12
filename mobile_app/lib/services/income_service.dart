@@ -806,16 +806,16 @@ class IncomeService {
     
     switch (currentTier) {
       case IncomeTier.low:
-        final nextThreshold = 3000 * 12; // $36K annual
+        const nextThreshold = 3000 * 12; // $36K annual
         return (nextThreshold - annualIncome) / nextThreshold < 0.05; // Within 5%
       case IncomeTier.lowerMiddle:
-        final nextThreshold = 4500 * 12; // $54K annual
+        const nextThreshold = 4500 * 12; // $54K annual
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
       case IncomeTier.middle:
-        final nextThreshold = 7000 * 12; // $84K annual
+        const nextThreshold = 7000 * 12; // $84K annual
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
       case IncomeTier.upperMiddle:
-        final nextThreshold = 12000 * 12; // $144K annual
+        const nextThreshold = 12000 * 12; // $144K annual
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
       case IncomeTier.high:
         return false; // Highest tier
@@ -871,7 +871,7 @@ class IncomeService {
   double _calculateEmergencyFundProgress(Map<String, double>? spending, double monthlyIncome) {
     // Simulate emergency fund progress - in real app, this would come from user data
     final savingsAmount = spending?['savings'] ?? (monthlyIncome * 0.05);
-    final targetEmergencyFund = 1000.0; // Target for lower-middle tier
+    const targetEmergencyFund = 1000.0; // Target for lower-middle tier
     return (savingsAmount / targetEmergencyFund * 100).clamp(0.0, 100.0);
   }
 
@@ -884,5 +884,31 @@ class IncomeService {
     // Simplified tax savings calculation for upper-middle tier
     final annualIncome = monthlyIncome * 12;
     return annualIncome * 0.03; // Assume 3% tax savings opportunity
+  }
+  
+  /// Get tier as string for API compatibility
+  String getTierString(IncomeTier tier) {
+    switch (tier) {
+      case IncomeTier.low:
+        return 'low';
+      case IncomeTier.lowerMiddle:
+        return 'lower_middle';
+      case IncomeTier.middle:
+        return 'middle';
+      case IncomeTier.upperMiddle:
+        return 'upper_middle';
+      case IncomeTier.high:
+        return 'high';
+    }
+  }
+  
+  /// Get tier display name for UI
+  String getTierDisplayName(IncomeTier tier) {
+    return getIncomeTierName(tier);
+  }
+  
+  /// Get tier income range for display
+  String getTierRange(IncomeTier tier) {
+    return getIncomeRangeString(tier);
   }
 }

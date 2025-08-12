@@ -2,16 +2,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/api_service.dart';
-import '../services/loading_service.dart';
 import '../services/offline_first_provider.dart';
+import '../services/live_updates_service.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/user_data_manager.dart';
 import '../widgets/income_tier_widgets.dart';
-import '../theme/income_theme.dart';
-import '../core/app_error_handler.dart';
-import 'advice_history_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,6 +20,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final ApiService _apiService = ApiService();
   final OfflineFirstProvider _offlineProvider = OfflineFirstProvider();
+  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
   final IncomeService _incomeService = IncomeService();
   final BudgetAdapterService _budgetService = BudgetAdapterService();
   
@@ -66,11 +64,68 @@ class _MainScreenState extends State<MainScreen> {
       // Set up listener for background sync status
       _offlineProvider.isBackgroundSyncing.addListener(_onBackgroundSyncChanged);
       
+      // Initialize live updates
+      await _initializeLiveUpdates();
+      
       logDebug('Offline-first initialization completed', tag: 'MAIN_SCREEN');
     } catch (e) {
       logError('Error in offline-first initialization: $e', tag: 'MAIN_SCREEN');
       // Still show fallback data
       _loadFallbackData();
+    }
+  }
+
+  /// Initialize live updates and set up listeners
+  Future<void> _initializeLiveUpdates() async {
+    try {
+      logInfo('Initializing live updates service', tag: 'MAIN_SCREEN');
+      
+      // Enable live updates with 2-minute intervals
+      await _liveUpdates.enableLiveUpdates(const Duration(minutes: 2));
+      
+      // Set up listeners for real-time data updates
+      _liveUpdates.dashboardUpdates.listen((updatedDashboard) {
+        if (mounted) {
+          setState(() {
+            dashboardData = updatedDashboard;
+          });
+          logDebug('Dashboard updated via live updates', tag: 'MAIN_SCREEN');
+        }
+      });
+      
+      _liveUpdates.profileUpdates.listen((updatedProfile) {
+        if (mounted) {
+          setState(() {
+            userProfile = updatedProfile;
+          });
+          logDebug('Profile updated via live updates', tag: 'MAIN_SCREEN');
+        }
+      });
+      
+      _liveUpdates.transactionUpdates.listen((transactionUpdate) {
+        if (mounted && transactionUpdate['hasNewTransactions'] == true) {
+          // Show notification about new transactions
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.account_balance_wallet, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('New transaction detected'),
+                ],
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          logDebug('New transaction detected via live updates', tag: 'MAIN_SCREEN');
+        }
+      });
+      
+      logInfo('Live updates service initialized successfully', tag: 'MAIN_SCREEN');
+    } catch (e) {
+      logError('Error initializing live updates: $e', tag: 'MAIN_SCREEN');
     }
   }
 
@@ -141,7 +196,7 @@ class _MainScreenState extends State<MainScreen> {
     try {
       // Try to get real user data first
       final financialContext = await UserDataManager.instance.getFinancialContext().timeout(
-        Duration(seconds: 2),
+        const Duration(seconds: 2),
         onTimeout: () => <String, dynamic>{},
       );
       
@@ -149,10 +204,19 @@ class _MainScreenState extends State<MainScreen> {
       final cachedDashboard = _offlineProvider.getDashboardData();
       final cachedProfile = _offlineProvider.getUserProfile();
       
-      // Extract income - prefer user data, fall back to cached, then default
-      _monthlyIncome = financialContext['income'] as double? ?? 
-                     (cachedProfile['data']?['income'] as num?)?.toDouble() ?? 
-                     3000.0;
+      // Extract income - require valid user data
+      final userIncome = financialContext['income'] as double? ?? 
+                        (cachedProfile['data']?['income'] as num?)?.toDouble();
+      
+      if (userIncome == null || userIncome <= 0) {
+        // Redirect to onboarding if no valid income data
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          return;
+        }
+      }
+      
+      _monthlyIncome = userIncome!;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
       
       // Process the dashboard data
@@ -188,11 +252,11 @@ class _MainScreenState extends State<MainScreen> {
 
   /// Load fallback data when cached data is not available
   void _loadFallbackData() {
-    _monthlyIncome = 3000.0;
-    _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
-
-    dashboardData = _getDefaultDashboard();
-    userProfile = {'data': {'income': _monthlyIncome}};
+    // No fallback data - redirect to onboarding
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/onboarding_region');
+      return;
+    }
     latestAdvice = _getDefaultAdvice();
     incomeClassification = _getDefaultIncomeClassification();
     peerComparison = _getDefaultPeerComparison();
@@ -331,6 +395,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _offlineProvider.isBackgroundSyncing.removeListener(_onBackgroundSyncChanged);
+    _liveUpdates.disableLiveUpdates();
     super.dispose();
   }
 
@@ -643,15 +708,15 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
       ),
-      floatingActionButton: error == null && !isLoading ? FloatingActionButton.extended(
+      floatingActionButton: error == null && !isLoading ? Semantics(\n        button: true,\n        label: _accessibilityService.createButtonSemanticLabel(\n          action: 'Add Expense',\n          context: 'Record a new expense transaction',\n        ),\n        child: FloatingActionButton.extended(
         heroTag: "main_fab",
-        onPressed: () => Navigator.pushNamed(context, '/add_expense'),
+        onPressed: () {\n          _accessibilityService.clearFocusHistory();\n          Navigator.pushNamed(context, '/add_expense');\n        },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         tooltip: 'Add new expense',
-      ) : null,
+        ).withMinimumTouchTarget(),\n      ) : null,
     );
   }
 
@@ -852,10 +917,10 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Current Balance',
                     style: TextStyle(
                       fontFamily: 'Manrope',
@@ -864,7 +929,7 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  const Icon(Icons.account_balance_wallet, color: Colors.white),
+                  Icon(Icons.account_balance_wallet, color: Colors.white),
                 ],
               ),
               const SizedBox(height: 12),

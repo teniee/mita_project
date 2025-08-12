@@ -30,7 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   Map<String, dynamic>? _spendingPatterns;
   Map<String, dynamic>? _weeklyInsights;
   List<Map<String, dynamic>> _spendingAnomalies = [];
-  Map<String, String> _dayAdviceCache = {};
+  final Map<String, String> _dayAdviceCache = {};
 
   @override
   void initState() {
@@ -1460,7 +1460,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               
               // Budget amount
               Text(
-                '\$${limit}',
+                '\$$limit',
                 style: textTheme.titleMedium?.copyWith(
                   color: onDayColor,
                   fontWeight: FontWeight.w600,
@@ -1475,7 +1475,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 children: [
                   if (spent > 0) ...[
                     Text(
-                      '\$${spent}',
+                      '\$$spent',
                       style: textTheme.bodySmall?.copyWith(
                         color: onDayColor.withValues(alpha: 0.9),
                         fontWeight: FontWeight.w500,
@@ -1629,7 +1629,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${_getMonthName(currentMonth.month)} ${dayNumber}, ${currentMonth.year}',
+                                '${_getMonthName(currentMonth.month)} $dayNumber, ${currentMonth.year}',
                                 style: textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1725,9 +1725,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBudgetItem('Budget', '\$${limit}', colorScheme.primary),
-              _buildBudgetItem('Spent', '\$${spent}', colorScheme.error),
-              _buildBudgetItem('Remaining', '\$${remaining}', colorScheme.tertiary),
+              _buildBudgetItem('Budget', '\$$limit', colorScheme.primary),
+              _buildBudgetItem('Spent', '\$$spent', colorScheme.error),
+              _buildBudgetItem('Remaining', '\$$remaining', colorScheme.tertiary),
             ],
           ),
           const SizedBox(height: 20),
@@ -1844,7 +1844,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                     ),
                   ),
                   Text(
-                    '\$${spent} / \$${budgeted}',
+                    '\$$spent / \$$budgeted',
                     style: textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: percentage > 1.0 ? colorScheme.error : colorScheme.onSurface,

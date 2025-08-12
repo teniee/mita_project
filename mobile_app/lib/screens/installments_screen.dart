@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../services/logging_service.dart';
 
 class InstallmentsScreen extends StatefulWidget {
-  const InstallmentsScreen({Key? key}) : super(key: key);
+  const InstallmentsScreen({super.key});
 
   @override
   State<InstallmentsScreen> createState() => _InstallmentsScreenState();

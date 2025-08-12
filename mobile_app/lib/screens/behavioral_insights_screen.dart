@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 class BehavioralInsightsScreen extends StatefulWidget {
-  const BehavioralInsightsScreen({Key? key}) : super(key: key);
+  const BehavioralInsightsScreen({super.key});
 
   @override
   State<BehavioralInsightsScreen> createState() => _BehavioralInsightsScreenState();

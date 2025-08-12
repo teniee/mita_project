@@ -3,7 +3,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
-  const UserSettingsScreen({Key? key}) : super(key: key);
+  const UserSettingsScreen({super.key});
 
   @override
   State<UserSettingsScreen> createState() => _UserSettingsScreenState();
@@ -39,7 +39,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       
       // Try to load settings from API
       final settings = await _apiService.getUserProfile().timeout(
-        Duration(seconds: 3),
+        const Duration(seconds: 3),
         onTimeout: () => <String, dynamic>{},
       ).catchError((e) => <String, dynamic>{});
       
@@ -80,13 +80,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       };
       
       await _apiService.updateUserProfile(settings).timeout(
-        Duration(seconds: 5),
+        const Duration(seconds: 5),
         onTimeout: () => throw Exception('Settings save timeout'),
       );
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
@@ -103,7 +103,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       logError('Failed to save settings: $e', tag: 'USER_SETTINGS');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white),
@@ -127,7 +127,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Settings',
           style: TextStyle(
             fontFamily: 'Sora',
@@ -397,11 +397,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
       trailing: Switch(
         value: value,
@@ -423,11 +423,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
       trailing: DropdownButton<String>(
         value: value,
@@ -454,15 +454,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           leading: Icon(icon),
           title: Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
           ),
           subtitle: Text(
             subtitle,
-            style: TextStyle(fontFamily: 'Manrope'),
+            style: const TextStyle(fontFamily: 'Manrope'),
           ),
           trailing: Text(
             '${value.toInt()}%',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         Slider(
@@ -487,13 +487,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
-      trailing: Icon(Icons.arrow_forward_ios, size: 16),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }
@@ -508,7 +508,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       trailing: Text(
         value,
@@ -542,7 +542,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.warning, color: Colors.red, size: 20),
+                  child: const Icon(Icons.warning, color: Colors.red, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Text(

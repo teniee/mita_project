@@ -1,0 +1,32 @@
+# Flutter localization configuration
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# Supported locales - English as base, Spanish as priority next market
+locales:
+  - en
+  - es
+
+# Configure generation options for financial apps
+prefer-inline-localizations: false
+header: |
+  // Copyright (c) 2025 MITA - Money Intelligence Task Assistant
+  // Auto-generated localization file. Do not edit manually.
+  
+# Enable null-safety for generated code
+nullable-getter: false
+
+# Output directory for generated files
+output-dir: lib/l10n/generated
+
+# Use descriptive function names
+use-deferred-loading: false
+gen-inputs-and-outputs-list: lib/l10n/l10n_inputs_and_outputs.json
+
+# Format for localized messages
+format: true
+
+# Suppress warnings for untranslated messages during development
+untranslated-messages-file: lib/l10n/untranslated.json

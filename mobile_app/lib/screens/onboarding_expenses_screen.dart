@@ -9,7 +9,7 @@ class FixedExpense {
 }
 
 class OnboardingExpensesScreen extends StatefulWidget {
-  const OnboardingExpensesScreen({Key? key}) : super(key: key);
+  const OnboardingExpensesScreen({super.key});
 
   @override
   State<OnboardingExpensesScreen> createState() => _OnboardingExpensesScreenState();
@@ -59,9 +59,9 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    const Text(
                       "What are your fixed monthly expenses?",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w700,
                         fontSize: 22,
@@ -69,9 +69,9 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
+                    const Text(
                       "Add your regular bills (rent, subscriptions, loans, etc.). No discipline — no freedom. Track everything honestly.",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.black54,
                         fontSize: 13,
@@ -110,7 +110,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                                 flex: 3,
                                 child: TextFormField(
                                   initialValue: exp.amount,
-                                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   decoration: InputDecoration(
                                     labelText: "\$",
                                     border: OutlineInputBorder(

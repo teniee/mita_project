@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 class AdviceHistoryScreen extends StatefulWidget {
-  const AdviceHistoryScreen({Key? key}) : super(key: key);
+  const AdviceHistoryScreen({super.key});
 
   @override
   State<AdviceHistoryScreen> createState() => _AdviceHistoryScreenState();

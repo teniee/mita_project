@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'income_service.dart';
@@ -116,23 +114,21 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
       final backendAnomalies = await _apiService.getSpendingAnomalies();
       
       for (final anomaly in backendAnomalies) {
-        if (anomaly is Map<String, dynamic>) {
-          _anomalies.add(SpendingAnomaly(
-            id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            type: _parseAnomalyType(anomaly['type'] as String?),
-            category: anomaly['category'] as String? ?? 'Unknown',
-            amount: (anomaly['amount'] as num?)?.toDouble() ?? 0.0,
-            expectedAmount: (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
-            deviationScore: (anomaly['anomaly_score'] as num?)?.toDouble() ?? 0.0,
-            date: DateTime.tryParse(anomaly['date'] as String? ?? '') ?? DateTime.now(),
-            merchant: anomaly['merchant'] as String?,
-            description: anomaly['description'] as String? ?? '',
-            possibleCauses: List<String>.from(anomaly['possible_causes'] ?? []),
-            severity: _calculateSeverity(anomaly['anomaly_score'] as num? ?? 0),
-            confidence: (anomaly['confidence'] as num?)?.toDouble() ?? 0.5,
-          ));
-        }
-      }
+        _anomalies.add(SpendingAnomaly(
+          id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          type: _parseAnomalyType(anomaly['type'] as String?),
+          category: anomaly['category'] as String? ?? 'Unknown',
+          amount: (anomaly['amount'] as num?)?.toDouble() ?? 0.0,
+          expectedAmount: (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
+          deviationScore: (anomaly['anomaly_score'] as num?)?.toDouble() ?? 0.0,
+          date: DateTime.tryParse(anomaly['date'] as String? ?? '') ?? DateTime.now(),
+          merchant: anomaly['merchant'] as String?,
+          description: anomaly['description'] as String? ?? '',
+          possibleCauses: List<String>.from(anomaly['possible_causes'] ?? []),
+          severity: _calculateSeverity(anomaly['anomaly_score'] as num? ?? 0),
+          confidence: (anomaly['confidence'] as num?)?.toDouble() ?? 0.5,
+        ));
+            }
 
       // Local anomaly detection for additional insights
       await _detectLocalAnomalies();

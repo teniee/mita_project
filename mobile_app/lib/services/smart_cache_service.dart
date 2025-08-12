@@ -1,14 +1,10 @@
 /// Smart Cache Service for MITA Flutter App
 /// Intelligent multi-tier caching with analytics and optimization
 /// 
+library;
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:crypto/crypto.dart';
 import 'logging_service.dart';
 
 /// Cache entry with metadata
@@ -171,7 +167,7 @@ class MemoryCache implements CacheBackend {
       
       // Check if single entry is too large
       if (valueBytes > maxSizeBytes) {
-        logWarning('Value too large for memory cache: ${valueBytes} bytes', tag: 'CACHE');
+        logWarning('Value too large for memory cache: $valueBytes bytes', tag: 'CACHE');
         return false;
       }
 

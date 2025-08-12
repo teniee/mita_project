@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 class GoalsScreen extends StatefulWidget {
-  const GoalsScreen({Key? key}) : super(key: key);
+  const GoalsScreen({super.key});
 
   @override
   State<GoalsScreen> createState() => _GoalsScreenState();
@@ -122,8 +122,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 if (!mounted) return;
                 Navigator.pop(context, true);
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to save goal: \$e')),
+                  const SnackBar(content: Text('Failed to save goal: \$e')),
                 );
               }
             },
@@ -155,7 +156,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
         fetchGoals();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: \$e')),
+          const SnackBar(content: Text('Failed to delete: \$e')),
         );
       }
     }

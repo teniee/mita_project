@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -8,6 +9,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'dart:ui';
 
 import 'firebase_options.dart';
+import 'l10n/generated/app_localizations.dart';
 
 import 'screens/notifications_screen.dart';
 import 'screens/bottom_navigation.dart';
@@ -18,6 +20,7 @@ import 'services/push_notification_service.dart';
 import 'services/loading_service.dart';
 import 'services/message_service.dart';
 import 'services/logging_service.dart';
+import 'services/localization_service.dart';
 import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
@@ -25,6 +28,7 @@ import 'theme/mita_theme.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
 import 'screens/onboarding_region_screen.dart';
 import 'screens/onboarding_location_screen.dart';
 import 'screens/onboarding_income_screen.dart';
@@ -47,13 +51,9 @@ Future<void> _initFirebase() async {
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
   await FirebaseMessaging.instance.requestPermission();
 
-  // Register device push-token (optional)
-  final token = await FirebaseMessaging.instance.getToken();
-  if (token != null) {
-    // TODO: Register push token when backend is ready
-    // final api = ApiService();
-    // await api.registerPushToken(token);
-  }
+  // SECURITY: Push token registration moved to post-authentication flow
+  // Tokens are now only registered after successful user login via SecurePushTokenManager
+  logInfo('Firebase initialized - push token registration deferred to post-authentication', tag: 'MAIN');
 
   await PushNotificationService.initialize(navigatorKey);
 }
@@ -128,6 +128,36 @@ class MITAApp extends StatelessWidget {
       theme: MitaTheme.lightTheme,
       darkTheme: MitaTheme.darkTheme,
       themeMode: ThemeMode.system,
+      
+      // Localization configuration
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      
+      // Locale resolution for unsupported locales
+      localeResolutionCallback: (locale, supportedLocales) {
+        // Initialize localization service with resolved locale
+        if (locale != null) {
+          LocalizationService.instance.setLocale(locale);
+        }
+        
+        // If the device locale is supported, use it
+        if (locale != null) {
+          for (final supportedLocale in supportedLocales) {
+            if (supportedLocale.languageCode == locale.languageCode) {
+              return supportedLocale;
+            }
+          }
+        }
+        
+        // Default to English if device locale is not supported
+        return const Locale('en');
+      },
+      
       initialRoute: '/',
       routes: {
         '/': (context) => const AppErrorBoundary(
@@ -141,6 +171,10 @@ class MITAApp extends StatelessWidget {
         '/register': (context) => const AppErrorBoundary(
           screenName: 'Register', 
           child: RegisterScreen(),
+        ),
+        '/forgot-password': (context) => const AppErrorBoundary(
+          screenName: 'ForgotPassword',
+          child: ForgotPasswordScreen(),
         ),
         '/main': (context) => const AppErrorBoundary(
           screenName: 'Main',

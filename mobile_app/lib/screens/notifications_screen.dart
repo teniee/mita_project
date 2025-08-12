@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -31,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading notifications: \$e')),
+        const SnackBar(content: Text('Error loading notifications: \$e')),
       );
     }
   }

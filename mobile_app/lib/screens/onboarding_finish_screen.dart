@@ -6,7 +6,7 @@ import '../services/logging_service.dart';
 import '../services/user_data_manager.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
-  const OnboardingFinishScreen({Key? key}) : super(key: key);
+  const OnboardingFinishScreen({super.key});
 
   @override
   State<OnboardingFinishScreen> createState() => _OnboardingFinishScreenState();

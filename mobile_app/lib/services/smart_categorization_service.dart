@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'logging_service.dart';
 
@@ -170,20 +168,18 @@ class SmartCategorizationService {
       final anomalies = await _apiService.getSpendingAnomalies();
       
       for (final anomaly in anomalies) {
-        if (anomaly is Map<String, dynamic>) {
-          alerts.add(SpendingAlert(
-            id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            type: _getAlertType(anomaly['anomaly_score'] as double? ?? 0.0),
-            category: anomaly['category'] as String? ?? 'Unknown',
-            amount: (anomaly['amount'] as num?)?.toDouble() ?? 0.0,
-            expectedAmount: (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
-            message: anomaly['description'] as String? ?? 'Unusual spending detected',
-            confidence: (anomaly['anomaly_score'] as num?)?.toDouble() ?? 0.0,
-            date: DateTime.tryParse(anomaly['date'] as String? ?? '') ?? DateTime.now(),
-            suggestions: List<String>.from(anomaly['possible_causes'] ?? []),
-          ));
-        }
-      }
+        alerts.add(SpendingAlert(
+          id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          type: _getAlertType(anomaly['anomaly_score'] as double? ?? 0.0),
+          category: anomaly['category'] as String? ?? 'Unknown',
+          amount: (anomaly['amount'] as num?)?.toDouble() ?? 0.0,
+          expectedAmount: (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
+          message: anomaly['description'] as String? ?? 'Unusual spending detected',
+          confidence: (anomaly['anomaly_score'] as num?)?.toDouble() ?? 0.0,
+          date: DateTime.tryParse(anomaly['date'] as String? ?? '') ?? DateTime.now(),
+          suggestions: List<String>.from(anomaly['possible_causes'] ?? []),
+        ));
+            }
       
       // Add local pattern-based alerts
       final localAlerts = _generateLocalAlerts();

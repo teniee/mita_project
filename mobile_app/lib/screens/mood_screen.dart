@@ -3,7 +3,7 @@ import '../services/api_service.dart';
 import '../services/reminder_service.dart';
 
 class MoodScreen extends StatefulWidget {
-  const MoodScreen({Key? key}) : super(key: key);
+  const MoodScreen({super.key});
 
   @override
   State<MoodScreen> createState() => _MoodScreenState();
@@ -396,15 +396,15 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.trending_up,
                           color: Color(0xFF193C57),
                           size: 24,
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
+                        SizedBox(width: 8),
+                        Text(
                           'Mood Trends',
                           style: TextStyle(
                             fontFamily: 'Sora',

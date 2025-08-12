@@ -10,10 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   dio: ^5.4.3+1                 # HTTP client
   flutter_secure_storage: ^9.2.2
-  intl: ^0.19.0
+  intl: ^0.20.2
   google_sign_in: ^6.2.1
   fl_chart: ^0.68.0
   firebase_core: ^2.32.0
@@ -33,15 +35,19 @@ dependencies:
   path_provider: ^2.1.4
   cached_network_image: ^3.4.0
 
+  device_info_plus: any
+  path: any
+  crypto: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
   integration_test:
     sdk: flutter
   flutter_lints: ^3.0.1
-
+  mockito: any
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/logo/mitalogo.png
     - assets/fonts/

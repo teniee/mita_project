@@ -1,0 +1,365 @@
+# Production Kibana configuration for MITA Financial Services
+# Dashboard and log analysis interface with financial compliance features
+
+# Replica configuration
+replicas: 2
+
+# Image configuration
+image: "docker.elastic.co/kibana/kibana"
+imageTag: "8.11.0"
+imagePullPolicy: "IfNotPresent"
+
+# Resource allocation
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+
+# Service configuration
+service:
+  enabled: true
+  type: ClusterIP
+  port: 5601
+  nodePort: ""
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "5601"
+    prometheus.io/path: "/api/status"
+
+# Ingress configuration for external access
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: kibana-basic-auth
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: kibana.mita.finance
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: kibana-tls-cert
+      hosts:
+        - kibana.mita.finance
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Environment variables
+extraEnvs:
+  - name: ELASTICSEARCH_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: username
+  - name: ELASTICSEARCH_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
+  - name: KIBANA_ENCRYPTION_KEY
+    valueFrom:
+      secretKeyRef:
+        name: kibana-secrets
+        key: encryption_key
+
+# Kibana configuration
+kibanaConfig:
+  kibana.yml: |
+    # Server configuration
+    server.name: "mita-financial-kibana"
+    server.host: "0.0.0.0"
+    server.port: 5601
+    server.basePath: ""
+    server.publicBaseUrl: "https://kibana.mita.finance"
+    
+    # Elasticsearch configuration
+    elasticsearch.hosts: ["https://elasticsearch-master:9200"]
+    elasticsearch.username: ${ELASTICSEARCH_USERNAME}
+    elasticsearch.password: ${ELASTICSEARCH_PASSWORD}
+    elasticsearch.ssl.verificationMode: none
+    
+    # Security configuration
+    xpack.security.enabled: true
+    xpack.encryptedSavedObjects.encryptionKey: ${KIBANA_ENCRYPTION_KEY}
+    xpack.security.encryptionKey: ${KIBANA_ENCRYPTION_KEY}
+    xpack.reporting.encryptionKey: ${KIBANA_ENCRYPTION_KEY}
+    
+    # Session configuration
+    xpack.security.session.idleTimeout: "8h"
+    xpack.security.session.lifespan: "24h"
+    
+    # Monitoring configuration
+    monitoring.enabled: true
+    monitoring.kibana.collection.enabled: true
+    monitoring.kibana.collection.interval: 10000
+    
+    # Logging configuration for financial compliance
+    logging.level: warn
+    logging.appenders:
+      file:
+        type: file
+        fileName: /usr/share/kibana/logs/kibana.log
+        layout:
+          type: json
+    logging.loggers:
+      - name: elasticsearch
+        level: warn
+      - name: elasticsearch.query
+        level: warn
+      - name: security
+        level: info
+        appenders: [file]
+      - name: audit
+        level: info
+        appenders: [file]
+    
+    # Performance and limits
+    elasticsearch.requestTimeout: 60000
+    elasticsearch.pingTimeout: 1500
+    elasticsearch.shardTimeout: 30000
+    
+    # Advanced settings for financial data
+    server.maxPayload: 1048576
+    csp.rules:
+      - "script-src 'self' 'unsafe-eval'"
+      - "worker-src 'self' blob:"
+      - "child-src 'self'"
+    
+    # Map configuration for geographic analysis
+    map.includeElasticMapsService: true
+    map.proxyElasticMapsServiceInMaps: false
+    
+    # Telemetry (disabled for compliance)
+    telemetry.enabled: false
+    telemetry.optIn: false
+    newsfeed.enabled: false
+    
+    # Default space configuration
+    xpack.spaces.enabled: true
+    xpack.spaces.maxSpaces: 1000
+    
+    # Canvas and reporting
+    xpack.canvas.enabled: true
+    xpack.reporting.enabled: true
+    xpack.reporting.capture.browser.chromium.disableSandbox: true
+    
+    # Machine learning (if enabled)
+    xpack.ml.enabled: false
+    
+    # Alerting configuration
+    xpack.alerting.enabled: true
+    xpack.actions.enabled: true
+    
+    # Index pattern configuration
+    kibana.defaultAppId: "dashboard"
+    kibana.index: ".kibana"
+    
+    # Financial compliance settings
+    savedObjects.maxImportPayloadBytes: 26214400
+    savedObjects.maxImportExportSize: 10000
+
+# Persistence for Kibana data
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: "fast-ssd"
+  accessModes:
+    - ReadWriteOnce
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Node affinity
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+      - matchExpressions:
+        - key: node.kubernetes.io/instance-type
+          operator: NotIn
+          values: ["t3.nano", "t3.micro"]
+
+# Pod anti-affinity
+podAntiAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values: ["kibana"]
+        topologyKey: kubernetes.io/hostname
+
+# Tolerations for dedicated logging nodes
+tolerations:
+  - key: "logging"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Lifecycle hooks
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - /bin/bash
+        - -c
+        - |
+          # Graceful shutdown
+          curl -X POST "localhost:5601/api/kibana/settings" -H "Content-Type: application/json" -d '{"changes":{"elasticsearch.healthCheck.delay":60000}}'
+          sleep 30
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: "/api/status"
+    port: 5601
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: "/api/status"
+    port: 5601
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  labels:
+    monitoring.coreos.com/prometheus: "production"
+  interval: 30s
+  path: /api/status
+  scrapeTimeout: 30s
+
+# ConfigMap for dashboard definitions
+extraVolumes:
+  - name: kibana-dashboards
+    configMap:
+      name: kibana-financial-dashboards
+
+extraVolumeMounts:
+  - name: kibana-dashboards
+    mountPath: /usr/share/kibana/config/dashboards
+    readOnly: true
+
+# Labels
+labels:
+  app.kubernetes.io/name: kibana
+  app.kubernetes.io/component: log-dashboard
+  environment: production
+  compliance: "SOX,PCI-DSS"
+  business-function: "financial-logging"
+
+# Network policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - port: 5601
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - port: 5601
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: elasticsearch-master
+      ports:
+        - port: 9200
+          protocol: TCP
+    - to: []
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+
+# Init containers for index patterns and dashboards
+extraInitContainers:
+  - name: setup-kibana-objects
+    image: curlimages/curl:8.1.0
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+    command:
+      - /bin/sh
+      - -c
+      - |
+        # Wait for Kibana to be ready
+        until curl -sf "http://kibana:5601/api/status" > /dev/null; do
+          echo "Waiting for Kibana to be ready..."
+          sleep 10
+        done
+        
+        # Create index patterns for MITA logs
+        curl -X POST "http://kibana:5601/api/saved_objects/index-pattern/mita-logs-*" \
+          -H "Content-Type: application/json" \
+          -H "kbn-xsrf: true" \
+          -d '{
+            "attributes": {
+              "title": "mita-logs-*",
+              "timeFieldName": "@timestamp"
+            }
+          }'
+        
+        # Create index pattern for financial transactions
+        curl -X POST "http://kibana:5601/api/saved_objects/index-pattern/mita-financial-transactions-*" \
+          -H "Content-Type: application/json" \
+          -H "kbn-xsrf: true" \
+          -d '{
+            "attributes": {
+              "title": "mita-financial-transactions-*",
+              "timeFieldName": "@timestamp"
+            }
+          }'
+        
+        # Create index pattern for security events
+        curl -X POST "http://kibana:5601/api/saved_objects/index-pattern/mita-security-events-*" \
+          -H "Content-Type: application/json" \
+          -H "kbn-xsrf: true" \
+          -d '{
+            "attributes": {
+              "title": "mita-security-events-*",
+              "timeFieldName": "@timestamp"
+            }
+          }'
+        
+        echo "Kibana setup completed"

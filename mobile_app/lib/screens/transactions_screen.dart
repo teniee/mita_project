@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 class TransactionsScreen extends StatefulWidget {
-  const TransactionsScreen({Key? key}) : super(key: key);
+  const TransactionsScreen({super.key});
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();

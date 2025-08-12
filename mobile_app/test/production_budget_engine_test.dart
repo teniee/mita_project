@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/services/production_budget_engine.dart';
-import '../lib/services/onboarding_state.dart';
-import '../lib/services/income_service.dart';
+import 'package:mita/services/production_budget_engine.dart';
+import 'package:mita/services/onboarding_state.dart';
+import 'package:mita/services/income_service.dart';
 
 /// Test suite for the production budget engine
 /// Validates budget calculations against various user profiles

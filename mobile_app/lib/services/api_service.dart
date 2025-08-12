@@ -6,12 +6,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config.dart';
-import 'loading_service.dart';
 import 'timeout_manager_service.dart';
+import 'income_service.dart';
 import 'message_service.dart';
 import 'logging_service.dart';
 import 'calendar_fallback_service.dart';
 import 'advanced_offline_service.dart';
+import 'secure_device_service.dart';
+import 'secure_push_token_manager.dart';
+import 'secure_token_storage.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -28,6 +31,9 @@ class ApiService {
     
     _dio.options.baseUrl = _baseUrl;
     _dio.options.contentType = 'application/json';
+    
+    // Initialize secure storage asynchronously
+    _initializeSecureStorage();
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -128,7 +134,11 @@ class ApiService {
   late final Dio _dio;
   final _timeoutManager = TimeoutManagerService();
 
+  // Legacy storage for backward compatibility during transition
   final _storage = const FlutterSecureStorage();
+  
+  // Secure token storage for production-grade security
+  SecureTokenStorage? _secureStorage;
 
   final String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
@@ -140,12 +150,92 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   String get baseUrl => _dio.options.baseUrl;
+  
+  /// Initialize secure storage asynchronously
+  Future<void> _initializeSecureStorage() async {
+    try {
+      _secureStorage = await SecureTokenStorage.getInstance();
+      logInfo('Secure token storage initialized', tag: 'API_SECURITY');
+    } catch (e) {
+      logError('Failed to initialize secure storage, falling back to basic storage: $e', 
+        tag: 'API_SECURITY', error: e);
+      // Continue with legacy storage as fallback
+    }
+  }
+  
+  /// Get secure storage instance, initializing if needed
+  Future<SecureTokenStorage?> _getSecureStorage() async {
+    if (_secureStorage == null) {
+      await _initializeSecureStorage();
+    }
+    return _secureStorage;
+  }
 
-  Future<String?> getToken() async => await _storage.read(key: 'access_token');
-  Future<String?> getRefreshToken() async =>
-      await _storage.read(key: 'refresh_token');
+  /// Get access token using secure storage when available
+  Future<String?> getToken() async {
+    final secureStorage = await _getSecureStorage();
+    if (secureStorage != null) {
+      try {
+        return await secureStorage.getAccessToken();
+      } catch (e) {
+        logWarning('Failed to get token from secure storage, falling back: $e', 
+          tag: 'API_SECURITY');
+      }
+    }
+    // Fallback to legacy storage
+    return await _storage.read(key: 'access_token');
+  }
+  
+  /// Get refresh token using secure storage when available
+  Future<String?> getRefreshToken() async {
+    final secureStorage = await _getSecureStorage();
+    if (secureStorage != null) {
+      try {
+        return await secureStorage.getRefreshToken();
+      } catch (e) {
+        logWarning('Failed to get refresh token from secure storage, falling back: $e', 
+          tag: 'API_SECURITY');
+      }
+    }
+    // Fallback to legacy storage
+    return await _storage.read(key: 'refresh_token');
+  }
 
+  /// Save tokens using secure storage with enhanced security
   Future<void> saveTokens(String access, String refresh) async {
+    final secureStorage = await _getSecureStorage();
+    
+    if (secureStorage != null) {
+      try {
+        // Use secure storage for production-grade security
+        await secureStorage.storeTokens(access, refresh);
+        
+        // Extract and save user ID from access token
+        try {
+          final userId = _extractUserIdFromToken(access);
+          if (userId != null) {
+            await secureStorage.storeUserId(userId);
+          }
+        } catch (e) {
+          logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
+        }
+        
+        logInfo('Tokens saved securely', tag: 'API_SECURITY');
+        
+        // Clean up any legacy tokens
+        await _storage.delete(key: 'access_token');
+        await _storage.delete(key: 'refresh_token');
+        
+        return;
+      } catch (e) {
+        logError('Failed to save tokens securely, falling back to legacy storage: $e', 
+          tag: 'API_SECURITY', error: e);
+      }
+    }
+    
+    // Fallback to legacy storage
+    logWarning('Using legacy token storage - consider upgrading security', 
+      tag: 'API_SECURITY');
     await _storage.write(key: 'access_token', value: access);
     await _storage.write(key: 'refresh_token', value: refresh);
     
@@ -184,13 +274,62 @@ class ApiService {
     }
   }
 
-  Future<void> saveUserId(String id) async =>
-      await _storage.write(key: 'user_id', value: id);
-  Future<String?> getUserId() async => await _storage.read(key: 'user_id');
+  /// Save user ID using secure storage when available
+  Future<void> saveUserId(String id) async {
+    final secureStorage = await _getSecureStorage();
+    if (secureStorage != null) {
+      try {
+        await secureStorage.storeUserId(id);
+        // Clean up legacy storage
+        await _storage.delete(key: 'user_id');
+        return;
+      } catch (e) {
+        logWarning('Failed to save user ID securely, using fallback: $e', 
+          tag: 'API_SECURITY');
+      }
+    }
+    // Fallback to legacy storage
+    await _storage.write(key: 'user_id', value: id);
+  }
+  
+  /// Get user ID using secure storage when available
+  Future<String?> getUserId() async {
+    final secureStorage = await _getSecureStorage();
+    if (secureStorage != null) {
+      try {
+        final userId = await secureStorage.getUserId();
+        if (userId != null) return userId;
+      } catch (e) {
+        logWarning('Failed to get user ID from secure storage, using fallback: $e', 
+          tag: 'API_SECURITY');
+      }
+    }
+    // Fallback to legacy storage
+    return await _storage.read(key: 'user_id');
+  }
 
+  /// Clear tokens using secure storage with proper cleanup
   Future<void> clearTokens() async {
-    await _storage.delete(key: 'access_token');
-    await _storage.delete(key: 'refresh_token');
+    final secureStorage = await _getSecureStorage();
+    
+    if (secureStorage != null) {
+      try {
+        await secureStorage.clearAllUserData();
+        logInfo('Tokens cleared securely', tag: 'API_SECURITY');
+      } catch (e) {
+        logError('Failed to clear tokens securely: $e', tag: 'API_SECURITY', error: e);
+      }
+    }
+    
+    // Always clear legacy storage as well for complete cleanup
+    try {
+      await _storage.delete(key: 'access_token');
+      await _storage.delete(key: 'refresh_token');
+      await _storage.delete(key: 'user_id');
+      logDebug('Legacy tokens cleared', tag: 'API_SECURITY');
+    } catch (e) {
+      logError('Failed to clear legacy tokens: $e', tag: 'API_SECURITY', error: e);
+    }
   }
 
   Future<bool> _refreshTokens() async {
@@ -207,6 +346,22 @@ class ApiService {
       final newAccess = data['access_token'] as String?;
       final newRefresh = data['refresh_token'] as String?;
 
+      // Use secure storage for token refresh when available
+      final secureStorage = await _getSecureStorage();
+      
+      if (secureStorage != null && newAccess != null && newRefresh != null) {
+        try {
+          await secureStorage.storeTokens(newAccess, newRefresh);
+          logInfo('Refreshed tokens stored securely', tag: 'API_SECURITY');
+          return true;
+        } catch (e) {
+          logError('Failed to store refreshed tokens securely: $e', 
+            tag: 'API_SECURITY', error: e);
+          // Continue with fallback below
+        }
+      }
+      
+      // Fallback to legacy storage
       if (newAccess != null) {
         await _storage.write(key: 'access_token', value: newAccess);
       }
@@ -286,10 +441,14 @@ class ApiService {
               operation: () => getUserProfile(),
               operationName: 'Get User Profile for Dashboard',
             );
-            actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+            final incomeValue = (profile['data']?['income'] as num?)?.toDouble();
+            if (incomeValue == null || incomeValue <= 0) {
+              throw Exception('Income data required for dashboard. Please complete onboarding.');
+            }
+            actualIncome = incomeValue;
           } catch (e) {
-            logWarning('Failed to get user profile, using default income', tag: 'DASHBOARD');
-            actualIncome = 3000.0;
+            logError('Failed to get user profile: $e', tag: 'DASHBOARD');
+            throw Exception('Income data required for dashboard. Please complete onboarding.');
           }
         }
         
@@ -350,7 +509,7 @@ class ApiService {
           'monthly_spent': 0.0,
         };
         
-        if (calendarData is Map && calendarData.containsKey('flexible')) {
+        if (calendarData.containsKey('flexible')) {
           final flexible = calendarData['flexible'] as Map<String, dynamic>;
           final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + (amount as num).toDouble());
           
@@ -362,7 +521,9 @@ class ApiService {
         
         return dashboardData;
       },
-      fallbackValue: _getDefaultDashboardFallback(userIncome ?? 3000.0),
+      fallbackValue: userIncome != null 
+        ? _getDefaultDashboardFallback(userIncome)
+        : throw Exception('Income data required for dashboard. Please complete onboarding.'),
       timeout: const Duration(seconds: 8),
       operationName: 'Dashboard Data',
     );
@@ -408,11 +569,15 @@ class ApiService {
               operation: () => getUserProfile(),
               operationName: 'Get User Profile for Calendar',
             );
-            actualIncome = (profile['data']?['income'] as num?)?.toDouble() ?? 3000.0;
+            final incomeValue = (profile['data']?['income'] as num?)?.toDouble();
+            if (incomeValue == null || incomeValue <= 0) {
+              throw Exception('Income data required for calendar. Please complete onboarding.');
+            }
+            actualIncome = incomeValue;
             userLocation = profile['data']?['location'] as String?;
           } catch (e) {
-            logWarning('Failed to get user profile for calendar, using defaults', tag: 'CALENDAR');
-            actualIncome = 3000.0; // Reasonable default
+            logError('Failed to get user profile for calendar: $e', tag: 'CALENDAR');
+            throw Exception('Income data required for calendar. Please complete onboarding.');
           }
         }
         
@@ -500,7 +665,9 @@ class ApiService {
           }
         }
       },
-      fallbackValue: _generateBasicFallbackCalendar(userIncome ?? 3000.0),
+      fallbackValue: userIncome != null
+        ? _generateBasicFallbackCalendar(userIncome)
+        : throw Exception('Income data required for calendar. Please complete onboarding.'),
       timeout: const Duration(seconds: 10),
       operationName: 'Calendar Data',
     );
@@ -2298,11 +2465,15 @@ class ApiService {
       // Return default classification based on user profile
       final profile = await getUserProfile();
       final income = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+      final incomeService = IncomeService();
+      final tier = incomeService.classifyIncome(income);
+      final tierString = incomeService.getTierString(tier);
+      
       return {
         'monthly_income': income,
-        'tier': income < 3000 ? 'low' : income <= 7000 ? 'mid' : 'high',
-        'tier_name': income < 3000 ? 'Essential Earner' : income <= 7000 ? 'Growing Professional' : 'High Achiever',
-        'range': income < 3000 ? 'Under \$3,000' : income <= 7000 ? '\$3,000 - \$7,000' : 'Over \$7,000',
+        'tier': tierString,
+        'tier_name': incomeService.getTierDisplayName(tier),
+        'range': incomeService.getTierRange(tier),
       };
     }
   }
@@ -2771,10 +2942,463 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
+  // Password reset functionality
+  // ---------------------------------------------------------------------------
+
+  /// Send password reset email
+  Future<bool> sendPasswordResetEmail(String email) async {
+    try {
+      logInfo('Sending password reset email', tag: 'API_PASSWORD_RESET');
+      
+      final response = await _dio.post(
+        '/auth/forgot-password',
+        data: {
+          'email': email,
+          'client_id': 'mita_flutter_app',
+          'redirect_url': 'https://app.mita.finance/reset-password',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 202) {
+        logInfo('Password reset email sent successfully', tag: 'API_PASSWORD_RESET');
+        return true;
+      } else if (response.statusCode == 404) {
+        logWarning('Email not found for password reset', tag: 'API_PASSWORD_RESET');
+        // Return true to avoid revealing which emails exist in the system
+        return true;
+      } else {
+        logError('Failed to send password reset email: ${response.statusCode}', tag: 'API_PASSWORD_RESET');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception sending password reset email: $e', tag: 'API_PASSWORD_RESET');
+      return false;
+    }
+  }
+
+  /// Verify password reset token
+  Future<bool> verifyPasswordResetToken(String token) async {
+    try {
+      logInfo('Verifying password reset token', tag: 'API_PASSWORD_RESET');
+      
+      final response = await _dio.get(
+        '/auth/verify-reset-token',
+        queryParameters: {
+          'token': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logInfo('Password reset token is valid', tag: 'API_PASSWORD_RESET');
+        return true;
+      } else {
+        logWarning('Invalid or expired password reset token', tag: 'API_PASSWORD_RESET');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception verifying password reset token: $e', tag: 'API_PASSWORD_RESET');
+      return false;
+    }
+  }
+
+  /// Reset password with token
+  Future<bool> resetPasswordWithToken(String token, String newPassword) async {
+    try {
+      logInfo('Resetting password with token', tag: 'API_PASSWORD_RESET');
+      
+      final response = await _dio.post(
+        '/auth/reset-password',
+        data: {
+          'token': token,
+          'new_password': newPassword,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logInfo('Password reset successfully', tag: 'API_PASSWORD_RESET');
+        return true;
+      } else {
+        logError('Failed to reset password: ${response.statusCode}', tag: 'API_PASSWORD_RESET');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception resetting password: $e', tag: 'API_PASSWORD_RESET');
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Push notification token registration
+  // ---------------------------------------------------------------------------
+
+  /// Register device push token for notifications
+  Future<bool> registerPushToken(String pushToken) async {
+    try {
+      logInfo('Registering push token', tag: 'API_PUSH_TOKEN');
+      
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available for push token registration', tag: 'API_PUSH_TOKEN');
+        return false;
+      }
+      
+      final response = await _dio.post(
+        '/notifications/register-device',
+        data: {
+          'push_token': pushToken,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+          'app_version': '1.0.0', // TODO: Get from package_info
+          'device_id': await _getDeviceId(),
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        logInfo('Push token registered successfully', tag: 'API_PUSH_TOKEN');
+        return true;
+      } else {
+        logError('Failed to register push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception registering push token: $e', tag: 'API_PUSH_TOKEN');
+      return false;
+    }
+  }
+
+  /// Update push token (when FCM token refreshes)
+  Future<bool> updatePushToken(String oldToken, String newToken) async {
+    try {
+      logInfo('Updating push token', tag: 'API_PUSH_TOKEN');
+      
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available for push token update', tag: 'API_PUSH_TOKEN');
+        return false;
+      }
+      
+      final response = await _dio.patch(
+        '/notifications/update-device',
+        data: {
+          'old_push_token': oldToken,
+          'new_push_token': newToken,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logInfo('Push token updated successfully', tag: 'API_PUSH_TOKEN');
+        return true;
+      } else {
+        logError('Failed to update push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception updating push token: $e', tag: 'API_PUSH_TOKEN');
+      return false;
+    }
+  }
+
+  /// Unregister push token (on logout)
+  Future<bool> unregisterPushToken(String pushToken) async {
+    try {
+      logInfo('Unregistering push token', tag: 'API_PUSH_TOKEN');
+      
+      final token = await getToken();
+      if (token == null) {
+        logDebug('No auth token available for push token unregistration', tag: 'API_PUSH_TOKEN');
+        return true; // Consider success if user already logged out
+      }
+      
+      final response = await _dio.delete(
+        '/notifications/unregister-device',
+        data: {
+          'push_token': pushToken,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        logInfo('Push token unregistered successfully', tag: 'API_PUSH_TOKEN');
+        return true;
+      } else {
+        logWarning('Failed to unregister push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception unregistering push token: $e', tag: 'API_PUSH_TOKEN');
+      return false;
+    }
+  }
+
+  /// Get cryptographically secure device ID for push notification tracking
+  /// 
+  /// SECURITY: Now uses SecureDeviceService for enterprise-grade device fingerprinting
+  Future<String> _getDeviceId() async {
+    try {
+      // Use secure device service instead of weak timestamp-based ID
+      final secureDeviceService = SecureDeviceService.instance;
+      final deviceId = await secureDeviceService.getSecureDeviceId();
+      
+      logDebug('Retrieved secure device ID: ${deviceId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');
+      return deviceId;
+      
+    } catch (e) {
+      logError('Failed to get secure device ID: $e', tag: 'API_PUSH_TOKEN');
+      // Fallback to secure random generation instead of predictable timestamp
+      final secureRandom = Random.secure();
+      final randomBytes = List.generate(16, (i) => secureRandom.nextInt(256));
+      final fallbackId = 'mita_fallback_${base64Encode(randomBytes).substring(0, 16)}';
+      
+      logWarning('Using fallback device ID: ${fallbackId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');
+      return fallbackId;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Premium Subscription Management
+  // ---------------------------------------------------------------------------
+
+  /// Get user's premium status and subscription details
+  Future<Map<String, dynamic>> getUserPremiumStatus(String userId) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not available');
+      }
+
+      logInfo('Getting premium status for user: $userId', tag: 'API_PREMIUM');
+      
+      final response = await _dio.get(
+        '/users/$userId/premium-status',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      logError('Failed to get premium status: $e', tag: 'API_PREMIUM');
+      rethrow;
+    }
+  }
+
+  /// Get user's available premium features
+  Future<Map<String, dynamic>> getUserPremiumFeatures(String userId) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not available');
+      }
+
+      logInfo('Getting premium features for user: $userId', tag: 'API_PREMIUM');
+      
+      final response = await _dio.get(
+        '/users/$userId/premium-features',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      logError('Failed to get premium features: $e', tag: 'API_PREMIUM');
+      rethrow;
+    }
+  }
+
+  /// Track premium feature usage for analytics and limits
+  Future<void> trackPremiumFeatureUsage({
+    required String userId,
+    required String feature,
+    Map<String, dynamic>? metadata,
+    int? processingTimeMs,
+    bool success = true,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) return;
+
+      await _dio.post(
+        '/analytics/feature-usage',
+        data: {
+          'user_id': userId,
+          'feature': feature,
+          'success': success,
+          'processing_time_ms': processingTimeMs,
+          'metadata': metadata,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      logDebug('Tracked feature usage: $feature (success: $success)', tag: 'API_PREMIUM');
+    } catch (e) {
+      logError('Failed to track feature usage: $e', tag: 'API_PREMIUM');
+      // Don't rethrow - analytics failures shouldn't break user experience
+    }
+  }
+
+  /// Get feature usage statistics
+  Future<Map<String, dynamic>> getFeatureUsageStats({
+    required String userId,
+    required String feature,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not available');
+      }
+
+      final response = await _dio.get(
+        '/analytics/feature-usage/$userId/$feature',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      logError('Failed to get feature usage stats: $e', tag: 'API_PREMIUM');
+      return {};
+    }
+  }
+
+  /// Track feature access attempts (for paywall analytics)
+  Future<void> trackFeatureAccessAttempt({
+    required String userId,
+    required String feature,
+    required bool success,
+    String? context,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) return;
+
+      await _dio.post(
+        '/analytics/feature-access-attempt',
+        data: {
+          'user_id': userId,
+          'feature': feature,
+          'success': success,
+          'context': context,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      logDebug('Tracked feature access attempt: $feature (success: $success)', tag: 'API_PREMIUM');
+    } catch (e) {
+      logError('Failed to track feature access attempt: $e', tag: 'API_PREMIUM');
+      // Don't rethrow - analytics failures shouldn't break user experience
+    }
+  }
+
+  /// Track paywall impressions
+  Future<void> trackPaywallImpression({
+    required String userId,
+    required String feature,
+    String? context,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) return;
+
+      await _dio.post(
+        '/analytics/paywall-impression',
+        data: {
+          'user_id': userId,
+          'feature': feature,
+          'context': context,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      logDebug('Tracked paywall impression: $feature', tag: 'API_PREMIUM');
+    } catch (e) {
+      logError('Failed to track paywall impression: $e', tag: 'API_PREMIUM');
+      // Don't rethrow - analytics failures shouldn't break user experience
+    }
+  }
+
+  /// Update subscription status after external verification
+  Future<void> updateSubscriptionStatus({
+    required String userId,
+    required String subscriptionId,
+    required String status,
+    required DateTime expiresAt,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not available');
+      }
+
+      logInfo('Updating subscription status: $subscriptionId -> $status', tag: 'API_PREMIUM');
+      
+      await _dio.put(
+        '/subscriptions/$subscriptionId/status',
+        data: {
+          'user_id': userId,
+          'status': status,
+          'expires_at': expiresAt.toIso8601String(),
+          'metadata': metadata,
+          'updated_by': 'mobile_app',
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      logInfo('Subscription status updated successfully', tag: 'API_PREMIUM');
+    } catch (e) {
+      logError('Failed to update subscription status: $e', tag: 'API_PREMIUM');
+      rethrow;
+    }
+  }
+
+  /// Get subscription history for audit purposes
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory(String userId) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not available');
+      }
+
+      final response = await _dio.get(
+        '/users/$userId/subscription-history',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      
+      return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
+    } catch (e) {
+      logError('Failed to get subscription history: $e', tag: 'API_PREMIUM');
+      return [];
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Manual logout
   // ---------------------------------------------------------------------------
 
   Future<void> logout() async {
-    await clearTokens();
+    try {
+      logInfo('Performing secure logout with push token cleanup', tag: 'API_LOGOUT');
+      
+      // SECURITY: Clean up push tokens before clearing auth tokens
+      await SecurePushTokenManager.instance.cleanupOnLogout();
+      
+      // Clear authentication tokens
+      await clearTokens();
+      
+      logInfo('Secure logout completed successfully', tag: 'API_LOGOUT');
+      
+    } catch (e, stackTrace) {
+      logError('Error during logout: $e', tag: 'API_LOGOUT', stackTrace: stackTrace);
+      
+      // Still clear tokens even if push token cleanup fails
+      try {
+        await clearTokens();
+      } catch (e2) {
+        logError('Failed to clear tokens during error recovery: $e2', tag: 'API_LOGOUT');
+      }
+      
+      rethrow;
+    }
   }
 }

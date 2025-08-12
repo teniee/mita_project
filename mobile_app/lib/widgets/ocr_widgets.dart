@@ -9,12 +9,12 @@ class ConfidenceIndicator extends StatelessWidget {
   final double size;
 
   const ConfidenceIndicator({
-    Key? key,
+    super.key,
     required this.confidence,
     required this.label,
     this.showLabel = true,
     this.size = 16.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -91,11 +91,11 @@ class OCRProcessingIndicator extends StatelessWidget {
   final String? customMessage;
 
   const OCRProcessingIndicator({
-    Key? key,
+    super.key,
     required this.status,
     this.progress = 0.0,
     this.customMessage,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +201,7 @@ class OCRDataField extends StatefulWidget {
   final IconData? prefixIcon;
 
   const OCRDataField({
-    Key? key,
+    super.key,
     required this.label,
     required this.value,
     required this.confidence,
@@ -210,7 +210,7 @@ class OCRDataField extends StatefulWidget {
     this.suggestions,
     this.helperText,
     this.prefixIcon,
-  }) : super(key: key);
+  });
 
   @override
   State<OCRDataField> createState() => _OCRDataFieldState();
@@ -279,7 +279,7 @@ class _OCRDataFieldState extends State<OCRDataField> {
           Container(
             margin: const EdgeInsets.only(top: 4.0),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
             ),
@@ -327,11 +327,11 @@ class ReceiptScanOverlay extends StatelessWidget {
   final VoidCallback? onRetake;
 
   const ReceiptScanOverlay({
-    Key? key,
+    super.key,
     this.isScanning = false,
     this.guidanceText,
     this.onRetake,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +449,7 @@ class ReceiptScanOverlay extends StatelessWidget {
                   FloatingActionButton(
                     heroTag: "ocr_retake_fab",
                     onPressed: onRetake,
-                    backgroundColor: colorScheme.surfaceVariant,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                     foregroundColor: colorScheme.onSurfaceVariant,
                     child: const Icon(Icons.refresh),
                   ),
@@ -551,11 +551,11 @@ class OCRReceiptItemsList extends StatelessWidget {
   final VoidCallback? onAddItem;
 
   const OCRReceiptItemsList({
-    Key? key,
+    super.key,
     required this.items,
     required this.onItemChanged,
     this.onAddItem,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -588,7 +588,7 @@ class OCRReceiptItemsList extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withValues(alpha: 0.3),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12.0),
               border: Border.all(
                 color: colorScheme.outline.withValues(alpha: 0.3),
@@ -691,12 +691,12 @@ class BatchProcessingIndicator extends StatelessWidget {
   final Duration? estimatedTimeRemaining;
 
   const BatchProcessingIndicator({
-    Key? key,
+    super.key,
     required this.processed,
     required this.total,
     this.failed = 0,
     this.estimatedTimeRemaining,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -729,7 +729,7 @@ class BatchProcessingIndicator extends StatelessWidget {
             const SizedBox(height: 16.0),
             LinearProgressIndicator(
               value: progress,
-              backgroundColor: colorScheme.surfaceVariant,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(colorScheme.primary),
             ),
             const SizedBox(height: 12.0),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
-import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
 
 class OnboardingBudgetScreen extends StatefulWidget {
-  const OnboardingBudgetScreen({Key? key}) : super(key: key);
+  const OnboardingBudgetScreen({super.key});
 
   @override
   State<OnboardingBudgetScreen> createState() => _OnboardingBudgetScreenState();
@@ -27,7 +26,10 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
     super.initState();
     
     // Get income data from onboarding state
-    _monthlyIncome = OnboardingState.instance.income ?? 3000.0;
+    if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
+      throw Exception('Income must be provided before budget screen. Please go back and complete income entry.');
+    }
+    _monthlyIncome = OnboardingState.instance.income!;
     _incomeTier = OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
     
     // Generate budget template
