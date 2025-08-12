@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
 import 'package:intl/intl.dart';
@@ -161,7 +160,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
       }
 
       // Trigger redistribution
-      final result = await _apiService.redistributeCalendarBudget(calendarDict);
+      await _apiService.redistributeCalendarBudget(calendarDict);
       
       // Refresh all data after redistribution
       await _initializeData();
@@ -302,20 +301,6 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
     }
   }
 
-  Color _getBudgetModeColor(String mode) {
-    switch (mode) {
-      case 'strict':
-        return const Color(0xFFFF5C5C);
-      case 'flexible':
-        return const Color(0xFF84FAA1);
-      case 'behavioral':
-        return const Color(0xFF6B73FF);
-      case 'goal':
-        return const Color(0xFFFFD25F);
-      default:
-        return Colors.grey;
-    }
-  }
 
   Widget _buildLiveBudgetCard() {
     if (_liveBudgetStatus.isEmpty) return const SizedBox.shrink();
@@ -359,18 +344,18 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
               end: Alignment.bottomRight,
             ),
           ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                 Semantics(
                   header: true,
                   label: 'Live Budget Status',
                   child: const Text(
                     'Live Budget Status',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -388,7 +373,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     ),
                     child: Text(
                       _getBudgetModeDisplayName(_budgetMode),
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
                         fontSize: 12,
@@ -413,11 +398,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     children: [
                       const Text(
                         'Total Budget',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       Text(
                         '\$${totalBudget.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -437,11 +422,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     children: [
                       const Text(
                         'Spent',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       Text(
                         '\$${totalSpent.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -462,11 +447,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     children: [
                       const Text(
                         'Remaining',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       Text(
                         '\$${remaining.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -493,7 +478,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
             const SizedBox(height: 8),
             Text(
               '${(percentage * 100).toStringAsFixed(1)}% of budget used',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style: const const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
@@ -515,7 +500,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
               header: true,
               child: const Text(
                 'Smart Budget Actions',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Sora',
@@ -601,7 +586,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                 SizedBox(width: 8),
                 Text(
                   'AI Budget Suggestions',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Sora',
@@ -627,7 +612,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                     Expanded(
                       child: Text(
                         suggestion['message'] ?? suggestion.toString(),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF193C57)),
+                        style: const const TextStyle(fontSize: 14, color: Color(0xFF193C57)),
                       ),
                     ),
                   ],
@@ -658,7 +643,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Recent Redistribution',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Sora',
@@ -681,11 +666,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                   children: [
                     Text(
                       'Day ${transfer['from']} → Day ${transfer['to']}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: const const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                     Text(
                       '\$${(transfer['amount'] ?? 0).toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF6B73FF),
@@ -711,7 +696,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
           label: 'Smart Daily Budget Dashboard',
           child: const Text(
             'Smart Daily Budget',
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.bold,
               color: Color(0xFF193C57),
@@ -771,14 +756,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                             padding: EdgeInsets.all(32),
                             child: Column(
                               children: [
-                                Semantics(
-                                  label: 'Empty wallet icon',
-                                  child: Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
-                                ),
+                                Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
                                 SizedBox(height: 16),
                                 Text(
                                   'No budget data available',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     color: Colors.grey,
                                     fontWeight: FontWeight.w500,
@@ -787,7 +769,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                                 SizedBox(height: 8),
                                 Text(
                                   'Your intelligent budget tracking will appear here',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: const TextStyle(color: Colors.grey),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -824,7 +806,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                                 label: 'Date: $date',
                                 child: Text(
                                   date,
-                                  style: const TextStyle(
+                                  style: const const TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -842,7 +824,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                                     ),
                                     child: Text(
                                       'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
-                                      style: const TextStyle(fontFamily: 'Manrope'),
+                                      style: const const TextStyle(fontFamily: 'Manrope'),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -866,7 +848,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
                                   ),
                                   child: Text(
                                     status.toUpperCase(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: getStatusColor(status),
                                       fontSize: 12,

@@ -209,7 +209,7 @@ class IncomeTierBadge extends StatelessWidget {
           ],
           Text(
             tierName,
-            style: TextStyle(
+            style: const TextStyle(
               color: primaryColor,
               fontWeight: FontWeight.w600,
               fontSize: 12,
@@ -241,7 +241,7 @@ class IncomeTierBadge extends StatelessWidget {
             ],
             const Text(
               'User',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.blue,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -446,7 +446,7 @@ class PeerComparisonCard extends StatelessWidget {
                     ),
                     child: Text(
                       '${isAboveAverage ? '+' : '-'}${difference.toStringAsFixed(0)}%',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: isAboveAverage ? Colors.red.shade700 : Colors.green.shade700,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -661,7 +661,7 @@ class IncomeBasedGoalCard extends StatelessWidget {
                             ),
                             child: Text(
                               priority.toUpperCase(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: getPriorityColor(),
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -743,7 +743,7 @@ class IncomeBasedGoalCard extends StatelessWidget {
                     ),
                     child: const Text(
                       'Add Goal',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontFamily: 'Sora',
                       ),

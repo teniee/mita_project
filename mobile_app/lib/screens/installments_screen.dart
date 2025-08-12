@@ -63,7 +63,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       appBar: AppBar(
         title: const Text(
           'Installments',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -85,7 +85,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                       SizedBox(height: 16),
                       Text(
                         'No installments found',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           color: Colors.grey,
                           fontWeight: FontWeight.w500,
@@ -94,7 +94,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                       SizedBox(height: 8),
                       Text(
                         'Your installment tracking will appear here',
-                        style: TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
@@ -125,7 +125,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                         children: [
                           Text(
                             item['title'],
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'Sora',
@@ -144,11 +144,11 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             children: [
                               Text(
                                 '\$${item['paid_amount']} / \$${item['total_amount']}',
-                                style: const TextStyle(fontFamily: 'Manrope'),
+                                style: const const TextStyle(fontFamily: 'Manrope'),
                               ),
                               Text(
                                 'Due: ${DateFormat.yMMMd().format(DateTime.parse(item['due_date']))}',
-                                style: const TextStyle(
+                                style: const const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontStyle: FontStyle.italic,
                                 ),
@@ -158,7 +158,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Status: ${item['status']}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               color: _statusColor(item['status']),
                               fontWeight: FontWeight.w600,

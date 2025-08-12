@@ -68,7 +68,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
       appBar: AppBar(
         title: const Text(
           'Behavioral Insights',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -210,7 +210,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       children: [
                         const Text(
                           'Predicted Spending',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             color: Colors.white,
                             fontSize: 16,
@@ -245,7 +245,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                             children: [
                               const Text(
                                 'Recommended Budget',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   color: Colors.white70,
                                   fontSize: 12,
@@ -269,7 +269,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                             children: [
                               const Text(
                                 'Savings Potential',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   color: Colors.white70,
                                   fontSize: 12,
@@ -321,7 +321,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   SizedBox(height: 16),
                   Text(
                     'No anomalies detected',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -331,7 +331,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   SizedBox(height: 8),
                   Text(
                     'Your spending patterns look normal',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       color: Colors.grey,
                     ),
@@ -378,7 +378,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   children: [
                     const Text(
                       'Your Spending Personality',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.white,
                         fontSize: 16,
@@ -490,7 +490,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
       ),
       child: Text(
         displayText,
-        style: TextStyle(
+        style: const TextStyle(
           fontFamily: 'Manrope',
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -537,7 +537,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     children: [
                       Text(
                         value,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -548,7 +548,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Expanded(
                         child: Text(
                           description,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -669,7 +669,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   const SizedBox(height: 4),
                   Text(
                     '${risk['impact']?.toString().toUpperCase()} IMPACT',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -727,7 +727,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   ),
                   child: Text(
                     '${(anomalyScore * 100).toInt()}% anomaly',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -758,7 +758,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     children: [
                       Text(
                         'Category',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -782,7 +782,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     children: [
                       Text(
                         'Amount',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -806,7 +806,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     children: [
                       Text(
                         'Expected',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -831,7 +831,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               const SizedBox(height: 12),
               Text(
                 'Possible causes:',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

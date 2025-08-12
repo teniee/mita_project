@@ -246,7 +246,7 @@ class TextDirectionService {
   }
 
   /// Get appropriate TextStyle with direction-aware properties
-  TextStyle getDirectionalTextStyle(TextStyle baseStyle) {
+  TextStyle getDirectionalconst TextStyle(TextStyle baseStyle) {
     return baseStyle.copyWith(
       // Add any RTL-specific text styling if needed
     );

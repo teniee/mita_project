@@ -147,10 +147,10 @@ void main() {
           }
           
           // Document the inconsistency
-          print('Income: \$$monthlyIncome/month');
-          print('5-tier (CA): ${fiveTierResult.toString().split('.').last}');
-          print('3-tier (problematic): $threeTierResult');
-          print('---');
+          // print('Income: \$$monthlyIncome/month');
+          // print('5-tier (CA): ${fiveTierResult.toString().split('.').last}');
+          // print('3-tier (problematic): $threeTierResult');
+          // print('---');
         }
         
         // This test always passes but documents the inconsistency

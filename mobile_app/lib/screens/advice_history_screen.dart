@@ -61,7 +61,7 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
                       SizedBox(height: 16),
                       Text(
                         'No advice history yet',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           color: Colors.grey,
                           fontWeight: FontWeight.w500,
@@ -70,7 +70,7 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
                       SizedBox(height: 8),
                       Text(
                         'Your advice history will appear here',
-                        style: TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),

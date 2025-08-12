@@ -144,7 +144,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
             gradient: LinearGradient(
               colors: [
                 const Color(0xFF1E3A8A),
-                const Color(0xFF1E40AF).withOpacity(0.9),
+                const Color(0xFF1E40AF).withValues(alpha: 0.9),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -161,7 +161,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -177,7 +177,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                         children: [
                           const Text(
                             'Smart Insights',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -186,10 +186,10 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                           ),
                           Text(
                             '${filteredNotifications.length} notification${filteredNotifications.length != 1 ? 's' : ''}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -206,7 +206,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                           padding: const EdgeInsets.all(4),
                           child: Icon(
                             _isExpanded ? Icons.expand_less : Icons.expand_more,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             size: 20,
                           ),
                         ),
@@ -255,10 +255,10 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
       margin: EdgeInsets.only(bottom: isFirst ? 0 : 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: notificationInfo.color.withOpacity(0.3),
+          color: notificationInfo.color.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -283,7 +283,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: notificationInfo.color.withOpacity(0.2),
+                color: notificationInfo.color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(
@@ -302,11 +302,11 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -315,10 +315,10 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     const SizedBox(height: 2),
                     Text(
                       message,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -336,22 +336,22 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 children: [
                   Text(
                     _formatTimestamp(timestamp),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 10,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: notificationInfo.color.withOpacity(0.3),
+                      color: notificationInfo.color.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       priority.toUpperCase(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 8,
                         color: notificationInfo.color,
@@ -507,7 +507,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '${notifications.length} insight${notifications.length != 1 ? 's' : ''}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -526,7 +526,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                     ),
                     child: Text(
                       highPriorityCount.toString(),
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w600,

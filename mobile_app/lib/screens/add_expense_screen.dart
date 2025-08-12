@@ -223,7 +223,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
               Expanded(
                 child: Text(
                   'Please fill in all required fields',
-                  style: TextStyle(fontFamily: 'Manrope'),
+                  style: const TextStyle(fontFamily: 'Manrope'),
                 ),
               ),
             ],
@@ -298,7 +298,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   Expanded(
                     child: Text(
                       'Expense saved offline and will sync when online',
-                      style: TextStyle(fontFamily: 'Manrope'),
+                      style: const TextStyle(fontFamily: 'Manrope'),
                     ),
                   ),
                 ],
@@ -350,7 +350,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                 Expanded(
                   child: Text(
                     'Failed to add expense. Please try again.',
-                    style: TextStyle(fontFamily: 'Manrope'),
+                    style: const TextStyle(fontFamily: 'Manrope'),
                   ),
                 ),
               ],
@@ -548,7 +548,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                           SizedBox(width: 8),
                           Text(
                             'AI Category Suggestions',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
@@ -742,7 +742,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                   const SizedBox(width: 8),
                                   const Text(
                                     'Adding...',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontFamily: 'Sora',
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -752,7 +752,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                               )
                             : const Text(
                                 'Save Expense',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Sora',
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,

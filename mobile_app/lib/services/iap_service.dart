@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'logging_service.dart';

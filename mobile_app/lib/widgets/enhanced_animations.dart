@@ -988,7 +988,7 @@ class _CelebrationParticlesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (animation.value == 0) return;
 
-    final paint = Paint()..color = color.withOpacity(1.0 - animation.value);
+    final paint = Paint()..color = color.withValues(alpha: 1.0 - animation.value);
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width * 0.3 * animation.value;
 
@@ -1085,8 +1085,8 @@ class _SmartLoadingIndicatorState extends State<SmartLoadingIndicator>
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       colors: [
-                        effectiveColor.withOpacity(0.8),
-                        effectiveColor.withOpacity(0.3),
+                        effectiveColor.withValues(alpha: 0.8),
+                        effectiveColor.withValues(alpha: 0.3),
                       ],
                     ),
                     shape: BoxShape.circle,
@@ -1105,7 +1105,7 @@ class _SmartLoadingIndicatorState extends State<SmartLoadingIndicator>
           Text(
             widget.message!,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),

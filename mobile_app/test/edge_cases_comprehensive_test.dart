@@ -121,7 +121,7 @@ void main() {
         );
         
         // Same income should potentially classify differently in extreme states
-        print('$testIncome monthly income: $lowestState -> $lowestStateTier, $highestState -> $highestStateTier');
+        // print('$testIncome monthly income: $lowestState -> $lowestStateTier, $highestState -> $highestStateTier');
         
         // Both should be valid tiers
         expect([IncomeTier.low, IncomeTier.lowerMiddle, IncomeTier.middle, IncomeTier.upperMiddle, IncomeTier.high]

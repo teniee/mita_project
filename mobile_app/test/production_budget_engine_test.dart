@@ -34,9 +34,9 @@ void main() {
         expect(result.confidence, greaterThan(0.5)); // Should have some confidence
         expect(result.methodology, contains('MITA'));
         
-        print('Low income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
-        print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
-        print('Methodology: ${result.methodology}');
+        // print('Low income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
+        // print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
+        // print('Methodology: ${result.methodology}');
       });
 
       test('should calculate higher daily budget for high income user', () {
@@ -57,8 +57,8 @@ void main() {
         expect(result.totalDailyBudget, greaterThan(100.0)); // Should be significantly higher
         expect(result.confidence, greaterThanOrEqualTo(0.8)); // High confidence for high income
         
-        print('High income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
-        print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
+        // print('High income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
+        // print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
       });
 
       test('should adjust budget for location cost of living', () {
@@ -82,8 +82,8 @@ void main() {
         // Assert
         expect(highCostResult.totalDailyBudget, greaterThan(lowCostResult.totalDailyBudget));
         
-        print('Low cost area budget: \$${lowCostResult.totalDailyBudget.toStringAsFixed(2)}');
-        print('High cost area budget: \$${highCostResult.totalDailyBudget.toStringAsFixed(2)}');
+        // print('Low cost area budget: \$${lowCostResult.totalDailyBudget.toStringAsFixed(2)}');
+        // print('High cost area budget: \$${highCostResult.totalDailyBudget.toStringAsFixed(2)}');
       });
 
       test('should reduce budget for users with problematic habits', () {
@@ -106,8 +106,8 @@ void main() {
         expect(habitsResult.totalDailyBudget, lessThan(normalResult.totalDailyBudget));
         expect(habitsResult.redistributionBuffer, greaterThan(normalResult.redistributionBuffer));
         
-        print('Normal budget: \$${normalResult.totalDailyBudget.toStringAsFixed(2)}');
-        print('With habits budget: \$${habitsResult.totalDailyBudget.toStringAsFixed(2)}');
+        // print('Normal budget: \$${normalResult.totalDailyBudget.toStringAsFixed(2)}');
+        // print('With habits budget: \$${habitsResult.totalDailyBudget.toStringAsFixed(2)}');
       });
 
       test('should incorporate user fixed expenses', () {
@@ -132,8 +132,8 @@ void main() {
         expect(result.fixedCommitments, greaterThan(40.0)); // ~1550/30 = 51.67
         expect(result.confidence, greaterThanOrEqualTo(0.8)); // High confidence with real data
         
-        print('Fixed commitments: \$${result.fixedCommitments.toStringAsFixed(2)}/day');
-        print('Available spending: \$${result.availableSpending.toStringAsFixed(2)}/day');
+        // print('Fixed commitments: \$${result.fixedCommitments.toStringAsFixed(2)}/day');
+        // print('Available spending: \$${result.availableSpending.toStringAsFixed(2)}/day');
       });
     });
 
@@ -163,9 +163,9 @@ void main() {
         final foodAllocation = categoryResult.dailyAllocations['food'] ?? 0.0;
         expect(foodAllocation, greaterThan(15.0)); // At least $15/day for food
         
-        print('Category allocations:');
+        // print('Category allocations:');
         categoryResult.dailyAllocations.forEach((category, amount) {
-          print('  $category: \$${amount.toStringAsFixed(2)}/day');
+          // print('  $category: \$${amount.toStringAsFixed(2)}/day');
         });
       });
 
@@ -199,8 +199,8 @@ void main() {
         
         expect(prioritizedSavings, greaterThan(normalSavings));
         
-        print('Normal savings: \$${normalSavings.toStringAsFixed(2)}/month');
-        print('Prioritized savings: \$${prioritizedSavings.toStringAsFixed(2)}/month');
+        // print('Normal savings: \$${normalSavings.toStringAsFixed(2)}/month');
+        // print('Prioritized savings: \$${prioritizedSavings.toStringAsFixed(2)}/month');
       });
 
       test('should incorporate user expense categories', () {
@@ -230,9 +230,9 @@ void main() {
         expect(result.monthlyAllocations.containsKey('custom_category'), isTrue);
         expect(result.confidence, greaterThanOrEqualTo(0.5)); // Base confidence with user data
         
-        print('User-specific allocations:');
+        // print('User-specific allocations:');
         result.monthlyAllocations.forEach((category, amount) {
-          print('  $category: \$${amount.toStringAsFixed(2)}/month');
+          // print('  $category: \$${amount.toStringAsFixed(2)}/month');
         });
       });
     });
@@ -259,9 +259,9 @@ void main() {
         expect(rules.rules.any((rule) => rule.id.contains('impulse')), isTrue);
         expect(rules.adaptationFrequency, equals(AdaptationFrequency.daily)); // Lower income = more frequent adjustments
         
-        print('Generated ${rules.rules.length} dynamic rules');
+        // print('Generated ${rules.rules.length} dynamic rules');
         for (final rule in rules.rules) {
-          print('  ${rule.id}: ${rule.description}');
+          // print('  ${rule.id}: ${rule.description}');
         }
       });
 
@@ -296,9 +296,9 @@ void main() {
         // Should have some rules, even if not specifically overspending correction
         expect(rules.rules, isNotEmpty);
         
-        print('Mid-month adjustment rules:');
+        // print('Mid-month adjustment rules:');
         for (final rule in adjustmentRules) {
-          print('  ${rule.description} (${rule.priority})');
+          // print('  ${rule.description} (${rule.priority})');
         }
       });
     });
@@ -328,12 +328,12 @@ void main() {
         expect(goalTypes.contains('save_more'), isTrue);
         expect(goalTypes.contains('pay_off_debt'), isTrue);
         
-        print('Personalization features:');
-        print('  Goal nudges: ${personalization.goalNudges.length}');
-        print('  Habit interventions: ${personalization.habitInterventions.length}');
-        print('  Behavioral nudges: ${personalization.behavioralNudges.length}');
-        print('  Success metrics: ${personalization.successMetrics.length}');
-        print('  Personality profile: ${personalization.personalityProfile}');
+        // print('Personalization features:');
+        // print('  Goal nudges: ${personalization.goalNudges.length}');
+        // print('  Habit interventions: ${personalization.habitInterventions.length}');
+        // print('  Behavioral nudges: ${personalization.behavioralNudges.length}');
+        // print('  Success metrics: ${personalization.successMetrics.length}');
+        // print('  Personality profile: ${personalization.personalityProfile}');
       });
 
       test('should determine correct personality profile', () {
@@ -366,8 +366,8 @@ void main() {
         expect(conservativeProfile.personalityProfile, equals(PersonalityProfile.conservative));
         expect(aggressiveProfile.personalityProfile, equals(PersonalityProfile.aggressive));
         
-        print('Conservative profile: ${conservativeProfile.personalityProfile}');
-        print('Aggressive profile: ${aggressiveProfile.personalityProfile}');
+        // print('Conservative profile: ${conservativeProfile.personalityProfile}');
+        // print('Aggressive profile: ${aggressiveProfile.personalityProfile}');
       });
     });
 
@@ -400,8 +400,8 @@ void main() {
         expect(result.totalDailyBudget, greaterThan(500.0)); // Should be substantial
         expect(result.savingsTarget, greaterThan(100.0)); // High savings target
         
-        print('Extreme income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
-        print('Savings target: \$${result.savingsTarget.toStringAsFixed(2)}/day');
+        // print('Extreme income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
+        // print('Savings target: \$${result.savingsTarget.toStringAsFixed(2)}/day');
       });
 
       test('should maintain budget consistency', () {
@@ -425,9 +425,9 @@ void main() {
         
         expect(totalMonthlyAllocations, lessThanOrEqualTo(onboardingData.income! * 1.1)); // Allow 10% buffer
         
-        print('Monthly income: \$${onboardingData.income}');
-        print('Total allocations: \$${totalMonthlyAllocations.toStringAsFixed(2)}');
-        print('Allocation ratio: ${(totalMonthlyAllocations / onboardingData.income! * 100).toStringAsFixed(1)}%');
+        // print('Monthly income: \$${onboardingData.income}');
+        // print('Total allocations: \$${totalMonthlyAllocations.toStringAsFixed(2)}');
+        // print('Allocation ratio: ${(totalMonthlyAllocations / onboardingData.income! * 100).toStringAsFixed(1)}%');
       });
     });
   });

@@ -102,7 +102,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       appBar: AppBar(
         title: const Text(
           'Edit Expense',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -132,7 +132,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   labelText: 'Amount',
                   prefixIcon: Icon(Icons.attach_money),
                 ),
-                style: const TextStyle(fontFamily: 'Manrope'),
+                style: const const TextStyle(fontFamily: 'Manrope'),
                 validator: (value) => value == null || value.isEmpty ? 'Enter amount' : null,
                 onSaved: (value) => _amount = double.tryParse(value ?? '') ?? 0.0,
               ),
@@ -146,7 +146,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 items: _actions.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(cat, style: const TextStyle(fontFamily: 'Manrope')),
+                    child: Text(cat, style: const const TextStyle(fontFamily: 'Manrope')),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _action = value!),
@@ -155,9 +155,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Date', style: TextStyle(fontFamily: 'Manrope')),
+                title: const Text('Date', style: const TextStyle(fontFamily: 'Manrope')),
                 subtitle: Text(DateFormat.yMMMd().format(_selectedDate),
-                    style: const TextStyle(fontFamily: 'Manrope')),
+                    style: const const TextStyle(fontFamily: 'Manrope')),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,
@@ -176,7 +176,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 ),
                 child: const Text(
                   'Save Changes',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

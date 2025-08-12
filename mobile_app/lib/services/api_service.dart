@@ -674,18 +674,6 @@ class ApiService {
   }
 
   /// Generate calendar fallback data
-  Future<List<dynamic>> _getCalendarFallback(double income) async {
-    try {
-      final fallbackService = CalendarFallbackService();
-      return await fallbackService.generateFallbackCalendarData(
-        monthlyIncome: income,
-        year: DateTime.now().year,
-        month: DateTime.now().month,
-      );
-    } catch (e) {
-      return _generateBasicFallbackCalendar(income);
-    }
-  }
 
   /// Cache calendar data for faster access
   Future<void> _cacheCalendarData(String cacheKey, List<dynamic> calendarData, [Duration? expiry]) async {
@@ -3138,7 +3126,7 @@ class ApiService {
   Future<String> _getDeviceId() async {
     try {
       // Use secure device service instead of weak timestamp-based ID
-      final secureDeviceService = SecureDeviceService.instance;
+      final secureDeviceService = await SecureDeviceService.getInstance();
       final deviceId = await secureDeviceService.getSecureDeviceId();
       
       logDebug('Retrieved secure device ID: ${deviceId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');

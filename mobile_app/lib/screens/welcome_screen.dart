@@ -127,7 +127,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       await _checkAuthenticationStatus();
       
     } catch (e) {
-      print('Welcome screen initialization failed: $e');
+      logError('Welcome screen initialization failed: $e', tag: 'WELCOME_SCREEN');
       
       setState(() {
         _hasError = true;
@@ -317,7 +317,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                   children: [
                                     Text(
                                       'MITA',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontFamily: 'Sora',
                                         fontWeight: FontWeight.w800,
                                         fontSize: isLargeScreen ? 48 : 42,
@@ -333,7 +333,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     Text(
                                       'Money Intelligence Task Assistant',
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontFamily: 'Manrope',
                                         fontWeight: FontWeight.w400,
                                         fontSize: isLargeScreen ? 20 : 18,
@@ -369,7 +369,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       child: Text(
                         _statusText,
                         key: ValueKey(_statusText),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontWeight: FontWeight.w500,
                           fontSize: 16,

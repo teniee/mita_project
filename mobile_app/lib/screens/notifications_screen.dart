@@ -43,7 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         title: const Text(
           'Notifications',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -84,7 +84,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         children: [
                           Text(
                             notif['title'] ?? 'Notification',
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -93,7 +93,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           const SizedBox(height: 6),
                           Text(
                             notif['message'] ?? '',
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 14,
                               color: Colors.black87,
@@ -104,7 +104,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             DateFormat.yMMMd().add_jm().format(
                               DateTime.parse(notif['timestamp']),
                             ),
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.black54,

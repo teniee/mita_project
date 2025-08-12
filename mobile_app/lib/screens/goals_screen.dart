@@ -169,7 +169,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       appBar: AppBar(
         title: const Text(
           'Goals',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -201,7 +201,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   SizedBox(height: 16),
                   Text(
                     'No goals yet',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 18,
                       color: Colors.grey,
                       fontWeight: FontWeight.w500,
@@ -210,7 +210,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   SizedBox(height: 8),
                   Text(
                     'Tap the + button to create your first goal',
-                    style: TextStyle(color: Colors.grey),
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ],
               ),
@@ -266,7 +266,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   children: [
                                     Text(
                                       goal['title'] ?? 'Goal',
-                                      style: const TextStyle(
+                                      style: const const TextStyle(
                                         fontFamily: 'Sora',
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
@@ -277,7 +277,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         goal['description'],
-                                        style: const TextStyle(
+                                        style: const const TextStyle(
                                           fontFamily: 'Manrope',
                                           fontSize: 14,
                                           color: Colors.grey,
@@ -294,7 +294,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                         ),
                                         child: Text(
                                           goal['category'],
-                                          style: const TextStyle(
+                                          style: const const TextStyle(
                                             fontFamily: 'Manrope',
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -331,7 +331,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                       children: [
                                         Icon(Icons.delete, size: 20, color: Colors.red),
                                         SizedBox(width: 8),
-                                        Text('Delete', style: TextStyle(color: Colors.red)),
+                                        Text('Delete', style: const TextStyle(color: Colors.red)),
                                       ],
                                     ),
                                   ),
@@ -351,7 +351,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             children: [
                               Text(
                                 '\$${currentAmount.toStringAsFixed(0)}',
-                                style: const TextStyle(
+                                style: const const TextStyle(
                                   fontFamily: 'Sora',
                                   fontWeight: FontWeight.bold,
                                   fontSize: 20,
@@ -360,7 +360,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               ),
                               Text(
                                 'of \$${targetAmount.toStringAsFixed(0)}',
-                                style: const TextStyle(
+                                style: const const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 16,
                                   color: Colors.grey,
@@ -388,7 +388,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             children: [
                               Text(
                                 '${(progress * 100).toStringAsFixed(0)}% complete',
-                                style: const TextStyle(
+                                style: const const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -398,7 +398,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               if (remainingAmount > 0)
                                 Text(
                                   '\$${remainingAmount.toStringAsFixed(0)} remaining',
-                                  style: const TextStyle(
+                                  style: const const TextStyle(
                                     fontFamily: 'Manrope',
                                     fontSize: 12,
                                     color: Colors.grey,
@@ -427,7 +427,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     'Target date: ${deadline.day}/${deadline.month}/${deadline.year}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontFamily: 'Manrope',
                                       fontSize: 12,
                                       color: Colors.blue.shade700,

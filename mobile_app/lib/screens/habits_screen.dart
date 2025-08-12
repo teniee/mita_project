@@ -161,7 +161,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             isEditing ? 'Edit Habit' : 'Create New Habit',
-            style: const TextStyle(
+            style: const const TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.bold,
               color: Color(0xFF193C57),
@@ -173,10 +173,10 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               children: [
                 TextField(
                   controller: titleController,
-                  style: const TextStyle(fontFamily: 'Manrope'),
+                  style: const const TextStyle(fontFamily: 'Manrope'),
                   decoration: InputDecoration(
                     labelText: 'Habit Title',
-                    labelStyle: const TextStyle(color: Color(0xFF193C57)),
+                    labelStyle: const const TextStyle(color: Color(0xFF193C57)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFFFD25F)),
@@ -193,10 +193,10 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                 TextField(
                   controller: descController,
                   maxLines: 3,
-                  style: const TextStyle(fontFamily: 'Manrope'),
+                  style: const const TextStyle(fontFamily: 'Manrope'),
                   decoration: InputDecoration(
                     labelText: 'Description (optional)',
-                    labelStyle: const TextStyle(color: Color(0xFF193C57)),
+                    labelStyle: const const TextStyle(color: Color(0xFF193C57)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFFFD25F)),
@@ -212,10 +212,10 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedFrequency,
-                  style: const TextStyle(fontFamily: 'Manrope', color: Color(0xFF193C57)),
+                  style: const const TextStyle(fontFamily: 'Manrope', color: Color(0xFF193C57)),
                   decoration: InputDecoration(
                     labelText: 'Target Frequency',
-                    labelStyle: const TextStyle(color: Color(0xFF193C57)),
+                    labelStyle: const const TextStyle(color: Color(0xFF193C57)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Color(0xFFFFD25F)),
@@ -246,7 +246,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               onPressed: () => Navigator.pop(context, false),
               child: const Text(
                 'Cancel',
-                style: TextStyle(color: Colors.grey, fontFamily: 'Manrope'),
+                style: const TextStyle(color: Colors.grey, fontFamily: 'Manrope'),
               ),
             ),
             ElevatedButton(
@@ -293,7 +293,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               ),
               child: Text(
                 isEditing ? 'Update' : 'Create',
-                style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold),
+                style: const const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -312,7 +312,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Delete Habit',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -320,14 +320,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         ),
         content: Text(
           'Are you sure you want to delete "${habit.title}"? This action cannot be undone.',
-          style: const TextStyle(fontFamily: 'Manrope'),
+          style: const const TextStyle(fontFamily: 'Manrope'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: Colors.grey, fontFamily: 'Manrope'),
+              style: const TextStyle(color: Colors.grey, fontFamily: 'Manrope'),
             ),
           ),
           ElevatedButton(
@@ -339,7 +339,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             ),
             child: const Text(
               'Delete',
-              style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold),
+              style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -404,7 +404,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                       children: [
                         Text(
                           habit.title,
-                          style: const TextStyle(
+                          style: const const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -415,7 +415,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                           const SizedBox(height: 4),
                           Text(
                             habit.description,
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 14,
                               color: Colors.grey,
@@ -450,7 +450,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                           children: [
                             Icon(Icons.delete, size: 20, color: Colors.red),
                             SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: Colors.red)),
+                            Text('Delete', style: const TextStyle(color: Colors.red)),
                           ],
                         ),
                       ),
@@ -497,7 +497,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                   const SizedBox(width: 12),
                   Text(
                     habit.isCompletedToday ? 'Completed today!' : 'Mark as done',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontWeight: FontWeight.w600,
                       color: habit.isCompletedToday 
@@ -527,7 +527,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                         const SizedBox(width: 4),
                         Text(
                           '${habit.currentStreak}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -551,7 +551,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                       children: [
                         Text(
                           'Completion Rate',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -571,7 +571,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                         const SizedBox(height: 4),
                         Text(
                           '${habit.completionRate.toInt()}%',
-                          style: const TextStyle(
+                          style: const const TextStyle(
                             fontFamily: 'Sora',
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -586,7 +586,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     children: [
                       Text(
                         'Best Streak',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey.shade600,
@@ -595,7 +595,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                       const SizedBox(height: 4),
                       Text(
                         '${habit.longestStreak} days',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -633,7 +633,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           const SizedBox(height: 24),
           const Text(
             'Start Building Better Habits',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 24,
               fontFamily: 'Sora',
               fontWeight: FontWeight.bold,
@@ -644,7 +644,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           const Text(
             'Create your first habit and start tracking\nyour progress towards a better you',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontFamily: 'Manrope',
               color: Colors.grey,
@@ -656,7 +656,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             icon: const Icon(Icons.add, color: Colors.black),
             label: const Text(
               'Create Your First Habit',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
@@ -688,7 +688,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           Text(
             _errorMessage ?? 'Something went wrong',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: const const TextStyle(
               fontSize: 16,
               fontFamily: 'Manrope',
               color: Colors.grey,
@@ -700,7 +700,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             icon: const Icon(Icons.refresh, color: Colors.black),
             label: const Text(
               'Try Again',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
@@ -724,7 +724,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       appBar: AppBar(
         title: const Text(
           'Habits',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -752,7 +752,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         icon: const Icon(Icons.add),
         label: const Text(
           'New Habit',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
           ),

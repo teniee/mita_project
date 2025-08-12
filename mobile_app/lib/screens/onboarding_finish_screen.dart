@@ -94,7 +94,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                       children: [
                         Text(
                           _error!,
-                          style: const TextStyle(
+                          style: const const TextStyle(
                             color: Colors.red,
                             fontFamily: 'Manrope',
                             fontSize: 16,
@@ -127,7 +127,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                           },
                           child: const Text(
                             'Skip for now',
-                            style: TextStyle(color: Color(0xFF193C57)),
+                            style: const TextStyle(color: Color(0xFF193C57)),
                           ),
                         ),
                       ],
@@ -135,7 +135,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                   )
                 : const Text(
                     'Welcome to MITA!',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.bold,
                       fontSize: 24,

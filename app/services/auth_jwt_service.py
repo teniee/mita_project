@@ -219,6 +219,7 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
                 "jti": payload.get("jti"),
                 "user_id": payload.get("sub"),
                 "scope": payload.get("scope"),
+                "token_type": payload.get("token_type"),
                 "exp": payload.get("exp"),
                 "iat": payload.get("iat"),
                 "is_expired": payload.get("exp", 0) < time.time()
@@ -241,7 +242,7 @@ def validate_token_security(token: str) -> Dict[str, Any]:
         "valid": True,
         "jti_present": bool(info.get("jti")),
         "user_id_present": bool(info.get("user_id")),
-        "scope_valid": info.get("scope") in ["access_token", "refresh_token"],
+        "token_type_valid": info.get("token_type") in ["access_token", "refresh_token"],
         "not_expired": info.get("exp", 0) > now,
         "issued_recently": (now - info.get("iat", 0)) < 86400 * 30,  # 30 days
         "time_to_expiry": max(0, info.get("exp", 0) - now)
@@ -361,7 +362,8 @@ def verify_token(
     
     Args:
         token: JWT token string
-        scope: Expected token scope (access_token or refresh_token)
+        token_type: Expected token type (access_token or refresh_token)
+        required_scopes: List of required OAuth 2.0 scopes
         
     Returns:
         Token payload if valid, None otherwise
@@ -434,7 +436,7 @@ def verify_token(
                         logger.warning(f"Blacklisted token access attempt: {jti[:8]}...")
                         log_security_event("blacklisted_token_usage_attempt", {
                             "jti": jti[:8] + "...",
-                            "scope": scope
+                            "token_type": token_type
                         })
                         raise JWTError("Token is blacklisted")
                 except Exception as blacklist_error:

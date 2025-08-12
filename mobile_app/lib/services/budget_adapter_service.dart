@@ -480,7 +480,6 @@ class BudgetAdapterService {
     
     // Estimate monthly spending based on budget
     final dailyBudget = await _getDailyBudget(onboardingData);
-    final estimatedMonthlySpending = dailyBudget.totalDailyBudget * 30;
     
     // Estimate current spending
     final estimatedCurrentSpending = dailyBudget.totalDailyBudget * daysIntoMonth * 0.85; // 85% of budget spent
@@ -493,7 +492,6 @@ class BudgetAdapterService {
   Future<double> _calculateTodaySpent() async {
     try {
       // Try to get actual spending from API
-      final today = DateTime.now();
       // Note: getDailySpending method doesn't exist, using fallback
       final spendingData = <String, dynamic>{}; // Use fallback calculation instead
       

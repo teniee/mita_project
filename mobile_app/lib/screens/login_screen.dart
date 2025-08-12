@@ -166,6 +166,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     // Provide haptic feedback
     HapticFeedback.selectionClick();
 
+    final l10n = AppLocalizations.of(context);
+
     try {
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
@@ -234,6 +236,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   Future<void> _handleEmailLogin() async {
     if (_loading) return;
+    
+    final l10n = AppLocalizations.of(context);
     
     if (!_formKey.currentState!.validate()) {
       // Collect validation errors for accessibility announcement

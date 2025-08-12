@@ -13,8 +13,8 @@ class I18nExampleScreen extends StatefulWidget {
 }
 
 class _I18nExampleScreenState extends State<I18nExampleScreen> {
-  double _sampleBudget = 1000.0;
-  double _sampleSpent = 750.0;
+  final double _sampleBudget = 1000.0;
+  final double _sampleSpent = 750.0;
   String _selectedCategory = 'food';
 
   @override
@@ -103,7 +103,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                         Text(l10n.remaining),
                         Text(
                           context.formatMoney(_sampleBudget - _sampleSpent),
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.w600,
                           ),
@@ -137,7 +137,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                           context, 
                           _sampleSpent, 
                           _sampleBudget,
-                        ).withOpacity(0.1),
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: FinancialFormatters.getBudgetStatusColor(
@@ -170,7 +170,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                     // Progress indicator
                     LinearProgressIndicator(
                       value: (_sampleSpent / _sampleBudget).clamp(0.0, 1.0),
-                      backgroundColor: theme.colorScheme.surfaceVariant,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         FinancialFormatters.getBudgetStatusColor(
                           context, 
@@ -231,7 +231,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                             });
                           },
                           selectedColor: theme.colorScheme.primaryContainer,
-                          backgroundColor: theme.colorScheme.surfaceVariant,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
                         );
                       }).toList(),
                     ),

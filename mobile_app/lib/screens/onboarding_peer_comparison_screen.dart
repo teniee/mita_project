@@ -110,8 +110,6 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
   }
 
   Map<String, dynamic> _generateDemoCohortInsights() {
-    final tierName = _incomeService.getIncomeTierName(_incomeTier);
-    
     return {
       'cohort_size': _incomeTier == IncomeTier.low ? 2847 
                    : _incomeTier == IncomeTier.lowerMiddle ? 3241
@@ -224,7 +222,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
               const SizedBox(height: 16),
               Text(
                 'Finding your peer group...',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 16,
                   color: primaryColor,
@@ -280,7 +278,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                                 children: [
                                   Text(
                                     'Welcome to Your Peer Group!',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontFamily: 'Sora',
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
@@ -289,7 +287,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                                   ),
                                   Text(
                                     'Connect with ${_cohortInsights?['cohort_size'] ?? 0} other $tierName users',
-                                    style: const TextStyle(
+                                    style: const const TextStyle(
                                       fontFamily: 'Manrope',
                                       fontSize: 14,
                                       color: Colors.black87,
@@ -309,7 +307,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                           ),
                           child: Text(
                             'You\'re in the ${_cohortInsights?['percentile'] ?? 0}th percentile of your peer group! This means you\'re already doing better than most users with similar income levels.',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 14,
                               color: primaryColor,
@@ -353,7 +351,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                             const SizedBox(width: 12),
                             Text(
                               'Peer Insights',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -384,7 +382,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                                 Expanded(
                                   child: Text(
                                     insight,
-                                    style: const TextStyle(
+                                    style: const const TextStyle(
                                       fontFamily: 'Manrope',
                                       fontSize: 14,
                                     ),
@@ -422,7 +420,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                             const SizedBox(width: 12),
                             Text(
                               'Personalized Recommendations',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -454,7 +452,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                                 Expanded(
                                   child: Text(
                                     recommendation,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontFamily: 'Manrope',
                                       fontSize: 14,
                                       color: Colors.green.shade700,
@@ -490,7 +488,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                       children: [
                         Text(
                           'Complete Setup',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.w600,
                             fontSize: 18,

@@ -91,14 +91,14 @@ class PerformanceReport {
                    this.max, this.p95, this.p99, this.rawData);
   
   void printReport() {
-    print('\n=== Performance Report: $operation ===');
-    print('  Samples: $sampleCount');
-    print('  Mean: ${mean.toStringAsFixed(3)}ms');
-    print('  Min: ${min.toStringAsFixed(3)}ms');
-    print('  Max: ${max.toStringAsFixed(3)}ms');
-    print('  P95: ${p95.toStringAsFixed(3)}ms');
-    print('  P99: ${p99.toStringAsFixed(3)}ms');
-    print('  Throughput: ${(1000 / mean).toStringAsFixed(0)} ops/sec');
+    // print('\n=== Performance Report: $operation ===');
+    // print('  Samples: $sampleCount');
+    // print('  Mean: ${mean.toStringAsFixed(3)}ms');
+    // print('  Min: ${min.toStringAsFixed(3)}ms');
+    // print('  Max: ${max.toStringAsFixed(3)}ms');
+    // print('  P95: ${p95.toStringAsFixed(3)}ms');
+    // print('  P99: ${p99.toStringAsFixed(3)}ms');
+    // print('  Throughput: ${(1000 / mean).toStringAsFixed(0)} ops/sec');
   }
   
   Map<String, dynamic> toJson() {
@@ -198,40 +198,40 @@ class LoadTestResult {
   });
   
   void printResult() {
-    print('\n=== Load Test Results ===');
-    print('  Concurrent Users: $concurrentUsers');
-    print('  Duration: ${duration.inSeconds}s');
-    print('  Total Operations: $totalOperations');
-    print('  Avg Ops/User: ${averageOpsPerUser.toStringAsFixed(1)}');
-    print('  Ops/Second: ${opsPerSecond.toStringAsFixed(1)}');
-    print('  Errors: ${errors.length}');
+    // print('\n=== Load Test Results ===');
+    // print('  Concurrent Users: $concurrentUsers');
+    // print('  Duration: ${duration.inSeconds}s');
+    // print('  Total Operations: $totalOperations');
+    // print('  Avg Ops/User: ${averageOpsPerUser.toStringAsFixed(1)}');
+    // print('  Ops/Second: ${opsPerSecond.toStringAsFixed(1)}');
+    // print('  Errors: ${errors.length}');
     if (errors.isNotEmpty) {
-      print('  Error samples:');
-      errors.take(5).forEach((e) => print('    - $e'));
+      // print('  Error samples:');
+      errors.take(5).forEach((e) => // print('    - $e'));
     }
   }
 }
 void main() {
   // Set up test environment with proper timeout
   setUpAll(() {
-    print('\n=== MITA Performance Test Suite ===');
-    print('Target Performance Standards:');
-    print('  • Income Classification: ~80μs (0.08ms)');
-    print('  • Authentication Flow: <200ms P95');
-    print('  • Database Queries: <50ms P95');
-    print('  • API Endpoints: <200ms P95');
-    print('  • Concurrent Users: 1000+ supported');
-    print('  • Memory Usage: Stable under load');
-    print('  • Error Rate: <1% under normal load');
-    print('========================================\n');
+    // print('\n=== MITA Performance Test Suite ===');
+    // print('Target Performance Standards:');
+    // print('  • Income Classification: ~80μs (0.08ms)');
+    // print('  • Authentication Flow: <200ms P95');
+    // print('  • Database Queries: <50ms P95');
+    // print('  • API Endpoints: <200ms P95');
+    // print('  • Concurrent Users: 1000+ supported');
+    // print('  • Memory Usage: Stable under load');
+    // print('  • Error Rate: <1% under normal load');
+    // print('========================================\n');
   });
   
   tearDownAll(() {
-    print('\n=== Performance Test Suite Complete ===');
-    print('All performance benchmarks executed.');
-    print('Check results against production targets.');
-    print('Save baseline metrics for regression testing.');
-    print('==========================================\n');
+    // print('\n=== Performance Test Suite Complete ===');
+    // print('All performance benchmarks executed.');
+    // print('Check results against production targets.');
+    // print('Save baseline metrics for regression testing.');
+    // print('==========================================\n');
   });
   group('Backend Performance Tests', () {
     
@@ -265,11 +265,11 @@ void main() {
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         final avgTimeMicroseconds = stopwatch.elapsedMicroseconds / iterations;
         
-        print('Income Classification Performance:');
-        print('  Total time: ${stopwatch.elapsedMilliseconds}ms for $iterations operations');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per classification');
-        print('  Average time: ${avgTimeMicroseconds.toStringAsFixed(2)}μs per classification');
-        print('  Target: 80μs (0.08ms)');
+        // print('Income Classification Performance:');
+        // print('  Total time: ${stopwatch.elapsedMilliseconds}ms for $iterations operations');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per classification');
+        // print('  Average time: ${avgTimeMicroseconds.toStringAsFixed(2)}μs per classification');
+        // print('  Target: 80μs (0.08ms)');
         
         // Target: 0.08ms = 80 microseconds per classification
         expect(avgTimeMicroseconds, lessThan(80.0),
@@ -277,7 +277,7 @@ void main() {
         
         // Additional validation: Operations per second
         final operationsPerSecond = 1000000 / avgTimeMicroseconds; // Convert μs to ops/sec
-        print('  Performance: ${operationsPerSecond.toStringAsFixed(0)} operations/second');
+        // print('  Performance: ${operationsPerSecond.toStringAsFixed(0)} operations/second');
         
         expect(operationsPerSecond, greaterThan(12500),
           reason: 'Should handle at least 12,500 classifications per second');
@@ -304,9 +304,9 @@ void main() {
         
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         
-        print('Location-based Classification Performance:');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per classification');
-        print('  Target: <1ms per operation');
+        // print('Location-based Classification Performance:');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per classification');
+        // print('  Target: <1ms per operation');
         
         expect(avgTimeMs, lessThan(1.0),
           reason: 'Location-based classification should complete within 1ms');
@@ -344,11 +344,11 @@ void main() {
         final totalOperations = concurrentOperations * operationsPerTask;
         final avgTimeMs = stopwatch.elapsedMilliseconds / totalOperations;
         
-        print('Concurrent Classification Performance:');
-        print('  Total operations: $totalOperations');
-        print('  Concurrent tasks: $concurrentOperations');
-        print('  Total time: ${stopwatch.elapsedMilliseconds}ms');
-        print('  Average time per operation: ${avgTimeMs.toStringAsFixed(4)}ms');
+        // print('Concurrent Classification Performance:');
+        // print('  Total operations: $totalOperations');
+        // print('  Concurrent tasks: $concurrentOperations');
+        // print('  Total time: ${stopwatch.elapsedMilliseconds}ms');
+        // print('  Average time per operation: ${avgTimeMs.toStringAsFixed(4)}ms');
         
         expect(avgTimeMs, lessThan(0.5),
           reason: 'Concurrent classification should maintain performance');
@@ -371,7 +371,7 @@ void main() {
           memoryUsage.add(DateTime.now().millisecondsSinceEpoch);
         }
         
-        print('Memory stability test completed with ${iterations} classifications');
+        // print('Memory stability test completed with ${iterations} classifications');
         expect(memoryUsage.length, equals(10),
           reason: 'Memory measurement should complete successfully');
       });
@@ -399,9 +399,9 @@ void main() {
         
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         
-        print('Budget Calculation Performance:');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per calculation');
-        print('  Target: <2ms per calculation');
+        // print('Budget Calculation Performance:');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per calculation');
+        // print('  Target: <2ms per calculation');
         
         expect(avgTimeMs, lessThan(2.0),
           reason: 'Budget calculations should complete within 2ms');
@@ -426,9 +426,9 @@ void main() {
         
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         
-        print('Financial Ratios Performance:');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per calculation');
-        print('  Target: <1ms per calculation');
+        // print('Financial Ratios Performance:');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per calculation');
+        // print('  Target: <1ms per calculation');
         
         expect(avgTimeMs, lessThan(1.0),
           reason: 'Financial ratio calculations should be very fast');
@@ -456,9 +456,9 @@ void main() {
         
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         
-        print('Device ID Generation Performance:');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(2)}ms per generation');
-        print('  Target: <100ms per generation');
+        // print('Device ID Generation Performance:');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(2)}ms per generation');
+        // print('  Target: <100ms per generation');
         
         expect(avgTimeMs, lessThan(100.0),
           reason: 'Device ID generation should complete within 100ms');
@@ -484,9 +484,9 @@ void main() {
         
         final avgTimeMs = stopwatch.elapsedMilliseconds / iterations;
         
-        print('Password Validation Performance:');
-        print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per validation');
-        print('  Target: <5ms per validation');
+        // print('Password Validation Performance:');
+        // print('  Average time: ${avgTimeMs.toStringAsFixed(4)}ms per validation');
+        // print('  Target: <5ms per validation');
         
         expect(avgTimeMs, lessThan(5.0),
           reason: 'Password validation should complete within 5ms');
@@ -542,15 +542,15 @@ void main() {
         const int batchSize = 25;
         final allResults = <double>[];
         
-        print('\nRunning high-load authentication stress test...');
-        print('Total users: $totalUsers, Batch size: $batchSize');
+        // print('\nRunning high-load authentication stress test...');
+        // print('Total users: $totalUsers, Batch size: $batchSize');
         
         for (int batch = 0; batch < totalUsers ~/ batchSize; batch++) {
           final batchResults = <double>[];
           final completer = Completer<void>();
           int completed = 0;
           
-          print('Processing batch ${batch + 1}/${totalUsers ~/ batchSize}');
+          // print('Processing batch ${batch + 1}/${totalUsers ~/ batchSize}');
           
           for (int i = 0; i < batchSize; i++) {
             Future.microtask(() async {
@@ -582,12 +582,12 @@ void main() {
         final p95 = allResults[(allResults.length * 0.95).floor()];
         final p99 = allResults[(allResults.length * 0.99).floor()];
         
-        print('\nStress Test Results:');
-        print('  Total operations: ${allResults.length}');
-        print('  Mean: ${mean.toStringAsFixed(2)}ms');
-        print('  P95: ${p95.toStringAsFixed(2)}ms');
-        print('  P99: ${p99.toStringAsFixed(2)}ms');
-        print('  Max: ${allResults.last.toStringAsFixed(2)}ms');
+        // print('\nStress Test Results:');
+        // print('  Total operations: ${allResults.length}');
+        // print('  Mean: ${mean.toStringAsFixed(2)}ms');
+        // print('  P95: ${p95.toStringAsFixed(2)}ms');
+        // print('  P99: ${p99.toStringAsFixed(2)}ms');
+        // print('  Max: ${allResults.last.toStringAsFixed(2)}ms');
         
         expect(p95, lessThan(300.0),
           reason: 'P95 should remain under 300ms even under high load');
@@ -632,11 +632,11 @@ void main() {
         final processingTimeMs = stopwatch.elapsedMilliseconds;
         final itemsPerSecond = (dataPoints * 1000) / processingTimeMs;
         
-        print('Large Dataset Processing Performance:');
-        print('  Data points: $dataPoints');
-        print('  Processing time: ${processingTimeMs}ms');
-        print('  Items per second: ${itemsPerSecond.toStringAsFixed(0)}');
-        print('  Target: >5,000 items/second');
+        // print('Large Dataset Processing Performance:');
+        // print('  Data points: $dataPoints');
+        // print('  Processing time: ${processingTimeMs}ms');
+        // print('  Items per second: ${itemsPerSecond.toStringAsFixed(0)}');
+        // print('  Target: >5,000 items/second');
         
         expect(itemsPerSecond, greaterThan(5000),
           reason: 'Should process at least 5,000 transactions per second');
@@ -929,7 +929,7 @@ void main() {
         final memorySnapshots = <int>[];
         final incomeService = IncomeService();
         
-        print('\nRunning memory usage test...');
+        // print('\nRunning memory usage test...');
         
         for (int batch = 0; batch < iterations ~/ batchSize; batch++) {
           // Perform batch of operations
@@ -944,10 +944,10 @@ void main() {
           await Future.delayed(Duration(milliseconds: 1));
         }
         
-        print('Memory stability test completed');
-        print('  Batches processed: ${iterations ~/ batchSize}');
-        print('  Operations per batch: $batchSize');
-        print('  Total operations: $iterations');
+        // print('Memory stability test completed');
+        // print('  Batches processed: ${iterations ~/ batchSize}');
+        // print('  Operations per batch: $batchSize');
+        // print('  Total operations: $iterations');
         
         expect(memorySnapshots.length, equals(iterations ~/ batchSize));
       });
@@ -983,7 +983,7 @@ void main() {
         final results = <String, PerformanceReport>{};
         
         // Income classification baseline
-        print('\nGenerating baseline metrics...');
+        // print('\nGenerating baseline metrics...');
         
         final incomeMetrics = PerformanceMetrics('Income Classification Baseline');
         final incomeService = IncomeService();
@@ -1029,8 +1029,8 @@ void main() {
           'metrics': results.map((key, report) => MapEntry(key, report.toJson())),
         };
         
-        print('\nBaseline data generated for regression testing');
-        print('JSON data size: ${json.encode(baselineData).length} bytes');
+        // print('\nBaseline data generated for regression testing');
+        // print('JSON data size: ${json.encode(baselineData).length} bytes');
         
         // Validate baseline performance targets
         expect(results['income_classification']!.mean, lessThan(0.08),

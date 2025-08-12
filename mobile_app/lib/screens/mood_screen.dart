@@ -146,7 +146,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           children: [
             const Text(
               'How are you feeling today?',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -163,7 +163,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                   scale: _scaleAnimation.value,
                   child: Text(
                     _moodData[_mood.round()]!['emoji'],
-                    style: const TextStyle(fontSize: 80),
+                    style: const const TextStyle(fontSize: 80),
                   ),
                 );
               },
@@ -174,7 +174,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             // Mood label and description
             Text(
               _moodData[_mood.round()]!['label'],
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -184,7 +184,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             const SizedBox(height: 8),
             Text(
               _moodData[_mood.round()]!['description'],
-              style: const TextStyle(
+              style: const const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 16,
                 color: Colors.grey,
@@ -221,11 +221,11 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('😢', style: TextStyle(fontSize: 20)),
-                  Text('😔', style: TextStyle(fontSize: 20)),
-                  Text('😐', style: TextStyle(fontSize: 20)),
-                  Text('😊', style: TextStyle(fontSize: 20)),
-                  Text('😄', style: TextStyle(fontSize: 20)),
+                  Text('😢', style: const TextStyle(fontSize: 20)),
+                  Text('😔', style: const TextStyle(fontSize: 20)),
+                  Text('😐', style: const TextStyle(fontSize: 20)),
+                  Text('😊', style: const TextStyle(fontSize: 20)),
+                  Text('😄', style: const TextStyle(fontSize: 20)),
                 ],
               ),
             ),
@@ -248,7 +248,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 ),
                 child: Text(
                   _hasSubmittedToday ? 'Mood Saved for Today' : 'Save My Mood',
-                  style: const TextStyle(
+                  style: const const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -273,7 +273,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     Expanded(
                       child: Text(
                         'Thanks for sharing! Your mood has been recorded.',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 14,
                           color: Colors.green.shade700,
@@ -312,7 +312,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 const SizedBox(width: 8),
                 const Text(
                   'Mood Tips',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -340,7 +340,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                   Expanded(
                     child: Text(
                       tip,
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         height: 1.4,
@@ -363,7 +363,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
       appBar: AppBar(
         title: const Text(
           'Daily Mood Check-in',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -406,7 +406,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                         SizedBox(width: 8),
                         Text(
                           'Mood Trends',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -418,7 +418,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     const SizedBox(height: 16),
                     const Text(
                       'Track your mood daily to see patterns and trends over time. This can help you identify what affects your wellbeing.',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         color: Colors.grey,
@@ -464,14 +464,14 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           child: Center(
             child: Text(
               emoji,
-              style: const TextStyle(fontSize: 20),
+              style: const const TextStyle(fontSize: 20),
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(
           day,
-          style: const TextStyle(
+          style: const const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 12,
             fontWeight: FontWeight.w500,

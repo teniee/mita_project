@@ -119,7 +119,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           gradient: LinearGradient(
             colors: [
               const Color(0xFF6366F1),
-              const Color(0xFF8B5CF6).withOpacity(0.9),
+              const Color(0xFF8B5CF6).withValues(alpha: 0.9),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -136,7 +136,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -152,7 +152,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       children: [
                         Text(
                           'Predictive Analytics',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -161,7 +161,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                         ),
                         Text(
                           'AI-powered financial forecasts',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
                             color: Colors.white70,
@@ -204,7 +204,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -225,7 +225,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               ),
               child: Text(
                 '${days}d',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -258,7 +258,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   children: [
                     const Text(
                       'Financial Risk Assessment',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -283,7 +283,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 if (recommendations.isNotEmpty) ...[
                   const Text(
                     'Recommendations:',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -298,19 +298,19 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       children: [
                         Text(
                           '• ',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
                         Expanded(
                           child: Text(
                             rec.toString(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                             ),
                           ),
                         ),
@@ -348,9 +348,9 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: riskColor.withOpacity(0.2),
+        color: riskColor.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: riskColor.withOpacity(0.4)),
+        border: Border.all(color: riskColor.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -363,7 +363,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           const SizedBox(width: 4),
           Text(
             riskLevel.toUpperCase(),
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -388,7 +388,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
           ),
           
@@ -412,7 +412,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             children: [
               Text(
                 '${riskScore.toStringAsFixed(0)}%',
-                style: const TextStyle(
+                style: const const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -421,10 +421,10 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               ),
               Text(
                 'Risk Score',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 10,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -447,7 +447,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           children: [
             const Text(
               'Spending Forecast',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -461,7 +461,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             Container(
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -488,15 +488,15 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                     children: [
                       Text(
                         'Predicted Spending',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                       Text(
                         '\$${predictedAmount.toStringAsFixed(0)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -509,16 +509,16 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${(confidence * 100).toStringAsFixed(0)}% confident',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ),
@@ -538,7 +538,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       children: [
         const Text(
           'Behavioral Insights',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -552,24 +552,24 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
               Icon(
                 Icons.psychology,
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 size: 16,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Behavioral patterns suggest continued mindful spending',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
               ),
@@ -598,7 +598,7 @@ class RiskGaugePainter extends CustomPainter {
     
     // Background Arc
     final backgroundPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8;
     
@@ -660,15 +660,15 @@ class SpendingChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     
     final fillPaint = Paint()
       ..shader = LinearGradient(
         colors: [
-          Colors.white.withOpacity(0.3),
-          Colors.white.withOpacity(0.1),
+          Colors.white.withValues(alpha: 0.3),
+          Colors.white.withValues(alpha: 0.1),
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,

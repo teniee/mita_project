@@ -158,7 +158,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Settings', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
+        title: const Text('Profile Settings', style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
@@ -170,7 +170,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           else
             TextButton(
               onPressed: _saveProfile,
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: const Text('Save', style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -357,7 +357,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         fontFamily: 'Sora',
@@ -426,7 +426,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }) {
     return Card(
       child: SwitchListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(title, style: const const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(subtitle),
         secondary: Icon(icon),
         value: value,

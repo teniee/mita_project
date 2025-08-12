@@ -50,10 +50,10 @@ class PasswordStrengthIndicator extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStrengthColor(validation.strength, colorScheme).withOpacity(0.1),
+                  color: _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _getStrengthColor(validation.strength, colorScheme).withOpacity(0.3),
+                    color: _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -104,7 +104,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
-            color: colorScheme.surfaceVariant,
+            color: colorScheme.surfaceContainerHighest,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -121,9 +121,9 @@ class PasswordStrengthIndicator extends StatelessWidget {
         // Entropy info
         Text(
           'Entropy: ${validation.entropy.toStringAsFixed(1)} bits',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 11,
-            color: colorScheme.onSurface.withOpacity(0.6),
+            color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ],
@@ -156,7 +156,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
   }
 
   Widget _buildChecklistItem(_ChecklistItem item, ThemeData theme) {
-    final color = item.isComplete ? Colors.green : theme.colorScheme.onSurface.withOpacity(0.6);
+    final color = item.isComplete ? Colors.green : theme.colorScheme.onSurface.withValues(alpha: 0.6);
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -307,7 +307,7 @@ class CompactPasswordStrengthIndicator extends StatelessWidget {
                   height: 4,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(2),
-                    color: colorScheme.surfaceVariant,
+                    color: colorScheme.surfaceContainerHighest,
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(2),

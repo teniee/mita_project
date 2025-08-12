@@ -33,13 +33,11 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   BatchOCRResult? _batchResult;
   String? _error;
   bool _isPremiumUser = false;
-  final bool _showScanOverlay = false;
   List<String> _merchantSuggestions = [];
   
   // Animation controllers
   late AnimationController _slideController;
   late AnimationController _fadeController;
-  late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   
   // Page controller for step navigation
@@ -364,7 +362,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               child: Chip(
                 label: const Text('Premium'),
                 backgroundColor: colorScheme.primaryContainer,
-                labelStyle: TextStyle(
+                labelStyle: const TextStyle(
                   color: colorScheme.onPrimaryContainer,
                   fontSize: 12.0,
                   fontWeight: FontWeight.w600,
@@ -421,7 +419,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                       Expanded(
                         child: Text(
                           _error!,
-                          style: TextStyle(color: colorScheme.onErrorContainer),
+                          style: const TextStyle(color: colorScheme.onErrorContainer),
                         ),
                       ),
                       IconButton(

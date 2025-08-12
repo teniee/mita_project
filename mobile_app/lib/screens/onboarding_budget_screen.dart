@@ -123,7 +123,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               children: [
                                 Text(
                                   'Budget for $tierName',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.bold,
                                     fontSize: 20,
@@ -132,7 +132,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                                 ),
                                 Text(
                                   'Monthly Income: \$${_monthlyIncome.toStringAsFixed(0)}',
-                                  style: const TextStyle(
+                                  style: const const TextStyle(
                                     fontFamily: 'Manrope',
                                     fontSize: 16,
                                     color: Colors.black87,
@@ -161,7 +161,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                             Expanded(
                               child: Text(
                                 'We\'ve created a personalized budget based on your income level. You can adjust these allocations to fit your needs.',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 14,
                                   color: primaryColor,
@@ -181,7 +181,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
               // Budget allocation cards
               Text(
                 'Budget Allocations',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -220,7 +220,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                             Expanded(
                               child: Text(
                                 category.toUpperCase(),
-                                style: const TextStyle(
+                                style: const const TextStyle(
                                   fontFamily: 'Sora',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
@@ -229,7 +229,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                             ),
                             Text(
                               '${percentage.toStringAsFixed(1)}%',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -257,7 +257,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               width: 80,
                               child: Text(
                                 '\$${amount.toStringAsFixed(0)}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Sora',
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -291,7 +291,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                         children: [
                           Text(
                             'Total Allocated',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -300,7 +300,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           ),
                           Text(
                             '\$${_totalAllocated.toStringAsFixed(0)}',
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -314,7 +314,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                         children: [
                           Text(
                             'Remaining',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -323,7 +323,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           ),
                           Text(
                             '\$${_remainingBudget.toStringAsFixed(0)}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -351,7 +351,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               Expanded(
                                 child: Text(
                                   'Budget exceeds income by \$${(-_remainingBudget).toStringAsFixed(0)}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Manrope',
                                     fontSize: 12,
                                     color: Colors.red.shade600,
@@ -385,7 +385,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                         ),
                         child: Text(
                           'Reset to Recommended',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.w600,
                             color: primaryColor,
@@ -407,7 +407,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                       ),
                       child: const Text(
                         'Continue to Goals',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.w600,
                           fontSize: 16,

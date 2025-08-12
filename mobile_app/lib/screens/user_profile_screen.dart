@@ -84,20 +84,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     throw Exception('Default profile should not be used. Please complete onboarding.');
   }
 
-  Map<String, dynamic> _getEmptyProfile() {
-    return {
-      'name': 'MITA User',
-      'email': 'user@mita.finance',
-      'currency': 'USD',
-      'region': 'US',
-      'budget_method': '50/30/20 Rule',
-      'member_since': DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
-      'profile_completion': 85,
-      'verified_email': true,
-      'dark_mode': false,
-      'notifications': true,
-    };
-  }
   
   Map<String, dynamic> _getDefaultStats() {
     return {
@@ -164,7 +150,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading your profile...', style: TextStyle(fontFamily: 'Manrope')),
+          Text('Loading your profile...', style: const TextStyle(fontFamily: 'Manrope')),
         ],
       ),
     );
@@ -183,7 +169,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
               'Profile',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onPrimaryContainer,

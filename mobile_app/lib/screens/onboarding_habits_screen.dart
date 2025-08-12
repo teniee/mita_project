@@ -50,7 +50,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
             children: [
               const Text(
                 'Which financial habits are hurting you?',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w700,
                   fontSize: 22,
@@ -86,7 +86,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                                   Expanded(
                                     child: Text(
                                       habit['label'],
-                                      style: const TextStyle(
+                                      style: const const TextStyle(
                                         fontFamily: 'Manrope',
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
@@ -106,7 +106,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                     const SizedBox(height: 12),
                     const Text(
                       "Anything else?",
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 16,
                         color: Color(0xFF193C57),
@@ -142,7 +142,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: const const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,

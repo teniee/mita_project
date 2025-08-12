@@ -46,7 +46,7 @@ class ExpenseIntegrationHelper {
                 Expanded(
                   child: Text(
                     'Failed to open expense form. Please try again.',
-                    style: TextStyle(fontFamily: 'Manrope'),
+                    style: const TextStyle(fontFamily: 'Manrope'),
                   ),
                 ),
               ],
@@ -166,7 +166,7 @@ class ExpenseIntegrationHelper {
                   children: [
                     const Text(
                       'Budget Updated!',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -174,7 +174,7 @@ class ExpenseIntegrationHelper {
                     ),
                     Text(
                       '\$${amount.toStringAsFixed(2)} added to $category',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: Colors.white70,
@@ -189,7 +189,7 @@ class ExpenseIntegrationHelper {
                 },
                 child: const Text(
                   'VIEW',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -276,7 +276,7 @@ class ExpenseIntegrationHelper {
                   children: [
                     Text(
                       isOver ? 'Over Budget!' : 'Budget Warning',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                       ),
@@ -285,7 +285,7 @@ class ExpenseIntegrationHelper {
                       isOver 
                           ? 'You\'ve exceeded your monthly budget'
                           : 'You\'ve used ${spentPercentage.toStringAsFixed(0)}% of your budget',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                       ),

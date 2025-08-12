@@ -18,7 +18,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  final ApiService _apiService = ApiService();
   final OfflineFirstProvider _offlineProvider = OfflineFirstProvider();
   final LiveUpdatesService _liveUpdates = LiveUpdatesService();
   final IncomeService _incomeService = IncomeService();
@@ -408,7 +407,7 @@ class _MainScreenState extends State<MainScreen> {
   };
   
   List<Map<String, dynamic>> _getDefaultDailyTargets() {
-    final budgetWeights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
+    _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
     final dailyBudget = _monthlyIncome / 30;
     
     return [
@@ -485,7 +484,6 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Map<String, dynamic>> _getDefaultTransactions() {
     final now = DateTime.now();
-    final dailyBudget = _monthlyIncome / 30;
     
     return [
       {
@@ -590,43 +588,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Map<String, dynamic> _processDashboardData({
-    required Map<String, dynamic> dashboard,
-    required List<dynamic> transactions,
-    required Map<String, dynamic> analytics,
-  }) {
-    // Calculate today's spending from recent transactions
-    final today = DateTime.now();
-    final todayTransactions = transactions.where((tx) {
-      try {
-        final txDate = DateTime.parse(tx['date'] ?? tx['created_at']);
-        return txDate.year == today.year && 
-               txDate.month == today.month && 
-               txDate.day == today.day;
-      } catch (e) {
-        return false;
-      }
-    }).toList();
-
-    final todaySpent = todayTransactions.fold<double>(0.0, (sum, tx) {
-      return sum + (double.tryParse(tx['amount']?.toString() ?? '0') ?? 0.0);
-    });
-
-    // Get recent transactions (last 5)
-    final recentTransactions = transactions.take(5).map((tx) => {
-      'action': tx['description'] ?? tx['category'] ?? 'Transaction',
-      'amount': tx['amount']?.toString() ?? '0.00',
-      'date': tx['date'] ?? tx['created_at'] ?? DateTime.now().toIso8601String(),
-    }).toList();
-
-    return {
-      'balance': dashboard['balance'] ?? analytics['current_balance'] ?? 2500.00,
-      'spent': todaySpent > 0 ? todaySpent : dashboard['spent'] ?? 45.50,
-      'daily_targets': dashboard['daily_targets'] ?? _getDefaultDashboard()['daily_targets'],
-      'week': dashboard['week'] ?? _generateWeekData(),
-      'transactions': recentTransactions,
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -708,15 +669,21 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
       ),
-      floatingActionButton: error == null && !isLoading ? Semantics(\n        button: true,\n        label: _accessibilityService.createButtonSemanticLabel(\n          action: 'Add Expense',\n          context: 'Record a new expense transaction',\n        ),\n        child: FloatingActionButton.extended(
+      floatingActionButton: error == null && !isLoading ? Semantics(
+        button: true,
+        label: 'Add Expense - Record a new expense transaction',
+        child: FloatingActionButton.extended(
         heroTag: "main_fab",
-        onPressed: () {\n          _accessibilityService.clearFocusHistory();\n          Navigator.pushNamed(context, '/add_expense');\n        },
+        onPressed: () {
+          Navigator.pushNamed(context, '/add_expense');
+        },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Expense'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         tooltip: 'Add new expense',
-        ).withMinimumTouchTarget(),\n      ) : null,
+        ),
+      ) : null,
     );
   }
 
@@ -732,7 +699,7 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               Text(
                 'Hello, $tierName!',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 24,
@@ -742,7 +709,7 @@ class _MainScreenState extends State<MainScreen> {
               if (_monthlyIncome > 0)
                 Text(
                   'Monthly income: \$${_monthlyIncome.toStringAsFixed(0)}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -796,108 +763,12 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildIncomeContextCard() {
-    if (_incomeTier == null) return const SizedBox.shrink();
-    
-    try {
-      final balance = dashboardData?['balance'] ?? 0;
-      final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
-      
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.insights_rounded,
-                    color: primaryColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Financial Overview',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Monthly Income',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        Text(
-                          '\$${_monthlyIncome.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Current Balance',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        Text(
-                          '\$${balance.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    } catch (e) {
-      return const SizedBox.shrink();
-    }
-  }
   
   Widget _buildBalanceCard() {
     final balance = dashboardData?['balance'] ?? 0;
     final spent = dashboardData?['spent'] ?? 0;
     final remaining = (balance is num && spent is num) ? balance - spent : balance;
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFFFFD25F);
-    final secondaryColor = _incomeTier != null ? _incomeService.getIncomeTierSecondaryColor(_incomeTier!) : const Color(0xFFFFE082);
 
     return Card(
       color: primaryColor,
@@ -922,7 +793,7 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Text(
                     'Current Balance',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -935,7 +806,7 @@ class _MainScreenState extends State<MainScreen> {
               const SizedBox(height: 12),
               Text(
                 '\$${balance.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: const const TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -951,7 +822,7 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       Text(
                         'Today Spent',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -959,7 +830,7 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       Text(
                         '\$${spent.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -973,7 +844,7 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       Text(
                         'Remaining',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -981,7 +852,7 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       Text(
                         '\$${remaining.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -999,46 +870,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildPeerComparisonCard() {
-    if (peerComparison == null || _incomeTier == null) return const SizedBox.shrink();
-    
-    try {
-      return PeerComparisonCard(
-        comparisonData: peerComparison!,
-        monthlyIncome: _monthlyIncome,
-      );
-    } catch (e) {
-      // Return a simple fallback card if there's an error
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Peer Comparison',
-                style: TextStyle(
-                  fontFamily: 'Sora',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Peer comparison data will be available once you complete more transactions.',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
 
   Widget _buildBudgetTargets() {
     final targets = dashboardData?['daily_targets'] ?? [];
@@ -1052,7 +883,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Text(
               "Today's Budget Targets",
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1063,7 +894,7 @@ class _MainScreenState extends State<MainScreen> {
               onTap: () => Navigator.pushNamed(context, '/daily_budget'),
               child: const Text(
                 'View All',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Color(0xFFFFD25F),
@@ -1082,7 +913,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Center(
                 child: Text(
                   'No budget targets set for today',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     color: Colors.grey,
                   ),
@@ -1150,7 +981,7 @@ class _MainScreenState extends State<MainScreen> {
                               children: [
                                 Text(
                                   target['category'] ?? 'Category',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
@@ -1160,7 +991,7 @@ class _MainScreenState extends State<MainScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   '\$${spent.toStringAsFixed(0)} of \$${limit.toStringAsFixed(0)}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Manrope',
                                     fontSize: 14,
                                     color: Colors.grey.shade600,
@@ -1179,7 +1010,7 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                             child: Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Sora',
                                 fontSize: 12,
                                 color: progressColor,
@@ -1213,7 +1044,7 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(0)}' : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,
                               color: remaining > 0 ? Colors.grey[600] : Colors.red.shade600,
@@ -1258,7 +1089,7 @@ class _MainScreenState extends State<MainScreen> {
       children: [
         const Text(
           'This Week',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -1284,7 +1115,7 @@ class _MainScreenState extends State<MainScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(day['day'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(day['day'], style: const const TextStyle(fontWeight: FontWeight.bold)),
             );
           }).toList(),
         ),
@@ -1328,7 +1159,7 @@ class _MainScreenState extends State<MainScreen> {
                 const SizedBox(width: 12),
                 const Text(
                   'AI Insights',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -1353,7 +1184,7 @@ class _MainScreenState extends State<MainScreen> {
             else
               Text(
                 latestAdvice?['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.9),
@@ -1381,7 +1212,7 @@ class _MainScreenState extends State<MainScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '${spendingAnomalies.length} anomaly detected',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: Colors.orange,
@@ -1415,7 +1246,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               child: Text(
                 'Rating: $rating',
-                style: const TextStyle(
+                style: const const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -1428,7 +1259,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           summary.length > 100 ? '${summary.substring(0, 100)}...' : summary,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1456,7 +1287,7 @@ class _MainScreenState extends State<MainScreen> {
             const SizedBox(width: 6),
             Text(
               'Trend: ${trend.toUpperCase()}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -1468,7 +1299,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1496,7 +1327,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               child: Text(
                 'Budget Score: $grade',
-                style: const TextStyle(
+                style: const const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -1509,7 +1340,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           'Your personalized budget is ${score >= 80 ? 'excellent' : score >= 70 ? 'good' : 'needs improvement'} and based on your real income, goals, and spending habits.',
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1520,90 +1351,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildFinancialHealthCard() {
-    if (financialHealthScore == null) return const SizedBox.shrink();
-    
-    final score = financialHealthScore!['score'] ?? 75;
-    final grade = financialHealthScore!['grade'] ?? 'B+';
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.health_and_safety,
-                    color: Colors.green,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Financial Health',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF193C57),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  '$score',
-                  style: const TextStyle(
-                    fontFamily: 'Sora',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32,
-                    color: Color(0xFF193C57),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '/ 100',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getScoreColor(score).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    grade,
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontWeight: FontWeight.w600,
-                      color: _getScoreColor(score),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   IconData _getTrendIcon(String trend) {
     switch (trend.toLowerCase()) {
@@ -1627,11 +1374,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  Color _getScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
-  }
 
   Widget _buildRecentTransactions() {
     final transactions = dashboardData?['transactions'] ?? [];
@@ -1644,7 +1386,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             const Text(
               'Recent Transactions',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1655,7 +1397,7 @@ class _MainScreenState extends State<MainScreen> {
               onTap: () => Navigator.pushNamed(context, '/transactions'),
               child: const Text(
                 'View All',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Color(0xFFFFD25F),
@@ -1678,7 +1420,7 @@ class _MainScreenState extends State<MainScreen> {
                     SizedBox(height: 12),
                     Text(
                       'No recent transactions',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Sora',
                         color: Colors.grey,
                         fontWeight: FontWeight.w500,
@@ -1723,7 +1465,7 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             tx['action'] ?? 'Transaction',
-                            style: const TextStyle(
+                            style: const const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
@@ -1735,7 +1477,7 @@ class _MainScreenState extends State<MainScreen> {
                             children: [
                               Text(
                                 tx['category'] ?? 'Other',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -1743,7 +1485,7 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                               Text(
                                 ' • $timeAgo',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 12,
                                   color: Colors.grey.shade500,
@@ -1756,7 +1498,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     Text(
                       '-\$${amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

@@ -169,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   const Text(
                     'Create account',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
@@ -200,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Password must be at least 8 characters long',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
                       fontFamily: 'Manrope',
@@ -218,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             padding: const EdgeInsets.symmetric(
                                 vertical: 16, horizontal: 24),
-                            textStyle: const TextStyle(
+                            textStyle: const const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -235,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                     Text(
                       _error!,
-                      style: const TextStyle(
+                      style: const const TextStyle(
                         color: Colors.red,
                         fontFamily: 'Manrope',
                       ),

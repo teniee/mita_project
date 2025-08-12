@@ -109,7 +109,7 @@ class MitaTheme {
         elevation: 0,
         centerTitle: true,
         scrolledUnderElevation: 1,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: const const TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
           fontSize: 22,
@@ -145,7 +145,7 @@ class MitaTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          textStyle: const TextStyle(
+          textStyle: const const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -163,7 +163,7 @@ class MitaTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          textStyle: const TextStyle(
+          textStyle: const const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -180,7 +180,7 @@ class MitaTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          textStyle: const TextStyle(
+          textStyle: const const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -228,12 +228,12 @@ class MitaTheme {
             width: 2,
           ),
         ),
-        labelStyle: TextStyle(
+        labelStyle: const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
           color: _lightColorScheme.onSurface,
         ),
-        hintStyle: TextStyle(
+        hintStyle: const TextStyle(
           fontFamily: 'Manrope',
           color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
         ),
@@ -259,11 +259,11 @@ class MitaTheme {
         backgroundColor: _lightColorScheme.surfaceContainerHighest,
         selectedColor: _lightColorScheme.secondaryContainer,
         disabledColor: _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.12),
-        labelStyle: const TextStyle(
+        labelStyle: const const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
         ),
-        secondaryLabelStyle: TextStyle(
+        secondaryLabelStyle: const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
           color: _lightColorScheme.onSecondaryContainer,
@@ -301,14 +301,14 @@ class MitaTheme {
           ),
         ),
         textStyle: WidgetStateProperty.all(
-          const TextStyle(
+          const const TextStyle(
             fontFamily: 'Manrope',
             fontWeight: FontWeight.w400,
             fontSize: 16,
           ),
         ),
         hintStyle: WidgetStateProperty.all(
-          TextStyle(
+          const TextStyle(
             fontFamily: 'Manrope',
             color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -318,7 +318,7 @@ class MitaTheme {
       // SnackBar Theme
       snackBarTheme: SnackBarThemeData(
         backgroundColor: _lightColorScheme.inverseSurface,
-        contentTextStyle: TextStyle(
+        contentTextStyle: const TextStyle(
           fontFamily: 'Manrope',
           color: _lightColorScheme.onInverseSurface,
         ),
@@ -401,7 +401,7 @@ class MitaTheme {
         : null,
       label: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 12,
@@ -426,7 +426,7 @@ class MitaTheme {
           const SizedBox(height: 16),
           Text(
             message,
-            style: const TextStyle(
+            style: const const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
               color: _mitaPrimary,

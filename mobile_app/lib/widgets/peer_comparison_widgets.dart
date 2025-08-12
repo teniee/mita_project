@@ -52,7 +52,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Peer Comparison: $category',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
@@ -107,7 +107,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       comparison,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 13,
                         color: (isUserBetter ? Colors.green : Colors.orange).shade700,
@@ -138,7 +138,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w500,
@@ -147,7 +147,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
             ),
             Text(
               '\$${amount.toStringAsFixed(0)} (${percentage.toStringAsFixed(1)}%)',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -285,7 +285,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                     children: [
                       Text(
                         'Your $tierName Cohort',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -294,7 +294,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       ),
                       Text(
                         '$cohortSize users • You\'re #$yourRank (${percentile}th percentile)',
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 14,
                           color: Colors.black87,
@@ -322,7 +322,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                     children: [
                       Text(
                         'Performance Ranking',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.w600,
                           color: primaryColor,
@@ -330,7 +330,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       ),
                       Text(
                         '${percentile}th percentile',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -351,7 +351,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                     percentile >= 70 ? 'You\'re doing better than most!' 
                     : percentile >= 50 ? 'You\'re on track with your peers'
                     : 'Room for improvement compared to peers',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 12,
                       color: primaryColor,
@@ -366,7 +366,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
             // Key insights
             Text(
               'Cohort Insights',
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -394,7 +394,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                     Expanded(
                       child: Text(
                         insight,
-                        style: const TextStyle(
+                        style: const const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 14,
                         ),
@@ -409,7 +409,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
               const SizedBox(height: 16),
               Text(
                 'Recommendations for Your Tier',
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -438,7 +438,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       Expanded(
                         child: Text(
                           recommendation,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 13,
                             color: Colors.green.shade700,
@@ -504,7 +504,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                 const SizedBox(width: 12),
                 Text(
                   'Spending vs Peers',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -534,7 +534,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                       children: [
                         Text(
                           category.toUpperCase(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -557,7 +557,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           width: 40,
                           child: Text(
                             'You',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -577,7 +577,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           width: 60,
                           child: Text(
                             '\$${userAmount.toStringAsFixed(0)}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
@@ -598,7 +598,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           width: 40,
                           child: Text(
                             'Peers',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -618,7 +618,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           width: 60,
                           child: Text(
                             '\$${peerAmount.toStringAsFixed(0)}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w500,
                               fontSize: 12,

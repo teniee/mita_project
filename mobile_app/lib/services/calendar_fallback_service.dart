@@ -42,7 +42,6 @@ class CalendarFallbackService {
                        currentDate.month == today.month && 
                        currentDate.day == today.day;
         final isPastDay = currentDate.isBefore(today);
-        final isFutureDay = currentDate.isAfter(today);
         
         // Apply realistic daily budget variations
         final dailyBudgetVariation = _getDailyBudgetVariation(
@@ -336,7 +335,6 @@ class CalendarFallbackService {
 
   /// Generate daily category breakdown
   Map<String, int> _generateDailyCategoryBreakdown(int dailyLimit, Map<String, double> monthlyAllocations) {
-    final daysInMonth = DateTime.now().day; // Approximate
     final breakdown = <String, int>{};
     
     monthlyAllocations.forEach((category, monthlyAmount) {
