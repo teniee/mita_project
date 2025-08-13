@@ -44,11 +44,8 @@ openai==1.3.0
 boto3==1.29.7
 rq==1.15.1
 rq-scheduler==0.13.1
-# Updated for Python 3.10+ compatibility
-compat-fork-apns2==0.8.0
-# Fix for collections.MutableSet compatibility issue
-hyperframe>=6.0.0
-h2>=4.0.0
+# APNS temporarily disabled due to dependency conflicts
+# Will be replaced with compatible library in future update
 sentry-sdk==1.38.0
 prometheus-client==0.18.0
 psutil==5.9.6
