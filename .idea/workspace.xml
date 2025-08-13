@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" 🚀 PRODUCTION DEPLOYMENT STATUS&#10;&#10;  The MITA financial application now meets the highest standards for production deployment:&#10;&#10;  - Zero code quality issues (as required for financial applications)&#10;  - All critical security measures implemented&#10;  - Comprehensive testing framework in place&#10;  - Production-grade infrastructure configured&#10;  - Enterprise accessibility compliance achieved&#10;  - Multi-currency internationalization ready" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" 🚀 PRODUCTION DEPLOYMENT STATUS&#10;&#10;  The MITA financial application now meets the highest standards for production deployment:&#10;&#10;  - Zero code quality issues (as required for financial applications)&#10;  - All critical security measures implemented&#10;  - Comprehensive testing framework in place&#10;  - Production-grade infrastructure configured&#10;  - Enterprise accessibility compliance achieved&#10;  - Multi-currency internationalization ready">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
