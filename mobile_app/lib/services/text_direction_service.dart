@@ -58,7 +58,7 @@ class TextDirectionService {
   }
 
   /// Get appropriate EdgeInsets for padding/margin with RTL support
-  EdgeInsets getEdgeInsets({
+  EdgeInsetsGeometry getEdgeInsets({
     double? left,
     double? right,
     double? top,
@@ -246,7 +246,7 @@ class TextDirectionService {
   }
 
   /// Get appropriate TextStyle with direction-aware properties
-  TextStyle getDirectionalconst TextStyle(TextStyle baseStyle) {
+  TextStyle getDirectionalTextStyle(TextStyle baseStyle) {
     return baseStyle.copyWith(
       // Add any RTL-specific text styling if needed
     );
