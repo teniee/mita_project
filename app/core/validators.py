@@ -1175,7 +1175,7 @@ class EnhancedValidationMiddleware:
 enhanced_validator = EnhancedValidationMiddleware()
 
 # Legacy support
-validator = ValidationMiddleware()
+validator = EnhancedValidationMiddleware()
 
 
 def validate_request_data(request_type: str, enhanced: bool = True):
