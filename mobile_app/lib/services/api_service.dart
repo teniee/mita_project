@@ -815,10 +815,11 @@ class ApiService {
   /// Generate category breakdown from flexible budget
   Map<String, int> _generateCategoryBreakdown(Map<String, dynamic> flexible) {
     final breakdown = <String, int>{};
-    final daysInMonth = DateTime.now().day; // Current day for averaging
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day; // Days in current month
     
     flexible.forEach((category, monthlyAmount) {
-      final dailyAmount = ((monthlyAmount as num) / 30).round(); // Use 30 as average
+      final dailyAmount = ((monthlyAmount as num) / daysInMonth).round(); // Use actual days in month
       breakdown[category] = dailyAmount;
     });
     
@@ -3126,7 +3127,7 @@ class ApiService {
   Future<String> _getDeviceId() async {
     try {
       // Use secure device service instead of weak timestamp-based ID
-      final secureDeviceService = await SecureDeviceService.getInstance();
+      final secureDeviceService = SecureDeviceService.getInstance();
       final deviceId = await secureDeviceService.getSecureDeviceId();
       
       logDebug('Retrieved secure device ID: ${deviceId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');

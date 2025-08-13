@@ -120,7 +120,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       appBar: AppBar(
         title: const Text(
           'Challenges',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -135,7 +135,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           labelColor: const Color(0xFF193C57),
           unselectedLabelColor: Colors.grey,
           indicatorColor: const Color(0xFFFFD25F),
-          labelStyle: const const TextStyle(
+          labelStyle: const TextStyle(
             fontFamily: 'Manrope',
             fontWeight: FontWeight.w600,
             fontSize: 12,
@@ -172,7 +172,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   SizedBox(height: 16),
                   Text(
                     'No active challenges',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -182,7 +182,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   SizedBox(height: 8),
                   Text(
                     'Join a challenge to start earning rewards!',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       color: Colors.grey,
                     ),
@@ -272,7 +272,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   Expanded(
                     child: Text(
                       challenge['title'] ?? '',
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Sora',
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -288,7 +288,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     ),
                     child: Text(
                       challenge['difficulty']?.toString().toUpperCase() ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -303,7 +303,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               
               Text(
                 challenge['description'] ?? '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -318,7 +318,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 children: [
                   Text(
                     'Progress: ${progress.toInt()}/${target.toInt()}',
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -327,7 +327,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                   Text(
                     '${(progressPercentage * 100).toInt()}%',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -361,7 +361,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                             const SizedBox(width: 4),
                             Text(
                               '${challenge['reward_points']} points',
-                              style: const const TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Manrope',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -375,7 +375,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                             const Icon(Icons.attach_money, color: Colors.green, size: 16),
                             Text(
                               '\$${challenge['reward_amount']} reward',
-                              style: const const TextStyle(
+                              style: const TextStyle(
                                 fontFamily: 'Manrope',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -391,7 +391,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     children: [
                       Text(
                         daysLeft > 0 ? '$daysLeft days left' : 'Ending today',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -401,7 +401,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       const SizedBox(height: 4),
                       Text(
                         'Ends ${DateFormat('MMM d').format(endDate)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 10,
                           color: Colors.grey[500],
@@ -428,7 +428,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                   child: Text(
                     'Leave Challenge',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontWeight: FontWeight.w600,
                       color: Colors.red[400],
@@ -463,7 +463,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 Expanded(
                   child: Text(
                     challenge['title'] ?? '',
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -479,7 +479,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                   child: Text(
                     challenge['difficulty']?.toString().toUpperCase() ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -494,7 +494,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             
             Text(
               challenge['description'] ?? '',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -549,7 +549,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       const SizedBox(width: 8),
                       Text(
                         '${challenge['reward_points']} points',
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -562,7 +562,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       const Icon(Icons.attach_money, color: Colors.green, size: 20),
                       Text(
                         '\$${challenge['reward_amount']}',
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -593,7 +593,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ),
                 child: const Text(
                   'Join Challenge',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -614,7 +614,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
         const SizedBox(height: 4),
         Text(
           value,
-          style: const const TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -623,7 +623,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 10,
             color: Colors.grey[600],
@@ -666,7 +666,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       children: [
                         const Text(
                           'Current Level',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             color: Colors.white70,
                             fontSize: 14,
@@ -674,7 +674,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         ),
                         Text(
                           'Level $currentLevel',
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             color: Colors.white,
                             fontSize: 28,
@@ -688,7 +688,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       children: [
                         const Text(
                           'Total Points',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             color: Colors.white70,
                             fontSize: 14,
@@ -696,7 +696,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         ),
                         Text(
                           '$totalPoints',
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Sora',
                             color: Colors.white,
                             fontSize: 28,
@@ -719,7 +719,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       children: [
                         const Text(
                           'Progress to Next Level',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             color: Colors.white70,
                             fontSize: 12,
@@ -727,7 +727,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         ),
                         Text(
                           '$pointsToNext points to go',
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             color: Colors.white70,
                             fontSize: 12,
@@ -798,7 +798,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             const SizedBox(height: 8),
             Text(
               value,
-              style: const const TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -807,7 +807,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             ),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 10,
                 color: Colors.grey[600],
@@ -828,7 +828,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       children: [
         const Text(
           'Badges Earned',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -848,7 +848,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     const SizedBox(height: 8),
                     Text(
                       'No badges earned yet',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.grey[600],
                       ),
@@ -905,7 +905,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             const SizedBox(height: 8),
             Text(
               badge['name'] ?? '',
-              style: const const TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -916,7 +916,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             const SizedBox(height: 4),
             Text(
               badge['rarity']?.toString().toUpperCase() ?? '',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -935,7 +935,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       children: [
         const Text(
           'Leaderboard',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -955,7 +955,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   backgroundColor: _getRankColor(entry['rank']),
                   child: Text(
                     '#${entry['rank']}',
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -965,7 +965,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ),
                 title: Text(
                   entry['username'] ?? 'User',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w600,
                     color: isCurrentUser ? const Color(0xFFFFD25F) : const Color(0xFF193C57),
@@ -973,14 +973,14 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ),
                 subtitle: Text(
                   'Level ${entry['level']} • ${entry['challenges_completed']} completed',
-                  style: const const TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                   ),
                 ),
                 trailing: Text(
                   '${entry['points']} pts',
-                  style: const const TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF193C57),

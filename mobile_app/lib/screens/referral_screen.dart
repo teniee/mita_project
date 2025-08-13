@@ -48,7 +48,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 children: [
                   Text(
                     _code ?? '-',
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 32,
                       fontWeight: FontWeight.bold,

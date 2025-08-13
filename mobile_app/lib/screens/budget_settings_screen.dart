@@ -262,7 +262,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                           children: [
                             Text(
                               mode['name'],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
@@ -279,7 +279,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 ),
                                 child: const Text(
                                   'ACTIVE',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -292,7 +292,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         const SizedBox(height: 4),
                         Text(
                           mode['description'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
@@ -328,7 +328,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     ),
                     child: Text(
                       feature,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: mode['color'],
                         fontWeight: FontWeight.w500,
@@ -362,7 +362,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Automation Settings',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
@@ -377,11 +377,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             SwitchListTile(
               title: const Text(
                 'Auto Redistribution',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
               subtitle: const Text(
                 'Automatically redistribute budget when overspending occurs',
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12),
               ),
               value: _automationSettings['auto_redistribution'] ?? false,
               onChanged: (bool value) {
@@ -394,11 +394,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             SwitchListTile(
               title: const Text(
                 'Smart Suggestions',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
               subtitle: const Text(
                 'Receive AI-powered budget recommendations',
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12),
               ),
               value: _automationSettings['smart_suggestions'] ?? true,
               onChanged: (bool value) {
@@ -411,11 +411,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             SwitchListTile(
               title: const Text(
                 'Behavioral Learning',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
               subtitle: const Text(
                 'Allow AI to learn from your spending patterns',
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12),
               ),
               value: _automationSettings['behavioral_learning'] ?? true,
               onChanged: (bool value) {
@@ -428,11 +428,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             SwitchListTile(
               title: const Text(
                 'Real-time Alerts',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: TextStyle(fontWeight: FontWeight.w500),
               ),
               subtitle: const Text(
                 'Get instant notifications for budget changes',
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12),
               ),
               value: _automationSettings['realtime_alerts'] ?? true,
               onChanged: (bool value) {
@@ -461,7 +461,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
         : AppBar(
             title: const Text(
               'Budget Settings',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
               ),
@@ -511,7 +511,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 const SizedBox(width: 12),
                                 Text(
                                   'Income-Based Recommendations',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
@@ -533,7 +533,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                   children: [
                                     Text(
                                       category.toUpperCase(),
-                                      style: const const TextStyle(
+                                      style: const TextStyle(
                                         fontFamily: 'Sora',
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
@@ -544,7 +544,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                       children: [
                                         Text(
                                           '\$${amount.toStringAsFixed(0)}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Sora',
                                             fontWeight: FontWeight.bold,
                                             color: primaryColor,
@@ -552,10 +552,10 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                         ),
                                         Text(
                                           '${percentage.toStringAsFixed(1)}% of income',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Manrope',
                                             fontSize: 11,
-                                            color: Colors.grey.shade600,
+                                            color: Colors.grey[600],
                                           ),
                                         ),
                                       ],
@@ -604,7 +604,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                               children: [
                                 const Text(
                                   'Current Budget Mode',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                   ),
@@ -612,7 +612,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _getBudgetModeById(_currentBudgetMode)['name'],
-                                  style: const const TextStyle(
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
@@ -630,7 +630,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   // Budget Modes Section
                   Text(
                     'Choose Your Budget Mode',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
@@ -640,7 +640,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Select the budget management approach that best fits your financial goals and spending habits.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -655,7 +655,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   // Automation Settings
                   Text(
                     'Automation Preferences',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
@@ -665,7 +665,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Customize how MITA automatically manages your budget and provides intelligent recommendations.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -690,7 +690,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         Expanded(
                           child: Text(
                             'Changes to your budget mode will take effect immediately and may trigger automatic redistribution of your current budget.',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               color: colorScheme.primary,
                             ),

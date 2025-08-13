@@ -61,7 +61,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                   children: [
                     const Text(
                       "What are your fixed monthly expenses?",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w700,
                         fontSize: 22,
@@ -71,7 +71,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                     const SizedBox(height: 16),
                     const Text(
                       "Add your regular bills (rent, subscriptions, loans, etc.). No discipline — no freedom. Track everything honestly.",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.black54,
                         fontSize: 13,
@@ -152,7 +152,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                         label: const Text("Add More"),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF193C57),
-                          textStyle: const const TextStyle(fontFamily: 'Sora'),
+                          textStyle: const TextStyle(fontFamily: 'Sora'),
                         ),
                       ),
                     ),
@@ -167,7 +167,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const const TextStyle(
+                          textStyle: const TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.w600,
                             fontSize: 18,

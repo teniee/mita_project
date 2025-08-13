@@ -1,14 +1,12 @@
 
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../services/api_service.dart';
 import '../services/offline_first_provider.dart';
 import '../services/live_updates_service.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/user_data_manager.dart';
-import '../widgets/income_tier_widgets.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -106,8 +104,8 @@ class _MainScreenState extends State<MainScreen> {
           // Show notification about new transactions
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Row(
-                children: const [
+              content: const Row(
+                children: [
                   Icon(Icons.account_balance_wallet, color: Colors.white),
                   SizedBox(width: 8),
                   Text('New transaction detected'),
@@ -699,7 +697,7 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               Text(
                 'Hello, $tierName!',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 24,
@@ -709,7 +707,7 @@ class _MainScreenState extends State<MainScreen> {
               if (_monthlyIncome > 0)
                 Text(
                   'Monthly income: \$${_monthlyIncome.toStringAsFixed(0)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -793,7 +791,7 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Text(
                     'Current Balance',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -806,7 +804,7 @@ class _MainScreenState extends State<MainScreen> {
               const SizedBox(height: 12),
               Text(
                 '\$${balance.toStringAsFixed(2)}',
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -822,7 +820,7 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       Text(
                         'Today Spent',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -830,7 +828,7 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       Text(
                         '\$${spent.toStringAsFixed(2)}',
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -844,7 +842,7 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       Text(
                         'Remaining',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
@@ -852,7 +850,7 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       Text(
                         '\$${remaining.toStringAsFixed(2)}',
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -883,7 +881,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Text(
               "Today's Budget Targets",
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -894,7 +892,7 @@ class _MainScreenState extends State<MainScreen> {
               onTap: () => Navigator.pushNamed(context, '/daily_budget'),
               child: const Text(
                 'View All',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Color(0xFFFFD25F),
@@ -913,7 +911,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Center(
                 child: Text(
                   'No budget targets set for today',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     color: Colors.grey,
                   ),
@@ -981,7 +979,7 @@ class _MainScreenState extends State<MainScreen> {
                               children: [
                                 Text(
                                   target['category'] ?? 'Category',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
@@ -991,7 +989,7 @@ class _MainScreenState extends State<MainScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   '\$${spent.toStringAsFixed(0)} of \$${limit.toStringAsFixed(0)}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'Manrope',
                                     fontSize: 14,
                                     color: Colors.grey.shade600,
@@ -1010,7 +1008,7 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                             child: Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontSize: 12,
                                 color: progressColor,
@@ -1044,7 +1042,7 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(0)}' : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,
                               color: remaining > 0 ? Colors.grey[600] : Colors.red.shade600,
@@ -1089,7 +1087,7 @@ class _MainScreenState extends State<MainScreen> {
       children: [
         const Text(
           'This Week',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -1115,7 +1113,7 @@ class _MainScreenState extends State<MainScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(day['day'], style: const const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(day['day'], style: const TextStyle(fontWeight: FontWeight.bold)),
             );
           }).toList(),
         ),
@@ -1159,7 +1157,7 @@ class _MainScreenState extends State<MainScreen> {
                 const SizedBox(width: 12),
                 const Text(
                   'AI Insights',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -1184,7 +1182,7 @@ class _MainScreenState extends State<MainScreen> {
             else
               Text(
                 latestAdvice?['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.9),
@@ -1212,7 +1210,7 @@ class _MainScreenState extends State<MainScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '${spendingAnomalies.length} anomaly detected',
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: Colors.orange,
@@ -1246,7 +1244,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               child: Text(
                 'Rating: $rating',
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -1259,7 +1257,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           summary.length > 100 ? '${summary.substring(0, 100)}...' : summary,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1287,7 +1285,7 @@ class _MainScreenState extends State<MainScreen> {
             const SizedBox(width: 6),
             Text(
               'Trend: ${trend.toUpperCase()}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -1299,7 +1297,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1327,7 +1325,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               child: Text(
                 'Budget Score: $grade',
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -1340,7 +1338,7 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           'Your personalized budget is ${score >= 80 ? 'excellent' : score >= 70 ? 'good' : 'needs improvement'} and based on your real income, goals, and spending habits.',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
@@ -1386,7 +1384,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             const Text(
               'Recent Transactions',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1397,7 +1395,7 @@ class _MainScreenState extends State<MainScreen> {
               onTap: () => Navigator.pushNamed(context, '/transactions'),
               child: const Text(
                 'View All',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Color(0xFFFFD25F),
@@ -1420,7 +1418,7 @@ class _MainScreenState extends State<MainScreen> {
                     SizedBox(height: 12),
                     Text(
                       'No recent transactions',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         color: Colors.grey,
                         fontWeight: FontWeight.w500,
@@ -1465,7 +1463,7 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             tx['action'] ?? 'Transaction',
-                            style: const const TextStyle(
+                            style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
@@ -1477,7 +1475,7 @@ class _MainScreenState extends State<MainScreen> {
                             children: [
                               Text(
                                 tx['category'] ?? 'Other',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -1485,7 +1483,7 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                               Text(
                                 ' • $timeAgo',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 12,
                                   color: Colors.grey.shade500,
@@ -1498,7 +1496,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     Text(
                       '-\$${amount.toStringAsFixed(2)}',
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

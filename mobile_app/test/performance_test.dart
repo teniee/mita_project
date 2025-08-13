@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:mita/main.dart';
+import 'package:mita/main.dart' show MITAApp;
 
 /// Performance Testing for MITA Application
 /// Tests app startup time, memory usage, and responsiveness
@@ -12,7 +12,7 @@ void main() {
         final stopwatch = Stopwatch()..start();
         
         try {
-          await tester.pumpWidget(const MyApp());
+          await tester.pumpWidget(const MITAApp());
           await tester.pump(); // Single pump for initial render
           
           stopwatch.stop();
@@ -35,20 +35,20 @@ void main() {
       });
       
       testWidgets('App should handle initial API failures gracefully', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         
         // Wait for initial network calls to complete/fail
         await tester.pump(const Duration(seconds: 2));
         
         // Should still render UI even if API calls fail
-        expect(find.byType(Scaffold), findsAtLeastOneWidget);
+        expect(find.byType(Scaffold), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     });
 
     group('Memory and Resource Management', () {
       testWidgets('App should not leak widgets during navigation', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         await tester.pump();
         
         final initialWidgetCount = tester.allWidgets.length;
@@ -78,7 +78,7 @@ void main() {
 
     group('UI Responsiveness', () {
       testWidgets('UI should remain responsive during data loading', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         
         // Initial pump
         await tester.pump();
@@ -88,8 +88,7 @@ void main() {
         if (loadingIndicators.evaluate().isNotEmpty) {
           // UI should still be interactive during loading
           final refreshButtons = find.byIcon(Icons.refresh);
-          final menuButtons = find.byIcon(Icons.menu);
-          final settingsButtons = find.byIcon(Icons.settings);
+          // Look for UI elements during loading
           
           // Should be able to tap buttons during loading
           if (refreshButtons.evaluate().isNotEmpty) {
@@ -103,7 +102,7 @@ void main() {
       });
 
       testWidgets('Scroll performance should be smooth', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         await tester.pump();
         
         // Find scrollable widgets
@@ -118,8 +117,8 @@ void main() {
         ];
         
         if (scrollableWidgets.isNotEmpty) {
-          final scrollableFinder = scrollViews.isNotEmpty ? scrollViews.first : 
-                                  listViews.isNotEmpty ? listViews.first : 
+          final scrollableFinder = scrollViews.evaluate().isNotEmpty ? scrollViews.first : 
+                                  listViews.evaluate().isNotEmpty ? listViews.first : 
                                   singleChildScrollViews.first;
           
           // Test scrolling performance
@@ -139,7 +138,7 @@ void main() {
 
     group('Error Recovery Performance', () {
       testWidgets('App should recover quickly from network errors', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         await tester.pump();
         
         // Look for retry mechanisms
@@ -176,7 +175,7 @@ void main() {
 
     group('Animation Performance', () {
       testWidgets('Animations should not cause frame drops', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         await tester.pump();
         
         // Look for animated widgets
@@ -207,7 +206,7 @@ void main() {
 
     group('Resource Cleanup', () {
       testWidgets('App should clean up resources properly', (WidgetTester tester) async {
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MITAApp());
         await tester.pump();
         
         // Test multiple mount/unmount cycles
@@ -215,7 +214,7 @@ void main() {
           await tester.pumpWidget(Container()); // Unmount
           await tester.pump();
           
-          await tester.pumpWidget(const MyApp()); // Remount  
+          await tester.pumpWidget(const MITAApp()); // Remount  
           await tester.pump();
         }
         

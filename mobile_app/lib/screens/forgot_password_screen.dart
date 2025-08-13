@@ -207,7 +207,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                   Expanded(
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                         fontSize: 14,
                       ),
@@ -239,7 +239,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                   )
                 : const Text(
                     'Send Reset Link',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -252,7 +252,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Back to Login',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,
               ),

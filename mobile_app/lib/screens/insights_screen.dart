@@ -282,7 +282,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         : AppBar(
             title: const Text(
               'Financial Insights',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF193C57),
@@ -308,7 +308,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 16),
           Text(
             'Analyzing your financial data...',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               color: primaryColor,
             ),
@@ -418,7 +418,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         const SizedBox(width: 12),
                         Text(
                           'Tips for Your Income Level',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -448,7 +448,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             Expanded(
                               child: Text(
                                 tip,
-                                style: const const TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Manrope',
                                   fontSize: 14,
                                 ),
@@ -504,7 +504,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         children: [
           Text(
             'Total Spending This Month: \$${totalSpending.toStringAsFixed(2)}',
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -516,7 +516,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           if (categoryTotals.isNotEmpty) ...[
             const Text(
               'Spending by Category',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -545,7 +545,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     return PieChartSectionData(
                       title: '\$${value.toStringAsFixed(0)}',
                       value: value,
-                      titleStyle: const const TextStyle(
+                      titleStyle: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -565,7 +565,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           if (dailyTotals.isNotEmpty) ...[
             const Text(
               'Daily Spending Trend',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -603,7 +603,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           final label = DateFormat('MM/dd').format(DateTime.parse(dailyTotals[index]['date']));
                           return Text(
                             label, 
-                            style: const const TextStyle(
+                            style: const TextStyle(
                               fontSize: 10,
                               fontFamily: 'Manrope',
                               color: Color(0xFF193C57),
@@ -627,7 +627,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           borderRadius: BorderRadius.circular(6),
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF193C57).withValues(alpha: 0.7),
+                              Color(0xFF193C57).withValues(alpha: 0.7),
                               const Color(0xFF193C57)
                             ],
                             begin: Alignment.bottomCenter,
@@ -695,7 +695,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         gradient: LinearGradient(
           colors: [
             const Color(0xFF193C57),
-            const Color(0xFF193C57).withValues(alpha: 0.8),
+            Color(0xFF193C57).withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -715,7 +715,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               SizedBox(width: 12),
               Text(
                 'Financial Health Score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -729,7 +729,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             children: [
               Text(
                 '$score',
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 48,
@@ -739,7 +739,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 8),
               Text(
                 '/ 100',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 18,
                   color: Colors.white.withValues(alpha: 0.7),
@@ -754,7 +754,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 ),
                 child: Text(
                   'Grade: $grade',
-                  style: const const TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -767,7 +767,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             const SizedBox(height: 16),
             const Text(
               'Key Improvements:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
@@ -787,7 +787,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   Expanded(
                     child: Text(
                       improvement,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
@@ -830,7 +830,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                  color: Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -842,7 +842,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'AI Financial Analysis',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -862,7 +862,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 16),
           Text(
             summary,
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
               color: Color(0xFF666666),
@@ -902,7 +902,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                  color: Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -914,7 +914,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'Spending Patterns',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -930,12 +930,12 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             children: patterns.map((pattern) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                color: Color(0xFF193C57).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 _formatPatternName(pattern),
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 12,
                   color: Color(0xFF193C57),
@@ -976,7 +976,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                  color: Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -988,7 +988,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'Weekly Insights',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -1002,7 +1002,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 16),
           Text(
             insights,
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
               color: Color(0xFF666666),
@@ -1051,7 +1051,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'Spending Anomalies',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -1074,7 +1074,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 Expanded(
                   child: Text(
                     anomaly['description'] ?? 'Unusual spending detected',
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
                       color: Color(0xFF666666),
@@ -1116,7 +1116,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                  color: Color(0xFF193C57).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -1128,7 +1128,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'Personalized Recommendations',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -1140,7 +1140,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 16),
           Text(
             feedback,
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
               color: Color(0xFF666666),
@@ -1151,7 +1151,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             const SizedBox(height: 16),
             const Text(
               'Action Items:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
@@ -1177,7 +1177,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   Expanded(
                     child: Text(
                       tip,
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         color: Color(0xFF666666),
@@ -1234,7 +1234,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               const Text(
                 'Savings Optimization',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -1246,7 +1246,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 16),
           Text(
             'Potential Monthly Savings: \$${potentialSavings.toStringAsFixed(2)}',
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.w600,
               fontSize: 18,
@@ -1269,7 +1269,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   Expanded(
                     child: Text(
                       suggestion,
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         color: Color(0xFF666666),
@@ -1299,7 +1299,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               color: color,
@@ -1309,7 +1309,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(width: 6),
           Text(
             value.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Sora',
               fontSize: 12,
               color: color,
@@ -1352,7 +1352,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(width: 4),
           Text(
             trend.capitalize(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 12,
               color: color,
@@ -1452,7 +1452,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               const SizedBox(width: 12),
               Text(
                 'Budget Optimization',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -1468,7 +1468,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 ),
                 child: Text(
                   '${overallScore.toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.bold,
                     color: _getScoreColor(overallScore.toInt()),
@@ -1482,7 +1482,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           if (suggestions.isNotEmpty) ...[
             Text(
               'Optimization Suggestions:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -1510,7 +1510,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     Expanded(
                       child: Text(
                         suggestion,
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 14,
                         ),
@@ -1568,7 +1568,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   children: [
                     Text(
                       'Recommended Habits',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -1577,7 +1577,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     ),
                     Text(
                       'Based on successful $tierName patterns',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: Colors.grey.shade600,
@@ -1623,7 +1623,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           children: [
                             Text(
                               habit['title'],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
@@ -1632,7 +1632,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             ),
                             Text(
                               habit['frequency'].toString().toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Manrope',
                                 fontSize: 11,
                                 color: Colors.grey.shade600,
@@ -1650,7 +1650,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         ),
                         child: Text(
                           '${habit['peer_adoption']} adopt',
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 10,
                             color: Colors.green,
@@ -1663,7 +1663,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   const SizedBox(height: 12),
                   Text(
                     habit['description'],
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
                       height: 1.4,
@@ -1680,7 +1680,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       const SizedBox(width: 4),
                       Text(
                         '${habit['impact'].toString().toUpperCase()} IMPACT',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 10,
                           color: habit['impact'] == 'high' ? Colors.green : Colors.blue,
@@ -1742,7 +1742,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   children: [
                     Text(
                       'Suggested Goals',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -1751,7 +1751,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     ),
                     Text(
                       'Popular goals among $tierName users',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 12,
                         color: Colors.grey.shade600,
@@ -1788,7 +1788,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       Expanded(
                         child: Text(
                           goal['title'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -1804,7 +1804,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         ),
                         child: Text(
                           '${(goal['peer_adoption'] * 100).toStringAsFixed(0)}% adopt',
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 10,
                             color: Colors.blue,
@@ -1817,7 +1817,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                   const SizedBox(height: 8),
                   Text(
                     goal['description'],
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
                       height: 1.4,
@@ -1827,7 +1827,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     const SizedBox(height: 8),
                     Text(
                       'Target: \$${goal['target_amount'].toStringAsFixed(0)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.bold,
                         color: primaryColor,
@@ -1852,7 +1852,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         Expanded(
                           child: Text(
                             goal['cohort_context'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.blue.shade700,

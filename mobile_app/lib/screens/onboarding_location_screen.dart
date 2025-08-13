@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/location_service.dart';
-import '../services/country_profiles_service.dart';
 import '../services/onboarding_state.dart';
 
 class OnboardingLocationScreen extends StatefulWidget {
@@ -117,7 +116,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       Text(
                         'Which US state are you in?',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.w700,
                           fontSize: 28,
@@ -128,7 +127,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       Text(
                         'We\'ll customize income thresholds and financial advice based on your state\'s cost of living.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           color: Colors.black54,
                           fontSize: 16,
@@ -158,7 +157,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         SizedBox(width: 16),
                         Text(
                           'Detecting your location...',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 16,
                             color: Color(0xFF193C57),
@@ -191,7 +190,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             const SizedBox(width: 12),
                             Text(
                               'Location Detected',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -203,7 +202,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         const SizedBox(height: 12),
                         Text(
                           _locationService.formatLocationForDisplay(_selectedCountry, stateCode: _selectedState),
-                          style: const const TextStyle(
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -236,7 +235,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             const SizedBox(width: 12),
                             Text(
                               'Auto-detection failed',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -248,7 +247,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Please select your location manually below.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 14,
                           ),
@@ -263,7 +262,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
               // State selection
               const Text(
                 'Select your state:',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
@@ -286,7 +285,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                     return ListTile(
                       title: Text(
                         state['name']!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontWeight: _selectedState == state['code']
                               ? FontWeight.w600
@@ -323,7 +322,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    textStyle: const const TextStyle(
+                    textStyle: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 18,

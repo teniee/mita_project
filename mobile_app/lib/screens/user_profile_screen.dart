@@ -150,7 +150,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading your profile...', style: const TextStyle(fontFamily: 'Manrope')),
+          Text('Loading your profile...', style: TextStyle(fontFamily: 'Manrope')),
         ],
       ),
     );
@@ -169,7 +169,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
               'Profile',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onPrimaryContainer,

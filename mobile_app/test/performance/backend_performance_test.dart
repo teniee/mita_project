@@ -1,18 +1,14 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:io';
-import 'dart:convert';
 import 'dart:collection';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/services/income_service.dart';
-import 'package:mita/services/api_service.dart';
 import 'package:mita/services/country_profiles_service.dart';
 import 'package:mita/services/financial_health_calculator.dart';
 import 'package:mita/services/secure_device_service.dart';
 import 'package:mita/services/password_validation_service.dart';
 import 'package:mita/services/smart_categorization_service.dart';
 import 'package:mita/services/production_budget_engine.dart';
-import 'package:mita/services/personalized_budget_engine.dart';
 
 /// Comprehensive backend performance test suite for MITA financial application
 /// 
@@ -341,7 +337,7 @@ void main() {
         await completer.future;
         stopwatch.stop();
         
-        final totalOperations = concurrentOperations * operationsPerTask;
+        const totalOperations = concurrentOperations * operationsPerTask;
         final avgTimeMs = stopwatch.elapsedMilliseconds / totalOperations;
         
         // print('Concurrent Classification Performance:');
@@ -367,7 +363,7 @@ void main() {
           }
           
           // Force garbage collection and measure (approximation)
-          await Future.delayed(Duration(milliseconds: 10));
+          await Future.delayed(const Duration(milliseconds: 10));
           memoryUsage.add(DateTime.now().millisecondsSinceEpoch);
         }
         
@@ -478,7 +474,7 @@ void main() {
         stopwatch.start();
         for (int i = 0; i < iterations; i++) {
           final password = passwords[i % passwords.length];
-          passwordService.validatePasswordStrength(password);
+          PasswordValidationService.validatePasswordStrength(password);
         }
         stopwatch.stop();
         
@@ -505,7 +501,7 @@ void main() {
             try {
               // Simulate complete authentication flow
               await deviceService.generateSecureDeviceId();
-              passwordService.validatePasswordStrength('TestP@ssw0rd123!');
+              PasswordValidationService.validatePasswordStrength('TestP@ssw0rd123!');
               
               // Simulate token operations
               final mockUserId = 'user_$i';
@@ -557,7 +553,7 @@ void main() {
               final stopwatch = Stopwatch()..start();
               try {
                 await deviceService.generateSecureDeviceId();
-                passwordService.validatePasswordStrength('StressTest@2024!$i');
+                PasswordValidationService.validatePasswordStrength('StressTest@2024!$i');
               } finally {
                 stopwatch.stop();
                 batchResults.add(stopwatch.elapsedMilliseconds.toDouble());
@@ -573,7 +569,7 @@ void main() {
           allResults.addAll(batchResults);
           
           // Brief pause between batches to prevent resource exhaustion
-          await Future.delayed(Duration(milliseconds: 100));
+          await Future.delayed(const Duration(milliseconds: 100));
         }
         
         // Analyze results
@@ -679,7 +675,7 @@ void main() {
           }
           
           // Perform complex calculations
-          final budgetResult = await budgetEngine.calculateOptimalBudget(
+          final budgetResult = budgetEngine.calculateOptimalBudget(
             monthlyIncome: monthlyIncome,
             historicalExpenses: expenses,
             savingsGoal: monthlyIncome * 0.2,
@@ -794,7 +790,7 @@ void main() {
           final stopwatch = Stopwatch()..start();
           
           final userId = 'user_${i % 100}'; // 100 unique users
-          final endpoint = '/api/auth/login';
+          const endpoint = '/api/auth/login';
           final key = '$userId:$endpoint';
           
           // Simulate rate limit check
@@ -941,7 +937,7 @@ void main() {
           memorySnapshots.add(DateTime.now().millisecondsSinceEpoch);
           
           // Brief pause to allow GC
-          await Future.delayed(Duration(milliseconds: 1));
+          await Future.delayed(const Duration(milliseconds: 1));
         }
         
         // print('Memory stability test completed');
@@ -972,7 +968,7 @@ void main() {
         createdObjects.clear();
         
         // Force garbage collection attempt
-        await Future.delayed(Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 100));
         
         expect(createdObjects.length, equals(0));
       });
@@ -1000,7 +996,7 @@ void main() {
         final passwordService = PasswordValidationService();
         for (int i = 0; i < 500; i++) {
           final stopwatch = Stopwatch()..start();
-          passwordService.validatePasswordStrength('TestP@ssw0rd$i');
+          PasswordValidationService.validatePasswordStrength('TestP@ssw0rd$i');
           stopwatch.stop();
           passwordMetrics.addMeasurement(stopwatch.elapsedMilliseconds.toDouble());
         }
@@ -1046,12 +1042,12 @@ void main() {
       test('Concurrent user simulation - Authentication', () async {
         final simulator = LoadTestSimulator(
           concurrentUsers: 25,
-          testDuration: Duration(seconds: 30),
+          testDuration: const Duration(seconds: 30),
           operationToTest: () async {
             final deviceService = SecureDeviceService();
             await deviceService.generateSecureDeviceId();
             final passwordService = PasswordValidationService();
-            passwordService.validatePasswordStrength('LoadTest@2024!');
+            PasswordValidationService.validatePasswordStrength('LoadTest@2024!');
           },
         );
         
@@ -1067,7 +1063,7 @@ void main() {
       test('Concurrent user simulation - Income Classification', () async {
         final simulator = LoadTestSimulator(
           concurrentUsers: 50,
-          testDuration: Duration(seconds: 15),
+          testDuration: const Duration(seconds: 15),
           operationToTest: () async {
             final incomeService = IncomeService();
             final random = Random();
@@ -1097,7 +1093,7 @@ void main() {
           },
           () async {
             final passwordService = PasswordValidationService();
-            passwordService.validatePasswordStrength('MixedTest@${Random().nextInt(1000)}!');
+            PasswordValidationService.validatePasswordStrength('MixedTest@${Random().nextInt(1000)}!');
           },
           () async {
             final deviceService = SecureDeviceService();
@@ -1107,7 +1103,7 @@ void main() {
         
         final simulator = LoadTestSimulator(
           concurrentUsers: 30,
-          testDuration: Duration(seconds: 20),
+          testDuration: const Duration(seconds: 20),
           operationToTest: () async {
             final randomOperation = operations[Random().nextInt(operations.length)];
             await randomOperation();

@@ -73,7 +73,7 @@ class SecurePushTokenManager {
       // Verify user is authenticated
       if (!await _isUserAuthenticated()) {
         logError('Attempted to initialize push tokens without authentication', tag: 'PUSH_TOKEN_SECURITY');
-        throw SecurityException('Push token initialization requires authentication');
+        throw const SecurityException('Push token initialization requires authentication');
       }
 
       // Load previous registration state
@@ -218,7 +218,7 @@ class SecurePushTokenManager {
       
       if (success) {
         // Log successful registration for audit
-        logInfo('Push token registration successful', tag: 'PUSH_TOKEN_SECURITY', context: {
+        logInfo('Push token registration successful', tag: 'PUSH_TOKEN_SECURITY', extra: {
           'device_id_prefix': deviceId.substring(0, 12),
           'platform': registrationData['platform'],
           'attempt_number': registrationData['registration_attempt'],

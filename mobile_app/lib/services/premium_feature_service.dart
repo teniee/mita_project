@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'iap_service.dart';
 import 'logging_service.dart';
@@ -17,7 +16,7 @@ class PremiumFeatureService {
   final ApiService _apiService = ApiService();
   
   // Cache for feature availability
-  Map<PremiumFeature, bool> _featureCache = {};
+  final Map<PremiumFeature, bool> _featureCache = {};
   DateTime? _lastFeatureUpdate;
   
   // Stream controllers for feature updates
@@ -181,7 +180,7 @@ class PremiumFeatureService {
           
         case PremiumFeature.enhancedAnalytics:
           return FeatureUsageLimits(
-            historyLimit: isPremium ? null : Duration(days: 30).inDays,
+            historyLimit: isPremium ? null : const Duration(days: 30).inDays,
             advancedMetrics: isPremium,
           );
           
@@ -197,13 +196,13 @@ class PremiumFeatureService {
           
         case PremiumFeature.prioritySupport:
           return FeatureUsageLimits(
-            responseTime: isPremium ? Duration(hours: 4) : Duration(hours: 48),
+            responseTime: isPremium ? const Duration(hours: 4) : const Duration(hours: 48),
             supportChannels: isPremium ? ['chat', 'email', 'phone'] : ['email'],
           );
       }
     } catch (e) {
       _logger.error('Failed to get usage limits for $feature: $e');
-      return FeatureUsageLimits();
+      return const FeatureUsageLimits();
     }
   }
 

@@ -12,16 +12,16 @@ void main() {
   group('MITA i18n Integration Tests', () {
     testWidgets('Login screen displays English strings correctly', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('en'),
-          localizationsDelegates: const [
+        const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const LoginScreen(),
+          home: LoginScreen(),
         ),
       );
 
@@ -39,16 +39,16 @@ void main() {
 
     testWidgets('Login screen displays Spanish strings correctly', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('es'),
-          localizationsDelegates: const [
+        const MaterialApp(
+          locale: Locale('es'),
+          localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const LoginScreen(),
+          home: LoginScreen(),
         ),
       );
 
@@ -66,16 +66,16 @@ void main() {
 
     testWidgets('Welcome screen displays localized status messages', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('en'),
-          localizationsDelegates: const [
+        const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const WelcomeScreen(),
+          home: WelcomeScreen(),
         ),
       );
 

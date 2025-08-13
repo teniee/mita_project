@@ -272,7 +272,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
               children: [
                 OutlinedButton.icon(
                   onPressed: () => _showLocalizedDialog(context),
-                  icon: Icon(Icons.info_outline),
+                  icon: const Icon(Icons.info_outline),
                   label: Text(l10n.insights),
                 ),
                 FilledButton.icon(

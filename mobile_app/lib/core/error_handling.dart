@@ -247,15 +247,10 @@ class ErrorHandler {
       userId: report.userId,
     );
 
-    if (isConnected) {
-      // Try to send immediately
-      final success = await _sendErrorReport(updatedReport);
-      if (!success) {
-        // Store for later if sending fails
-        await _storePendingReport(updatedReport);
-      }
-    } else {
-      // Store for later if offline
+    // Try to send immediately (assuming connected for now)
+    final success = await _sendErrorReport(updatedReport);
+    if (!success) {
+      // Store for later if sending fails
       await _storePendingReport(updatedReport);
     }
     

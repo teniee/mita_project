@@ -81,16 +81,18 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   void _onDataUpdated() {
     if (mounted) {
       setState(() {
-        _behavioralAnalysis = widget.financialEngine.behavioralAnalysis;
-        _userProfile = widget.financialEngine.userBehaviorProfile;
+        // TODO: Connect to actual behavioral analysis when implemented
+        _behavioralAnalysis = null;
+        _userProfile = null;
       });
     }
   }
 
   void _loadInitialData() {
     setState(() {
-      _behavioralAnalysis = widget.financialEngine.behavioralAnalysis;
-      _userProfile = widget.financialEngine.userBehaviorProfile;
+      // TODO: Connect to actual behavioral analysis when implemented
+      _behavioralAnalysis = null;
+      _userProfile = null;
     });
   }
 
@@ -154,7 +156,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                           children: [
                             Text(
                               'Behavioral Insights',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -163,7 +165,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                             ),
                             Text(
                               'AI learning from your patterns',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Manrope',
                                 fontSize: 12,
                                 color: Colors.white70,
@@ -230,7 +232,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 child: Text(
                   tab,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Sora',
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
@@ -274,7 +276,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       children: [
         Text(
           'Your Spending Personality: $spendingPersonality',
-          style: const const TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -287,7 +289,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         if (patterns.isNotEmpty) ...[
           const Text(
             'Identified Patterns:',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.w600,
               fontSize: 14,
@@ -353,7 +355,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               children: [
                 Text(
                   patternDescription,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -362,7 +364,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 ),
                 Text(
                   'Detected pattern',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.6),
@@ -388,7 +390,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         children: [
           Text(
             'Pattern Confidence',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.w600,
               fontSize: 12,
@@ -404,7 +406,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   children: [
                     Text(
                       'Data Quality',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
@@ -422,7 +424,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               const SizedBox(width: 12),
               Text(
                 '85%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -465,7 +467,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         Text(
           _getPersonalityTitle(spendingPersonality),
           textAlign: TextAlign.center,
-          style: const const TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -478,7 +480,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         Text(
           _getPersonalityDescription(spendingPersonality),
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 13,
             color: Colors.white.withValues(alpha: 0.8),
@@ -491,7 +493,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         if (recommendations.isNotEmpty) ...[
           const Text(
             'Personalized Tips:',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.w600,
               fontSize: 14,
@@ -511,14 +513,14 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               children: [
                 Text(
                   '💡 ',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     rec.toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.8),
@@ -542,7 +544,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       children: [
         const Text(
           'Learning Progress',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -579,7 +581,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             children: [
               Text(
                 'Recent Activity',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
@@ -616,7 +618,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           const SizedBox(height: 8),
           Text(
             value,
-            style: const const TextStyle(
+            style: const TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.bold,
               fontSize: 18,
@@ -625,7 +627,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           ),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 11,
               color: Colors.white.withValues(alpha: 0.7),
@@ -653,7 +655,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           Expanded(
             child: Text(
               activity,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 11,
                 color: Colors.white.withValues(alpha: 0.8),
@@ -662,7 +664,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           ),
           Text(
             _formatTimestamp(timestamp),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 10,
               color: Colors.white.withValues(alpha: 0.5),

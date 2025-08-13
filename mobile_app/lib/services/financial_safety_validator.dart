@@ -94,12 +94,12 @@ class FinancialSafetyValidator {
     }
 
     // Check 3: No single category dominates budget (except housing)
-    plannedSpending.forEach((category, amount) {
-      final percentage = amount / monthlyIncome;
-      if (category != 'housing' && percentage > 0.4) { // 40% max for non-housing
+    for (final entry in plannedSpending.entries) {
+      final percentage = entry.value / monthlyIncome;
+      if (entry.key != 'housing' && percentage > 0.4) { // 40% max for non-housing
         return false;
       }
-    });
+    }
 
     return true;
   }
@@ -318,4 +318,17 @@ class FinancialSafetyValidator {
 
     return recommendations;
   }
+}
+
+/// Financial Safety Check data class
+class FinancialSafetyCheck {
+  bool incomeValidation = true;
+  bool budgetSafety = true;
+  bool debtSafety = true;
+  bool emergencyFundSafety = true;
+  bool goalFeasibility = true;
+  double lifestyleInflationRisk = 0.0;
+  double overallSafetyScore = 0.0;
+  List<String> warnings = [];
+  List<String> recommendations = [];
 }

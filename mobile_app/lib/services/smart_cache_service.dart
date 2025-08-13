@@ -227,7 +227,6 @@ class MemoryCache implements CacheBackend {
 
   @override
   Future<void> cleanup() async {
-    final now = DateTime.now();
     final expiredKeys = _cache.entries
         .where((entry) => entry.value.isExpired)
         .map((entry) => entry.key)
@@ -712,9 +711,9 @@ class SmartCacheService {
       ),
       'popularKeys': popularKeys.take(20).toList(),
       'tagUsage': Map.fromEntries(
-        tagCounts.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value))
-      ).take(10).toList(),
+        (tagCounts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value))).take(10)
+      ),
       'recommendations': _generateRecommendations(),
     };
   }

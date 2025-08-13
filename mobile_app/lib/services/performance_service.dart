@@ -6,7 +6,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/scheduler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'logging_service.dart';
 
 /// Performance metric data point
@@ -183,7 +182,6 @@ class PerformanceService {
   int _totalFrames = 0;
   
   // Memory monitoring
-  final int _lastHeapSize = 0;
   int _memoryWarningCount = 0;
   
   // Performance thresholds

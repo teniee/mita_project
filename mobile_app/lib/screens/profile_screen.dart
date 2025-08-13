@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text(
           'Profile',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -92,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Name',
                         prefixIcon: Icon(Icons.person),
                       ),
-                      style: const const TextStyle(fontFamily: 'Manrope'),
+                      style: const TextStyle(fontFamily: 'Manrope'),
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter name' : null,
                       onSaved: (val) => _name = val,
@@ -105,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email),
                       ),
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         color: Colors.grey,
                       ),
@@ -125,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: const Text(
                         'View Notifications',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: const Text(
                         'Referral Program',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -169,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: const Text(
                         'Go Premium',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -193,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: const Text(
                         'Log Out',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -215,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? const CircularProgressIndicator()
                           : const Text(
                               'Save Changes',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Sora',
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

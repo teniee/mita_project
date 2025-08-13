@@ -4,15 +4,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;The MITA financial application is now 100% production-ready with:&#10;&#10;  1. Enterprise-grade security and compliance meeting all financial industry standards&#10;  2. Comprehensive testing framework ensuring quality and reliability&#10;  3. Full infrastructure automation with monitoring, alerting, and disaster recovery&#10;  4. Complete accessibility and internationalization for global expansion&#10;  5. Operational excellence with automated maintenance and scaling  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes">
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="важный апдейт. если что то пойдет по пизде после этого, верни обратно">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/auth_jwt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/auth_jwt_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/app_test.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/ci_integration_test.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/mock_services.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/test_config.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/integration_test/test_helpers.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/core/error_handling.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/core/error_handling.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/examples/i18n_example_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/examples/i18n_example_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/advice_history_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/advice_history_screen.dart" afterDir="false" />
@@ -20,7 +14,6 @@
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/budget_settings_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/budget_settings_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen_backup.dart" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/challenges_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/challenges_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/edit_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/edit_expense_screen.dart" afterDir="false" />
@@ -29,7 +22,6 @@
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/habits_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/habits_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/installments_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/installments_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/notifications_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/notifications_screen.dart" afterDir="false" />
@@ -51,30 +43,40 @@
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/user_profile_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/user_profile_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/user_settings_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/user_settings_screen.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/welcome_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/welcome_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/advanced_cohort_analytics.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/advanced_financial_engine.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/accessibility_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/accessibility_service.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_calendar_engine.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_calendar_helpers.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/behavioral_nudge_generator.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/iap_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/iap_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/live_updates_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/live_updates_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/text_direction_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/text_direction_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/financial_health_calculator.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/financial_health_calculator.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/financial_safety_validator.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/financial_safety_validator.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/localization_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/localization_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/location_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/location_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/password_validation_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/password_validation_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/performance_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/performance_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/personalized_budget_engine.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/personalized_budget_engine.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/premium_feature_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/premium_feature_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/production_budget_engine.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/production_budget_engine.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/secure_device_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/secure_device_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/secure_push_token_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/secure_push_token_manager.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/secure_token_storage.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/secure_token_storage.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/smart_cache_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/smart_cache_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/smart_categorization_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/smart_categorization_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/smart_goal_engine.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/smart_goal_engine.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/theme/income_theme.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/theme/mita_theme.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/theme/mita_theme.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/utils/expense_integration_helper.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/utils/expense_integration_helper.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/utils/financial_formatters.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/utils/financial_formatters.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/behavioral_insights_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/behavioral_insights_widget.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/enhanced_animations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/enhanced_animations.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/income_tier_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/income_tier_widgets.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/intelligent_notifications_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/intelligent_notifications_widget.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/password_strength_indicator.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/password_strength_indicator.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/peer_comparison_widgets.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/test/backend_consistency_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/backend_consistency_test.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/test/edge_cases_comprehensive_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/edge_cases_comprehensive_test.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/test/i18n_integration_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/i18n_integration_test.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/test/performance/backend_performance_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/performance/backend_performance_test.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/test/production_budget_engine_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/production_budget_engine_test.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/test/performance_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/performance_test.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/test/secure_token_storage_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/test/secure_token_storage_test.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -439,7 +441,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755029697070</updated>
     </task>
-    <option name="localTasksCounter" value="38" />
+    <task id="LOCAL-00038" summary="важный апдейт. если что то пойдет по пизде после этого, верни обратно">
+      <option name="closed" value="true" />
+      <created>1755032797860</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1755032797860</updated>
+    </task>
+    <option name="localTasksCounter" value="39" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -471,6 +481,7 @@
     <MESSAGE value=" The app now compiles without errors and all the requested features are working:&#10;  - ✅ Hardcoded budget details removed and replaced with user data&#10;  - ✅ User profile screen added with comprehensive information&#10;  - ✅ User settings screen added with all preferences&#10;  - ✅ Bottom navigation shadow removed&#10;  - ✅ Profile data connected to budget calculations&#10;  - ✅ Compilation error fixed" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;  3. Reflects their financial goals (saving vs debt payoff vs investing)&#10;  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;The MITA financial application is now 100% production-ready with:&#10;&#10;  1. Enterprise-grade security and compliance meeting all financial industry standards&#10;  2. Comprehensive testing framework ensuring quality and reliability&#10;  3. Full infrastructure automation with monitoring, alerting, and disaster recovery&#10;  4. Complete accessibility and internationalization for global expansion&#10;  5. Operational excellence with automated maintenance and scaling  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
-    <option name="LAST_COMMIT_MESSAGE" value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;The MITA financial application is now 100% production-ready with:&#10;&#10;  1. Enterprise-grade security and compliance meeting all financial industry standards&#10;  2. Comprehensive testing framework ensuring quality and reliability&#10;  3. Full infrastructure automation with monitoring, alerting, and disaster recovery&#10;  4. Complete accessibility and internationalization for global expansion&#10;  5. Operational excellence with automated maintenance and scaling  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
+    <MESSAGE value="важный апдейт. если что то пойдет по пизде после этого, верни обратно" />
+    <option name="LAST_COMMIT_MESSAGE" value="важный апдейт. если что то пойдет по пизде после этого, верни обратно" />
   </component>
 </project>

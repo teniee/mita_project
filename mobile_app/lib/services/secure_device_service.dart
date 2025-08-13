@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'logging_service.dart';
@@ -14,6 +12,9 @@ class SecureDeviceService {
   static final SecureDeviceService _instance = SecureDeviceService._internal();
   factory SecureDeviceService() => _instance;
   SecureDeviceService._internal();
+
+  /// Get singleton instance
+  static SecureDeviceService getInstance() => _instance;
 
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -64,6 +65,11 @@ class SecureDeviceService {
           tag: 'SECURE_DEVICE', error: e, stackTrace: stackTrace);
       return _getFallbackDeviceId();
     }
+  }
+
+  /// Generate a new secure device ID (public method for tests)
+  Future<String> generateSecureDeviceId() async {
+    return await _generateSecureDeviceId();
   }
 
   /// Generate cryptographically secure device ID

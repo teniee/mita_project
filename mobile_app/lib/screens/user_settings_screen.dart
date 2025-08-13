@@ -129,7 +129,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       appBar: AppBar(
         title: const Text(
           'Settings',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
           ),
@@ -141,7 +141,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             onPressed: _saveSettings,
             child: Text(
               'Save',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: colorScheme.primary,
               ),
@@ -160,7 +160,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading settings...', style: const TextStyle(fontFamily: 'Manrope')),
+          Text('Loading settings...', style: TextStyle(fontFamily: 'Manrope')),
         ],
       ),
     );
@@ -397,11 +397,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: const const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
       trailing: Switch(
         value: value,
@@ -423,11 +423,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: const const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
       trailing: DropdownButton<String>(
         value: value,
@@ -454,15 +454,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           leading: Icon(icon),
           title: Text(
             title,
-            style: const const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
           ),
           subtitle: Text(
             subtitle,
-            style: const const TextStyle(fontFamily: 'Manrope'),
+            style: const TextStyle(fontFamily: 'Manrope'),
           ),
           trailing: Text(
             '${value.toInt()}%',
-            style: const const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         Slider(
@@ -487,11 +487,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       subtitle: Text(
         subtitle,
-        style: const const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: 'Manrope'),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
@@ -508,11 +508,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
       ),
       trailing: Text(
         value,
-        style: const TextStyle(
+        style: TextStyle(
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           fontFamily: 'Manrope',
         ),

@@ -542,7 +542,6 @@ class PersonalizedBudgetEngine {
     
     budget.forEach((category, budgetAmount) {
       final spentAmount = spending[category] ?? 0.0;
-      final dailyBudget = budgetAmount / daysInMonth;
       final actualDailySpending = daysPassed > 0 ? spentAmount / daysPassed : 0.0;
       final projectedMonthlySpending = actualDailySpending * daysInMonth;
       
@@ -696,7 +695,7 @@ class PersonalizedBudgetEngine {
     double income
   ) => [];
 
-  List<BudgetRedistribution> _generateRedistributionSuggestions(
+  List<RedistributionOpportunity> _generateRedistributionSuggestions(
     List<CategoryAdjustment> adjustments,
     Map<String, double> budget,
     double income
@@ -773,7 +772,7 @@ class BudgetInsight {
 
 class BudgetAdjustment {
   final List<CategoryAdjustment> adjustments;
-  final List<BudgetRedistribution> redistributions;
+  final List<RedistributionOpportunity> redistributions;
   final double totalImpact;
   final double confidence;
   final List<String> implementationSteps;

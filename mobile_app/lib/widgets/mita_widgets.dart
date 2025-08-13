@@ -124,7 +124,7 @@ class MitaWidgets {
                   label: 'Error: $title',
                   child: Text(
                     title,
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -138,7 +138,7 @@ class MitaWidgets {
                   label: 'Error message: $message',
                   child: Text(
                     message,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -210,7 +210,7 @@ class MitaWidgets {
                 header: true,
                 child: Text(
                   title,
-                  style: const const TextStyle(
+                  style: const TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -222,7 +222,7 @@ class MitaWidgets {
               const SizedBox(height: 12),
               Text(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -255,7 +255,7 @@ class MitaWidgets {
         label: title,
         child: Text(
           title,
-          style: const const TextStyle(
+          style: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w700,
             fontSize: 20,
@@ -329,7 +329,7 @@ class MitaWidgets {
                   ),
                   child: Text(
                     amount,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w700,
                       fontSize: size * 0.12,
@@ -341,7 +341,7 @@ class MitaWidgets {
                   label: 'Category: $label',
                   child: Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: size * 0.08,
                       color: Colors.grey[600],
@@ -407,7 +407,7 @@ class MitaWidgets {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -431,7 +431,7 @@ class MitaWidgets {
               label: 'Value: $value',
               child: Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -445,7 +445,7 @@ class MitaWidgets {
                 label: 'Subtitle: $subtitle',
                 child: Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -504,7 +504,7 @@ class MitaWidgets {
                 children: [
                   Text(
                     title,
-                    style: const const TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -515,7 +515,7 @@ class MitaWidgets {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         color: Colors.grey[600],

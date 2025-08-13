@@ -58,13 +58,6 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
       vsync: this,
     );
     
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
     
     _fadeAnimation = Tween<double>(
       begin: 0.0,
@@ -362,7 +355,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               child: Chip(
                 label: const Text('Premium'),
                 backgroundColor: colorScheme.primaryContainer,
-                labelStyle: const TextStyle(
+                labelStyle: TextStyle(
                   color: colorScheme.onPrimaryContainer,
                   fontSize: 12.0,
                   fontWeight: FontWeight.w600,
@@ -419,7 +412,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                       Expanded(
                         child: Text(
                           _error!,
-                          style: const TextStyle(color: colorScheme.onErrorContainer),
+                          style: TextStyle(color: colorScheme.onErrorContainer),
                         ),
                       ),
                       IconButton(

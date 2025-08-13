@@ -12,8 +12,10 @@ void main() {
       // Mock flutter_secure_storage method channel
       TestWidgetsFlutterBinding.ensureInitialized();
       
-      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage')
-          .setMockMethodCallHandler((methodCall) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+        (methodCall) async {
         switch (methodCall.method) {
           case 'write':
             // Mock successful write
@@ -39,8 +41,10 @@ void main() {
       });
       
       // Mock device_info_plus method channel
-      const MethodChannel('dev.fluttercommunity.plus/device_info')
-          .setMockMethodCallHandler((methodCall) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/device_info'),
+        (methodCall) async {
         switch (methodCall.method) {
           case 'getAndroidDeviceInfo':
             return {

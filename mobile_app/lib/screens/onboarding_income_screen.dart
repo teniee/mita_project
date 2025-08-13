@@ -116,7 +116,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
             Expanded(
               child: Text(
                 'Welcome, $tierName!',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
@@ -131,7 +131,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
           children: [
             Text(
               message,
-              style: const const TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 16,
               ),
@@ -154,7 +154,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                   Expanded(
                     child: Text(
                       'We\'ll customize your budget and recommendations based on your income level.',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 14,
                         color: primaryColor,
@@ -180,7 +180,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
             ),
             child: const Text(
               'Continue Setup',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
@@ -232,7 +232,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                           Text(
                             "What's your average monthly income?",
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w700,
                               fontSize: 24,
@@ -243,7 +243,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                           const Text(
                             "We'll create a personalized budget plan based on your income level.",
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               color: Colors.black54,
                               fontSize: 14,
@@ -290,7 +290,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 18),
-                                textStyle: const const TextStyle(
+                                textStyle: const TextStyle(
                                   fontFamily: 'Sora',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 18,
@@ -349,7 +349,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                             const SizedBox(width: 12),
                                             Text(
                                               'What You\'ll Get',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontFamily: 'Sora',
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 18,
@@ -373,7 +373,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                                 Expanded(
                                                   child: Text(
                                                     benefit,
-                                                    style: const const TextStyle(
+                                                    style: const TextStyle(
                                                       fontFamily: 'Manrope',
                                                       fontSize: 14,
                                                     ),

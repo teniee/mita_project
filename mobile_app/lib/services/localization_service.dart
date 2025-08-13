@@ -208,17 +208,18 @@ class LocalizationService {
 
   /// Check if current locale uses right-to-left text direction
   bool get isRTL {
-    return ui.Directionality.of != null && 
-           Directionality.of(ui.window.locale as BuildContext) == TextDirection.rtl;
+    // Check if current locale is RTL
+    const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
+    return rtlLanguages.contains(_currentLocale.languageCode);
   }
 
   /// Get text direction for current locale
-  TextDirection get textDirection {
+  ui.TextDirection get textDirection {
     // Add RTL language codes as needed
     const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
     return rtlLanguages.contains(_currentLocale.languageCode) 
-        ? TextDirection.rtl 
-        : TextDirection.ltr;
+        ? ui.TextDirection.rtl 
+        : ui.TextDirection.ltr;
   }
 
   /// Parse currency string back to double

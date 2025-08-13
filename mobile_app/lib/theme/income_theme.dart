@@ -172,7 +172,7 @@ class IncomeTheme {
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
           fontSize: 20,
@@ -198,7 +198,7 @@ class IncomeTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const const TextStyle(
+          textStyle: const TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -227,11 +227,11 @@ class IncomeTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: colorScheme.error, width: 2),
         ),
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontFamily: 'Manrope',
           color: colorScheme.onSurface,
         ),
-        hintStyle: const TextStyle(
+        hintStyle: TextStyle(
           fontFamily: 'Manrope',
           color: colorScheme.onSurface.withValues(alpha: 0.6),
         ),
@@ -239,91 +239,91 @@ class IncomeTheme {
       
       // Text Theme
       textTheme: TextTheme(
-        displayLarge: const TextStyle(
+        displayLarge: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
           fontSize: 32,
           color: colorScheme.onSurface,
         ),
-        displayMedium: const TextStyle(
+        displayMedium: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
           fontSize: 28,
           color: colorScheme.onSurface,
         ),
-        displaySmall: const TextStyle(
+        displaySmall: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 24,
           color: colorScheme.onSurface,
         ),
-        headlineLarge: const TextStyle(
+        headlineLarge: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
           fontSize: 22,
           color: colorScheme.onSurface,
         ),
-        headlineMedium: const TextStyle(
+        headlineMedium: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 20,
           color: colorScheme.onSurface,
         ),
-        headlineSmall: const TextStyle(
+        headlineSmall: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 18,
           color: colorScheme.onSurface,
         ),
-        titleLarge: const TextStyle(
+        titleLarge: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 16,
           color: colorScheme.onSurface,
         ),
-        titleMedium: const TextStyle(
+        titleMedium: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w500,
           fontSize: 14,
           color: colorScheme.onSurface,
         ),
-        titleSmall: const TextStyle(
+        titleSmall: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w500,
           fontSize: 12,
           color: colorScheme.onSurface,
         ),
-        bodyLarge: const TextStyle(
+        bodyLarge: TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w400,
           fontSize: 16,
           color: colorScheme.onSurface,
         ),
-        bodyMedium: const TextStyle(
+        bodyMedium: TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w400,
           fontSize: 14,
           color: colorScheme.onSurface,
         ),
-        bodySmall: const TextStyle(
+        bodySmall: TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w400,
           fontSize: 12,
           color: colorScheme.onSurface.withValues(alpha: 0.8),
         ),
-        labelLarge: const TextStyle(
+        labelLarge: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w600,
           fontSize: 14,
           color: colorScheme.onSurface,
         ),
-        labelMedium: const TextStyle(
+        labelMedium: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w500,
           fontSize: 12,
           color: colorScheme.onSurface,
         ),
-        labelSmall: const TextStyle(
+        labelSmall: TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w500,
           fontSize: 10,
@@ -513,7 +513,7 @@ class IncomeTheme {
     return AppBar(
       title: Text(
         title,
-        style: const const TextStyle(
+        style: const TextStyle(
           fontFamily: 'Sora',
           fontWeight: FontWeight.w700,
         ),

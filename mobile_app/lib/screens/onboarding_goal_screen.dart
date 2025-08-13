@@ -48,7 +48,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
             children: [
               const Text(
                 'What are your financial goals?',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.w700,
                   fontSize: 22,
@@ -84,7 +84,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                               Expanded(
                                 child: Text(
                                   goal['label'],
-                                  style: const const TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: 'Manrope',
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
@@ -114,7 +114,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    textStyle: const const TextStyle(
+                    textStyle: const TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,

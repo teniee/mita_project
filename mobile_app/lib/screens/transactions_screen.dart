@@ -26,7 +26,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Future<void> fetchExpenses() async {
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -43,8 +42,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         // Show demo data if backend is not available
         _expenses = _getDemoTransactions();
         _isLoading = false;
-        _error = null;
-      });
+        });
     }
   }
 
@@ -148,7 +146,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       appBar: AppBar(
         title: const Text(
           'Transactions',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
             color: Color(0xFF193C57),
@@ -180,7 +178,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 SizedBox(height: 16),
                                 Text(
                                   'No transactions yet',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.w600,
@@ -190,7 +188,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 SizedBox(height: 8),
                                 Text(
                                   'Pull down to refresh or add your first expense',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontFamily: 'Manrope',
                                     color: Colors.grey,
@@ -248,7 +246,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   children: [
                                     Text(
                                       item['action'] ?? item['description'] ?? 'Transaction',
-                                      style: const const TextStyle(
+                                      style: const TextStyle(
                                         fontFamily: 'Sora',
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
@@ -258,7 +256,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       item['category'] ?? 'Other',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Manrope',
                                         fontSize: 14,
                                         color: Colors.grey[600],
@@ -269,7 +267,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       DateFormat('MMM d, yyyy • h:mm a').format(
                                         DateTime.parse(item['date']),
                                       ),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Manrope',
                                         fontSize: 12,
                                         color: Colors.grey[500],
@@ -283,7 +281,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 children: [
                                   Text(
                                     '-\$${item['amount']}',
-                                    style: const const TextStyle(
+                                    style: const TextStyle(
                                       fontFamily: 'Sora',
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -299,7 +297,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                     ),
                                     child: Text(
                                       'Expense',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: 'Manrope',
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,

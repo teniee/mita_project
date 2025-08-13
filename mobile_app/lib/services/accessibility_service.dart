@@ -21,7 +21,7 @@ class AccessibilityService {
   
   /// Focus management
   FocusNode? _currentFocus;
-  List<FocusNode> _focusHistory = [];
+  final List<FocusNode> _focusHistory = [];
   
   /// Announcements queue for screen readers
   final List<String> _announcementQueue = [];
@@ -42,7 +42,7 @@ class AccessibilityService {
       _screenReaderEnabled = mediaQuery.accessibleNavigation;
       _highContrastEnabled = mediaQuery.highContrast;
       _reducedMotionEnabled = mediaQuery.disableAnimations;
-      _textScaleFactor = mediaQuery.textScaleFactor;
+      _textScaleFactor = mediaQuery.textScaler.scale(14) / 14;
       
       logInfo('Accessibility settings loaded: screenReader=$_screenReaderEnabled, '
                 'highContrast=$_highContrastEnabled, reducedMotion=$_reducedMotionEnabled, '
@@ -133,7 +133,7 @@ class AccessibilityService {
     } else {
       final dollars = amount.floor();
       final cents = ((amount - dollars) * 100).round();
-      return '\$${dollars} dollars and ${cents} cents';
+      return '\$$dollars dollars and $cents cents';
     }
   }
 

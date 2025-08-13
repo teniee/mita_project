@@ -46,7 +46,7 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
                 children: [
                   const Text(
                     "Where do you live?",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
@@ -67,7 +67,7 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
                               value: region,
                               child: Text(
                                 region,
-                                style: const const TextStyle(fontFamily: 'Manrope'),
+                                style: const TextStyle(fontFamily: 'Manrope'),
                               ),
                             ))
                         .toList(),
@@ -88,7 +88,7 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: const const TextStyle(
+                        textStyle: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.w600,
                           fontSize: 18,

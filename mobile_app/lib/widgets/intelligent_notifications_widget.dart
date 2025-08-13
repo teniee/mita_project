@@ -79,7 +79,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
 
   void _onNotificationsUpdated() {
     if (mounted) {
-      final newNotifications = widget.financialEngine.intelligentNotifications;
+      // TODO: Connect to actual intelligent notifications when implemented
+      final newNotifications = <Map<String, dynamic>>[];
       if (newNotifications != _notifications) {
         setState(() {
           _notifications = List<Map<String, dynamic>>.from(newNotifications);
@@ -97,9 +98,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
 
   void _loadInitialNotifications() {
     setState(() {
-      _notifications = List<Map<String, dynamic>>.from(
-        widget.financialEngine.intelligentNotifications
-      );
+      // TODO: Connect to actual intelligent notifications when implemented
+      _notifications = <Map<String, dynamic>>[];
     });
   }
 
@@ -177,7 +177,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                         children: [
                           const Text(
                             'Smart Insights',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -186,7 +186,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                           ),
                           Text(
                             '${filteredNotifications.length} notification${filteredNotifications.length != 1 ? 's' : ''}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.7),
@@ -302,7 +302,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -315,7 +315,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     const SizedBox(height: 2),
                     Text(
                       message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
@@ -336,7 +336,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 children: [
                   Text(
                     _formatTimestamp(timestamp),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 10,
                       color: Colors.white.withValues(alpha: 0.5),
@@ -351,7 +351,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     ),
                     child: Text(
                       priority.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 8,
                         color: notificationInfo.color,
@@ -466,7 +466,8 @@ class CompactIntelligentNotifications extends StatelessWidget {
     return ListenableBuilder(
       listenable: financialEngine,
       builder: (context, child) {
-        final notifications = financialEngine.intelligentNotifications;
+        // TODO: Connect to actual intelligent notifications when implemented
+        final notifications = <Map<String, dynamic>>[];
         
         if (notifications.isEmpty) {
           return const SizedBox.shrink();
@@ -507,7 +508,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '${notifications.length} insight${notifications.length != 1 ? 's' : ''}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -526,7 +527,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                     ),
                     child: Text(
                       highPriorityCount.toString(),
-                      style: const const TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 10,
                         fontWeight: FontWeight.w600,

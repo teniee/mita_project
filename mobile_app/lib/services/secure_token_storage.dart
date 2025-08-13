@@ -236,7 +236,7 @@ class SecureTokenStorage {
     if (fromVersion < 2) {
       // Migrate from v1 to v2: Move from basic storage to enhanced security
       try {
-        final oldStorage = const FlutterSecureStorage();
+        const oldStorage = FlutterSecureStorage();
         
         // Read old tokens
         final oldAccessToken = await oldStorage.read(key: 'access_token');

@@ -184,13 +184,13 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
             elevation: 0,
             type: BottomNavigationBarType.fixed,
             enableFeedback: true,
-            selectedLabelStyle: const TextStyle(
+            selectedLabelStyle: TextStyle(
               fontFamily: 'Sora',
               fontWeight: FontWeight.w600,
               fontSize: 11,
               color: colorScheme.primary,
             ),
-            unselectedLabelStyle: const TextStyle(
+            unselectedLabelStyle: TextStyle(
               fontFamily: 'Manrope',
               fontWeight: FontWeight.w400,
               fontSize: 10,
@@ -321,7 +321,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
             const SizedBox(width: 12),
             Text(
               'Refreshing ${_getScreenName(index)}...',
-              style: const const TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
               ),

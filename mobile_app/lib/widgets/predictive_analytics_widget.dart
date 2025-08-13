@@ -82,16 +82,18 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   void _onDataUpdated() {
     if (mounted) {
       setState(() {
-        _predictiveAnalytics = widget.financialEngine.predictiveAnalytics;
-        _riskAssessment = widget.financialEngine.riskAssessment;
+        // TODO: Connect to actual predictive analytics when implemented
+        _predictiveAnalytics = null;
+        _riskAssessment = null;
       });
     }
   }
 
   void _loadInitialData() {
     setState(() {
-      _predictiveAnalytics = widget.financialEngine.predictiveAnalytics;
-      _riskAssessment = widget.financialEngine.riskAssessment;
+      // TODO: Connect to actual predictive analytics when implemented
+      _predictiveAnalytics = null;
+      _riskAssessment = null;
     });
   }
 
@@ -152,7 +154,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       children: [
                         Text(
                           'Predictive Analytics',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -161,7 +163,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                         ),
                         Text(
                           'AI-powered financial forecasts',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
                             color: Colors.white70,
@@ -225,7 +227,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               ),
               child: Text(
                 '${days}d',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -258,7 +260,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   children: [
                     const Text(
                       'Financial Risk Assessment',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -283,7 +285,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 if (recommendations.isNotEmpty) ...[
                   const Text(
                     'Recommendations:',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Sora',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -298,7 +300,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       children: [
                         Text(
                           '• ',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 12,
                             color: Colors.white.withValues(alpha: 0.8),
@@ -307,7 +309,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                         Expanded(
                           child: Text(
                             rec.toString(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.8),
@@ -363,7 +365,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           const SizedBox(width: 4),
           Text(
             riskLevel.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -412,7 +414,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             children: [
               Text(
                 '${riskScore.toStringAsFixed(0)}%',
-                style: const const TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Sora',
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -421,7 +423,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               ),
               Text(
                 'Risk Score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 10,
                   color: Colors.white.withValues(alpha: 0.7),
@@ -447,7 +449,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           children: [
             const Text(
               'Spending Forecast',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -488,7 +490,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                     children: [
                       Text(
                         'Predicted Spending',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.7),
@@ -496,7 +498,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       ),
                       Text(
                         '\$${predictedAmount.toStringAsFixed(0)}',
-                        style: const const TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Sora',
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -514,7 +516,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   ),
                   child: Text(
                     '${(confidence * 100).toStringAsFixed(0)}% confident',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -538,7 +540,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       children: [
         const Text(
           'Behavioral Insights',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -566,7 +568,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               Expanded(
                 child: Text(
                   'Behavioral patterns suggest continued mindful spending',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 12,
                     color: Colors.white.withValues(alpha: 0.8),

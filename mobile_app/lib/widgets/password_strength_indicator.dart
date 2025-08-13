@@ -121,7 +121,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
         // Entropy info
         Text(
           'Entropy: ${validation.entropy.toStringAsFixed(1)} bits',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),

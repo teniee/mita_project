@@ -472,6 +472,27 @@ class SmartCategorizationService {
     // Implementation for local pattern-based alerts
     return [];
   }
+
+  /// Categorize a transaction (public method for tests)
+  Future<String> categorizeTransaction({
+    required String merchant,
+    required double amount,
+    required DateTime date,
+    String? location,
+  }) async {
+    final suggestions = await getCategorySuggestions(
+      merchant: merchant,
+      amount: amount,
+      date: date,
+      location: location,
+    );
+    
+    if (suggestions.isNotEmpty) {
+      return suggestions.first.category;
+    }
+    
+    return 'other'; // Default category
+  }
 }
 
 // ============================================================================

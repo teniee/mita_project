@@ -299,8 +299,8 @@ void main() {
         // Verify all return non-null, meaningful values
         expect(name.isNotEmpty, isTrue, reason: 'Tier $tier should have non-empty name');
         expect(description.isNotEmpty, isTrue, reason: 'Tier $tier should have non-empty description');
-        expect(color.alpha, greaterThan(0), reason: 'Tier $tier should have visible primary color');
-        expect(secondaryColor.alpha, greaterThan(0), reason: 'Tier $tier should have visible secondary color');
+        expect((color.a * 255.0).round() & 0xff, greaterThan(0), reason: 'Tier $tier should have visible primary color');
+        expect((secondaryColor.a * 255.0).round() & 0xff, greaterThan(0), reason: 'Tier $tier should have visible secondary color');
         
         // Names should not contain placeholder text
         expect(name, isNot(contains('TODO')));

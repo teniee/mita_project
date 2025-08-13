@@ -557,7 +557,6 @@ class ProductionBudgetEngine {
     
     // Blend user's actual patterns with recommended weights (70% user, 30% recommended)
     final blendedWeights = <String, double>{};
-    final totalRecommended = baseWeights.values.fold(0.0, (sum, weight) => sum + weight);
     
     // First, add all user categories with their actual weights
     userCategorySpending.forEach((category, amount) {
@@ -1182,6 +1181,17 @@ class ProductionBudgetEngine {
       confidence: 0.5,
       lastUpdated: DateTime.now(),
     );
+  }
+
+  /// Calculate optimal budget (public method for tests)
+  Map<String, double> calculateOptimalBudget({
+    required double monthlyIncome,
+    required IncomeTier tier,
+    List<String>? goals,
+    List<String>? habits,
+  }) {
+    final weights = _incomeService.getDefaultBudgetWeights(tier);
+    return weights.map((k, v) => MapEntry(k, monthlyIncome * v));
   }
 }
 

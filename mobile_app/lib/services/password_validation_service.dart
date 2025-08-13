@@ -65,7 +65,7 @@ class PasswordValidationService {
       }
 
       if (!hasSpecial) {
-        issues.add('Password must contain at least one special character (!@#$%^&*...)');
+        issues.add('Password must contain at least one special character (!@#\$%^&*...)');
         isStrong = false;
       }
 
@@ -152,7 +152,7 @@ class PasswordValidationService {
       logError('Password validation failed: $e', tag: 'PASSWORD_VALIDATION',
           error: e, stackTrace: stackTrace);
       
-      return PasswordValidationResult(
+      return const PasswordValidationResult(
         isValid: false,
         isStrong: false,
         strength: 0.0,
@@ -221,8 +221,9 @@ class PasswordValidationService {
     score += min(entropy / _recommendedEntropy, 1.0) * 60;
 
     // Length bonus
-    if (password.length >= _recommendedMinLength) score += 15;
-    else if (password.length >= _minLength) score += 10;
+    if (password.length >= _recommendedMinLength) {
+      score += 15;
+    } else if (password.length >= _minLength) score += 10;
 
     // Character variety bonus
     int varietyBonus = 0;
@@ -399,7 +400,7 @@ class PasswordValidationService {
     }
 
     if (!password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))) {
-      suggestions.add('Add special characters (!@#$%^&*...) to strengthen your password');
+      suggestions.add('Add special characters (!@#\$%^&*...) to strengthen your password');
     }
 
     if (issues.any((issue) => issue.contains('common') || issue.contains('pattern'))) {
@@ -431,6 +432,12 @@ class PasswordValidationService {
     if (score >= 60) return 'Fair';
     if (score >= 50) return 'Poor';
     return 'Very Poor';
+  }
+
+  /// Validate password strength (public method for tests)
+  static double validatePasswordStrength(String password) {
+    final result = validatePassword(password);
+    return result.strength;
   }
 }
 
