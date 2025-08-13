@@ -947,10 +947,10 @@ class EnhancedValidationMiddleware:
             'transaction': EnhancedTransactionValidator,
             'goal': EnhancedGoalValidator,
             'budget': EnhancedBudgetValidator,
-            # Legacy support
-            'user_legacy': UserValidator,
-            'transaction_legacy': TransactionValidator,
-            'goal_legacy': GoalValidator,
+            # Legacy support - using BaseValidator for backward compatibility
+            'user_legacy': BaseValidator,
+            'transaction_legacy': BaseValidator,
+            'goal_legacy': BaseValidator,
         }
         self.security_events = []
     
