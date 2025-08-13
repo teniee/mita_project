@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/auth", 
     tags=["Authentication"],
-    dependencies=[require_auth_endpoint_protection()]  # Apply base security to all auth endpoints
+    dependencies=[Depends(require_auth_endpoint_protection())]  # Apply base security to all auth endpoints
 )
 
 
@@ -50,7 +50,7 @@ router = APIRouter(
     "/register",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def register(
     payload: RegisterIn,
@@ -91,7 +91,7 @@ async def register(
 @router.post(
     "/login", 
     response_model=TokenOut,
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def login(
     payload: LoginIn,
@@ -137,7 +137,7 @@ async def login(
 
 @router.post(
     "/refresh",
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def refresh_token(
     request: Request,
@@ -247,7 +247,7 @@ async def refresh_token(
 
 @router.post(
     "/logout",
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def logout(
     request: Request,
@@ -298,7 +298,7 @@ async def logout(
 
 @router.post(
     "/revoke",
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def revoke_token(
     request: Request,
@@ -346,7 +346,7 @@ async def revoke_token(
 
 @router.get(
     "/token/validate",
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def validate_current_token(
     request: Request,
@@ -376,7 +376,7 @@ async def validate_current_token(
 @router.post(
     "/google", 
     response_model=TokenOut,
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def google_login(
     payload: GoogleAuthIn,
@@ -422,7 +422,7 @@ async def google_login(
 
 @router.post(
     "/password-reset/request",
-    dependencies=[comprehensive_auth_security()]
+    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def request_password_reset(
     email: str,
