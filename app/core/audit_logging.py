@@ -724,3 +724,53 @@ async def log_security_violation(
         severity=severity,
         details=details
     )
+
+
+def log_security_event(event_type: str, details: dict = None):
+    """Synchronous security event logging for system-level events without Request context"""
+    try:
+        # Create a basic audit event for system-level security events
+        audit_event = AuditEvent(
+            id=f"security_system_{datetime.now().isoformat()}_{id(event_type)}",
+            timestamp=datetime.now(),
+            event_type=AuditEventType.SECURITY_VIOLATION,
+            user_id=None,
+            session_id=None,
+            client_ip="system",
+            user_agent="system",
+            endpoint="system",
+            method="SYSTEM",
+            status_code=None,
+            response_time_ms=None,
+            request_size=0,
+            response_size=None,
+            sensitivity_level=SensitivityLevel.RESTRICTED,
+            success=False,
+            error_message=f"System security event: {event_type}",
+            additional_context={
+                'event_type': event_type,
+                'details': details or {},
+                'source': 'system'
+            }
+        )
+        
+        # Log immediately for security events
+        logger.critical(f"Security Event: {audit_event.to_dict()}")
+        
+        # Add to buffer for database storage
+        audit_logger.buffer.append(audit_event)
+        
+        # Trigger immediate flush for security events
+        if len(audit_logger.buffer) >= 1:  # Flush immediately for security events
+            import asyncio
+            try:
+                # Try to flush in the current event loop
+                loop = asyncio.get_running_loop()
+                loop.create_task(audit_logger._flush_buffer())
+            except RuntimeError:
+                # No event loop running, that's okay for synchronous calls
+                pass
+        
+    except Exception as e:
+        # Don't let audit logging break the application
+        logger.error(f"Error in security event logging: {str(e)}")
