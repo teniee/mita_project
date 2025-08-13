@@ -15,7 +15,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 import redis
-import bcrypt
+from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 from app.core.config import settings
@@ -42,6 +42,9 @@ except Exception as e:
 
 # In-memory fallback for rate limiting
 rate_limit_memory: Dict[str, Dict] = {}
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 security = HTTPBearer()
 
@@ -150,16 +153,14 @@ class SecurityUtils:
         if len(password) > SecurityConfig.MAX_PASSWORD_LENGTH:
             raise ValidationException(f"Password cannot exceed {SecurityConfig.MAX_PASSWORD_LENGTH} characters")
         
-        # Generate salt and hash
-        salt = bcrypt.gensalt(rounds=SecurityConfig.PASSWORD_HASH_ROUNDS)
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-        return hashed.decode('utf-8')
+        # Use passlib to hash the password
+        return pwd_context.hash(password)
     
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
         """Verify password against hash"""
         try:
-            return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+            return pwd_context.verify(password, hashed)
         except Exception as e:
             logger.warning(f"Password verification failed: {e}")
             return False
@@ -835,6 +836,103 @@ def get_security_monitor() -> SecurityMonitor:
     return SecurityMonitor()
 
 
+def get_security_health_status() -> dict:
+    """Get comprehensive security health status for monitoring"""
+    health_status = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "redis_status": "connected" if redis_client else "disconnected",
+        "rate_limiting_backend": "redis" if redis_client else "memory",
+        "security_features": {
+            "sql_injection_protection": True,
+            "xss_protection": True,
+            "rate_limiting": True,
+            "progressive_penalties": True,
+            "suspicious_activity_monitoring": True,
+            "jwt_security": True,
+            "input_validation": True,
+            "file_upload_security": True
+        },
+        "configuration": {
+            "min_password_length": SecurityConfig.MIN_PASSWORD_LENGTH,
+            "password_hash_rounds": SecurityConfig.PASSWORD_HASH_ROUNDS,
+            "default_rate_limit": SecurityConfig.DEFAULT_RATE_LIMIT,
+            "login_rate_limit": SecurityConfig.LOGIN_RATE_LIMIT,
+            "register_rate_limit": SecurityConfig.REGISTER_RATE_LIMIT,
+            "jwt_expiry_hours": SecurityConfig.JWT_EXPIRY_HOURS,
+            "max_file_size_mb": SecurityConfig.MAX_FILE_SIZE // (1024 * 1024),
+            "allowed_file_extensions": list(SecurityConfig.ALLOWED_FILE_EXTENSIONS)
+        }
+    }
+    
+    # Test Redis connectivity if available
+    if redis_client:
+        try:
+            redis_client.ping()
+            health_status["redis_ping"] = "success"
+            health_status["redis_info"] = {
+                "connected_clients": redis_client.info().get("connected_clients", 0),
+                "used_memory_human": redis_client.info().get("used_memory_human", "unknown"),
+                "uptime_in_seconds": redis_client.info().get("uptime_in_seconds", 0)
+            }
+        except Exception as e:
+            health_status["redis_ping"] = "failed"
+            health_status["redis_error"] = str(e)
+            logger.warning(f"Redis health check failed: {e}")
+    
+    # Get rate limiting statistics
+    if redis_client:
+        try:
+            # Count active rate limit keys
+            active_keys = len(redis_client.keys("rate_limit:*"))
+            penalty_keys = len(redis_client.keys("penalties:*"))
+            suspicious_keys = len(redis_client.keys("suspicious:*"))
+            blacklist_keys = len(redis_client.keys("blacklist:*"))
+            
+            health_status["statistics"] = {
+                "active_rate_limit_keys": active_keys,
+                "penalty_keys": penalty_keys,
+                "suspicious_clients": suspicious_keys,
+                "blacklisted_tokens": blacklist_keys,
+                "memory_fallback_keys": len(rate_limit_memory)
+            }
+        except Exception as e:
+            health_status["statistics"] = {
+                "error": str(e),
+                "memory_fallback_keys": len(rate_limit_memory)
+            }
+    else:
+        health_status["statistics"] = {
+            "memory_fallback_keys": len(rate_limit_memory),
+            "note": "using_memory_backend"
+        }
+    
+    # Security patterns detection status
+    health_status["pattern_detection"] = {
+        "sql_injection_patterns": len(SecurityConfig.SQL_INJECTION_PATTERNS),
+        "xss_patterns": len(SecurityConfig.XSS_PATTERNS),
+        "status": "active"
+    }
+    
+    # Overall health score
+    health_components = [
+        redis_client is not None,  # Redis connectivity
+        True,  # Basic security features always active
+        len(rate_limit_memory) < 10000,  # Memory usage reasonable
+    ]
+    
+    health_score = sum(health_components) / len(health_components) * 100
+    health_status["overall_health_score"] = round(health_score, 2)
+    
+    if health_score >= 80:
+        health_status["status"] = "healthy"
+    elif health_score >= 60:
+        health_status["status"] = "degraded"
+    else:
+        health_status["status"] = "unhealthy"
+    
+    return health_status
+
+
 def require_api_rate_limit(request: Request, rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)):
     """Dependency to enforce API rate limiting"""
     rate_limiter.check_rate_limit(request, SecurityConfig.API_RATE_LIMIT, 3600, "api")  # 1 hour window
@@ -844,6 +942,91 @@ def require_login_rate_limit(request: Request, rate_limiter: AdvancedRateLimiter
     """Dependency to enforce login rate limiting on login endpoints"""
     # This would be used specifically on login endpoints with email parameter
     pass  # Implementation would be in the specific login endpoint
+
+
+def require_auth_endpoint_protection(request: Request = None, 
+                                   rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter),
+                                   monitor: SecurityMonitor = Depends(get_security_monitor)):
+    """Comprehensive protection for authentication endpoints"""
+    def dependency(request: Request):
+        # Monitor for suspicious activity
+        monitor.check_suspicious_activity(request)
+        
+        # Apply base rate limiting for auth endpoints
+        rate_limiter.check_rate_limit(
+            request, 
+            SecurityConfig.ANONYMOUS_RATE_LIMIT, 
+            3600, 
+            "auth", 
+            None
+        )
+        
+        return True
+    
+    return dependency
+
+
+def comprehensive_auth_security(endpoint_type: str = "general", 
+                              custom_limit: Optional[int] = None,
+                              window_seconds: int = 3600):
+    """Comprehensive security dependency for authentication endpoints with enhanced protection"""
+    def dependency(request: Request,
+                  rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter),
+                  monitor: SecurityMonitor = Depends(get_security_monitor)):
+        
+        # Security monitoring
+        monitor.check_suspicious_activity(request)
+        
+        # Check if client is flagged as suspicious
+        if rate_limiter.is_client_suspicious(request):
+            logger.warning(f"Blocking request from suspicious client: {rate_limiter._get_client_identifier(request)[:20]}...")
+            raise HTTPException(status_code=429, detail="Access temporarily restricted")
+        
+        # Apply endpoint-specific rate limiting
+        if endpoint_type == "login":
+            limit = custom_limit or SecurityConfig.LOGIN_RATE_LIMIT
+            window = 900  # 15 minutes for login attempts
+        elif endpoint_type == "register":
+            limit = custom_limit or SecurityConfig.REGISTER_RATE_LIMIT
+            window = 3600  # 1 hour for registrations
+        elif endpoint_type == "password_reset":
+            limit = custom_limit or SecurityConfig.PASSWORD_RESET_RATE_LIMIT
+            window = 1800  # 30 minutes for password resets
+        elif endpoint_type == "token_refresh":
+            limit = custom_limit or SecurityConfig.TOKEN_REFRESH_RATE_LIMIT
+            window = 300  # 5 minutes for token refresh
+        else:
+            # General auth endpoint protection
+            limit = custom_limit or SecurityConfig.ANONYMOUS_RATE_LIMIT
+            window = window_seconds
+        
+        # Apply rate limiting
+        rate_limiter.check_rate_limit(
+            request,
+            limit,
+            window,
+            f"auth_{endpoint_type}",
+            None
+        )
+        
+        # Log security event for monitoring
+        monitor.log_security_event(
+            f"auth_endpoint_access",
+            {
+                "endpoint_type": endpoint_type,
+                "client_hash": SecurityUtils.hash_sensitive_data(
+                    rate_limiter._get_client_identifier(request)
+                )[:16],
+                "limit": limit,
+                "window": window
+            },
+            request,
+            "low"
+        )
+        
+        return True
+    
+    return dependency
 
 
 def monitor_security(request: Request, monitor: SecurityMonitor = Depends(get_security_monitor)):
