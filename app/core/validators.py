@@ -717,7 +717,7 @@ class EnhancedTransactionValidator(BaseValidator):
 class EnhancedBudgetValidator(BaseValidator):
     """Enhanced budget input validation for financial planning"""
     
-    period: str = Field(..., regex=r'^(monthly|weekly|yearly)$', description="Budget period")
+    period: str = Field(..., pattern=r'^(monthly|weekly|yearly)$', description="Budget period")
     category: str = Field(..., min_length=1, max_length=50, description="Budget category")
     amount: condecimal(max_digits=12, decimal_places=2, gt=0) = Field(
         ..., description="Budget amount with precise decimal handling"

@@ -59,7 +59,7 @@ class BudgetCategoryIn(BaseModel):
     amount: condecimal(max_digits=12, decimal_places=2, gt=0) = Field(
         ..., description="Budget amount with precise decimal handling"
     )
-    period: str = Field("monthly", regex=r'^(weekly|monthly|yearly)$', description="Budget period")
+    period: str = Field("monthly", pattern=r'^(weekly|monthly|yearly)$', description="Budget period")
     currency: Optional[str] = Field("USD", min_length=3, max_length=3, description="Currency code")
     description: Optional[str] = Field(None, max_length=500, description="Budget description")
     is_flexible: Optional[bool] = Field(True, description="Can budget be adjusted automatically")

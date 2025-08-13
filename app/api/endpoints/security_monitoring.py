@@ -72,7 +72,7 @@ async def get_security_metrics(
 @router.get("/alerts")
 async def get_security_alerts(
     limit: int = Query(50, ge=1, le=1000),
-    severity: Optional[str] = Query(None, regex="^(LOW|MEDIUM|HIGH|CRITICAL)$"),
+    severity: Optional[str] = Query(None, pattern="^(LOW|MEDIUM|HIGH|CRITICAL)$"),
     current_user: User = Depends(require_admin_access)
 ):
     """
