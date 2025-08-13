@@ -1,5 +1,17 @@
 # flake8: noqa
 
+# Fix for Python 3.10+ collections compatibility BEFORE any other imports
+import collections
+import collections.abc
+if not hasattr(collections, "MutableMapping"):
+    collections.MutableMapping = collections.abc.MutableMapping
+if not hasattr(collections, "MutableSet"):
+    collections.MutableSet = collections.abc.MutableSet
+if not hasattr(collections, "Iterable"):
+    collections.Iterable = collections.abc.Iterable
+if not hasattr(collections, "Mapping"):
+    collections.Mapping = collections.abc.Mapping
+
 import json
 import logging
 import os
