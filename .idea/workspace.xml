@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="readme update">
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="Key Fix: Changed dependencies=[comprehensive_auth_security()] to dependencies=[Depends(comprehensive_auth_security())] throughout the&#10;  auth routes.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -402,7 +402,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755125643522</updated>
     </task>
-    <option name="localTasksCounter" value="42" />
+    <task id="LOCAL-00042" summary="Key Fix: Changed dependencies=[comprehensive_auth_security()] to dependencies=[Depends(comprehensive_auth_security())] throughout the&#10;  auth routes.">
+      <option name="closed" value="true" />
+      <created>1755128551798</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1755128551798</updated>
+    </task>
+    <option name="localTasksCounter" value="43" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -437,6 +445,7 @@
     <MESSAGE value="важный апдейт. если что то пойдет по пизде после этого, верни обратно" />
     <MESSAGE value="  PRODUCTION DEPLOYMENT STATUS&#10;&#10;  The MITA financial application now meets the highest standards for production deployment:&#10;&#10;  - Zero code quality issues (as required for financial applications)&#10;  - All critical security measures implemented&#10;  - Comprehensive testing framework in place&#10;  - Production-grade infrastructure configured&#10;  - Enterprise accessibility compliance achieved&#10;  - Multi-currency internationalization ready" />
     <MESSAGE value="readme update" />
-    <option name="LAST_COMMIT_MESSAGE" value="readme update" />
+    <MESSAGE value="Key Fix: Changed dependencies=[comprehensive_auth_security()] to dependencies=[Depends(comprehensive_auth_security())] throughout the&#10;  auth routes." />
+    <option name="LAST_COMMIT_MESSAGE" value="Key Fix: Changed dependencies=[comprehensive_auth_security()] to dependencies=[Depends(comprehensive_auth_security())] throughout the&#10;  auth routes." />
   </component>
 </project>

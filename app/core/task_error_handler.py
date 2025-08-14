@@ -14,7 +14,8 @@ import traceback
 import logging
 
 import redis
-from rq import Job, Queue, Worker
+from rq import Queue, Worker
+from rq.job import Job
 from rq.exceptions import NoSuchJobError
 from rq.job import JobStatus
 

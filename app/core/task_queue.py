@@ -14,7 +14,8 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 import redis
-from rq import Queue, Worker, Job, Connection
+from rq import Queue, Worker, Connection
+from rq.job import Job
 from rq.exceptions import WorkerException
 from rq.middleware import Middleware
 from rq.job import JobStatus
