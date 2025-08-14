@@ -3,7 +3,7 @@ import os
 from redis import Redis
 from rq_scheduler import Scheduler
 
-from app.tasks import (
+from app.legacy_tasks import (
     enqueue_daily_advice,
     enqueue_daily_reminders,
     enqueue_monthly_redistribution,
