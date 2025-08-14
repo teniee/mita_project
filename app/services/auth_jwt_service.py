@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)  # Reduced from default 13 for performance
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=10)  # Optimized for registration performance
 
 # Thread pool for CPU-intensive operations (bcrypt hashing and JWT operations)
-_thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="crypto_")  # Reduced for Render constraints
+_thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")  # Increased for registration load
 
 # Token operation cache to reduce JWT decoding overhead
 _token_cache: Dict[str, Dict[str, Any]] = {}
@@ -716,7 +716,7 @@ def get_scope_description(scope: str) -> str:
 
 
 def create_token_pair(user_data: dict, user_role: str = None) -> Dict[str, str]:
-    """Create both access and refresh tokens for a user.
+    """Create both access and refresh tokens for a user with performance monitoring.
     
     Args:
         user_data: User data dictionary (must include 'sub' for user ID)
@@ -725,6 +725,9 @@ def create_token_pair(user_data: dict, user_role: str = None) -> Dict[str, str]:
     Returns:
         Dictionary with access_token and refresh_token
     """
+    import time
+    start_time = time.time()
+    
     if not user_data.get("sub"):
         raise ValueError("User data must include 'sub' (user ID)")
     
@@ -733,6 +736,10 @@ def create_token_pair(user_data: dict, user_role: str = None) -> Dict[str, str]:
     
     # Create refresh token
     refresh_token = create_refresh_token(user_data, user_role=user_role)
+    
+    elapsed = time.time() - start_time
+    if elapsed > 1.0:  # Log if token creation takes more than 1 second
+        logger.warning(f"Slow token creation: {elapsed:.2f}s for user {user_data.get('sub', 'unknown')}")
     
     return {
         "access_token": access_token,

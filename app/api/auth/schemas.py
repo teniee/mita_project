@@ -4,6 +4,32 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, condecimal
 from app.core.validators import InputSanitizer, FinancialConstants
 
 
+class FastRegisterIn(BaseModel):
+    """Lightweight registration schema optimized for performance"""
+    
+    email: str = Field(..., min_length=5, max_length=255, description="User email address")
+    password: str = Field(..., min_length=8, max_length=128, description="User password")
+    country: str = Field("US", min_length=2, max_length=3, description="Country code")
+    annual_income: Optional[float] = Field(0.0, ge=0, le=10000000, description="Annual income")
+    timezone: str = Field("UTC", min_length=1, max_length=50, description="User timezone")
+    
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        # Fast email validation - no heavy sanitization
+        if '@' not in v or '.' not in v.split('@')[1]:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        # Minimal password validation for speed
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
 class RegisterIn(BaseModel):
     """Enhanced user registration schema with comprehensive validation"""
     

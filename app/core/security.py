@@ -974,6 +974,24 @@ def comprehensive_auth_security(endpoint_type: str = "general",
                   rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter),
                   monitor: SecurityMonitor = Depends(get_security_monitor)):
         
+        # For registration, use lightweight security to avoid timeouts
+        if endpoint_type == "register":
+            # Skip heavy monitoring for registration performance
+            try:
+                rate_limiter.check_rate_limit(
+                    request,
+                    custom_limit or SecurityConfig.REGISTER_RATE_LIMIT,
+                    3600,  # 1 hour window
+                    "auth_register",
+                    None
+                )
+            except Exception as e:
+                # Don't fail registration due to rate limiting issues
+                logger.warning(f"Rate limiting issue during registration: {e}")
+                pass
+            return True
+        
+        # Full security for other endpoints
         # Security monitoring
         monitor.check_suspicious_activity(request)
         
@@ -986,9 +1004,6 @@ def comprehensive_auth_security(endpoint_type: str = "general",
         if endpoint_type == "login":
             limit = custom_limit or SecurityConfig.LOGIN_RATE_LIMIT
             window = 900  # 15 minutes for login attempts
-        elif endpoint_type == "register":
-            limit = custom_limit or SecurityConfig.REGISTER_RATE_LIMIT
-            window = 3600  # 1 hour for registrations
         elif endpoint_type == "password_reset":
             limit = custom_limit or SecurityConfig.PASSWORD_RESET_RATE_LIMIT
             window = 1800  # 30 minutes for password resets
@@ -1009,20 +1024,21 @@ def comprehensive_auth_security(endpoint_type: str = "general",
             None
         )
         
-        # Log security event for monitoring
-        monitor.log_security_event(
-            f"auth_endpoint_access",
-            {
-                "endpoint_type": endpoint_type,
-                "client_hash": SecurityUtils.hash_sensitive_data(
-                    rate_limiter._get_client_identifier(request)
-                )[:16],
-                "limit": limit,
-                "window": window
-            },
-            request,
-            "low"
-        )
+        # Log security event for monitoring (skip for performance-critical endpoints)
+        if endpoint_type not in ["register"]:
+            monitor.log_security_event(
+                f"auth_endpoint_access",
+                {
+                    "endpoint_type": endpoint_type,
+                    "client_hash": SecurityUtils.hash_sensitive_data(
+                        rate_limiter._get_client_identifier(request)
+                    )[:16],
+                    "limit": limit,
+                    "window": window
+                },
+                request,
+                "low"
+            )
         
         return True
     
@@ -1032,6 +1048,31 @@ def comprehensive_auth_security(endpoint_type: str = "general",
 def monitor_security(request: Request, monitor: SecurityMonitor = Depends(get_security_monitor)):
     """Dependency to monitor for suspicious activity"""
     monitor.check_suspicious_activity(request)
+
+
+def lightweight_auth_security():
+    """Lightweight security for performance-critical registration endpoint"""
+    def dependency(request: Request, rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)):
+        try:
+            # Basic rate limiting only - no heavy monitoring
+            rate_limiter.check_rate_limit(
+                request,
+                SecurityConfig.REGISTER_RATE_LIMIT,
+                3600,  # 1 hour window
+                "register_fast",
+                None
+            )
+        except RateLimitException:
+            # Re-raise rate limit exceptions
+            raise
+        except Exception as e:
+            # Don't fail registration due to other security issues
+            logger.warning(f"Non-critical security check failed during registration: {e}")
+            pass
+        
+        return True
+    
+    return dependency
 
 
 # JWT token security

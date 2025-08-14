@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
-from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
+from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
 from app.api.auth.services import authenticate_google  # noqa: E501
 from app.api.auth.services import authenticate_user_async, register_user_async
 from app.api.dependencies import get_current_user
@@ -14,6 +14,7 @@ from app.core.audit_logging import log_security_event
 from app.core.security import (
     require_auth_endpoint_protection,
     comprehensive_auth_security,
+    lightweight_auth_security,
     get_rate_limiter,
     AdvancedRateLimiter,
     SecurityConfig
@@ -50,15 +51,71 @@ router = APIRouter(
     "/register",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(comprehensive_auth_security())]
+    dependencies=[Depends(lightweight_auth_security())]
 )
 async def register(
+    payload: FastRegisterIn,
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Fast user registration optimized for performance with 10-second timeout."""
+    import asyncio
+    import time
+    
+    start_time = time.time()
+    
+    try:
+        # Minimal logging for performance
+        logger.info(f"Registration attempt for {payload.email[:3]}*** started")
+        
+        # Apply overall timeout to prevent 15+ second hangs
+        result = await asyncio.wait_for(
+            register_user_async(payload, db),
+            timeout=10.0  # 10 second overall timeout
+        )
+        
+        elapsed = time.time() - start_time
+        logger.info(f"Registration successful for {payload.email[:3]}*** in {elapsed:.2f}s")
+        
+        # Log performance metrics
+        if elapsed > 5.0:
+            logger.warning(f"Slow registration: {elapsed:.2f}s for {payload.email[:3]}***")
+        
+        return result
+        
+    except asyncio.TimeoutError:
+        elapsed = time.time() - start_time
+        logger.error(f"Registration timeout for {payload.email[:3]}*** after {elapsed:.2f}s")
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="Registration is taking too long. Please try again."
+        )
+    except HTTPException:
+        elapsed = time.time() - start_time
+        logger.info(f"Registration HTTP error for {payload.email[:3]}*** after {elapsed:.2f}s")
+        raise
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(f"Registration failed: {str(e)[:100]} after {elapsed:.2f}s")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed. Please try again."
+        )
+
+
+@router.post(
+    "/register-full",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(comprehensive_auth_security())]
+)
+async def register_full(
     payload: RegisterIn,
     request: Request,
     db: AsyncSession = Depends(get_async_db),
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
-    """Create a new user account with comprehensive rate limiting and security."""
+    """Create a new user account with comprehensive validation and security."""
     # Apply registration-specific rate limiting
     rate_limiter.check_auth_rate_limit(request, payload.email, "register")
     

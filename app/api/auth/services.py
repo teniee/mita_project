@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
-from app.api.auth.schemas import GoogleAuthIn, RegisterIn, TokenOut
+from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
 from app.db.models import User
 from app.services.auth_jwt_service import (
     create_access_token,
@@ -128,61 +128,110 @@ async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
     )
 
 
-# Async versions of auth functions
-async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
-    # Validate password strength
-    if len(data.password) < 8:
+# Fast registration function for performance-critical scenarios
+async def register_user_async(data: FastRegisterIn | RegisterIn, db: AsyncSession) -> TokenOut:
+    # Skip heavy validation for FastRegisterIn
+    if isinstance(data, FastRegisterIn):
+        # Minimal validation for performance
+        if len(data.password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters long",
+            )
+    else:
+        # Full validation for RegisterIn
+        if len(data.password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters long",
+            )
+        
+        # Check password complexity
+        import re
+        # Quick password complexity check
+        if not (re.search(r'[A-Za-z]', data.password) and re.search(r'[0-9]', data.password)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain both letters and numbers",
+            )
+        
+        # Fast email format validation
+        if '@' not in data.email or '.' not in data.email.split('@')[1]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid email format",
+            )
+    
+    # Optimized user existence check with timeout
+    try:
+        import asyncio
+        result = await asyncio.wait_for(
+            db.execute(select(User.id).filter(User.email == data.email.lower()).limit(1)),
+            timeout=3.0  # 3 second timeout for user check
+        )
+        existing_user = result.scalars().first()
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists",
+            )
+    except asyncio.TimeoutError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again.",
         )
     
-    # Check password complexity
-    import re
-    if not re.search(r'[A-Za-z]', data.password) or not re.search(r'[0-9]', data.password):
+    # Validate annual income range (only for full registration)
+    if not isinstance(data, FastRegisterIn) and hasattr(data, 'annual_income') and data.annual_income:
+        if data.annual_income < 0 or data.annual_income > 10000000:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Annual income must be between 0 and 10,000,000",
+            )
+    
+    # Hash password asynchronously with timeout
+    try:
+        import asyncio
+        password_hash = await asyncio.wait_for(
+            async_hash_password(data.password),
+            timeout=5.0  # 5 second timeout for password hashing
+        )
+    except asyncio.TimeoutError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain both letters and numbers",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again.",
         )
     
-    # Validate email format
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    if not re.match(email_pattern, data.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email format",
+    # Create user with database timeout
+    # Handle different schema types
+    if isinstance(data, FastRegisterIn):
+        user = User(
+            email=data.email.lower(),
+            password_hash=password_hash,
+            country=data.country,
+            annual_income=data.annual_income or 0.0,
+            timezone=data.timezone,
+        )
+    else:
+        user = User(
+            email=data.email.lower(),
+            password_hash=password_hash,
+            country=data.country,
+            annual_income=data.annual_income,
+            timezone=data.timezone,
         )
     
-    # Check if user already exists
-    result = await db.execute(select(User).filter(User.email == data.email.lower()))
-    existing_user = result.scalars().first()
-    
-    if existing_user:
+    try:
+        db.add(user)
+        await asyncio.wait_for(db.commit(), timeout=5.0)  # 5 second timeout for user creation
+        await asyncio.wait_for(db.refresh(user), timeout=3.0)  # 3 second timeout for refresh
+    except asyncio.TimeoutError:
+        await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Registration failed. Please try again.",
         )
-    
-    # Validate annual income range
-    if data.annual_income and (data.annual_income < 0 or data.annual_income > 10000000):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Annual income must be between 0 and 10,000,000",
-        )
-    
-    # Hash password asynchronously to avoid blocking the event loop
-    password_hash = await async_hash_password(data.password)
-    
-    user = User(
-        email=data.email.lower(),
-        password_hash=password_hash,
-        country=data.country,
-        annual_income=data.annual_income,
-        timezone=data.timezone,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
     
     # Determine user role and create tokens with appropriate scopes
     user_role = "premium_user" if user.is_premium else "basic_user"

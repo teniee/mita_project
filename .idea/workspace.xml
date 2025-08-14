@@ -6,12 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="Solution:&#10;&#10;  1. Created app/tasks/__init__.py - Makes it a proper Python package&#10;  2. Renamed app/tasks.py → app/legacy_tasks.py - Eliminates naming conflict&#10;  3. Updated imports in scheduler script">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dependencies.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/async_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/async_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/auth_jwt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/auth_jwt_service.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -464,7 +458,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755192098384</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="Solution:&#10;&#10;  1. Created app/tasks/__init__.py - Makes it a proper Python package&#10;  2. Renamed app/tasks.py → app/legacy_tasks.py - Eliminates naming conflict&#10;  3. Updated imports in scheduler script">
+      <option name="closed" value="true" />
+      <created>1755199326295</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1755199326295</updated>
+    </task>
+    <option name="localTasksCounter" value="50" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
