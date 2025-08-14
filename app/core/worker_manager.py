@@ -15,11 +15,11 @@ from enum import Enum
 
 import redis
 from rq import Worker, Connection, Queue
-from rq.middleware import Middleware
+# RQ 1.15.1 doesn't have middleware module - using callbacks instead
 
 from app.core.config import settings
 from app.core.logger import get_logger
-from app.core.task_queue import TaskLoggingMiddleware, TaskPriority
+from app.core.task_queue import TaskPriority
 
 logger = get_logger(__name__)
 
@@ -44,13 +44,11 @@ class WorkerConfig:
     heartbeat_interval: int = 30  # seconds
     burst_mode: bool = False
     exception_handlers: List[Callable] = None
-    middlewares: List[Middleware] = None
+    # Middleware functionality replaced with callbacks in RQ 1.15.1
 
     def __post_init__(self):
         if self.exception_handlers is None:
             self.exception_handlers = []
-        if self.middlewares is None:
-            self.middlewares = [TaskLoggingMiddleware()]
 
 
 class MitaWorker(Worker):
@@ -73,9 +71,7 @@ class MitaWorker(Worker):
             exception_handlers=config.exception_handlers
         )
         
-        # Add middlewares
-        for middleware in config.middlewares:
-            self.push_middleware(middleware)
+        # Note: Middleware functionality replaced with job callbacks in RQ 1.15.1
         
         # Worker state tracking
         self.state = WorkerState.STARTING

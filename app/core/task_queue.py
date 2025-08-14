@@ -16,7 +16,7 @@ from enum import Enum
 import redis
 from rq import Queue, Worker, Connection
 from rq.job import Job
-from rq.middleware import Middleware
+# Middleware functionality replaced with RQ 1.15.1 compatible approach
 from rq.job import JobStatus
 from sqlalchemy.orm import Session
 
@@ -69,54 +69,31 @@ class TaskResult:
         return data
 
 
-class TaskLoggingMiddleware(Middleware):
-    """RQ middleware for comprehensive task logging."""
+def task_logging_callback(job, connection, result, *args, **kwargs):
+    """RQ 1.15.1 compatible success callback for task logging."""
+    logger.info(
+        f"Task completed: {job.id} - {job.func_name}",
+        extra={
+            'task_id': job.id,
+            'function': job.func_name,
+            'status': 'completed',
+            'result_type': type(result).__name__ if result is not None else 'None'
+        }
+    )
 
-    def call(self, queue: Queue, job_class, job, *args, **kwargs):
-        """Log task execution with comprehensive details."""
-        logger.info(
-            f"Task started: {job.id} - {job.func_name}",
-            extra={
-                'task_id': job.id,
-                'function': job.func_name,
-                'queue': queue.name,
-                'started_at': datetime.utcnow().isoformat(),
-                'args_count': len(job.args),
-                'kwargs_count': len(job.kwargs)
-            }
-        )
-        
-        start_time = time.time()
-        try:
-            result = super().call(queue, job_class, job, *args, **kwargs)
-            duration = time.time() - start_time
-            
-            logger.info(
-                f"Task completed: {job.id} - {job.func_name} ({duration:.2f}s)",
-                extra={
-                    'task_id': job.id,
-                    'function': job.func_name,
-                    'duration': duration,
-                    'status': 'completed'
-                }
-            )
-            return result
-            
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(
-                f"Task failed: {job.id} - {job.func_name} ({duration:.2f}s): {str(e)}",
-                extra={
-                    'task_id': job.id,
-                    'function': job.func_name,
-                    'duration': duration,
-                    'status': 'failed',
-                    'error': str(e),
-                    'error_type': type(e).__name__
-                },
-                exc_info=True
-            )
-            raise
+def task_failure_callback(job, connection, type, value, traceback):
+    """RQ 1.15.1 compatible failure callback for task logging."""
+    logger.error(
+        f"Task failed: {job.id} - {job.func_name}: {str(value)}",
+        extra={
+            'task_id': job.id,
+            'function': job.func_name,
+            'status': 'failed',
+            'error': str(value),
+            'error_type': type.__name__ if type else 'Unknown'
+        },
+        exc_info=True
+    )
 
 
 class MitaTaskQueue:
@@ -199,6 +176,8 @@ class MitaTaskQueue:
                 result_ttl=result_ttl,
                 failure_ttl=result_ttl,
                 meta=metadata,
+                on_success=task_logging_callback,
+                on_failure=task_failure_callback,
                 **kwargs
             )
             
@@ -317,6 +296,8 @@ class MitaTaskQueue:
                 *job.args,
                 timeout=job.timeout,
                 meta=metadata,
+                on_success=task_logging_callback,
+                on_failure=task_failure_callback,
                 **job.kwargs
             )
             
