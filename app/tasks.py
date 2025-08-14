@@ -4,17 +4,20 @@ Updated to use the new async task system.
 """
 
 import os
-from app.services.task_manager import task_manager
 
 
 def enqueue_daily_advice() -> None:
     """Enqueue daily AI advice batch task using new async system."""
+    # Use delayed import to avoid circular dependency
+    from app.services.task_manager import task_manager
     task_info = task_manager.submit_daily_advice_batch()
     print(f"Daily advice batch enqueued: {task_info.task_id}")
 
 
 def enqueue_monthly_redistribution() -> None:
     """Enqueue monthly redistribution batch task using new async system."""
+    # Use delayed import to avoid circular dependency
+    from app.services.task_manager import task_manager
     task_info = task_manager.submit_monthly_redistribution_batch()
     print(f"Monthly redistribution batch enqueued: {task_info.task_id}")
 
