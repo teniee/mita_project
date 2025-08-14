@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Set
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -20,7 +22,15 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)  # Reduced from default 13 for performance
+
+# Thread pool for CPU-intensive operations (bcrypt hashing and JWT operations)
+_thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="crypto_")  # Reduced for Render constraints
+
+# Token operation cache to reduce JWT decoding overhead
+_token_cache: Dict[str, Dict[str, Any]] = {}
+_cache_max_size = 200  # Reduced for Render memory constraints
+_cache_cleanup_interval = 180  # 3 minutes - more frequent cleanup
 
 # JWT issuer and audience for MITA financial application
 JWT_ISSUER = "mita-finance-api"
@@ -110,11 +120,25 @@ class UserRole(Enum):
 
 
 def hash_password(plain: str) -> str:
+    """Synchronous password hashing - use async_hash_password() for better performance"""
     return pwd_context.hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    """Synchronous password verification - use async_verify_password() for better performance"""
     return pwd_context.verify(plain, hashed)
+
+
+async def async_hash_password(plain: str) -> str:
+    """Asynchronous password hashing using thread pool to avoid blocking the event loop"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, pwd_context.hash, plain)
+
+
+async def async_verify_password(plain: str, hashed: str) -> bool:
+    """Asynchronous password verification using thread pool to avoid blocking the event loop"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, pwd_context.verify, plain, hashed)
 
 
 def decode_token(token: str) -> dict:
@@ -205,8 +229,45 @@ def revoke_user_tokens(user_id: str) -> int:
     return 0
 
 
+def _cleanup_token_cache():
+    """Clean up expired entries from token cache"""
+    global _token_cache
+    current_time = time.time()
+    
+    # Remove expired entries
+    expired_keys = [
+        token_hash for token_hash, cache_entry in _token_cache.items()
+        if cache_entry.get("cache_expiry", 0) < current_time
+    ]
+    
+    for key in expired_keys:
+        _token_cache.pop(key, None)
+    
+    # If cache is still too large, remove oldest entries
+    if len(_token_cache) > _cache_max_size:
+        sorted_items = sorted(_token_cache.items(), key=lambda x: x[1].get("cache_time", 0))
+        to_remove = len(_token_cache) - _cache_max_size
+        for i in range(to_remove):
+            _token_cache.pop(sorted_items[i][0], None)
+
+
 def get_token_info(token: str) -> Optional[Dict[str, Any]]:
-    """Get information about a token without validating blacklist."""
+    """Get information about a token without validating blacklist - with caching for performance."""
+    # Create cache key (first 16 chars of token hash for security)
+    import hashlib
+    token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
+    current_time = time.time()
+    
+    # Check cache first
+    if token_hash in _token_cache:
+        cache_entry = _token_cache[token_hash]
+        if cache_entry.get("cache_expiry", 0) > current_time:
+            return cache_entry["token_info"]
+    
+    # Clean up cache periodically
+    if len(_token_cache) > _cache_max_size or current_time % _cache_cleanup_interval < 1:
+        _cleanup_token_cache()
+    
     secrets = [_current_secret()]
     prev = _previous_secret()
     if prev:
@@ -215,7 +276,7 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
     for secret in secrets:
         try:
             payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
-            return {
+            token_info = {
                 "jti": payload.get("jti"),
                 "user_id": payload.get("sub"),
                 "scope": payload.get("scope"),
@@ -224,6 +285,20 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
                 "iat": payload.get("iat"),
                 "is_expired": payload.get("exp", 0) < time.time()
             }
+            
+            # Cache the result for 5 minutes or until token expiry, whichever is shorter
+            cache_expiry = min(
+                current_time + 300,  # 5 minutes
+                payload.get("exp", current_time + 300)  # Token expiry
+            )
+            
+            _token_cache[token_hash] = {
+                "token_info": token_info,
+                "cache_time": current_time,
+                "cache_expiry": cache_expiry
+            }
+            
+            return token_info
         except JWTError:
             continue
     

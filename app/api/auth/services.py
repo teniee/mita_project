@@ -12,6 +12,8 @@ from app.services.auth_jwt_service import (
     create_token_pair,
     hash_password,
     verify_password,
+    async_hash_password,
+    async_verify_password,
     get_user_scopes,
     UserRole
 )
@@ -168,9 +170,12 @@ async def register_user_async(data: RegisterIn, db: AsyncSession) -> TokenOut:
             detail="Annual income must be between 0 and 10,000,000",
         )
     
+    # Hash password asynchronously to avoid blocking the event loop
+    password_hash = await async_hash_password(data.password)
+    
     user = User(
         email=data.email.lower(),
-        password_hash=hash_password(data.password),
+        password_hash=password_hash,
         country=data.country,
         annual_income=data.annual_income,
         timezone=data.timezone,
@@ -201,10 +206,20 @@ async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
     result = await db.execute(select(User).filter(User.email == data.email.lower()))
     user = result.scalars().first()
     
-    if not user or not verify_password(data.password, user.password_hash):
-        # Add artificial delay to prevent timing attacks
-        import asyncio
-        await asyncio.sleep(0.1)
+    if not user:
+        # Note: Removed artificial delay for better performance
+        # In production, consider using rate limiting instead
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    
+    # Verify password asynchronously to avoid blocking the event loop
+    is_valid_password = await async_verify_password(data.password, user.password_hash)
+    
+    if not is_valid_password:
+        # Note: Removed artificial delay for better performance
+        # In production, consider using rate limiting instead
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",

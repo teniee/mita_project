@@ -40,32 +40,44 @@ def initialize_database():
         database_url = database_url.replace("sslmode=", "ssl=")
     
     
-    # Create async engine with optimized settings
+    # Create async engine with optimized settings for Render/production performance
     async_engine = create_async_engine(
         database_url,
-        echo=getattr(settings, 'DEBUG', False),
+        echo=False,  # Always disable echo for performance
         pool_pre_ping=True,
-        pool_size=20,
-        max_overflow=30,
-        pool_timeout=30,
-        pool_recycle=3600,  # Recycle connections every hour
+        # Optimized connection pooling for Render deployment
+        pool_size=3,            # Smaller pool for Render's memory constraints
+        max_overflow=7,         # Reduced overflow
+        pool_timeout=5,         # Faster timeout for responsive errors
+        pool_recycle=900,       # 15 minutes - faster recycle for Render
         # Use StaticPool for SQLite, QueuePool for PostgreSQL (default)
         poolclass=StaticPool if "sqlite" in database_url else None,
         connect_args={
             "server_settings": {
                 "application_name": "mita_finance_app",
-                "jit": "off",  # Disable JIT for faster connections
-            }
-        } if "postgresql" in database_url else {}
+                "jit": "off",                    # Disable JIT for faster connections
+                "log_statement": "none",         # Disable query logging for performance
+                "log_duration": "off",           # Disable duration logging
+                "tcp_keepalives_idle": "180",    # 3 minutes - faster detection
+                "tcp_keepalives_interval": "15", # 15 seconds
+                "tcp_keepalives_count": "3"      # 3 retries
+            },
+            "command_timeout": 5,                # 5 second query timeout for responsiveness
+        } if "postgresql" in database_url else {},
+        # Performance optimizations
+        pool_reset_on_return='commit',  # Only reset on commit, not rollback
+        execution_options={
+            "isolation_level": "READ_COMMITTED"  # Faster isolation level
+        }
     )
     
-    # Create async session factory
+    # Create async session factory with optimized settings
     AsyncSessionLocal = async_sessionmaker(
         bind=async_engine,
         class_=AsyncSession,
-        expire_on_commit=False,
-        autoflush=False,
-        autocommit=False
+        expire_on_commit=False,     # Don't expire objects after commit for better performance
+        autoflush=False,            # Manual flushing for better control
+        autocommit=False,           # Manual transactions
     )
 
 # Base class for all models

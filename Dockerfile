@@ -57,7 +57,8 @@ COPY --chown=mita:mita . .
 # Copy and set up scripts
 COPY --chown=mita:mita ./wait-for-it.sh /app/wait-for-it.sh
 COPY --chown=mita:mita ./start.sh /app/start.sh
-RUN chmod +x /app/wait-for-it.sh /app/start.sh
+COPY --chown=mita:mita ./start_optimized.py /app/start_optimized.py
+RUN chmod +x /app/wait-for-it.sh /app/start.sh /app/start_optimized.py
 
 # Switch to non-root user
 USER mita
@@ -69,5 +70,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Production startup command with environment validation
-CMD ["/app/start.sh"]
+# Production startup command with optimizations
+CMD ["python", "/app/start_optimized.py"]

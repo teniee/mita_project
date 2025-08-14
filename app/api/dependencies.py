@@ -15,10 +15,37 @@ from app.services.auth_jwt_service import (
     UserRole
 )
 from app.core.audit_logging import log_security_event
+from app.core.performance_cache import user_cache, cache_user_data
 
 logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+async def _get_user_from_cache_or_db(user_id: str, db: AsyncSession) -> User:
+    """Get user from cache or database with automatic caching"""
+    cache_key = f"user:{user_id}"
+    
+    # Try cache first
+    cached_user = user_cache.get(cache_key)
+    if cached_user is not None:
+        logger.debug(f"User {user_id} found in cache")
+        return cached_user
+    
+    # Query from database
+    try:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        
+        # Cache the result if user exists
+        if user:
+            user_cache.set(cache_key, user, ttl=300)  # Cache for 5 minutes
+            logger.debug(f"User {user_id} cached for future requests")
+        
+        return user
+    except Exception as db_error:
+        logger.error(f"Database error during user lookup: {db_error}")
+        raise
 
 
 async def get_current_user(
@@ -70,12 +97,10 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
         
-        # Query user from database
+        # Query user from cache or database
         try:
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
+            user = await _get_user_from_cache_or_db(user_id, db)
         except Exception as db_error:
-            logger.error(f"Database error during user lookup: {db_error}")
             log_security_event("database_error", {
                 "operation": "user_lookup",
                 "user_id": user_id,
@@ -275,10 +300,9 @@ async def get_refresh_token_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
         
-        # Query user from database
+        # Query user from cache or database
         try:
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
+            user = await _get_user_from_cache_or_db(user_id, db)
         except Exception as db_error:
             logger.error(f"Database error during refresh token user lookup: {db_error}")
             raise HTTPException(

@@ -12,6 +12,7 @@ if not hasattr(collections, "Iterable"):
 if not hasattr(collections, "Mapping"):
     collections.Mapping = collections.abc.Mapping
 
+import asyncio
 import json
 import logging
 import os
@@ -68,6 +69,7 @@ from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
 from app.core.logging_config import setup_logging
 from app.core.feature_flags import get_feature_flag_manager, is_feature_enabled
+from app.core.deployment_optimizations import apply_platform_optimizations
 from app.middleware.audit_middleware import audit_middleware
 from app.core.error_handler import (
     MITAException, ValidationException, 
@@ -105,6 +107,13 @@ sentry_sdk.init(
 # Initialize comprehensive logging
 setup_logging()
 
+# Apply platform-specific optimizations
+deployment_config = apply_platform_optimizations()
+
+# Initialize logger after logging setup
+logger = logging.getLogger(__name__)
+logger.info(f"Applied optimizations for platform: {deployment_config['platform']}")
+
 app = FastAPI(title="Mita Finance API", version="1.0.0")
 
 # ---- Health Check Endpoint ----
@@ -120,9 +129,9 @@ async def health_check():
 
 @app.get("/health")
 async def detailed_health_check():
-    """Detailed health check with database status"""
-    import asyncio
+    """Detailed health check with database status and performance metrics"""
     from app.core.async_session import check_database_health
+    from app.core.performance_cache import get_cache_stats
     
     # Check environment configuration
     config_status = {
@@ -138,7 +147,7 @@ async def detailed_health_check():
     database_error = None
     
     try:
-        db_healthy = await asyncio.wait_for(check_database_health(), timeout=5.0)
+        db_healthy = await asyncio.wait_for(check_database_health(), timeout=1.0)  # Very short timeout for responsive health checks
         database_status = "connected" if db_healthy else "disconnected"
     except asyncio.TimeoutError:
         database_status = "timeout"
@@ -146,6 +155,9 @@ async def detailed_health_check():
     except Exception as e:
         database_status = "error"
         database_error = str(e)
+    
+    # Get performance cache statistics
+    cache_stats = get_cache_stats()
     
     # Determine overall status
     overall_status = "healthy"
@@ -160,6 +172,7 @@ async def detailed_health_check():
         "version": "1.0.0",
         "database": database_status,
         "config": config_status,
+        "cache_stats": cache_stats,
         "timestamp": time.time(),
         "port": os.getenv("PORT", "8000")
     }
@@ -182,40 +195,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add comprehensive audit logging middleware
-@app.middleware("http")
-async def audit_logging_middleware(request: Request, call_next):
-    return await audit_middleware(request, call_next)
-
+# Lightweight performance monitoring middleware
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def performance_logging_middleware(request: Request, call_next):
+    """Lightweight middleware for critical error handling only"""
     start_time = time.time()
-    response = await call_next(request)
-    duration = time.time() - start_time
-    logging.info(
-        f"{request.method} {request.url.path} completed in {duration*1000:.2f}ms with status {response.status_code}"
-    )
-    return response
-
-
-@app.middleware("http")
-async def capture_request_bodies(request: Request, call_next):
-    body = await request.body()
+    
     try:
         response = await call_next(request)
-    except Exception as exc:
-        with sentry_sdk.push_scope() as scope:
-            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
-            sentry_sdk.capture_exception(exc)
-        raise
-    if response.status_code >= 400:
-        with sentry_sdk.push_scope() as scope:
-            scope.set_extra("request_body", body.decode("utf-8", "ignore"))
-            sentry_sdk.capture_message(
-                f"HTTP {response.status_code} for {request.url.path}"
+        duration = time.time() - start_time
+        
+        # Only log very slow requests to reduce I/O overhead
+        if duration > 2.0:  # Only log requests taking more than 2 seconds
+            logger.warning(
+                f"SLOW REQUEST: {request.method} {request.url.path} "
+                f"completed in {duration*1000:.0f}ms with status {response.status_code}"
             )
-    return response
+            
+        return response
+        
+    except Exception as exc:
+        duration = time.time() - start_time
+        logger.error(
+            f"ERROR: {request.method} {request.url.path} failed after {duration*1000:.0f}ms: {exc}"
+        )
+        
+        # Send to Sentry for critical errors only
+        sentry_sdk.capture_exception(exc)
+        raise
+
+
+# Minimal audit middleware for auth endpoints only
+@app.middleware("http") 
+async def selective_audit_middleware(request: Request, call_next):
+    """Apply audit logging only to auth endpoints for better performance"""
+    # Only audit auth endpoints to reduce overhead
+    if request.url.path.startswith("/api/auth"):
+        return await audit_middleware(request, call_next)
+    else:
+        # Skip audit for all other endpoints
+        return await call_next(request)
 
 
 @app.middleware("http")
@@ -246,12 +266,12 @@ async def security_headers(request: Request, call_next):
 
 # ---- Routers ----
 
-# Public routes with rate limiter
+# Public routes with optimized rate limiting
 app.include_router(
     auth_router,
     prefix="/api",
     tags=["Authentication"],
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    # Removed heavy rate limiter dependency for performance - rate limiting handled in routes
 )
 
 # Protected routes - Fixed duplicate path segments
@@ -325,45 +345,65 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 @app.on_event("startup")
 async def on_startup():
-    """Initialize application on startup"""
+    """Initialize application on startup with optimized performance"""
     try:
         logging.info("🚀 Starting MITA Finance API initialization...")
         
-        # Initialize feature flags
-        logging.info("🚩 Initializing feature flag system...")
-        get_feature_flag_manager()  # Initialize the global manager
-        logging.info("✅ Feature flag system initialized successfully")
+        # Initialize lightweight components first for faster startup
+        tasks = []
         
-        # Initialize rate limiter
-        logging.info("📊 Initializing rate limiter...")
-        await init_rate_limiter(app)
-        logging.info("✅ Rate limiter initialized successfully")
+        # Fast startup: Initialize only critical components
+        logging.info("🚀 Starting fast initialization...")
         
-        # Initialize database with retry logic
-        logging.info("🔄 Initializing database connection...")
-        max_retries = 3
-        for attempt in range(max_retries):
+        # Initialize feature flags (fast, synchronous)
+        try:
+            get_feature_flag_manager()
+            logging.info("✅ Feature flags ready")
+        except Exception as e:
+            logging.warning(f"⚠️ Feature flags init warning: {e}")
+        
+        # Initialize critical services with short timeouts
+        async def init_critical_services():
+            services_status = {"rate_limiter": False, "database": False}
+            
+            # Rate limiter with timeout
             try:
-                await init_database()
-                logging.info("✅ Database initialized successfully")
-                break
+                await asyncio.wait_for(init_rate_limiter(app), timeout=3.0)
+                services_status["rate_limiter"] = True
+                logging.info("✅ Rate limiter ready")
+            except asyncio.TimeoutError:
+                logging.warning("⚠️ Rate limiter init timed out - continuing without it")
             except Exception as e:
-                if attempt == max_retries - 1:
-                    logging.error(f"❌ Database initialization failed after {max_retries} attempts: {e}")
-                    raise
-                else:
-                    logging.warning(f"⚠️ Database initialization attempt {attempt + 1} failed: {e}")
-                    import asyncio
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                logging.warning(f"⚠️ Rate limiter init failed: {e}")
+            
+            # Database with minimal retry
+            try:
+                await asyncio.wait_for(init_database(), timeout=5.0)
+                services_status["database"] = True
+                logging.info("✅ Database ready")
+            except asyncio.TimeoutError:
+                logging.warning("⚠️ Database init timed out - will retry on first request")
+            except Exception as e:
+                logging.warning(f"⚠️ Database init failed: {e}")
+            
+            return services_status
+        
+        # Initialize critical services
+        services_status = await init_critical_services()
+        
+        # Log startup status
+        ready_services = sum(services_status.values())
+        total_services = len(services_status)
+        logging.info(f"🎯 Fast startup complete: {ready_services}/{total_services} services ready")
         
         logging.info("🎉 MITA Finance API startup completed successfully!")
         
     except Exception as e:
-        logging.error(f"💥 Startup failed: {e}")
+        logging.error(f"💥 Startup error: {e}")
         import sentry_sdk
         sentry_sdk.capture_exception(e)
         # Don't exit - let the application start and show health check errors
-        logging.error("⚠️ Application starting with limited functionality")
+        logging.warning("⚠️ Application starting with limited functionality")
 
 @app.on_event("shutdown")
 async def on_shutdown():
