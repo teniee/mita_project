@@ -104,11 +104,13 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
                 "method": request.method
             })
             
-            # In fail-secure mode, deny requests during errors
-            if getattr(SecurityConfig, 'RATE_LIMIT_FAIL_SECURE', True):
+            # In fail-secure mode, deny requests during errors (SOFTENED)
+            # Only fail secure for auth endpoints to prevent brute force
+            if (getattr(SecurityConfig, 'RATE_LIMIT_FAIL_SECURE', True) and 
+                any(request.url.path.startswith(auth_path) for auth_path in self.auth_paths)):
                 return self._create_rate_limit_response(
                     request, 
-                    "Service temporarily unavailable. Please try again later."
+                    "Authentication temporarily unavailable. Please try again later."
                 )
             
             # Otherwise, allow request to continue
@@ -141,12 +143,12 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
         # Auth endpoints have special handling in their route handlers
         # This provides an additional layer of protection
         
-        # Very strict limits for auth endpoints
+        # Balanced limits for auth endpoints (OPTIMIZED for better UX)
         limits = {
-            'anonymous': {'limit': 10, 'window': 300},  # 10 requests per 5 minutes
-            'basic_user': {'limit': 15, 'window': 300},
-            'premium_user': {'limit': 20, 'window': 300},
-            'admin_user': {'limit': 50, 'window': 300}
+            'anonymous': {'limit': 20, 'window': 300},  # 20 requests per 5 minutes (increased from 10)
+            'basic_user': {'limit': 30, 'window': 300},  # Increased from 15
+            'premium_user': {'limit': 40, 'window': 300}, # Increased from 20
+            'admin_user': {'limit': 80, 'window': 300}    # Increased from 50
         }
         
         config = limits.get(user_tier, limits['anonymous'])
@@ -178,11 +180,11 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
         
         # Admin endpoints need special protection
         if user_tier != 'admin_user':
-            # Non-admin users get very strict limits
-            self.rate_limiter.check_rate_limit(request, 5, 3600, "admin_non_admin")
+            # Non-admin users get reasonable limits (SOFTENED)
+            self.rate_limiter.check_rate_limit(request, 15, 3600, "admin_non_admin")  # Increased from 5
         else:
-            # Even admin users have limits to prevent abuse
-            self.rate_limiter.check_rate_limit(request, 100, 3600, "admin_admin")
+            # Admin users have higher limits
+            self.rate_limiter.check_rate_limit(request, 200, 3600, "admin_admin")  # Increased from 100
     
     async def _apply_general_rate_limiting(self, request: Request, user_tier: str) -> None:
         """Apply general API rate limiting"""

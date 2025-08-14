@@ -61,20 +61,20 @@ class RateLimiter:
         self.cleanup_interval = 300  # 5 minutes
         self.last_cleanup = time.time()
         
-        # Default rate limit rules
+        # Default rate limit rules (OPTIMIZED for better UX)
         self.default_rules = {
-            'global': RateLimitRule('global', 1000, 3600, per='ip'),  # 1000 per hour per IP
-            'auth': RateLimitRule('auth', 5, 300, per='ip'),          # 5 auth attempts per 5 min per IP
-            'api': RateLimitRule('api', 100, 300, per='user'),        # 100 API calls per 5 min per user
-            'upload': RateLimitRule('upload', 10, 3600, per='user'),  # 10 uploads per hour per user
-            'heavy': RateLimitRule('heavy', 5, 60, per='user'),       # 5 heavy operations per minute per user
+            'global': RateLimitRule('global', 1500, 3600, per='ip'),  # 1500 per hour per IP (increased from 1000)
+            'auth': RateLimitRule('auth', 12, 300, per='ip'),          # 12 auth attempts per 5 min per IP (increased from 5)
+            'api': RateLimitRule('api', 200, 300, per='user'),        # 200 API calls per 5 min per user (increased from 100)
+            'upload': RateLimitRule('upload', 20, 3600, per='user'),  # 20 uploads per hour per user (increased from 10)
+            'heavy': RateLimitRule('heavy', 10, 60, per='user'),       # 10 heavy operations per minute per user (increased from 5)
         }
         
-        # Security rules for suspicious behavior
+        # Security rules for suspicious behavior (SOFTENED for better UX)
         self.security_rules = {
-            'failed_auth': RateLimitRule('failed_auth', 3, 900, per='ip'),      # 3 failed auth per 15 min
-            'suspicious': RateLimitRule('suspicious', 10, 3600, per='ip'),      # 10 suspicious requests per hour
-            'brute_force': RateLimitRule('brute_force', 1, 3600, per='ip'),     # 1 brute force attempt per hour
+            'failed_auth': RateLimitRule('failed_auth', 6, 900, per='ip'),      # 6 failed auth per 15 min (increased from 3)
+            'suspicious': RateLimitRule('suspicious', 20, 3600, per='ip'),      # 20 suspicious requests per hour (increased from 10)
+            'brute_force': RateLimitRule('brute_force', 2, 3600, per='ip'),     # 2 brute force attempts per hour (increased from 1)
         }
     
     def _init_redis(self) -> Optional[redis.Redis]:

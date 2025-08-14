@@ -57,16 +57,16 @@ class SecurityConfig:
     MAX_PASSWORD_LENGTH = 128
     PASSWORD_HASH_ROUNDS = 12
     
-    # Rate limiting - Production financial app settings
-    DEFAULT_RATE_LIMIT = 100        # requests per hour for general endpoints
-    API_RATE_LIMIT = 1000          # API calls per hour for authenticated users
-    ANONYMOUS_RATE_LIMIT = 50      # Stricter limit for anonymous users
+    # Rate limiting - Production financial app settings (OPTIMIZED for better UX)
+    DEFAULT_RATE_LIMIT = 300        # requests per hour for general endpoints (increased from 100)
+    API_RATE_LIMIT = 2000          # API calls per hour for authenticated users (increased from 1000)
+    ANONYMOUS_RATE_LIMIT = 120     # More reasonable limit for anonymous users (increased from 50)
     
-    # Authentication rate limits (critical for financial security)
-    LOGIN_RATE_LIMIT = 5           # login attempts per 15 minutes
-    REGISTER_RATE_LIMIT = 3        # registrations per hour per IP
-    PASSWORD_RESET_RATE_LIMIT = 2  # password resets per 30 minutes
-    TOKEN_REFRESH_RATE_LIMIT = 10  # token refreshes per 5 minutes
+    # Authentication rate limits (balanced security with usability)
+    LOGIN_RATE_LIMIT = 10          # login attempts per 15 minutes (increased from 5)
+    REGISTER_RATE_LIMIT = 5        # registrations per hour per IP (increased from 3)
+    PASSWORD_RESET_RATE_LIMIT = 3  # password resets per 30 minutes (increased from 2)
+    TOKEN_REFRESH_RATE_LIMIT = 25  # token refreshes per 5 minutes (increased from 10)
     
     # Advanced rate limiting settings
     SLIDING_WINDOW_PRECISION = 100  # Higher precision for sliding window
@@ -78,26 +78,26 @@ class SecurityConfig:
     MAX_CONCURRENT_SESSIONS = 5       # Max concurrent sessions per user
     BRUTE_FORCE_LOCKOUT_DURATION = 1800  # 30 minutes lockout after repeated violations
     
-    # Rate limit tiers for different user types
+    # Rate limit tiers for different user types (OPTIMIZED for better UX)
     RATE_LIMIT_TIERS = {
         'anonymous': {
-            'requests_per_hour': 50,
-            'burst_limit': 10,
+            'requests_per_hour': 120,    # Increased from 50
+            'burst_limit': 25,           # Increased from 10
             'window_size': 3600
         },
         'basic_user': {
-            'requests_per_hour': 500,
-            'burst_limit': 20,
+            'requests_per_hour': 800,    # Increased from 500
+            'burst_limit': 40,           # Increased from 20
             'window_size': 3600
         },
         'premium_user': {
-            'requests_per_hour': 1500,
-            'burst_limit': 50,
+            'requests_per_hour': 2500,   # Increased from 1500
+            'burst_limit': 80,           # Increased from 50
             'window_size': 3600
         },
         'admin_user': {
-            'requests_per_hour': 5000,
-            'burst_limit': 100,
+            'requests_per_hour': 8000,   # Increased from 5000
+            'burst_limit': 150,          # Increased from 100
             'window_size': 3600
         }
     }
@@ -428,13 +428,13 @@ class AdvancedRateLimiter:
                 violations = self.redis.get(penalty_key)
                 violations = int(violations) if violations else 0
                 
-                # Progressive penalty: 1x, 2x, 4x, 8x (max)
-                if violations >= 10:
-                    return 8.0
-                elif violations >= 5:
-                    return 4.0
-                elif violations >= 2:
-                    return 2.0
+                # Progressive penalty: 1x, 1.5x, 2.5x, 4x (max) - More forgiving
+                if violations >= 15:     # Increased threshold from 10
+                    return 4.0            # Reduced max penalty from 8.0
+                elif violations >= 8:     # Increased threshold from 5
+                    return 2.5            # Reduced penalty from 4.0
+                elif violations >= 3:     # Increased threshold from 2
+                    return 1.5            # Reduced penalty from 2.0
                 return 1.0
                 
             except Exception:
@@ -485,12 +485,12 @@ class AdvancedRateLimiter:
         email_hash = SecurityUtils.hash_sensitive_data(email)
         client_id = self._get_client_identifier(request)
         
-        # Different limits based on endpoint type
+        # Different limits based on endpoint type (OPTIMIZED for better UX)
         limits = {
-            "login": {"limit": 5, "window": 900},  # 5 attempts per 15 minutes
-            "register": {"limit": 3, "window": 3600},  # 3 registrations per hour
-            "password_reset": {"limit": 2, "window": 1800},  # 2 resets per 30 minutes
-            "token_refresh": {"limit": 10, "window": 300}  # 10 refreshes per 5 minutes
+            "login": {"limit": 8, "window": 900},        # 8 attempts per 15 minutes (increased from 5)
+            "register": {"limit": 5, "window": 3600},      # 5 registrations per hour (increased from 3)
+            "password_reset": {"limit": 3, "window": 1800}, # 3 resets per 30 minutes (increased from 2)
+            "token_refresh": {"limit": 20, "window": 300}   # 20 refreshes per 5 minutes (increased from 10)
         }
         
         config = limits.get(endpoint_type, limits["login"])

@@ -254,8 +254,8 @@ async def logout(
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
     """Securely logout by blacklisting current access token with rate limiting."""
-    # Apply logout rate limiting (prevent spam)
-    rate_limiter.check_rate_limit(request, 10, 300, "logout")  # 10 logouts per 5 minutes
+    # Apply logout rate limiting (prevent spam) - More lenient
+    rate_limiter.check_rate_limit(request, 20, 300, "logout")  # 20 logouts per 5 minutes (increased)
     
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     
@@ -306,8 +306,8 @@ async def revoke_token(
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
     """Explicitly revoke a specific token with rate limiting."""
-    # Apply token revocation rate limiting
-    rate_limiter.check_rate_limit(request, 5, 300, "token_revoke", str(current_user.id))  # 5 revocations per 5 minutes per user
+    # Apply token revocation rate limiting - More lenient
+    rate_limiter.check_rate_limit(request, 10, 300, "token_revoke", str(current_user.id))  # 10 revocations per 5 minutes per user (increased)
     
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     
@@ -354,8 +354,8 @@ async def validate_current_token(
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
     """Validate current token security properties with rate limiting."""
-    # Apply token validation rate limiting
-    rate_limiter.check_rate_limit(request, 20, 300, "token_validate", str(current_user.id))  # 20 validations per 5 minutes per user
+    # Apply token validation rate limiting - More lenient
+    rate_limiter.check_rate_limit(request, 40, 300, "token_validate", str(current_user.id))  # 40 validations per 5 minutes per user (increased)
     
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     
@@ -385,8 +385,8 @@ async def google_login(
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
     """Authenticate a user using a Google ID token with security and rate limiting."""
-    # Apply OAuth rate limiting (more lenient than regular login)
-    rate_limiter.check_rate_limit(request, 10, 600, "oauth_login")  # 10 OAuth attempts per 10 minutes
+    # Apply OAuth rate limiting (more lenient than regular login) - Further increased
+    rate_limiter.check_rate_limit(request, 20, 600, "oauth_login")  # 20 OAuth attempts per 10 minutes (increased)
     
     # Log OAuth login attempt
     log_security_event("oauth_login_attempt", {
@@ -454,8 +454,8 @@ async def get_security_status(
     rate_limiter: AdvancedRateLimiter = Depends(get_rate_limiter)
 ):
     """Get current security status for monitoring (admin endpoint)."""
-    # Apply monitoring rate limiting
-    rate_limiter.check_rate_limit(request, 5, 300, "security_status")  # 5 requests per 5 minutes
+    # Apply monitoring rate limiting - More lenient for admin monitoring
+    rate_limiter.check_rate_limit(request, 15, 300, "security_status")  # 15 requests per 5 minutes (increased)
     
     from app.core.security import get_security_health_status
     
