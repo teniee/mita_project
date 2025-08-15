@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../services/password_validation_service.dart';
+import '../services/timeout_manager_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -145,21 +147,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         }
         
-        // Fallback error handling
+        // Enhanced error handling with proper timeout detection
         if (errorMessage == 'Registration failed') {
-          if (e.toString().contains('Email already exists')) {
+          if (e is DioException) {
+            switch (e.type) {
+              case DioExceptionType.receiveTimeout:
+                errorMessage = 'Registration is taking longer than expected. Our servers may be busy. Please try again in a moment.';
+                break;
+              case DioExceptionType.sendTimeout:
+                errorMessage = 'Upload timeout. Please check your internet connection and try again.';
+                break;
+              case DioExceptionType.connectionTimeout:
+                errorMessage = 'Connection timeout. Please check your internet connection and try again.';
+                break;
+              case DioExceptionType.connectionError:
+                errorMessage = 'Connection error. Please check your internet connection and try again.';
+                break;
+              case DioExceptionType.badResponse:
+                final statusCode = e.response?.statusCode;
+                if (statusCode == 400) {
+                  errorMessage = 'Invalid email or password format';
+                } else if (statusCode == 409 || statusCode == 422) {
+                  errorMessage = 'This email is already registered. Try logging in instead.';
+                } else if (statusCode != null && statusCode >= 500) {
+                  errorMessage = 'Server error. Please try again later.';
+                } else {
+                  errorMessage = 'Registration failed. Please try again.';
+                }
+                break;
+              default:
+                errorMessage = 'Registration failed. Please try again.';
+            }
+          } else if (e is TimeoutException) {
+            errorMessage = 'Registration timeout. Our servers may be busy. Please try again in a moment.';
+          } else if (e.toString().contains('Email already exists')) {
             errorMessage = 'This email is already registered. Try logging in instead.';
-          } else if (e.toString().contains('400')) {
-            errorMessage = 'Invalid email or password format';
-          } else if (e.toString().contains('500')) {
-            errorMessage = 'Server error. Please try again later.';
           } else if (e.toString().contains('SocketException') || 
-                     e.toString().contains('TimeoutException') ||
                      e.toString().contains('network') ||
                      e.toString().contains('HandshakeException')) {
             errorMessage = 'Network error. Check your internet connection and try again.';
           } else {
-            errorMessage = 'Registration failed: ${e.toString()}';
+            errorMessage = 'Registration failed. Please try again.';
           }
         }
         

@@ -230,6 +230,19 @@ class TimeoutManagerService {
     );
   }
 
+  /// Execute authentication operation with extended timeout
+  Future<T> executeAuthentication<T>({
+    required Future<T> Function() operation,
+    String? operationName,
+  }) async {
+    return executeWithTimeout<T>(
+      operation: operation,
+      timeout: getRecommendedTimeout(OperationType.authentication),
+      maxRetries: 2, // Reduced retries for auth to avoid long wait times
+      operationName: operationName ?? 'Authentication Operation',
+    );
+  }
+
   /// Execute with fallback value on failure
   Future<T> executeWithFallback<T>({
     required Future<T> Function() operation,
@@ -299,7 +312,7 @@ class TimeoutManagerService {
   Duration getRecommendedTimeout(OperationType type) {
     switch (type) {
       case OperationType.authentication:
-        return const Duration(seconds: 10);
+        return const Duration(seconds: 30);
       case OperationType.dataSync:
         return const Duration(seconds: 15);
       case OperationType.fileUpload:

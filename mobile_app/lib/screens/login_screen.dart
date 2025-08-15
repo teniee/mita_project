@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/api_service.dart';
 import '../services/secure_push_token_manager.dart';
 import '../services/password_validation_service.dart';
 import '../services/accessibility_service.dart';
+import '../services/timeout_manager_service.dart';
 import '../theme/mita_theme.dart';
 import '../l10n/generated/app_localizations.dart';
 
@@ -230,7 +232,28 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       setState(() {
         _loading = false;
       });
-      _showError('Google sign-in failed. Please try again.');
+      
+      String errorMessage = 'Google sign-in failed. Please try again.';
+      if (e is DioException) {
+        switch (e.type) {
+          case DioExceptionType.receiveTimeout:
+            errorMessage = 'Sign-in is taking longer than expected. Please try again.';
+            break;
+          case DioExceptionType.connectionTimeout:
+          case DioExceptionType.sendTimeout:
+            errorMessage = 'Connection timeout. Please check your internet connection.';
+            break;
+          case DioExceptionType.connectionError:
+            errorMessage = 'Connection error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = 'Google sign-in failed. Please try again.';
+        }
+      } else if (e is TimeoutException) {
+        errorMessage = 'Sign-in timeout. Please try again.';
+      }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -309,7 +332,42 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       setState(() {
         _loading = false;
       });
-      _showError(l10n.loginFailed);
+      
+      String errorMessage = l10n.loginFailed;
+      if (e is DioException) {
+        switch (e.type) {
+          case DioExceptionType.receiveTimeout:
+            errorMessage = 'Login is taking longer than expected. Our servers may be busy. Please try again.';
+            break;
+          case DioExceptionType.sendTimeout:
+            errorMessage = 'Upload timeout. Please check your internet connection and try again.';
+            break;
+          case DioExceptionType.connectionTimeout:
+            errorMessage = 'Connection timeout. Please check your internet connection and try again.';
+            break;
+          case DioExceptionType.connectionError:
+            errorMessage = 'Connection error. Please check your internet connection and try again.';
+            break;
+          case DioExceptionType.badResponse:
+            final statusCode = e.response?.statusCode;
+            if (statusCode == 401) {
+              errorMessage = 'Invalid email or password. Please try again.';
+            } else if (statusCode == 429) {
+              errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+            } else if (statusCode != null && statusCode >= 500) {
+              errorMessage = 'Server error. Please try again later.';
+            } else {
+              errorMessage = l10n.loginFailed;
+            }
+            break;
+          default:
+            errorMessage = l10n.loginFailed;
+        }
+      } else if (e is TimeoutException) {
+        errorMessage = 'Login timeout. Our servers may be busy. Please try again.';
+      }
+      
+      _showError(errorMessage);
     }
   }
 

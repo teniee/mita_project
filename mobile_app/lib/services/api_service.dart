@@ -379,36 +379,53 @@ class ApiService {
   // Auth endpoints
   // ---------------------------------------------------------------------------
 
-  Future<Response> loginWithGoogle(String idToken) async =>
-      await _dio.post('/auth/google', data: {'id_token': idToken});
+  Future<Response> loginWithGoogle(String idToken) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async => await _dio.post('/auth/google', data: {'id_token': idToken}),
+      operationName: 'Google Login',
+    );
+  }
 
-  Future<Response> register(String email, String password) async =>
-      await _dio.post('/auth/register',
-          data: {'email': email, 'password': password});
+  Future<Response> register(String email, String password) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async => await _dio.post('/auth/register',
+          data: {'email': email, 'password': password}),
+      operationName: 'User Registration',
+    );
+  }
 
   // 🚨 EMERGENCY: Ultra-fast registration endpoint
   Future<Response> emergencyRegister(String email, String password) async {
-    try {
-      logDebug('🚨 EMERGENCY REGISTRATION: Attempting fast registration for ${email.substring(0, 3)}***',
-        tag: 'EMERGENCY_AUTH');
-      
-      final response = await _dio.post('/emergency-register',
-          data: {'email': email, 'password': password});
-      
-      logInfo('🚨 EMERGENCY REGISTRATION: SUCCESS in ${response.extra?['duration'] ?? 'unknown'}ms',
-        tag: 'EMERGENCY_AUTH');
-      
-      return response;
-    } catch (e) {
-      logError('🚨 EMERGENCY REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
-        tag: 'EMERGENCY_AUTH', error: e);
-      rethrow;
-    }
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async {
+        try {
+          logDebug('🚨 EMERGENCY REGISTRATION: Attempting fast registration for ${email.substring(0, 3)}***',
+            tag: 'EMERGENCY_AUTH');
+          
+          final response = await _dio.post('/emergency-register',
+              data: {'email': email, 'password': password});
+          
+          logInfo('🚨 EMERGENCY REGISTRATION: SUCCESS in ${response.extra?['duration'] ?? 'unknown'}ms',
+            tag: 'EMERGENCY_AUTH');
+          
+          return response;
+        } catch (e) {
+          logError('🚨 EMERGENCY REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
+            tag: 'EMERGENCY_AUTH', error: e);
+          rethrow;
+        }
+      },
+      operationName: 'Emergency Registration',
+    );
   }
 
-  Future<Response> login(String email, String password) async =>
-      await _dio.post('/auth/login',
-          data: {'email': email, 'password': password});
+  Future<Response> login(String email, String password) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async => await _dio.post('/auth/login',
+          data: {'email': email, 'password': password}),
+      operationName: 'User Login',
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Onboarding
