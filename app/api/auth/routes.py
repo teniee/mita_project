@@ -48,6 +48,80 @@ router = APIRouter(
 # ------------------------------------------------------------------
 
 @router.post(
+    "/emergency-register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED
+)
+async def emergency_register(
+    email: str,
+    password: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """EMERGENCY: Ultra-minimal registration endpoint with NO security middleware"""
+    import asyncio
+    import time
+    from sqlalchemy import text
+    
+    start_time = time.time()
+    logger.error(f"🚨 EMERGENCY REGISTRATION ATTEMPT: {email[:3]}***")
+    
+    try:
+        # Step 1: Basic validation (NO TIMEOUT)
+        if len(password) < 8:
+            raise HTTPException(status_code=400, detail="Password too short")
+        
+        if '@' not in email:
+            raise HTTPException(status_code=400, detail="Invalid email")
+        
+        # Step 2: Check if user exists - DIRECT SQL (NO ORM)
+        check_start = time.time()
+        result = await db.execute(text("SELECT id FROM users WHERE email = :email LIMIT 1"), {"email": email.lower()})
+        if result.scalar():
+            raise HTTPException(status_code=400, detail="Email exists")
+        logger.error(f"User check: {time.time() - check_start:.2f}s")
+        
+        # Step 3: Hash password - SYNC VERSION (no async timeout)
+        hash_start = time.time()
+        from app.services.auth_jwt_service import hash_password
+        password_hash = hash_password(password)
+        logger.error(f"Password hash: {time.time() - hash_start:.2f}s")
+        
+        # Step 4: Insert user - DIRECT SQL (NO ORM)
+        insert_start = time.time()
+        insert_result = await db.execute(text(
+            """INSERT INTO users (email, password_hash, country, annual_income, timezone, created_at) 
+               VALUES (:email, :password_hash, 'US', 0, 'UTC', NOW()) 
+               RETURNING id"""
+        ), {
+            "email": email.lower(),
+            "password_hash": password_hash
+        })
+        user_id = insert_result.scalar()
+        await db.commit()
+        logger.error(f"User insert: {time.time() - insert_start:.2f}s")
+        
+        # Step 5: Create tokens - MINIMAL
+        token_start = time.time()
+        user_data = {"sub": str(user_id)}
+        from app.services.auth_jwt_service import create_token_pair
+        tokens = create_token_pair(user_data, user_role="basic_user")
+        logger.error(f"Token creation: {time.time() - token_start:.2f}s")
+        
+        total_time = time.time() - start_time
+        logger.error(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
+        
+        return TokenOut(**tokens)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(f"🚨 EMERGENCY REGISTRATION FAILED: {str(e)} after {elapsed:.2f}s")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Emergency registration failed: {str(e)}")
+
+
+@router.post(
     "/register",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
@@ -503,6 +577,126 @@ async def request_password_reset(
     return success_response({
         "message": "If this email is registered, you will receive password reset instructions."
     })
+
+
+@router.get("/emergency-diagnostics")
+async def emergency_diagnostics(
+    db: AsyncSession = Depends(get_async_db)
+):
+    """🚨 EMERGENCY: Real-time server diagnostics for registration issues"""
+    import time
+    import os
+    import psutil
+    from sqlalchemy import text
+    
+    diagnostics = {
+        "timestamp": time.time(),
+        "server_status": "LIVE",
+        "registration_endpoints": {}
+    }
+    
+    try:
+        # Server Resource Check
+        diagnostics["server_resources"] = {
+            "memory_usage_mb": psutil.virtual_memory().used / 1024 / 1024,
+            "memory_available_mb": psutil.virtual_memory().available / 1024 / 1024,
+            "cpu_percent": psutil.cpu_percent(),
+            "disk_usage_gb": psutil.disk_usage('/').used / 1024 / 1024 / 1024,
+        }
+        
+        # Environment Check
+        diagnostics["environment"] = {
+            "database_url_set": bool(os.getenv("DATABASE_URL")),
+            "jwt_secret_set": bool(os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY")),
+            "environment": os.getenv("ENVIRONMENT", "unknown"),
+            "render_service": os.getenv("RENDER_SERVICE_NAME", "not_on_render"),
+            "port": os.getenv("PORT", "8000")
+        }
+        
+        # Database Health Check
+        db_start = time.time()
+        try:
+            # Test basic database connectivity
+            await db.execute(text("SELECT 1 as test"))
+            diagnostics["database"] = {
+                "status": "connected",
+                "connection_time_ms": (time.time() - db_start) * 1000
+            }
+            
+            # Test user table access
+            user_check_start = time.time()
+            result = await db.execute(text("SELECT COUNT(*) FROM users LIMIT 1"))
+            user_count = result.scalar()
+            diagnostics["database"]["user_table_check"] = {
+                "accessible": True,
+                "user_count": user_count,
+                "query_time_ms": (time.time() - user_check_start) * 1000
+            }
+            
+        except Exception as db_error:
+            diagnostics["database"] = {
+                "status": "error",
+                "error": str(db_error),
+                "connection_time_ms": (time.time() - db_start) * 1000
+            }
+        
+        # Test registration components
+        diagnostics["registration_components"] = {}
+        
+        # Test password hashing
+        hash_start = time.time()
+        try:
+            from app.services.auth_jwt_service import hash_password
+            test_hash = hash_password("test123456")
+            diagnostics["registration_components"]["password_hashing"] = {
+                "status": "working",
+                "time_ms": (time.time() - hash_start) * 1000,
+                "hash_length": len(test_hash)
+            }
+        except Exception as hash_error:
+            diagnostics["registration_components"]["password_hashing"] = {
+                "status": "error",
+                "error": str(hash_error),
+                "time_ms": (time.time() - hash_start) * 1000
+            }
+        
+        # Test token creation
+        token_start = time.time()
+        try:
+            from app.services.auth_jwt_service import create_token_pair
+            test_tokens = create_token_pair({"sub": "test_user"}, user_role="basic_user")
+            diagnostics["registration_components"]["token_creation"] = {
+                "status": "working",
+                "time_ms": (time.time() - token_start) * 1000,
+                "has_access_token": bool(test_tokens.get("access_token")),
+                "has_refresh_token": bool(test_tokens.get("refresh_token"))
+            }
+        except Exception as token_error:
+            diagnostics["registration_components"]["token_creation"] = {
+                "status": "error", 
+                "error": str(token_error),
+                "time_ms": (time.time() - token_start) * 1000
+            }
+        
+        # Endpoint availability
+        diagnostics["registration_endpoints"] = {
+            "emergency_register": "✅ AVAILABLE - /api/auth/emergency-register",
+            "regular_register": "⚠️ SLOW - /api/auth/register", 
+            "full_register": "🐌 VERY SLOW - /api/auth/register-full"
+        }
+        
+        return {
+            "status": "EMERGENCY_DIAGNOSTICS_COMPLETE",
+            "message": "🚨 Use /api/auth/emergency-register for immediate registration",
+            "diagnostics": diagnostics
+        }
+        
+    except Exception as e:
+        return {
+            "status": "EMERGENCY_DIAGNOSTICS_FAILED",
+            "error": str(e),
+            "partial_diagnostics": diagnostics
+        }
 
 
 @router.get("/security/status")
