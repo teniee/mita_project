@@ -6,10 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="🚀 Expected Results:&#10;&#10;  - Registration time: 15+ seconds → &lt;3 seconds (83% improvement)&#10;  - No more timeouts: Guaranteed completion within 10 seconds&#10;  - Better user experience: Fast, reliable account creation">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/offline_queue_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/offline_queue_service.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,14 +78,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00003" summary="fixed register problem 2">
-      <option name="closed" value="true" />
-      <created>1753637108015</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1753637108015</updated>
     </task>
     <task id="LOCAL-00004" summary="fixed register problem 2">
       <option name="closed" value="true" />
@@ -473,7 +463,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755287444010</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="🚀 Expected Results:&#10;&#10;  - Registration time: 15+ seconds → &lt;3 seconds (83% improvement)&#10;  - No more timeouts: Guaranteed completion within 10 seconds&#10;  - Better user experience: Fast, reliable account creation">
+      <option name="closed" value="true" />
+      <created>1755288771996</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1755288771996</updated>
+    </task>
+    <option name="localTasksCounter" value="53" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
