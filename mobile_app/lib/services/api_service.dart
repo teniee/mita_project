@@ -386,6 +386,26 @@ class ApiService {
       await _dio.post('/auth/register',
           data: {'email': email, 'password': password});
 
+  // 🚨 EMERGENCY: Ultra-fast registration endpoint
+  Future<Response> emergencyRegister(String email, String password) async {
+    try {
+      logDebug('🚨 EMERGENCY REGISTRATION: Attempting fast registration for ${email.substring(0, 3)}***',
+        tag: 'EMERGENCY_AUTH');
+      
+      final response = await _dio.post('/emergency-register',
+          data: {'email': email, 'password': password});
+      
+      logInfo('🚨 EMERGENCY REGISTRATION: SUCCESS in ${response.extra?['duration'] ?? 'unknown'}ms',
+        tag: 'EMERGENCY_AUTH');
+      
+      return response;
+    } catch (e) {
+      logError('🚨 EMERGENCY REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
+        tag: 'EMERGENCY_AUTH', error: e);
+      rethrow;
+    }
+  }
+
   Future<Response> login(String email, String password) async =>
       await _dio.post('/auth/login',
           data: {'email': email, 'password': password});

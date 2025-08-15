@@ -127,6 +127,139 @@ async def health_check():
         "message": "API is running successfully!"
     }
 
+# ---- EMERGENCY REGISTRATION ENDPOINT ----
+@app.post("/emergency-register")
+async def emergency_register(request: Request):
+    """🚨 EMERGENCY: Ultra-minimal registration endpoint - NO middleware, NO dependencies"""
+    import json
+    import time
+    import bcrypt
+    import uuid
+    from datetime import datetime, timedelta
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+    
+    start_time = time.time()
+    print(f"🚨 EMERGENCY REGISTRATION START: {time.time()}")
+    
+    try:
+        # Get request body manually
+        body_bytes = await request.body()
+        body_str = body_bytes.decode('utf-8')
+        data = json.loads(body_str)
+        
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        
+        print(f"🚨 STEP 1: Request parsed - {email[:3]}*** ({time.time() - start_time:.2f}s)")
+        
+        # Basic validation - NO external validators
+        if not email or '@' not in email:
+            return JSONResponse({"error": "Invalid email"}, status_code=400)
+        if not password or len(password) < 8:
+            return JSONResponse({"error": "Password too short"}, status_code=400)
+            
+        print(f"🚨 STEP 2: Basic validation passed ({time.time() - start_time:.2f}s)")
+        
+        # Direct database connection - NO ORM session management
+        DATABASE_URL = os.getenv("DATABASE_URL", "")
+        if not DATABASE_URL:
+            return JSONResponse({"error": "Database not configured"}, status_code=500)
+            
+        # Create direct engine connection
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+        Session = sessionmaker(bind=engine)
+        
+        print(f"🚨 STEP 3: Database connection created ({time.time() - start_time:.2f}s)")
+        
+        with Session() as session:
+            # Check if user exists - direct SQL
+            existing_user = session.execute(
+                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                {"email": email}
+            ).scalar()
+            
+            if existing_user:
+                return JSONResponse({"error": "Email already registered"}, status_code=400)
+                
+            print(f"🚨 STEP 4: User uniqueness check passed ({time.time() - start_time:.2f}s)")
+            
+            # Hash password with minimal rounds for speed
+            password_bytes = password.encode('utf-8')
+            salt = bcrypt.gensalt(rounds=4)  # MINIMAL rounds for emergency
+            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+            
+            print(f"🚨 STEP 5: Password hashed ({time.time() - start_time:.2f}s)")
+            
+            # Generate user ID
+            user_id = str(uuid.uuid4())
+            
+            # Insert user directly
+            session.execute(text("""
+                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
+                VALUES (:id, :email, :password_hash, 'US', 0, 'UTC', NOW())
+            """), {
+                "id": user_id,
+                "email": email,
+                "password_hash": password_hash
+            })
+            session.commit()
+            
+            print(f"🚨 STEP 6: User inserted ({time.time() - start_time:.2f}s)")
+            
+            # Create minimal JWT token - NO complex token service
+            import jwt
+            
+            payload = {
+                'sub': user_id,
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(days=30),
+                'iat': datetime.utcnow()
+            }
+            
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
+            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            
+            print(f"🚨 STEP 7: Token created ({time.time() - start_time:.2f}s)")
+            
+            total_time = time.time() - start_time
+            print(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
+            
+            return JSONResponse({
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user_id": user_id,
+                "message": f"Emergency registration successful in {total_time:.2f}s"
+            }, status_code=201)
+            
+    except json.JSONDecodeError:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    except Exception as e:
+        total_time = time.time() - start_time
+        error_msg = str(e)
+        print(f"🚨 EMERGENCY REGISTRATION FAILED: {error_msg} after {total_time:.2f}s")
+        return JSONResponse({
+            "error": f"Registration failed: {error_msg}",
+            "time_elapsed": total_time
+        }, status_code=500)
+
+
+@app.get("/emergency-test")
+async def emergency_test():
+    """🚨 EMERGENCY: Test endpoint to verify server is responding"""
+    import time
+    return JSONResponse({
+        "status": "EMERGENCY_SERVER_LIVE",
+        "timestamp": time.time(),
+        "message": "Server is responding - emergency registration available at POST /emergency-register",
+        "endpoints": {
+            "emergency_registration": "POST /emergency-register",
+            "test": "GET /emergency-test",
+            "health": "GET /health"
+        }
+    })
+
+
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status and performance metrics"""
