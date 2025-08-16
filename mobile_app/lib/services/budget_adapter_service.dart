@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'production_budget_engine.dart';
+import 'enhanced_production_budget_engine.dart';
+import 'production_budget_engine.dart' as legacy;
 import 'onboarding_state.dart';
 import 'income_service.dart';
 import 'api_service.dart';
@@ -13,13 +14,13 @@ class BudgetAdapterService {
   factory BudgetAdapterService() => _instance;
   BudgetAdapterService._internal();
 
-  final ProductionBudgetEngine _budgetEngine = ProductionBudgetEngine();
+  final EnhancedProductionBudgetEngine _budgetEngine = EnhancedProductionBudgetEngine();
   final IncomeService _incomeService = IncomeService();
   final ApiService _apiService = ApiService();
   
   // Cache for performance
-  DailyBudgetCalculation? _cachedDailyBudget;
-  CategoryBudgetAllocation? _cachedCategoryBudget;
+  EnhancedDailyBudgetCalculation? _cachedDailyBudget;
+  legacy.CategoryBudgetAllocation? _cachedCategoryBudget;
   DateTime? _lastCacheUpdate;
 
   /// Get dashboard data using production budget engine
@@ -90,7 +91,8 @@ class BudgetAdapterService {
       final onboardingData = await _getOnboardingData();
       final dailyBudget = await _getDailyBudget(onboardingData);
       final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
-      final personalization = _budgetEngine.createPersonalizationEngine(onboardingData: onboardingData);
+      // Legacy personalization - replaced by enhanced intelligence
+      // final personalization = _budgetEngine.createPersonalizationEngine(onboardingData: onboardingData);
       
       return {
         'confidence': dailyBudget.confidence,
@@ -100,37 +102,19 @@ class BudgetAdapterService {
           'message': insight.message,
           'type': insight.type.toString(),
           'priority': insight.priority.toString(),
-          'actionable': insight.actionable,
         }).toList(),
-        'goal_nudges': personalization.goalNudges.map((nudge) => {
-          'goal': nudge.goal,
-          'message': nudge.message,
-          'effectiveness': nudge.effectiveness,
+        'intelligent_insights': dailyBudget.intelligentInsights.map((insight) => {
+          'message': insight,
+          'type': 'optimization',
+          'priority': 'medium',
         }).toList(),
-        'habit_interventions': personalization.habitInterventions.map((intervention) => {
-          'habit': intervention.habit,
-          'intervention': intervention.intervention,
-          'type': intervention.type.toString(),
-          'effectiveness': intervention.effectiveness,
-        }).toList(),
-        'behavioral_nudges': personalization.behavioralNudges.map((nudge) => {
-          'type': nudge.type.toString(),
-          'message': nudge.message,
-          'trigger': nudge.trigger,
-          'effectiveness': nudge.effectiveness,
-        }).toList(),
-        'personality_profile': personalization.personalityProfile.toString(),
-        'success_metrics': personalization.successMetrics.map((metric) => {
-          'name': metric.name,
-          'target': metric.target,
-          'unit': metric.unit,
-          'frequency': metric.frequency.toString(),
-        }).toList(),
+        'risk_assessment': dailyBudget.riskAssessment,
+        'enhanced_features': dailyBudget.advancedMetrics,
       };
       
     } catch (e) {
       logError('Error generating budget insights: $e', tag: 'BUDGET_ADAPTER', error: e);
-      return {'insights': [], 'confidence': 0.5};
+      return {'insights': <Map<String, dynamic>>[], 'confidence': 0.5};
     }
   }
 
@@ -141,29 +125,27 @@ class BudgetAdapterService {
   }) async {
     try {
       final onboardingData = await _getOnboardingData();
-      final rules = _budgetEngine.generateDynamicRules(
-        onboardingData: onboardingData,
-        currentMonthSpending: currentSpending,
-        daysIntoMonth: daysIntoMonth,
-      );
+      
+      // Use enhanced intelligence to generate dynamic adjustments
+      final enhancedBudget = await _getDailyBudget(onboardingData);
       
       return {
-        'rules': rules.rules.map((rule) => {
-          'id': rule.id,
-          'description': rule.description,
-          'condition': rule.condition,
-          'action': rule.action,
-          'priority': rule.priority.toString(),
-          'frequency': rule.frequency.toString(),
+        'rules': enhancedBudget.enhancedResult.recommendations.map((recommendation) => {
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'description': recommendation,
+          'condition': 'spending_pattern_detected',
+          'action': 'adjust_budget',
+          'priority': 'medium',
+          'frequency': 'daily',
         }).toList(),
-        'adaptation_frequency': rules.adaptationFrequency.toString(),
-        'confidence_level': rules.confidenceLevel,
-        'last_updated': rules.lastUpdated.toIso8601String(),
+        'adaptation_frequency': 'daily',
+        'confidence_level': enhancedBudget.confidence,
+        'last_updated': DateTime.now().toIso8601String(),
       };
       
     } catch (e) {
       logError('Error generating dynamic adjustments: $e', tag: 'BUDGET_ADAPTER', error: e);
-      return {'rules': [], 'confidence_level': 0.5};
+      return {'rules': <Map<String, dynamic>>[], 'confidence_level': 0.5};
     }
   }
 
@@ -174,8 +156,8 @@ class BudgetAdapterService {
       final dailyBudget = await _getDailyBudget(onboardingData);
       final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
       
-      // Apply date-specific adjustments
-      final adjustedBudget = _budgetEngine.calculateDailyBudget(
+      // Apply date-specific adjustments using enhanced engine
+      final adjustedBudget = await _budgetEngine.calculateDailyBudget(
         onboardingData: onboardingData,
         targetDate: date,
       );
@@ -198,6 +180,91 @@ class BudgetAdapterService {
     } catch (e) {
       logError('Error generating day details: $e', tag: 'BUDGET_ADAPTER', error: e);
       return _getFallbackDayData(date);
+    }
+  }
+
+  /// Get enhanced budget suggestions with intelligent nudges
+  Future<Map<String, dynamic>> getEnhancedBudgetSuggestions() async {
+    try {
+      logInfo('Generating enhanced budget suggestions with intelligent nudges', tag: 'BUDGET_ADAPTER');
+      
+      final onboardingData = await _getOnboardingData();
+      final dailyBudget = await _getDailyBudget(onboardingData);
+      
+      // Extract enhanced suggestions from our budget intelligence
+      final suggestions = <Map<String, dynamic>>[];
+      
+      // Add intelligent insights as suggestions
+      for (final insight in dailyBudget.intelligentInsights) {
+        suggestions.add({
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'message': insight,
+          'type': 'intelligence',
+          'priority': 'high',
+          'source': 'enhanced_budget_engine',
+        });
+      }
+      
+      // Add contextual nudge if available
+      if (dailyBudget.contextualNudge != null) {
+        final nudge = dailyBudget.contextualNudge!;
+        suggestions.add({
+          'id': 'nudge_${DateTime.now().millisecondsSinceEpoch}',
+          'message': nudge.message,
+          'type': 'nudge',
+          'priority': 'medium',
+          'source': 'contextual_nudge_engine',
+          'nudge_type': nudge.nudgeType.toString(),
+        });
+      }
+      
+      // Add enhanced category optimization recommendations
+      for (final entry in dailyBudget.categoryBreakdown.entries) {
+        final category = entry.key;
+        final amount = entry.value;
+        
+        if (amount > 0) {
+          suggestions.add({
+            'id': 'category_${category}_${DateTime.now().millisecondsSinceEpoch}',
+            'message': 'Optimized ${category.replaceAll('_', ' ').split(' ').map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1)).join(' ')} allocation: \$${amount.toStringAsFixed(2)} based on your spending patterns and goals',
+            'type': 'category_optimization',
+            'priority': 'medium',
+            'source': 'category_intelligence_engine',
+            'category': category,
+            'amount': amount,
+          });
+        }
+      }
+      
+      // Add risk assessment warnings if needed
+      if (dailyBudget.riskAssessment > 0.7) {
+        suggestions.add({
+          'id': 'risk_warning_${DateTime.now().millisecondsSinceEpoch}',
+          'message': 'High financial risk detected. Consider reviewing your spending patterns and budget allocation.',
+          'type': 'risk_warning',
+          'priority': 'high',
+          'source': 'risk_assessment_engine',
+          'risk_score': dailyBudget.riskAssessment,
+        });
+      }
+      
+      return {
+        'suggestions': suggestions,
+        'total_count': suggestions.length,
+        'enhanced_features_active': true,
+        'confidence_level': dailyBudget.confidence,
+        'methodology': dailyBudget.methodology,
+        'last_updated': DateTime.now().toIso8601String(),
+      };
+      
+    } catch (e) {
+      logError('Error generating enhanced budget suggestions: $e', tag: 'BUDGET_ADAPTER', error: e);
+      return {
+        'suggestions': <Map<String, dynamic>>[],
+        'total_count': 0,
+        'enhanced_features_active': false,
+        'error': e.toString(),
+      };
     }
   }
 
@@ -283,7 +350,7 @@ class BudgetAdapterService {
   }
 
   /// Get cached or calculate daily budget
-  Future<DailyBudgetCalculation> _getDailyBudget(OnboardingState onboardingData) async {
+  Future<EnhancedDailyBudgetCalculation> _getDailyBudget(OnboardingState onboardingData) async {
     final now = DateTime.now();
     
     // Check cache validity (1 hour)
@@ -293,17 +360,17 @@ class BudgetAdapterService {
       return _cachedDailyBudget!;
     }
     
-    // Calculate new daily budget
-    _cachedDailyBudget = _budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+    // Calculate new daily budget using enhanced engine
+    _cachedDailyBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
     _lastCacheUpdate = now;
     
     return _cachedDailyBudget!;
   }
 
   /// Get cached or calculate category budget
-  Future<CategoryBudgetAllocation> _getCategoryBudget(
+  Future<legacy.CategoryBudgetAllocation> _getCategoryBudget(
     OnboardingState onboardingData,
-    DailyBudgetCalculation dailyBudget
+    EnhancedDailyBudgetCalculation dailyBudget
   ) async {
     final now = DateTime.now();
     
@@ -314,17 +381,43 @@ class BudgetAdapterService {
       return _cachedCategoryBudget!;
     }
     
-    // Calculate new category budget
-    _cachedCategoryBudget = _budgetEngine.calculateCategoryBudgets(
-      onboardingData: onboardingData,
-      dailyBudget: dailyBudget,
-    );
+    // Calculate new category budget using enhanced allocations
+    _cachedCategoryBudget = _createCategoryBudgetFromEnhanced(dailyBudget);
     
     return _cachedCategoryBudget!;
   }
 
+  /// Create CategoryBudgetAllocation from enhanced budget data
+  legacy.CategoryBudgetAllocation _createCategoryBudgetFromEnhanced(EnhancedDailyBudgetCalculation enhancedBudget) {
+    // Convert enhanced category allocations to legacy format
+    final categoryAllocations = enhancedBudget.categoryBreakdown;
+    final monthlyAllocations = <String, double>{};
+    
+    // Convert daily to monthly allocations
+    for (final entry in categoryAllocations.entries) {
+      monthlyAllocations[entry.key] = entry.value * 30;
+    }
+    
+    // Create insights from enhanced insights
+    final insights = enhancedBudget.intelligentInsights.map((insight) => legacy.CategoryInsight(
+      category: 'general',
+      message: insight,
+      type: legacy.InsightType.information,
+      priority: legacy.InsightPriority.medium,
+      actionable: true,
+    )).toList();
+    
+    return legacy.CategoryBudgetAllocation(
+      dailyAllocations: categoryAllocations,
+      monthlyAllocations: monthlyAllocations,
+      insights: insights,
+      confidence: enhancedBudget.confidence,
+      lastUpdated: DateTime.now(),
+    );
+  }
+
   /// Convert category budget to legacy daily targets format
-  List<Map<String, dynamic>> _convertToLegacyDailyTargets(CategoryBudgetAllocation categoryBudget) {
+  List<Map<String, dynamic>> _convertToLegacyDailyTargets(legacy.CategoryBudgetAllocation categoryBudget) {
     final targets = <Map<String, dynamic>>[];
     final categoryIcons = {
       'food': Icons.restaurant,
@@ -383,7 +476,7 @@ class BudgetAdapterService {
     
     for (int i = 0; i < 7; i++) {
       final date = today.subtract(Duration(days: today.weekday - 1 - i)); // Get week starting Monday
-      final dayBudget = _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
+      final dayBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
       final spent = await _estimateSpentForDate(date, dayBudget.totalDailyBudget);
       
       String status = 'good';
@@ -410,7 +503,7 @@ class BudgetAdapterService {
     DateTime dayDate,
     bool isToday
   ) async {
-    final dailyBudget = _budgetEngine.calculateDailyBudget(
+    final dailyBudget = await _budgetEngine.calculateDailyBudget(
       onboardingData: onboardingData,
       targetDate: dayDate,
     );
@@ -440,7 +533,7 @@ class BudgetAdapterService {
   Future<Map<String, int>> _generateDayCategoryBreakdown(
     OnboardingState onboardingData,
     DateTime date,
-    DailyBudgetCalculation dailyBudget
+    EnhancedDailyBudgetCalculation dailyBudget
   ) async {
     final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
     final breakdown = <String, int>{};
@@ -590,8 +683,8 @@ class BudgetAdapterService {
           'amount': tx['amount']?.toString() ?? '0.00',
           'date': tx['date'] ?? tx['created_at'] ?? DateTime.now().toIso8601String(),
           'category': tx['category'] ?? 'Other',
-          'icon': _getCategoryIcon(tx['category'] ?? 'other'),
-          'color': _getCategoryColor(tx['category'] ?? 'other'),
+          'icon': _getCategoryIcon((tx['category'] ?? 'other').toString()),
+          'color': _getCategoryColor((tx['category'] ?? 'other').toString()),
         }).toList();
       }
     } catch (e) {
@@ -699,9 +792,9 @@ class BudgetAdapterService {
 
   /// Generate category breakdown with spending data
   Map<String, dynamic> _generateCategoryBreakdown(
-    CategoryBudgetAllocation categoryBudget,
+    legacy.CategoryBudgetAllocation categoryBudget,
     Map<String, double> spentData,
-    DailyBudgetCalculation dailyBudget
+    EnhancedDailyBudgetCalculation dailyBudget
   ) {
     final breakdown = <String, dynamic>{};
     
@@ -731,7 +824,7 @@ class BudgetAdapterService {
   ) async {
     final insights = <Map<String, dynamic>>[];
     final totalSpent = spentData.values.fold(0.0, (sum, amount) => sum + amount);
-    final dailyBudget = _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
+    final dailyBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
     
     // Spending level insight
     final spentRatio = dailyBudget.totalDailyBudget > 0 ? totalSpent / dailyBudget.totalDailyBudget : 0.0;

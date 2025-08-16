@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
 import '../services/income_service.dart';
 import '../services/cohort_service.dart';
+import '../services/budget_adapter_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/peer_comparison_widgets.dart';
 import '../theme/income_theme.dart';
@@ -22,6 +23,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
   final CohortService _cohortService = CohortService();
+  final BudgetAdapterService _budgetService = BudgetAdapterService();
   
   bool _isLoading = true;
   late TabController _tabController;
@@ -72,8 +74,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       // Fetch traditional analytics
       await _fetchTraditionalAnalytics();
       
-      // Fetch AI insights and income-based insights in parallel
+      // Fetch enhanced budget insights and AI insights in parallel
       await Future.wait([
+        _fetchEnhancedBudgetInsights(), // NEW: Enhanced budget intelligence
         _fetchAISnapshot(),
         _fetchAIProfile(),
         _fetchSpendingPatterns(),
@@ -267,6 +270,67 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     } catch (e) {
       logError('Error fetching weekly insights: $e');
     }
+  }
+
+  /// Fetch enhanced budget intelligence data from our enhanced budget system
+  Future<void> _fetchEnhancedBudgetInsights() async {
+    try {
+      logInfo('Fetching enhanced budget intelligence insights', tag: 'INSIGHTS_SCREEN');
+      
+      // Get enhanced budget insights through our enhanced system
+      final enhancedInsights = await _budgetService.getBudgetInsights();
+      
+      if (enhancedInsights.isNotEmpty && mounted) {
+        setState(() {
+          // Use enhanced financial health score if available
+          if (enhancedInsights['confidence'] != null) {
+            financialHealthScore = {
+              'score': (enhancedInsights['confidence'] * 100).round(),
+              'grade': _getGradeFromConfidence(enhancedInsights['confidence']),
+              'improvements': enhancedInsights['intelligent_insights']?.map((insight) => 
+                insight['message'] ?? insight.toString()).toList() ?? [],
+            };
+          }
+          
+          // Use enhanced recommendations as personalized feedback
+          if (enhancedInsights['intelligent_insights'] != null) {
+            personalizedFeedback = {
+              'feedback': 'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
+              'tips': enhancedInsights['intelligent_insights']
+                  .map((insight) => insight['message'] ?? insight.toString()).toList(),
+            };
+          }
+          
+          // Convert category insights to spending patterns
+          if (enhancedInsights['category_insights'] != null) {
+            final categoryInsights = enhancedInsights['category_insights'] as List;
+            spendingPatterns = {
+              'patterns': categoryInsights.map((insight) => 
+                insight['message'] ?? 'Smart category optimization detected').toList(),
+            };
+          }
+        });
+      }
+      
+      logInfo('Enhanced budget intelligence insights loaded successfully', tag: 'INSIGHTS_SCREEN');
+    } catch (e) {
+      logError('Error fetching enhanced budget insights: $e', tag: 'INSIGHTS_SCREEN');
+      // Continue with fallback data - don't break the insights flow
+    }
+  }
+
+  /// Convert enhanced confidence to letter grade
+  String _getGradeFromConfidence(double confidence) {
+    if (confidence >= 0.9) return 'A+';
+    if (confidence >= 0.85) return 'A';
+    if (confidence >= 0.8) return 'A-';
+    if (confidence >= 0.75) return 'B+';
+    if (confidence >= 0.7) return 'B';
+    if (confidence >= 0.65) return 'B-';
+    if (confidence >= 0.6) return 'C+';
+    if (confidence >= 0.55) return 'C';
+    if (confidence >= 0.5) return 'C-';
+    return 'D';
   }
 
   @override

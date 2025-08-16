@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
+import '../services/budget_adapter_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
@@ -16,6 +17,7 @@ class DailyBudgetScreen extends StatefulWidget {
 class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   final ApiService _apiService = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
+  final BudgetAdapterService _budgetService = BudgetAdapterService();
   bool _isLoading = true;
   bool _isRedistributing = false;
   List<dynamic> _budgets = [];
@@ -97,14 +99,27 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
 
   Future<void> _fetchBudgetSuggestions() async {
     try {
-      final suggestions = await _apiService.getBudgetSuggestions();
+      // Use enhanced budget suggestions instead of legacy API
+      final enhancedSuggestions = await _budgetService.getEnhancedBudgetSuggestions();
       if (mounted) {
         setState(() {
-          _budgetSuggestions = suggestions;
+          _budgetSuggestions = enhancedSuggestions;
         });
       }
+      logInfo('Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions', tag: 'DAILY_BUDGET');
     } catch (e) {
-      logError('Error loading budget suggestions: $e');
+      logError('Error loading enhanced budget suggestions: $e', tag: 'DAILY_BUDGET');
+      // Fallback to legacy API if enhanced fails
+      try {
+        final legacySuggestions = await _apiService.getBudgetSuggestions();
+        if (mounted) {
+          setState(() {
+            _budgetSuggestions = legacySuggestions;
+          });
+        }
+      } catch (fallbackError) {
+        logError('Fallback budget suggestions also failed: $fallbackError');
+      }
     }
   }
 
