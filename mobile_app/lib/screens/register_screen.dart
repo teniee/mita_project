@@ -152,7 +152,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (e is DioException) {
             switch (e.type) {
               case DioExceptionType.receiveTimeout:
-                errorMessage = 'Registration is taking longer than expected. Our servers may be busy. Please try again in a moment.';
+                errorMessage = 'Registration is taking longer than expected. Our servers may be experiencing high load. We\'ve increased the timeout - please try again.';
+                _showTimeoutRetryDialog();
+                return; // Don't show the generic error
                 break;
               case DioExceptionType.sendTimeout:
                 errorMessage = 'Upload timeout. Please check your internet connection and try again.';
@@ -229,14 +231,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Create account',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 24,
-                      color: Color(0xFF193C57),
-                    ),
+                  // Compact logo and title
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF193C57).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet_rounded,
+                          size: 24,
+                          color: Color(0xFF193C57),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Create account',
+                        style: TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                          color: Color(0xFF193C57),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   TextField(
@@ -309,6 +329,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showTimeoutRetryDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('Connection Timeout'),
+            ],
+          ),
+          content: const Text(
+            'The registration request is taking longer than expected. This might be due to server load or network conditions.\n\nWe\'ve increased the timeout limit. Would you like to try again?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _loading = false;
+                });
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Retry the registration with the same credentials
+                _register();
+              },
+              child: const Text('Try Again'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

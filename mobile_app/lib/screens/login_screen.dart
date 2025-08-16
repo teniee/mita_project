@@ -158,6 +158,46 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
+  void _showTimeoutRetryDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('Connection Timeout'),
+            ],
+          ),
+          content: const Text(
+            'The login request is taking longer than expected. This might be due to server load or network conditions.\n\nWe\'ve increased the timeout limit. Would you like to try again?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _loading = false;
+                });
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Retry the login with the same credentials
+                _handleEmailLogin();
+              },
+              child: const Text('Try Again'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleGoogleSignIn() async {
     if (_loading) return;
     
@@ -337,7 +377,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (e is DioException) {
         switch (e.type) {
           case DioExceptionType.receiveTimeout:
-            errorMessage = 'Login is taking longer than expected. Our servers may be busy. Please try again.';
+            errorMessage = 'Login is taking longer than expected. Our servers may be experiencing high load. We\'ve increased the timeout - please try again.';
+            // Show a retry option specifically for timeouts
+            _showTimeoutRetryDialog();
+            return; // Don't show the generic error
             break;
           case DioExceptionType.sendTimeout:
             errorMessage = 'Upload timeout. Please check your internet connection and try again.';
@@ -394,52 +437,48 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                     children: [
                       const SizedBox(height: 60),
                       
-                      // App logo and welcome header
+                      // Compact app logo and welcome header
                       Semantics(
                         header: true,
                         label: 'MITA Login. Welcome back. Sign in to continue managing your finances',
-                        child: MitaTheme.createElevatedCard(
-                          elevation: 2,
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              // Logo container
-                              Semantics(
-                                label: 'MITA app logo. Financial wallet icon',
-                                child: Container(
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: Icon(
-                                    Icons.account_balance_wallet_rounded,
-                                    size: 48,
-                                    color: colorScheme.onPrimaryContainer,
-                                  ),
+                        child: Column(
+                          children: [
+                            // Compact logo container
+                            Semantics(
+                              label: 'MITA app logo. Financial wallet icon',
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  Icons.account_balance_wallet_rounded,
+                                  size: 32,
+                                  color: colorScheme.onPrimaryContainer,
                                 ),
                               ),
-                              const SizedBox(height: 24),
-                              Semantics(
-                                header: true,
-                                child: Text(
-                                  l10n.welcomeBack,
-                                  style: theme.textTheme.displaySmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: colorScheme.onSurface,
-                                  ),
+                            ),
+                            const SizedBox(height: 16),
+                            Semantics(
+                              header: true,
+                              child: Text(
+                                l10n.welcomeBack,
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.signInToContinue,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.signInToContinue,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       
