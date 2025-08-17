@@ -1,0 +1,59 @@
+services:
+  # MITA Production Backend Service
+  - type: web
+    name: mita-production
+    env: python
+    plan: starter
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python start_optimized.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        fromService:
+          type: web
+          name: mita-production
+          property: port
+      - key: WEB_CONCURRENCY
+        value: 1
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PYTHONDONTWRITEBYTECODE
+        value: 1
+      # Secrets - These need to be set in Render Dashboard
+      - key: SECRET_KEY
+        sync: false  # Will be set manually in dashboard
+      - key: JWT_SECRET
+        sync: false  # Will be set manually in dashboard
+      - key: DATABASE_URL
+        sync: false  # Will be set manually in dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Will be set manually in dashboard
+      # Optional environment variables
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: SENTRY_DSN
+        sync: false
+      - key: FIREBASE_JSON
+        sync: false
+
+databases:
+  # PostgreSQL Database for Production
+  - name: mita-production-db
+    plan: starter
+    databaseName: mita_production
+    user: mita_user
+    region: oregon
+
+  # Redis Cache (Optional - can use Render's Redis add-on)
+  - name: mita-production-redis
+    plan: starter
+    # Redis configuration will be handled by Render's Redis add-on
