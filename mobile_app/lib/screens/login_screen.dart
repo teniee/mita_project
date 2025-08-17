@@ -422,6 +422,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      // Add debug FAB for auth testing in debug mode only
+      floatingActionButton: kDebugMode ? FloatingActionButton.small(
+        onPressed: () {
+          Navigator.pushNamed(context, '/auth-test');
+        },
+        backgroundColor: colorScheme.secondary,
+        child: Icon(
+          Icons.bug_report,
+          color: colorScheme.onSecondary,
+        ),
+        tooltip: 'Auth Test Screen',
+      ) : null,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,

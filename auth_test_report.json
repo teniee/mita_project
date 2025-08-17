@@ -1,0 +1,54 @@
+{
+  "test_summary": {
+    "total_tests": 5,
+    "passed": 1,
+    "failed": 4,
+    "success_rate": "20.0%",
+    "timestamp": "2025-08-17T10:11:08.717854"
+  },
+  "working_backend_url": null,
+  "test_results": [
+    {
+      "test_name": "Network connectivity to http://localhost:8000",
+      "success": false,
+      "duration_ms": 4.211187362670898,
+      "error_message": "Cannot connect to host localhost:8000 ssl:False [Multiple exceptions: [Errno 61] Connect call failed ('::1', 8000, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 8000)]",
+      "details": {}
+    },
+    {
+      "test_name": "Network connectivity to https://mita-production.onrender.com",
+      "success": false,
+      "duration_ms": 340.78097343444824,
+      "error_message": "HTTP 404",
+      "details": {}
+    },
+    {
+      "test_name": "Network connectivity to http://127.0.0.1:8000",
+      "success": false,
+      "duration_ms": 0.9968280792236328,
+      "error_message": "Cannot connect to host 127.0.0.1:8000 ssl:False [Connect call failed ('127.0.0.1', 8000)]",
+      "details": {}
+    },
+    {
+      "test_name": "Mobile API configuration",
+      "success": false,
+      "duration_ms": 2.040863037109375,
+      "error_message": "API URL not configured properly",
+      "details": {
+        "config_file_exists": true,
+        "config_preview": "const String defaultApiBaseUrl = 'https://mita-docker-ready-project-manus.onrender.com/api';\n"
+      }
+    },
+    {
+      "test_name": "Timeout configurations",
+      "success": true,
+      "duration_ms": 2.405881881713867,
+      "error_message": "",
+      "details": {
+        "mobile_auth_timeout": "30 seconds (configured)",
+        "mobile_receive_timeout": "45 seconds (configured)",
+        "uses_emergency_registration": "Yes (configured)"
+      }
+    }
+  ]
+}

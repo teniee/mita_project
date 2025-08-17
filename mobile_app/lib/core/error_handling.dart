@@ -359,7 +359,10 @@ class ErrorHandler {
 
     final successfulReports = <ErrorReport>[];
     
-    for (final report in _pendingReports) {
+    // Create a copy of the list to avoid concurrent modification
+    final reportsCopy = List<ErrorReport>.from(_pendingReports);
+    
+    for (final report in reportsCopy) {
       final success = await _sendErrorReport(report);
       if (success) {
         successfulReports.add(report);

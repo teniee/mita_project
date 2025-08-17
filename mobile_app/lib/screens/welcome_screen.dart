@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
@@ -231,6 +232,18 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     
     return Scaffold(
       backgroundColor: theme.colorScheme.primary,
+      // Add debug FAB for auth testing in debug mode only
+      floatingActionButton: kDebugMode ? FloatingActionButton.small(
+        onPressed: () {
+          Navigator.pushNamed(context, '/auth-test');
+        },
+        backgroundColor: theme.colorScheme.secondary,
+        child: Icon(
+          Icons.bug_report,
+          color: theme.colorScheme.onSecondary,
+        ),
+        tooltip: 'Auth Test Screen',
+      ) : null,
       body: SafeArea(
         child: Container(
           width: double.infinity,

@@ -1,1 +1,1 @@
-const String defaultApiBaseUrl = 'https://mita-production.onrender.com/api';
+const String defaultApiBaseUrl = 'https://mita-docker-ready-project-manus.onrender.com/api';

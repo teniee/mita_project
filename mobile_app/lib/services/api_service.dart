@@ -24,9 +24,9 @@ class ApiService {
   ApiService._internal() {
     // Create timeout-aware Dio instance with extended timeouts for auth operations
     _dio = TimeoutManagerService().createTimeoutAwareDio(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 45), // Extended for slow backend
-      sendTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 30), // Increased for slow backend
+      receiveTimeout: const Duration(seconds: 60), // Extended for slow backend
+      sendTimeout: const Duration(seconds: 30), // Increased for slow backend
     );
     
     _dio.options.baseUrl = _baseUrl;
