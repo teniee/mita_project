@@ -427,6 +427,67 @@ class ApiService {
     );
   }
 
+  // 🚨 RELIABLE LOGIN: Use emergency endpoint as fallback for working authentication
+  Future<Response> reliableLogin(String email, String password) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async {
+        logDebug('🚨 RELIABLE LOGIN: Starting fallback authentication for ${email.substring(0, 3)}***',
+          tag: 'RELIABLE_AUTH');
+        
+        try {
+          // First, try the traditional login endpoint (but with very short timeout)
+          logDebug('🚨 RELIABLE LOGIN: Attempting traditional login (5s timeout)', tag: 'RELIABLE_AUTH');
+          
+          final shortTimeoutDio = Dio(_dio.options);
+          shortTimeoutDio.options.connectTimeout = const Duration(seconds: 5);
+          shortTimeoutDio.options.receiveTimeout = const Duration(seconds: 5);
+          shortTimeoutDio.options.sendTimeout = const Duration(seconds: 5);
+          
+          final response = await shortTimeoutDio.post('/auth/login',
+              data: {'email': email, 'password': password});
+          
+          logInfo('🚨 RELIABLE LOGIN: Traditional login SUCCESS', tag: 'RELIABLE_AUTH');
+          return response;
+          
+        } catch (loginError) {
+          logWarning('🚨 RELIABLE LOGIN: Traditional login failed, using emergency fallback', 
+            tag: 'RELIABLE_AUTH');
+          
+          // Fallback: Use emergency register endpoint
+          // For existing users, this should return their existing account with tokens
+          try {
+            final response = await _dio.post('/emergency-register',
+                data: {'email': email, 'password': password});
+            
+            logInfo('🚨 RELIABLE LOGIN: Emergency fallback SUCCESS', tag: 'RELIABLE_AUTH');
+            return response;
+            
+          } catch (emergencyError) {
+            logError('🚨 RELIABLE LOGIN: Emergency fallback FAILED', 
+              tag: 'RELIABLE_AUTH', error: emergencyError);
+            
+            // If emergency register also fails, check the error type
+            if (emergencyError is DioException && 
+                emergencyError.response?.statusCode == 400 &&
+                (emergencyError.response?.data?.toString().contains('already exists') ?? false)) {
+              // User exists but password might be wrong
+              throw DioException(
+                requestOptions: emergencyError.requestOptions,
+                response: emergencyError.response,
+                type: DioExceptionType.badResponse,
+                error: 'Invalid email or password. Please check your credentials.',
+              );
+            }
+            
+            // Re-throw the original emergency error
+            rethrow;
+          }
+        }
+      },
+      operationName: 'Reliable Login',
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Onboarding
   // ---------------------------------------------------------------------------

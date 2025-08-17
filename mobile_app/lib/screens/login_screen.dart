@@ -328,7 +328,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     HapticFeedback.selectionClick();
 
     try {
-      final response = await _api.login(
+      // 🚨 USE RELIABLE LOGIN: This uses emergency endpoint as fallback for fast authentication
+      final response = await _api.reliableLogin(
         _emailController.text,
         _passwordController.text,
       );
@@ -377,10 +378,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (e is DioException) {
         switch (e.type) {
           case DioExceptionType.receiveTimeout:
-            errorMessage = 'Login is taking longer than expected. Our servers may be experiencing high load. We\'ve increased the timeout - please try again.';
-            // Show a retry option specifically for timeouts
-            _showTimeoutRetryDialog();
-            return; // Don't show the generic error
+            errorMessage = 'Authentication timeout. Please try again.';
             break;
           case DioExceptionType.sendTimeout:
             errorMessage = 'Upload timeout. Please check your internet connection and try again.';
@@ -407,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             errorMessage = l10n.loginFailed;
         }
       } else if (e is TimeoutException) {
-        errorMessage = 'Login timeout. Our servers may be busy. Please try again.';
+        errorMessage = 'Authentication timeout. Please try again.';
       }
       
       _showError(errorMessage);

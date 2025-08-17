@@ -89,6 +89,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.pushReplacementNamed(context, '/onboarding_region');
       
     } catch (emergencyError) {
+      // Check if user already exists - redirect to login
+      if (emergencyError is DioException && 
+          emergencyError.response?.statusCode == 400 &&
+          (emergencyError.response?.data?.toString().contains('already exists') == true ||
+           emergencyError.response?.data?.toString().contains('User already exists') == true)) {
+        setState(() {
+          _loading = false;
+          _error = 'This email is already registered. Please go back and login instead.';
+        });
+        return;
+      }
+      
       logError('🚨 EMERGENCY REGISTRATION FAILED, trying regular registration', tag: 'REGISTER', error: emergencyError);
       
       // Fallback to regular registration
