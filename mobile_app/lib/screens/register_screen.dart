@@ -183,8 +183,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   errorMessage = 'Invalid email or password format';
                 } else if (statusCode == 409 || statusCode == 422) {
                   errorMessage = 'This email is already registered. Try logging in instead.';
+                } else if (statusCode == 500) {
+                  errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes or contact support.';
                 } else if (statusCode != null && statusCode >= 500) {
-                  errorMessage = 'Server error. Please try again later.';
+                  errorMessage = 'Server error (${statusCode}). Please try again later or contact support.';
                 } else {
                   errorMessage = 'Registration failed. Please try again.';
                 }

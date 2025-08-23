@@ -353,35 +353,54 @@ class ErrorHandler {
 
   // Retry sending pending error reports
   Future<void> _retryPendingReports() async {
+    // Early return if empty - thread safe check
     if (_pendingReports.isEmpty) return;
 
     // Skip connectivity check for now - simplified without connectivity_plus
 
-    final successfulReports = <ErrorReport>[];
-    
-    // Create a copy of the list to avoid concurrent modification
-    final reportsCopy = List<ErrorReport>.from(_pendingReports);
-    
-    for (final report in reportsCopy) {
-      final success = await _sendErrorReport(report);
-      if (success) {
-        successfulReports.add(report);
-      }
-    }
-
-    // Remove successfully sent reports
-    for (final report in successfulReports) {
-      _pendingReports.remove(report);
-    }
-
-    // Update stored reports
-    if (successfulReports.isNotEmpty) {
-      final remainingReports = _pendingReports
-          .map((r) => jsonEncode(r.toJson()))
-          .toList();
-      await _prefs.setStringList('pending_error_reports', remainingReports);
+    try {
+      final successfulReports = <ErrorReport>[];
       
-      developer.log('Sent ${successfulReports.length} pending error reports', name: 'ErrorHandler');
+      // Create a completely separate copy to avoid any concurrent modification
+      final reportsCopy = <ErrorReport>[];
+      for (final report in _pendingReports) {
+        reportsCopy.add(report);
+      }
+      
+      // Process the copy safely
+      for (final report in reportsCopy) {
+        try {
+          final success = await _sendErrorReport(report);
+          if (success) {
+            successfulReports.add(report);
+          }
+        } catch (e) {
+          // Continue with other reports if one fails
+          developer.log('Failed to send error report: $e', name: 'ErrorHandler');
+        }
+      }
+
+      // Update the original list safely - remove successfully sent reports
+      if (successfulReports.isNotEmpty) {
+        // Remove from original list
+        _pendingReports.removeWhere((report) => successfulReports.contains(report));
+        
+        // Update stored reports
+        final remainingReports = <String>[];
+        for (final report in _pendingReports) {
+          try {
+            remainingReports.add(jsonEncode(report.toJson()));
+          } catch (e) {
+            // Skip corrupted reports
+            developer.log('Skipping corrupted report: $e', name: 'ErrorHandler');
+          }
+        }
+        
+        await _prefs.setStringList('pending_error_reports', remainingReports);
+        developer.log('Sent ${successfulReports.length} pending error reports', name: 'ErrorHandler');
+      }
+    } catch (e) {
+      developer.log('Error in _retryPendingReports: $e', name: 'ErrorHandler');
     }
   }
 

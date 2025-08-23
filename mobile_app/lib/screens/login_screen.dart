@@ -395,8 +395,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               errorMessage = 'Invalid email or password. Please try again.';
             } else if (statusCode == 429) {
               errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+            } else if (statusCode == 500) {
+              errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes or contact support.';
             } else if (statusCode != null && statusCode >= 500) {
-              errorMessage = 'Server error. Please try again later.';
+              errorMessage = 'Server error (${statusCode}). Please try again later or contact support.';
             } else {
               errorMessage = l10n.loginFailed;
             }
