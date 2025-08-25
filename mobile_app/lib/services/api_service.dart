@@ -402,7 +402,7 @@ class ApiService {
           logDebug('🚨 EMERGENCY REGISTRATION: Attempting fast registration for ${email.substring(0, 3)}***',
             tag: 'EMERGENCY_AUTH');
           
-          final response = await _dio.post('/emergency-register',
+          final response = await _dio.post('../emergency-register',
               data: {'email': email, 'password': password});
           
           logInfo('🚨 EMERGENCY REGISTRATION: SUCCESS in ${response.extra?['duration'] ?? 'unknown'}ms',
@@ -438,7 +438,7 @@ class ApiService {
           // Use emergency register endpoint directly - it's fast and handles both login/register
           logDebug('🚨 RELIABLE LOGIN: Using emergency endpoint directly', tag: 'RELIABLE_AUTH');
           
-          final response = await _dio.post('/emergency-register',
+          final response = await _dio.post('../emergency-register',
               data: {'email': email, 'password': password});
           
           logInfo('🚨 RELIABLE LOGIN: Emergency endpoint SUCCESS', tag: 'RELIABLE_AUTH');
@@ -479,6 +479,61 @@ class ApiService {
         }
       },
       operationName: 'Reliable Login',
+    );
+  }
+
+  // 🚨 RELIABLE REGISTER: Only use emergency endpoint to avoid timeout issues
+  Future<Response> reliableRegister(String email, String password) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async {
+        logDebug('🚨 RELIABLE REGISTER: Starting registration for ${email.substring(0, 3)}***',
+          tag: 'RELIABLE_AUTH');
+        
+        try {
+          // Only use emergency register endpoint - it's fast and reliable
+          logDebug('🚨 RELIABLE REGISTER: Using emergency endpoint', tag: 'RELIABLE_AUTH');
+          
+          final response = await _dio.post('../emergency-register',
+              data: {'email': email, 'password': password});
+          
+          logInfo('🚨 RELIABLE REGISTER: Emergency endpoint SUCCESS', tag: 'RELIABLE_AUTH');
+          return response;
+            
+        } catch (emergencyError) {
+          logError('🚨 RELIABLE REGISTER: Emergency endpoint FAILED', 
+            tag: 'RELIABLE_AUTH', error: emergencyError);
+            
+          // Handle different error cases for better user experience
+          if (emergencyError is DioException) {
+            final statusCode = emergencyError.response?.statusCode;
+            final errorData = emergencyError.response?.data;
+            
+            if (statusCode == 400) {
+              final errorMessage = errorData?.toString() ?? '';
+              if (errorMessage.contains('already registered') || errorMessage.contains('Email already registered')) {
+                // For registration attempts where user already exists
+                throw DioException(
+                  requestOptions: emergencyError.requestOptions,
+                  response: emergencyError.response,
+                  type: DioExceptionType.badResponse,
+                  error: 'This email is already registered. Please try logging in instead.',
+                );
+              } else if (errorMessage.contains('Password too short')) {
+                throw DioException(
+                  requestOptions: emergencyError.requestOptions,
+                  response: emergencyError.response,
+                  type: DioExceptionType.badResponse,
+                  error: 'Password must be at least 8 characters long.',
+                );
+              }
+            }
+          }
+          
+          // Re-throw the original error if it's not a recognized case
+          rethrow;
+        }
+      },
+      operationName: 'Reliable Registration',
     );
   }
 

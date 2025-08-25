@@ -67,10 +67,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
     
     try {
-      // 🚨 EMERGENCY: Try emergency registration first for faster signup
-      logInfo('🚨 ATTEMPTING EMERGENCY REGISTRATION for better performance', tag: 'REGISTER');
+      // 🚨 USE RELIABLE REGISTRATION: Only uses emergency endpoint to avoid timeouts
+      logInfo('🚨 ATTEMPTING RELIABLE REGISTRATION using emergency endpoint only', tag: 'REGISTER');
       
-      final response = await _api.emergencyRegister(
+      final response = await _api.reliableRegister(
         _emailController.text.trim(),
         _passwordController.text,
       );
@@ -83,135 +83,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       if (!mounted) return;
       
-      logInfo('🚨 EMERGENCY REGISTRATION SUCCESS - proceeding to onboarding', tag: 'REGISTER');
+      logInfo('🚨 RELIABLE REGISTRATION SUCCESS - proceeding to onboarding', tag: 'REGISTER');
       
-      // For emergency registration, always go to onboarding since it's a new account
+      // For new registration, always go to onboarding
       Navigator.pushReplacementNamed(context, '/onboarding_region');
       
-    } catch (emergencyError) {
-      // Check if user already exists - redirect to login
-      if (emergencyError is DioException && 
-          emergencyError.response?.statusCode == 400 &&
-          (emergencyError.response?.data?.toString().contains('already exists') == true ||
-           emergencyError.response?.data?.toString().contains('User already exists') == true)) {
-        setState(() {
-          _loading = false;
-          _error = 'This email is already registered. Please go back and login instead.';
-        });
-        return;
-      }
+    } catch (e) {
+      logError('🚨 RELIABLE REGISTRATION FAILED', tag: 'REGISTER', error: e);
       
-      logError('🚨 EMERGENCY REGISTRATION FAILED, trying regular registration', tag: 'REGISTER', error: emergencyError);
+      String errorMessage = 'Registration failed';
       
-      // Fallback to regular registration
-      try {
-        final response = await _api.register(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-        final accessToken = response.data['access_token'] as String;
-        final refreshToken = response.data['refresh_token'] as String;
-        await _api.saveTokens(accessToken, refreshToken);
-        if (!mounted) return;
+      // Extract more specific error message from DioException
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final errorData = e.response?.data?.toString() ?? '';
         
-        // Check if user has completed onboarding
-        final hasOnboarded = await _api.hasCompletedOnboarding();
-        if (hasOnboarded) {
-          Navigator.pushReplacementNamed(context, '/main');
-        } else {
-          Navigator.pushReplacementNamed(context, '/onboarding_region');
-        }
-      } catch (e) {
-        logError('Registration error: $e');
-        logError('Error type: ${e.runtimeType}');
-        
-        String errorMessage = 'Registration failed';
-        
-        // Extract more specific error message from DioException
-        if (e.toString().contains('DioException')) {
-          try {
-            // Try to extract error from response data
-            final dioError = e as dynamic;
-            if (dioError.response?.data != null) {
-              final data = dioError.response?.data;
-              logInfo('Response data: $data');
-              
-              if (data is Map) {
-                if (data.containsKey('error') && data['error'] is Map) {
-                  final errorDetail = data['error']['detail']?.toString() ?? '';
-                  if (errorDetail.contains('Email already exists')) {
-                    errorMessage = 'This email is already registered. Try logging in instead.';
-                  } else if (errorDetail.isNotEmpty) {
-                    errorMessage = errorDetail;
-                  }
-                } else if (data.containsKey('detail')) {
-                  final detail = data['detail'].toString();
-                  if (detail.contains('Email already exists')) {
-                    errorMessage = 'This email is already registered. Try logging in instead.';
-                  } else {
-                    errorMessage = detail;
-                  }
-                }
-              }
-            }
-          } catch (parseError) {
-            logError('Error parsing response: $parseError');
-          }
-        }
-        
-        // Enhanced error handling with proper timeout detection
-        if (errorMessage == 'Registration failed') {
-          if (e is DioException) {
-            switch (e.type) {
-              case DioExceptionType.receiveTimeout:
-                errorMessage = 'Registration is taking longer than expected. Our servers may be experiencing high load. We\'ve increased the timeout - please try again.';
-                _showTimeoutRetryDialog();
-                return; // Don't show the generic error
-                break;
-              case DioExceptionType.sendTimeout:
-                errorMessage = 'Upload timeout. Please check your internet connection and try again.';
-                break;
-              case DioExceptionType.connectionTimeout:
-                errorMessage = 'Connection timeout. Please check your internet connection and try again.';
-                break;
-              case DioExceptionType.connectionError:
-                errorMessage = 'Connection error. Please check your internet connection and try again.';
-                break;
-              case DioExceptionType.badResponse:
-                final statusCode = e.response?.statusCode;
-                if (statusCode == 400) {
-                  errorMessage = 'Invalid email or password format';
-                } else if (statusCode == 409 || statusCode == 422) {
-                  errorMessage = 'This email is already registered. Try logging in instead.';
-                } else if (statusCode == 500) {
-                  errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes or contact support.';
-                } else if (statusCode != null && statusCode >= 500) {
-                  errorMessage = 'Server error (${statusCode}). Please try again later or contact support.';
-                } else {
-                  errorMessage = 'Registration failed. Please try again.';
-                }
-                break;
-              default:
-                errorMessage = 'Registration failed. Please try again.';
-            }
-          } else if (e is TimeoutException) {
-            errorMessage = 'Registration timeout. Our servers may be busy. Please try again in a moment.';
-          } else if (e.toString().contains('Email already exists')) {
-            errorMessage = 'This email is already registered. Try logging in instead.';
-          } else if (e.toString().contains('SocketException') || 
-                     e.toString().contains('network') ||
-                     e.toString().contains('HandshakeException')) {
-            errorMessage = 'Network error. Check your internet connection and try again.';
+        if (statusCode == 400) {
+          if (errorData.contains('already registered') || errorData.contains('Email already registered')) {
+            errorMessage = 'This email is already registered. Please try logging in instead.';
+          } else if (errorData.contains('Password too short')) {
+            errorMessage = 'Password must be at least 8 characters long.';
+          } else if (errorData.contains('Invalid email')) {
+            errorMessage = 'Please enter a valid email address.';
           } else {
-            errorMessage = 'Registration failed. Please try again.';
+            errorMessage = 'Invalid email or password format.';
           }
+        } else if (statusCode == 409 || statusCode == 422) {
+          errorMessage = 'This email is already registered. Please try logging in instead.';
+        } else if (statusCode == 500) {
+          errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
+        } else if (statusCode != null && statusCode >= 500) {
+          errorMessage = 'Server error (${statusCode}). Please try again later.';
         }
         
-        setState(() {
-          _loading = false;
-          _error = errorMessage;
-        });
+        // Handle timeout errors specifically
+        switch (e.type) {
+          case DioExceptionType.receiveTimeout:
+          case DioExceptionType.sendTimeout:
+          case DioExceptionType.connectionTimeout:
+            errorMessage = 'Registration is taking longer than expected. Our servers may be experiencing high load. Please try again.';
+            _showTimeoutRetryDialog();
+            return; // Don't show the generic error
+          case DioExceptionType.connectionError:
+            errorMessage = 'Connection error. Please check your internet connection and try again.';
+            break;
+          default:
+            break;
+        }
+      } else if (e is TimeoutException) {
+        errorMessage = 'Registration timeout. Our servers may be busy. Please try again in a moment.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('network') ||
+                 e.toString().contains('HandshakeException')) {
+        errorMessage = 'Network error. Check your internet connection and try again.';
       }
+      
+      setState(() {
+        _loading = false;
+        _error = errorMessage;
+      });
     } finally {
       if (mounted) {
         setState(() {
