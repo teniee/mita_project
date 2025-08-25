@@ -35,9 +35,17 @@ services:
         sync: false  # Will be set manually in dashboard
       - key: OPENAI_API_KEY
         sync: false  # Will be set manually in dashboard
-      # Optional environment variables
+      # Redis Configuration - External Provider (Fallback to no Redis if not configured)
       - key: REDIS_URL
-        value: redis://localhost:6379/0
+        value: ""  # Empty string will disable Redis gracefully
+      - key: UPSTASH_REDIS_URL
+        sync: false  # Set manually in Render dashboard - Upstash primary
+      - key: REDIS_MAX_CONNECTIONS
+        value: 20
+      - key: REDIS_TIMEOUT
+        value: 30
+      - key: REDIS_RETRY_ON_TIMEOUT
+        value: true
       - key: ALLOWED_ORIGINS
         value: "*"
       - key: SENTRY_DSN
@@ -53,7 +61,5 @@ databases:
     user: mita_user
     region: oregon
 
-  # Redis Cache (Optional - can use Render's Redis add-on)
-  - name: mita-production-redis
-    plan: starter
-    # Redis configuration will be handled by Render's Redis add-on
+# Note: Redis will be provided by external service (Upstash)
+# No local Redis database needed - using cloud Redis for high availability

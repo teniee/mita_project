@@ -80,7 +80,10 @@ class RateLimiter:
     def _init_redis(self) -> Optional[redis.Redis]:
         """Initialize Redis connection"""
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379')
+            redis_url = getattr(settings, 'REDIS_URL', '')
+            if not redis_url:
+                logger.info("No Redis URL configured - using in-memory rate limiting")
+                return None
             client = redis.Redis.from_url(redis_url, decode_responses=True)
             client.ping()
             logger.info("Redis connected for rate limiting")

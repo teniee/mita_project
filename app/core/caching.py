@@ -215,19 +215,41 @@ class RedisCache:
         self._initialize_redis()
     
     def _initialize_redis(self):
-        """Initialize Redis connection"""
+        """Initialize Redis connection with external provider support"""
         try:
-            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379')
+            # Priority: Upstash > REDIS_URL > fallback to None
+            redis_url = getattr(settings, 'UPSTASH_REDIS_URL', None) or getattr(settings, 'REDIS_URL', None)
+            
+            if not redis_url:
+                logger.warning("No Redis URL configured for caching. Cache will be disabled.")
+                self.redis_client = None
+                return
+            
+            # Validate Redis URL format
+            if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
+                logger.error(f"Invalid Redis URL format for caching: {redis_url}")
+                self.redis_client = None
+                return
+            
             self.redis_client = redis.from_url(
                 redis_url,
                 decode_responses=False,  # Keep binary for pickle data
                 retry_on_timeout=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
+                socket_timeout=10,       # Increased timeout for external Redis
+                socket_connect_timeout=10,
+                max_connections=int(getattr(settings, 'REDIS_MAX_CONNECTIONS', 20)),
+                ssl_cert_reqs=None if redis_url.startswith('rediss://') else None
             )
-            logger.info("Redis cache initialized")
+            
+            # Test connection
+            self.redis_client.ping()
+            logger.info(f"Redis cache initialized with external provider: {redis_url[:20]}...")
+            
+        except redis.ConnectionError as e:
+            logger.error(f"Redis connection failed for caching: {e}")
+            self.redis_client = None
         except Exception as e:
-            logger.warning(f"Redis cache initialization failed: {str(e)}")
+            logger.error(f"Redis cache initialization failed: {str(e)}")
             self.redis_client = None
     
     async def get(self, key: str) -> Optional[Any]:

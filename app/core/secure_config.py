@@ -429,9 +429,14 @@ class SecureConfigManager:
                 if not any(config.DATABASE_URL.startswith(proto) for proto in ['postgresql://', 'postgres://']):
                     issues['DATABASE_URL'] = 'Invalid database URL format'
             
-            # Validate Redis URL format
-            if config.REDIS_URL and not config.REDIS_URL.startswith('redis://'):
-                issues['REDIS_URL'] = 'Invalid Redis URL format'
+            # Validate Redis URL format - Support external providers
+            redis_url = config.UPSTASH_REDIS_URL or config.REDIS_URL
+            if redis_url and not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
+                issues['REDIS_URL'] = 'Invalid Redis URL format. Must start with redis:// or rediss://'
+            
+            # Warn if no Redis configured (will use in-memory fallback)
+            if not redis_url:
+                issues['REDIS_WARNING'] = 'No Redis URL configured. Application will use in-memory fallback for caching and rate limiting.'
             
         except Exception as e:
             issues['CONNECTION_VALIDATION'] = f'Connection validation failed: {e}'

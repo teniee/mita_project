@@ -30,9 +30,13 @@ class Settings(BaseSettings):
             return url.replace("postgres://", "postgresql+asyncpg://", 1)
         return url
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # Redis Configuration - External Provider Support
+    REDIS_URL: str = ""  # Set via environment variable
+    UPSTASH_REDIS_URL: str = ""  # Primary external Redis provider
     REDIS_PASSWORD: str = ""
+    REDIS_MAX_CONNECTIONS: int = 20
+    REDIS_TIMEOUT: int = 30
+    REDIS_RETRY_ON_TIMEOUT: bool = True
     
     # Task Queue Configuration
     WORKER_MAX_JOBS: int = 100
@@ -154,7 +158,7 @@ except Exception as e:
         ENVIRONMENT = "development"
         ALGORITHM = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES = 30
-        REDIS_URL = "redis://localhost:6379/0"
+        REDIS_URL = ""  # No Redis in development by default - graceful fallback
         OPENAI_MODEL = "gpt-4o-mini"
         GOOGLE_APPLICATION_CREDENTIALS = ""
         APPSTORE_SHARED_SECRET = ""
