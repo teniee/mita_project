@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -74,14 +77,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00012" summary="&#10;  Verification: All core Python files now compile without syntax errors:&#10;  - ✅ database_monitoring.py&#10;  - ✅ async_session.py&#10;  - ✅ config.py">
-      <option name="closed" value="true" />
-      <created>1753984339618</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1753984339618</updated>
     </task>
     <task id="LOCAL-00013" summary="&#10;  Verification: All core Python files now compile without syntax errors:&#10;  - ✅ database_monitoring.py&#10;  - ✅ async_session.py&#10;  - ✅ config.py">
       <option name="closed" value="true" />
@@ -467,7 +462,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755991095454</updated>
     </task>
-    <option name="localTasksCounter" value="61" />
+    <task id="LOCAL-00061" summary=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)">
+      <option name="closed" value="true" />
+      <created>1756142528535</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1756142528535</updated>
+    </task>
+    <option name="localTasksCounter" value="62" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
