@@ -271,7 +271,8 @@ async def detailed_health_check():
         "jwt_secret_configured": bool(settings.JWT_SECRET or settings.SECRET_KEY),
         "database_configured": bool(settings.DATABASE_URL),
         "environment": settings.ENVIRONMENT,
-        "upstash_configured": bool(os.getenv("UPSTASH_AUTH_TOKEN")),
+        "upstash_configured": bool(os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN")),
+        "upstash_rest_api": bool(os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN")),
         "openai_configured": bool(settings.OPENAI_API_KEY)
     }
     

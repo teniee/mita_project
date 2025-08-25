@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Simple validation script for rate limiting implementation
