@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/auth", 
     tags=["Authentication"],
-    dependencies=[Depends(require_auth_endpoint_protection())]  # Apply base security to all auth endpoints
+    # Removed problematic dependency causing 500 errors - security applied at individual endpoint level
 )
 
 
