@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/validate_rate_limiting.py" beforeDir="false" afterPath="$PROJECT_DIR$/validate_rate_limiting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
