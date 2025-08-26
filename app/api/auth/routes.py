@@ -125,7 +125,6 @@ async def emergency_register(
     "/register",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(lightweight_auth_security())]
 )
 async def register(
     payload: FastRegisterIn,
@@ -181,7 +180,6 @@ async def register(
     "/register-full",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def register_full(
     payload: RegisterIn,
@@ -220,7 +218,6 @@ async def register_full(
 @router.post(
     "/login", 
     response_model=TokenOut,
-    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def login(
     payload: LoginIn,
@@ -500,7 +497,6 @@ async def validate_current_token(
 @router.post(
     "/google", 
     response_model=TokenOut,
-    dependencies=[Depends(comprehensive_auth_security())]
 )
 async def google_login(
     payload: GoogleAuthIn,
