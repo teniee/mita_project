@@ -178,21 +178,30 @@ async def init_database():
     Initialize database tables
     Call this during application startup
     """
-    # Initialize the database connection first
-    initialize_database()
-    
-    if async_engine is None:
-        raise RuntimeError("Database engine not initialized")
-    
-    async with async_engine.begin() as conn:
-        # Import all models to ensure they are registered
-        from app.db.models import (
-            User, Expense, Transaction, Goal, Habit, Mood, 
-            DailyPlan, Subscription, PushToken, NotificationLog,
-            UserAnswer, UserProfile, AIAnalysisSnapshot, BudgetAdvice, AIAdviceTemplate
-        )  # noqa
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        print("🔍 Starting database table initialization...")
+        # Initialize the database connection first
+        initialize_database()
+        
+        if async_engine is None:
+            print("❌ Database engine not initialized")
+            raise RuntimeError("Database engine not initialized")
+        
+        print("🔍 Creating database tables...")
+        async with async_engine.begin() as conn:
+            # Import all models to ensure they are registered
+            from app.db.models import (
+                User, Expense, Transaction, Goal, Habit, Mood, 
+                DailyPlan, Subscription, PushToken, NotificationLog,
+                UserAnswer, UserProfile, AIAnalysisSnapshot, BudgetAdvice, AIAdviceTemplate
+            )  # noqa
+            print("🔍 Models imported, creating tables...")
+            # Create all tables
+            await conn.run_sync(Base.metadata.create_all)
+            print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {type(e).__name__}: {str(e)}")
+        raise
 
 
 async def close_database():
