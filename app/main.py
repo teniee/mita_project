@@ -127,6 +127,28 @@ async def health_check():
         "message": "API is running successfully!"
     }
 
+@app.get("/debug")
+async def debug_check():
+    """Debug endpoint to test database session"""
+    try:
+        from app.core.async_session import get_async_db
+        from sqlalchemy import text
+        
+        async for db in get_async_db():
+            result = await db.execute(text("SELECT 1 as test"))
+            test_value = result.scalar()
+            return {
+                "database_test": "success",
+                "test_query_result": test_value,
+                "session_working": True
+            }
+    except Exception as e:
+        return {
+            "database_test": "failed",
+            "error": str(e),
+            "session_working": False
+        }
+
 # ---- EMERGENCY REGISTRATION ENDPOINT ----
 @app.post("/emergency-register")
 async def emergency_register(request: Request):
