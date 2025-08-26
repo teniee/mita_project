@@ -65,6 +65,7 @@ def initialize_database():
                     "application_name": "mita_finance_app"
                 },
                 "command_timeout": 10,  # Increase timeout for Supabase compatibility
+                "statement_cache_size": 0,  # Disable prepared statements for pgbouncer compatibility
             } if "postgresql" in database_url else {},
             # Performance optimizations
             pool_reset_on_return='commit',  # Only reset on commit, not rollback
