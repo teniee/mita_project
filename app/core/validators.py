@@ -164,8 +164,8 @@ class InputSanitizer:
     def sanitize_email(cls, email: str) -> str:
         """Validate and sanitize email"""
         try:
-            # Validate email format
-            validated_email = validate_email(email)
+            # Validate email format without DNS check for better reliability
+            validated_email = validate_email(email, check_deliverability=False)
             return validated_email.email.lower()
         except EmailNotValidError as e:
             raise ValidationError(f"Invalid email format: {str(e)}")
