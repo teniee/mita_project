@@ -49,6 +49,12 @@ def initialize_database():
     # Create async engine with optimized settings for Render/production performance
     try:
         print("🔍 Creating database engine...")
+        # Add URL parameter to ensure statement cache is disabled at connection level
+        if "postgresql" in database_url and "statement_cache_size" not in database_url:
+            separator = "&" if "?" in database_url else "?"
+            database_url = f"{database_url}{separator}statement_cache_size=0"
+            print(f"🔍 Added statement_cache_size=0 to URL: {database_url[:50]}...")
+        
         async_engine = create_async_engine(
             database_url,
             echo=False,  # Always disable echo for performance
