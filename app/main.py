@@ -149,6 +149,124 @@ async def debug_check():
             "session_working": False
         }
 
+
+@app.post("/debug-auth")
+async def debug_auth():
+    """Debug auth flow step by step"""
+    import asyncio
+    from app.core.async_session import get_async_db
+    from sqlalchemy import select, text
+    from app.db.models import User
+    from app.services.auth_jwt_service import hash_password
+    
+    results = {}
+    
+    try:
+        # Step 1: Test database session
+        async for db in get_async_db():
+            results["step1_db_session"] = "success"
+            
+            # Step 2: Test simple query
+            result = await db.execute(text("SELECT 1"))
+            results["step2_simple_query"] = result.scalar()
+            
+            # Step 3: Test user table query
+            result = await db.execute(select(User.id).limit(1))
+            existing_users = result.scalars().first()
+            results["step3_user_query"] = "success" if existing_users is not None else "no_users_found"
+            
+            # Step 4: Test password hashing (sync version)
+            test_hash = hash_password("testpass123")
+            results["step4_password_hash"] = "success" if test_hash else "failed"
+            
+            # Step 5: Test user creation
+            test_user = User(
+                email="debug-test@example.com",
+                password_hash=test_hash,
+                country="US",
+                annual_income=50000,
+                timezone="UTC"
+            )
+            results["step5_user_creation"] = "success"
+            
+            return {
+                "debug_results": results,
+                "status": "all_steps_completed"
+            }
+            
+    except Exception as e:
+        results["error"] = str(e)
+        results["error_type"] = type(e).__name__
+        return {
+            "debug_results": results,
+            "status": "failed"
+        }
+
+
+@app.post("/debug-register")
+async def debug_register(request: Request):
+    """Simplified registration for debugging"""
+    import asyncio
+    from app.core.async_session import get_async_db
+    from sqlalchemy import select
+    from app.db.models import User
+    from app.services.auth_jwt_service import hash_password, create_token_pair
+    
+    try:
+        # Get request data
+        body = await request.json()
+        email = body.get("email", "").lower()
+        password = body.get("password", "")
+        
+        # Basic validation
+        if not email or not password:
+            return {"error": "Email and password required"}
+        
+        # Test database session 
+        async for db in get_async_db():
+            # Check if user exists (with timeout)
+            try:
+                result = await asyncio.wait_for(
+                    db.execute(select(User.id).filter(User.email == email).limit(1)),
+                    timeout=5.0
+                )
+                existing_user = result.scalars().first()
+                
+                if existing_user:
+                    return {"error": "Email already exists"}
+                
+                # Hash password (sync version to avoid thread pool issues)
+                password_hash = hash_password(password)
+                
+                # Create user
+                user = User(
+                    email=email,
+                    password_hash=password_hash,
+                    country="US",
+                    annual_income=50000,
+                    timezone="UTC"
+                )
+                
+                # Save with timeout
+                db.add(user)
+                await asyncio.wait_for(db.commit(), timeout=5.0)
+                await asyncio.wait_for(db.refresh(user), timeout=3.0)
+                
+                # Create tokens
+                tokens = create_token_pair({"sub": str(user.id)}, user_role="basic_user")
+                
+                return {
+                    "success": True,
+                    "user_id": str(user.id),
+                    "tokens": tokens
+                }
+                
+            except asyncio.TimeoutError as e:
+                return {"error": f"Timeout error: {str(e)}"}
+                
+    except Exception as e:
+        return {"error": f"Exception: {str(e)}", "type": type(e).__name__}
+
 # ---- EMERGENCY REGISTRATION ENDPOINT ----
 @app.post("/emergency-register")
 async def emergency_register(request: Request):
