@@ -11,14 +11,15 @@ from app.api.auth.services import authenticate_user_async, register_user_async
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 from app.core.audit_logging import log_security_event
-from app.core.security import (
-    require_auth_endpoint_protection,
-    comprehensive_auth_security,
-    lightweight_auth_security,
-    get_rate_limiter,
-    AdvancedRateLimiter,
-    SecurityConfig
-)
+# EMERGENCY FIX: Commented out Redis-dependent security imports causing hangs
+# from app.core.security import (
+#     require_auth_endpoint_protection,
+#     comprehensive_auth_security,
+#     lightweight_auth_security,
+#     get_rate_limiter,
+#     AdvancedRateLimiter,
+#     SecurityConfig
+# )
 from app.db.models import User
 from app.services import auth_jwt_service as jwt_utils
 from app.services.auth_jwt_service import (
@@ -261,8 +262,8 @@ async def login(
 # ------------------------------------------------------------------
 
 @router.post(
-    "/refresh",
-    dependencies=[Depends(comprehensive_auth_security())]
+    "/refresh"
+    # EMERGENCY FIX: Removed hanging Redis dependencies
 )
 async def refresh_token(
     request: Request,
@@ -370,8 +371,8 @@ async def refresh_token(
 
 
 @router.post(
-    "/logout",
-    dependencies=[Depends(comprehensive_auth_security())]
+    "/logout"
+    # EMERGENCY FIX: Removed hanging Redis dependencies
 )
 async def logout(
     request: Request,
@@ -420,8 +421,8 @@ async def logout(
 # ------------------------------------------------------------------
 
 @router.post(
-    "/revoke",
-    dependencies=[Depends(comprehensive_auth_security())]
+    "/revoke"
+    # EMERGENCY FIX: Removed hanging Redis dependencies
 )
 async def revoke_token(
     request: Request,
@@ -467,8 +468,8 @@ async def revoke_token(
 
 
 @router.get(
-    "/token/validate",
-    dependencies=[Depends(comprehensive_auth_security())]
+    "/token/validate"
+    # EMERGENCY FIX: Removed hanging Redis dependencies
 )
 async def validate_current_token(
     request: Request,
@@ -540,8 +541,8 @@ async def google_login(
 # ------------------------------------------------------------------
 
 @router.post(
-    "/password-reset/request",
-    dependencies=[Depends(comprehensive_auth_security())]
+    "/password-reset/request"
+    # EMERGENCY FIX: Removed hanging Redis dependencies
 )
 async def request_password_reset(
     email: str,

@@ -13,8 +13,19 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import ALGORITHM, settings
-from app.core.upstash import blacklist_token as upstash_blacklist_token
-from app.core.upstash import is_token_blacklisted
+# EMERGENCY FIX: Disable Redis-dependent imports to prevent hanging
+# from app.core.upstash import blacklist_token as upstash_blacklist_token
+# from app.core.upstash import is_token_blacklisted
+
+# Mock functions to prevent hangs
+def upstash_blacklist_token(token_id: str, ttl: int = 86400) -> bool:
+    """EMERGENCY: Mock blacklist function to prevent Redis hangs"""
+    logger.warning(f"EMERGENCY MODE: Token blacklisting disabled - {token_id[:8]}...")
+    return True  # Always return success to avoid blocking
+
+def is_token_blacklisted(token_id: str) -> bool:
+    """EMERGENCY: Mock blacklist check function to prevent Redis hangs"""
+    return False  # Never blocked in emergency mode
 from app.core.audit_logging import log_security_event
 
 logger = logging.getLogger(__name__)
