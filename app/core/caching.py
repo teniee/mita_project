@@ -225,9 +225,9 @@ class RedisCache:
                 self.redis_client = None
                 return
             
-            # Validate Redis URL format
-            if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
-                logger.error(f"Invalid Redis URL format for caching: {redis_url}")
+            # Validate Redis URL format - EMERGENCY FIX: Handle empty strings gracefully
+            if redis_url == "" or not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
+                logger.warning(f"Invalid Redis URL format for caching: '{redis_url}' - using in-memory cache")
                 self.redis_client = None
                 return
             

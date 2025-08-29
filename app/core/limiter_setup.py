@@ -14,8 +14,12 @@ async def init_rate_limiter(app: FastAPI):
     upstash_rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
     redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
     
+    # EMERGENCY FIX: Handle empty string Redis URLs gracefully
+    if redis_url == "":
+        redis_url = None
+    
     # If Upstash REST API is configured, use it
-    if upstash_rest_url and upstash_rest_token:
+    if upstash_rest_url and upstash_rest_token and upstash_rest_url != "" and upstash_rest_token != "":
         logger.info("Using Upstash Redis REST API for rate limiting")
         try:
             # Create Redis connection from REST URL
@@ -35,9 +39,9 @@ async def init_rate_limiter(app: FastAPI):
         app.state.redis_available = False
         return
     else:
-        # Validate Redis URL format for TCP connections
+        # Validate Redis URL format for TCP connections  
         if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
-            logger.error(f"Invalid Redis URL format: {redis_url}")
+            logger.warning(f"Invalid Redis URL format: '{redis_url}' - falling back to in-memory rate limiting")
             app.state.redis_available = False
             return
     
