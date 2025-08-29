@@ -4,36 +4,28 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth.schemas import LoginIn  # noqa: E501
-from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
-from app.api.auth.services import authenticate_google  # noqa: E501
-from app.api.auth.services import authenticate_user_async, register_user_async
-from app.api.dependencies import get_current_user
-from app.core.async_session import get_async_db
-from app.core.audit_logging import log_security_event
-# EMERGENCY FIX: Commented out Redis-dependent security imports causing hangs
-# from app.core.security import (
-#     require_auth_endpoint_protection,
-#     comprehensive_auth_security,
-#     lightweight_auth_security,
-#     get_rate_limiter,
-#     AdvancedRateLimiter,
-#     SecurityConfig
+# EMERGENCY FIX: Comment out ALL potentially hanging imports
+# from app.api.auth.schemas import LoginIn  # noqa: E501
+# from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
+# from app.api.auth.services import authenticate_google  # noqa: E501
+# from app.api.auth.services import authenticate_user_async, register_user_async
+# from app.api.dependencies import get_current_user
+# from app.core.async_session import get_async_db
+# from app.core.audit_logging import log_security_event
+# from app.db.models import User
+# from app.services import auth_jwt_service as jwt_utils
+# from app.services.auth_jwt_service import (
+#     blacklist_token,
+#     create_access_token,
+#     create_refresh_token,
+#     create_token_pair,
+#     verify_token,
+#     validate_token_security,
+#     get_token_info,
+#     get_user_scopes,
+#     UserRole
 # )
-from app.db.models import User
-from app.services import auth_jwt_service as jwt_utils
-from app.services.auth_jwt_service import (
-    blacklist_token,
-    create_access_token,
-    create_refresh_token,
-    create_token_pair,
-    verify_token,
-    validate_token_security,
-    get_token_info,
-    get_user_scopes,
-    UserRole
-)
-from app.utils.response_wrapper import success_response
+# from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
 
