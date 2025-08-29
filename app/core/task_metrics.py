@@ -156,10 +156,10 @@ class TaskMetrics:
     def collect_queue_metrics(self):
         """Collect queue depth and status metrics."""
         try:
-            from app.core.task_queue import task_queue
+            from app.core.task_queue import get_task_queue
             
             # Get queue statistics
-            stats = task_queue.get_queue_stats()
+            stats = get_task_queue().get_queue_stats()
             
             with self._metrics_lock:
                 # Update queue depth metrics
@@ -282,8 +282,8 @@ class TaskMetrics:
     def get_business_metrics_summary(self) -> Dict[str, Any]:
         """Get business-relevant metrics summary."""
         try:
-            from app.core.task_queue import task_queue
-            stats = task_queue.get_queue_stats()
+            from app.core.task_queue import get_task_queue
+            stats = get_task_queue().get_queue_stats()
             
             # Calculate key business metrics
             total_queued = sum(
@@ -339,8 +339,8 @@ def get_task_metrics() -> TaskMetrics:
     
     if _task_metrics is None:
         try:
-            from app.core.task_queue import task_queue
-            _task_metrics = TaskMetrics(task_queue.redis_conn)
+            from app.core.task_queue import get_task_queue
+            _task_metrics = TaskMetrics(get_task_queue().redis_conn)
         except Exception as e:
             logger.error(f"Failed to initialize task metrics: {e}")
             # Return a no-op metrics instance

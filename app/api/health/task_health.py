@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi_limiter.depends import RateLimiter
 
 from app.services.task_manager import task_manager
-from app.core.task_queue import task_queue
+from app.core.task_queue import get_task_queue
 from app.core.logger import get_logger
 from app.utils.response_wrapper import success_response
 
@@ -32,7 +32,7 @@ async def task_system_health():
         start_time = time.time()
         
         # Get queue statistics
-        queue_stats = task_queue.get_queue_stats()
+        queue_stats = get_task_queue().get_queue_stats()
         
         # Calculate health metrics
         health_metrics = _calculate_health_metrics(queue_stats)
@@ -144,9 +144,9 @@ async def task_system_readiness():
     """
     try:
         # Quick checks for system readiness
-        redis_ready = task_queue.redis_conn.ping()
+        redis_ready = get_task_queue().redis_conn.ping()
         workers_available = len([
-            w for w in task_queue.redis_conn.smembers('rq:workers')
+            w for w in get_task_queue().redis_conn.smembers('rq:workers')
         ]) > 0
         
         if redis_ready and workers_available:
@@ -182,7 +182,7 @@ async def task_system_liveness():
     """
     try:
         # Basic liveness indicators
-        can_connect_redis = task_queue.redis_conn.ping()
+        can_connect_redis = get_task_queue().redis_conn.ping()
         
         if can_connect_redis:
             return success_response({
@@ -265,14 +265,14 @@ def _test_redis_connectivity() -> Dict[str, Any]:
         start_time = time.time()
         
         # Test basic connectivity
-        ping_result = task_queue.redis_conn.ping()
+        ping_result = get_task_queue().redis_conn.ping()
         ping_time = time.time() - start_time
         
         # Test read/write operations
         test_key = f"health_check:{int(time.time())}"
-        task_queue.redis_conn.set(test_key, "test_value", ex=10)
-        read_value = task_queue.redis_conn.get(test_key)
-        task_queue.redis_conn.delete(test_key)
+        get_task_queue().redis_conn.set(test_key, "test_value", ex=10)
+        read_value = get_task_queue().redis_conn.get(test_key)
+        get_task_queue().redis_conn.delete(test_key)
         
         total_time = time.time() - start_time
         
@@ -410,14 +410,14 @@ def _get_queue_depth_history() -> Dict[str, Any]:
     # In production, you'd store this in Redis or a time-series database
     return {
         "note": "Queue depth history would be tracked in production time-series DB",
-        "current_snapshot": task_queue.get_queue_stats()
+        "current_snapshot": get_task_queue().get_queue_stats()
     }
 
 
 def _analyze_error_rates() -> Dict[str, Any]:
     """Analyze task error rates (simplified)."""
     # In production, you'd analyze error patterns from logs or metrics
-    queue_stats = task_queue.get_queue_stats()
+    queue_stats = get_task_queue().get_queue_stats()
     total_failed = sum(
         stats.get('failed_job_count', 0)
         for stats in queue_stats.values()
@@ -442,7 +442,7 @@ def _get_performance_metrics() -> Dict[str, Any]:
 
 def _analyze_system_capacity() -> Dict[str, Any]:
     """Analyze system capacity and scaling needs."""
-    queue_stats = task_queue.get_queue_stats()
+    queue_stats = get_task_queue().get_queue_stats()
     workers = queue_stats.get('workers', {})
     
     return {

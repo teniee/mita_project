@@ -716,10 +716,10 @@ def cleanup_old_tasks_batch_task(
     logger.info(f"Starting task cleanup for tasks older than {max_age_hours} hours")
     
     try:
-        from app.core.task_queue import task_queue
+        from app.core.task_queue import get_task_queue
         
         # Clean up old jobs
-        cleanup_result = task_queue.clean_old_jobs(max_age_hours)
+        cleanup_result = get_task_queue().clean_old_jobs(max_age_hours)
         
         logger.info(
             f"Task cleanup completed: "
