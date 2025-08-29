@@ -100,10 +100,53 @@ async def register(
         # Minimal logging for performance
         logger.info(f"Registration attempt for {payload.email[:3]}*** started")
         
-        # Apply overall timeout to prevent 15+ second hangs
-        result = await asyncio.wait_for(
-            register_user_async(payload, db),
-            timeout=10.0  # 10 second overall timeout
+        # EMERGENCY: Bypass register_user_async to avoid hangs
+        from sqlalchemy import select, text
+        from app.db.models import User
+        from app.services.auth_jwt_service import hash_password, create_token_pair
+        
+        # Test database connectivity
+        await db.execute(text("SELECT 1"))
+        logger.info("Database connectivity confirmed")
+        
+        # Simple user existence check
+        result_check = await db.execute(
+            select(User.id).filter(User.email == payload.email.lower()).limit(1)
+        )
+        existing_user = result_check.scalars().first()
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+        
+        # Hash password (sync - no thread pool issues)
+        password_hash = hash_password(payload.password)
+        logger.info("Password hashed successfully")
+        
+        # Create user
+        user = User(
+            email=payload.email.lower(),
+            password_hash=password_hash,
+            country=payload.country,
+            annual_income=payload.annual_income or 0,
+            timezone=payload.timezone
+        )
+        
+        # Save user
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        logger.info("User saved to database")
+        
+        # Create tokens
+        tokens = create_token_pair({"sub": str(user.id)}, user_role="basic_user")
+        
+        result = TokenOut(
+            access_token=tokens["access_token"],
+            refresh_token=tokens["refresh_token"],
+            token_type="bearer"
         )
         
         elapsed = time.time() - start_time
