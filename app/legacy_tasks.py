@@ -41,9 +41,20 @@ def enqueue_daily_reminders() -> None:
     print(f"Daily reminders enqueued: {job.id}")
 
 
-# Legacy Redis queue for backward compatibility
-from redis import Redis
-from rq import Queue
+# Legacy Redis queue for backward compatibility - EMERGENCY FIX: Lazy initialization
+def get_legacy_queue():
+    """Get legacy Redis queue with lazy initialization to prevent startup hangs"""
+    try:
+        from redis import Redis
+        from rq import Queue
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        if not redis_url or redis_url == "":
+            # Fall back to in-memory task system
+            return None
+        return Queue("default", connection=Redis.from_url(redis_url))
+    except Exception:
+        # Fall back to in-memory task system
+        return None
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-queue = Queue("default", connection=Redis.from_url(redis_url))
+# Remove immediate Redis connection - use lazy loading
+queue = None

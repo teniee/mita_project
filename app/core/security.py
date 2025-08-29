@@ -23,22 +23,37 @@ from app.core.error_handler import ValidationException, AuthenticationException,
 
 logger = logging.getLogger(__name__)
 
-# Initialize Redis for rate limiting and security monitoring
-try:
-    redis_url = getattr(settings, 'redis_url', 'redis://localhost:6379')
-    redis_client = redis.Redis.from_url(redis_url, decode_responses=True)
-    # Test connection
-    redis_client.ping()
-    logger.info("Redis connection established successfully")
-except redis.ConnectionError as e:
-    redis_client = None
-    logger.warning(f"Redis connection failed: {str(e)} - rate limiting will use in-memory storage")
-except redis.RedisError as e:
-    redis_client = None
-    logger.error(f"Redis error: {str(e)} - rate limiting will use in-memory storage")
-except Exception as e:
-    redis_client = None
-    logger.error(f"Unexpected error connecting to Redis: {str(e)} - rate limiting will use in-memory storage")
+# EMERGENCY FIX: Lazy Redis initialization to prevent startup hangs
+redis_client = None
+
+def get_redis_client():
+    """Get Redis client with lazy initialization to prevent startup hangs"""
+    global redis_client
+    if redis_client is not None:
+        return redis_client
+    
+    try:
+        redis_url = getattr(settings, 'redis_url', 'redis://localhost:6379')
+        if not redis_url or redis_url == "":
+            logger.info("No Redis URL configured - using in-memory rate limiting")
+            return None
+        redis_client = redis.Redis.from_url(redis_url, decode_responses=True)
+        # Test connection
+        redis_client.ping()
+        logger.info("Redis connection established successfully")
+        return redis_client
+    except redis.ConnectionError as e:
+        redis_client = None
+        logger.warning(f"Redis connection failed: {str(e)} - rate limiting will use in-memory storage")
+        return None
+    except redis.RedisError as e:
+        redis_client = None
+        logger.error(f"Redis error: {str(e)} - rate limiting will use in-memory storage")
+        return None
+    except Exception as e:
+        redis_client = None
+        logger.error(f"Unexpected error connecting to Redis: {str(e)} - rate limiting will use in-memory storage")
+        return None
 
 # In-memory fallback for rate limiting
 rate_limit_memory: Dict[str, Dict] = {}
@@ -882,6 +897,7 @@ def get_security_health_status() -> dict:
     }
     
     # Test Redis connectivity if available
+    redis_client = get_redis_client()
     if redis_client:
         try:
             redis_client.ping()
@@ -900,10 +916,10 @@ def get_security_health_status() -> dict:
     if redis_client:
         try:
             # Count active rate limit keys
-            active_keys = len(redis_client.keys("rate_limit:*"))
-            penalty_keys = len(redis_client.keys("penalties:*"))
-            suspicious_keys = len(redis_client.keys("suspicious:*"))
-            blacklist_keys = len(redis_client.keys("blacklist:*"))
+            active_keys = len(redis_client.keys("rate_limit:*")) if redis_client else 0
+            penalty_keys = len(redis_client.keys("penalties:*")) if redis_client else 0
+            suspicious_keys = len(redis_client.keys("suspicious:*")) if redis_client else 0
+            blacklist_keys = len(redis_client.keys("blacklist:*")) if redis_client else 0
             
             health_status["statistics"] = {
                 "active_rate_limit_keys": active_keys,
@@ -1141,6 +1157,7 @@ class JWTSecurity:
     @staticmethod
     def blacklist_token(jti: str) -> None:
         """Add token to blacklist"""
+        redis_client = get_redis_client()
         if redis_client:
             try:
                 redis_client.setex(f"blacklist:{jti}", 86400 * 7, "1")  # 7 days
@@ -1150,6 +1167,7 @@ class JWTSecurity:
     @staticmethod
     def is_token_blacklisted(jti: str) -> bool:
         """Check if token is blacklisted"""
+        redis_client = get_redis_client()
         if redis_client:
             try:
                 return redis_client.exists(f"blacklist:{jti}") > 0
