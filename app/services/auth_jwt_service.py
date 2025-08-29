@@ -33,10 +33,11 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=10)  # Optimized for registration performance
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=4)  # EMERGENCY: Minimal rounds for speed
 
-# Thread pool for CPU-intensive operations (bcrypt hashing and JWT operations)
-_thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")  # Increased for registration load
+# EMERGENCY FIX: Disable thread pool causing deadlock
+# _thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")
+_thread_pool = None  # EMERGENCY: Disabled to prevent hanging
 
 # Token operation cache to reduce JWT decoding overhead
 _token_cache: Dict[str, Dict[str, Any]] = {}
@@ -141,15 +142,15 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 async def async_hash_password(plain: str) -> str:
-    """Asynchronous password hashing using thread pool to avoid blocking the event loop"""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_thread_pool, pwd_context.hash, plain)
+    """EMERGENCY FIX: Use sync hashing to prevent thread pool deadlock"""
+    # EMERGENCY: Thread pool causing deadlock - use direct sync call
+    return pwd_context.hash(plain)
 
 
 async def async_verify_password(plain: str, hashed: str) -> bool:
-    """Asynchronous password verification using thread pool to avoid blocking the event loop"""
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_thread_pool, pwd_context.verify, plain, hashed)
+    """EMERGENCY FIX: Use sync verification to prevent thread pool deadlock"""
+    # EMERGENCY: Thread pool causing deadlock - use direct sync call
+    return pwd_context.verify(plain, hashed)
 
 
 def decode_token(token: str) -> dict:
