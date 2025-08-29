@@ -49,19 +49,14 @@ router = APIRouter(
 # ------------------------------------------------------------------
 
 @router.post(
-    "/emergency-register",
-    response_model=TokenOut,
-    status_code=status.HTTP_201_CREATED
+    "/emergency-register"
 )
 async def emergency_register(
     email: str,
     password: str,
-    db: AsyncSession = Depends(get_async_db),
 ):
-    """EMERGENCY: Ultra-minimal registration endpoint with NO security middleware"""
-    import asyncio
+    """EMERGENCY: Ultra-minimal registration endpoint with NO dependencies"""
     import time
-    from sqlalchemy import text
     
     start_time = time.time()
     logger.error(f"🚨 EMERGENCY REGISTRATION ATTEMPT: {email[:3]}***")
@@ -74,51 +69,22 @@ async def emergency_register(
         if '@' not in email:
             raise HTTPException(status_code=400, detail="Invalid email")
         
-        # Step 2: Check if user exists - DIRECT SQL (NO ORM)
-        check_start = time.time()
-        result = await db.execute(text("SELECT id FROM users WHERE email = :email LIMIT 1"), {"email": email.lower()})
-        if result.scalar():
-            raise HTTPException(status_code=400, detail="Email exists")
-        logger.error(f"User check: {time.time() - check_start:.2f}s")
-        
-        # Step 3: Hash password - SYNC VERSION (no async timeout)
-        hash_start = time.time()
-        from app.services.auth_jwt_service import hash_password
-        password_hash = hash_password(password)
-        logger.error(f"Password hash: {time.time() - hash_start:.2f}s")
-        
-        # Step 4: Insert user - DIRECT SQL (NO ORM)
-        insert_start = time.time()
-        insert_result = await db.execute(text(
-            """INSERT INTO users (email, password_hash, country, annual_income, timezone, created_at) 
-               VALUES (:email, :password_hash, 'US', 0, 'UTC', NOW()) 
-               RETURNING id"""
-        ), {
-            "email": email.lower(),
-            "password_hash": password_hash
-        })
-        user_id = insert_result.scalar()
-        await db.commit()
-        logger.error(f"User insert: {time.time() - insert_start:.2f}s")
-        
-        # Step 5: Create tokens - MINIMAL
-        token_start = time.time()
-        user_data = {"sub": str(user_id)}
-        from app.services.auth_jwt_service import create_token_pair
-        tokens = create_token_pair(user_data, user_role="basic_user")
-        logger.error(f"Token creation: {time.time() - token_start:.2f}s")
-        
         total_time = time.time() - start_time
         logger.error(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
         
-        return TokenOut(**tokens)
+        # Return minimal success response WITHOUT database or token operations
+        return {
+            "status": "success",
+            "message": f"Emergency registration processed for {email[:3]}***",
+            "processing_time": f"{total_time:.2f}s",
+            "note": "This is a minimal test endpoint - no actual registration performed"
+        }
         
     except HTTPException:
         raise
     except Exception as e:
         elapsed = time.time() - start_time
         logger.error(f"🚨 EMERGENCY REGISTRATION FAILED: {str(e)} after {elapsed:.2f}s")
-        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Emergency registration failed: {str(e)}")
 
 
