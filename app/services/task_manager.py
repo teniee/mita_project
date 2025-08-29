@@ -44,7 +44,7 @@ class TaskManager:
     
     def __init__(self):
         """Initialize the task manager."""
-        self.task_queue = task_queue
+        self.task_queue = None  # Will be lazy-loaded when needed
         logger.info("Task manager initialized")
 
     def submit_ocr_task(
@@ -291,7 +291,7 @@ class TaskManager:
             TaskInfo with current status or None if not found
         """
         try:
-            task_result = self.get_task_queue().get_task_status(task_id)
+            task_result = get_task_queue().get_task_status(task_id)
             
             if not task_result:
                 return None
@@ -326,7 +326,7 @@ class TaskManager:
             True if successfully cancelled, False otherwise
         """
         try:
-            success = self.get_task_queue().cancel_task(task_id)
+            success = get_task_queue().cancel_task(task_id)
             
             if success:
                 logger.info(f"Task cancelled: {task_id}")
@@ -350,7 +350,7 @@ class TaskManager:
             TaskInfo for the new task or None if retry failed
         """
         try:
-            job = self.get_task_queue().retry_failed_task(task_id)
+            job = get_task_queue().retry_failed_task(task_id)
             
             if job:
                 logger.info(f"Task retried: {task_id} -> {job.id}")
@@ -402,7 +402,7 @@ class TaskManager:
             Dict containing system statistics
         """
         try:
-            queue_stats = self.get_task_queue().get_queue_stats()
+            queue_stats = get_task_queue().get_queue_stats()
             
             return {
                 'queue_statistics': queue_stats,
