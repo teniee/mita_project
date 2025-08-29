@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 import logging
 
-from app.core.task_queue import task_queue, TaskStatus, TaskResult, enqueue_task
+from app.core.task_queue import get_task_queue, TaskStatus, TaskResult, enqueue_task
 from app.core.logger import get_logger
 from app.tasks.async_tasks import (
     process_ocr_task,
@@ -291,7 +291,7 @@ class TaskManager:
             TaskInfo with current status or None if not found
         """
         try:
-            task_result = self.task_queue.get_task_status(task_id)
+            task_result = self.get_task_queue().get_task_status(task_id)
             
             if not task_result:
                 return None
@@ -326,7 +326,7 @@ class TaskManager:
             True if successfully cancelled, False otherwise
         """
         try:
-            success = self.task_queue.cancel_task(task_id)
+            success = self.get_task_queue().cancel_task(task_id)
             
             if success:
                 logger.info(f"Task cancelled: {task_id}")
@@ -350,7 +350,7 @@ class TaskManager:
             TaskInfo for the new task or None if retry failed
         """
         try:
-            job = self.task_queue.retry_failed_task(task_id)
+            job = self.get_task_queue().retry_failed_task(task_id)
             
             if job:
                 logger.info(f"Task retried: {task_id} -> {job.id}")
@@ -402,7 +402,7 @@ class TaskManager:
             Dict containing system statistics
         """
         try:
-            queue_stats = self.task_queue.get_queue_stats()
+            queue_stats = self.get_task_queue().get_queue_stats()
             
             return {
                 'queue_statistics': queue_stats,

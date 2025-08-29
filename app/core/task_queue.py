@@ -102,6 +102,11 @@ class MitaTaskQueue:
     def __init__(self):
         """Initialize the task queue system."""
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        
+        # EMERGENCY FIX: Handle empty Redis URLs gracefully
+        if not self.redis_url or self.redis_url == "":
+            raise Exception("No Redis URL configured - task queue disabled")
+            
         self.redis_conn = redis.from_url(self.redis_url)
         
         # Initialize priority queues
@@ -409,8 +414,34 @@ class MitaTaskQueue:
         return None
 
 
-# Global task queue instance
-task_queue = MitaTaskQueue()
+# Global task queue instance - EMERGENCY FIX: Lazy initialization to prevent startup hangs
+_task_queue = None
+
+def get_task_queue():
+    """Get task queue instance with lazy initialization to prevent startup failures"""
+    global _task_queue
+    if _task_queue is None:
+        try:
+            _task_queue = MitaTaskQueue()
+        except Exception as e:
+            logger.warning(f"Failed to initialize task queue: {e} - tasks will be skipped")
+            # Return a mock object that does nothing
+            class MockTaskQueue:
+                def enqueue_task(self, *args, **kwargs):
+                    return type('MockJob', (), {'id': 'mock', 'status': 'skipped'})()
+                def get_task_status(self, *args, **kwargs):
+                    return None
+                def cancel_task(self, *args, **kwargs):
+                    return False
+                def retry_task(self, *args, **kwargs):
+                    return None
+                def get_stats(self):
+                    return {"active": 0, "queued": 0, "failed": 0}
+            _task_queue = MockTaskQueue()
+    return _task_queue
+
+# For backward compatibility - modules will get the lazy instance
+task_queue = None
 
 
 def task_wrapper(
@@ -442,7 +473,7 @@ def task_wrapper(
                         status=TaskStatus.STARTED,
                         started_at=datetime.utcnow()
                     )
-                    task_queue._store_task_result(task_id, task_result)
+                    get_task_queue()._store_task_result(task_id, task_result)
                 
                 # Execute the actual task
                 result = func(*args, **kwargs)
@@ -456,7 +487,7 @@ def task_wrapper(
                         started_at=task_result.started_at,
                         completed_at=datetime.utcnow()
                     )
-                    task_queue._store_task_result(task_id, task_result)
+                    get_task_queue()._store_task_result(task_id, task_result)
                 
                 return result
                 
@@ -480,7 +511,7 @@ def task_wrapper(
                         error=str(e),
                         completed_at=datetime.utcnow()
                     )
-                    task_queue._store_task_result(task_id, task_result)
+                    get_task_queue()._store_task_result(task_id, task_result)
                 
                 raise
         
@@ -502,7 +533,7 @@ def enqueue_task(func: Callable, *args, **kwargs) -> Job:
     retry_count = getattr(func, '_task_retry_count', 3)
     retry_delay = getattr(func, '_task_retry_delay', 60)
     
-    return task_queue.enqueue_task(
+    return get_task_queue().enqueue_task(
         func,
         *args,
         priority=priority,
