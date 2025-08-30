@@ -198,7 +198,54 @@ async def register_full(
     logger.info(f"Registration attempt for {payload.email[:3]}***")
     
     try:
-        result = await register_user_async(payload, db)
+        # EMERGENCY: Use direct implementation instead of register_user_async
+        from sqlalchemy import select, text
+        from app.db.models import User
+        from app.services.auth_jwt_service import hash_password, create_token_pair
+        
+        # Simple user existence check
+        result_check = await db.execute(
+            select(User.id).filter(User.email == payload.email.lower()).limit(1)
+        )
+        existing_user = result_check.scalars().first()
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+        
+        # Hash password (sync - no thread pool issues)
+        password_hash = hash_password(payload.password)
+        
+        # Create user
+        user = User(
+            email=payload.email.lower(),
+            password_hash=password_hash,
+            country=payload.country,
+            annual_income=payload.annual_income or 0,
+            timezone=payload.timezone
+        )
+        
+        # Save user
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        
+        # Create tokens
+        user_role = "premium_user" if user.is_premium else "basic_user"
+        user_data = {
+            "sub": str(user.id),
+            "is_premium": user.is_premium,
+            "country": user.country
+        }
+        tokens = create_token_pair(user_data, user_role=user_role)
+        
+        result = TokenOut(
+            access_token=tokens["access_token"],
+            refresh_token=tokens["refresh_token"],
+            token_type="bearer"
+        )
         
         # EMERGENCY FIX: Disable security event logging to prevent hangs
         # # EMERGENCY FIX: log_security_event("registration_success", {

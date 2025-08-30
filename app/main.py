@@ -257,23 +257,19 @@ async def emergency_register(request: Request):
             
         print(f"🚨 STEP 2: Basic validation passed ({time.time() - start_time:.2f}s)")
         
-        # Direct database connection - NO ORM session management
-        DATABASE_URL = os.getenv("DATABASE_URL", "")
-        if not DATABASE_URL:
-            return JSONResponse({"error": "Database not configured"}, status_code=500)
-            
-        # Create direct engine connection
-        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-        Session = sessionmaker(bind=engine)
+        # Use async database session from existing infrastructure
+        from app.core.async_session import get_async_db
+        from sqlalchemy import select, text
         
-        print(f"🚨 STEP 3: Database connection created ({time.time() - start_time:.2f}s)")
+        print(f"🚨 STEP 3: Using async database session ({time.time() - start_time:.2f}s)")
         
-        with Session() as session:
+        async for db in get_async_db():
             # Check if user exists - direct SQL
-            existing_user = session.execute(
+            result = await db.execute(
                 text("SELECT id FROM users WHERE email = :email LIMIT 1"),
                 {"email": email}
-            ).scalar()
+            )
+            existing_user = result.scalar()
             
             if existing_user:
                 return JSONResponse({"error": "Email already registered"}, status_code=400)
@@ -291,7 +287,7 @@ async def emergency_register(request: Request):
             user_id = str(uuid.uuid4())
             
             # Insert user directly
-            session.execute(text("""
+            await db.execute(text("""
                 INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
                 VALUES (:id, :email, :password_hash, 'US', 0, 'UTC', NOW())
             """), {
@@ -299,7 +295,7 @@ async def emergency_register(request: Request):
                 "email": email,
                 "password_hash": password_hash
             })
-            session.commit()
+            await db.commit()
             
             print(f"🚨 STEP 6: User inserted ({time.time() - start_time:.2f}s)")
             
