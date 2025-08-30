@@ -41,41 +41,115 @@ router = APIRouter(
 @router.post(
     "/emergency-register"
 )
-async def emergency_register(
-    email: str,
-    password: str,
-):
-    """EMERGENCY: Ultra-minimal registration endpoint with NO dependencies"""
+async def emergency_register(request: Request):
+    """EMERGENCY: Working registration endpoint - NO dependencies, direct database connection"""
+    import json
     import time
+    import bcrypt
+    import uuid
+    import os
+    from datetime import datetime, timedelta
+    import jwt
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
     
     start_time = time.time()
-    logger.error(f"🚨 EMERGENCY REGISTRATION ATTEMPT: {email[:3]}***")
     
     try:
-        # Step 1: Basic validation (NO TIMEOUT)
-        if len(password) < 8:
+        # Parse request manually to avoid dependency issues
+        body_bytes = await request.body()
+        body_str = body_bytes.decode('utf-8')
+        data = json.loads(body_str)
+        
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        country = data.get('country', 'US')
+        annual_income = data.get('annual_income', 0)
+        timezone = data.get('timezone', 'UTC')
+        
+        logger.info(f"🚨 EMERGENCY REGISTRATION: {email[:3]}*** started")
+        
+        # Basic validation
+        if not email or '@' not in email:
+            raise HTTPException(status_code=400, detail="Invalid email")
+        if not password or len(password) < 8:
             raise HTTPException(status_code=400, detail="Password too short")
         
-        if '@' not in email:
-            raise HTTPException(status_code=400, detail="Invalid email")
+        # Create synchronous database connection (no async issues)
+        DATABASE_URL = os.getenv("DATABASE_URL", "")
+        if not DATABASE_URL:
+            raise HTTPException(status_code=500, detail="Database not configured")
         
-        total_time = time.time() - start_time
-        logger.error(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
+        # Convert to sync URL
+        sync_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
         
-        # Return minimal success response WITHOUT database or token operations
-        return {
-            "status": "success",
-            "message": f"Emergency registration processed for {email[:3]}***",
-            "processing_time": f"{total_time:.2f}s",
-            "note": "This is a minimal test endpoint - no actual registration performed"
-        }
+        engine = create_engine(sync_url, pool_pre_ping=True, pool_size=1)
+        Session = sessionmaker(bind=engine)
         
+        with Session() as session:
+            # Check if user exists
+            existing_user = session.execute(
+                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                {"email": email}
+            ).scalar()
+            
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email already registered")
+            
+            # Hash password
+            password_bytes = password.encode('utf-8')
+            salt = bcrypt.gensalt(rounds=4)  # Fast hashing for emergency
+            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+            
+            # Generate user ID
+            user_id = str(uuid.uuid4())
+            
+            # Insert user
+            session.execute(text("""
+                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
+                VALUES (:id, :email, :password_hash, :country, :annual_income, :timezone, NOW())
+            """), {
+                "id": user_id,
+                "email": email,
+                "password_hash": password_hash,
+                "country": country,
+                "annual_income": annual_income,
+                "timezone": timezone
+            })
+            session.commit()
+            
+            # Create JWT token
+            payload = {
+                'sub': user_id,
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(days=30),
+                'iat': datetime.utcnow(),
+                'is_premium': False,
+                'country': country
+            }
+            
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
+            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            
+            total_time = time.time() - start_time
+            logger.info(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
+            
+            return {
+                "access_token": access_token,
+                "refresh_token": access_token,  # Use same token for simplicity
+                "token_type": "bearer",
+                "user_id": user_id,
+                "message": f"Registration successful in {total_time:.2f}s"
+            }
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
     except HTTPException:
         raise
     except Exception as e:
         elapsed = time.time() - start_time
         logger.error(f"🚨 EMERGENCY REGISTRATION FAILED: {str(e)} after {elapsed:.2f}s")
-        raise HTTPException(status_code=500, detail=f"Emergency registration failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
 @router.post(
