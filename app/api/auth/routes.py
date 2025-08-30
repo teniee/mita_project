@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # EMERGENCY FIX: Import only what we need
-from app.api.auth.schemas import FastRegisterIn, TokenOut
+from app.api.auth.schemas import FastRegisterIn, TokenOut, RegisterIn
 # from app.api.auth.services import authenticate_google  # noqa: E501
 # from app.api.auth.services import authenticate_user_async, register_user_async
 # from app.api.dependencies import get_current_user
