@@ -353,7 +353,7 @@ async def emergency_test():
     })
 
 
-@app.post("/api/auth/register-fast")
+@app.post("/register-flutter")
 async def flutter_register_fast(request: Request):
     """🚨 WORKING: Register-fast endpoint bypassing auth router - FOR FLUTTER APP"""
     import json
@@ -386,12 +386,26 @@ async def flutter_register_fast(request: Request):
         if not password or len(password) < 8:
             return JSONResponse({"detail": "Password too short"}, status_code=400)
         
-        # Sync database connection
-        DATABASE_URL = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
+        # Sync database connection - handle async URL conversion
+        DATABASE_URL = os.getenv("DATABASE_URL", "")
         if not DATABASE_URL:
             return JSONResponse({"detail": "Database not configured"}, status_code=500)
-            
-        engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=1)
+        
+        # Convert async URL to sync URL  
+        if DATABASE_URL.startswith("postgresql+asyncpg://"):
+            DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        elif DATABASE_URL.startswith("postgres://"):
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://")
+        elif DATABASE_URL.startswith("postgresql://"):
+            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
+        
+        logger.info(f"🚨 Using database URL: {DATABASE_URL[:50]}...")
+        
+        try:
+            engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=1, echo=True)
+        except Exception as db_error:
+            logger.error(f"🚨 Database engine creation failed: {str(db_error)}")
+            return JSONResponse({"detail": f"Database connection failed: {str(db_error)}"}, status_code=500)
         Session = sessionmaker(bind=engine)
         
         with Session() as session:
