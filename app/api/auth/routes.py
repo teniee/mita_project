@@ -153,6 +153,103 @@ async def emergency_register(request: Request):
 
 
 @router.post(
+    "/register-fast"
+)
+async def register_fast_working(request: Request):
+    """WORKING: Fast registration for Flutter app - NO dependencies"""
+    import json
+    import time
+    import bcrypt
+    import uuid
+    import os
+    from datetime import datetime, timedelta
+    import jwt
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+    
+    start_time = time.time()
+    
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode('utf-8'))
+        
+        email = data.get('email', '').lower().strip()
+        password = data.get('password', '')
+        country = data.get('country', 'US')
+        annual_income = data.get('annual_income', 0)
+        timezone = data.get('timezone', 'UTC')
+        
+        logger.info(f"Fast registration: {email[:3]}*** started")
+        
+        if not email or '@' not in email:
+            raise HTTPException(status_code=400, detail="Invalid email")
+        if not password or len(password) < 8:
+            raise HTTPException(status_code=400, detail="Password too short")
+        
+        # Sync database connection
+        DATABASE_URL = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=1)
+        Session = sessionmaker(bind=engine)
+        
+        with Session() as session:
+            existing_user = session.execute(
+                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                {"email": email}
+            ).scalar()
+            
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email already exists")
+            
+            password_bytes = password.encode('utf-8')
+            salt = bcrypt.gensalt(rounds=4)
+            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+            user_id = str(uuid.uuid4())
+            
+            session.execute(text("""
+                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
+                VALUES (:id, :email, :password_hash, :country, :annual_income, :timezone, NOW())
+            """), {
+                "id": user_id,
+                "email": email,
+                "password_hash": password_hash,
+                "country": country,
+                "annual_income": annual_income,
+                "timezone": timezone
+            })
+            session.commit()
+            
+            payload = {
+                'sub': user_id,
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(days=30),
+                'iat': datetime.utcnow(),
+                'is_premium': False,
+                'country': country
+            }
+            
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
+            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            
+            total_time = time.time() - start_time
+            logger.info(f"Fast registration success: {email[:3]}*** in {total_time:.2f}s")
+            
+            return {
+                "access_token": access_token,
+                "refresh_token": access_token,
+                "token_type": "bearer"
+            }
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except HTTPException:
+        raise
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(f"Fast registration failed: {str(e)} after {elapsed:.2f}s")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@router.post(
     "/register",
     response_model=TokenOut,
     status_code=status.HTTP_201_CREATED,
