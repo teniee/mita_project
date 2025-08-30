@@ -456,16 +456,14 @@ async def performance_logging_middleware(request: Request, call_next):
         raise
 
 
-# Minimal audit middleware for auth endpoints only
+# EMERGENCY FIX: Disable audit middleware causing registration hangs
 @app.middleware("http") 
 async def selective_audit_middleware(request: Request, call_next):
-    """Apply audit logging only to auth endpoints for better performance"""
-    # Only audit auth endpoints to reduce overhead
-    if request.url.path.startswith("/api/auth"):
-        return await audit_middleware(request, call_next)
-    else:
-        # Skip audit for all other endpoints
-        return await call_next(request)
+    """EMERGENCY: Audit middleware disabled to fix registration timeouts"""
+    # EMERGENCY FIX: Completely disable audit middleware to prevent database hangs
+    # The audit_middleware was causing 60+ second hangs on registration endpoints
+    # by attempting async database writes that timeout/deadlock
+    return await call_next(request)
 
 
 @app.middleware("http")

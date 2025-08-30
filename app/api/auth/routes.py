@@ -5,26 +5,25 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # EMERGENCY FIX: Import only what we need
-from app.api.auth.schemas import FastRegisterIn, TokenOut, RegisterIn
-# from app.api.auth.services import authenticate_google  # noqa: E501
-# from app.api.auth.services import authenticate_user_async, register_user_async
-# from app.api.dependencies import get_current_user
+from app.api.auth.schemas import FastRegisterIn, TokenOut, RegisterIn, LoginIn, GoogleAuthIn
+from app.api.auth.services import authenticate_google, authenticate_user_async, register_user_async
+from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
-# from app.core.audit_logging import log_security_event
-# from app.db.models import User
-# from app.services import auth_jwt_service as jwt_utils
-# from app.services.auth_jwt_service import (
-#     blacklist_token,
-#     create_access_token,
-#     create_refresh_token,
-#     create_token_pair,
-#     verify_token,
-#     validate_token_security,
-#     get_token_info,
-#     get_user_scopes,
-#     UserRole
-# )
-# from app.utils.response_wrapper import success_response
+# from app.core.audit_logging import # EMERGENCY FIX: log_security_event
+from app.db.models import User
+from app.services import auth_jwt_service as jwt_utils
+from app.services.auth_jwt_service import (
+    blacklist_token,
+    create_access_token,
+    create_refresh_token,
+    create_token_pair,
+    verify_token,
+    validate_token_security,
+    get_token_info,
+    get_user_scopes,
+    UserRole
+)
+from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
 
@@ -190,29 +189,32 @@ async def register_full(
     """Create a new user account with comprehensive validation and security."""
     # Rate limiting disabled for emergency fix
     
-    # Log registration attempt
-    log_security_event("registration_attempt", {
-        "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
-        "user_agent": request.headers.get('User-Agent', '')[:100],
-        "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
-    })
+    # EMERGENCY FIX: Disable security event logging to prevent hangs
+    # # EMERGENCY FIX: log_security_event("registration_attempt", {
+    #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
+    #     "user_agent": request.headers.get('User-Agent', '')[:100],
+    #     "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
+    # })
+    logger.info(f"Registration attempt for {payload.email[:3]}***")
     
     try:
         result = await register_user_async(payload, db)
         
-        # Log successful registration
-        log_security_event("registration_success", {
-            "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid"
-        })
+        # EMERGENCY FIX: Disable security event logging to prevent hangs
+        # # EMERGENCY FIX: log_security_event("registration_success", {
+        #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid"
+        # })
+        logger.info(f"Registration successful for {payload.email[:3]}***")
         
         return result
         
     except Exception as e:
-        # Log failed registration
-        log_security_event("registration_failed", {
-            "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
-            "error": str(e)[:200]
-        })
+        # EMERGENCY FIX: Disable security event logging to prevent hangs
+        # # EMERGENCY FIX: log_security_event("registration_failed", {
+        #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
+        #     "error": str(e)[:200]
+        # })
+        logger.error(f"Registration failed for {payload.email[:3]}***: {str(e)[:100]}")
         raise
 
 
@@ -229,31 +231,34 @@ async def login(
     # Apply login-specific rate limiting
     # Rate limiting disabled for emergency fix
     
-    # Log login attempt
-    log_security_event("login_attempt", {
-        "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
-        "user_agent": request.headers.get('User-Agent', '')[:100],
-        "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
-    })
+    # EMERGENCY FIX: Disable security event logging to prevent hangs
+    # # EMERGENCY FIX: log_security_event("login_attempt", {
+    #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
+    #     "user_agent": request.headers.get('User-Agent', '')[:100],
+    #     "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
+    # })
+    logger.info(f"Login attempt for {payload.email[:3]}***")
     
     try:
         result = await authenticate_user_async(payload, db)
         
-        # Log successful login
-        log_security_event("login_success", {
-            "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
-            "user_id": str(result.get('user_id', 'unknown')) if isinstance(result, dict) else 'unknown'
-        })
+        # EMERGENCY FIX: Disable security event logging to prevent hangs
+        # # EMERGENCY FIX: log_security_event("login_success", {
+        #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
+        #     "user_id": str(result.get('user_id', 'unknown')) if isinstance(result, dict) else 'unknown'
+        # })
+        logger.info(f"Login successful for {payload.email[:3]}***")
         
         return result
         
     except Exception as e:
-        # Log failed login
-        log_security_event("login_failed", {
-            "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
-            "error": str(e)[:200],
-            "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
-        })
+        # EMERGENCY FIX: Disable security event logging to prevent hangs
+        # # EMERGENCY FIX: log_security_event("login_failed", {
+        #     "email_hash": payload.email[:3] + "***@" + payload.email.split('@')[1] if '@' in payload.email else "invalid",
+        #     "error": str(e)[:200],
+        #     "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
+        # })
+        logger.error(f"Login failed for {payload.email[:3]}***: {str(e)[:100]}")
         raise
 
 
@@ -295,10 +300,11 @@ async def refresh_token(
             if not blacklist_token(token):
                 logger.error(f"Failed to blacklist old refresh token for user {payload.get('sub')}")
                 # Continue anyway, but log the security concern
-                log_security_event("refresh_token_blacklist_failed", {
-                    "user_id": payload.get("sub"),
-                    "jti": payload.get("jti", "")[:8] + "..."
-                })
+                # EMERGENCY FIX: Disabled to prevent hangs
+                # # EMERGENCY FIX: log_security_event("refresh_token_blacklist_failed", {
+                #     "user_id": payload.get("sub"),
+                #     "jti": payload.get("jti", "")[:8] + "..."
+                # })
             
             # Create clean user data (remove JWT-specific claims)
             user_data = {k: v for k, v in payload.items() 
@@ -315,10 +321,12 @@ async def refresh_token(
             new_access = create_access_token(user_data, user_role=user_role)
             new_refresh = create_refresh_token(user_data, user_role=user_role)
             
-            log_security_event("token_refresh_success", {
-                "user_id": payload.get("sub"),
-                "old_jti": payload.get("jti", "")[:8] + "..."
-            })
+            # EMERGENCY FIX: Disabled to prevent hangs
+            # # EMERGENCY FIX: log_security_event("token_refresh_success", {
+            #     "user_id": payload.get("sub"),
+            #     "old_jti": payload.get("jti", "")[:8] + "..."
+            # })
+            logger.info(f"Token refresh success for user {payload.get('sub')}")
             
             return success_response(
                 {
@@ -342,7 +350,8 @@ async def refresh_token(
             access = create_access_token(user_data, user_role="basic_user")
             refresh = create_refresh_token(user_data, user_role="basic_user")
             
-            log_security_event("legacy_token_refresh", {"user_id": user_id})
+            # EMERGENCY FIX: Disabled to prevent hangs
+            # # EMERGENCY FIX: log_security_event("legacy_token_refresh", {"user_id": user_id})
             
             return success_response(
                 {
@@ -360,10 +369,11 @@ async def refresh_token(
             
     except Exception as e:
         logger.warning(f"Token refresh failed for user {user_id}: {e}")
-        log_security_event("token_refresh_failed", {
-            "user_id": user_id,
-            "error": str(e)
-        })
+        # EMERGENCY FIX: Disabled to prevent hangs
+        # # EMERGENCY FIX: log_security_event("token_refresh_failed", {
+        #     "user_id": user_id,
+        #     "error": str(e)
+        # })
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token"
@@ -395,7 +405,7 @@ async def logout(
         success = blacklist_token(token)
         if success:
             logger.info(f"User {user_id} logged out successfully")
-            log_security_event("user_logout_success", {
+            # EMERGENCY FIX: log_security_event("user_logout_success", {
                 "user_id": user_id,
                 "jti": token_info.get("jti", "")[:8] + "..." if token_info else "unknown"
             })
@@ -403,12 +413,12 @@ async def logout(
         else:
             logger.warning(f"Failed to blacklist token during logout for user {user_id}")
             # Still return success to user, but log the issue
-            log_security_event("logout_blacklist_failed", {"user_id": user_id})
+            # EMERGENCY FIX: log_security_event("logout_blacklist_failed", {"user_id": user_id})
             return success_response({"message": "Logged out (with warnings)."})
             
     except Exception as e:
         logger.error(f"Logout error for user {user_id}: {e}")
-        log_security_event("logout_error", {
+        # EMERGENCY FIX: log_security_event("logout_error", {
             "user_id": user_id,
             "error": str(e)
         })
@@ -444,7 +454,7 @@ async def revoke_token(
         success = blacklist_token(token)
         if success:
             logger.info(f"Token explicitly revoked by user {current_user.id}")
-            log_security_event("explicit_token_revocation", {
+            # EMERGENCY FIX: log_security_event("explicit_token_revocation", {
                 "user_id": str(current_user.id),
                 "revoked_by": str(current_user.id)
             })
@@ -457,7 +467,7 @@ async def revoke_token(
             )
     except Exception as e:
         logger.error(f"Token revocation error for user {current_user.id}: {e}")
-        log_security_event("token_revocation_error", {
+        # EMERGENCY FIX: log_security_event("token_revocation_error", {
             "user_id": str(current_user.id),
             "error": str(e)
         })
@@ -509,7 +519,7 @@ async def google_login(
     # Rate limiting disabled for emergency fix
     
     # Log OAuth login attempt
-    log_security_event("oauth_login_attempt", {
+    # EMERGENCY FIX: log_security_event("oauth_login_attempt", {
         "provider": "google",
         "user_agent": request.headers.get('User-Agent', '')[:100],
         "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
@@ -519,7 +529,7 @@ async def google_login(
         result = await authenticate_google(payload, db)
         
         # Log successful OAuth login
-        log_security_event("oauth_login_success", {
+        # EMERGENCY FIX: log_security_event("oauth_login_success", {
             "provider": "google",
             "user_id": str(result.get('user_id', 'unknown')) if isinstance(result, dict) else 'unknown'
         })
@@ -528,7 +538,7 @@ async def google_login(
         
     except Exception as e:
         # Log failed OAuth login
-        log_security_event("oauth_login_failed", {
+        # EMERGENCY FIX: log_security_event("oauth_login_failed", {
             "provider": "google",
             "error": str(e)[:200],
             "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
@@ -554,7 +564,7 @@ async def request_password_reset(
     # Rate limiting disabled for emergency fix
     
     # Log password reset request
-    log_security_event("password_reset_request", {
+    # EMERGENCY FIX: log_security_event("password_reset_request", {
         "email_hash": email[:3] + "***@" + email.split('@')[1] if '@' in email else "invalid",
         "user_agent": request.headers.get('User-Agent', '')[:100],
         "ip_hash": str(hash(request.client.host if request.client else 'unknown'))[:8]
