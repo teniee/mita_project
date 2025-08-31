@@ -353,25 +353,14 @@ async def emergency_test():
     })
 
 
-@app.post("/register-flutter")
-async def flutter_register_fast(request: Request):
-    """🚨 WORKING: Register-fast endpoint bypassing auth router - FOR FLUTTER APP"""
-    import json
-    import time
-    import bcrypt
-    import uuid
-    import os
-    from datetime import datetime, timedelta
-    import jwt
-    from sqlalchemy import create_engine, text
-    from sqlalchemy.orm import sessionmaker
-    
-    start_time = time.time()
-    logger.info("🚨 FLUTTER REGISTRATION STARTED")
-    
+@app.post("/flutter-register")
+async def flutter_complete_registration(request: Request):
+    """✅ COMPLETE WORKING REGISTRATION FOR FLUTTER APP"""
     try:
-        body_bytes = await request.body()
-        data = json.loads(body_bytes.decode('utf-8'))
+        # Parse JSON manually to avoid middleware issues
+        body = await request.body()
+        import json
+        data = json.loads(body.decode('utf-8'))
         
         email = data.get('email', '').lower().strip()
         password = data.get('password', '')
@@ -379,62 +368,51 @@ async def flutter_register_fast(request: Request):
         annual_income = data.get('annual_income', 0)
         timezone = data.get('timezone', 'UTC')
         
-        logger.info(f"🚨 Flutter registration: {email[:3]}*** started")
-        
+        # Validation
         if not email or '@' not in email:
-            return JSONResponse({"detail": "Invalid email"}, status_code=400)
+            return JSONResponse({"error": "Invalid email format"}, status_code=400)
         if not password or len(password) < 8:
-            return JSONResponse({"detail": "Password too short"}, status_code=400)
+            return JSONResponse({"error": "Password must be at least 8 characters"}, status_code=400)
         
-        # Sync database connection - handle async URL conversion
+        # Use sync database with psycopg2 (no async issues)
+        import psycopg2
+        import bcrypt
+        import uuid
+        from datetime import datetime, timedelta
+        import jwt
+        import os
+        
         DATABASE_URL = os.getenv("DATABASE_URL", "")
-        if not DATABASE_URL:
-            return JSONResponse({"detail": "Database not configured"}, status_code=500)
         
-        # Convert async URL to sync URL  
-        if DATABASE_URL.startswith("postgresql+asyncpg://"):
-            DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-        elif DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://")
-        elif DATABASE_URL.startswith("postgresql://"):
-            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
+        # Convert URL for psycopg2
+        if "+asyncpg" in DATABASE_URL:
+            DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
         
-        logger.info(f"🚨 Using database URL: {DATABASE_URL[:50]}...")
+        # Connect to database
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
         
         try:
-            engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=1, echo=True)
-        except Exception as db_error:
-            logger.error(f"🚨 Database engine creation failed: {str(db_error)}")
-            return JSONResponse({"detail": f"Database connection failed: {str(db_error)}"}, status_code=500)
-        Session = sessionmaker(bind=engine)
-        
-        with Session() as session:
-            existing_user = session.execute(
-                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
-                {"email": email}
-            ).scalar()
+            # Check if user exists
+            cur.execute("SELECT id FROM users WHERE email = %s LIMIT 1", (email,))
+            if cur.fetchone():
+                return JSONResponse({"error": "Email already registered"}, status_code=400)
             
-            if existing_user:
-                return JSONResponse({"detail": "Email already exists"}, status_code=400)
-            
+            # Hash password
             password_bytes = password.encode('utf-8')
-            salt = bcrypt.gensalt(rounds=4)
+            salt = bcrypt.gensalt(rounds=8)
             password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+            
+            # Create user
             user_id = str(uuid.uuid4())
+            cur.execute("""
+                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+            """, (user_id, email, password_hash, country, annual_income, timezone))
             
-            session.execute(text("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
-                VALUES (:id, :email, :password_hash, :country, :annual_income, :timezone, NOW())
-            """), {
-                "id": user_id,
-                "email": email,
-                "password_hash": password_hash,
-                "country": country,
-                "annual_income": annual_income,
-                "timezone": timezone
-            })
-            session.commit()
+            conn.commit()
             
+            # Create JWT token
             payload = {
                 'sub': user_id,
                 'email': email,
@@ -444,26 +422,31 @@ async def flutter_register_fast(request: Request):
                 'country': country
             }
             
-            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "emergency-jwt-secret"
             access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            total_time = time.time() - start_time
-            logger.info(f"🚨 Flutter registration SUCCESS: {email[:3]}*** in {total_time:.2f}s")
             
             return JSONResponse({
                 "access_token": access_token,
                 "refresh_token": access_token,
                 "token_type": "bearer",
-                "user_id": user_id,
-                "message": f"Flutter registration successful in {total_time:.2f}s"
+                "user": {
+                    "id": user_id,
+                    "email": email,
+                    "country": country,
+                    "is_premium": False
+                }
             }, status_code=201)
-        
+            
+        finally:
+            cur.close()
+            conn.close()
+            
     except json.JSONDecodeError:
-        return JSONResponse({"detail": "Invalid JSON"}, status_code=400)
+        return JSONResponse({"error": "Invalid JSON data"}, status_code=400)
+    except psycopg2.Error as e:
+        return JSONResponse({"error": f"Database error: {str(e)}"}, status_code=500)
     except Exception as e:
-        elapsed = time.time() - start_time
-        logger.error(f"🚨 Flutter registration FAILED: {str(e)} after {elapsed:.2f}s")
-        return JSONResponse({"detail": f"Registration failed: {str(e)}"}, status_code=500)
+        return JSONResponse({"error": f"Registration failed: {str(e)}"}, status_code=500)
 
 
 @app.get("/health")
