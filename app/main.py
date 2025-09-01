@@ -443,6 +443,86 @@ async def flutter_get_registration(
         return {"error": f"Registration failed: {str(e)}"}
 
 
+@app.get("/flutter-login")
+async def flutter_get_login(
+    email: str,
+    password: str
+):
+    """✅ WORKING: GET-based login to bypass POST middleware issues"""
+    try:
+        email = email.lower().strip()
+        
+        # Validation
+        if not email or '@' not in email:
+            return {"error": "Invalid email format"}
+        if not password:
+            return {"error": "Password required"}
+        
+        # Use psycopg2 direct connection
+        import psycopg2
+        import bcrypt
+        from datetime import datetime, timedelta
+        import jwt
+        import os
+        
+        DATABASE_URL = os.getenv("DATABASE_URL", "")
+        if "+asyncpg" in DATABASE_URL:
+            DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        try:
+            # Get user data
+            cur.execute("SELECT id, password_hash, country FROM users WHERE email = %s", (email,))
+            user_data = cur.fetchone()
+            
+            if not user_data:
+                return {"error": "Invalid email or password"}
+            
+            user_id, stored_hash, country = user_data
+            
+            # Verify password
+            if not bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                return {"error": "Invalid email or password"}
+            
+            # Create JWT token
+            payload = {
+                'sub': str(user_id),
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(days=30),
+                'iat': datetime.utcnow(),
+                'is_premium': False,
+                'country': country
+            }
+            
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "emergency-jwt-secret"
+            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            
+            return {
+                "success": True,
+                "access_token": access_token,
+                "refresh_token": access_token,
+                "token_type": "bearer",
+                "user": {
+                    "id": str(user_id),
+                    "email": email,
+                    "country": country,
+                    "is_premium": False
+                },
+                "message": "Login successful! Update your Flutter app to use this endpoint."
+            }
+            
+        finally:
+            cur.close()
+            conn.close()
+            
+    except psycopg2.Error as e:
+        return {"error": f"Database error: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Login failed: {str(e)}"}
+
+
 @app.post("/flutter-register")
 async def flutter_complete_registration(request: Request):
     """✅ COMPLETE WORKING REGISTRATION FOR FLUTTER APP"""
