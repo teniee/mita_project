@@ -394,28 +394,83 @@ class ApiService {
     );
   }
 
-  // 🚨 EMERGENCY: Ultra-fast registration endpoint
-  Future<Response> emergencyRegister(String email, String password) async {
+  // 🚀 WORKING: Flutter registration using GET request to bypass POST middleware issues
+  Future<Response> workingRegister(String email, String password, {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('🚨 EMERGENCY REGISTRATION: Attempting fast registration for ${email.substring(0, 3)}***',
-            tag: 'EMERGENCY_AUTH');
+          logDebug('🚀 WORKING REGISTRATION: Starting registration for ${email.substring(0, 3)}***',
+            tag: 'WORKING_AUTH');
           
-          final response = await _dio.post('../emergency-register',
-              data: {'email': email, 'password': password});
+          // Import config
+          // Using absolute URL to bypass all middleware issues
+          final dio = Dio();
+          dio.options.contentType = 'application/json';
           
-          logInfo('🚨 EMERGENCY REGISTRATION: SUCCESS in ${response.extra?['duration'] ?? 'unknown'}ms',
-            tag: 'EMERGENCY_AUTH');
+          final response = await dio.get(
+            'https://mita-docker-ready-project-manus.onrender.com/flutter-register',
+            queryParameters: {
+              'email': email,
+              'password': password,
+              'country': country,
+              'annual_income': annualIncome,
+              'timezone': timezone,
+            },
+            options: Options(
+              sendTimeout: Duration(milliseconds: 10000), // 10 second timeout
+              receiveTimeout: Duration(milliseconds: 10000),
+            ),
+          );
+          
+          logInfo('🚀 WORKING REGISTRATION: SUCCESS for ${email.substring(0, 3)}***',
+            tag: 'WORKING_AUTH');
           
           return response;
         } catch (e) {
-          logError('🚨 EMERGENCY REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
-            tag: 'EMERGENCY_AUTH', error: e);
+          logError('🚀 WORKING REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
+            tag: 'WORKING_AUTH', error: e);
           rethrow;
         }
       },
-      operationName: 'Emergency Registration',
+      operationName: 'Working Registration',
+    );
+  }
+
+  // 🚀 WORKING: Flutter login using GET request to bypass POST middleware issues  
+  Future<Response> workingLogin(String email, String password) async {
+    return await _timeoutManager.executeAuthentication<Response>(
+      operation: () async {
+        try {
+          logDebug('🚀 WORKING LOGIN: Starting login for ${email.substring(0, 3)}***',
+            tag: 'WORKING_AUTH');
+          
+          // Using absolute URL to bypass all middleware issues
+          final dio = Dio();
+          dio.options.contentType = 'application/json';
+          
+          final response = await dio.get(
+            'https://mita-docker-ready-project-manus.onrender.com/flutter-login',
+            queryParameters: {
+              'email': email,
+              'password': password,
+            },
+            options: Options(
+              sendTimeout: Duration(milliseconds: 10000), // 10 second timeout
+              receiveTimeout: Duration(milliseconds: 10000),
+            ),
+          );
+          
+          logInfo('🚀 WORKING LOGIN: SUCCESS for ${email.substring(0, 3)}***',
+            tag: 'WORKING_AUTH');
+          
+          return response;
+        } catch (e) {
+          logError('🚀 WORKING LOGIN: FAILED for ${email.substring(0, 3)}***', 
+            tag: 'WORKING_AUTH', error: e);
+          rethrow;
+        }
+      },
+      operationName: 'Working Login',
     );
   }
 
@@ -427,114 +482,14 @@ class ApiService {
     );
   }
 
-  // 🚨 RELIABLE LOGIN: Use emergency endpoint as fallback for working authentication
+  // 🚀 RELIABLE LOGIN: Use working GET endpoint to bypass POST middleware issues
   Future<Response> reliableLogin(String email, String password) async {
-    return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async {
-        logDebug('🚨 RELIABLE LOGIN: Starting fallback authentication for ${email.substring(0, 3)}***',
-          tag: 'RELIABLE_AUTH');
-        
-        try {
-          // Use emergency register endpoint directly - it's fast and handles both login/register
-          logDebug('🚨 RELIABLE LOGIN: Using emergency endpoint directly', tag: 'RELIABLE_AUTH');
-          
-          final response = await _dio.post('../emergency-register',
-              data: {'email': email, 'password': password});
-          
-          logInfo('🚨 RELIABLE LOGIN: Emergency endpoint SUCCESS', tag: 'RELIABLE_AUTH');
-          return response;
-            
-        } catch (emergencyError) {
-          logError('🚨 RELIABLE LOGIN: Emergency endpoint FAILED', 
-            tag: 'RELIABLE_AUTH', error: emergencyError);
-            
-          // Handle different error cases for better user experience
-          if (emergencyError is DioException) {
-            final statusCode = emergencyError.response?.statusCode;
-            final errorData = emergencyError.response?.data;
-            
-            if (statusCode == 400) {
-              final errorMessage = errorData?.toString() ?? '';
-              if (errorMessage.contains('already registered') || errorMessage.contains('Email already registered')) {
-                // For login attempts where user already exists
-                throw DioException(
-                  requestOptions: emergencyError.requestOptions,
-                  response: emergencyError.response,
-                  type: DioExceptionType.badResponse,
-                  error: 'Account exists. Due to server issues, please try creating a new account with a different email, or contact support.',
-                );
-              } else if (errorMessage.contains('Password too short')) {
-                throw DioException(
-                  requestOptions: emergencyError.requestOptions,
-                  response: emergencyError.response,
-                  type: DioExceptionType.badResponse,
-                  error: 'Password must be at least 8 characters long.',
-                );
-              }
-            }
-          }
-          
-          // Re-throw the original error if it's not a recognized case
-          rethrow;
-        }
-      },
-      operationName: 'Reliable Login',
-    );
+    return await workingLogin(email, password);
   }
 
-  // 🚨 RELIABLE REGISTER: Only use emergency endpoint to avoid timeout issues
+  // 🚀 RELIABLE REGISTER: Use working GET endpoint to bypass POST middleware issues
   Future<Response> reliableRegister(String email, String password) async {
-    return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async {
-        logDebug('🚨 RELIABLE REGISTER: Starting registration for ${email.substring(0, 3)}***',
-          tag: 'RELIABLE_AUTH');
-        
-        try {
-          // Only use emergency register endpoint - it's fast and reliable
-          logDebug('🚨 RELIABLE REGISTER: Using emergency endpoint', tag: 'RELIABLE_AUTH');
-          
-          final response = await _dio.post('../emergency-register',
-              data: {'email': email, 'password': password});
-          
-          logInfo('🚨 RELIABLE REGISTER: Emergency endpoint SUCCESS', tag: 'RELIABLE_AUTH');
-          return response;
-            
-        } catch (emergencyError) {
-          logError('🚨 RELIABLE REGISTER: Emergency endpoint FAILED', 
-            tag: 'RELIABLE_AUTH', error: emergencyError);
-            
-          // Handle different error cases for better user experience
-          if (emergencyError is DioException) {
-            final statusCode = emergencyError.response?.statusCode;
-            final errorData = emergencyError.response?.data;
-            
-            if (statusCode == 400) {
-              final errorMessage = errorData?.toString() ?? '';
-              if (errorMessage.contains('already registered') || errorMessage.contains('Email already registered')) {
-                // For registration attempts where user already exists
-                throw DioException(
-                  requestOptions: emergencyError.requestOptions,
-                  response: emergencyError.response,
-                  type: DioExceptionType.badResponse,
-                  error: 'This email is already registered. Please try logging in instead.',
-                );
-              } else if (errorMessage.contains('Password too short')) {
-                throw DioException(
-                  requestOptions: emergencyError.requestOptions,
-                  response: emergencyError.response,
-                  type: DioExceptionType.badResponse,
-                  error: 'Password must be at least 8 characters long.',
-                );
-              }
-            }
-          }
-          
-          // Re-throw the original error if it's not a recognized case
-          rethrow;
-        }
-      },
-      operationName: 'Reliable Registration',
-    );
+    return await workingRegister(email, password);
   }
 
   // ---------------------------------------------------------------------------
