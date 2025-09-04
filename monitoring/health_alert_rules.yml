@@ -1,0 +1,345 @@
+groups:
+  - name: mita_middleware_health_critical
+    rules:
+      - alert: MitaSystemUnhealthy
+        expr: mita_middleware_health_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: overall_system
+        annotations:
+          summary: "MITA Finance system is unhealthy"
+          description: "The MITA Finance system overall health status is unhealthy. Immediate investigation required."
+
+      - alert: MitaSystemCritical
+        expr: mita_middleware_health_status == 0.5
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: overall_system
+        annotations:
+          summary: "MITA Finance system has critical issues"
+          description: "The MITA Finance system has critical health issues that require immediate attention."
+
+      - alert: MitaComponentTimeout
+        expr: mita_middleware_component_response_time_ms > 5000
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: "{{ $labels.component }}"
+        annotations:
+          summary: "MITA component {{ $labels.component }} has critical response time"
+          description: "Component {{ $labels.component }} response time is {{ $value }}ms, indicating potential timeout issues."
+
+      - alert: MitaHealthCheckTimeout
+        expr: mita_middleware_health_check_duration_ms > 10000
+        for: 1m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: health_monitoring
+        annotations:
+          summary: "MITA health check system taking too long"
+          description: "Health check duration is {{ $value }}ms, which may indicate system-wide performance issues."
+
+  - name: mita_middleware_health_warnings
+    rules:
+      - alert: MitaSystemDegraded
+        expr: mita_middleware_health_status == 0.75
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: overall_system
+        annotations:
+          summary: "MITA Finance system performance degraded"
+          description: "The MITA Finance system is experiencing performance degradation."
+
+      - alert: MitaComponentSlow
+        expr: mita_middleware_component_response_time_ms > 2000
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: "{{ $labels.component }}"
+        annotations:
+          summary: "MITA component {{ $labels.component }} is responding slowly"
+          description: "Component {{ $labels.component }} response time is {{ $value }}ms, approaching timeout thresholds."
+
+      - alert: MitaMultipleComponentsUnhealthy
+        expr: count(mita_middleware_component_health < 0.75) >= 2
+        for: 3m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: multiple_components
+        annotations:
+          summary: "Multiple MITA components are unhealthy"
+          description: "{{ $value }} MITA middleware components are in degraded or unhealthy state."
+
+      - alert: MitaHighAlertCount
+        expr: mita_middleware_alerts_count >= 3
+        for: 2m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: alerting_system
+        annotations:
+          summary: "High number of MITA health alerts active"
+          description: "There are {{ $value }} active health alerts in the MITA system."
+
+  - name: mita_database_health
+    rules:
+      - alert: MitaDatabaseUnhealthy
+        expr: mita_middleware_component_health{component="database_session"} < 0.5
+        for: 1m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: database
+        annotations:
+          summary: "MITA database is unhealthy"
+          description: "Database health check indicates critical issues. Response time may be affecting user operations."
+
+      - alert: MitaDatabaseSlow
+        expr: mita_middleware_component_response_time_ms{component="database_session"} > 3000
+        for: 3m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: database
+        annotations:
+          summary: "MITA database responding slowly"
+          description: "Database response time is {{ $value }}ms, which may cause user-facing timeouts."
+
+      - alert: MitaDatabaseConnectionIssues
+        expr: mita_middleware_component_value{component="database_session"} > 5000
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: database
+        annotations:
+          summary: "MITA database connection issues"
+          description: "Database connectivity time is {{ $value }}ms, indicating connection pool or network issues."
+
+  - name: mita_authentication_health
+    rules:
+      - alert: MitaJwtServiceUnhealthy
+        expr: mita_middleware_component_health{component="jwt_service"} < 0.5
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: authentication
+        annotations:
+          summary: "MITA JWT service is unhealthy"
+          description: "JWT service health check indicates critical issues. User authentication may be affected."
+
+      - alert: MitaRateLimiterUnhealthy
+        expr: mita_middleware_component_health{component="rate_limiter"} < 0.5
+        for: 2m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: rate_limiting
+        annotations:
+          summary: "MITA rate limiter is unhealthy"
+          description: "Rate limiting service health check indicates issues. API protection may be compromised."
+
+      - alert: MitaAuthenticationSlow
+        expr: mita_middleware_component_response_time_ms{component="jwt_service"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: authentication
+        annotations:
+          summary: "MITA authentication is slow"
+          description: "JWT service response time is {{ $value }}ms, which may cause login delays."
+
+  - name: mita_cache_health
+    rules:
+      - alert: MitaRedisCacheUnhealthy
+        expr: mita_middleware_component_health{component="redis_cache"} < 0.5
+        for: 3m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: cache
+        annotations:
+          summary: "MITA Redis cache is unhealthy"
+          description: "Redis cache health check indicates issues. Application performance may be degraded."
+
+      - alert: MitaCacheSlow
+        expr: mita_middleware_component_response_time_ms{component="redis_cache"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: cache
+        annotations:
+          summary: "MITA cache responding slowly"
+          description: "Redis cache response time is {{ $value }}ms, which may affect application performance."
+
+  - name: mita_system_resources
+    rules:
+      - alert: MitaHighCpuUsage
+        expr: mita_cpu_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system CPU usage is high"
+          description: "CPU usage is {{ $value }}%, which may cause performance degradation."
+
+      - alert: MitaCriticalCpuUsage
+        expr: mita_cpu_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system CPU usage is critical"
+          description: "CPU usage is {{ $value }}%, system may become unresponsive."
+
+      - alert: MitaHighMemoryUsage
+        expr: mita_memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system memory usage is high"
+          description: "Memory usage is {{ $value }}%, which may cause performance issues."
+
+      - alert: MitaCriticalMemoryUsage
+        expr: mita_memory_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system memory usage is critical"
+          description: "Memory usage is {{ $value }}%, system may become unstable."
+
+      - alert: MitaHighDiskUsage
+        expr: mita_disk_usage_percent > 85
+        for: 10m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system disk usage is high"
+          description: "Disk usage is {{ $value }}%, may need cleanup or expansion."
+
+      - alert: MitaCriticalDiskUsage
+        expr: mita_disk_usage_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: system_resources
+        annotations:
+          summary: "MITA system disk usage is critical"
+          description: "Disk usage is {{ $value }}%, system may stop functioning."
+
+  - name: mita_audit_logging
+    rules:
+      - alert: MitaAuditLoggingUnhealthy
+        expr: mita_middleware_component_health{component="audit_logging"} < 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: audit_logging
+        annotations:
+          summary: "MITA audit logging is unhealthy"
+          description: "Audit logging health check indicates issues. Security event logging may be affected."
+
+      - alert: MitaAuditLoggingSlow
+        expr: mita_middleware_component_response_time_ms{component="audit_logging"} > 2000
+        for: 10m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: audit_logging
+        annotations:
+          summary: "MITA audit logging is slow"
+          description: "Audit logging response time is {{ $value }}ms, which may cause request delays."
+
+  - name: mita_health_monitoring_meta
+    rules:
+      - alert: MitaHealthMonitoringDown
+        expr: up{job="mita-health-monitoring"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: health_monitoring
+        annotations:
+          summary: "MITA health monitoring system is down"
+          description: "The health monitoring system itself is not responding. Manual investigation required."
+
+      - alert: MitaHealthMonitoringScrapeFailure
+        expr: up{job="mita-health-monitoring"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: health_monitoring
+        annotations:
+          summary: "MITA health monitoring scrape failures"
+          description: "Health monitoring metrics cannot be scraped. May indicate network or service issues."
+
+      - alert: MitaNoHealthChecksReceived
+        expr: increase(mita_middleware_health_status[10m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: mita-finance
+          component: health_monitoring
+        annotations:
+          summary: "No MITA health checks received"
+          description: "No health check updates received in 10 minutes. Health monitoring may be broken."
+
+  - name: mita_performance_regression
+    rules:
+      - alert: MitaPerformanceRegression
+        expr: |
+          (
+            avg_over_time(mita_middleware_health_check_duration_ms[1h]) > 
+            avg_over_time(mita_middleware_health_check_duration_ms[1h] offset 1h) * 1.5
+          )
+        for: 15m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: performance
+        annotations:
+          summary: "MITA system performance regression detected"
+          description: "System performance has regressed by 50% compared to the previous hour. Average health check time increased significantly."
+
+      - alert: MitaResponseTimeRegression
+        expr: |
+          (
+            avg_over_time(mita_middleware_component_response_time_ms[30m]) > 
+            avg_over_time(mita_middleware_component_response_time_ms[30m] offset 1h) * 2
+          )
+        for: 10m
+        labels:
+          severity: warning
+          service: mita-finance
+          component: "{{ $labels.component }}"
+        annotations:
+          summary: "MITA component {{ $labels.component }} performance regression"
+          description: "Component {{ $labels.component }} response time has doubled compared to an hour ago."

@@ -1,0 +1,835 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "MITA Finance - Comprehensive Middleware Health Monitoring",
+    "tags": [
+      "mita",
+      "health",
+      "middleware",
+      "fintech"
+    ],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Overall System Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_middleware_health_status",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "UNHEALTHY"
+                  },
+                  "0.5": {
+                    "text": "CRITICAL"
+                  },
+                  "0.75": {
+                    "text": "DEGRADED"
+                  },
+                  "1": {
+                    "text": "HEALTHY"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "unit": "none"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Component Health Status",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_health",
+            "refId": "A",
+            "legendFormat": "{{component}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "spectrum"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "options": {
+          "calculate": false,
+          "calculation": {},
+          "cellGap": 2,
+          "cellValues": {},
+          "color": {
+            "exponent": 0.5,
+            "fill": "dark-orange",
+            "mode": "spectrum",
+            "reverse": false,
+            "scale": "exponential",
+            "scheme": "RdYlGn",
+            "steps": 64
+          },
+          "exemplars": {
+            "color": "rgba(255,0,255,0.7)"
+          },
+          "filterValues": {
+            "le": 1e-9
+          },
+          "legend": {
+            "show": true
+          },
+          "rowsFrame": {
+            "layout": "auto"
+          },
+          "tooltip": {
+            "show": true,
+            "yHistogram": false
+          },
+          "yAxis": {
+            "axisPlacement": "left",
+            "reverse": false
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 18,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Response Times (Critical for Timeout Detection)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_response_time_ms",
+            "refId": "A",
+            "legendFormat": "{{component}}"
+          },
+          {
+            "expr": "mita_middleware_health_check_duration_ms",
+            "refId": "B",
+            "legendFormat": "Overall Health Check"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 2000
+                },
+                {
+                  "color": "red",
+                  "value": 5000
+                }
+              ]
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Alerts and Issues",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_middleware_alerts_count",
+            "refId": "A"
+          },
+          {
+            "expr": "mita_middleware_issues_count",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 3
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Database Health Metrics",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_response_time_ms{component=\"database_session\"}",
+            "refId": "A",
+            "legendFormat": "DB Response Time"
+          },
+          {
+            "expr": "mita_middleware_component_value{component=\"database_session\"}",
+            "refId": "B",
+            "legendFormat": "DB Connectivity Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1000
+                },
+                {
+                  "color": "red",
+                  "value": 3000
+                }
+              ]
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Rate Limiter Performance",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_response_time_ms{component=\"rate_limiter\"}",
+            "refId": "A",
+            "legendFormat": "Rate Limiter Response Time"
+          },
+          {
+            "expr": "mita_middleware_component_health{component=\"rate_limiter\"}",
+            "refId": "B",
+            "legendFormat": "Rate Limiter Health"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 500
+                },
+                {
+                  "color": "red",
+                  "value": 2000
+                }
+              ]
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "System Resource Utilization",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "mita_cpu_usage_percent",
+            "refId": "A",
+            "legendFormat": "CPU Usage %"
+          },
+          {
+            "expr": "mita_memory_usage_percent",
+            "refId": "B",
+            "legendFormat": "Memory Usage %"
+          },
+          {
+            "expr": "mita_disk_usage_percent",
+            "refId": "C",
+            "legendFormat": "Disk Usage %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "max": 100,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "red",
+                  "value": 85
+                }
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "JWT Service Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_health{component=\"jwt_service\"}",
+            "refId": "A"
+          },
+          {
+            "expr": "mita_middleware_component_response_time_ms{component=\"jwt_service\"}",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 32
+        }
+      },
+      {
+        "id": 9,
+        "title": "Redis Cache Performance",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_health{component=\"redis_cache\"}",
+            "refId": "A"
+          },
+          {
+            "expr": "mita_middleware_component_response_time_ms{component=\"redis_cache\"}",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 32
+        }
+      },
+      {
+        "id": 10,
+        "title": "Audit Logging Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_middleware_component_health{component=\"audit_logging\"}",
+            "refId": "A"
+          },
+          {
+            "expr": "mita_middleware_component_response_time_ms{component=\"audit_logging\"}",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 32
+        }
+      },
+      {
+        "id": 11,
+        "title": "Application Uptime",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mita_uptime_seconds",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 3600
+                },
+                {
+                  "color": "green",
+                  "value": 86400
+                }
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "textMode": "auto"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 32
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": []
+  }
+}

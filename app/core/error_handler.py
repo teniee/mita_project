@@ -116,12 +116,14 @@ class DatabaseException(MITAException):
 class RateLimitException(MITAException):
     """Exception for rate limiting"""
     
-    def __init__(self, message: str = "Rate limit exceeded"):
+    def __init__(self, message: str = "Rate limit exceeded", retry_after: Optional[int] = None):
         super().__init__(
             message=message,
             error_code="RATE_LIMIT_ERROR",
-            status_code=429
+            status_code=429,
+            details={"retry_after": retry_after} if retry_after else {}
         )
+        self.retry_after = retry_after
 
 
 class ErrorHandler:
@@ -169,7 +171,7 @@ class ErrorHandler:
         return error_id
     
     @staticmethod
-    def create_error_response(error: Exception, request: Optional[Request] = None, user_id: Optional[int] = None) -> JSONResponse:
+    def create_error_response(error: Exception, request: Optional[Request] = None, user_id: Optional[int] = None, headers: Optional[Dict[str, str]] = None) -> JSONResponse:
         """Create standardized error response"""
         error_id = ErrorHandler.log_error(error, request, user_id)
         
@@ -185,7 +187,8 @@ class ErrorHandler:
             }
             return JSONResponse(
                 status_code=error.status_code,
-                content=response_data
+                content=response_data,
+                headers=headers
             )
         
         elif isinstance(error, ValidationError):
@@ -440,6 +443,14 @@ class InputValidator:
 async def mita_exception_handler(request: Request, exc: MITAException) -> JSONResponse:
     """Handle MITA custom exceptions"""
     return ErrorHandler.create_error_response(exc, request)
+
+
+async def rate_limit_exception_handler(request: Request, exc: RateLimitException) -> JSONResponse:
+    """Handle rate limit exceptions with proper headers"""
+    headers = {}
+    if exc.retry_after:
+        headers["Retry-After"] = str(exc.retry_after)
+    return ErrorHandler.create_error_response(exc, request, headers=headers)
 
 
 async def validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:

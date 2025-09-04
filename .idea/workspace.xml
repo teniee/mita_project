@@ -5,7 +5,54 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)">
+      <change beforePath="$PROJECT_DIR$/.env.production" beforeDir="false" afterPath="$PROJECT_DIR$/.env.production" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dependencies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/endpoints/security_monitoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/endpoints/security_monitoring.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/transactions/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/async_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/async_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/audit_logging.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/audit_logging.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/error_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/error_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/limiter_setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/limiter_setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/security.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/security.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/validators.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/validators.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/auth_jwt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/auth_jwt_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/emergency_auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/emergency_auth.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/docs/PRODUCTION_DEPLOYMENT_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/docs/PRODUCTION_DEPLOYMENT_GUIDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/docs/openapi.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/docs/openapi.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/config.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/core/error_handling.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/core/error_handling.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/app_en.arb" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/app_en.arb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/main.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/auth_test_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/auth_test_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/user_settings_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/user_settings_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/enhanced_master_budget_engine.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/enhanced_master_budget_engine.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/income_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/live_updates_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/live_updates_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/loading_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/loading_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/performance_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/performance_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/secure_push_token_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/secure_push_token_manager.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/smart_goal_engine.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/smart_goal_engine.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/token_lifecycle_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/token_lifecycle_manager.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/behavioral_insights_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/behavioral_insights_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/intelligent_notifications_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/intelligent_notifications_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/scripts/refresh_premium_status.py" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/scripts/refresh_premium_status.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

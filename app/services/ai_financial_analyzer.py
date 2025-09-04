@@ -13,6 +13,13 @@ from sqlalchemy import func, and_, or_
 
 from app.db.models import Expense, User, Transaction
 from app.services.core.behavior.behavioral_config import CATEGORY_PRIORITIES
+from app.services.core.dynamic_threshold_service import (
+    get_dynamic_thresholds, ThresholdType, UserContext, get_housing_affordability_thresholds
+)
+from app.services.core.income_scaling_algorithms import (
+    scale_threshold_by_income, get_scaled_variance_thresholds
+)
+from app.services.core.income_classification_service import classify_income
 
 
 logger = logging.getLogger(__name__)
@@ -27,10 +34,52 @@ class AIFinancialAnalyzer:
         self.user = self._get_user()
         self._spending_data = None
         self._transaction_data = None
+        self._user_context = None
+        self._dynamic_thresholds = None
     
     def _get_user(self) -> User:
         """Get user from database"""
         return self.db.query(User).filter(User.id == self.user_id).first()
+    
+    def _get_user_context(self) -> UserContext:
+        """Get user context for dynamic threshold calculations"""
+        if self._user_context is None:
+            # Extract user information for context
+            user = self.user
+            monthly_income = getattr(user, 'monthly_income', 5000)  # Default if not set
+            age = getattr(user, 'age', 35)  # Default if not set
+            region = getattr(user, 'region', 'US')  # Default to US
+            
+            self._user_context = UserContext(
+                monthly_income=monthly_income,
+                age=age,
+                region=region,
+                family_size=getattr(user, 'family_size', 1),
+                debt_to_income_ratio=getattr(user, 'debt_to_income_ratio', 0.0),
+                months_of_data=len(set(expense.date.strftime('%Y-%m') 
+                                     for expense in self._load_spending_data())),
+                current_savings_rate=getattr(user, 'current_savings_rate', 0.0),
+                housing_status=getattr(user, 'housing_status', 'rent'),
+                life_stage=getattr(user, 'life_stage', 'single')
+            )
+        return self._user_context
+    
+    def _get_dynamic_thresholds(self) -> Dict:
+        """Get dynamic thresholds for this user"""
+        if self._dynamic_thresholds is None:
+            user_context = self._get_user_context()
+            self._dynamic_thresholds = {
+                'spending_patterns': get_dynamic_thresholds(
+                    ThresholdType.SPENDING_PATTERN, user_context
+                ),
+                'health_scoring': get_dynamic_thresholds(
+                    ThresholdType.HEALTH_SCORING, user_context
+                ),
+                'behavioral_triggers': get_dynamic_thresholds(
+                    ThresholdType.BEHAVIORAL_TRIGGER, user_context
+                )
+            }
+        return self._dynamic_thresholds
     
     def _load_spending_data(self, months_back: int = 6) -> List[Dict]:
         """Load user's spending data for analysis"""
@@ -98,24 +147,36 @@ class AIFinancialAnalyzer:
         if weekend_spending > weekday_spending * 1.3:
             patterns.append("weekend_overspending")
         
-        # Pattern 2: Small frequent purchases detection
-        small_purchases = [s for s in spending_data if s['amount'] < 20]
+        # Pattern 2: Small frequent purchases detection (now dynamic)
+        thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        small_purchase_threshold = thresholds['small_purchase_threshold']
+        
+        small_purchases = [s for s in spending_data if s['amount'] < small_purchase_threshold]
         if len(small_purchases) > len(spending_data) * 0.6:
             patterns.append("frequent_small_purchases")
         
-        # Pattern 3: Category concentration analysis
+        # Pattern 3: Category concentration analysis (now dynamic)
+        thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        concentration_threshold = thresholds['category_concentration_threshold']
+        
         category_concentration = self._analyze_category_concentration(spending_data)
-        if category_concentration > 0.7:
+        if category_concentration > concentration_threshold:
             patterns.append("category_concentration")
         
-        # Pattern 4: Monthly spending variance
+        # Pattern 4: Monthly spending variance (now dynamic)
+        thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        variance_threshold = thresholds['monthly_variance_threshold']
+        
         monthly_variance = self._analyze_monthly_variance(spending_data)
-        if monthly_variance > 0.4:
+        if monthly_variance > variance_threshold:
             patterns.append("irregular_spending")
         
-        # Pattern 5: Impulse buying detection (based on description analysis)
+        # Pattern 5: Impulse buying detection (now dynamic)
+        thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        impulse_threshold = thresholds['impulse_buying_threshold']
+        
         impulse_score = self._detect_impulse_buying(spending_data)
-        if impulse_score > 0.6:
+        if impulse_score > impulse_threshold:
             patterns.append("impulse_buying")
         
         # Pattern 6: Subscription accumulation
@@ -207,7 +268,11 @@ class AIFinancialAnalyzer:
             # Indicators of impulse buying
             if any(word in description for word in ['sale', 'discount', 'deal', 'offer']):
                 impulse_indicators += 1
-            if amount > 50 and any(cat in expense['category'].lower() for cat in ['entertainment', 'shopping']):
+            # Use dynamic threshold instead of hardcoded $50
+            user_context = self._get_user_context()
+            medium_purchase_threshold = self._get_dynamic_thresholds()['spending_patterns']['medium_purchase_threshold']
+            
+            if amount > medium_purchase_threshold and any(cat in expense['category'].lower() for cat in ['entertainment', 'shopping']):
                 impulse_indicators += 0.5
         
         return min(1.0, impulse_indicators / total_transactions)
@@ -280,10 +345,17 @@ class AIFinancialAnalyzer:
         
         feedback_parts = []
         
-        # Overall spending assessment
-        if avg_daily_spending > 100:
-            feedback_parts.append("Your daily spending is relatively high.")
-        elif avg_daily_spending > 50:
+        # Overall spending assessment (now income-relative)
+        user_context = self._get_user_context()
+        monthly_income = user_context.monthly_income
+        
+        # Calculate income-relative spending benchmarks
+        high_daily_threshold = monthly_income * 0.10  # 10% of monthly income per day is high
+        moderate_daily_threshold = monthly_income * 0.05  # 5% is moderate
+        
+        if avg_daily_spending > high_daily_threshold:
+            feedback_parts.append("Your daily spending is relatively high for your income level.")
+        elif avg_daily_spending > moderate_daily_threshold:
             feedback_parts.append("Your spending patterns show moderate daily expenses.")
         else:
             feedback_parts.append("You maintain good control over daily spending.")
@@ -306,7 +378,11 @@ class AIFinancialAnalyzer:
             top_amount = category_analysis[top_category]
             percentage = (top_amount / sum(category_analysis.values())) * 100
             
-            if percentage > 40:
+            # Use dynamic concentration threshold
+            thresholds = self._get_dynamic_thresholds()['spending_patterns']
+            concentration_warning = thresholds['category_concentration_warning']
+            
+            if (percentage / 100) > concentration_warning:
                 feedback_parts.append(f"Your {top_category} expenses represent {percentage:.0f}% of total spending, consider diversifying.")
         
         return " ".join(feedback_parts)
@@ -336,7 +412,17 @@ class AIFinancialAnalyzer:
             top_category = max(category_analysis.items(), key=lambda x: x[1])[0]
             
             if top_category == "food" or top_category == "dining":
-                tips.append("Try meal planning to reduce food expenses by 20-30%")
+                # Calculate user-specific savings potential instead of fixed 20-30%
+                user_context = self._get_user_context()
+                food_ratio = scale_threshold_by_income('food_ratio', user_context.monthly_income, 
+                                                     family_size=user_context.family_size)
+                current_food_pct = (top_amount / sum(category_analysis.values())) * 100
+                
+                if current_food_pct > food_ratio * 100 * 1.2:  # 20% above optimal
+                    potential_savings = (current_food_pct - food_ratio * 100) / current_food_pct * 100
+                    tips.append(f"Try meal planning to reduce food expenses by {potential_savings:.0f}%")
+                else:
+                    tips.append("Try meal planning to reduce food expenses by 15-25%")
                 tips.append("Set a weekly dining out limit and stick to it")
             elif top_category == "transportation":
                 tips.append("Consider carpooling or public transport alternatives")
@@ -349,7 +435,12 @@ class AIFinancialAnalyzer:
         if not patterns:
             tips.extend([
                 "Track expenses daily to identify spending patterns",
-                "Set up automatic savings of 20% of income",
+                # Calculate user-specific savings target instead of fixed 20%
+                user_context = self._get_user_context()
+                savings_target = scale_threshold_by_income('savings_rate', user_context.monthly_income, 
+                                                         age=user_context.age,
+                                                         debt_to_income_ratio=user_context.debt_to_income_ratio)
+                f"Set up automatic savings of {savings_target:.0%} of income",
                 "Review and optimize recurring expenses monthly",
                 "Use cash for discretionary spending to increase awareness"
             ])
@@ -365,17 +456,28 @@ class AIFinancialAnalyzer:
         
         # Analyze spending regularity
         monthly_variance = self._analyze_monthly_variance(spending_data)
-        if monthly_variance < 0.2:
-            score += 1.0  # Consistent spending is good
-        elif monthly_variance > 0.6:
-            score -= 1.5  # High variance is concerning
+        # Use dynamic variance thresholds instead of hardcoded values
+        dynamic_thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        excellent_threshold = dynamic_thresholds['monthly_variance_excellent']
+        warning_threshold = dynamic_thresholds['monthly_variance_warning']
+        max_threshold = dynamic_thresholds['monthly_variance_threshold']
+        
+        if monthly_variance < excellent_threshold:
+            score += 1.0  # Excellent consistency for this tier
+        elif monthly_variance > max_threshold:
+            score -= 1.5  # High variance is concerning for this tier
         
         # Analyze category distribution
         category_concentration = self._analyze_category_concentration(spending_data)
-        if category_concentration < 0.4:
-            score += 0.5  # Good diversification
-        elif category_concentration > 0.7:
-            score -= 1.0  # Too concentrated
+        # Use dynamic concentration thresholds
+        concentration_thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        good_concentration = concentration_thresholds['category_concentration_threshold'] * 0.8
+        bad_concentration = concentration_thresholds['category_concentration_threshold'] * 1.2
+        
+        if category_concentration < good_concentration:
+            score += 0.5  # Good diversification for this tier
+        elif category_concentration > bad_concentration:
+            score -= 1.0  # Too concentrated for this tier
         
         # Analyze impulse buying
         impulse_score = self._detect_impulse_buying(spending_data)
@@ -389,14 +491,21 @@ class AIFinancialAnalyzer:
         spending_data = self._load_spending_data()
         
         if not spending_data:
+            # Use income-appropriate baseline for no data case
+            user_context = self._get_user_context()
+            tier = classify_income(user_context.monthly_income, user_context.region)
+            thresholds = self._get_dynamic_thresholds()['health_scoring']
+            
+            baseline_score = thresholds['component_expectations']['budgeting_excellence']
+            
             return {
-                "score": 50,
-                "grade": "C",
+                "score": int(baseline_score),
+                "grade": self._score_to_grade(baseline_score),
                 "components": {
-                    "budgeting": 50,
-                    "saving": 50,
-                    "debt_management": 50,
-                    "spending_efficiency": 50
+                    "budgeting": int(baseline_score),
+                    "saving": int(baseline_score),
+                    "debt_management": int(baseline_score),
+                    "spending_efficiency": int(baseline_score)
                 },
                 "improvements": ["Start tracking expenses to get accurate health score"],
                 "trend": "stable"
@@ -439,36 +548,45 @@ class AIFinancialAnalyzer:
         }
     
     def _calculate_budgeting_score(self, spending_data: List[Dict]) -> float:
-        """Calculate budgeting effectiveness score"""
+        """Calculate budgeting effectiveness score using dynamic expectations"""
         # Analyze spending distribution across categories
         category_analysis = self._analyze_category_spending(spending_data)
         
         if not category_analysis:
-            return 50.0
+            # Use dynamic baseline instead of hardcoded 50
+            thresholds = self._get_dynamic_thresholds()['health_scoring']
+            return thresholds['component_expectations']['budgeting_excellence']
         
-        # Good budgeting has balanced categories
+        # Get dynamic budget allocations for this user
+        user_context = self._get_user_context()
+        expected_distribution = get_dynamic_thresholds(
+            ThresholdType.BUDGET_ALLOCATION, user_context
+        )
+        
+        # Start with tier-appropriate baseline score
+        thresholds = self._get_dynamic_thresholds()['health_scoring']
+        score = thresholds['component_expectations']['budgeting_excellence']
+        
         total_spending = sum(category_analysis.values())
-        expected_distribution = {
-            'food': 0.25, 'housing': 0.30, 'transportation': 0.15,
-            'entertainment': 0.10, 'healthcare': 0.10, 'other': 0.10
-        }
-        
-        score = 70.0
         
         for category, expected_pct in expected_distribution.items():
             actual_pct = category_analysis.get(category, 0) / total_spending
             deviation = abs(actual_pct - expected_pct)
-            score -= deviation * 100  # Penalize large deviations
+            # Scale penalty based on category importance
+            penalty_multiplier = 80 if category in ['housing', 'food'] else 60
+            score -= deviation * penalty_multiplier
         
         return max(0.0, min(100.0, score))
     
     def _calculate_saving_potential_score(self, spending_data: List[Dict]) -> float:
-        """Calculate savings potential based on spending patterns"""
+        """Calculate savings potential using dynamic thresholds"""
         patterns = self.analyze_spending_patterns()["patterns"]
         
-        score = 60.0  # Base score
+        # Start with tier-appropriate baseline
+        thresholds = self._get_dynamic_thresholds()['health_scoring']
+        score = thresholds['component_expectations']['savings_achievement']
         
-        # Deduct points for wasteful patterns
+        # Deduct points for wasteful patterns (dynamic penalties)
         if "impulse_buying" in patterns:
             score -= 15
         if "subscription_accumulation" in patterns:
@@ -478,46 +596,64 @@ class AIFinancialAnalyzer:
         if "frequent_small_purchases" in patterns:
             score -= 8
         
-        # Add points for efficient patterns
+        # Add points for efficient patterns using dynamic variance threshold
         monthly_variance = self._analyze_monthly_variance(spending_data)
-        if monthly_variance < 0.2:
-            score += 15  # Consistent spending indicates good control
+        dynamic_thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        variance_excellent = dynamic_thresholds['monthly_variance_excellent']
+        
+        if monthly_variance < variance_excellent:
+            score += 15  # Excellent consistency for this tier
         
         return max(0.0, min(100.0, score))
     
     def _calculate_consistency_score(self, spending_data: List[Dict]) -> float:
-        """Calculate spending consistency score"""
+        """Calculate spending consistency score using dynamic thresholds"""
         monthly_variance = self._analyze_monthly_variance(spending_data)
         
-        # Lower variance = higher consistency score
-        if monthly_variance < 0.1:
-            return 90.0
-        elif monthly_variance < 0.2:
-            return 80.0
-        elif monthly_variance < 0.3:
-            return 70.0
-        elif monthly_variance < 0.4:
-            return 60.0
+        # Get dynamic variance thresholds for this user
+        dynamic_thresholds = self._get_dynamic_thresholds()['spending_patterns']
+        thresholds = self._get_dynamic_thresholds()['health_scoring']
+        
+        excellent_threshold = dynamic_thresholds['monthly_variance_excellent']
+        warning_threshold = dynamic_thresholds['monthly_variance_warning']
+        max_threshold = dynamic_thresholds['monthly_variance_threshold']
+        
+        base_score = thresholds['component_expectations']['consistency_target']
+        
+        # Dynamic scoring based on user's tier expectations
+        if monthly_variance < excellent_threshold:
+            return min(100.0, base_score + 20)  # Excellent consistency bonus
+        elif monthly_variance < warning_threshold:
+            return base_score + 10  # Good consistency
+        elif monthly_variance < max_threshold:
+            return base_score  # Acceptable consistency
         else:
-            return max(30.0, 80.0 - (monthly_variance * 100))
+            # Scale penalty based on how far over threshold
+            excess = monthly_variance - max_threshold
+            penalty = min(30, excess * 100)  # Cap penalty at 30 points
+            return max(30.0, base_score - penalty)
     
     def _score_to_grade(self, score: float) -> str:
-        """Convert numeric score to letter grade"""
-        if score >= 90:
+        """Convert numeric score to letter grade using dynamic boundaries"""
+        # Get dynamic grade boundaries for this user's context
+        thresholds = self._get_dynamic_thresholds()['health_scoring']
+        boundaries = thresholds['grade_boundaries']
+        
+        if score >= boundaries['A_plus']:
             return "A+"
-        elif score >= 85:
+        elif score >= boundaries['A']:
             return "A"
-        elif score >= 80:
+        elif score >= boundaries['B_plus']:
             return "B+"
-        elif score >= 75:
+        elif score >= boundaries['B']:
             return "B"
-        elif score >= 70:
+        elif score >= boundaries['C_plus']:
             return "C+"
-        elif score >= 65:
+        elif score >= boundaries['C']:
             return "C"
-        elif score >= 60:
+        elif score >= boundaries['D_plus']:
             return "D+"
-        elif score >= 55:
+        elif score >= boundaries['D']:
             return "D"
         else:
             return "F"
@@ -527,20 +663,34 @@ class AIFinancialAnalyzer:
         """Generate improvement suggestions based on component scores"""
         improvements = []
         
-        if budgeting < 70:
+        # Use dynamic improvement thresholds
+        thresholds = self._get_dynamic_thresholds()['health_scoring']
+        budgeting_target = thresholds['component_expectations']['budgeting_excellence']
+        efficiency_target = thresholds['component_expectations']['spending_efficiency']
+        savings_target = thresholds['component_expectations']['savings_achievement']
+        consistency_target = thresholds['component_expectations']['consistency_target']
+        
+        if budgeting < budgeting_target:
             improvements.append("Create detailed budget categories and track spending against limits")
         
-        if efficiency < 70:
+        if efficiency < efficiency_target:
             improvements.append("Reduce impulse purchases by implementing a 24-hour waiting period")
         
-        if saving < 70:
+        if saving < savings_target:
             improvements.append("Cancel unused subscriptions and redirect savings to emergency fund")
         
-        if consistency < 70:
+        if consistency < consistency_target:
             improvements.append("Establish regular spending patterns and avoid large monthly variations")
         
-        # If all scores are decent, provide advanced tips
-        if all(score >= 70 for score in [budgeting, efficiency, saving, consistency]):
+        # If all scores meet tier expectations, provide advanced tips
+        all_targets_met = (
+            budgeting >= budgeting_target and
+            efficiency >= efficiency_target and
+            saving >= savings_target and
+            consistency >= consistency_target
+        )
+        
+        if all_targets_met:
             improvements.extend([
                 "Consider increasing emergency fund to 6 months of expenses",
                 "Explore investment opportunities for long-term wealth building",
@@ -704,9 +854,22 @@ class AIFinancialAnalyzer:
         if not subscription_expenses:
             return 0.0
         
-        # Assume 30% of subscriptions can be optimized
+        # Calculate tier-appropriate subscription optimization potential
+        user_context = self._get_user_context()
+        tier = classify_income(user_context.monthly_income)
+        
+        # Higher income tiers typically have more subscriptions to optimize
+        optimization_rates = {
+            'low': 0.2,           # 20% - fewer subscriptions
+            'lower_middle': 0.25, # 25%
+            'middle': 0.3,        # 30%
+            'upper_middle': 0.35, # 35% - more subscription services
+            'high': 0.4           # 40% - many premium subscriptions
+        }
+        
+        optimization_rate = optimization_rates.get(tier.value, 0.3)
         monthly_subscription_cost = sum(subscription_expenses) / max(1, len(set(expense['date'].strftime('%Y-%m') for expense in spending_data)))
-        return monthly_subscription_cost * 0.3
+        return monthly_subscription_cost * optimization_rate
     
     def _calculate_dining_savings(self, spending_data: List[Dict]) -> float:
         """Calculate potential savings from dining optimization"""
@@ -720,8 +883,21 @@ class AIFinancialAnalyzer:
         
         monthly_dining = sum(expense['amount'] for expense in dining_expenses) / max(1, len(set(expense['date'].strftime('%Y-%m') for expense in spending_data)))
         
-        # 25% reduction is achievable through meal planning
-        return monthly_dining * 0.25
+        # Calculate income-appropriate dining reduction potential
+        user_context = self._get_user_context()
+        tier = classify_income(user_context.monthly_income)
+        
+        # Higher income tiers have more dining flexibility but less percentage impact
+        reduction_rates = {
+            'low': 0.15,          # 15% - limited dining to cut
+            'lower_middle': 0.20, # 20%
+            'middle': 0.25,       # 25%
+            'upper_middle': 0.30, # 30% - more dining flexibility
+            'high': 0.20          # 20% - dining is lifestyle choice
+        }
+        
+        reduction_rate = reduction_rates.get(tier.value, 0.25)
+        return monthly_dining * reduction_rate
     
     def _calculate_impulse_savings(self, spending_data: List[Dict]) -> float:
         """Calculate potential savings from impulse buying reduction"""
@@ -731,8 +907,21 @@ class AIFinancialAnalyzer:
         # Impulse purchases typically represent portion of entertainment/shopping
         estimated_impulse_spending = total_monthly_spending * impulse_score * 0.3
         
-        # 50% reduction is achievable with discipline
-        return estimated_impulse_spending * 0.5
+        # Calculate tier-appropriate impulse reduction potential
+        user_context = self._get_user_context()
+        tier = classify_income(user_context.monthly_income)
+        
+        # Lower income tiers should target higher reduction rates
+        reduction_rates = {
+            'low': 0.6,           # 60% - impulse buying more problematic
+            'lower_middle': 0.55, # 55%
+            'middle': 0.5,        # 50%
+            'upper_middle': 0.4,  # 40% - some impulse buying acceptable
+            'high': 0.3           # 30% - impulse buying less concerning
+        }
+        
+        reduction_rate = reduction_rates.get(tier.value, 0.5)
+        return estimated_impulse_spending * reduction_rate
     
     def _calculate_transport_savings(self, spending_data: List[Dict]) -> float:
         """Calculate potential transportation savings"""
@@ -746,8 +935,26 @@ class AIFinancialAnalyzer:
         
         monthly_transport = sum(expense['amount'] for expense in transport_expenses) / max(1, len(set(expense['date'].strftime('%Y-%m') for expense in spending_data)))
         
-        # 20% reduction through optimization
-        return monthly_transport * 0.2
+        # Calculate region and tier-appropriate transport savings
+        user_context = self._get_user_context()
+        tier = classify_income(user_context.monthly_income)
+        
+        # Urban areas and lower income tiers have more optimization potential
+        base_reduction = 0.2  # 20% baseline
+        
+        # Adjust for income tier
+        tier_adjustments = {
+            'low': 1.2,           # More potential savings
+            'lower_middle': 1.1,
+            'middle': 1.0,
+            'upper_middle': 0.9,  # Less potential (premium options chosen)
+            'high': 0.8           # Limited potential (efficiency already optimized)
+        }
+        
+        tier_multiplier = tier_adjustments.get(tier.value, 1.0)
+        reduction_rate = base_reduction * tier_multiplier
+        
+        return monthly_transport * min(0.3, reduction_rate)
     
     def _calculate_small_purchase_savings(self, spending_data: List[Dict]) -> float:
         """Calculate savings from reducing small purchases"""
@@ -758,8 +965,21 @@ class AIFinancialAnalyzer:
         
         monthly_small_purchases = sum(expense['amount'] for expense in small_purchases) / max(1, len(set(expense['date'].strftime('%Y-%m') for expense in spending_data)))
         
-        # 40% reduction is achievable with awareness
-        return monthly_small_purchases * 0.4
+        # Calculate tier-appropriate small purchase reduction
+        user_context = self._get_user_context()
+        tier = classify_income(user_context.monthly_income)
+        
+        # Lower income tiers should target higher reduction rates for small purchases
+        reduction_rates = {
+            'low': 0.5,           # 50% - small purchases more impactful
+            'lower_middle': 0.45, # 45%
+            'middle': 0.4,        # 40%
+            'upper_middle': 0.35, # 35%
+            'high': 0.25          # 25% - small purchases less significant
+        }
+        
+        reduction_rate = reduction_rates.get(tier.value, 0.4)
+        return monthly_small_purchases * reduction_rate
     
     def _assess_difficulty_level(self, suggestions: List[str]) -> str:
         """Assess overall difficulty of implementing suggestions"""

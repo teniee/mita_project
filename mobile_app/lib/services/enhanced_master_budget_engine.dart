@@ -1,4 +1,5 @@
 import '../models/budget_intelligence_models.dart';
+import 'logging_service.dart';
 
 // Import all the enhanced services
 import 'enhanced_income_service.dart';
@@ -127,7 +128,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle nudge generation failure gracefully
-      print('Nudge generation failed: $e');
+      LoggingService.instance.logError('Nudge generation failed', error: e);
     }
 
     // Step 9: Generate Tomorrow's Forecast
@@ -138,7 +139,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle forecast generation failure gracefully
-      print('Forecast generation failed: $e');
+      LoggingService.instance.logError('Forecast generation failed', error: e);
     }
 
     // Step 10: Generate Social Insights
@@ -161,7 +162,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle social insights failure gracefully
-      print('Social insights generation failed: $e');
+      LoggingService.instance.logError('Social insights generation failed', error: e);
     }
 
     // Step 11: Generate Explanation

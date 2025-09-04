@@ -1,0 +1,177 @@
+# Florida Economic Profile
+# Enhanced with comprehensive regional economic data for dynamic thresholds
+
+currency: USD
+region_code: US-FL
+region_name: Florida  
+cost_of_living_adjustment: 1.05  # 5% higher than national average
+median_household_income: 67000   # 2024 FL median
+poverty_level: 15060            # Federal poverty guideline 2024
+
+# Economically justified 5-tier thresholds (annual income)
+# Adjusted for FL tourism economy and no state income tax
+class_thresholds:
+  low: 35000             # ~52% of FL median household income
+  lower_middle: 56000    # ~84% of FL median household income
+  middle: 84000          # ~125% of FL median household income
+  upper_middle: 140000   # ~209% of FL median household income  
+  # high: above upper_middle threshold
+
+# Comprehensive regional economic factors
+economic_factors:
+  housing_cost_ratio: 0.32        # FL average housing cost % of income
+  tax_burden: 0.06                # No state income tax advantage
+  inflation_adjustment: 1.07      # Higher due to tourism pressure
+  unemployment_rate: 0.035        # FL unemployment rate
+  job_growth_rate: 0.018          # Good job growth
+  cost_of_living_index: 1.05      # Slightly above US average
+  housing_market_factor: 1.15     # Housing appreciation pressure
+  transportation_cost_factor: 1.02 # Car-dependent but moderate
+  healthcare_cost_factor: 1.08    # Aging population healthcare costs
+  hurricane_insurance_factor: 1.20 # Hurricane insurance premium
+
+# Regional spending pattern modifiers  
+regional_spending_patterns:
+  dining_out_frequency_multiplier: 1.3   # Tourist/retirement dining culture
+  transportation_car_dependency: 0.88    # High car ownership
+  housing_ownership_rate: 0.66          # High homeownership
+  tourism_entertainment_premium: 1.25   # Tourist area entertainment costs
+  hurricane_preparation_factor: 1.1     # Emergency preparation costs
+
+mandatory_categories: [housing, utilities, healthcare, debts, insurance, transportation, hurricane_prep]
+
+seasonal_factors:
+  winter:
+    utilities: 0.7       # Minimal heating needs
+    entertainment: 1.3   # Tourist season premium
+    housing: 1.05        # Seasonal rental pressure
+  summer:  
+    utilities: 1.5       # Heavy AC usage
+    hurricane_prep: 2.0  # Hurricane season preparation
+    travel: 0.9          # Less travel during hot season
+  spring:
+    entertainment: 1.2   # Spring break season
+    travel: 1.1          # Good travel weather
+  fall:
+    utilities: 0.8       # Moderate weather
+    hurricane_prep: 1.5  # Late hurricane season
+
+# Tier-specific budget allocations optimized for FL economics
+classes:
+  low:
+    housing: 0.38          # Moderate housing costs but tourist pressure
+    food: 0.15             # Tourist area food costs
+    transport: 0.16        # Car necessity
+    utilities: 0.11        # AC costs significant
+    healthcare: 0.08       # Higher due to aging population
+    insurance: 0.05        # Hurricane/flood insurance
+    savings: 0.04          # Constrained by costs
+    entertainment: 0.03
+    
+  lower_middle:
+    housing: 0.34          # Better housing options
+    food: 0.14
+    transport: 0.15
+    utilities: 0.10        # AC costs managed better
+    healthcare: 0.07
+    insurance: 0.04        # Better insurance options
+    savings: 0.08          # Building capacity
+    entertainment: 0.05
+    miscellaneous: 0.03
+    
+  middle:
+    housing: 0.30          # FL middle class target  
+    food: 0.13
+    transport: 0.14
+    utilities: 0.08
+    healthcare: 0.06
+    insurance: 0.04
+    savings: 0.13          # Good savings capacity
+    entertainment: 0.07
+    miscellaneous: 0.05
+    
+  upper_middle:
+    housing: 0.28          # Premium housing options
+    food: 0.11
+    transport: 0.12
+    utilities: 0.07
+    healthcare: 0.05
+    insurance: 0.03        # Better coverage options
+    savings: 0.17          # Strong wealth building
+    entertainment: 0.09
+    investments: 0.08
+    
+  high:
+    housing: 0.25          # Luxury coastal properties
+    food: 0.09
+    transport: 0.10
+    utilities: 0.06
+    healthcare: 0.04
+    insurance: 0.03
+    savings: 0.14          # Base savings
+    entertainment: 0.11
+    investments: 0.16      # Major investment focus
+    luxury: 0.02
+
+# FL-specific behavioral economics patterns
+behavioral_patterns:
+  low:
+    decision_time: immediate
+    mental_accounting: [housing, utilities_AC, car, everything_else]
+    nudge_frequency: daily
+    primary_motivators: [survival, hurricane_prep]
+    spending_volatility: high
+    seasonal_sensitivity: high
+    
+  lower_middle:
+    decision_time: hours_to_days
+    mental_accounting: [housing, car, AC_bills, family, emergency]
+    nudge_frequency: weekly  
+    primary_motivators: [stability, family_security]
+    spending_volatility: moderate_high
+    seasonal_sensitivity: moderate
+    
+  middle:
+    decision_time: days_to_weeks
+    mental_accounting: [housing, lifestyle, savings, family, emergency]
+    nudge_frequency: bi_weekly
+    primary_motivators: [lifestyle_optimization, growth]
+    spending_volatility: moderate
+    seasonal_sensitivity: moderate
+    
+  upper_middle:
+    decision_time: weeks_to_months
+    mental_accounting: [real_estate, lifestyle, investments, family, taxes]
+    nudge_frequency: monthly
+    primary_motivators: [wealth_building, lifestyle]
+    spending_volatility: low_moderate
+    seasonal_sensitivity: low
+    
+  high:
+    decision_time: months_to_years
+    mental_accounting: [investment_portfolio, luxury_lifestyle, tax_strategy]
+    nudge_frequency: quarterly
+    primary_motivators: [wealth_preservation, luxury]
+    spending_volatility: low
+    seasonal_sensitivity: very_low
+
+# Dynamic threshold modifiers for FL context
+dynamic_modifiers:
+  small_purchase_threshold_multiplier: 1.1     # Tourist economy inflation
+  category_concentration_tolerance: 1.05       # Moderate tolerance
+  variance_threshold_adjustment: 1.3           # High seasonal variance expected
+  impulse_buying_cost_adjustment: 1.15         # Tourist area premiums
+  emergency_fund_months_bonus: 1               # Hurricane preparation needs
+  seasonal_variance_tolerance: 1.5             # High seasonal tolerance
+  
+# Regional financial considerations
+regional_considerations:
+  hurricane_emergency_fund: 0.05               # 5% of income for hurricane prep
+  tourism_economy_volatility: 1.2              # Economic volatility factor
+  retiree_population_healthcare: 1.15          # Healthcare cost pressure
+  no_state_income_tax_advantage: 0.94          # Tax savings factor
+  coastal_property_appreciation: 1.08          # Property value trends
+  
+default_behavior: lifestyle_focused
+data_source: "US Census Bureau 2024, FL Department of Economic Opportunity"
+last_updated: "2024-12-01"

@@ -10,30 +10,33 @@ from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
 from app.core.config import ALGORITHM, settings
-# EMERGENCY FIX: Disable Redis-dependent imports to prevent hanging
-# from app.core.upstash import blacklist_token as upstash_blacklist_token
-# from app.core.upstash import is_token_blacklisted
-
-# Mock functions to prevent hangs
-def upstash_blacklist_token(token_id: str, ttl: int = 86400) -> bool:
-    """EMERGENCY: Mock blacklist function to prevent Redis hangs"""
-    logger.warning(f"EMERGENCY MODE: Token blacklisting disabled - {token_id[:8]}...")
-    return True  # Always return success to avoid blocking
-
-def is_token_blacklisted(token_id: str) -> bool:
-    """EMERGENCY: Mock blacklist check function to prevent Redis hangs"""
-    return False  # Never blocked in emergency mode
 from app.core.audit_logging import log_security_event
+# UPDATED: Use centralized password security configuration
+from app.core.password_security import (
+    hash_password_sync,
+    hash_password_async, 
+    verify_password_sync,
+    verify_password_async,
+    validate_bcrypt_configuration
+)
 
 logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=4)  # EMERGENCY: Minimal rounds for speed
+# SECURITY UPDATE: Validate bcrypt configuration on startup
+try:
+    validation_result = validate_bcrypt_configuration()
+    if not validation_result["valid"]:
+        logger.error(f"Bcrypt configuration validation failed: {validation_result['issues']}")
+    elif validation_result["warnings"]:
+        logger.warning(f"Bcrypt configuration warnings: {validation_result['warnings']}")
+    else:
+        logger.info(f"Bcrypt configuration validated successfully with {validation_result['configuration']['rounds']} rounds")
+except Exception as e:
+    logger.error(f"Failed to validate bcrypt configuration: {e}")
 
 # EMERGENCY FIX: Disable thread pool causing deadlock
 # _thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")
@@ -132,25 +135,35 @@ class UserRole(Enum):
 
 
 def hash_password(plain: str) -> str:
-    """Synchronous password hashing - use async_hash_password() for better performance"""
-    return pwd_context.hash(plain)
+    """
+    Synchronous password hashing using centralized secure configuration
+    UPDATED: Now uses 12 rounds (production) for proper security
+    """
+    return hash_password_sync(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Synchronous password verification - use async_verify_password() for better performance"""
-    return pwd_context.verify(plain, hashed)
+    """
+    Synchronous password verification using centralized configuration
+    UPDATED: Maintains compatibility with existing hashes while using secure settings
+    """
+    return verify_password_sync(plain, hashed)
 
 
 async def async_hash_password(plain: str) -> str:
-    """EMERGENCY FIX: Use sync hashing to prevent thread pool deadlock"""
-    # EMERGENCY: Thread pool causing deadlock - use direct sync call
-    return pwd_context.hash(plain)
+    """
+    Asynchronous password hashing using centralized secure configuration
+    UPDATED: Now uses proper async implementation with thread pool to prevent blocking
+    """
+    return await hash_password_async(plain)
 
 
 async def async_verify_password(plain: str, hashed: str) -> bool:
-    """EMERGENCY FIX: Use sync verification to prevent thread pool deadlock"""
-    # EMERGENCY: Thread pool causing deadlock - use direct sync call
-    return pwd_context.verify(plain, hashed)
+    """
+    Asynchronous password verification using centralized configuration
+    UPDATED: Uses proper async implementation while maintaining backward compatibility
+    """
+    return await verify_password_async(plain, hashed)
 
 
 def decode_token(token: str) -> dict:
@@ -223,22 +236,68 @@ def _create_token(data: dict, expires_delta: timedelta, token_type: str, scopes:
     return jwt.encode(to_encode, _current_secret(), algorithm=ALGORITHM)
 
 
-def revoke_user_tokens(user_id: str) -> int:
+async def revoke_user_tokens(
+    user_id: str,
+    reason: str = "security",
+    revoked_by: Optional[str] = None
+) -> int:
     """Revoke all tokens for a specific user.
     
-    Note: This implementation requires storing active JTIs per user.
-    For now, we'll implement user-level revocation by updating user's token_version.
+    Args:
+        user_id: User ID whose tokens should be revoked
+        reason: Reason for mass revocation
+        revoked_by: ID of admin who initiated the revocation
+        
+    Returns:
+        Number of tokens revoked
     """
-    logger.warning(f"User token revocation requested for user {user_id}")
-    log_security_event("user_token_revocation_requested", {"user_id": user_id})
-    
-    # TODO: Implement user-level token revocation
-    # This could be done by:
-    # 1. Storing active JTIs per user in Redis
-    # 2. Or adding a token_version field to User model
-    # 3. Or maintaining a user blacklist with timestamp
-    
-    return 0
+    try:
+        logger.info(f"User token revocation requested for user {user_id}")
+        log_security_event("user_token_revocation_requested", {
+            "user_id": user_id,
+            "reason": reason,
+            "revoked_by": revoked_by
+        })
+        
+        # Import here to avoid circular imports
+        from app.services.token_blacklist_service import get_blacklist_service, BlacklistReason, TokenType
+        
+        # Map reason strings to enum values
+        reason_mapping = {
+            "logout": BlacklistReason.LOGOUT,
+            "revoke": BlacklistReason.REVOKE,
+            "admin": BlacklistReason.ADMIN_REVOKE,
+            "security": BlacklistReason.SECURITY_INCIDENT,
+            "rotation": BlacklistReason.TOKEN_ROTATION,
+            "suspicious": BlacklistReason.SUSPICIOUS_ACTIVITY
+        }
+        
+        blacklist_reason = reason_mapping.get(reason, BlacklistReason.SECURITY_INCIDENT)
+        blacklist_service = await get_blacklist_service()
+        
+        revoked_count = await blacklist_service.blacklist_user_tokens(
+            user_id=user_id,
+            token_type=TokenType.ALL,
+            reason=blacklist_reason,
+            revoked_by=revoked_by
+        )
+        
+        logger.info(f"Revoked {revoked_count} tokens for user {user_id}")
+        log_security_event("user_token_revocation_completed", {
+            "user_id": user_id,
+            "tokens_revoked": revoked_count,
+            "reason": reason
+        })
+        
+        return revoked_count
+        
+    except Exception as e:
+        logger.error(f"Failed to revoke user tokens for {user_id}: {e}")
+        log_security_event("user_token_revocation_failed", {
+            "user_id": user_id,
+            "error": str(e)
+        })
+        return 0
 
 
 def _cleanup_token_cache():
@@ -317,7 +376,7 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def validate_token_security(token: str) -> Dict[str, Any]:
+async def validate_token_security(token: str) -> Dict[str, Any]:
     """Validate token security properties for audit purposes."""
     info = get_token_info(token)
     if not info:
@@ -335,11 +394,13 @@ def validate_token_security(token: str) -> Dict[str, Any]:
         "time_to_expiry": max(0, info.get("exp", 0) - now)
     }
     
-    # Check if token is blacklisted
+    # Check if token is blacklisted using new service
     jti = info.get("jti")
     if jti:
         try:
-            validation["is_blacklisted"] = is_token_blacklisted(jti)
+            from app.services.token_blacklist_service import get_blacklist_service
+            blacklist_service = await get_blacklist_service()
+            validation["is_blacklisted"] = await blacklist_service.is_token_blacklisted(jti)
         except Exception as e:
             validation["blacklist_check_error"] = str(e)
             validation["is_blacklisted"] = None
@@ -440,7 +501,7 @@ def create_refresh_token(data: dict, user_role: str = None) -> str:
     return token
 
 
-def verify_token(
+async def verify_token(
     token: str, 
     token_type: str = "access_token", 
     required_scopes: List[str] = None
@@ -515,11 +576,15 @@ def verify_token(
                 logger.debug("Token has expired")
                 raise JWTError("Token expired")
             
-            # Check blacklist
+            # Check blacklist using new blacklist service
             jti = payload.get("jti")
             if jti:
                 try:
-                    if is_token_blacklisted(jti):
+                    # Import here to avoid circular imports
+                    from app.services.token_blacklist_service import get_blacklist_service
+                    blacklist_service = await get_blacklist_service()
+                    
+                    if await blacklist_service.is_token_blacklisted(jti):
                         logger.warning(f"Blacklisted token access attempt: {jti[:8]}...")
                         log_security_event("blacklisted_token_usage_attempt", {
                             "jti": jti[:8] + "...",
@@ -560,11 +625,17 @@ def verify_token(
     return None
 
 
-def blacklist_token(token: str) -> bool:
+async def blacklist_token(
+    token: str,
+    reason: str = "logout",
+    revoked_by: Optional[str] = None
+) -> bool:
     """Blacklist a JWT token with enhanced security and monitoring.
     
     Args:
         token: JWT token string to blacklist
+        reason: Reason for blacklisting (logout, revoke, admin, etc.)
+        revoked_by: ID of user/admin who revoked the token
         
     Returns:
         bool: True if successfully blacklisted, False otherwise
@@ -573,62 +644,43 @@ def blacklist_token(token: str) -> bool:
         logger.warning("Attempted to blacklist empty token")
         return False
     
-    secrets = [_current_secret()]
-    prev = _previous_secret()
-    if prev:
-        secrets.append(prev)
-
-    for secret in secrets:
-        try:
-            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
-            jti = payload.get("jti")
-            exp = payload.get("exp")
-            user_id = payload.get("sub")
-            token_scopes = payload.get("scope", "")
-            token_type = payload.get("token_type", "unknown")
-            
-            if not jti:
-                logger.warning("Token missing JTI, cannot blacklist")
-                return False
-                
-            if not exp:
-                logger.warning("Token missing expiration, cannot determine TTL")
-                return False
-            
-            # Calculate TTL with safety bounds
-            ttl = max(1, int(exp - time.time()))
-            if ttl > 86400 * 7:  # Max 7 days
-                logger.warning(f"Token TTL too long ({ttl}s), capping at 7 days")
-                ttl = 86400 * 7
-            
-            logger.info(f"Blacklisting {token_type} token for user {user_id}: {jti[:8]}... (TTL: {ttl}s)")
-            
-            try:
-                upstash_blacklist_token(jti, ttl)
-                log_security_event("token_blacklisted", {
-                    "jti": jti[:8] + "...",
-                    "user_id": user_id,
-                    "token_type": token_type,
-                    "scopes": token_scopes,
-                    "ttl": ttl
-                })
-                return True
-            except Exception as blacklist_error:
-                logger.error(f"Failed to blacklist token {jti[:8]}...: {blacklist_error}")
-                log_security_event("token_blacklist_failed", {
-                    "jti": jti[:8] + "...",
-                    "user_id": user_id,
-                    "error": str(blacklist_error)
-                })
-                # Re-raise for critical failures
-                raise
-            
-        except JWTError as jwt_error:
-            logger.debug(f"Could not decode token with secret: {jwt_error}")
-            continue
-    
-    logger.warning("Failed to decode token for blacklisting")
-    return False
+    try:
+        # Import here to avoid circular imports
+        from app.services.token_blacklist_service import get_blacklist_service, BlacklistReason
+        
+        # Map reason strings to enum values
+        reason_mapping = {
+            "logout": BlacklistReason.LOGOUT,
+            "revoke": BlacklistReason.REVOKE,
+            "admin": BlacklistReason.ADMIN_REVOKE,
+            "security": BlacklistReason.SECURITY_INCIDENT,
+            "rotation": BlacklistReason.TOKEN_ROTATION,
+            "suspicious": BlacklistReason.SUSPICIOUS_ACTIVITY
+        }
+        
+        blacklist_reason = reason_mapping.get(reason, BlacklistReason.LOGOUT)
+        blacklist_service = await get_blacklist_service()
+        
+        success = await blacklist_service.blacklist_token(
+            token=token,
+            reason=blacklist_reason,
+            revoked_by=revoked_by
+        )
+        
+        if success:
+            logger.info(f"Token successfully blacklisted (reason: {reason})")
+        else:
+            logger.warning(f"Failed to blacklist token (reason: {reason})")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error blacklisting token: {e}")
+        log_security_event("token_blacklist_error", {
+            "error": str(e),
+            "reason": reason
+        })
+        return False
 
 
 # Additional utility functions for scope management

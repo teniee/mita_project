@@ -82,7 +82,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   void _onDataUpdated() {
     if (mounted) {
       setState(() {
-        // TODO: Connect to actual predictive analytics when implemented
+        // FUTURE FEATURE: Predictive analytics backend integration
+        // This will be connected to ML-powered analytics service in a future release
         _predictiveAnalytics = null;
         _riskAssessment = null;
       });

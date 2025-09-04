@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 # Import models and database components
-from app.db.models import User, Transaction, Expense, Goal, Budget
+from app.db.models import User, Transaction, Expense, Goal
 from app.core.async_session import get_async_session_factory
 from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.expense_repository import ExpenseRepository

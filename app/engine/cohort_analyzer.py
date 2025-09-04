@@ -1,5 +1,5 @@
 from typing import Dict
-from app.config.country_profiles_loader import get_profile
+from app.services.core.income_classification_service import classify_income, get_tier_string
 
 
 class CohortAnalyzer:
@@ -17,24 +17,9 @@ class CohortAnalyzer:
         categories = profile.get("categories", [])
         region = profile.get("region", "US-CA")
         
-        # Get state-specific thresholds from country profiles
-        country_profile = get_profile(region)
-        thresholds = country_profile.get("class_thresholds", {})
-        
-        # Convert monthly income to annual for threshold comparison
-        annual_income = income * 12
-        
-        # Use 5-tier classification with state-specific thresholds
-        if annual_income <= thresholds.get("low", 36000):
-            income_band = "low"
-        elif annual_income <= thresholds.get("lower_middle", 57600):
-            income_band = "lower_middle"
-        elif annual_income <= thresholds.get("middle", 86400):
-            income_band = "middle"
-        elif annual_income <= thresholds.get("upper_middle", 144000):
-            income_band = "upper_middle"
-        else:
-            income_band = "high"
+        # Use centralized income classification service
+        income_tier = classify_income(income, region)
+        income_band = get_tier_string(income_tier)
 
         if behavior in ["frugal", "conservative"]:
             style = "saver"

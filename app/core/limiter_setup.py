@@ -1,5 +1,7 @@
 import os
+import asyncio
 import logging
+from typing import Optional
 import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi_limiter import FastAPILimiter
@@ -8,83 +10,109 @@ logger = logging.getLogger(__name__)
 
 
 async def init_rate_limiter(app: FastAPI):
-    """Initialize rate limiter with external Redis provider and graceful fallback"""
-    # Priority: Upstash REST > Upstash TCP > REDIS_URL > fallback to memory-based rate limiting
+    """Initialize rate limiter with lazy Redis connection to prevent startup hangs"""
+    # FIXED: Use lazy initialization pattern to prevent startup hangs
+    # Store connection config in app state for lazy connection
     upstash_rest_url = os.getenv("UPSTASH_REDIS_REST_URL")
     upstash_rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
     redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
     
-    # EMERGENCY FIX: Handle empty string Redis URLs gracefully
+    # Handle empty string Redis URLs gracefully
     if redis_url == "":
         redis_url = None
     
-    # If Upstash REST API is configured, use it
-    if upstash_rest_url and upstash_rest_token and upstash_rest_url != "" and upstash_rest_token != "":
-        logger.info("Using Upstash Redis REST API for rate limiting")
-        try:
-            # Create Redis connection from REST URL
-            # Convert REST URL to Redis URL format for redis-py
-            if upstash_rest_url.startswith('https://'):
-                host = upstash_rest_url.replace('https://', '').replace('http://', '')
-                redis_url = f"rediss://default:{upstash_rest_token}@{host}:6380"
-            app.state.redis_available = True
-            app.state.upstash_rest_url = upstash_rest_url
-            app.state.upstash_rest_token = upstash_rest_token
-        except Exception as e:
-            logger.warning(f"Upstash REST configuration error: {e}")
-            app.state.redis_available = False
-            return
-    elif not redis_url:
-        logger.info("No Redis configuration found. Rate limiting will use in-memory fallback.")
-        app.state.redis_available = False
-        return
+    # Store Redis configuration in app state for lazy initialization
+    app.state.redis_config = {
+        "upstash_rest_url": upstash_rest_url,
+        "upstash_rest_token": upstash_rest_token,
+        "redis_url": redis_url
+    }
+    
+    # Initialize state variables
+    app.state.redis_available = None  # None = not yet tested, False = failed, True = working
+    app.state.redis_client = None
+    app.state.fastapi_limiter_initialized = False
+    
+    # Don't test connection during startup - use lazy initialization
+    if upstash_rest_url and upstash_rest_token:
+        logger.info("Redis REST API configuration detected - will initialize on first use")
+    elif redis_url:
+        logger.info(f"Redis URL detected - will initialize on first use: {redis_url[:20]}...")
     else:
-        # Validate Redis URL format for TCP connections  
-        if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
-            logger.warning(f"Invalid Redis URL format: '{redis_url}' - falling back to in-memory rate limiting")
-            app.state.redis_available = False
-            return
+        logger.info("No Redis configuration found - will use in-memory fallback")
+        app.state.redis_available = False
+    
+    logger.info("Rate limiter setup complete - using lazy initialization pattern")
+
+
+async def get_redis_connection(app: FastAPI) -> Optional[redis.Redis]:
+    """Get Redis connection with lazy initialization"""
+    if app.state.redis_available is False:
+        return None
+        
+    if app.state.redis_client is not None:
+        return app.state.redis_client
+        
+    # First time initialization
+    config = app.state.redis_config
+    redis_url = None
     
     try:
-        # Enhanced Redis connection for production reliability
-        redis_client = await redis.from_url(
-            redis_url,
-            encoding="utf-8",
-            decode_responses=True,
-            socket_connect_timeout=10,    # 10 second connection timeout for external Redis
-            socket_timeout=10,            # 10 second socket timeout
-            retry_on_timeout=True,
-            retry_on_error=[redis.ConnectionError, redis.TimeoutError],
-            health_check_interval=30,     # Health check every 30 seconds
-            max_connections=int(os.getenv("REDIS_MAX_CONNECTIONS", "20")),
-            ssl_cert_reqs=None if redis_url.startswith('rediss://') else None  # SSL for secure connections
-        )
-
-        # Test Redis connection
-        await redis_client.ping()
+        # Determine Redis URL
+        if config["upstash_rest_url"] and config["upstash_rest_token"]:
+            # Convert REST URL to Redis URL format
+            if config["upstash_rest_url"].startswith('https://'):
+                host = config["upstash_rest_url"].replace('https://', '').replace('http://', '')
+                redis_url = f"rediss://default:{config['upstash_rest_token']}@{host}:6380"
+                logger.info("Using Upstash Redis REST API configuration")
+        elif config["redis_url"]:
+            redis_url = config["redis_url"]
+            logger.info("Using direct Redis URL configuration")
+            
+        if not redis_url:
+            logger.info("No valid Redis configuration - using in-memory fallback")
+            app.state.redis_available = False
+            return None
+            
+        # Validate URL format
+        if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
+            logger.warning(f"Invalid Redis URL format - using in-memory fallback")
+            app.state.redis_available = False
+            return None
         
-        await FastAPILimiter.init(
-            redis_client,
-            prefix="FASTAPI_LIMITER",
+        # Create Redis connection with short timeout to prevent hangs
+        redis_client = await asyncio.wait_for(
+            redis.from_url(
+                redis_url,
+                encoding="utf-8",
+                decode_responses=True,
+                socket_connect_timeout=3,    # Short timeout to prevent hangs
+                socket_timeout=3,            # Short socket timeout
+                retry_on_timeout=False,      # Don't retry on timeout
+                max_connections=10,          # Smaller connection pool
+            ),
+            timeout=5.0  # Total timeout for connection creation
         )
         
+        # Test connection with timeout
+        await asyncio.wait_for(redis_client.ping(), timeout=2.0)
+        
+        # Initialize FastAPI-Limiter only once
+        if not app.state.fastapi_limiter_initialized:
+            await FastAPILimiter.init(redis_client, prefix="FASTAPI_LIMITER")
+            app.state.fastapi_limiter_initialized = True
+        
+        app.state.redis_client = redis_client
         app.state.redis_available = True
-        logger.info(f"Rate limiter initialized successfully with external Redis: {redis_url[:20]}...")
-
-        @app.on_event("shutdown")
-        async def shutdown():
-            try:
-                await redis_client.aclose()
-                logger.info("Redis connection closed successfully")
-            except Exception as e:
-                logger.error(f"Error during Redis shutdown: {e}")
-                
-    except redis.ConnectionError as e:
-        logger.error(f"Redis connection failed: {e}")
-        app.state.redis_available = False
-        logger.warning("Starting with in-memory rate limiting fallback")
+        logger.info(f"Redis connection established successfully: {redis_url[:20]}...")
         
-    except Exception as e:
-        logger.error(f"Failed to initialize rate limiter: {e}")
+        return redis_client
+        
+    except asyncio.TimeoutError:
+        logger.warning("Redis connection timed out - using in-memory fallback")
         app.state.redis_available = False
-        logger.warning("Starting with in-memory rate limiting fallback")
+        return None
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e} - using in-memory fallback")
+        app.state.redis_available = False
+        return None

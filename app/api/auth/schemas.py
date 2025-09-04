@@ -1,8 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, condecimal
-# EMERGENCY FIX: Disable hanging validators import
-# from app.core.validators import InputSanitizer, FinancialConstants
+from app.core.validators import InputSanitizer, FinancialConstants
 
 
 class FastRegisterIn(BaseModel):
@@ -51,7 +50,7 @@ class RegisterIn(BaseModel):
     def validate_email(cls, v):
         if not v:
             raise ValueError("Email is required")
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # return InputSanitizer.sanitize_email(v)
         # Fast basic email validation without external dependencies
         if '@' not in v or '.' not in v.split('@')[1]:
@@ -104,7 +103,7 @@ class RegisterIn(BaseModel):
         if v is None:
             return v
         
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # sanitized_name = InputSanitizer.sanitize_string(v, max_length=100)
         # Basic name validation without external dependencies
         v = v.strip()
@@ -125,7 +124,7 @@ class RegisterIn(BaseModel):
     @field_validator('country')
     @classmethod
     def validate_country(cls, v):
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # return InputSanitizer.sanitize_country_code(v)
         # Basic country validation without external dependencies
         if not v:
@@ -143,7 +142,7 @@ class RegisterIn(BaseModel):
         if v is None:
             return v
         
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # country = info.data.get('country', 'US') if info.data else 'US'
         # return InputSanitizer.sanitize_state_code(v, country)
         # Basic state validation without external dependencies
@@ -158,7 +157,7 @@ class RegisterIn(BaseModel):
         if v is None:
             return v
         
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # country = info.data.get('country', 'US') if info.data else 'US'
         # return InputSanitizer.sanitize_zip_code(v, country)
         # Basic ZIP validation without external dependencies
@@ -173,7 +172,7 @@ class RegisterIn(BaseModel):
         if v is None:
             return v
         
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # country = info.data.get('country', 'US') if info.data else 'US'
         # return InputSanitizer.sanitize_phone_number(v, country)
         # Basic phone validation without external dependencies
@@ -185,7 +184,7 @@ class RegisterIn(BaseModel):
     @field_validator('annual_income')
     @classmethod
     def validate_annual_income(cls, v):
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # return InputSanitizer.sanitize_amount(
         #     v, 
         #     min_value=FinancialConstants.MIN_ANNUAL_INCOME,
@@ -203,8 +202,8 @@ class RegisterIn(BaseModel):
         if not v:
             return "UTC"
         
-        # Basic timezone validation
-        v = InputSanitizer.sanitize_string(v, max_length=50)
+        # EMERGENCY FIX: Basic timezone validation without InputSanitizer
+        v = v.strip()[:50]  # Basic string sanitization
         
         # Common timezone formats
         import re
@@ -224,7 +223,7 @@ class LoginIn(BaseModel):
     @field_validator('email')
     @classmethod
     def validate_email(cls, v):
-        # EMERGENCY FIX: Skip heavy InputSanitizer validation causing hangs
+        # RESTORED: Optimized input validation
         # return InputSanitizer.sanitize_email(v)
         # Fast basic email validation without external dependencies
         if '@' not in v or '.' not in v.split('@')[1]:

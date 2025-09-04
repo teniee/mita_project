@@ -67,14 +67,15 @@ from app.api.endpoints.feature_flags import router as feature_flags_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
+from app.core.simple_rate_limiter import check_api_rate_limit
 from app.core.logging_config import setup_logging
 from app.core.feature_flags import get_feature_flag_manager, is_feature_enabled
 from app.core.deployment_optimizations import apply_platform_optimizations
 from app.middleware.audit_middleware import audit_middleware
 from app.core.error_handler import (
-    MITAException, ValidationException, 
+    MITAException, ValidationException, RateLimitException,
     mita_exception_handler, validation_exception_handler,
-    sqlalchemy_exception_handler, generic_exception_handler
+    rate_limit_exception_handler, sqlalchemy_exception_handler, generic_exception_handler
 )
 from app.utils.response_wrapper import error_response
 from pydantic import ValidationError
@@ -114,7 +115,75 @@ deployment_config = apply_platform_optimizations()
 logger = logging.getLogger(__name__)
 logger.info(f"Applied optimizations for platform: {deployment_config['platform']}")
 
-app = FastAPI(title="Mita Finance API", version="1.0.0")
+# Import standardized error handling middleware and documentation
+from app.middleware.standardized_error_middleware import (
+    StandardizedErrorMiddleware,
+    ResponseValidationMiddleware,
+    RequestContextMiddleware
+)
+from app.core.openapi_documentation import (
+    get_standardized_openapi_schema,
+    add_endpoint_examples
+)
+
+# Create FastAPI app with enhanced documentation
+app = FastAPI(
+    title="MITA Finance API",
+    version="1.0.0",
+    description="""
+## MITA Finance API
+
+A comprehensive financial management API with standardized error handling and response formats.
+
+### Features
+
+- **Standardized Error Responses**: All errors follow a consistent format with proper error codes
+- **Comprehensive Validation**: Input validation with detailed error messages
+- **Security**: JWT-based authentication with rate limiting
+- **Financial Operations**: Transaction management, budget tracking, and financial analysis
+- **Audit Logging**: Comprehensive request and security event logging
+
+### Error Handling
+
+This API uses a standardized error response format across all endpoints:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_2002",
+    "message": "Invalid input data",
+    "error_id": "mita_507f1f77bcf8",
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "details": {
+      "field": "email",
+      "validation_errors": [...]
+    }
+  }
+}
+```
+
+### Authentication
+
+Most endpoints require authentication via JWT tokens:
+
+```
+Authorization: Bearer <access_token>
+```
+
+### Rate Limiting
+
+API endpoints are rate-limited to ensure fair usage. Rate limit information is provided in response headers.
+    """.strip(),
+    contact={
+        "name": "MITA Finance API Support",
+        "email": "api-support@mita.finance"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    }
+)
 
 # ---- Health Check Endpoint ----
 @app.get("/")
@@ -127,496 +196,40 @@ async def health_check():
         "message": "API is running successfully!"
     }
 
-@app.get("/debug")
-async def debug_check():
-    """Debug endpoint to test database session"""
-    try:
-        from app.core.async_session import get_async_db
-        from sqlalchemy import text
-        
-        async for db in get_async_db():
-            result = await db.execute(text("SELECT 1 as test"))
-            test_value = result.scalar()
-            return {
-                "database_test": "success",
-                "test_query_result": test_value,
-                "session_working": True
-            }
-    except Exception as e:
-        return {
-            "database_test": "failed",
-            "error": str(e),
-            "session_working": False
-        }
+# Debug endpoint removed - use /health for production health checks
 
 
-@app.post("/debug-auth")
-async def debug_auth():
-    """Debug auth flow step by step"""
-    import asyncio
-    from app.core.async_session import get_async_db
-    from sqlalchemy import select, text
-    from app.db.models import User
-    from app.services.auth_jwt_service import hash_password
-    
-    results = {}
-    
-    try:
-        # Step 1: Test database session
-        async for db in get_async_db():
-            results["step1_db_session"] = "success"
-            
-            # Step 2: Test simple query
-            result = await db.execute(text("SELECT 1"))
-            results["step2_simple_query"] = result.scalar()
-            
-            # Step 3: Test user table query
-            result = await db.execute(select(User.id).limit(1))
-            existing_users = result.scalars().first()
-            results["step3_user_query"] = "success" if existing_users is not None else "no_users_found"
-            
-            # Step 4: Test password hashing (sync version)
-            test_hash = hash_password("testpass123")
-            results["step4_password_hash"] = "success" if test_hash else "failed"
-            
-            # Step 5: Test user creation
-            test_user = User(
-                email="debug-test@example.com",
-                password_hash=test_hash,
-                country="US",
-                annual_income=50000,
-                timezone="UTC"
-            )
-            results["step5_user_creation"] = "success"
-            
-            return {
-                "debug_results": results,
-                "status": "all_steps_completed"
-            }
-            
-    except Exception as e:
-        results["error"] = str(e)
-        results["error_type"] = type(e).__name__
-        return {
-            "debug_results": results,
-            "status": "failed"
-        }
+# Debug auth endpoint removed - use /api/auth/ routes for authentication
 
 
-@app.post("/debug-register")
-async def debug_register(request: Request):
-    """Ultra minimal registration for debugging - NO timeouts, NO complex operations"""
-    try:
-        # Get request data
-        body = await request.json()
-        email = body.get("email", "test@example.com").lower()
-        password = body.get("password", "password123")
-        
-        return {
-            "success": True,
-            "message": "Registration endpoint is reachable",
-            "email": email,
-            "password_length": len(password),
-            "timestamp": str(__import__('datetime').datetime.now())
-        }
-        
-    except Exception as e:
-        return {"error": f"Exception: {str(e)}", "type": type(e).__name__}
+# Debug register endpoint removed - use /api/auth/register for registration
 
-# ---- EMERGENCY REGISTRATION ENDPOINT ----
-@app.post("/emergency-register")
-async def emergency_register(request: Request):
-    """🚨 EMERGENCY: Ultra-minimal registration endpoint - NO middleware, NO dependencies"""
-    import json
-    import time
-    import bcrypt
-    import uuid
-    from datetime import datetime, timedelta
-    from sqlalchemy import create_engine, text
-    from sqlalchemy.orm import sessionmaker
-    
-    start_time = time.time()
-    print(f"🚨 EMERGENCY REGISTRATION START: {time.time()}")
-    
-    try:
-        # Get request body manually
-        body_bytes = await request.body()
-        body_str = body_bytes.decode('utf-8')
-        data = json.loads(body_str)
-        
-        email = data.get('email', '').lower().strip()
-        password = data.get('password', '')
-        
-        print(f"🚨 STEP 1: Request parsed - {email[:3]}*** ({time.time() - start_time:.2f}s)")
-        
-        # Basic validation - NO external validators
-        if not email or '@' not in email:
-            return JSONResponse({"error": "Invalid email"}, status_code=400)
-        if not password or len(password) < 8:
-            return JSONResponse({"error": "Password too short"}, status_code=400)
-            
-        print(f"🚨 STEP 2: Basic validation passed ({time.time() - start_time:.2f}s)")
-        
-        # Use async database session from existing infrastructure
-        from app.core.async_session import get_async_db
-        from sqlalchemy import select, text
-        
-        print(f"🚨 STEP 3: Using async database session ({time.time() - start_time:.2f}s)")
-        
-        async for db in get_async_db():
-            # Check if user exists - direct SQL
-            result = await db.execute(
-                text("SELECT id FROM users WHERE email = :email LIMIT 1"),
-                {"email": email}
-            )
-            existing_user = result.scalar()
-            
-            if existing_user:
-                return JSONResponse({"error": "Email already registered"}, status_code=400)
-                
-            print(f"🚨 STEP 4: User uniqueness check passed ({time.time() - start_time:.2f}s)")
-            
-            # Hash password with minimal rounds for speed
-            password_bytes = password.encode('utf-8')
-            salt = bcrypt.gensalt(rounds=4)  # MINIMAL rounds for emergency
-            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
-            
-            print(f"🚨 STEP 5: Password hashed ({time.time() - start_time:.2f}s)")
-            
-            # Generate user ID
-            user_id = str(uuid.uuid4())
-            
-            # Insert user directly
-            await db.execute(text("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
-                VALUES (:id, :email, :password_hash, 'US', 0, 'UTC', NOW())
-            """), {
-                "id": user_id,
-                "email": email,
-                "password_hash": password_hash
-            })
-            await db.commit()
-            
-            print(f"🚨 STEP 6: User inserted ({time.time() - start_time:.2f}s)")
-            
-            # Create minimal JWT token - NO complex token service
-            import jwt
-            
-            payload = {
-                'sub': user_id,
-                'email': email,
-                'exp': datetime.utcnow() + timedelta(days=30),
-                'iat': datetime.utcnow()
-            }
-            
-            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
-            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            print(f"🚨 STEP 7: Token created ({time.time() - start_time:.2f}s)")
-            
-            total_time = time.time() - start_time
-            print(f"🚨 EMERGENCY REGISTRATION SUCCESS: {email[:3]}*** in {total_time:.2f}s")
-            
-            return JSONResponse({
-                "access_token": access_token,
-                "token_type": "bearer",
-                "user_id": user_id,
-                "message": f"Emergency registration successful in {total_time:.2f}s"
-            }, status_code=201)
-            
-    except json.JSONDecodeError:
-        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
-    except Exception as e:
-        total_time = time.time() - start_time
-        error_msg = str(e)
-        print(f"🚨 EMERGENCY REGISTRATION FAILED: {error_msg} after {total_time:.2f}s")
-        return JSONResponse({
-            "error": f"Registration failed: {error_msg}",
-            "time_elapsed": total_time
-        }, status_code=500)
+# ---- REMOVED EMERGENCY ENDPOINTS ----
+# Emergency endpoints have been integrated into the main authentication system
+# All registration and authentication should go through /api/auth/ routes
+# This eliminates the architectural debt and provides proper security integration
 
 
-@app.get("/emergency-test")
-async def emergency_test():
-    """🚨 EMERGENCY: Test endpoint to verify server is responding"""
-    import time
-    return JSONResponse({
-        "status": "EMERGENCY_SERVER_LIVE",
-        "timestamp": time.time(),
-        "message": "Server is responding - Use GET request for registration!",
-        "working_endpoints": {
-            "registration": "GET /flutter-register?email=test@test.com&password=password123&country=US",
-            "health": "GET /health",
-            "test": "GET /emergency-test"
-        },
-        "note": "POST endpoints have middleware issues - use GET for emergency registration"
-    })
+# Emergency test endpoint removed - use /health for server status checks
 
 
-@app.get("/flutter-register")
-async def flutter_get_registration(
-    email: str,
-    password: str, 
-    country: str = "US",
-    annual_income: int = 0,
-    timezone: str = "UTC"
-):
-    """✅ WORKING: GET-based registration to bypass POST middleware issues"""
-    try:
-        email = email.lower().strip()
-        
-        # Validation
-        if not email or '@' not in email:
-            return {"error": "Invalid email format"}
-        if not password or len(password) < 8:
-            return {"error": "Password must be at least 8 characters"}
-        
-        # Use psycopg2 direct connection
-        import psycopg2
-        import bcrypt
-        import uuid
-        from datetime import datetime, timedelta
-        import jwt
-        import os
-        
-        DATABASE_URL = os.getenv("DATABASE_URL", "")
-        if "+asyncpg" in DATABASE_URL:
-            DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
-        
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        try:
-            # Check if user exists
-            cur.execute("SELECT id FROM users WHERE email = %s LIMIT 1", (email,))
-            if cur.fetchone():
-                return {"error": "Email already registered"}
-            
-            # Hash password
-            password_bytes = password.encode('utf-8')
-            salt = bcrypt.gensalt(rounds=8)
-            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
-            
-            # Create user
-            user_id = str(uuid.uuid4())
-            cur.execute("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-            """, (user_id, email, password_hash, country, annual_income, timezone))
-            
-            conn.commit()
-            
-            # Create JWT token
-            payload = {
-                'sub': user_id,
-                'email': email,
-                'exp': datetime.utcnow() + timedelta(days=30),
-                'iat': datetime.utcnow(),
-                'is_premium': False,
-                'country': country
-            }
-            
-            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "emergency-jwt-secret"
-            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            return {
-                "success": True,
-                "access_token": access_token,
-                "refresh_token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": user_id,
-                    "email": email,
-                    "country": country,
-                    "is_premium": False
-                },
-                "message": "Registration successful! Update your Flutter app to use this endpoint."
-            }
-            
-        finally:
-            cur.close()
-            conn.close()
-            
-    except psycopg2.Error as e:
-        return {"error": f"Database error: {str(e)}"}
-    except Exception as e:
-        return {"error": f"Registration failed: {str(e)}"}
+# SECURITY FIX: GET-based authentication endpoint removed due to critical security vulnerability
+# - Passwords were exposed in URL parameters, server logs, and browser history
+# - This violates PCI DSS compliance and financial application security standards
+# - Use POST /flutter-register endpoint instead for secure authentication
+# 
+# @app.get("/flutter-register") - REMOVED FOR SECURITY
 
 
-@app.get("/flutter-login")
-async def flutter_get_login(
-    email: str,
-    password: str
-):
-    """✅ WORKING: GET-based login to bypass POST middleware issues"""
-    try:
-        email = email.lower().strip()
-        
-        # Validation
-        if not email or '@' not in email:
-            return {"error": "Invalid email format"}
-        if not password:
-            return {"error": "Password required"}
-        
-        # Use psycopg2 direct connection
-        import psycopg2
-        import bcrypt
-        from datetime import datetime, timedelta
-        import jwt
-        import os
-        
-        DATABASE_URL = os.getenv("DATABASE_URL", "")
-        if "+asyncpg" in DATABASE_URL:
-            DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
-        
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        try:
-            # Get user data
-            cur.execute("SELECT id, password_hash, country FROM users WHERE email = %s", (email,))
-            user_data = cur.fetchone()
-            
-            if not user_data:
-                return {"error": "Invalid email or password"}
-            
-            user_id, stored_hash, country = user_data
-            
-            # Verify password
-            if not bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
-                return {"error": "Invalid email or password"}
-            
-            # Create JWT token
-            payload = {
-                'sub': str(user_id),
-                'email': email,
-                'exp': datetime.utcnow() + timedelta(days=30),
-                'iat': datetime.utcnow(),
-                'is_premium': False,
-                'country': country
-            }
-            
-            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "emergency-jwt-secret"
-            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            return {
-                "success": True,
-                "access_token": access_token,
-                "refresh_token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": str(user_id),
-                    "email": email,
-                    "country": country,
-                    "is_premium": False
-                },
-                "message": "Login successful! Update your Flutter app to use this endpoint."
-            }
-            
-        finally:
-            cur.close()
-            conn.close()
-            
-    except psycopg2.Error as e:
-        return {"error": f"Database error: {str(e)}"}
-    except Exception as e:
-        return {"error": f"Login failed: {str(e)}"}
+# SECURITY FIX: GET-based login endpoint removed due to critical security vulnerability
+# - Passwords were exposed in URL parameters, server logs, and browser history  
+# - This violates PCI DSS compliance and financial application security standards
+# - Use secure POST endpoints for authentication instead
+#
+# @app.get("/flutter-login") - REMOVED FOR SECURITY
 
 
-@app.post("/flutter-register")
-async def flutter_complete_registration(request: Request):
-    """✅ COMPLETE WORKING REGISTRATION FOR FLUTTER APP"""
-    try:
-        # Parse JSON manually to avoid middleware issues
-        body = await request.body()
-        import json
-        data = json.loads(body.decode('utf-8'))
-        
-        email = data.get('email', '').lower().strip()
-        password = data.get('password', '')
-        country = data.get('country', 'US')
-        annual_income = data.get('annual_income', 0)
-        timezone = data.get('timezone', 'UTC')
-        
-        # Validation
-        if not email or '@' not in email:
-            return JSONResponse({"error": "Invalid email format"}, status_code=400)
-        if not password or len(password) < 8:
-            return JSONResponse({"error": "Password must be at least 8 characters"}, status_code=400)
-        
-        # Use sync database with psycopg2 (no async issues)
-        import psycopg2
-        import bcrypt
-        import uuid
-        from datetime import datetime, timedelta
-        import jwt
-        import os
-        
-        DATABASE_URL = os.getenv("DATABASE_URL", "")
-        
-        # Convert URL for psycopg2
-        if "+asyncpg" in DATABASE_URL:
-            DATABASE_URL = DATABASE_URL.replace("+asyncpg", "")
-        
-        # Connect to database
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        try:
-            # Check if user exists
-            cur.execute("SELECT id FROM users WHERE email = %s LIMIT 1", (email,))
-            if cur.fetchone():
-                return JSONResponse({"error": "Email already registered"}, status_code=400)
-            
-            # Hash password
-            password_bytes = password.encode('utf-8')
-            salt = bcrypt.gensalt(rounds=8)
-            password_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
-            
-            # Create user
-            user_id = str(uuid.uuid4())
-            cur.execute("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-            """, (user_id, email, password_hash, country, annual_income, timezone))
-            
-            conn.commit()
-            
-            # Create JWT token
-            payload = {
-                'sub': user_id,
-                'email': email,
-                'exp': datetime.utcnow() + timedelta(days=30),
-                'iat': datetime.utcnow(),
-                'is_premium': False,
-                'country': country
-            }
-            
-            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "emergency-jwt-secret"
-            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            return JSONResponse({
-                "access_token": access_token,
-                "refresh_token": access_token,
-                "token_type": "bearer",
-                "user": {
-                    "id": user_id,
-                    "email": email,
-                    "country": country,
-                    "is_premium": False
-                }
-            }, status_code=201)
-            
-        finally:
-            cur.close()
-            conn.close()
-            
-    except json.JSONDecodeError:
-        return JSONResponse({"error": "Invalid JSON data"}, status_code=400)
-    except psycopg2.Error as e:
-        return JSONResponse({"error": f"Database error: {str(e)}"}, status_code=500)
-    except Exception as e:
-        return JSONResponse({"error": f"Registration failed: {str(e)}"}, status_code=500)
+# Flutter registration endpoint removed - use /api/auth/register for all registration
 
 
 @app.get("/health")
@@ -677,6 +290,11 @@ async def detailed_health_check():
 
 # ---- Middlewares ----
 
+# Add standardized error handling middleware (first for comprehensive coverage)
+app.add_middleware(StandardizedErrorMiddleware, include_request_details=settings.DEBUG)
+app.add_middleware(ResponseValidationMiddleware, validate_success_responses=settings.DEBUG)
+app.add_middleware(RequestContextMiddleware)
+
 # Security and CORS middlewares
 app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -719,14 +337,83 @@ async def performance_logging_middleware(request: Request, call_next):
         raise
 
 
-# EMERGENCY FIX: Disable audit middleware causing registration hangs
-@app.middleware("http") 
-async def selective_audit_middleware(request: Request, call_next):
-    """EMERGENCY: Audit middleware disabled to fix registration timeouts"""
-    # EMERGENCY FIX: Completely disable audit middleware to prevent database hangs
-    # The audit_middleware was causing 60+ second hangs on registration endpoints
-    # by attempting async database writes that timeout/deadlock
-    return await call_next(request)
+# RESTORED: Optimized audit middleware with separate database connections to prevent deadlocks
+# The previous audit middleware caused database deadlocks due to concurrent sessions.
+# This new implementation uses a separate connection pool and async queuing to prevent issues.
+
+@app.middleware("http")
+async def optimized_audit_middleware(request: Request, call_next):
+    """
+    Lightweight audit middleware with performance optimizations.
+    Uses separate database pool and async queuing to prevent deadlocks.
+    """
+    from app.core.audit_logging import audit_logger
+    import time
+    
+    # Skip audit logging for health checks and static content
+    skip_paths = ["/", "/health", "/debug", "/emergency-test", "/docs", "/redoc", "/openapi.json"]
+    if request.url.path in skip_paths:
+        return await call_next(request)
+    
+    start_time = time.time()
+    user_id = None
+    session_id = None
+    
+    try:
+        # Process the request
+        response = await call_next(request)
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Extract user info from token if present (non-blocking)
+        try:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                from app.services.auth_jwt_service import get_token_info
+                token_info = get_token_info(auth_header.replace("Bearer ", ""))
+                if token_info:
+                    user_id = token_info.get("user_id")
+                    session_id = token_info.get("jti")
+        except Exception:
+            # Don't let token parsing errors affect the request
+            pass
+        
+        # Only log significant events to reduce overhead
+        should_log = (
+            response_time_ms > 1000 or  # Slow requests
+            response.status_code >= 400 or  # Errors
+            request.url.path.startswith("/api/auth/") or  # Authentication endpoints
+            request.url.path.startswith("/api/users/") or  # User management
+            request.url.path.startswith("/api/transactions/")  # Financial operations
+        )
+        
+        if should_log:
+            # Use fire-and-forget async logging (non-blocking)
+            import asyncio
+            asyncio.create_task(audit_logger.log_request_response(
+                request=request,
+                response=response,
+                response_time_ms=response_time_ms,
+                user_id=user_id,
+                session_id=session_id
+            ))
+        
+        return response
+        
+    except Exception as exc:
+        response_time_ms = (time.time() - start_time) * 1000
+        
+        # Log errors with fire-and-forget async logging
+        import asyncio
+        asyncio.create_task(audit_logger.log_request_response(
+            request=request,
+            response=None,
+            response_time_ms=response_time_ms,
+            user_id=user_id,
+            session_id=session_id,
+            error_message=str(exc)[:500]
+        ))
+        
+        raise
 
 
 @app.middleware("http")
@@ -806,29 +493,106 @@ for router, prefix, tags in private_routers_list:
         router,
         prefix=prefix,
         tags=tags,
-        dependencies=[Depends(get_current_user)],
+        dependencies=[Depends(get_current_user), Depends(check_api_rate_limit)],
     )
 
-# ---- Exception Handlers ----
+# ---- STANDARDIZED EXCEPTION HANDLERS ----
 
-# Custom MITA exceptions
-app.add_exception_handler(MITAException, mita_exception_handler)
+# Import the new standardized error handling system
+from app.core.standardized_error_handler import (
+    StandardizedAPIException,
+    StandardizedErrorHandler,
+    AuthenticationError,
+    AuthorizationError,
+    ValidationError as StandardizedValidationError,
+    ResourceNotFoundError,
+    BusinessLogicError,
+    DatabaseError as StandardizedDatabaseError,
+    RateLimitError as StandardizedRateLimitError
+)
 
-# Pydantic validation errors
-app.add_exception_handler(ValidationError, validation_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+# Standardized API exceptions
+@app.exception_handler(StandardizedAPIException)
+async def standardized_exception_handler(request: Request, exc: StandardizedAPIException):
+    """Handle all standardized API exceptions"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+# Authentication errors
+@app.exception_handler(AuthenticationError)
+async def auth_exception_handler(request: Request, exc: AuthenticationError):
+    """Handle authentication errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+# Authorization errors
+@app.exception_handler(AuthorizationError)
+async def authz_exception_handler(request: Request, exc: AuthorizationError):
+    """Handle authorization errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+# Validation errors (both Pydantic and custom)
+@app.exception_handler(ValidationError)
+async def pydantic_validation_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(request: Request, exc: RequestValidationError):
+    """Handle FastAPI request validation errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+@app.exception_handler(StandardizedValidationError)
+async def custom_validation_handler(request: Request, exc: StandardizedValidationError):
+    """Handle custom validation errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
 
 # Database errors
-app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
+@app.exception_handler(SQLAlchemyError)
+async def database_exception_handler(request: Request, exc: SQLAlchemyError):
+    """Handle SQLAlchemy database errors"""
+    from app.core.standardized_error_handler import map_database_error
+    mapped_error = map_database_error(exc)
+    return StandardizedErrorHandler.create_response(mapped_error, request)
 
-# HTTP exceptions
+# Rate limiting errors
+@app.exception_handler(StandardizedRateLimitError)
+async def rate_limit_handler(request: Request, exc: StandardizedRateLimitError):
+    """Handle rate limiting errors"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+# HTTP exceptions (FastAPI/Starlette)
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    from app.core.error_handler import ErrorHandler
-    return ErrorHandler.create_error_response(exc, request)
+    """Handle FastAPI/Starlette HTTP exceptions"""
+    return StandardizedErrorHandler.create_response(exc, request)
 
-# Generic exception handler (catch-all)
-app.add_exception_handler(Exception, generic_exception_handler)
+# Legacy MITA exceptions (for backward compatibility)
+app.add_exception_handler(MITAException, mita_exception_handler)
+app.add_exception_handler(RateLimitException, rate_limit_exception_handler)
+
+# Generic exception handler (catch-all for unexpected errors)
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Handle all other unexpected exceptions"""
+    return StandardizedErrorHandler.create_response(exc, request)
+
+
+# ---- Enhanced OpenAPI Documentation ----
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_enhanced_openapi():
+    """Return enhanced OpenAPI schema with comprehensive error documentation"""
+    if not hasattr(app, "openapi_schema") or app.openapi_schema is None:
+        app.openapi_schema = get_standardized_openapi_schema(
+            app=app,
+            title="MITA Finance API",
+            version="1.0.0",
+            description=app.description
+        )
+        
+        # Add comprehensive error examples to specific endpoints
+        add_endpoint_examples(app.openapi_schema)
+    
+    return app.openapi_schema
 
 
 # ---- Startup ----
@@ -857,14 +621,14 @@ async def on_startup():
         async def init_critical_services():
             services_status = {"rate_limiter": False, "database": False}
             
-            # Rate limiter - DISABLED for immediate fix
+            # Rate limiter - RESTORED with lazy initialization
             try:
-                # Skip rate limiter initialization to fix startup hangs
-                app.state.redis_available = False
-                services_status["rate_limiter"] = True  # Mark as "ready" to continue
-                logging.warning("⚠️ Rate limiter DISABLED - using in-memory fallback for immediate fix")
+                await init_rate_limiter(app)
+                services_status["rate_limiter"] = True
+                logging.info("✅ Rate limiter configured with lazy initialization")
             except Exception as e:
                 logging.warning(f"⚠️ Rate limiter init failed: {e}")
+                app.state.redis_available = False
             
             # Database with minimal retry
             try:
@@ -880,6 +644,19 @@ async def on_startup():
         
         # Initialize critical services
         services_status = await init_critical_services()
+        
+        # Initialize optimized audit system
+        try:
+            from app.core.audit_logging import initialize_audit_system
+            await asyncio.wait_for(initialize_audit_system(), timeout=3.0)
+            services_status["audit_system"] = True
+            logging.info("✅ Optimized audit system initialized")
+        except asyncio.TimeoutError:
+            logging.warning("⚠️ Audit system init timed out - will initialize on first use")
+            services_status["audit_system"] = False
+        except Exception as e:
+            logging.warning(f"⚠️ Audit system init failed: {e}")
+            services_status["audit_system"] = False
         
         # Log startup status
         ready_services = sum(services_status.values())
@@ -898,4 +675,13 @@ async def on_startup():
 @app.on_event("shutdown")
 async def on_shutdown():
     """Clean up resources on shutdown"""
+    try:
+        # Close audit system connections
+        from app.core.audit_logging import _audit_db_pool
+        await _audit_db_pool.close()
+        logging.info("✅ Audit system connections closed")
+    except Exception as e:
+        logging.error(f"❌ Error closing audit system: {e}")
+    
+    # Close main database connections
     await close_database()

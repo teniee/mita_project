@@ -245,29 +245,56 @@ async def admin_revoke_user_tokens(
                 detail="User not found"
             )
         
-        # TODO: Implement user-level token revocation
-        # This would require storing active JTIs per user or implementing
-        # a user token version system
-        
-        # For now, log the admin action
-        log_security_event("admin_user_token_revocation", {
-            "admin_user_id": str(current_user.id),
-            "admin_email": current_user.email,
-            "target_user_id": user_id,
-            "target_user_email": target_user.email,
-            "reason": reason,
-            "action_timestamp": datetime.utcnow().isoformat()
-        })
-        
-        logger.critical(f"ADMIN ACTION: User {current_user.email} revoked tokens for user {target_user.email}. Reason: {reason}")
-        
-        return success_response({
-            "message": f"Token revocation initiated for user {user_id}",
-            "reason": reason,
-            "revoked_by": current_user.email,
-            "timestamp": datetime.utcnow().isoformat(),
-            "note": "Implementation pending: User-level token revocation system"
-        })
+        # Implement user-level token revocation using the existing blacklist service
+        try:
+            from app.services.auth_jwt_service import revoke_user_tokens
+            
+            # Revoke all tokens for the target user
+            tokens_revoked = await revoke_user_tokens(
+                user_id=user_id,
+                reason="admin",
+                revoked_by=str(current_user.id)
+            )
+            
+            # Log the successful admin action
+            log_security_event("admin_user_token_revocation", {
+                "admin_user_id": str(current_user.id),
+                "admin_email": current_user.email,
+                "target_user_id": user_id,
+                "target_user_email": target_user.email,
+                "reason": reason,
+                "tokens_revoked": tokens_revoked,
+                "action_timestamp": datetime.utcnow().isoformat()
+            })
+            
+            logger.critical(f"ADMIN ACTION: User {current_user.email} revoked {tokens_revoked} tokens for user {target_user.email}. Reason: {reason}")
+            
+            return success_response({
+                "message": f"Successfully revoked {tokens_revoked} tokens for user {user_id}",
+                "tokens_revoked": tokens_revoked,
+                "reason": reason,
+                "revoked_by": current_user.email,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            
+        except Exception as e:
+            # If token revocation fails, still log the admin action but return error
+            log_security_event("admin_user_token_revocation_failed", {
+                "admin_user_id": str(current_user.id),
+                "admin_email": current_user.email,
+                "target_user_id": user_id,
+                "target_user_email": target_user.email,
+                "reason": reason,
+                "error": str(e),
+                "action_timestamp": datetime.utcnow().isoformat()
+            })
+            
+            logger.error(f"Failed to revoke tokens for user {user_id}: {e}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to revoke user tokens: {str(e)}"
+            )
         
     except HTTPException:
         raise

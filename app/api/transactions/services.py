@@ -36,7 +36,9 @@ def add_transaction(user: User, data, db: Session):
         apply_transaction_to_plan(db, txn)
     except Exception as e:
         # Log error but don't fail the transaction
-        print(f"Warning: Failed to update budget plan: {e}")
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.warning(f"Failed to update budget plan: {e}")
     
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn

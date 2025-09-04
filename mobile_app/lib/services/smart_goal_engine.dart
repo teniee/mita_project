@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'income_service.dart';
 import 'advanced_financial_engine.dart';
 import 'logging_service.dart';
+import 'dynamic_threshold_service.dart';
 
 /// Smart Goal Engine for MITA
 /// 
@@ -351,21 +352,37 @@ class SmartGoalEngine {
     }
   }
 
-  bool _validateGoalAchievability(double targetAmount, double monthlyIncome, IncomeTier tier) {
-    final maxSavingsRate = _getMaxSavingsRate(tier);
+  Future<bool> _validateGoalAchievability(double targetAmount, double monthlyIncome, int age) async {
+    final maxSavingsRate = await _getMaxSavingsRate(monthlyIncome);
     final monthlyCapacity = monthlyIncome * maxSavingsRate;
     final yearsNeeded = targetAmount / (monthlyCapacity * 12);
     
-    return yearsNeeded <= 5.0; // Goals should be achievable within 5 years
+    // Use dynamic timeline based on age and income instead of hardcoded 5 years
+    try {
+      final maxTimelineYears = await ThresholdHelper.getMaxGoalTimelineYears(monthlyIncome, age);
+      return yearsNeeded <= maxTimelineYears;
+    } catch (e) {
+      LoggingService.logError('Failed to get dynamic timeline: $e');
+      // Fallback based on age
+      final maxYears = age < 30 ? 7.0 : age < 50 ? 5.0 : 3.0;
+      return yearsNeeded <= maxYears;
+    }
   }
 
-  double _getMaxSavingsRate(IncomeTier tier) {
-    switch (tier) {
-      case IncomeTier.low: return 0.10; // 10% max
-      case IncomeTier.lowerMiddle: return 0.15; // 15% max
-      case IncomeTier.middle: return 0.25; // 25% max
-      case IncomeTier.upperMiddle: return 0.35; // 35% max
-      case IncomeTier.high: return 0.50; // 50% max
+  Future<double> _getMaxSavingsRate(double monthlyIncome) async {
+    // Use dynamic thresholds instead of hardcoded tier-based rates
+    try {
+      final dynamicService = DynamicThresholdService();
+      final savingsRate = await dynamicService.getSavingsRateTarget(monthlyIncome);
+      return (savingsRate * 1.5).clamp(0.05, 0.50); // 150% of target as maximum
+    } catch (e) {
+      LoggingService.logError('Failed to get dynamic savings rate: $e');
+      // Fallback to income-based calculation
+      if (monthlyIncome < 3000) return 0.10;
+      if (monthlyIncome < 5000) return 0.15;
+      if (monthlyIncome < 8000) return 0.25;
+      if (monthlyIncome < 12000) return 0.35;
+      return 0.50;
     }
   }
 
@@ -393,7 +410,8 @@ class SmartGoalEngine {
     final now = DateTime.now();
     final monthsToTarget = targetDate.difference(now).inDays / 30.44;
     
-    final availableMonthly = monthlyIncome * _getMaxSavingsRate(tier) * 0.8; // 80% of max savings rate
+    final maxSavingsRate = await _getMaxSavingsRate(monthlyIncome);
+    final availableMonthly = monthlyIncome * maxSavingsRate * 0.8; // 80% of max savings rate
     final optimalMonths = (targetAmount / availableMonthly).ceil();
     
     // If target date is too aggressive, extend it

@@ -10,6 +10,10 @@ import '../services/accessibility_service.dart';
 import '../services/timeout_manager_service.dart';
 import '../theme/mita_theme.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../core/enhanced_error_handling.dart';
+import '../core/app_error_handler.dart';
+import '../core/error_handling.dart';
+import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,7 +22,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> 
+    with TickerProviderStateMixin, RobustErrorHandlingMixin {
   final ApiService _api = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
   bool _loading = false;
@@ -199,219 +204,193 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Future<void> _handleGoogleSignIn() async {
-    if (_loading) return;
-    
-    setState(() {
-      _loading = true;
-    });
+    if (isLoading) return;
     
     // Provide haptic feedback
     HapticFeedback.selectionClick();
-
     final l10n = AppLocalizations.of(context);
 
-    try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() {
-          _loading = false;
-        });
-        _showError(l10n.signInCancelled);
-        return;
-      }
-
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        setState(() {
-          _loading = false;
-        });
-        _showError(l10n.missingGoogleToken);
-        return;
-      }
-
-      final response = await _api.loginWithGoogle(idToken);
-      final accessToken = response.data['access_token'];
-      final refreshToken = response.data['refresh_token'];
-      
-      if (_rememberMe) {
-        await _api.saveTokens(accessToken, refreshToken);
-      }
-
-      if (!mounted) return;
-      
-      // SECURITY: Initialize push tokens AFTER successful authentication
-      try {
-        await SecurePushTokenManager.instance.initializePostAuthentication();
-      } catch (e) {
-        // Log but don't block login for push token issues
-        // Using proper logging instead of print for production
-        if (kDebugMode) {
-          debugPrint('Warning: Push token initialization failed: $e');
-        }
-      }
-      
-      // Check if user has completed onboarding
-      final hasOnboarded = await _api.hasCompletedOnboarding();
-      if (!mounted) return;
-      if (hasOnboarded) {
-        _accessibilityService.announceToScreenReader(
-          'Google sign-in successful. Navigating to dashboard.',
-          isImportant: true,
+    // Execute Google sign-in with enhanced error handling
+    await executeRobustly<void>(
+      () async {
+        final googleUser = await GoogleSignIn().signIn().executeSafely(
+          operationName: 'Google Sign In',
+          category: ErrorCategory.authentication,
         );
-        Navigator.pushReplacementNamed(context, '/main');
-      } else {
-        _accessibilityService.announceToScreenReader(
-          'Google sign-in successful. Navigating to onboarding.',
-          isImportant: true,
-        );
-        Navigator.pushReplacementNamed(context, '/onboarding_region');
-      }
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
-      
-      String errorMessage = 'Google sign-in failed. Please try again.';
-      if (e is DioException) {
-        switch (e.type) {
-          case DioExceptionType.receiveTimeout:
-            errorMessage = 'Sign-in is taking longer than expected. Please try again.';
-            break;
-          case DioExceptionType.connectionTimeout:
-          case DioExceptionType.sendTimeout:
-            errorMessage = 'Connection timeout. Please check your internet connection.';
-            break;
-          case DioExceptionType.connectionError:
-            errorMessage = 'Connection error. Please check your internet connection.';
-            break;
-          default:
-            errorMessage = 'Google sign-in failed. Please try again.';
+        
+        if (googleUser == null) {
+          throw AuthenticationException('Sign-in cancelled by user');
         }
-      } else if (e is TimeoutException) {
-        errorMessage = 'Sign-in timeout. Please try again.';
-      }
-      
-      _showError(errorMessage);
-    }
+
+        final googleAuth = await googleUser.authentication;
+        final idToken = googleAuth.idToken;
+
+        if (idToken == null) {
+          throw AuthenticationException('Missing Google authentication token');
+        }
+
+        final response = await _api.loginWithGoogle(idToken).executeSafely(
+          operationName: 'Google Login API',
+          maxRetries: 2,
+          category: ErrorCategory.authentication,
+        );
+        
+        if (response == null) {
+          throw AuthenticationException('Google login failed - no response received');
+        }
+
+        final accessToken = response.data['access_token'];
+        final refreshToken = response.data['refresh_token'];
+        
+        if (_rememberMe) {
+          await _api.saveTokens(accessToken, refreshToken);
+        }
+
+        if (!mounted) return;
+        
+        // SECURITY: Initialize push tokens AFTER successful authentication
+        try {
+          await SecurePushTokenManager.instance.initializePostAuthentication();
+        } catch (e) {
+          AppErrorHandler.reportError(
+            e,
+            severity: ErrorSeverity.low,
+            category: ErrorCategory.system,
+            context: {'operation': 'push_token_init_google'},
+          );
+        }
+        
+        // Check if user has completed onboarding
+        final hasOnboarded = await _api.hasCompletedOnboarding();
+        if (!mounted) return;
+        
+        if (hasOnboarded) {
+          _accessibilityService.announceToScreenReader(
+            'Google sign-in successful. Navigating to dashboard.',
+            isImportant: true,
+          );
+          Navigator.pushReplacementNamed(context, '/main');
+        } else {
+          _accessibilityService.announceToScreenReader(
+            'Google sign-in successful. Navigating to onboarding.',
+            isImportant: true,
+          );
+          Navigator.pushReplacementNamed(context, '/onboarding_region');
+        }
+      },
+      operationName: 'Google Sign-In Process',
+      showLoadingState: true,
+      onError: () {
+        // Show enhanced error dialog with retry option
+        if (mounted) {
+          final errorMsg = errorMessage?.contains('cancelled') == true 
+            ? 'Sign-in was cancelled. Please try again when ready.'
+            : errorMessage ?? 'Google sign-in failed. Please try again or use email login.';
+            
+          showEnhancedErrorDialog(
+            'Google Sign-In Failed',
+            errorMsg,
+            onRetry: _handleGoogleSignIn,
+            canRetry: !errorMsg.contains('cancelled'),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _handleEmailLogin() async {
-    if (_loading) return;
+    if (isLoading) return;
     
     final l10n = AppLocalizations.of(context);
     
-    if (!_formKey.currentState!.validate()) {
-      // Collect validation errors for accessibility announcement
+    // Enhanced form validation using FormErrorHandler
+    FormErrorHandler.clearAllErrors();
+    
+    final emailError = FormErrorHandler.validateEmail(_emailController.text);
+    final passwordError = FormErrorHandler.validatePassword(_passwordController.text);
+    
+    if (emailError != null || passwordError != null) {
       List<String> errors = [];
-      if (_emailController.text.isEmpty) {
-        errors.add('Email is required');
-      } else if (!_emailController.text.contains('@') || !_emailController.text.contains('.')) {
-        errors.add('Email format is invalid');
-      }
-      if (_passwordController.text.isEmpty) {
-        errors.add('Password is required');
-      }
+      if (emailError != null) errors.add(emailError);
+      if (passwordError != null) errors.add(passwordError);
       
-      if (errors.isNotEmpty) {
-        _accessibilityService.announceFormErrors(errors);
-      }
+      _accessibilityService.announceFormErrors(errors);
       return;
     }
-    
-    setState(() {
-      _loading = true;
-    });
     
     // Provide haptic feedback
     HapticFeedback.selectionClick();
 
-    try {
-      // 🚨 USE RELIABLE LOGIN: This uses emergency endpoint as fallback for fast authentication
-      final response = await _api.reliableLogin(
-        _emailController.text,
-        _passwordController.text,
-      );
-      final accessToken = response.data['access_token'];
-      final refreshToken = response.data['refresh_token'];
-      
-      if (_rememberMe) {
-        await _api.saveTokens(accessToken, refreshToken);
-      }
+    // Execute login with enhanced error handling and automatic retry
+    await executeRobustly<void>(
+      () async {
+        final response = await _api.reliableLogin(
+          _emailController.text.trim(),
+          _passwordController.text,
+        ).executeSafely(
+          operationName: 'Email Login',
+          maxRetries: 2,
+          category: ErrorCategory.authentication,
+        );
 
-      if (!mounted) return;
-      
-      // SECURITY: Initialize push tokens AFTER successful authentication
-      try {
-        await SecurePushTokenManager.instance.initializePostAuthentication();
-      } catch (e) {
-        // Log but don't block login for push token issues
-        // Using proper logging instead of print for production
-        if (kDebugMode) {
-          debugPrint('Warning: Push token initialization failed: $e');
+        if (response == null) {
+          throw AuthenticationException('Login failed - no response received');
         }
-      }
-      
-      // Check if user has completed onboarding
-      final hasOnboarded = await _api.hasCompletedOnboarding();
-      if (!mounted) return;
-      if (hasOnboarded) {
-        _accessibilityService.announceToScreenReader(
-          'Login successful. Navigating to dashboard.',
-          isImportant: true,
-        );
-        Navigator.pushReplacementNamed(context, '/main');
-      } else {
-        _accessibilityService.announceToScreenReader(
-          'Login successful. Navigating to onboarding.',
-          isImportant: true,
-        );
-        Navigator.pushReplacementNamed(context, '/onboarding_region');
-      }
-    } catch (e) {
-      setState(() {
-        _loading = false;
-      });
-      
-      String errorMessage = l10n.loginFailed;
-      if (e is DioException) {
-        switch (e.type) {
-          case DioExceptionType.receiveTimeout:
-            errorMessage = 'Authentication timeout. Please try again.';
-            break;
-          case DioExceptionType.sendTimeout:
-            errorMessage = 'Upload timeout. Please check your internet connection and try again.';
-            break;
-          case DioExceptionType.connectionTimeout:
-            errorMessage = 'Connection timeout. Please check your internet connection and try again.';
-            break;
-          case DioExceptionType.connectionError:
-            errorMessage = 'Connection error. Please check your internet connection and try again.';
-            break;
-          case DioExceptionType.badResponse:
-            final statusCode = e.response?.statusCode;
-            if (statusCode == 401) {
-              errorMessage = 'Invalid email or password. Please try again.';
-            } else if (statusCode == 429) {
-              errorMessage = 'Too many login attempts. Please wait a moment and try again.';
-            } else if (statusCode == 500) {
-              errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes or contact support.';
-            } else if (statusCode != null && statusCode >= 500) {
-              errorMessage = 'Server error (${statusCode}). Please try again later or contact support.';
-            } else {
-              errorMessage = l10n.loginFailed;
-            }
-            break;
-          default:
-            errorMessage = l10n.loginFailed;
+
+        final accessToken = response.data['access_token'];
+        final refreshToken = response.data['refresh_token'];
+        
+        if (_rememberMe) {
+          await _api.saveTokens(accessToken, refreshToken);
         }
-      } else if (e is TimeoutException) {
-        errorMessage = 'Authentication timeout. Please try again.';
-      }
-      
-      _showError(errorMessage);
-    }
+
+        if (!mounted) return;
+        
+        // SECURITY: Initialize push tokens AFTER successful authentication
+        try {
+          await SecurePushTokenManager.instance.initializePostAuthentication();
+        } catch (e) {
+          // Log but don't block login for push token issues
+          AppErrorHandler.reportError(
+            e,
+            severity: ErrorSeverity.low,
+            category: ErrorCategory.system,
+            context: {'operation': 'push_token_init'},
+          );
+        }
+        
+        // Check if user has completed onboarding
+        final hasOnboarded = await _api.hasCompletedOnboarding();
+        if (!mounted) return;
+        
+        if (hasOnboarded) {
+          _accessibilityService.announceToScreenReader(
+            'Login successful. Navigating to dashboard.',
+            isImportant: true,
+          );
+          Navigator.pushReplacementNamed(context, '/main');
+        } else {
+          _accessibilityService.announceToScreenReader(
+            'Login successful. Navigating to onboarding.',
+            isImportant: true,
+          );
+          Navigator.pushReplacementNamed(context, '/onboarding_region');
+        }
+      },
+      operationName: 'Email Login Process',
+      showLoadingState: true,
+      onError: () {
+        // Show enhanced error dialog with retry option
+        if (mounted) {
+          showEnhancedErrorDialog(
+            'Login Failed',
+            errorMessage ?? 'Unable to sign in. Please check your credentials and try again.',
+            onRetry: _handleEmailLogin,
+            canRetry: true,
+          );
+        }
+      },
+    );
   }
 
   @override

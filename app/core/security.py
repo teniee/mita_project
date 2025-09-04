@@ -23,36 +23,59 @@ from app.core.error_handler import ValidationException, AuthenticationException,
 
 logger = logging.getLogger(__name__)
 
-# EMERGENCY FIX: Lazy Redis initialization to prevent startup hangs
+# Improved Redis client management with async support
 redis_client = None
 
-def get_redis_client():
-    """Get Redis client with lazy initialization to prevent startup hangs"""
+async def get_redis_client():
+    """Get Redis client with lazy async initialization"""
     global redis_client
     if redis_client is not None:
         return redis_client
     
     try:
-        redis_url = getattr(settings, 'redis_url', 'redis://localhost:6379')
+        from fastapi import FastAPI
+        from starlette.applications import Starlette
+        import inspect
+        
+        # Get the current FastAPI app instance
+        frame = inspect.currentframe()
+        app = None
+        while frame:
+            if 'app' in frame.f_locals and isinstance(frame.f_locals['app'], (FastAPI, Starlette)):
+                app = frame.f_locals['app']
+                break
+            frame = frame.f_back
+        
+        if app and hasattr(app.state, 'redis_client'):
+            redis_client = app.state.redis_client
+            return redis_client
+        
+        # Fallback to direct connection
+        redis_url = getattr(settings, 'redis_url', None) or os.getenv('REDIS_URL')
         if not redis_url or redis_url == "":
             logger.info("No Redis URL configured - using in-memory rate limiting")
             return None
-        redis_client = redis.Redis.from_url(redis_url, decode_responses=True)
-        # Test connection
-        redis_client.ping()
+            
+        redis_client = await redis.from_url(
+            redis_url,
+            encoding="utf-8", 
+            decode_responses=True,
+            socket_connect_timeout=3,
+            socket_timeout=3
+        )
+        
+        # Test connection with timeout
+        await asyncio.wait_for(redis_client.ping(), timeout=2.0)
         logger.info("Redis connection established successfully")
         return redis_client
-    except redis.ConnectionError as e:
+        
+    except asyncio.TimeoutError:
         redis_client = None
-        logger.warning(f"Redis connection failed: {str(e)} - rate limiting will use in-memory storage")
-        return None
-    except redis.RedisError as e:
-        redis_client = None
-        logger.error(f"Redis error: {str(e)} - rate limiting will use in-memory storage")
+        logger.warning("Redis connection timed out - using in-memory rate limiting")
         return None
     except Exception as e:
         redis_client = None
-        logger.error(f"Unexpected error connecting to Redis: {str(e)} - rate limiting will use in-memory storage")
+        logger.warning(f"Redis connection failed: {str(e)} - using in-memory rate limiting")
         return None
 
 # In-memory fallback for rate limiting
@@ -67,8 +90,15 @@ class MockRateLimiter:
     def is_rate_limited(self, *args, **kwargs):
         return False
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+# UPDATED: Import centralized password security configuration
+from app.core.password_security import (
+    hash_password_sync as centralized_hash_password,
+    verify_password_sync as centralized_verify_password,
+    get_bcrypt_rounds
+)
+
+# Maintain backward compatibility - use centralized configuration
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=get_bcrypt_rounds())
 
 security = HTTPBearer()
 
@@ -170,24 +200,15 @@ class SecurityUtils:
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using bcrypt with high security settings"""
-        if len(password) < SecurityConfig.MIN_PASSWORD_LENGTH:
-            raise ValidationException(f"Password must be at least {SecurityConfig.MIN_PASSWORD_LENGTH} characters")
-        
-        if len(password) > SecurityConfig.MAX_PASSWORD_LENGTH:
-            raise ValidationException(f"Password cannot exceed {SecurityConfig.MAX_PASSWORD_LENGTH} characters")
-        
-        # Use passlib to hash the password
-        return pwd_context.hash(password)
+        """Hash password using centralized secure configuration"""
+        # Use centralized password hashing for consistency
+        return centralized_hash_password(password)
     
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
-        """Verify password against hash"""
-        try:
-            return pwd_context.verify(password, hashed)
-        except Exception as e:
-            logger.warning(f"Password verification failed: {e}")
-            return False
+        """Verify password against hash using centralized configuration"""
+        # Use centralized password verification for consistency
+        return centralized_verify_password(password, hashed)
     
     @staticmethod
     def generate_secure_token(length: int = 32) -> str:
@@ -295,9 +316,8 @@ class AdvancedRateLimiter:
     """Production-grade rate limiting with sliding window algorithm and comprehensive security"""
     
     def __init__(self):
-        self.redis = redis_client
         self.memory_store = rate_limit_memory
-        self.fail_secure_mode = getattr(settings, 'RATE_LIMIT_FAIL_SECURE', True)
+        self.fail_secure_mode = getattr(settings, 'RATE_LIMIT_FAIL_SECURE', False)  # Set to False for graceful degradation
     
     def _get_client_identifier(self, request: Request) -> str:
         """Get unique client identifier with enhanced IP detection"""

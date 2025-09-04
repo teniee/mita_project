@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-09-02T00:24:45.463942",
+  "overall_status": "\u274c CRITICAL - Core Components Broken",
+  "success_rate": "42.9%",
+  "tests_passed": "3/7",
+  "test_results": [
+    {
+      "test": "JWT Service - Verification",
+      "status": "\u274c FAIL",
+      "duration": "0.427s",
+      "details": "Token verification failed"
+    },
+    {
+      "test": "Password Hashing & Verification",
+      "status": "\u2705 PASS (\u26a1 0.018s - FAST)",
+      "duration": "0.018s",
+      "details": "Password operations working correctly"
+    },
+    {
+      "test": "Rate Limiting Logic",
+      "status": "\u2705 PASS (\ud83d\udc0c 0.019s - SLOW)",
+      "duration": "0.019s",
+      "details": "Rate limiting functions available and callable"
+    },
+    {
+      "test": "Authentication Schemas",
+      "status": "\u2705 PASS (\u26a1 0.008s - FAST)",
+      "duration": "0.008s",
+      "details": "All schema validations working correctly"
+    },
+    {
+      "test": "Database Models",
+      "status": "\u274c FAIL",
+      "duration": "0.024s",
+      "details": "Missing fields: ['updated_at']"
+    },
+    {
+      "test": "Authentication Routes",
+      "status": "\u274c FAIL",
+      "duration": "0.002s",
+      "details": "Error: unexpected indent (routes.py, line 711)"
+    },
+    {
+      "test": "Main App Structure",
+      "status": "\u274c FAIL",
+      "duration": "0.035s",
+      "details": "Import error (may be environment-related): No module named 'aiosqlite'"
+    }
+  ],
+  "core_components_ready": false,
+  "recommendations": [
+    "\ud83d\udd27 Fix JWT token creation/validation service",
+    "\ud83d\udd27 Check database model definitions",
+    "\ud83d\udd27 Fix authentication routes import",
+    "\ud83d\udd27 Fix main application structure (environment setup)"
+  ]
+}

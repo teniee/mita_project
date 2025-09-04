@@ -79,7 +79,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
 
   void _onNotificationsUpdated() {
     if (mounted) {
-      // TODO: Connect to actual intelligent notifications when implemented
+      // FUTURE FEATURE: Intelligent notifications backend integration
+      // This will be connected to AI-powered notification service in a future release
       final newNotifications = <Map<String, dynamic>>[];
       if (newNotifications != _notifications) {
         setState(() {
@@ -98,7 +99,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
 
   void _loadInitialNotifications() {
     setState(() {
-      // TODO: Connect to actual intelligent notifications when implemented
+      // FUTURE FEATURE: Intelligent notifications backend integration
+      // This will be connected to AI-powered notification service in a future release
       _notifications = <Map<String, dynamic>>[];
     });
   }
@@ -466,7 +468,8 @@ class CompactIntelligentNotifications extends StatelessWidget {
     return ListenableBuilder(
       listenable: financialEngine,
       builder: (context, child) {
-        // TODO: Connect to actual intelligent notifications when implemented
+        // FUTURE FEATURE: Intelligent notifications backend integration
+      // This will be connected to AI-powered notification service in a future release
         final notifications = <Map<String, dynamic>>[];
         
         if (notifications.isEmpty) {

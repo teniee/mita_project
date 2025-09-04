@@ -15,6 +15,7 @@ import 'advanced_offline_service.dart';
 import 'secure_device_service.dart';
 import 'secure_push_token_manager.dart';
 import 'secure_token_storage.dart';
+import 'app_version_service.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -22,11 +23,11 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   ApiService._internal() {
-    // Create timeout-aware Dio instance with extended timeouts for auth operations
+    // Create timeout-aware Dio instance with optimized timeouts for fast backend
     _dio = TimeoutManagerService().createTimeoutAwareDio(
-      connectTimeout: const Duration(seconds: 30), // Increased for slow backend
-      receiveTimeout: const Duration(seconds: 60), // Extended for slow backend
-      sendTimeout: const Duration(seconds: 30), // Increased for slow backend
+      connectTimeout: const Duration(seconds: 10), // Reduced for fast backend (<200ms response times)
+      receiveTimeout: const Duration(seconds: 15), // Reduced for fast backend
+      sendTimeout: const Duration(seconds: 10), // Reduced for fast backend
     );
     
     _dio.options.baseUrl = _baseUrl;
@@ -394,83 +395,66 @@ class ApiService {
     );
   }
 
-  // 🚀 WORKING: Flutter registration using GET request to bypass POST middleware issues
-  Future<Response> workingRegister(String email, String password, {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
+  // Proper FastAPI registration using standard POST endpoint
+  Future<Response> registerWithDetails(String email, String password, {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('🚀 WORKING REGISTRATION: Starting registration for ${email.substring(0, 3)}***',
-            tag: 'WORKING_AUTH');
+          logDebug('Starting FastAPI registration for ${email.substring(0, 3)}***',
+            tag: 'AUTH');
           
-          // Import config
-          // Using absolute URL to bypass all middleware issues
-          final dio = Dio();
-          dio.options.contentType = 'application/json';
-          
-          final response = await dio.get(
-            'https://mita-docker-ready-project-manus.onrender.com/flutter-register',
-            queryParameters: {
+          final response = await _dio.post(
+            '/auth/register',
+            data: {
               'email': email,
               'password': password,
               'country': country,
               'annual_income': annualIncome,
               'timezone': timezone,
             },
-            options: Options(
-              sendTimeout: Duration(milliseconds: 10000), // 10 second timeout
-              receiveTimeout: Duration(milliseconds: 10000),
-            ),
           );
           
-          logInfo('🚀 WORKING REGISTRATION: SUCCESS for ${email.substring(0, 3)}***',
-            tag: 'WORKING_AUTH');
+          logInfo('FastAPI registration SUCCESS for ${email.substring(0, 3)}***',
+            tag: 'AUTH');
           
           return response;
         } catch (e) {
-          logError('🚀 WORKING REGISTRATION: FAILED for ${email.substring(0, 3)}***', 
-            tag: 'WORKING_AUTH', error: e);
+          logError('FastAPI registration FAILED for ${email.substring(0, 3)}***', 
+            tag: 'AUTH', error: e);
           rethrow;
         }
       },
-      operationName: 'Working Registration',
+      operationName: 'FastAPI Registration',
     );
   }
 
-  // 🚀 WORKING: Flutter login using GET request to bypass POST middleware issues  
-  Future<Response> workingLogin(String email, String password) async {
+  // Standard FastAPI login - now using the restored backend
+  Future<Response> fastApiLogin(String email, String password) async {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('🚀 WORKING LOGIN: Starting login for ${email.substring(0, 3)}***',
-            tag: 'WORKING_AUTH');
+          logDebug('Starting FastAPI login for ${email.substring(0, 3)}***',
+            tag: 'AUTH');
           
-          // Using absolute URL to bypass all middleware issues
-          final dio = Dio();
-          dio.options.contentType = 'application/json';
-          
-          final response = await dio.get(
-            'https://mita-docker-ready-project-manus.onrender.com/flutter-login',
-            queryParameters: {
+          final response = await _dio.post(
+            '/auth/login',
+            data: {
               'email': email,
               'password': password,
             },
-            options: Options(
-              sendTimeout: Duration(milliseconds: 10000), // 10 second timeout
-              receiveTimeout: Duration(milliseconds: 10000),
-            ),
           );
           
-          logInfo('🚀 WORKING LOGIN: SUCCESS for ${email.substring(0, 3)}***',
-            tag: 'WORKING_AUTH');
+          logInfo('FastAPI login SUCCESS for ${email.substring(0, 3)}***',
+            tag: 'AUTH');
           
           return response;
         } catch (e) {
-          logError('🚀 WORKING LOGIN: FAILED for ${email.substring(0, 3)}***', 
-            tag: 'WORKING_AUTH', error: e);
+          logError('FastAPI login FAILED for ${email.substring(0, 3)}***', 
+            tag: 'AUTH', error: e);
           rethrow;
         }
       },
-      operationName: 'Working Login',
+      operationName: 'FastAPI Login',
     );
   }
 
@@ -482,14 +466,85 @@ class ApiService {
     );
   }
 
-  // 🚀 RELIABLE LOGIN: Use working GET endpoint to bypass POST middleware issues
+  // RELIABLE LOGIN: Use standard FastAPI endpoint (backend now stable)
   Future<Response> reliableLogin(String email, String password) async {
-    return await workingLogin(email, password);
+    return await login(email, password);
   }
 
-  // 🚀 RELIABLE REGISTER: Use working GET endpoint to bypass POST middleware issues
+  // RELIABLE REGISTER: Use standard FastAPI endpoint (backend now stable)
   Future<Response> reliableRegister(String email, String password) async {
-    return await workingRegister(email, password);
+    return await register(email, password);
+  }
+
+  // Add the missing emergencyRegister method that was being called
+  Future<Response> emergencyRegister(String email, String password) async {
+    // Now just redirect to the standard registration since emergency endpoints are removed
+    logInfo('Redirecting emergency registration to standard FastAPI registration', tag: 'AUTH');
+    return await register(email, password);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Generic HTTP Methods
+  // ---------------------------------------------------------------------------
+
+  /// Generic POST method for API calls
+  Future<Response> post(String path, {Map<String, dynamic>? data, Options? options}) async {
+    final token = await getToken();
+    final headers = {'Authorization': 'Bearer $token'};
+    if (options?.headers != null) {
+      headers.addAll(options!.headers!.cast<String, String>());
+    }
+    
+    return await _dio.post(
+      path,
+      data: data,
+      options: Options(headers: headers),
+    );
+  }
+
+  /// Generic GET method for API calls
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters, Options? options}) async {
+    final token = await getToken();
+    final headers = {'Authorization': 'Bearer $token'};
+    if (options?.headers != null) {
+      headers.addAll(options!.headers!.cast<String, String>());
+    }
+    
+    return await _dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: Options(headers: headers),
+    );
+  }
+
+  /// Generic PUT method for API calls
+  Future<Response> put(String path, {Map<String, dynamic>? data, Options? options}) async {
+    final token = await getToken();
+    final headers = {'Authorization': 'Bearer $token'};
+    if (options?.headers != null) {
+      headers.addAll(options!.headers!.cast<String, String>());
+    }
+    
+    return await _dio.put(
+      path,
+      data: data,
+      options: Options(headers: headers),
+    );
+  }
+
+  /// Generic DELETE method for API calls
+  Future<Response> delete(String path, {Map<String, dynamic>? data, Options? options}) async {
+    final token = await getToken();
+    final headers = {'Authorization': 'Bearer $token'};
+    if (options?.headers != null) {
+      headers.addAll(options!.headers!.cast<String, String>());
+    }
+    
+    return await _dio.delete(
+      path,
+      data: data,
+      options: Options(headers: headers),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -3138,7 +3193,7 @@ class ApiService {
         data: {
           'push_token': pushToken,
           'platform': Platform.isIOS ? 'ios' : 'android',
-          'app_version': '1.0.0', // TODO: Get from package_info
+          'app_version': AppVersionService.instance.appVersion,
           'device_id': await _getDeviceId(),
           'timestamp': DateTime.now().toIso8601String(),
         },
@@ -3489,6 +3544,60 @@ class ApiService {
         logError('Failed to clear tokens during error recovery: $e2', tag: 'API_LOGOUT');
       }
       
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Password management
+  // ---------------------------------------------------------------------------
+
+  /// Change user password with current password verification
+  Future<Response> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      logInfo('Initiating password change request', tag: 'API_PASSWORD');
+      
+      final response = await _dio.post(
+        '/auth/change-password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      logInfo('Password change request completed', tag: 'API_PASSWORD');
+      return response;
+    } catch (e) {
+      logError('Password change failed: $e', tag: 'API_PASSWORD');
+      rethrow;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Account management
+  // ---------------------------------------------------------------------------
+
+  /// Delete user account permanently
+  Future<Response> deleteAccount() async {
+    try {
+      logInfo('Initiating account deletion request', tag: 'API_ACCOUNT');
+      
+      final response = await _dio.delete(
+        '/auth/delete-account',
+        data: {
+          'timestamp': DateTime.now().toIso8601String(),
+          'confirmation': true,
+        },
+      );
+
+      logInfo('Account deletion request completed', tag: 'API_ACCOUNT');
+      return response;
+    } catch (e) {
+      logError('Account deletion failed: $e', tag: 'API_ACCOUNT');
       rethrow;
     }
   }

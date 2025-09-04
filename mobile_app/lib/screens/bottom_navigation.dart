@@ -339,10 +339,10 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   }
   
   void _ensureCalendarDataFreshness() {
-    // Check if calendar data is stale (older than 30 seconds)
+    // Check if calendar data is stale (older than 20 seconds)
     final timeSinceUpdate = DateTime.now().difference(_expenseStateService.lastUpdated);
     
-    if (timeSinceUpdate.inSeconds > 30) {
+    if (timeSinceUpdate.inSeconds > 20) { // Reduced for fast backend
       logDebug('Calendar data is stale, triggering refresh', tag: 'BOTTOM_NAV', extra: {
         'timeSinceUpdate': timeSinceUpdate.inSeconds,
       });

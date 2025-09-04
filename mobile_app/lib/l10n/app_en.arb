@@ -729,5 +729,326 @@
   "pleaseLoginToContinue": "Please log in to continue",
   "@pleaseLoginToContinue": {
     "description": "Message prompting user to log in"
+  },
+
+  "errorTitle": "Something Went Wrong",
+  "@errorTitle": {
+    "description": "Generic error dialog title"
+  },
+
+  "errorSessionExpiredTitle": "Session Expired",
+  "@errorSessionExpiredTitle": {
+    "description": "Title for session expired error"
+  },
+
+  "errorSessionExpiredMessage": "Your secure session has expired for your protection. Please sign in again to continue managing your finances.",
+  "@errorSessionExpiredMessage": {
+    "description": "Message explaining session expiration"
+  },
+
+  "errorInvalidCredentialsTitle": "Login Failed",
+  "@errorInvalidCredentialsTitle": {
+    "description": "Title for invalid credentials error"
+  },
+
+  "errorInvalidCredentialsMessage": "We couldn't verify your credentials. Please check your email and password, then try again.",
+  "@errorInvalidCredentialsMessage": {
+    "description": "Message for invalid login credentials"
+  },
+
+  "errorBudgetExceededTitle": "Budget Alert",
+  "@errorBudgetExceededTitle": {
+    "description": "Title for budget exceeded warning"
+  },
+
+  "errorBudgetExceededMessage": "This transaction would exceed your daily budget by {amount}. You can still proceed, or consider adjusting the amount.",
+  "@errorBudgetExceededMessage": {
+    "description": "Message when transaction exceeds budget",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "$25.50"
+      }
+    }
+  },
+
+  "errorTransactionFailedTitle": "Transaction Failed",
+  "@errorTransactionFailedTitle": {
+    "description": "Title for transaction failure"
+  },
+
+  "errorTransactionFailedMessage": "We couldn't save your transaction right now. Your data is safe, and you can try again.",
+  "@errorTransactionFailedMessage": {
+    "description": "Message when transaction fails to save"
+  },
+
+  "errorNoInternetTitle": "No Internet Connection",
+  "@errorNoInternetTitle": {
+    "description": "Title for no internet connection error"
+  },
+
+  "errorNoInternetMessage": "You're currently offline. Your transactions will be saved locally and synced when you reconnect.",
+  "@errorNoInternetMessage": {
+    "description": "Message explaining offline mode"
+  },
+
+  "errorInvalidAmountTitle": "Invalid Amount",
+  "@errorInvalidAmountTitle": {
+    "description": "Title for invalid amount error"
+  },
+
+  "errorInvalidAmountMessage": "The amount entered is not valid. Please enter a positive number with up to 2 decimal places.",
+  "@errorInvalidAmountMessage": {
+    "description": "Message for invalid amount format"
+  },
+
+  "errorDuplicateTransactionTitle": "Duplicate Transaction Detected",
+  "@errorDuplicateTransactionTitle": {
+    "description": "Title for duplicate transaction warning"
+  },
+
+  "errorDuplicateTransactionMessage": "A similar transaction was already recorded today. Is this a new expense or the same one?",
+  "@errorDuplicateTransactionMessage": {
+    "description": "Message asking about potential duplicate transaction"
+  },
+
+  "errorCameraPermissionTitle": "Camera Access Needed",
+  "@errorCameraPermissionTitle": {
+    "description": "Title for camera permission request"
+  },
+
+  "errorCameraPermissionMessage": "To scan receipts and capture expenses, MITA needs access to your camera.",
+  "@errorCameraPermissionMessage": {
+    "description": "Message explaining camera permission need"
+  },
+
+  "errorServerMaintenanceTitle": "Service Temporarily Unavailable",
+  "@errorServerMaintenanceTitle": {
+    "description": "Title for server maintenance error"
+  },
+
+  "errorServerMaintenanceMessage": "We're performing maintenance to improve your experience. This usually takes just a few minutes.",
+  "@errorServerMaintenanceMessage": {
+    "description": "Message explaining server maintenance"
+  },
+
+  "errorFinancialContextSecurity": "Your financial data remains secure while your session is refreshed.",
+  "@errorFinancialContextSecurity": {
+    "description": "Financial context message about data security"
+  },
+
+  "errorFinancialContextProtection": "Your financial data is protected by secure authentication.",
+  "@errorFinancialContextProtection": {
+    "description": "Financial context message about authentication protection"
+  },
+
+  "errorFinancialContextBudget": "Staying within budget helps achieve your financial goals. Consider if this expense is necessary.",
+  "@errorFinancialContextBudget": {
+    "description": "Financial context message about budget management"
+  },
+
+  "errorFinancialContextAccuracy": "Your financial records remain accurate and secure.",
+  "@errorFinancialContextAccuracy": {
+    "description": "Financial context message about data accuracy"
+  },
+
+  "errorFinancialContextOffline": "Your financial data is safely stored locally until connection is restored.",
+  "@errorFinancialContextOffline": {
+    "description": "Financial context message about offline data storage"
+  },
+
+  "errorFinancialContextValidation": "Accurate amounts help maintain precise financial records.",
+  "@errorFinancialContextValidation": {
+    "description": "Financial context message about data validation"
+  },
+
+  "errorFinancialContextReceipts": "Receipt scanning makes expense tracking faster and more accurate.",
+  "@errorFinancialContextReceipts": {
+    "description": "Financial context message about receipt scanning"
+  },
+
+  "errorActionSignInAgain": "Sign In Again",
+  "@errorActionSignInAgain": {
+    "description": "Action button to sign in again"
+  },
+
+  "errorActionTryAgain": "Try Again",
+  "@errorActionTryAgain": {
+    "description": "Generic try again action button"
+  },
+
+  "errorActionForgotPassword": "Forgot Password?",
+  "@errorActionForgotPassword": {
+    "description": "Action button to reset password"
+  },
+
+  "errorActionAdjustAmount": "Adjust Amount",
+  "@errorActionAdjustAmount": {
+    "description": "Action button to modify amount"
+  },
+
+  "errorActionProceedAnyway": "Proceed Anyway",
+  "@errorActionProceedAnyway": {
+    "description": "Action button to override warning and proceed"
+  },
+
+  "errorActionViewBudget": "View Budget",
+  "@errorActionViewBudget": {
+    "description": "Action button to navigate to budget screen"
+  },
+
+  "errorActionSaveDraft": "Save Draft",
+  "@errorActionSaveDraft": {
+    "description": "Action button to save as draft"
+  },
+
+  "errorActionContinueOffline": "Continue Offline",
+  "@errorActionContinueOffline": {
+    "description": "Action button to work in offline mode"
+  },
+
+  "errorActionCheckConnection": "Check Connection",
+  "@errorActionCheckConnection": {
+    "description": "Action button to retry network connection"
+  },
+
+  "errorActionFixAmount": "Fix Amount",
+  "@errorActionFixAmount": {
+    "description": "Action button to correct invalid amount"
+  },
+
+  "errorActionItsNew": "It's New",
+  "@errorActionItsNew": {
+    "description": "Action button confirming new transaction (not duplicate)"
+  },
+
+  "errorActionViewExisting": "View Existing",
+  "@errorActionViewExisting": {
+    "description": "Action button to see existing transactions"
+  },
+
+  "errorActionGrantAccess": "Grant Access",
+  "@errorActionGrantAccess": {
+    "description": "Action button to grant permissions"
+  },
+
+  "errorActionEnterManually": "Enter Manually",
+  "@errorActionEnterManually": {
+    "description": "Action button to enter data manually instead of using camera"
+  },
+
+  "errorActionTryLater": "Try Again Later",
+  "@errorActionTryLater": {
+    "description": "Action button to retry later"
+  },
+
+  "errorActionWorkOffline": "Work Offline",
+  "@errorActionWorkOffline": {
+    "description": "Action button to continue working offline"
+  },
+
+  "errorActionContactSupport": "Contact Support",
+  "@errorActionContactSupport": {
+    "description": "Action button to contact customer support"
+  },
+
+  "errorTipsTitle": "What you can do:",
+  "@errorTipsTitle": {
+    "description": "Section title for error resolution tips"
+  },
+
+  "errorTipBudgetReview": "Review your spending categories to find areas to save",
+  "@errorTipBudgetReview": {
+    "description": "Tip for budget management"
+  },
+
+  "errorTipBudgetPostpone": "Consider postponing non-essential purchases",
+  "@errorTipBudgetPostpone": {
+    "description": "Tip for budget management"
+  },
+
+  "errorTipBudgetPaymentMethod": "Check if you can use a different payment method or account",
+  "@errorTipBudgetPaymentMethod": {
+    "description": "Tip for budget management"
+  },
+
+  "errorTipConnectionCheck": "Check your internet connection",
+  "@errorTipConnectionCheck": {
+    "description": "Tip for connectivity issues"
+  },
+
+  "errorTipTransactionFields": "Verify all required fields are filled correctly",
+  "@errorTipTransactionFields": {
+    "description": "Tip for transaction errors"
+  },
+
+  "errorTipRetryMoment": "Try again in a few moments",
+  "@errorTipRetryMoment": {
+    "description": "Generic retry tip"
+  },
+
+  "errorTipWiFiData": "Check your WiFi or mobile data connection",
+  "@errorTipWiFiData": {
+    "description": "Tip for connectivity issues"
+  },
+
+  "errorTipOfflineMode": "You can still record transactions offline",
+  "@errorTipOfflineMode": {
+    "description": "Tip about offline capabilities"
+  },
+
+  "errorTipAutoSync": "Data will sync automatically when reconnected",
+  "@errorTipAutoSync": {
+    "description": "Tip about automatic synchronization"
+  },
+
+  "errorTipAmountFormat": "Use numbers only (e.g., 25.50)",
+  "@errorTipAmountFormat": {
+    "description": "Tip for amount formatting"
+  },
+
+  "errorTipNoCurrency": "Don't include currency symbols",
+  "@errorTipNoCurrency": {
+    "description": "Tip for amount formatting"
+  },
+
+  "errorTipDecimalPlaces": "Maximum 2 decimal places for cents",
+  "@errorTipDecimalPlaces": {
+    "description": "Tip for amount formatting"
+  },
+
+  "errorTipCameraSettings": "Go to Settings > Privacy > Camera",
+  "@errorTipCameraSettings": {
+    "description": "Tip for camera permission"
+  },
+
+  "errorTipCameraAccess": "Find MITA and toggle camera access on",
+  "@errorTipCameraAccess": {
+    "description": "Tip for camera permission"
+  },
+
+  "errorTipManualEntry": "You can always enter expenses manually",
+  "@errorTipManualEntry": {
+    "description": "Tip about manual data entry"
+  },
+
+  "errorTipMaintenanceWait": "Try again in a few minutes",
+  "@errorTipMaintenanceWait": {
+    "description": "Tip for server maintenance"
+  },
+
+  "errorTipOfflineFeatures": "You can still use offline features",
+  "@errorTipOfflineFeatures": {
+    "description": "Tip about offline feature availability"
+  },
+
+  "errorTipStatusPage": "Check our status page for updates",
+  "@errorTipStatusPage": {
+    "description": "Tip to check service status"
+  },
+
+  "errorTipSupportContact": "Contact support if the issue persists",
+  "@errorTipSupportContact": {
+    "description": "Tip to contact support for persistent issues"
   }
 }

@@ -58,15 +58,14 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
 
 
   void _startLiveUpdates() {
-    // Temporarily disabled live updates to prevent recurring server errors
-    logWarning('Calendar live updates disabled due to backend server errors', tag: 'CALENDAR_UPDATES');
+    // Re-enabled live updates for stable backend with fast response times
+    logInfo('Starting calendar live updates for stable backend', tag: 'CALENDAR_UPDATES');
     
-    // TODO: Re-enable when backend is stable:
-    // _liveUpdateTimer = Timer.periodic(const Duration(seconds: 45), (timer) {
-    //   if (mounted && !isRedistributing) {
-    //     fetchCalendarData();
-    //   }
-    // });
+    _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && !isRedistributing) {
+        fetchCalendarData();
+      }
+    });
   }
 
   Future<void> fetchCalendarData() async {

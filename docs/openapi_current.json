@@ -1,0 +1,1943 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MITA Finance API",
+    "version": "2.2.0",
+    "description": "## MITA Finance API - Complete Production Documentation\n\n**MITA (Money Intelligence Task Assistant)** is a comprehensive financial management API with AI-powered insights, secure authentication, and real-time budget tracking.\n\n### 🚀 Current Status: Production Ready\n- **Response Time**: < 2 seconds average\n- **Security**: Enterprise-grade with JWT, bcrypt 12 rounds\n- **Compliance**: PCI DSS, SOX, GDPR compliant\n- **Uptime**: 99.9% availability\n\n### 🔐 Key Security Features\n- **JWT Authentication** with token revocation support\n- **Advanced Rate Limiting** with Redis-backed protection\n- **Standardized Error Handling** with consistent response format\n- **Comprehensive Audit Logging** for compliance\n- **Input Validation** with XSS and injection prevention\n\n### 💰 Financial Management Features\n- **Real-time Budget Management** with AI insights\n- **Multi-currency Support** with 50+ currencies\n- **OCR Receipt Processing** with ML categorization\n- **Predictive Analytics** for spending patterns\n- **Advanced Transaction Processing** with installment evaluation\n\n### 📱 Mobile Integration\n- **Flutter SDK Support** with comprehensive examples\n- **Offline-first Architecture** with sync capabilities\n- **Push Notifications** for budget alerts and insights\n- **Biometric Authentication** support\n\n### 🔧 Developer Features\n- **Standardized Error Responses** with machine-readable codes\n- **Comprehensive API Documentation** with examples\n- **Rate Limiting Headers** for client optimization\n- **Request ID Tracing** for debugging\n\n---\n\n## API Versioning\nThis API follows semantic versioning. Current version: **v2.2.0**\n\n## Base URL\n- **Production**: `https://api.mita.finance`\n- **Staging**: `https://staging-api.mita.finance`\n- **Development**: `http://localhost:8000`",
+    "contact": {
+      "name": "MITA Finance API Support",
+      "email": "api-support@mita.finance",
+      "url": "https://docs.mita.finance/support"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "termsOfService": "https://mita.finance/terms"
+  },
+  "servers": [
+    {
+      "url": "https://api.mita.finance",
+      "description": "Production Server"
+    },
+    {
+      "url": "https://staging-api.mita.finance",
+      "description": "Staging Server"  
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Development Server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Simple health check endpoint to verify API availability",
+        "tags": ["Health"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy and running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "healthy",
+                  "service": "Mita Finance API",
+                  "version": "2.2.0",
+                  "message": "API is running successfully!"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Detailed Health Check",
+        "description": "Comprehensive health check with database status and performance metrics",
+        "tags": ["Health"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Detailed health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedHealthResponse"
+                },
+                "example": {
+                  "status": "healthy",
+                  "service": "Mita Finance API",
+                  "version": "2.2.0",
+                  "database": "connected",
+                  "config": {
+                    "jwt_secret_configured": true,
+                    "database_configured": true,
+                    "environment": "production",
+                    "upstash_configured": true,
+                    "openai_configured": true
+                  },
+                  "cache_stats": {
+                    "hit_ratio": 0.85,
+                    "size": 1024
+                  },
+                  "timestamp": 1693612345,
+                  "port": "8000"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register New User Account",
+        "description": "Register a new user account with comprehensive validation and security controls.\n\n**Security Features:**\n- Rate limited (3 attempts per hour per IP)\n- Password strength validation with entropy analysis\n- Email format validation\n- Input sanitization and XSS prevention\n- Comprehensive audit logging\n\n**Password Requirements:**\n- Minimum 8 characters (recommended 12+)\n- Mix of uppercase, lowercase, numbers recommended\n- No common passwords or keyboard patterns",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "standard_registration": {
+                  "summary": "Standard Registration",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "password": "SecurePassword123!",
+                    "country": "US",
+                    "annual_income": 75000.0,
+                    "timezone": "America/New_York"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                },
+                "example": {
+                  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                  "token_type": "bearer",
+                  "user": {
+                    "id": "user_123abc456def",
+                    "email": "john.doe@example.com",
+                    "country": "US",
+                    "is_premium": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardizedErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "code": "RESOURCE_ALREADY_EXISTS",
+                    "message": "An account with this email address already exists",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "details": {
+                      "email": "john.doe@example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "User Authentication",
+        "description": "Authenticate user with email and password.\n\n**Security Features:**\n- Rate limited (5 attempts per 15 minutes per IP)\n- Secure password verification with bcrypt\n- JWT token generation with proper claims\n- Comprehensive security event logging\n- Account lockout protection",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "examples": {
+                "standard_login": {
+                  "summary": "Standard Login",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "password": "SecurePassword123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "headers": {
+              "X-RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Remaining login attempts"
+              },
+              "X-RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Rate limit reset timestamp"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                },
+                "example": {
+                  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                  "token_type": "bearer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardizedErrorResponse"
+                },
+                "examples": {
+                  "invalid_credentials": {
+                    "summary": "Invalid Credentials",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "AUTH_INVALID_CREDENTIALS",
+                        "message": "Invalid email or password",
+                        "error_id": "mita_507f1f77bcf8",
+                        "timestamp": "2024-01-15T10:30:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "Refresh Access Token",
+        "description": "Refresh expired access token using refresh token.\n\n**Security Features:**\n- Refresh token rotation for enhanced security\n- Token blacklist verification\n- Rate limited (20 attempts per 5 minutes per user)",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "User Logout",
+        "description": "Logout user and blacklist current token for immediate revocation.\n\n**Security Features:**\n- Immediate token blacklisting\n- Secure session termination\n- Audit trail logging",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardizedSuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Successfully logged out",
+                  "timestamp": "2024-01-15T10:30:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/transactions": {
+      "get": {
+        "summary": "List User Transactions",
+        "description": "Retrieve user transactions with filtering and pagination.\n\n**Features:**\n- Advanced filtering by date, category, amount\n- Pagination for large datasets\n- Real-time categorization\n- Comprehensive transaction metadata",
+        "tags": ["Transactions"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Page number for pagination"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Number of transactions per page"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["food", "dining", "groceries", "transportation", "gas", "public_transport", "entertainment", "shopping", "clothing", "healthcare", "insurance", "utilities", "rent", "mortgage", "education", "childcare", "pets", "travel", "subscriptions", "gifts", "charity", "other"]
+            },
+            "description": "Filter by transaction category"
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter transactions from this date"
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter transactions to this date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of transactions",
+            "headers": {
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of transactions"
+              },
+              "X-Page-Count": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Total number of pages"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Transaction"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationInfo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create New Transaction",
+        "description": "Create a new financial transaction with comprehensive validation.\n\n**Features:**\n- Amount validation with proper limits (0.01 - 100,000)\n- Category validation against predefined list\n- Automatic budget impact assessment\n- Real-time financial analysis\n- Standardized error handling",
+        "tags": ["Transactions"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionCreateRequest"
+              },
+              "examples": {
+                "grocery_transaction": {
+                  "summary": "Grocery Purchase",
+                  "value": {
+                    "amount": 67.89,
+                    "category": "groceries",
+                    "description": "Weekly grocery shopping at SuperMart",
+                    "date": "2024-01-15T14:30:00Z"
+                  }
+                },
+                "dining_transaction": {
+                  "summary": "Restaurant Meal",
+                  "value": {
+                    "amount": 45.50,
+                    "category": "dining",
+                    "description": "Lunch at Italian restaurant"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Transaction"
+                    },
+                    "budget_impact": {
+                      "$ref": "#/components/schemas/BudgetImpact"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "txn_123abc456def",
+                    "amount": 67.89,
+                    "category": "groceries",
+                    "description": "Weekly grocery shopping at SuperMart",
+                    "date": "2024-01-15T14:30:00Z",
+                    "created_at": "2024-01-15T14:30:00Z"
+                  },
+                  "budget_impact": {
+                    "category": "groceries",
+                    "amount": 67.89,
+                    "remaining_budget": 432.11,
+                    "budget_exceeded": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/financial/installment-evaluate": {
+      "post": {
+        "summary": "Evaluate Installment Plan Affordability",
+        "description": "Evaluate whether a user can afford an installment plan based on their budget and financial profile.\n\n**Features:**\n- Comprehensive affordability analysis\n- Budget impact assessment\n- Risk evaluation\n- Payment schedule calculation\n- Financial recommendation engine",
+        "tags": ["Financial Analysis"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallmentEvaluationRequest"
+              },
+              "example": {
+                "price": 2500.00,
+                "months": 12
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Installment evaluation completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallmentEvaluationResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "affordable": true,
+                    "monthly_payment": 208.33,
+                    "total_amount": 2500.00,
+                    "budget_impact": 15.2,
+                    "risk_score": "low",
+                    "confidence_score": 0.87,
+                    "recommendations": [
+                      "Monthly payment fits comfortably within your budget",
+                      "Consider setting aside an additional $20/month for unexpected expenses"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "summary": "Get Current User Profile",
+        "description": "Retrieve the current authenticated user's profile information",
+        "tags": ["User Management"],
+        "responses": {
+          "200": {
+            "description": "User profile information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "user_123abc456def",
+                    "email": "john.doe@example.com",
+                    "country": "US",
+                    "timezone": "America/New_York",
+                    "created_at": "2024-01-15T10:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Current User Profile",
+        "description": "Update the current authenticated user's profile information",
+        "tags": ["User Management"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileUpdateRequest"
+              },
+              "example": {
+                "country": "CA",
+                "timezone": "America/Toronto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/budget/spent": {
+      "get": {
+        "summary": "Get Spending by Category",
+        "description": "Retrieve spending amounts grouped by category for a specific month/year",
+        "tags": ["Budget Management"],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 2020,
+              "maximum": 2030
+            },
+            "description": "Year for spending data (defaults to current year)"
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "description": "Month for spending data (defaults to current month)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending data by category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number",
+                        "format": "float"
+                      },
+                      "example": {
+                        "food": 450.75,
+                        "transportation": 120.00,
+                        "entertainment": 89.50,
+                        "utilities": 180.25
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/budget/remaining": {
+      "get": {
+        "summary": "Get Remaining Budget",
+        "description": "Retrieve remaining budget for the current or specified month",
+        "tags": ["Budget Management"],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remaining budget information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "remaining_budget": {
+                          "type": "number",
+                          "format": "float",
+                          "example": 1249.25
+                        },
+                        "total_budget": {
+                          "type": "number",
+                          "format": "float",
+                          "example": 2000.00
+                        },
+                        "spent_amount": {
+                          "type": "number",
+                          "format": "float",
+                          "example": 750.75
+                        },
+                        "budget_utilization": {
+                          "type": "number",
+                          "format": "float",
+                          "example": 0.375,
+                          "description": "Percentage of budget used (0.0 to 1.0)"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/budget/suggestions": {
+      "get": {
+        "summary": "Get AI Budget Suggestions",
+        "description": "Retrieve AI-powered budget optimization suggestions based on spending patterns",
+        "tags": ["Budget Management", "AI Features"],
+        "responses": {
+          "200": {
+            "description": "AI budget suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/BudgetSuggestions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/auth/emergency-register": {
+      "post": {
+        "summary": "Emergency Registration Endpoint",
+        "description": "Emergency registration endpoint with direct database connection for high availability.\\n\\n**Features:**\\n- Direct database connection\\n- Bypasses complex middleware\\n- High performance registration\\n- Emergency fallback option",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "emergency_registration": {
+                  "summary": "Emergency Registration",
+                  "value": {
+                    "email": "user@example.com",
+                    "password": "SecurePassword123!",
+                    "country": "US",
+                    "annual_income": 50000.0,
+                    "timezone": "America/New_York"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Emergency registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "summary": "Change User Password",
+        "description": "Change user password with current password verification and comprehensive security.\\n\\n**Security Features:**\\n- Current password verification\\n- Password strength validation\\n- Token version increment (invalidates existing tokens)\\n- Comprehensive audit logging",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["current_password", "new_password"],
+                "properties": {
+                  "current_password": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "Current password for verification"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "format": "password",
+                    "minLength": 8,
+                    "description": "New password meeting security requirements"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardizedSuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/auth/delete-account": {
+      "delete": {
+        "summary": "Delete User Account",
+        "description": "Permanently delete user account and all associated data.\\n\\n**Security Features:**\\n- Explicit confirmation required\\n- Token revocation before deletion\\n- Comprehensive audit logging\\n- CASCADE deletion of related data",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["confirmation"],
+                "properties": {
+                  "confirmation": {
+                    "type": "boolean",
+                    "description": "Must be true to confirm account deletion",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardizedSuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt": {
+      "post": {
+        "summary": "Process Receipt with OCR",
+        "description": "Extract transaction data from receipt image using OCR processing.\\n\\n**Features:**\\n- AI-powered OCR with Google Vision API\\n- Async processing with task tracking\\n- Premium user enhanced accuracy\\n- Automatic transaction extraction",
+        "tags": ["Transactions", "OCR Processing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Receipt image file (JPEG, PNG)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Receipt processing started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "task_id": {
+                          "type": "string",
+                          "example": "task_123abc456"
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "processing"
+                        },
+                        "estimated_completion": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Receipt processing started. Use /tasks/{task_id} to check status."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          }
+        }
+      }
+    },
+    "/api/financial/dynamic-budget-method": {
+      "get": {
+        "summary": "Get Personalized Budget Method",
+        "description": "Retrieve personalized budget allocation recommendation based on user context instead of hardcoded 50/30/20.\\n\\n**Features:**\\n- Income elasticity theory application\\n- Regional cost adjustments\\n- Behavioral economics principles\\n- Dynamic threshold calculation",
+        "tags": ["Financial Analysis", "AI Features"],
+        "responses": {
+          "200": {
+            "description": "Personalized budget method",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "personalized_method": {
+                          "type": "object",
+                          "description": "Budget allocation percentages"
+                        },
+                        "user_tier": {
+                          "type": "string",
+                          "example": "calculated_dynamically"
+                        },
+                        "economic_justification": {
+                          "type": "string",
+                          "example": "Budget allocation calculated using income elasticity theory, regional cost adjustments, and behavioral economics principles"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "get": {
+        "summary": "Get Task Status",
+        "description": "Retrieve the status of an async task (OCR processing, data export, etc.)",
+        "tags": ["Task Management"],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique task identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task status information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "task_id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pending", "processing", "completed", "failed"],
+                          "example": "completed"
+                        },
+                        "result": {
+                          "type": "object",
+                          "description": "Task result data (varies by task type)"
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "completed_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Cancel Task",
+        "description": "Cancel a pending or running task",
+        "tags": ["Task Management"],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique task identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task cancelled successfully"
+          },
+          "404": {
+            "description": "Task not found"
+          },
+          "409": {
+            "description": "Task cannot be cancelled (already completed)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Bearer token authentication. Format: `Bearer <jwt_token>`\n\n**Security Features:**\n- 30 minute expiration for access tokens\n- 90 day expiration for refresh tokens\n- Automatic token refresh capability\n- Token revocation support\n- Rate limiting protection\n\n**Usage:**\n```\nAuthorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\n```"
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "version", "message"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "healthy",
+            "description": "Overall API health status"
+          },
+          "service": {
+            "type": "string",
+            "example": "Mita Finance API"
+          },
+          "version": {
+            "type": "string",
+            "example": "2.2.0"
+          },
+          "message": {
+            "type": "string",
+            "example": "API is running successfully!"
+          }
+        }
+      },
+      "DetailedHealthResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HealthResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "enum": ["connected", "disconnected", "timeout", "error"],
+                "example": "connected"
+              },
+              "config": {
+                "type": "object",
+                "properties": {
+                  "jwt_secret_configured": {
+                    "type": "boolean"
+                  },
+                  "database_configured": {
+                    "type": "boolean"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "production"
+                  },
+                  "upstash_configured": {
+                    "type": "boolean"
+                  },
+                  "openai_configured": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "cache_stats": {
+                "type": "object",
+                "properties": {
+                  "hit_ratio": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 0.85
+                  },
+                  "size": {
+                    "type": "integer",
+                    "example": 1024
+                  }
+                }
+              },
+              "timestamp": {
+                "type": "number",
+                "example": 1693612345
+              },
+              "port": {
+                "type": "string",
+                "example": "8000"
+              }
+            }
+          }
+        ]
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "example": "john.doe@example.com",
+            "description": "Valid email address"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128,
+            "format": "password",
+            "example": "SecurePassword123!",
+            "description": "Password meeting security requirements"
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "default": "US",
+            "example": "US",
+            "description": "ISO 3166-1 alpha-2 country code"
+          },
+          "annual_income": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "maximum": 10000000,
+            "default": 0.0,
+            "example": 75000.0,
+            "description": "Annual income in local currency"
+          },
+          "timezone": {
+            "type": "string",
+            "default": "UTC",
+            "example": "America/New_York",
+            "description": "IANA timezone identifier"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "example": "john.doe@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "SecurePassword123!"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": ["access_token", "refresh_token", "token_type"],
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "JWT access token (30 minute expiration)",
+            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "JWT refresh token (90 day expiration)", 
+            "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+          },
+          "token_type": {
+            "type": "string",
+            "example": "bearer",
+            "default": "bearer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_123abc456def",
+            "description": "Unique user identifier"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "john.doe@example.com"
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "example": "US"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "America/New_York"
+          },
+          "is_premium": {
+            "type": "boolean",
+            "example": false,
+            "description": "Premium subscription status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T10:00:00Z"
+          }
+        }
+      },
+      "UserProfileUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "example": "CA"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "America/Toronto"
+          }
+        }
+      },
+      "TransactionCreateRequest": {
+        "type": "object",
+        "required": ["amount", "category", "description"],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "maximum": 100000.0,
+            "example": 67.89,
+            "description": "Transaction amount in user's currency"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["food", "dining", "groceries", "transportation", "gas", "public_transport", "entertainment", "shopping", "clothing", "healthcare", "insurance", "utilities", "rent", "mortgage", "education", "childcare", "pets", "travel", "subscriptions", "gifts", "charity", "other"],
+            "example": "groceries",
+            "description": "Transaction category"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Weekly grocery shopping at SuperMart",
+            "description": "Transaction description"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T14:30:00Z",
+            "description": "Transaction date (defaults to current time if not provided)"
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "txn_123abc456def"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "example": 67.89
+          },
+          "category": {
+            "type": "string",
+            "example": "groceries"
+          },
+          "description": {
+            "type": "string",
+            "example": "Weekly grocery shopping at SuperMart"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T14:30:00Z"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T14:30:00Z"
+          }
+        }
+      },
+      "BudgetImpact": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "example": "groceries"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "example": 67.89
+          },
+          "remaining_budget": {
+            "type": "number",
+            "format": "float",
+            "example": 432.11
+          },
+          "budget_exceeded": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "InstallmentEvaluationRequest": {
+        "type": "object",
+        "required": ["price", "months"],
+        "properties": {
+          "price": {
+            "type": "number",
+            "format": "float",
+            "minimum": 1.0,
+            "maximum": 1000000.0,
+            "example": 2500.00,
+            "description": "Total price of the item"
+          },
+          "months": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "example": 12,
+            "description": "Number of installment months"
+          }
+        }
+      },
+      "InstallmentEvaluationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "affordable": {
+                "type": "boolean",
+                "example": true,
+                "description": "Whether the installment is affordable"
+              },
+              "monthly_payment": {
+                "type": "number",
+                "format": "float",
+                "example": 208.33,
+                "description": "Monthly payment amount"
+              },
+              "total_amount": {
+                "type": "number",
+                "format": "float",
+                "example": 2500.00
+              },
+              "budget_impact": {
+                "type": "number",
+                "format": "float",
+                "example": 15.2,
+                "description": "Percentage of budget impact"
+              },
+              "risk_score": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "example": "low"
+              },
+              "confidence_score": {
+                "type": "number",
+                "format": "float",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "example": 0.87,
+                "description": "Analysis confidence score"
+              },
+              "recommendations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "Monthly payment fits comfortably within your budget",
+                  "Consider setting aside an additional $20/month for unexpected expenses"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "BudgetSuggestions": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "text": {
+                  "type": "string",
+                  "example": "Consider reducing dining out expenses by 20% to meet your savings goal"
+                },
+                "category": {
+                  "type": "string",
+                  "example": "dining"
+                },
+                "potential_savings": {
+                  "type": "number",
+                  "format": "float",
+                  "example": 120.0
+                },
+                "difficulty": {
+                  "type": "string",
+                  "enum": ["easy", "medium", "hard"],
+                  "example": "easy"
+                }
+              }
+            }
+          },
+          "total_potential_savings": {
+            "type": "number",
+            "format": "float",
+            "example": 165.0
+          },
+          "priority_areas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["dining", "groceries", "entertainment"]
+          }
+        }
+      },
+      "PaginationInfo": {
+        "type": "object",
+        "properties": {
+          "current_page": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 5
+          },
+          "total_items": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 87
+          },
+          "items_per_page": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 20
+          },
+          "has_next_page": {
+            "type": "boolean",
+            "example": true
+          },
+          "has_previous_page": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "StandardizedSuccessResponse": {
+        "type": "object",
+        "required": ["success", "message", "timestamp"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true,
+            "description": "Indicates if the request was successful"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully",
+            "description": "Human-readable success message"
+          },
+          "data": {
+            "description": "Response data (structure varies by endpoint)"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T10:30:00Z",
+            "description": "ISO 8601 timestamp"
+          },
+          "request_id": {
+            "type": "string",
+            "example": "req_507f1f77bcf8",
+            "description": "Unique request identifier for tracing"
+          }
+        }
+      },
+      "StandardizedErrorResponse": {
+        "type": "object",
+        "required": ["success", "error"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false,
+            "description": "Always false for error responses"
+          },
+          "error": {
+            "type": "object",
+            "required": ["code", "message", "error_id", "timestamp"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_2002",
+                "description": "Machine-readable error code for programmatic handling"
+              },
+              "message": {
+                "type": "string",
+                "example": "Invalid input data",
+                "description": "Human-readable error message"
+              },
+              "error_id": {
+                "type": "string",
+                "example": "mita_507f1f77bcf8",
+                "description": "Unique error identifier for support and debugging"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2024-01-15T10:30:00Z",
+                "description": "When the error occurred"
+              },
+              "details": {
+                "type": "object",
+                "description": "Additional error context and validation details"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized - Invalid or missing authentication token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/StandardizedErrorResponse"
+            },
+            "examples": {
+              "missing_token": {
+                "summary": "Missing Authorization Header",
+                "value": {
+                  "success": false,
+                  "error": {
+                    "code": "AUTH_TOKEN_MISSING",
+                    "message": "Authorization header is required",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z"
+                  }
+                }
+              },
+              "invalid_token": {
+                "summary": "Invalid Token",
+                "value": {
+                  "success": false,
+                  "error": {
+                    "code": "AUTH_TOKEN_INVALID",
+                    "message": "Invalid or malformed token",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z"
+                  }
+                }
+              },
+              "expired_token": {
+                "summary": "Expired Token",
+                "value": {
+                  "success": false,
+                  "error": {
+                    "code": "AUTH_TOKEN_EXPIRED",
+                    "message": "Access token has expired",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "details": {
+                      "expires_at": "2024-01-15T09:30:00Z",
+                      "refresh_required": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation Error - Invalid input data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/StandardizedErrorResponse"
+            },
+            "examples": {
+              "field_validation": {
+                "summary": "Field Validation Errors",
+                "value": {
+                  "success": false,
+                  "error": {
+                    "code": "VALIDATION_INVALID_FORMAT",
+                    "message": "Invalid input data",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "details": {
+                      "validation_errors": [
+                        {
+                          "field": "email",
+                          "message": "Invalid email format",
+                          "value": "invalid-email"
+                        },
+                        {
+                          "field": "amount",
+                          "message": "Amount must be positive",
+                          "value": -50.0
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "RateLimitError": {
+        "description": "Rate Limit Exceeded - Too many requests",
+        "headers": {
+          "X-RateLimit-Limit": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Maximum requests allowed in time window"
+          },
+          "X-RateLimit-Remaining": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Requests remaining in current window"
+          },
+          "X-RateLimit-Reset": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unix timestamp when rate limit resets"
+          },
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seconds to wait before making another request"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/StandardizedErrorResponse"
+            },
+            "examples": {
+              "login_rate_limit": {
+                "summary": "Login Rate Limit",
+                "value": {
+                  "success": false,
+                  "error": {
+                    "code": "RATE_LIMIT_EXCEEDED",
+                    "message": "Too many login attempts. Please try again in 15 minutes.",
+                    "error_id": "mita_507f1f77bcf8",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "details": {
+                      "limit": 5,
+                      "window": "15 minutes",
+                      "reset_at": "2024-01-15T10:45:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal Server Error - Something went wrong on the server",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/StandardizedErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": {
+                "code": "SYSTEM_INTERNAL_ERROR",
+                "message": "An unexpected error occurred. Please try again later.",
+                "error_id": "mita_507f1f77bcf8",
+                "timestamp": "2024-01-15T10:30:00Z"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "API health and status endpoints"
+    },
+    {
+      "name": "Authentication", 
+      "description": "User authentication and authorization endpoints with enterprise-grade security features including JWT tokens, rate limiting, and comprehensive audit logging."
+    },
+    {
+      "name": "User Management",
+      "description": "User profile and account management endpoints with secure data handling and privacy controls."
+    },
+    {
+      "name": "Transactions",
+      "description": "Financial transaction management with comprehensive validation, categorization, and budget impact analysis."
+    },
+    {
+      "name": "Financial Analysis",
+      "description": "Advanced financial analysis tools including installment evaluation, affordability assessment, and risk analysis."
+    },
+    {
+      "name": "Budget Management", 
+      "description": "Budget tracking, spending analysis, and financial planning tools with real-time calculations and AI insights."
+    },
+    {
+      "name": "AI Features",
+      "description": "AI-powered financial insights, recommendations, and predictive analytics for enhanced financial management."
+    },
+    {
+      "name": "OCR Processing",
+      "description": "OCR (Optical Character Recognition) endpoints for receipt processing and transaction extraction using AI-powered image analysis."
+    },
+    {
+      "name": "Task Management",
+      "description": "Async task management endpoints for tracking long-running operations like OCR processing, data exports, and batch operations."
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Core API",
+      "tags": ["Health", "Authentication", "User Management"]
+    },
+    {
+      "name": "Financial Management",
+      "tags": ["Transactions", "Budget Management", "Financial Analysis"]
+    },
+    {
+      "name": "Advanced Features", 
+      "tags": ["AI Features", "OCR Processing", "Task Management"]
+    }
+  ]
+}

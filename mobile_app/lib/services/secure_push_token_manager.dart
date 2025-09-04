@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_service.dart';
 import 'secure_device_service.dart';
 import 'logging_service.dart';
+import 'app_version_service.dart';
 
 /// Secure push token manager for MITA financial app
 ///
@@ -205,7 +206,7 @@ class SecurePushTokenManager {
         'push_token': token,
         'device_id': deviceId,
         'platform': Platform.isIOS ? 'ios' : 'android',
-        'app_version': '1.0.0', // TODO: Get from package_info_plus
+        'app_version': AppVersionService.instance.appVersion,
         'registration_timestamp': DateTime.now().toIso8601String(),
         'device_created_at': deviceMetadata['device_created_at'],
         'registration_attempt': _registrationAttempts + 1,

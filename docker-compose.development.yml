@@ -1,0 +1,143 @@
+version: "3.9"
+
+# MITA Finance - Development Environment Docker Compose
+# Purpose: Local development with safe defaults and easy debugging
+
+services:
+  # PostgreSQL for development
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: mita_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+      - ./scripts/dev-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mita_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for development
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Development backend with hot reload
+  backend:
+    build:
+      context: .
+      target: development
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    environment:
+      PYTHONPATH: "/app"
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://postgres:dev_password@db:5432/mita_dev
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debugger port
+    volumes:
+      - .:/app
+      - dev_app_logs:/app/logs
+    command:
+      - ./wait-for-it.sh
+      - db:5432
+      - -t
+      - "60"
+      - --
+      - python
+      - -m
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --log-level
+      - debug
+    networks:
+      - mita-dev-network
+
+  # Development worker
+  worker:
+    build:
+      context: .
+      target: development
+    command: python -m app.worker
+    env_file:
+      - .env.development
+    environment:
+      PYTHONPATH: "/app"
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://postgres:dev_password@db:5432/mita_dev
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - dev_app_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - mita-dev-network
+
+  # MailHog for email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - mita-dev-network
+
+  # Redis Commander for Redis debugging
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - mita-dev-network
+
+volumes:
+  dev_postgres_data:
+    driver: local
+  dev_redis_data:
+    driver: local
+  dev_app_logs:
+    driver: local
+
+networks:
+  mita-dev-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

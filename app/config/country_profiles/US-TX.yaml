@@ -1,0 +1,159 @@
+# Texas Economic Profile  
+# Enhanced with comprehensive regional economic data for dynamic thresholds
+
+currency: USD
+region_code: US-TX
+region_name: Texas
+cost_of_living_adjustment: 0.92  # 8% lower than national average  
+median_household_income: 67000   # 2024 TX median
+poverty_level: 15060            # Federal poverty guideline 2024
+
+# Economically justified 5-tier thresholds (annual income)
+# Adjusted for TX cost of living advantage
+class_thresholds:
+  low: 33480             # ~50% of TX median household income
+  lower_middle: 53440    # ~80% of TX median household income
+  middle: 80160          # ~120% of TX median household income  
+  upper_middle: 133600   # ~199% of TX median household income
+  # high: above upper_middle threshold
+
+# Comprehensive regional economic factors
+economic_factors:
+  housing_cost_ratio: 0.28        # TX average housing cost % of income
+  tax_burden: 0.08                # No state income tax advantage
+  inflation_adjustment: 1.04      # Moderate inflation
+  unemployment_rate: 0.038        # TX unemployment rate
+  job_growth_rate: 0.022          # Strong job growth
+  cost_of_living_index: 0.92      # Below US average
+  housing_market_factor: 0.88     # More affordable housing
+  transportation_cost_factor: 1.05 # Car-dependent culture
+  healthcare_cost_factor: 0.95    # Moderate healthcare costs
+  energy_cost_factor: 0.85        # Lower energy costs
+
+# Regional spending pattern modifiers
+regional_spending_patterns:
+  dining_out_frequency_multiplier: 1.2   # Texan dining culture
+  transportation_car_dependency: 0.90    # High car ownership/usage
+  housing_ownership_rate: 0.63          # Higher homeownership
+  energy_consumption_factor: 1.15       # Higher AC usage
+
+mandatory_categories: [housing, utilities, healthcare, debts, insurance, transportation]
+
+seasonal_factors:
+  winter:
+    utilities: 0.8       # Mild winter heating needs  
+    clothing: 0.95       # Less winter clothing needed
+    transport: 1.0       # Stable transport costs
+  summer:
+    utilities: 1.4       # High AC costs in TX heat
+    travel: 1.25         # Summer vacation season
+    entertainment: 1.1   # Outdoor activities
+
+# Tier-specific budget allocations optimized for TX economics  
+classes:
+  low:
+    housing: 0.35          # Lower due to affordable housing
+    food: 0.16             # Higher food allocation possible
+    transport: 0.18        # Car-dependent, but affordable
+    utilities: 0.12        # Higher due to AC costs
+    healthcare: 0.07
+    savings: 0.05          # Achievable due to lower costs
+    entertainment: 0.04
+    miscellaneous: 0.03
+    
+  lower_middle:
+    housing: 0.32          # Good housing value
+    food: 0.14
+    transport: 0.17        # Car ownership + maintenance
+    utilities: 0.10        # AC costs factor
+    healthcare: 0.06
+    savings: 0.09          # Better savings capacity
+    entertainment: 0.06
+    miscellaneous: 0.06
+    
+  middle:
+    housing: 0.28          # TX middle class advantage
+    food: 0.13
+    transport: 0.16        # Multiple vehicles possible
+    utilities: 0.09
+    healthcare: 0.06
+    savings: 0.14          # Strong savings potential
+    entertainment: 0.08
+    miscellaneous: 0.06
+    
+  upper_middle:
+    housing: 0.25          # Premium housing still affordable
+    food: 0.11
+    transport: 0.14        # Premium vehicles
+    utilities: 0.07
+    healthcare: 0.05
+    savings: 0.18          # Excellent savings capacity
+    entertainment: 0.10
+    investments: 0.10      # Investment opportunities
+    
+  high:
+    housing: 0.22          # Luxury housing very affordable
+    food: 0.09
+    transport: 0.12        # Luxury vehicles
+    utilities: 0.06
+    healthcare: 0.04
+    savings: 0.15          # Base savings
+    entertainment: 0.12
+    investments: 0.18      # Major investment focus
+    luxury: 0.02
+
+# TX-specific behavioral economics patterns  
+behavioral_patterns:
+  low:
+    decision_time: immediate
+    mental_accounting: [housing, transport, everything_else]
+    nudge_frequency: daily
+    primary_motivators: [security, family_first]
+    spending_volatility: moderate
+    
+  lower_middle:
+    decision_time: hours_to_days
+    mental_accounting: [fixed_costs, car_costs, family, discretionary]  
+    nudge_frequency: weekly
+    primary_motivators: [family_progress, stability]
+    spending_volatility: moderate
+    
+  middle:
+    decision_time: days_to_weeks
+    mental_accounting: [housing, vehicles, family, savings, lifestyle]
+    nudge_frequency: bi_weekly  
+    primary_motivators: [family_optimization, growth]
+    spending_volatility: low_moderate
+    
+  upper_middle:
+    decision_time: weeks_to_months
+    mental_accounting: [real_estate, business, family, investments, taxes]
+    nudge_frequency: monthly
+    primary_motivators: [wealth_building, legacy]
+    spending_volatility: low
+    
+  high:
+    decision_time: months_to_years
+    mental_accounting: [business_portfolio, family_legacy, investments]
+    nudge_frequency: quarterly  
+    primary_motivators: [legacy_building, impact]
+    spending_volatility: very_low
+
+# Dynamic threshold modifiers for TX context
+dynamic_modifiers:
+  small_purchase_threshold_multiplier: 0.9     # Lower cost basis
+  category_concentration_tolerance: 1.1        # More tolerance for concentration
+  variance_threshold_adjustment: 0.9           # Lower variance expected  
+  impulse_buying_cost_adjustment: 0.95         # Lower cost basis
+  emergency_fund_months_bonus: 0               # No bonus needed
+  
+# Regional financial opportunity factors
+opportunity_factors:
+  housing_appreciation_potential: 1.05         # Good real estate growth
+  business_startup_friendliness: 1.2          # Business-friendly environment
+  tax_optimization_opportunities: 1.15         # No state income tax
+  energy_cost_advantage: 0.85                 # Lower energy costs
+  
+default_behavior: growth_oriented
+data_source: "US Census Bureau 2024, TX Workforce Commission"  
+last_updated: "2024-12-01"

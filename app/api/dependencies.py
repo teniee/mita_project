@@ -14,7 +14,8 @@ from app.services.auth_jwt_service import (
     TokenScope,
     UserRole
 )
-from app.core.audit_logging import log_security_event
+# RESTORED: Re-enable audit logging with optimized performance (no database deadlocks)
+from app.core.audit_logging import log_security_event, log_security_event_async
 from app.core.performance_cache import user_cache, cache_user_data
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ async def get_current_user(
             )
         
         # Verify and decode token with comprehensive validation
-        payload = verify_token(token, token_type="access_token")
+        payload = await verify_token(token, token_type="access_token")
         if not payload:
             logger.warning("Token verification failed")
             log_security_event("authentication_failure", {
@@ -282,7 +283,7 @@ async def get_refresh_token_user(
             )
         
         # Verify and decode refresh token
-        payload = verify_token(token, token_type="refresh_token")
+        payload = await verify_token(token, token_type="refresh_token")
         if not payload:
             logger.warning("Refresh token verification failed")
             raise HTTPException(

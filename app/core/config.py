@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Password Security Configuration
+    BCRYPT_ROUNDS_PRODUCTION: int = 12  # Industry standard for financial apps
+    BCRYPT_ROUNDS_DEVELOPMENT: int = 10  # Balanced for development
+    BCRYPT_PERFORMANCE_TARGET_MS: int = 500  # Maximum acceptable hash time
+    
     @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
     @classmethod
     def validate_secrets(cls, v, info):
@@ -148,7 +153,8 @@ def get_settings():
 try:
     settings = Settings()
 except Exception as e:
-    print(f"Warning: Could not load settings: {e}")
+    import logging
+    logging.warning(f"Could not load settings: {e}")
     # Create a minimal settings object for development
     class MinimalSettings:
         DATABASE_URL = ""

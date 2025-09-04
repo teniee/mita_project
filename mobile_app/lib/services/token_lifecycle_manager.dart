@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'secure_token_storage.dart';
 import 'logging_service.dart';
+import 'message_service.dart';
+import 'api_service.dart';
 
 /// Token lifecycle management service for MITA
 /// 
@@ -151,8 +153,11 @@ class TokenLifecycleManager {
       // Reset counters
       _failedOperations = 0;
       
-      // TODO: Notify user about security event
-      // This could be done through a notification service or callback
+      // Notify user about security event through system notification
+      await _notifyUserSecurityEvent(
+        'Security Alert',
+        'Suspicious activity detected. Your account has been secured.',
+      );
       
     } catch (e) {
       logError('Failed to handle security breach: $e', 
@@ -174,8 +179,13 @@ class TokenLifecycleManager {
       
       if (shouldRotate) {
         logInfo('Token rotation is recommended', tag: 'TOKEN_LIFECYCLE');
-        // TODO: Trigger token rotation process through API service
-        // This would typically be handled by the ApiService refresh mechanism
+        // Trigger token rotation through API service
+        final rotationResult = await _triggerTokenRotation();
+        if (rotationResult) {
+          logInfo('Token rotation completed successfully', tag: 'TOKEN_LIFECYCLE');
+        } else {
+          logWarning('Token rotation failed or was skipped', tag: 'TOKEN_LIFECYCLE');
+        }
       }
       
       return shouldRotate;
@@ -321,6 +331,65 @@ class TokenLifecycleManager {
     stopMonitoring();
     _secureStorage = null;
     logDebug('Token lifecycle manager disposed', tag: 'TOKEN_LIFECYCLE');
+  }
+
+  /// Notify user about security events through local notifications
+  Future<void> _notifyUserSecurityEvent(String title, String body) async {
+    try {
+      // Use the message service for consistent messaging
+      final MessageService messageService = MessageService();
+      
+      // Show in-app notification
+      messageService.showMessage(
+        title,
+        body,
+        MessageType.warning,
+        duration: const Duration(seconds: 5),
+      );
+      
+      // Also log for security audit
+      logInfo('Security notification sent to user: $title', tag: 'TOKEN_LIFECYCLE');
+      
+    } catch (e) {
+      logError('Failed to send security notification: $e', tag: 'TOKEN_LIFECYCLE');
+    }
+  }
+
+  /// Trigger token rotation through API service
+  Future<bool> _triggerTokenRotation() async {
+    try {
+      logInfo('Starting token rotation process', tag: 'TOKEN_LIFECYCLE');
+      
+      if (_secureStorage == null) {
+        logWarning('Cannot rotate tokens - secure storage not initialized', 
+          tag: 'TOKEN_LIFECYCLE');
+        return false;
+      }
+
+      // Get current refresh token
+      final refreshToken = await _secureStorage!.getRefreshToken();
+      if (refreshToken == null) {
+        logWarning('No refresh token available for rotation', tag: 'TOKEN_LIFECYCLE');
+        return false;
+      }
+
+      // Use ApiService to refresh tokens (this also rotates them)
+      final ApiService apiService = ApiService();
+      final newTokens = await apiService.refreshAccessToken();
+      
+      if (newTokens != null) {
+        logInfo('Token rotation successful', tag: 'TOKEN_LIFECYCLE');
+        _lastRotationCheck = DateTime.now();
+        return true;
+      } else {
+        logWarning('Token rotation returned null response', tag: 'TOKEN_LIFECYCLE');
+        return false;
+      }
+      
+    } catch (e) {
+      logError('Token rotation failed: $e', tag: 'TOKEN_LIFECYCLE', error: e);
+      return false;
+    }
   }
 }
 

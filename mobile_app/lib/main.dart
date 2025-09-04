@@ -21,6 +21,7 @@ import 'services/loading_service.dart';
 import 'services/message_service.dart';
 import 'services/logging_service.dart';
 import 'services/localization_service.dart';
+import 'services/app_version_service.dart';
 import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
@@ -72,6 +73,9 @@ void main() async {
   
   // Initialize comprehensive error handling
   await AppErrorHandler.initialize();
+  
+  // Initialize app version service
+  await AppVersionService.instance.initialize();
   
   await _initFirebase();
 

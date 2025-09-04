@@ -1,0 +1,149 @@
+# MITA Finance - Clean Multi-Environment Dockerfile
+# Separates build stages for development, staging, and production
+
+# Base image with Python 3.11
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user for security
+RUN groupadd -r app && useradd -r -g app app
+
+# Create app directory
+WORKDIR /app
+
+# Copy requirements first for better Docker layer caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY --chown=app:app . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/tmp && chown -R app:app /app
+
+# Install wait-for-it script
+RUN chmod +x /app/wait-for-it.sh
+
+# ==============================================================================
+# DEVELOPMENT STAGE - Hot reload, debugging, extended timeouts
+# ==============================================================================
+FROM base as development
+
+# Development-specific dependencies
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-asyncio \
+    pytest-cov \
+    black \
+    isort \
+    mypy \
+    pre-commit \
+    debugpy
+
+# Set development environment
+ENV ENVIRONMENT=development \
+    DEBUG=true \
+    LOG_LEVEL=DEBUG \
+    PYTHONPATH=/app
+
+# Expose ports (main app + debugger)
+EXPOSE 8000 5678
+
+# Don't switch to app user in development (for file editing)
+USER root
+
+# Default command for development (with hot reload)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+
+# ==============================================================================
+# STAGING STAGE - Production-like but with staging configurations
+# ==============================================================================
+FROM base as staging
+
+# Set staging environment
+ENV ENVIRONMENT=staging \
+    DEBUG=false \
+    LOG_LEVEL=INFO \
+    PYTHONPATH=/app
+
+# Security hardening for staging
+USER app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Default command for staging
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+
+# ==============================================================================
+# PRODUCTION STAGE - Maximum security and performance
+# ==============================================================================
+FROM base as production
+
+# Production-only optimizations
+RUN pip install --no-cache-dir uvloop
+
+# Set production environment
+ENV ENVIRONMENT=production \
+    DEBUG=false \
+    LOG_LEVEL=INFO \
+    PYTHONPATH=/app
+
+# Security hardening for production
+USER app
+
+# Health check with shorter intervals for production
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Default command for production with optimizations
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop"]
+
+# ==============================================================================
+# WORKER STAGE - Background task processing
+# ==============================================================================
+FROM base as worker
+
+# Set worker environment
+ENV PYTHONPATH=/app
+
+# Security hardening
+USER app
+
+# Default command for worker
+CMD ["python", "-m", "app.worker"]
+
+# ==============================================================================
+# SCHEDULER STAGE - Task scheduling
+# ==============================================================================
+FROM base as scheduler
+
+# Set scheduler environment
+ENV PYTHONPATH=/app
+
+# Security hardening
+USER app
+
+# Default command for scheduler
+CMD ["python", "scripts/rq_scheduler.py"]

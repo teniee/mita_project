@@ -1,0 +1,118 @@
+currency: USD
+region_code: US-CA
+region_name: California
+cost_of_living_adjustment: 1.25  # 25% higher than national average
+median_household_income: 84000   # 2024 CA median
+poverty_level: 15060            # Federal poverty guideline 2024
+
+# Economically justified 5-tier thresholds (annual income)
+# Based on CA cost of living and behavioral economics research
+class_thresholds:
+  low: 44935            # ~65% of CA median household income
+  lower_middle: 71896   # ~85% of CA median household income  
+  middle: 107844        # ~128% of CA median household income
+  upper_middle: 179740  # ~214% of CA median household income
+  # high: above upper_middle threshold
+
+# Regional economic factors
+economic_factors:
+  housing_cost_ratio: 0.42      # CA average housing cost % of income
+  tax_burden: 0.13              # State + federal effective rate
+  inflation_adjustment: 1.08    # Annual inflation factor
+
+mandatory_categories: [housing, utilities, healthcare, debts, insurance, taxes]
+
+seasonal_factors:
+  winter:
+    utilities: 1.1
+    clothing: 1.15
+  summer:
+    travel: 1.2
+    utilities: 0.95
+
+# Behaviorally optimized budget allocation by income tier
+classes:
+  low:
+    housing: 0.42          # Higher due to CA housing costs
+    food: 0.16             # Essential spending focus
+    transport: 0.14
+    utilities: 0.08
+    healthcare: 0.06
+    savings: 0.05          # Conservative but achievable
+    entertainment: 0.04
+    miscellaneous: 0.05
+    
+  lower_middle:
+    housing: 0.38          # Slightly lower percentage
+    food: 0.14
+    transport: 0.15
+    utilities: 0.07
+    healthcare: 0.05
+    savings: 0.09          # Building emergency fund
+    entertainment: 0.06
+    miscellaneous: 0.06
+    
+  middle:
+    housing: 0.35          # CA middle class target
+    food: 0.12
+    transport: 0.14
+    utilities: 0.06
+    healthcare: 0.05
+    savings: 0.13          # Accelerated savings
+    entertainment: 0.08
+    miscellaneous: 0.07
+    
+  upper_middle:
+    housing: 0.32          # Lower percentage, higher absolute
+    food: 0.10
+    transport: 0.12
+    utilities: 0.05
+    healthcare: 0.04
+    savings: 0.18          # Significant wealth building
+    entertainment: 0.10
+    investments: 0.09      # Investment allocation
+    
+  high:
+    housing: 0.28          # Luxury but efficient
+    food: 0.08
+    transport: 0.10
+    utilities: 0.04
+    healthcare: 0.04
+    savings: 0.15          # Base savings
+    entertainment: 0.12
+    investments: 0.15      # Major investment focus
+    luxury: 0.04
+
+# Behavioral economics nudges by tier
+behavioral_patterns:
+  low:
+    decision_time: immediate
+    mental_accounting: [essential, non_essential]
+    nudge_frequency: daily
+    primary_motivators: [security, progress]
+    
+  lower_middle:
+    decision_time: hours_to_days
+    mental_accounting: [needs, wants, emergency, goals]
+    nudge_frequency: weekly
+    primary_motivators: [progress, peer_comparison]
+    
+  middle:
+    decision_time: days_to_weeks
+    mental_accounting: [fixed, variable, emergency, short_term, long_term]
+    nudge_frequency: monthly
+    primary_motivators: [optimization, status]
+    
+  upper_middle:
+    decision_time: weeks_to_months
+    mental_accounting: [fixed, variable, emergency, short_term, long_term, tax_advantaged]
+    nudge_frequency: quarterly
+    primary_motivators: [efficiency, legacy]
+    
+  high:
+    decision_time: months_to_years
+    mental_accounting: [multiple_complex_buckets]
+    nudge_frequency: quarterly
+    primary_motivators: [impact, legacy, complexity_management]
+
+default_behavior: balanced

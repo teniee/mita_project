@@ -25,10 +25,14 @@ def initialize_database():
         return  # Already initialized
     
     if not settings.DATABASE_URL:
-        print("❌ DATABASE_URL is required but not set")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("DATABASE_URL is required but not set")
         raise ValueError("DATABASE_URL is required but not set")
     
-    print(f"🔍 Original DATABASE_URL format: {settings.DATABASE_URL[:50]}...")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Original DATABASE_URL format: {settings.DATABASE_URL[:50]}...")
     
     # FORCE asyncpg driver - direct URL conversion
     database_url = settings.DATABASE_URL
@@ -43,27 +47,27 @@ def initialize_database():
     if "sslmode=" in database_url:
         database_url = database_url.replace("sslmode=", "ssl=")
     
-    print(f"🔍 Converted DATABASE_URL format: {database_url[:50]}...")
+    logger.debug(f"Converted DATABASE_URL format: {database_url[:50]}...")
     
     
     # Create async engine with optimized settings for Render/production performance
     try:
-        print("🔍 Creating database engine...")
+        logger.debug("Creating database engine...")
         # Add URL parameter to ensure statement cache is disabled at connection level
         if "postgresql" in database_url and "statement_cache_size" not in database_url:
             separator = "&" if "?" in database_url else "?"
             database_url = f"{database_url}{separator}statement_cache_size=0"
-            print(f"🔍 Added statement_cache_size=0 to URL: {database_url[:50]}...")
+            logger.debug(f"Added statement_cache_size=0 to URL: {database_url[:50]}...")
         
         async_engine = create_async_engine(
             database_url,
             echo=False,  # Always disable echo for performance
             pool_pre_ping=True,
-            # Optimized connection pooling for Render deployment
-            pool_size=3,            # Smaller pool for Render's memory constraints
-            max_overflow=7,         # Reduced overflow
-            pool_timeout=5,         # Faster timeout for responsive errors
-            pool_recycle=900,       # 15 minutes - faster recycle for Render
+            # OPTIMIZED connection pooling for database performance
+            pool_size=20,           # Increased from 3 to handle concurrent users
+            max_overflow=30,        # Increased from 7 to handle traffic spikes
+            pool_timeout=30,        # Increased from 5 for stability
+            pool_recycle=3600,      # 1 hour - standard recycle time
             # Use StaticPool for SQLite, QueuePool for PostgreSQL (default)
             poolclass=StaticPool if "sqlite" in database_url else None,
             connect_args={
@@ -79,9 +83,9 @@ def initialize_database():
                 "isolation_level": "READ_COMMITTED"  # Faster isolation level
             }
         )
-        print("✅ Database engine created successfully")
+        logger.info("Database engine created successfully")
     except Exception as e:
-        print(f"❌ Failed to create database engine: {type(e).__name__}: {str(e)}")
+        logger.error(f"Failed to create database engine: {type(e).__name__}: {str(e)}")
         raise
     
     # Create async session factory with optimized settings
@@ -185,15 +189,15 @@ async def init_database():
     Call this during application startup
     """
     try:
-        print("🔍 Starting database table initialization...")
+        logger.info("Starting database table initialization...")
         # Initialize the database connection first
         initialize_database()
         
         if async_engine is None:
-            print("❌ Database engine not initialized")
+            logger.error("Database engine not initialized")
             raise RuntimeError("Database engine not initialized")
         
-        print("🔍 Creating database tables...")
+        logger.debug("Creating database tables...")
         async with async_engine.begin() as conn:
             # Import all models to ensure they are registered
             from app.db.models import (
@@ -201,12 +205,12 @@ async def init_database():
                 DailyPlan, Subscription, PushToken, NotificationLog,
                 UserAnswer, UserProfile, AIAnalysisSnapshot, BudgetAdvice, AIAdviceTemplate
             )  # noqa
-            print("🔍 Models imported, creating tables...")
+            logger.debug("Models imported, creating tables...")
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)
-            print("✅ Database tables created successfully")
+            logger.info("Database tables created successfully")
     except Exception as e:
-        print(f"❌ Database initialization failed: {type(e).__name__}: {str(e)}")
+        logger.error(f"Database initialization failed: {type(e).__name__}: {str(e)}")
         raise
 
 
@@ -232,12 +236,12 @@ async def check_database_health() -> bool:
         initialize_database()
         
         if AsyncSessionLocal is None:
-            print("❌ AsyncSessionLocal is None - database not initialized")
+            logger.error("AsyncSessionLocal is None - database not initialized")
             return False
             
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
             return True
     except Exception as e:
-        print(f"❌ Database health check failed: {type(e).__name__}: {str(e)}")
+        logger.error(f"Database health check failed: {type(e).__name__}: {str(e)}")
         return False

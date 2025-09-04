@@ -1,13 +1,25 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut
 from app.ocr.ocr_receipt_service import OCRReceiptService
+
+# Import standardized error handling system
+from app.core.standardized_error_handler import (
+    ValidationError,
+    BusinessLogicError,
+    ResourceNotFoundError,
+    ErrorCode,
+    validate_amount,
+    validate_required_fields
+)
+from app.core.error_decorators import handle_financial_errors, ErrorHandlingMixin
+from app.utils.response_wrapper import StandardizedResponse, FinancialResponseHelper
 
 # isort: off
 from app.api.transactions.services import (
@@ -26,18 +38,102 @@ file_upload = File(...)  # noqa: B008
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
+# Error handling mixin for transaction routes
+class TransactionErrorHandler(ErrorHandlingMixin):
+    pass
 
-@router.post("/", response_model=TxnOut)
-async def create_transaction(
+transaction_error_handler = TransactionErrorHandler()
+
+
+@router.post("/", response_model=TxnOut, summary="Create new transaction")
+@handle_financial_errors
+async def create_transaction_standardized(
+    request: Request,
     txn: TxnIn,
     user=current_user_dep,
     db: Session = db_dep,
 ):
-    return success_response(add_transaction(user, txn, db))
+    """
+    Create a new financial transaction with comprehensive validation and error handling.
+    
+    Features:
+    - Amount validation with proper limits
+    - Category validation
+    - Date validation
+    - Budget impact assessment
+    - Standardized error responses
+    """
+    
+    # Validate transaction data
+    txn_dict = txn.dict()
+    validate_required_fields(txn_dict, ["amount", "category", "description"])
+    
+    # Validate amount
+    if txn.amount <= 0:
+        raise ValidationError(
+            "Transaction amount must be positive",
+            ErrorCode.VALIDATION_AMOUNT_INVALID,
+            details={"provided_amount": txn.amount}
+        )
+    
+    validated_amount = validate_amount(
+        txn.amount,
+        min_amount=0.01,
+        max_amount=100000.0
+    )
+    
+    # Validate category
+    valid_categories = [
+        'food', 'dining', 'groceries', 'transportation', 'gas', 'public_transport',
+        'entertainment', 'shopping', 'clothing', 'healthcare', 'insurance',
+        'utilities', 'rent', 'mortgage', 'education', 'childcare', 'pets',
+        'travel', 'subscriptions', 'gifts', 'charity', 'other'
+    ]
+    
+    if txn.category not in valid_categories:
+        raise ValidationError(
+            f"Invalid category. Must be one of: {', '.join(valid_categories)}",
+            ErrorCode.VALIDATION_CATEGORY_INVALID,
+            details={"provided_category": txn.category, "valid_categories": valid_categories}
+        )
+    
+    try:
+        # Create transaction using existing service
+        result = add_transaction(user, txn, db)
+        
+        if not result:
+            raise BusinessLogicError(
+                "Failed to create transaction",
+                ErrorCode.BUSINESS_INVALID_OPERATION
+            )
+        
+        # Calculate budget impact (if budget tracking is available)
+        budget_impact = {
+            "category": txn.category,
+            "amount": validated_amount,
+            "remaining_budget": None,  # Calculate from user's budget if available
+            "budget_exceeded": False
+        }
+        
+        return FinancialResponseHelper.transaction_created(
+            transaction_data=result,
+            balance_impact=budget_impact
+        )
+        
+    except Exception as e:
+        if isinstance(e, (ValidationError, BusinessLogicError)):
+            raise
+        else:
+            raise BusinessLogicError(
+                f"Transaction creation failed: {str(e)}",
+                ErrorCode.BUSINESS_INVALID_OPERATION
+            )
 
 
-@router.get("/", response_model=List[TxnOut])
-async def get_transactions(
+@router.get("/", response_model=List[TxnOut], summary="List user transactions")
+@handle_financial_errors
+async def get_transactions_standardized(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     start_date: Optional[datetime] = None,
@@ -46,8 +142,68 @@ async def get_transactions(
     user=current_user_dep,
     db: Session = db_dep,
 ):
-    return success_response(
-        list_user_transactions(
+    """
+    Retrieve user transactions with filtering and pagination support.
+    
+    Features:
+    - Pagination validation
+    - Date range validation
+    - Category filtering
+    - Standardized error responses
+    """
+    
+    # Validate pagination parameters
+    if skip < 0:
+        raise ValidationError(
+            "Skip parameter must be non-negative",
+            ErrorCode.VALIDATION_OUT_OF_RANGE,
+            details={"provided_skip": skip, "minimum": 0}
+        )
+    
+    if limit <= 0 or limit > 1000:
+        raise ValidationError(
+            "Limit parameter must be between 1 and 1000",
+            ErrorCode.VALIDATION_OUT_OF_RANGE,
+            details={"provided_limit": limit, "minimum": 1, "maximum": 1000}
+        )
+    
+    # Validate date range
+    if start_date and end_date:
+        if start_date > end_date:
+            raise ValidationError(
+                "Start date must be before or equal to end date",
+                ErrorCode.VALIDATION_DATE_INVALID,
+                details={"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+            )
+        
+        # Check for reasonable date range (not more than 2 years)
+        date_diff = (end_date - start_date).days
+        if date_diff > 730:  # 2 years
+            raise ValidationError(
+                "Date range cannot exceed 2 years",
+                ErrorCode.VALIDATION_OUT_OF_RANGE,
+                details={"date_range_days": date_diff, "maximum_days": 730}
+            )
+    
+    # Validate category if provided
+    if category:
+        valid_categories = [
+            'food', 'dining', 'groceries', 'transportation', 'gas', 'public_transport',
+            'entertainment', 'shopping', 'clothing', 'healthcare', 'insurance',
+            'utilities', 'rent', 'mortgage', 'education', 'childcare', 'pets',
+            'travel', 'subscriptions', 'gifts', 'charity', 'other'
+        ]
+        
+        if category not in valid_categories:
+            raise ValidationError(
+                f"Invalid category filter. Must be one of: {', '.join(valid_categories)}",
+                ErrorCode.VALIDATION_CATEGORY_INVALID,
+                details={"provided_category": category, "valid_categories": valid_categories}
+            )
+    
+    try:
+        # Get transactions using existing service
+        transactions = list_user_transactions(
             user,
             db,
             skip=skip,

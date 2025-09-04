@@ -81,7 +81,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   void _onDataUpdated() {
     if (mounted) {
       setState(() {
-        // TODO: Connect to actual behavioral analysis when implemented
+        // FUTURE FEATURE: Behavioral analysis backend integration
+        // This will be connected to behavioral analytics service in a future release
         _behavioralAnalysis = null;
         _userProfile = null;
       });

@@ -134,14 +134,9 @@ class OfflineQueueService {
         
         logInfo('Attempting queued registration for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
         
-        // Try emergency registration first, then fallback to regular
-        try {
-          await ApiService().emergencyRegister(email, password);
-          logInfo('Queued emergency registration successful for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
-        } catch (e) {
-          await ApiService().register(email, password);
-          logInfo('Queued regular registration successful for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
-        }
+        // Use standard FastAPI registration (emergency methods removed)
+        await ApiService().register(email, password);
+        logInfo('Queued FastAPI registration successful for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
       } catch (e) {
         logWarning('Queued registration failed, keeping in queue: $e', tag: 'OFFLINE_QUEUE');
         remaining.add(item);

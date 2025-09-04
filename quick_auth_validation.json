@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-09-02T00:27:45.609718",
+  "success_rate": 60.0,
+  "tests_passed": "3/5",
+  "duration_seconds": 0.497042179107666,
+  "test_results": [
+    {
+      "test": "JWT Functionality",
+      "passed": false
+    },
+    {
+      "test": "Rate Limiting Components",
+      "passed": true
+    },
+    {
+      "test": "Authentication Schemas",
+      "passed": true
+    },
+    {
+      "test": "Database Model",
+      "passed": true
+    },
+    {
+      "test": "Authentication Routes",
+      "passed": false
+    }
+  ],
+  "overall_success": false
+}

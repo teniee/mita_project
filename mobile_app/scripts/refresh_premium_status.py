@@ -545,9 +545,9 @@ class SubscriptionManager:
         await conn.execute("""
             UPDATE user_preferences 
             SET 
-                advanced_ocr_enabled = false,
-                batch_processing_enabled = false,
-                premium_insights_enabled = false
+                advanced_ocr_enabled = true,
+                batch_processing_enabled = true,
+                premium_insights_enabled = true
             WHERE user_id = $1
         """, user_id)
         

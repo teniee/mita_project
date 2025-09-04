@@ -1,34 +1,39 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-CATEGORY_TIME_BIAS: Dict[str, List[float]] = {
-    "entertainment events": [0.1, 0.1, 0.1, 0.2, 0.6, 0.9, 1.0],
-    "dining out": [0.1, 0.1, 0.2, 0.4, 0.8, 1.0, 0.9],
-    "clothing": [0.1, 0.1, 0.1, 0.2, 0.6, 0.9, 0.9],
-    "groceries": [0.8, 0.8, 0.8, 0.7, 0.6, 0.3, 0.3],
-    "transport": [0.7, 0.7, 0.7, 0.7, 0.7, 0.2, 0.2],
-}
-
-CATEGORY_COOLDOWN: Dict[str, int] = {
-    "entertainment events": 3,
-    "dining out": 2,
-    "clothing": 5,
-    "groceries": 1,
-    "transport": 0,
-}
+from app.services.core.dynamic_threshold_service import (
+    get_dynamic_thresholds, ThresholdType, UserContext
+)
 
 
 def get_behavioral_allocation(
-    start_date: str, num_days: int, budget_plan: Dict[str, float]
+    start_date: str, 
+    num_days: int, 
+    budget_plan: Dict[str, float],
+    user_context: Optional[UserContext] = None
 ) -> List[Dict[str, float]]:
-    """Distribute behavioral budget across days using weekday bias and cooldown.
+    """Distribute behavioral budget across days using dynamic weekday bias and cooldown.
 
     :param start_date: Start date in ``YYYY-MM-DD`` format
     :param num_days: Number of days in the period
     :param budget_plan: Category budget, e.g. ``{"groceries": 100.0, "transport": 50.0}``
+    :param user_context: User context for dynamic threshold calculation
     :return: List of dictionaries where each element is a day's budget
     """
+    # Create default user context if none provided
+    if user_context is None:
+        user_context = UserContext(
+            monthly_income=5000,  # Default middle-income
+            age=35,
+            region="US",
+            family_size=1
+        )
+    
+    # Get dynamic thresholds based on user context
+    time_bias_thresholds = get_dynamic_thresholds(ThresholdType.TIME_BIAS, user_context)
+    cooldown_thresholds = get_dynamic_thresholds(ThresholdType.COOLDOWN_PERIOD, user_context)
+    
     base_date = datetime.strptime(start_date, "%Y-%m-%d")
     calendar = [base_date + timedelta(days=i) for i in range(num_days)]
 
@@ -36,13 +41,16 @@ def get_behavioral_allocation(
     result: List[Dict[str, float]] = [defaultdict(float) for _ in range(num_days)]
 
     for category, total in budget_plan.items():
-        cooldown = CATEGORY_COOLDOWN.get(category, 0)
-        bias = CATEGORY_TIME_BIAS.get(category, [1.0] * 7)
+        # Use dynamic cooldown based on user context
+        cooldown = cooldown_thresholds.get(category, cooldown_thresholds.get(category.replace(" ", "_"), 0))
+        
+        # Use dynamic time bias based on user context
+        bias = time_bias_thresholds.get(category, time_bias_thresholds.get(category.replace(" ", "_"), [1.0] * 7))
         slots = []
 
         for i, date in enumerate(calendar):
             weekday = date.weekday()
-            score = bias[weekday]
+            score = bias[weekday] if weekday < len(bias) else 1.0
             recent_days = memory[category]
 
             if recent_days and (i - recent_days[-1]) <= cooldown:
@@ -52,11 +60,13 @@ def get_behavioral_allocation(
                 slots.append((i, score))
 
         slots.sort(key=lambda x: -x[1])
-        max_slots = (
-            4
-            if category in ["entertainment events", "clothing", "dining out"]
-            else len(slots)
-        )
+        
+        # Dynamic slot limitation based on category and user behavior
+        if category in ["entertainment", "entertainment events", "clothing", "dining out", "dining_out"]:
+            max_slots = 4  # Discretionary spending spread across fewer days
+        else:
+            max_slots = len(slots)  # Essential spending can be any day
+            
         selected = sorted([i for i, _ in slots[:max_slots]])
 
         if selected:

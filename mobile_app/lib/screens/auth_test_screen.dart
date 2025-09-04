@@ -66,8 +66,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       // Test 4: Registration endpoint connectivity
       await _testRegistrationEndpoint();
       
-      // Test 5: Emergency registration endpoint
-      await _testEmergencyRegistrationEndpoint();
+      // Test 5: FastAPI registration endpoint
+      await _testFastApiRegistrationEndpoint();
       
       // Test 6: Timeout handling
       await _testTimeoutHandling();
@@ -90,8 +90,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     
     try {
       final dio = Dio();
-      dio.options.connectTimeout = const Duration(seconds: 10);
-      dio.options.receiveTimeout = const Duration(seconds: 10);
+      dio.options.connectTimeout = const Duration(seconds: 8);
+      dio.options.receiveTimeout = const Duration(seconds: 8);
       
       final response = await dio.get<Map<String, dynamic>>('$defaultApiBaseUrl/../health');
       
@@ -192,31 +192,31 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     }
   }
 
-  Future<void> _testEmergencyRegistrationEndpoint() async {
-    setState(() => _currentTest = 'Testing emergency registration endpoint...');
+  Future<void> _testFastApiRegistrationEndpoint() async {
+    setState(() => _currentTest = 'Testing FastAPI registration endpoint...');
     
     try {
-      // Test emergency endpoint with random email
-      final randomEmail = 'emergency${DateTime.now().millisecondsSinceEpoch}@mita.test';
-      await _api.emergencyRegister(randomEmail, _testPassword);
+      // Test FastAPI registration endpoint with random email
+      final randomEmail = 'fastapi${DateTime.now().millisecondsSinceEpoch}@mita.test';
+      await _api.register(randomEmail, _testPassword);
       
-      _addTestResult('Emergency Registration', true, 'Emergency endpoint accessible and working');
+      _addTestResult('FastAPI Registration', true, 'FastAPI registration endpoint accessible and working');
     } catch (e) {
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
         if (statusCode == 409 || statusCode == 422) {
-          _addTestResult('Emergency Registration', true, 'Emergency endpoint accessible (conflict expected)');
+          _addTestResult('FastAPI Registration', true, 'FastAPI registration endpoint accessible (conflict expected)');
         } else if (statusCode == 404) {
-          _addTestResult('Emergency Registration', false, 'Emergency endpoint not found (404)');
+          _addTestResult('FastAPI Registration', false, 'FastAPI registration endpoint not found (404)');
         } else if (statusCode != null) {
-          _addTestResult('Emergency Registration', true, 'Emergency endpoint accessible (status: $statusCode)');
+          _addTestResult('FastAPI Registration', true, 'FastAPI registration endpoint accessible (status: $statusCode)');
         } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
-          _addTestResult('Emergency Registration', false, 'Emergency endpoint timeout: $e');
+          _addTestResult('FastAPI Registration', false, 'FastAPI registration endpoint timeout: $e');
         } else {
-          _addTestResult('Emergency Registration', false, 'Connection failed: $e');
+          _addTestResult('FastAPI Registration', false, 'Connection failed: $e');
         }
       } else {
-        _addTestResult('Emergency Registration', false, 'Unexpected error: $e');
+        _addTestResult('FastAPI Registration', false, 'Unexpected error: $e');
       }
     }
   }

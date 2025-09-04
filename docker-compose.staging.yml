@@ -1,0 +1,205 @@
+version: "3.9"
+
+# MITA Finance - Staging Environment Docker Compose
+# Purpose: Pre-production testing with production-like settings
+
+services:
+  # PostgreSQL with staging configuration
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-mita_staging}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+      - ./scripts/staging-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mita_staging}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Redis with staging configuration
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - staging_redis_data:/data
+      - ./config/redis-staging.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Staging backend
+  backend:
+    build:
+      context: .
+      target: staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging.clean
+    environment:
+      PYTHONPATH: "/app"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mita_staging}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - staging_app_logs:/app/logs
+      - ./secrets:/app/secrets:ro
+    command:
+      - ./wait-for-it.sh
+      - db:5432
+      - -t
+      - "60"
+      - --
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "2"
+      - --access-log
+      - --loop
+      - uvloop
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Staging worker
+  worker:
+    build:
+      context: .
+      target: staging
+    command: python -m app.worker
+    env_file:
+      - .env.staging.clean
+    environment:
+      PYTHONPATH: "/app"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mita_staging}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - staging_app_logs:/app/logs
+      - ./secrets:/app/secrets:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Staging scheduler
+  scheduler:
+    build:
+      context: .
+      target: staging
+    command: python scripts/rq_scheduler.py
+    env_file:
+      - .env.staging.clean
+    environment:
+      PYTHONPATH: "/app"
+      ENVIRONMENT: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mita_staging}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - staging_app_logs:/app/logs
+      - ./secrets:/app/secrets:ro
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Nginx reverse proxy for staging
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx-staging.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl-staging:/etc/nginx/ssl:ro
+      - staging_nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mita-staging-network
+
+  # Monitoring for staging
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-staging.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/staging_alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - staging_prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - mita-staging-network
+
+volumes:
+  staging_postgres_data:
+    driver: local
+  staging_redis_data:
+    driver: local
+  staging_app_logs:
+    driver: local
+  staging_nginx_logs:
+    driver: local
+  staging_prometheus_data:
+    driver: local
+
+networks:
+  mita-staging-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16

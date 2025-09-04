@@ -27,22 +27,22 @@ info:
     - **Low Latency**: <200ms average response time
     - **Scalable**: Auto-scaling infrastructure
     - **Monitoring**: Real-time metrics and alerting
-  version: 2.1.0
+  version: 2.2.0
   contact:
-    name: MITA API Support
-    email: api-support@mita.com
-    url: https://docs.mita.com
+    name: MITA Finance API Support
+    email: api-support@mita.finance
+    url: https://docs.mita.finance
   license:
     name: Proprietary
     url: https://mita.com/license
   termsOfService: https://mita.com/terms
 
 servers:
-  - url: https://api.mita.com/v1
+  - url: https://api.mita.finance
     description: Production Server
-  - url: https://staging-api.mita.com/v1
+  - url: https://staging-api.mita.finance
     description: Staging Server
-  - url: https://dev-api.mita.com/v1
+  - url: http://localhost:8000
     description: Development Server
 
 security:

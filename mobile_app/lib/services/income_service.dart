@@ -24,10 +24,11 @@ class IncomeService {
   final LocationService _locationService = LocationService();
 
   /// Income band thresholds (monthly income) - matches backend 5-level system
-  static const double lowThreshold = 3000.0;
-  static const double lowerMiddleThreshold = 4500.0;
-  static const double middleThreshold = 7000.0;
-  static const double upperMiddleThreshold = 12000.0;
+  /// UPDATED: Economically justified thresholds based on US Census data
+  static const double lowThreshold = 3000.0;        // $36K annually
+  static const double lowerMiddleThreshold = 4800.0; // $57.6K annually  
+  static const double middleThreshold = 7200.0;      // $86.4K annually
+  static const double upperMiddleThreshold = 12000.0; // $144K annually
 
   /// Classify income into 5 tiers (legacy method - uses default US thresholds)
   IncomeTier classifyIncome(double monthlyIncome) {
@@ -137,17 +138,17 @@ class IncomeService {
     }
   }
 
-  /// Get income range string for display (legacy method - uses default US thresholds)
+  /// Get income range string for display (updated with economically accurate thresholds)
   String getIncomeRangeString(IncomeTier tier) {
     switch (tier) {
       case IncomeTier.low:
         return 'Under \$3,000/month';
       case IncomeTier.lowerMiddle:
-        return '\$3,000 - \$4,500/month';
+        return '\$3,000 - \$4,800/month';
       case IncomeTier.middle:
-        return '\$4,500 - \$7,000/month';
+        return '\$4,800 - \$7,200/month';
       case IncomeTier.upperMiddle:
-        return '\$7,000 - \$12,000/month';
+        return '\$7,200 - \$12,000/month';
       case IncomeTier.high:
         return 'Over \$12,000/month';
     }
@@ -809,10 +810,10 @@ class IncomeService {
         const nextThreshold = 3000 * 12; // $36K annual
         return (nextThreshold - annualIncome) / nextThreshold < 0.05; // Within 5%
       case IncomeTier.lowerMiddle:
-        const nextThreshold = 4500 * 12; // $54K annual
+        const nextThreshold = 4800 * 12; // $57.6K annual (CORRECTED)
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
       case IncomeTier.middle:
-        const nextThreshold = 7000 * 12; // $84K annual
+        const nextThreshold = 7200 * 12; // $86.4K annual (CORRECTED)
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
       case IncomeTier.upperMiddle:
         const nextThreshold = 12000 * 12; // $144K annual
@@ -835,10 +836,10 @@ class IncomeService {
         nextThreshold = 3000;
         break;
       case IncomeTier.lowerMiddle:
-        nextThreshold = 4500;
+        nextThreshold = 4800; // CORRECTED
         break;
       case IncomeTier.middle:
-        nextThreshold = 7000;
+        nextThreshold = 7200; // CORRECTED
         break;
       case IncomeTier.upperMiddle:
         nextThreshold = 12000;

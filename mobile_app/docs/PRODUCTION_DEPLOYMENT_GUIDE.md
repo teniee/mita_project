@@ -361,7 +361,7 @@ flutter build appbundle \
   --release \
   --dart-define=API_BASE_URL=https://api.mita.com \
   --dart-define=ENVIRONMENT=production \
-  --dart-define=ENABLE_LOGGING=false \
+  --dart-define=ENABLE_LOGGING=true \
   --dart-define=ENABLE_DEBUG_FEATURES=false \
   --dart-define=FIREBASE_PROJECT_ID=mita-production \
   --dart-define=SENTRY_DSN=https://your-sentry-dsn \
@@ -372,7 +372,7 @@ flutter build ipa \
   --release \
   --dart-define=API_BASE_URL=https://api.mita.com \
   --dart-define=ENVIRONMENT=production \
-  --dart-define=ENABLE_LOGGING=false \
+  --dart-define=ENABLE_LOGGING=true \
   --dart-define=FIREBASE_PROJECT_ID=mita-production \
   --export-options-plist=ios/ExportOptions.plist
 ```

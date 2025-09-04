@@ -9,11 +9,11 @@ class TimeoutManagerService {
   factory TimeoutManagerService() => _instance;
   TimeoutManagerService._internal();
 
-  // Timeout configurations
-  static const Duration _shortTimeout = Duration(seconds: 5);
-  static const Duration _mediumTimeout = Duration(seconds: 10);
-  static const Duration _longTimeout = Duration(seconds: 15);
-  static const Duration _maxTimeout = Duration(seconds: 30);
+  // Timeout configurations - optimized for fast backend (<200ms response times)
+  static const Duration _shortTimeout = Duration(seconds: 3);
+  static const Duration _mediumTimeout = Duration(seconds: 8);
+  static const Duration _longTimeout = Duration(seconds: 12);
+  static const Duration _maxTimeout = Duration(seconds: 20);
   
   // Retry configurations
   static const int _maxRetries = 3;
@@ -308,21 +308,21 @@ class TimeoutManagerService {
     );
   }
 
-  /// Get recommended timeout based on operation type
+  /// Get recommended timeout based on operation type - optimized for fast backend
   Duration getRecommendedTimeout(OperationType type) {
     switch (type) {
       case OperationType.authentication:
-        return const Duration(seconds: 30);
+        return const Duration(seconds: 12); // Reduced from 30s
       case OperationType.dataSync:
-        return const Duration(seconds: 15);
+        return const Duration(seconds: 10); // Reduced from 15s
       case OperationType.fileUpload:
-        return const Duration(seconds: 30);
+        return const Duration(seconds: 20); // Reduced from 30s
       case OperationType.backgroundSync:
-        return const Duration(seconds: 5);
+        return const Duration(seconds: 3); // Reduced from 5s
       case OperationType.userAction:
-        return const Duration(seconds: 8);
+        return const Duration(seconds: 6); // Reduced from 8s
       case OperationType.criticalData:
-        return const Duration(seconds: 20);
+        return const Duration(seconds: 15); // Reduced from 20s
       default:
         return _mediumTimeout;
     }

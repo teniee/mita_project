@@ -67,8 +67,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
     
     try {
-      // 🚨 USE RELIABLE REGISTRATION: Only uses emergency endpoint to avoid timeouts
-      logInfo('🚨 ATTEMPTING RELIABLE REGISTRATION using emergency endpoint only', tag: 'REGISTER');
+      // Use reliable FastAPI registration with restored backend
+      logInfo('Attempting FastAPI registration with stable backend', tag: 'REGISTER');
       
       final response = await _api.reliableRegister(
         _emailController.text.trim(),
@@ -76,20 +76,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       
       final accessToken = response.data['access_token'] as String;
-      final refreshToken = response.data['refresh_token'] as String?; // May be null for emergency endpoint
+      final refreshToken = response.data['refresh_token'] as String?;
       
-      // Save tokens (emergency endpoint may not provide refresh token)
+      // Save tokens from FastAPI registration
       await _api.saveTokens(accessToken, refreshToken ?? '');
       
       if (!mounted) return;
       
-      logInfo('🚨 RELIABLE REGISTRATION SUCCESS - proceeding to onboarding', tag: 'REGISTER');
+      logInfo('FastAPI registration SUCCESS - proceeding to onboarding', tag: 'REGISTER');
       
       // For new registration, always go to onboarding
       Navigator.pushReplacementNamed(context, '/onboarding_region');
       
     } catch (e) {
-      logError('🚨 RELIABLE REGISTRATION FAILED', tag: 'REGISTER', error: e);
+      logError('FastAPI registration FAILED', tag: 'REGISTER', error: e);
       
       String errorMessage = 'Registration failed';
       

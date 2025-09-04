@@ -71,7 +71,7 @@ class ResilientGPTService:
         self.fallback_responses = {
             'financial_advice': [
                 "I'm temporarily unavailable, but here's a tip: Review your largest expense categories this month and see if there are opportunities to save.",
-                "While I'm offline, consider the 50/30/20 rule: 50% needs, 30% wants, 20% savings.",
+                "While I'm offline, focus on your personalized budget allocation based on your income level and expenses.",
                 "Quick advice: Track your daily spending for better budget awareness, even when I'm not available.",
             ],
             'budget_analysis': [

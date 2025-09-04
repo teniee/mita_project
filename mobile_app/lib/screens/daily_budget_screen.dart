@@ -6,6 +6,9 @@ import '../services/budget_adapter_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
+import '../core/enhanced_error_handling.dart';
+import '../core/app_error_handler.dart';
+import '../core/error_handling.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({super.key});
@@ -14,7 +17,8 @@ class DailyBudgetScreen extends StatefulWidget {
   State<DailyBudgetScreen> createState() => _DailyBudgetScreenState();
 }
 
-class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
+class _DailyBudgetScreenState extends State<DailyBudgetScreen> 
+    with RobustErrorHandlingMixin {
   final ApiService _apiService = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
   final BudgetAdapterService _budgetService = BudgetAdapterService();
@@ -55,33 +59,53 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   }
 
   void _startLiveUpdates() {
-    // Temporarily disabled live updates to prevent recurring server errors
-    logWarning('Daily budget live updates disabled due to backend server errors', tag: 'DAILY_BUDGET_UPDATES');
+    // Re-enabled live updates for stable backend with fast response times
+    logInfo('Starting daily budget live updates for stable backend', tag: 'DAILY_BUDGET_UPDATES');
     
-    // TODO: Re-enable when backend is stable:
-    // _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-    //   if (mounted) {
-    //     _fetchLiveBudgetStatus();
-    //   }
-    // });
+    _liveUpdateTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      if (mounted) {
+        _fetchLiveBudgetStatus();
+      }
+    });
   }
 
   Future<void> fetchBudgets() async {
-    try {
-      final data = await _apiService.getDailyBudgets();
-      setState(() {
-        _budgets = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading daily budgets: $e');
-      if (!mounted) return;
-      setState(() {
-        // Set data to empty instead of showing error
-        _budgets = [];
-        _isLoading = false;
-      });
-    }
+    await executeRobustly<List<dynamic>>(
+      () async {
+        final data = await _apiService.getDailyBudgets().executeSafely(
+          operationName: 'Fetch Daily Budgets',
+          maxRetries: 2,
+          category: ErrorCategory.network,
+          fallbackValue: [],
+        );
+        
+        if (mounted) {
+          setState(() {
+            _budgets = data ?? [];
+            _isLoading = false;
+          });
+        }
+        
+        logInfo('Daily budgets loaded successfully: ${_budgets.length} items', tag: 'DAILY_BUDGET');
+        return _budgets;
+      },
+      operationName: 'Daily Budget Data Loading',
+      showLoadingState: true,
+      onError: () {
+        if (mounted) {
+          setState(() {
+            _budgets = [];
+            _isLoading = false;
+          });
+          
+          // Show error snackbar with retry option
+          context.showErrorSnack(
+            'Failed to load budget data',
+            onRetry: fetchBudgets,
+          );
+        }
+      },
+    );
   }
 
   Future<void> _fetchLiveBudgetStatus() async {
@@ -150,9 +174,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
   }
 
   Future<void> _triggerBudgetRedistribution() async {
-    setState(() {
-      _isRedistributing = true;
-    });
+    if (_isRedistributing) return;
 
     _accessibilityService.announceToScreenReader(
       'Starting budget redistribution',
@@ -160,73 +182,84 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> {
       isImportant: true,
     );
 
-    try {
-      // Get current calendar data for redistribution
-      final calendarData = await _apiService.getCalendar();
-      
-      // Convert to the format expected by redistribution algorithm
-      Map<String, Map<String, dynamic>> calendarDict = {};
-      for (var day in calendarData) {
-        final dayNum = day['day'].toString();
-        calendarDict[dayNum] = {
-          'total': (day['spent'] ?? 0).toDouble(),
-          'limit': (day['limit'] ?? 0).toDouble(),
-        };
-      }
+    await executeRobustly<void>(
+      () async {
+        setState(() {
+          _isRedistributing = true;
+        });
 
-      // Trigger redistribution
-      await _apiService.redistributeCalendarBudget(calendarDict);
-      
-      // Refresh all data after redistribution
-      await _initializeData();
-      
-      if (mounted) {
-        _accessibilityService.announceToScreenReader(
-          'Budget successfully redistributed. Budget amounts have been updated.',
-          financialContext: 'Budget Management',
-          isImportant: true,
+        // Get current calendar data for redistribution with enhanced error handling
+        final calendarData = await _apiService.getCalendar().executeSafely(
+          operationName: 'Get Calendar Data for Redistribution',
+          maxRetries: 2,
+          category: ErrorCategory.network,
+          fallbackValue: [],
         );
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Semantics(
-              liveRegion: true,
-              label: 'Success: Budget successfully redistributed',
-              child: const Text('Budget successfully redistributed!'),
-            ),
-            duration: const Duration(seconds: 3),
-            backgroundColor: const Color(0xFF84FAA1),
-          ),
-        );
-      }
-    } catch (e) {
-      logError('Error during budget redistribution: $e');
-      if (mounted) {
-        _accessibilityService.announceToScreenReader(
-          'Failed to redistribute budget. Please try again.',
-          financialContext: 'Budget Management Error',
-          isImportant: true,
+        if (calendarData == null || calendarData.isEmpty) {
+          throw ValidationException('No calendar data available for redistribution');
+        }
+        
+        // Convert to the format expected by redistribution algorithm
+        Map<String, Map<String, dynamic>> calendarDict = {};
+        for (var day in calendarData) {
+          final dayNum = day['day'].toString();
+          calendarDict[dayNum] = {
+            'total': (day['spent'] ?? 0).toDouble(),
+            'limit': (day['limit'] ?? 0).toDouble(),
+          };
+        }
+
+        // Trigger redistribution with enhanced error handling
+        await _apiService.redistributeCalendarBudget(calendarDict).executeSafely(
+          operationName: 'Budget Redistribution',
+          maxRetries: 1, // Only retry once for financial operations
+          category: ErrorCategory.system,
         );
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Semantics(
-              liveRegion: true,
-              label: 'Error: Failed to redistribute budget',
-              child: const Text('Failed to redistribute budget. Please try again.'),
-            ),
-            duration: const Duration(seconds: 3),
-            backgroundColor: const Color(0xFFFF5C5C),
-          ),
-        );
-      }
-    } finally {
+        // Refresh all data after redistribution
+        await _initializeData();
+        
+        if (mounted) {
+          _accessibilityService.announceToScreenReader(
+            'Budget successfully redistributed. Budget amounts have been updated.',
+            financialContext: 'Budget Management',
+            isImportant: true,
+          );
+          
+          context.showSuccessSnack(
+            'Budget successfully redistributed!'
+          );
+        }
+      },
+      operationName: 'Budget Redistribution Process',
+      showLoadingState: false, // We handle loading state manually
+      onSuccess: () {
+        logInfo('Budget redistribution completed successfully', tag: 'BUDGET_REDISTRIBUTION');
+      },
+      onError: () {
+        if (mounted) {
+          _accessibilityService.announceToScreenReader(
+            'Failed to redistribute budget. Please try again.',
+            financialContext: 'Budget Management Error',
+            isImportant: true,
+          );
+          
+          showEnhancedErrorDialog(
+            'Budget Redistribution Failed',
+            errorMessage ?? 'Unable to redistribute your budget at this time. This could be due to network issues or temporary server problems.',
+            onRetry: _triggerBudgetRedistribution,
+            canRetry: true,
+          );
+        }
+      },
+    ).whenComplete(() {
       if (mounted) {
         setState(() {
           _isRedistributing = false;
         });
       }
-    }
+    });
   }
 
   Future<void> _triggerAutoBudgetAdaptation() async {

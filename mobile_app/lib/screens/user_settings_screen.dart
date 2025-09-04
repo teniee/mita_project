@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -590,7 +591,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implement password change
+              _changePassword();
             },
             child: const Text('Continue'),
           ),
@@ -654,7 +655,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Open privacy policy URL
+              _openPrivacyPolicy();
             },
             child: const Text('Open'),
           ),
@@ -677,7 +678,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Open terms URL
+              _openTermsOfService();
             },
             child: const Text('Open'),
           ),
@@ -700,7 +701,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implement account deletion
+              _deleteAccount();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
@@ -725,12 +726,348 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await _apiService.logout();
-              // TODO: Navigate to login screen
+              _navigateToLogin();
             },
             child: const Text('Sign Out'),
           ),
         ],
       ),
     );
+  }
+
+  /// Open privacy policy URL in browser
+  Future<void> _openPrivacyPolicy() async {
+    try {
+      final Uri url = Uri.parse('https://mita.app/privacy-policy');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        _showUrlErrorSnackbar('Could not open privacy policy');
+      }
+    } catch (e) {
+      logError('Failed to open privacy policy URL: $e', tag: 'USER_SETTINGS');
+      _showUrlErrorSnackbar('Error opening privacy policy');
+    }
+  }
+
+  /// Open terms of service URL in browser
+  Future<void> _openTermsOfService() async {
+    try {
+      final Uri url = Uri.parse('https://mita.app/terms-of-service');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        _showUrlErrorSnackbar('Could not open terms of service');
+      }
+    } catch (e) {
+      logError('Failed to open terms of service URL: $e', tag: 'USER_SETTINGS');
+      _showUrlErrorSnackbar('Error opening terms of service');
+    }
+  }
+
+  /// Show error message when URL fails to open
+  void _showUrlErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// Implement password change functionality
+  Future<void> _changePassword() async {
+    try {
+      setState(() => _isLoading = true);
+
+      // Navigate to password change screen with proper form validation
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PasswordChangeScreen(),
+        ),
+      );
+
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password changed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      logError('Failed to change password: $e', tag: 'USER_SETTINGS');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error changing password'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Implement account deletion functionality
+  Future<void> _deleteAccount() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final response = await _apiService.deleteAccount();
+      if (response.data['success'] == true) {
+        logInfo('Account deleted successfully', tag: 'USER_SETTINGS');
+        
+        // Clear all local data
+        await _apiService.logout();
+        
+        // Navigate to welcome screen
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/welcome',
+            (route) => false,
+          );
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        throw Exception('Account deletion failed');
+      }
+    } catch (e) {
+      logError('Failed to delete account: $e', tag: 'USER_SETTINGS');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error deleting account. Please contact support.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Navigate to login screen after logout
+  void _navigateToLogin() {
+    try {
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      logError('Failed to navigate to login screen: $e', tag: 'USER_SETTINGS');
+    }
+  }
+}
+
+/// Placeholder for password change screen
+class PasswordChangeScreen extends StatefulWidget {
+  const PasswordChangeScreen({super.key});
+
+  @override
+  State<PasswordChangeScreen> createState() => _PasswordChangeScreenState();
+}
+
+class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  
+  bool _isLoading = false;
+  bool _obscureCurrentPassword = true;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Change Password'),
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 20),
+              const Text(
+                'Enter your current password and choose a new password',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 30),
+              
+              // Current Password Field
+              TextFormField(
+                controller: _currentPasswordController,
+                obscureText: _obscureCurrentPassword,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureCurrentPassword = !_obscureCurrentPassword;
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your current password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              
+              // New Password Field
+              TextFormField(
+                controller: _newPasswordController,
+                obscureText: _obscureNewPassword,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureNewPassword = !_obscureNewPassword;
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a new password';
+                  }
+                  if (value.length < 8) {
+                    return 'Password must be at least 8 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              
+              // Confirm Password Field
+              TextFormField(
+                controller: _confirmPasswordController,
+                obscureText: _obscureConfirmPassword,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your new password';
+                  }
+                  if (value != _newPasswordController.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 30),
+              
+              // Change Password Button
+              ElevatedButton(
+                onPressed: _isLoading ? null : _changePassword,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Change Password'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Handle password change
+  Future<void> _changePassword() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await _apiService.changePassword(
+        currentPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
+      );
+
+      if (response.data['success'] == true) {
+        logInfo('Password changed successfully', tag: 'PASSWORD_CHANGE');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password changed successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        
+        Navigator.pop(context, true);
+      } else {
+        throw Exception('Password change failed');
+      }
+    } catch (e) {
+      logError('Failed to change password: $e', tag: 'PASSWORD_CHANGE');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to change password. Please try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 }

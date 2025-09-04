@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Numeric, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -18,7 +18,9 @@ class User(Base):
     is_premium = Column(Boolean, default=False)
     premium_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     timezone = Column(String, default="UTC")
+    token_version = Column(Integer, default=1, nullable=False)
     
     # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")

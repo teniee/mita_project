@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/mita_theme.dart';
 import '../services/accessibility_service.dart';
+import '../core/error_handling.dart';
 
 /// Production-ready widget library for MITA
 /// Provides consistent, Material 3 compliant components
@@ -92,93 +93,114 @@ class MitaWidgets {
     );
   }
 
-  /// Creates an error screen with retry functionality
+  /// Creates an enhanced Material 3 error screen with retry functionality
   static Widget buildErrorScreen({
     required String title,
     required String message,
     VoidCallback? onRetry,
-    IconData icon = Icons.error_outline,
+    VoidCallback? onGoHome,
+    IconData icon = Icons.error_outline_rounded,
+    String? actionLabel,
+    BuildContext? context,
   }) {
-    final accessibilityService = AccessibilityService.instance;
-    
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Semantics(
-                  label: 'Error icon',
-                  child: Icon(
-                    icon,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Semantics(
-                  header: true,
-                  label: 'Error: $title',
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Sora',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF193C57),
+    return Builder(
+      builder: (BuildContext builderContext) {
+        final theme = Theme.of(builderContext);
+        final colorScheme = theme.colorScheme;
+        
+        return Scaffold(
+          backgroundColor: colorScheme.surface,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Enhanced Material 3 error icon with proper tonal colors
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 64,
+                        color: colorScheme.error,
+                        semanticLabel: 'Error occurred',
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Semantics(
-                  label: 'Error message: $message',
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                      height: 1.5,
+                    const SizedBox(height: 32),
+                    
+                    // Enhanced title with Material 3 typography
+                    Text(
+                      title,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                if (onRetry != null) ...[
-                  const SizedBox(height: 32),
-                  Semantics(
-                    label: accessibilityService.createButtonSemanticLabel(
-                      action: 'Try Again',
-                      context: 'Retry the failed operation',
+                    const SizedBox(height: 16),
+                    
+                    // Enhanced message with Material 3 typography
+                    Text(
+                      message,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    button: true,
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        accessibilityService.announceToScreenReader(
-                          'Retrying operation',
-                          isImportant: true,
-                        );
-                        onRetry();
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try Again'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    const SizedBox(height: 32),
+                    
+                    // Enhanced action buttons with Material 3 styling
+                    if (onRetry != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: Text(actionLabel ?? 'Try Again'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
-                    ).withMinimumTouchTarget(),
-                  ),
-                ],
-              ],
+                      const SizedBox(height: 12),
+                    ],
+                    
+                    // Go to home button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onGoHome ?? () {
+                          if (context != null && Navigator.of(context).canPop()) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          }
+                        },
+                        icon: const Icon(Icons.home_rounded),
+                        label: const Text('Go to Home'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: colorScheme.outline),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -529,6 +551,246 @@ class MitaWidgets {
           ],
         ),
       ),
+    );
+  }
+
+  /// Creates an enhanced Material 3 error banner with actionable feedback
+  static Widget buildErrorBanner({
+    required String message,
+    VoidCallback? onRetry,
+    VoidCallback? onDismiss,
+    ErrorSeverity severity = ErrorSeverity.medium,
+    bool showIcon = true,
+    BuildContext? context,
+  }) {
+    return Builder(
+      builder: (BuildContext builderContext) {
+        final theme = Theme.of(builderContext);
+        final colorScheme = theme.colorScheme;
+        
+        Color backgroundColor;
+        Color foregroundColor;
+        IconData icon;
+        
+        switch (severity) {
+          case ErrorSeverity.low:
+            backgroundColor = colorScheme.secondaryContainer;
+            foregroundColor = colorScheme.onSecondaryContainer;
+            icon = Icons.info_outline_rounded;
+            break;
+          case ErrorSeverity.medium:
+            backgroundColor = colorScheme.errorContainer;
+            foregroundColor = colorScheme.onErrorContainer;
+            icon = Icons.warning_outlined;
+            break;
+          case ErrorSeverity.high:
+            backgroundColor = colorScheme.error;
+            foregroundColor = colorScheme.onError;
+            icon = Icons.error_outline_rounded;
+            break;
+          case ErrorSeverity.critical:
+            backgroundColor = colorScheme.error;
+            foregroundColor = colorScheme.onError;
+            icon = Icons.dangerous_outlined;
+            break;
+        }
+        
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: foregroundColor.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              if (showIcon) ...[
+                Icon(
+                  icon,
+                  color: foregroundColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(
+                    foregroundColor: foregroundColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+              if (onDismiss != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: onDismiss,
+                  icon: const Icon(Icons.close_rounded),
+                  iconSize: 18,
+                  color: foregroundColor,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Creates an inline error message for forms and inputs
+  static Widget buildInlineError({
+    required String message,
+    IconData icon = Icons.error_outline_rounded,
+    Color? color,
+    BuildContext? context,
+  }) {
+    return Builder(
+      builder: (BuildContext builderContext) {
+        final theme = Theme.of(builderContext);
+        final errorColor = color ?? theme.colorScheme.error;
+        
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: errorColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: errorColor,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Creates a loading state with error recovery
+  static Widget buildLoadingWithError({
+    required bool isLoading,
+    String? error,
+    VoidCallback? onRetry,
+    String loadingMessage = 'Loading...',
+    Widget? child,
+    BuildContext? context,
+  }) {
+    return Builder(
+      builder: (BuildContext builderContext) {
+        final theme = Theme.of(builderContext);
+        final colorScheme = theme.colorScheme;
+        
+        if (isLoading) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  loadingMessage,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        if (error != null) {
+          return buildErrorScreen(
+            title: 'Something went wrong',
+            message: error,
+            onRetry: onRetry,
+            context: builderContext,
+          );
+        }
+        
+        return child ?? const SizedBox.shrink();
+      },
+    );
+  }
+
+  /// Creates an enhanced network status indicator
+  static Widget buildNetworkStatusIndicator({
+    required bool isConnected,
+    bool showWhenConnected = false,
+    BuildContext? context,
+  }) {
+    if (isConnected && !showWhenConnected) {
+      return const SizedBox.shrink();
+    }
+    
+    return Builder(
+      builder: (BuildContext builderContext) {
+        final theme = Theme.of(builderContext);
+        final colorScheme = theme.colorScheme;
+        
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          color: isConnected 
+            ? colorScheme.primaryContainer 
+            : colorScheme.errorContainer,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isConnected 
+                  ? Icons.wifi_rounded 
+                  : Icons.wifi_off_rounded,
+                size: 16,
+                color: isConnected 
+                  ? colorScheme.onPrimaryContainer 
+                  : colorScheme.onErrorContainer,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isConnected 
+                  ? 'Connected' 
+                  : 'No internet connection',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isConnected 
+                    ? colorScheme.onPrimaryContainer 
+                    : colorScheme.onErrorContainer,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

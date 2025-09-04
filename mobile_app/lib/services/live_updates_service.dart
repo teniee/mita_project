@@ -32,9 +32,9 @@ class LiveUpdatesService {
   Map<String, dynamic>? _lastProfileData;
   int _lastTransactionCount = 0;
   
-  // Update intervals
-  static const Duration _defaultUpdateInterval = Duration(minutes: 2);
-  static const Duration _fastUpdateInterval = Duration(seconds: 30);
+  // Update intervals - optimized for fast backend
+  static const Duration _defaultUpdateInterval = Duration(seconds: 90);
+  static const Duration _fastUpdateInterval = Duration(seconds: 20);
   
   Duration _currentUpdateInterval = _defaultUpdateInterval;
 

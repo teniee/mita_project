@@ -288,7 +288,7 @@ class PerformanceService {
   Future<void> _startMemoryMonitoring() async {
     if (!enableMemoryMonitoring) return;
     
-    _memoryTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _memoryTimer = Timer.periodic(const Duration(seconds: 45), (timer) { // Increased monitoring interval
       _collectMemoryInfo();
     });
     

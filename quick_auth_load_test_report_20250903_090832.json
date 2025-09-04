@@ -1,0 +1,181 @@
+{
+  "test_summary": {
+    "timestamp": "20250903_090832",
+    "total_requests": 65,
+    "successful_requests": 23,
+    "rate_limited_requests": 42,
+    "overall_success_rate": 35.38461538461539,
+    "test_type": "quick_load_test"
+  },
+  "scenario_results": [
+    {
+      "scenario": "Health Check Baseline",
+      "endpoint": "/health",
+      "total_requests": 10,
+      "successful": 10,
+      "failed": 0,
+      "rate_limited": 0,
+      "success_rate_percent": 100.0,
+      "total_time_seconds": 0.006458759307861328,
+      "avg_response_time_ms": 0.6458759307861328,
+      "requests_per_second": 1548.2849760059062,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "Emergency Diagnostics",
+      "endpoint": "/auth/emergency-diagnostics",
+      "total_requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "rate_limited": 0,
+      "success_rate_percent": 100.0,
+      "total_time_seconds": 0.2877538204193115,
+      "avg_response_time_ms": 57.550764083862305,
+      "requests_per_second": 17.375963914967517,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "Security Status",
+      "endpoint": "/auth/security/status",
+      "total_requests": 5,
+      "successful": 5,
+      "failed": 0,
+      "rate_limited": 0,
+      "success_rate_percent": 100.0,
+      "total_time_seconds": 0.2920839786529541,
+      "avg_response_time_ms": 58.41679573059082,
+      "requests_per_second": 17.11836446168401,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "scenario": "User Registration",
+      "endpoint": "/auth/register",
+      "total_requests": 10,
+      "successful": 0,
+      "failed": 0,
+      "rate_limited": 10,
+      "success_rate_percent": 0.0,
+      "total_time_seconds": 0.010634899139404297,
+      "avg_response_time_ms": 1.0634899139404297,
+      "requests_per_second": 940.3004080168587,
+      "status_codes": [
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429
+      ]
+    },
+    {
+      "scenario": "Emergency Registration",
+      "endpoint": "/auth/emergency-register",
+      "total_requests": 10,
+      "successful": 3,
+      "failed": 0,
+      "rate_limited": 7,
+      "success_rate_percent": 30.0,
+      "total_time_seconds": 0.29668092727661133,
+      "avg_response_time_ms": 29.668092727661133,
+      "requests_per_second": 33.70624492715189,
+      "status_codes": [
+        429,
+        200,
+        429,
+        200,
+        429,
+        200,
+        429,
+        429,
+        429,
+        429
+      ]
+    },
+    {
+      "scenario": "Rate Limiting Test (Login)",
+      "endpoint": "/auth/login",
+      "total_requests": 20,
+      "successful": 0,
+      "failed": 0,
+      "rate_limited": 20,
+      "success_rate_percent": 0.0,
+      "total_time_seconds": 0.016201257705688477,
+      "avg_response_time_ms": 0.8100628852844238,
+      "requests_per_second": 1234.4720615719689,
+      "status_codes": [
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429,
+        429
+      ]
+    },
+    {
+      "scenario": "Password Reset",
+      "endpoint": "/auth/password-reset/request",
+      "total_requests": 5,
+      "successful": 0,
+      "failed": 0,
+      "rate_limited": 5,
+      "success_rate_percent": 0.0,
+      "total_time_seconds": 0.006915092468261719,
+      "avg_response_time_ms": 1.3830184936523438,
+      "requests_per_second": 723.0561301889395,
+      "status_codes": [
+        429,
+        429,
+        429,
+        429,
+        429
+      ]
+    }
+  ],
+  "findings": [
+    "\u2705 Rate limiting is working correctly",
+    "\u26a0\ufe0f Emergency endpoints may have performance issues",
+    "\u2705 Response times are acceptable",
+    "\u274c Authentication system needs immediate attention"
+  ]
+}

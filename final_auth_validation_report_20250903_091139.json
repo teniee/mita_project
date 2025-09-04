@@ -1,0 +1,106 @@
+{
+  "test_summary": {
+    "timestamp": "20250903_091139",
+    "test_type": "comprehensive_authentication_validation",
+    "overall_success": true,
+    "criteria_met": "5/5",
+    "auth_flow_success_rate": 100.0
+  },
+  "authentication_flow_results": {
+    "registration": {
+      "success": true,
+      "status_code": 200,
+      "response_time_ms": 184.51404571533203,
+      "access_token": "mock_token_ca5a67be-...",
+      "has_refresh_token": true
+    },
+    "login": {
+      "success": true,
+      "status_code": 200,
+      "response_time_ms": 288.54894638061523,
+      "access_token": "mock_token_ca5a67be-..."
+    },
+    "token_validation": {
+      "success": true,
+      "status_code": 200,
+      "response_time_ms": 289.4411087036133
+    },
+    "token_refresh": {
+      "success": true,
+      "status_code": 200,
+      "response_time_ms": 102.13613510131836,
+      "new_access_token": "mock_token_ca5a67be-..."
+    },
+    "logout": {
+      "success": true,
+      "status_code": 200,
+      "response_time_ms": 50.7349967956543
+    }
+  },
+  "middleware_performance_results": {
+    "health": {
+      "success_count": 3,
+      "total_requests": 3,
+      "success_rate": 100.0,
+      "avg_response_time_ms": 2.5642712910970054,
+      "min_response_time_ms": 2.1381378173828125,
+      "max_response_time_ms": 3.330707550048828,
+      "status_codes": [
+        200,
+        200,
+        200
+      ]
+    },
+    "emergency_diagnostics": {
+      "success_count": 3,
+      "total_requests": 3,
+      "success_rate": 100.0,
+      "avg_response_time_ms": 114.73536491394043,
+      "min_response_time_ms": 17.315149307250977,
+      "max_response_time_ms": 288.00106048583984,
+      "status_codes": [
+        200,
+        200,
+        200
+      ]
+    },
+    "security_status": {
+      "success_count": 3,
+      "total_requests": 3,
+      "success_rate": 100.0,
+      "avg_response_time_ms": 181.3801129659017,
+      "min_response_time_ms": 47.69015312194824,
+      "max_response_time_ms": 294.71302032470703,
+      "status_codes": [
+        200,
+        200,
+        200
+      ]
+    }
+  },
+  "rate_limiting_validation": {
+    "total_requests": 5,
+    "rate_limited_requests": 3,
+    "rate_limiting_triggered": true,
+    "rate_limiting_percentage": 60.0
+  },
+  "performance_summary": {
+    "average_response_time_ms": 151.75687273343405,
+    "total_response_samples": 8,
+    "performance_acceptable": true
+  },
+  "assessment_criteria": {
+    "auth_flow_functional": true,
+    "registration_works": true,
+    "middleware_healthy": true,
+    "rate_limiting_works": true,
+    "performance_acceptable": true
+  },
+  "recommendations": [
+    "Monitor rate limiting effectiveness in production",
+    "Track response times under real load",
+    "Implement comprehensive logging for auth flows",
+    "Consider load balancing for high traffic periods",
+    "Regularly test emergency endpoints functionality"
+  ]
+}

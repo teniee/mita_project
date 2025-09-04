@@ -15,14 +15,246 @@ from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
 import hashlib
 import re
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text, create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import StaticPool
+import uuid
+from collections import deque
+from threading import Lock
 
 from app.core.config import settings
-from app.core.async_session import get_async_db_context
 from app.core.error_monitoring import log_error, ErrorSeverity, ErrorCategory
 
 logger = logging.getLogger(__name__)
+
+
+class AuditDatabasePool:
+    """Separate database connection pool for audit operations to prevent deadlocks"""
+    
+    def __init__(self):
+        self._engine = None
+        self._session_factory = None
+        self._initialized = False
+        self._lock = Lock()
+    
+    async def initialize(self):
+        """Initialize the separate audit database pool"""
+        if self._initialized:
+            return
+            
+        with self._lock:
+            if self._initialized:
+                return
+                
+            try:
+                # Create separate engine with dedicated connection pool for audit operations
+                audit_db_url = settings.DATABASE_URL
+                
+                # Configure engine for audit operations (separate from main app pool)
+                self._engine = create_async_engine(
+                    audit_db_url,
+                    pool_size=2,  # Small dedicated pool for audit operations
+                    max_overflow=3,
+                    pool_pre_ping=True,
+                    pool_recycle=3600,
+                    pool_timeout=10,  # Short timeout to prevent hanging
+                    echo=False,
+                    future=True,
+                    poolclass=StaticPool if "sqlite" in audit_db_url else None,
+                    # Isolate audit connections from main application
+                    connect_args={"application_name": "audit_logger"} if "postgresql" in audit_db_url else {}
+                )
+                
+                self._session_factory = async_sessionmaker(
+                    bind=self._engine,
+                    expire_on_commit=False,
+                    class_=AsyncSession
+                )
+                
+                self._initialized = True
+                logger.info("✅ Audit database pool initialized successfully")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize audit database pool: {e}")
+                # Graceful degradation - audit logging will use regular logging instead
+                self._initialized = False
+    
+    async def get_session(self):
+        """Get an isolated audit database session"""
+        if not self._initialized:
+            await self.initialize()
+            
+        if not self._initialized:
+            raise Exception("Audit database pool not available")
+            
+        return self._session_factory()
+    
+    async def close(self):
+        """Close the audit database pool"""
+        if self._engine:
+            await self._engine.dispose()
+            self._initialized = False
+
+
+# Global audit database pool instance
+_audit_db_pool = AuditDatabasePool()
+
+
+class SecurityEventQueue:
+    """High-performance queue for security events with batching and fallback"""
+    
+    def __init__(self, max_size: int = 1000):
+        self._queue = deque(maxlen=max_size)
+        self._lock = asyncio.Lock()
+        self._batch_size = 10
+        self._processing = False
+        
+    async def enqueue(self, event: 'AuditEvent'):
+        """Add event to queue with overflow protection"""
+        async with self._lock:
+            self._queue.append(event)
+            
+            # Trigger processing if batch is ready or queue is getting full
+            if len(self._queue) >= self._batch_size or len(self._queue) > self._queue.maxlen * 0.8:
+                if not self._processing:
+                    asyncio.create_task(self._process_batch())
+    
+    async def _process_batch(self):
+        """Process a batch of events"""
+        if self._processing:
+            return
+            
+        self._processing = True
+        
+        try:
+            batch = []
+            async with self._lock:
+                # Extract batch
+                batch_size = min(self._batch_size, len(self._queue))
+                for _ in range(batch_size):
+                    if self._queue:
+                        batch.append(self._queue.popleft())
+            
+            if batch:
+                await self._store_batch(batch)
+                
+        except Exception as e:
+            logger.error(f"Error processing audit event batch: {e}")
+        finally:
+            self._processing = False
+    
+    async def _store_batch(self, events: List['AuditEvent']):
+        """Store a batch of events to database"""
+        try:
+            async with _audit_db_pool.get_session() as session:
+                # Ensure audit table exists
+                await self._ensure_audit_table(session)
+                
+                # Batch insert events
+                for event in events:
+                    await session.execute(
+                        text("""
+                            INSERT INTO audit_logs (
+                                id, timestamp, event_type, user_id, session_id,
+                                client_ip, user_agent, endpoint, method, status_code,
+                                response_time_ms, request_size, response_size,
+                                sensitivity_level, success, error_message, additional_context
+                            ) VALUES (
+                                :id, :timestamp, :event_type, :user_id, :session_id,
+                                :client_ip, :user_agent, :endpoint, :method, :status_code,
+                                :response_time_ms, :request_size, :response_size,
+                                :sensitivity_level, :success, :error_message, :additional_context
+                            )
+                        """),
+                        {
+                            'id': event.id,
+                            'timestamp': event.timestamp,
+                            'event_type': event.event_type.value,
+                            'user_id': event.user_id,
+                            'session_id': event.session_id,
+                            'client_ip': event.client_ip,
+                            'user_agent': event.user_agent,
+                            'endpoint': event.endpoint,
+                            'method': event.method,
+                            'status_code': event.status_code,
+                            'response_time_ms': event.response_time_ms,
+                            'request_size': event.request_size,
+                            'response_size': event.response_size,
+                            'sensitivity_level': event.sensitivity_level.value,
+                            'success': event.success,
+                            'error_message': event.error_message,
+                            'additional_context': json.dumps(event.additional_context)
+                        }
+                    )
+                
+                await session.commit()
+                logger.debug(f"✅ Stored {len(events)} audit events to database")
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to store audit batch: {e}")
+            # Fallback to file logging for critical events
+            await self._fallback_file_logging(events)
+    
+    async def _ensure_audit_table(self, session: AsyncSession):
+        """Ensure audit logs table exists"""
+        try:
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id VARCHAR(255) PRIMARY KEY,
+                    timestamp TIMESTAMP NOT NULL,
+                    event_type VARCHAR(50) NOT NULL,
+                    user_id VARCHAR(255),
+                    session_id VARCHAR(255),
+                    client_ip VARCHAR(45) NOT NULL,
+                    user_agent TEXT,
+                    endpoint VARCHAR(500) NOT NULL,
+                    method VARCHAR(10) NOT NULL,
+                    status_code INTEGER,
+                    response_time_ms FLOAT,
+                    request_size INTEGER DEFAULT 0,
+                    response_size INTEGER,
+                    sensitivity_level VARCHAR(20) NOT NULL,
+                    success BOOLEAN NOT NULL,
+                    error_message TEXT,
+                    additional_context JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_endpoint ON audit_logs(endpoint);
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
+                CREATE INDEX IF NOT EXISTS idx_audit_logs_client_ip ON audit_logs(client_ip);
+            """))
+            
+        except Exception as e:
+            logger.error(f"Error creating audit table: {str(e)}")
+    
+    async def _fallback_file_logging(self, events: List['AuditEvent']):
+        """Fallback to file logging when database is unavailable"""
+        try:
+            import json
+            from pathlib import Path
+            
+            # Create audit logs directory if it doesn't exist
+            log_dir = Path("logs/audit")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Write to daily log file
+            log_file = log_dir / f"audit_fallback_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            
+            with open(log_file, "a") as f:
+                for event in events:
+                    f.write(json.dumps(event.to_dict()) + "\n")
+                    
+            logger.warning(f"📁 Fallback: Wrote {len(events)} audit events to file: {log_file}")
+            
+        except Exception as e:
+            logger.error(f"❌ Fallback file logging failed: {e}")
+
+
+# Global security event queue
+_security_event_queue = SecurityEventQueue()
 
 
 class AuditEventType(Enum):
@@ -158,13 +390,11 @@ class DataSanitizer:
 
 
 class AuditLogger:
-    """Main audit logging system"""
+    """Optimized audit logging system with separate database connections"""
     
     def __init__(self):
-        self.buffer: List[AuditEvent] = []
-        self.buffer_size = 100
-        self.flush_interval = 30  # seconds
-        self.last_flush = time.time()
+        # Remove buffer - using dedicated queue system instead
+        self._initialized = False
         
         # Endpoint classification
         self.sensitive_endpoints = {
@@ -175,9 +405,20 @@ class AuditLogger:
             '/goals': SensitivityLevel.INTERNAL,
             '/receipts/upload': SensitivityLevel.INTERNAL,
         }
-        
-        # Start background flush task
-        asyncio.create_task(self._background_flush())
+    
+    async def initialize(self):
+        """Initialize audit logging system"""
+        if self._initialized:
+            return
+            
+        try:
+            # Initialize the separate database pool for audit operations
+            await _audit_db_pool.initialize()
+            self._initialized = True
+            logger.info("✅ Audit logging system initialized with separate database pool")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize audit logging system: {e}")
+            self._initialized = False
     
     async def log_request_response(
         self,
@@ -223,7 +464,8 @@ class AuditLogger:
                 }
             )
             
-            await self._store_audit_event(audit_event)
+            # Use the optimized queue system instead of direct database operations
+            await _security_event_queue.enqueue(audit_event)
             
         except Exception as e:
             # Don't let audit logging break the application
@@ -268,7 +510,8 @@ class AuditLogger:
                 }
             )
             
-            await self._store_audit_event(audit_event)
+            # Use the optimized queue system instead of direct database operations
+            await _security_event_queue.enqueue(audit_event)
             
         except Exception as e:
             logger.error(f"Error logging authentication event: {str(e)}")
@@ -309,7 +552,8 @@ class AuditLogger:
                 }
             )
             
-            await self._store_audit_event(audit_event)
+            # Use the optimized queue system instead of direct database operations
+            await _security_event_queue.enqueue(audit_event)
             
         except Exception as e:
             logger.error(f"Error logging data access event: {str(e)}")
@@ -347,7 +591,8 @@ class AuditLogger:
                 }
             )
             
-            await self._store_audit_event(audit_event)
+            # Use the optimized queue system instead of direct database operations
+            await _security_event_queue.enqueue(audit_event)
             
         except Exception as e:
             logger.error(f"Error logging security violation: {str(e)}")
@@ -441,127 +686,6 @@ class AuditLogger:
         except Exception:
             return None
     
-    async def _store_audit_event(self, event: AuditEvent):
-        """Store audit event"""
-        # Add to buffer
-        self.buffer.append(event)
-        
-        # Log immediately for high-sensitivity events
-        if event.sensitivity_level == SensitivityLevel.RESTRICTED or event.event_type == AuditEventType.SECURITY_VIOLATION:
-            logger.critical(f"Audit Event: {event.to_dict()}")
-        
-        # Flush if buffer is full
-        if len(self.buffer) >= self.buffer_size:
-            await self._flush_buffer()
-    
-    async def _flush_buffer(self):
-        """Flush audit events to database"""
-        if not self.buffer:
-            return
-        
-        try:
-            async with get_async_db_context() as session:
-                # Create audit_logs table if it doesn't exist
-                await self._ensure_audit_table(session)
-                
-                # Insert audit events
-                for event in self.buffer:
-                    await session.execute(
-                        text("""
-                            INSERT INTO audit_logs (
-                                id, timestamp, event_type, user_id, session_id,
-                                client_ip, user_agent, endpoint, method, status_code,
-                                response_time_ms, request_size, response_size,
-                                sensitivity_level, success, error_message, additional_context
-                            ) VALUES (
-                                :id, :timestamp, :event_type, :user_id, :session_id,
-                                :client_ip, :user_agent, :endpoint, :method, :status_code,
-                                :response_time_ms, :request_size, :response_size,
-                                :sensitivity_level, :success, :error_message, :additional_context
-                            )
-                        """),
-                        {
-                            'id': event.id,
-                            'timestamp': event.timestamp,
-                            'event_type': event.event_type.value,
-                            'user_id': event.user_id,
-                            'session_id': event.session_id,
-                            'client_ip': event.client_ip,
-                            'user_agent': event.user_agent,
-                            'endpoint': event.endpoint,
-                            'method': event.method,
-                            'status_code': event.status_code,
-                            'response_time_ms': event.response_time_ms,
-                            'request_size': event.request_size,
-                            'response_size': event.response_size,
-                            'sensitivity_level': event.sensitivity_level.value,
-                            'success': event.success,
-                            'error_message': event.error_message,
-                            'additional_context': json.dumps(event.additional_context)
-                        }
-                    )
-                
-                await session.commit()
-                logger.info(f"Flushed {len(self.buffer)} audit events to database")
-                
-        except Exception as e:
-            logger.error(f"Error flushing audit buffer: {str(e)}")
-            await log_error(
-                e,
-                severity=ErrorSeverity.HIGH,
-                category=ErrorCategory.DATABASE,
-                additional_context={'operation': 'audit_flush', 'buffer_size': len(self.buffer)}
-            )
-        finally:
-            self.buffer.clear()
-            self.last_flush = time.time()
-    
-    async def _ensure_audit_table(self, session: AsyncSession):
-        """Ensure audit logs table exists"""
-        try:
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id VARCHAR(255) PRIMARY KEY,
-                    timestamp TIMESTAMP NOT NULL,
-                    event_type VARCHAR(50) NOT NULL,
-                    user_id VARCHAR(255),
-                    session_id VARCHAR(255),
-                    client_ip VARCHAR(45) NOT NULL,
-                    user_agent TEXT,
-                    endpoint VARCHAR(500) NOT NULL,
-                    method VARCHAR(10) NOT NULL,
-                    status_code INTEGER,
-                    response_time_ms FLOAT,
-                    request_size INTEGER DEFAULT 0,
-                    response_size INTEGER,
-                    sensitivity_level VARCHAR(20) NOT NULL,
-                    success BOOLEAN NOT NULL,
-                    error_message TEXT,
-                    additional_context JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                
-                CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
-                CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
-                CREATE INDEX IF NOT EXISTS idx_audit_logs_endpoint ON audit_logs(endpoint);
-                CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
-                CREATE INDEX IF NOT EXISTS idx_audit_logs_client_ip ON audit_logs(client_ip);
-            """))
-            
-        except Exception as e:
-            logger.error(f"Error creating audit table: {str(e)}")
-    
-    async def _background_flush(self):
-        """Background task to flush audit events periodically"""
-        while True:
-            try:
-                await asyncio.sleep(self.flush_interval)
-                
-                if self.buffer and (time.time() - self.last_flush) >= self.flush_interval:
-                    await self._flush_buffer()
-                    
-            except Exception as e:
-                logger.error(f"Error in background audit flush: {str(e)}")
     
     async def get_audit_report(
         self,
@@ -570,9 +694,9 @@ class AuditLogger:
         user_id: str = None,
         event_type: AuditEventType = None
     ) -> Dict[str, Any]:
-        """Generate audit report"""
+        """Generate audit report using separate database pool"""
         try:
-            async with get_async_db_context() as session:
+            async with _audit_db_pool.get_session() as session:
                 # Build query conditions
                 conditions = ["timestamp BETWEEN :start_date AND :end_date"]
                 params = {'start_date': start_date, 'end_date': end_date}
@@ -656,6 +780,26 @@ class AuditLogger:
 audit_logger = AuditLogger()
 
 
+# Initialize audit system on import
+async def initialize_audit_system():
+    """Initialize the audit system with optimized database connections"""
+    try:
+        await audit_logger.initialize()
+        logger.info("🔒 Audit logging system ready for security event tracking")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize audit system: {e}")
+
+
+# Try to initialize if we're in an async context
+try:
+    import asyncio
+    loop = asyncio.get_running_loop()
+    loop.create_task(initialize_audit_system())
+except (RuntimeError, AttributeError):
+    # No event loop running, initialization will happen on first use
+    pass
+
+
 async def log_request_response(
     request: Request,
     response: Response,
@@ -727,50 +871,136 @@ async def log_security_violation(
 
 
 def log_security_event(event_type: str, details: dict = None):
-    """Synchronous security event logging for system-level events without Request context"""
+    """Optimized synchronous security event logging for system-level events"""
     try:
         # Create a basic audit event for system-level security events
         audit_event = AuditEvent(
-            id=f"security_system_{datetime.now().isoformat()}_{id(event_type)}",
+            id=f"security_system_{datetime.now().isoformat()}_{uuid.uuid4().hex[:8]}",
             timestamp=datetime.now(),
             event_type=AuditEventType.SECURITY_VIOLATION,
-            user_id=None,
-            session_id=None,
-            client_ip="system",
-            user_agent="system",
-            endpoint="system",
+            user_id=details.get('user_id') if details else None,
+            session_id=details.get('session_id') if details else None,
+            client_ip=details.get('client_ip', 'system'),
+            user_agent=details.get('user_agent', 'system'),
+            endpoint=details.get('endpoint', 'system'),
             method="SYSTEM",
-            status_code=None,
+            status_code=details.get('status_code'),
             response_time_ms=None,
             request_size=0,
             response_size=None,
             sensitivity_level=SensitivityLevel.RESTRICTED,
-            success=False,
+            success=details.get('success', False) if details else False,
             error_message=f"System security event: {event_type}",
             additional_context={
                 'event_type': event_type,
                 'details': details or {},
-                'source': 'system'
+                'source': 'system',
+                'logged_at': datetime.now().isoformat()
             }
         )
         
         # Log immediately for security events
-        logger.critical(f"Security Event: {audit_event.to_dict()}")
+        logger.critical(f"🚨 SECURITY EVENT: {event_type} - {details}")
         
-        # Add to buffer for database storage
-        audit_logger.buffer.append(audit_event)
-        
-        # Trigger immediate flush for security events
-        if len(audit_logger.buffer) >= 1:  # Flush immediately for security events
+        # Queue for asynchronous database storage (non-blocking)
+        try:
             import asyncio
-            try:
-                # Try to flush in the current event loop
-                loop = asyncio.get_running_loop()
-                loop.create_task(audit_logger._flush_buffer())
-            except RuntimeError:
-                # No event loop running, that's okay for synchronous calls
-                pass
+            loop = asyncio.get_running_loop()
+            loop.create_task(_security_event_queue.enqueue(audit_event))
+        except RuntimeError:
+            # No event loop running - use fallback logging
+            _fallback_sync_security_logging(audit_event)
         
     except Exception as e:
         # Don't let audit logging break the application
-        logger.error(f"Error in security event logging: {str(e)}")
+        logger.error(f"❌ Error in security event logging: {str(e)}")
+
+
+def _fallback_sync_security_logging(audit_event: AuditEvent):
+    """Fallback logging when no async event loop is available"""
+    try:
+        import json
+        from pathlib import Path
+        
+        # Create audit logs directory if it doesn't exist
+        log_dir = Path("logs/audit")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Write to daily log file
+        log_file = log_dir / f"security_events_{datetime.now().strftime('%Y%m%d')}.jsonl"
+        
+        with open(log_file, "a") as f:
+            f.write(json.dumps(audit_event.to_dict()) + "\n")
+            
+        logger.info(f"📁 Fallback: Security event logged to file: {log_file}")
+        
+    except Exception as e:
+        logger.error(f"❌ Fallback security logging failed: {e}")
+
+
+async def log_security_event_async(
+    event_type: str, 
+    details: dict = None, 
+    request: Request = None,
+    user_id: str = None
+):
+    """Enhanced async security event logging with Request context"""
+    try:
+        # Extract context from request if provided
+        client_ip = "system"
+        user_agent = "system"
+        endpoint = "system"
+        
+        if request:
+            client_ip = _get_client_ip_from_request(request)
+            user_agent = request.headers.get('User-Agent', 'system')
+            endpoint = request.url.path
+        
+        # Create enhanced audit event
+        audit_event = AuditEvent(
+            id=f"security_async_{datetime.now().isoformat()}_{uuid.uuid4().hex[:8]}",
+            timestamp=datetime.now(),
+            event_type=AuditEventType.SECURITY_VIOLATION,
+            user_id=user_id or (details.get('user_id') if details else None),
+            session_id=details.get('session_id') if details else None,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            endpoint=endpoint,
+            method=request.method if request else "SYSTEM",
+            status_code=details.get('status_code'),
+            response_time_ms=None,
+            request_size=0,
+            response_size=None,
+            sensitivity_level=SensitivityLevel.RESTRICTED,
+            success=details.get('success', False) if details else False,
+            error_message=f"Security event: {event_type}",
+            additional_context={
+                'event_type': event_type,
+                'details': details or {},
+                'source': 'async_system',
+                'logged_at': datetime.now().isoformat()
+            }
+        )
+        
+        # Log immediately for security events
+        logger.critical(f"🚨 ASYNC SECURITY EVENT: {event_type} - User: {user_id} - IP: {client_ip}")
+        
+        # Queue for database storage
+        await _security_event_queue.enqueue(audit_event)
+        
+    except Exception as e:
+        logger.error(f"❌ Error in async security event logging: {str(e)}")
+
+
+def _get_client_ip_from_request(request: Request) -> str:
+    """Extract client IP from request with proxy support"""
+    # Check for forwarded headers (proxy/load balancer)
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    
+    real_ip = request.headers.get('X-Real-IP')
+    if real_ip:
+        return real_ip
+    
+    return request.client.host if request.client else 'unknown'

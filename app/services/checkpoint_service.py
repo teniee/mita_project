@@ -1,6 +1,11 @@
 from statistics import mean
 from typing import Any, Dict
 
+from app.services.core.dynamic_threshold_service import (
+    get_dynamic_thresholds, ThresholdType, UserContext
+)
+from app.services.core.income_classification_service import classify_income
+
 
 def calculate_checkpoint(
     user_profile: Dict[str, Any], transaction_data: Dict[str, Any]
@@ -47,20 +52,55 @@ def calculate_checkpoint(
 def assess_behavior(
     user_profile: Dict[str, Any], category_totals: Dict[str, float]
 ) -> str:
-    """Simple behavior analysis.
+    """Dynamic behavior analysis using income-appropriate thresholds.
 
-    If spending on ``entertainment`` exceeds 30% of total, or ``dining out`` is
-    more than 25%, the user is flagged as overspending.
-    Returns ``'balanced'`` or ``'overspending'``.
+    Uses dynamic thresholds based on user income level and context.
+    Returns 'balanced', 'overspending', or 'no_activity'.
     """
     total = sum(category_totals.values())
     if not total:
         return "no_activity"
 
+    # Create user context for dynamic threshold calculation
+    monthly_income = user_profile.get('monthly_income', 5000)  # Default if not provided
+    age = user_profile.get('age', 35)
+    region = user_profile.get('region', 'US')
+    
+    user_context = UserContext(
+        monthly_income=monthly_income,
+        age=age,
+        region=region,
+        family_size=user_profile.get('family_size', 1),
+        debt_to_income_ratio=user_profile.get('debt_to_income_ratio', 0.0)
+    )
+    
+    # Get dynamic behavioral trigger thresholds
+    behavioral_thresholds = get_dynamic_thresholds(
+        ThresholdType.BEHAVIORAL_TRIGGER, user_context
+    )
+    
+    # Get dynamic budget allocation for comparison
+    budget_allocations = get_dynamic_thresholds(
+        ThresholdType.BUDGET_ALLOCATION, user_context
+    )
+    
     entertainment = category_totals.get("entertainment", 0)
-    dining = category_totals.get("dining out", 0)
-
-    if entertainment / total > 0.3 or dining / total > 0.25:
+    dining = category_totals.get("dining out", 0) + category_totals.get("dining", 0)
+    
+    # Calculate actual percentages
+    entertainment_pct = entertainment / total
+    dining_pct = dining / total
+    
+    # Get expected allocations and overspending multipliers
+    expected_entertainment = budget_allocations.get('entertainment', 0.08)
+    expected_dining = budget_allocations.get('food', 0.12) * 0.5  # Assume 50% of food is dining out
+    
+    entertainment_threshold = behavioral_thresholds.get('entertainment_overspending', 1.3)
+    dining_threshold = behavioral_thresholds.get('food_overspending', 1.25)
+    
+    # Check if spending exceeds dynamic thresholds
+    if (entertainment_pct > expected_entertainment * entertainment_threshold or 
+        dining_pct > expected_dining * dining_threshold):
         return "overspending"
 
     return "balanced"

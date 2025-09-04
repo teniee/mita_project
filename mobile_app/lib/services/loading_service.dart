@@ -14,7 +14,7 @@ class LoadingService {
   // Track loading operations with unique IDs and timeouts
   final Map<String, LoadingOperation> _operations = {};
   final Duration _defaultTimeout = const Duration(seconds: 15);
-  final Duration _maxLoadingTime = const Duration(seconds: 30);
+  final Duration _maxLoadingTime = const Duration(seconds: 20); // Reduced for fast backend
   
   Timer? _timeoutWatchdog;
   DateTime? _firstLoadingStart;
