@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
@@ -8,6 +9,6 @@ class TokenIn(BaseModel):
 
 class NotificationTest(BaseModel):
     message: str
-    token: str | None = None
-    email: EmailStr | None = None
-    platform: str | None = None
+    token: Optional[str] = None
+    email: Optional[EmailStr] = None
+    platform: Optional[str] = None

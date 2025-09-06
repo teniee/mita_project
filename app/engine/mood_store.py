@@ -1,5 +1,6 @@
 """Simple persistent store for user moods."""
 
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
@@ -17,7 +18,7 @@ def save_mood(user_id: str, date: str, mood: str) -> None:
     db.commit()
 
 
-def get_mood(user_id: str, date: str) -> str | None:
+def get_mood(user_id: str, date: str) -> Optional[str]:
     db: Session = next(get_db())
     obj = db.query(Mood).filter_by(user_id=user_id, date=date).first()
     return obj.mood if obj else None

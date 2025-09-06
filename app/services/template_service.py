@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.db.models import AIAdviceTemplate
@@ -9,7 +10,7 @@ class AIAdviceTemplateService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get(self, key: str) -> str | None:
+    def get(self, key: str) -> Optional[str]:
         record = (
             self.db.query(AIAdviceTemplate).filter(AIAdviceTemplate.key == key).first()
         )
