@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi_limiter.depends import RateLimiter
@@ -31,6 +32,8 @@ from app.api.transactions.services import (
 from app.core.session import get_db
 from app.utils.response_wrapper import success_response
 from app.services.task_manager import task_manager
+
+logger = logging.getLogger(__name__)
 
 current_user_dep = Depends(get_current_user)  # noqa: B008
 db_dep = Depends(get_db)  # noqa: B008

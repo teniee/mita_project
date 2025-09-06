@@ -14,8 +14,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool, QueuePool
 from sqlalchemy.dialects.postgresql import UUID
-import psycopg2
-from psycopg2.extras import RealDictCursor
+# Note: Using SQLAlchemy for database operations instead of direct psycopg2
+# This allows for better compatibility with asyncpg and the async architecture
 
 from app.core.config import settings
 from app.db.models import Base, User, Expense, Transaction, AIAnalysisSnapshot

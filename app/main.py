@@ -268,14 +268,14 @@ def filter_sensitive_transactions(event, hint):
     
     return event
 
-# Initialize Sentry
-configure_sentry()
-
-# Initialize comprehensive logging
+# Initialize comprehensive logging first
 setup_logging()
 
 # Initialize logger after logging setup
 logger = logging.getLogger(__name__)
+
+# Initialize Sentry (now that logger is available)
+configure_sentry()
 
 # Validate dependencies before continuing startup
 from app.core.dependency_validator import validate_dependencies_on_startup

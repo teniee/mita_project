@@ -3,6 +3,7 @@ Async Database Session Management for MITA
 Provides async SQLAlchemy session handling with proper connection management and monitoring
 """
 
+import logging
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -12,6 +13,8 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database_monitoring import db_engine
+
+logger = logging.getLogger(__name__)
 
 # Database engine and session - initialized lazily
 async_engine = None
