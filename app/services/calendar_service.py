@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 ###############################################################################
 #                           HELPER UTILITIES
@@ -37,7 +37,7 @@ def generate_calendar(
     calendar_id: str,
     start_date: date,
     num_days: int,
-    budget_plan: Dict[str, float | int],
+    budget_plan: Dict[str, Union[float, int]],
 ) -> List[Dict[str, Any]]:
     """Build a calendar with a planned budget for each day.
 

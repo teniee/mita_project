@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal, getcontext
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 # --- prefer financial precision ---
 getcontext().prec = 28  # 28 is IEEE 754 decimal64 standard
@@ -28,7 +28,7 @@ class BudgetRedistributor:
     debts are paid or donors run out of funds.
     """
 
-    def __init__(self, calendar: Dict[str, Dict[str, float | int | Decimal]]):
+    def __init__(self, calendar: Dict[str, Dict[str, Union[float, int, Decimal]]]):
         # store the calendar using Decimal for precise math
         self.calendar: Dict[str, Dict[str, Decimal]] = {
             day: {
@@ -93,7 +93,7 @@ class BudgetRedistributor:
 
 
 def redistribute_budget(
-    calendar_dict: Dict[str, Dict[str, float | int | Decimal]],
+    calendar_dict: Dict[str, Dict[str, Union[float, int, Decimal]]],
 ) -> Dict[str, Dict[str, Decimal]]:
     """
     Thin wrapper for use in API services.

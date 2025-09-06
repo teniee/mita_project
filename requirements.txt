@@ -20,10 +20,11 @@ python-multipart==0.0.18           # Latest file upload support (security fix)
 numpy==2.1.2                        # Updated for performance
 scikit-learn==1.5.2                 # Updated ML library
 
-# Database Layer - AsyncPG Only (Consolidated)
+# Database Layer - Hybrid Async/Sync
 SQLAlchemy==2.0.36                  # Latest async-compatible ORM
 alembic==1.14.0                     # Database migrations
-asyncpg==0.30.0                     # Primary PostgreSQL driver
+asyncpg==0.30.0                     # Primary async PostgreSQL driver
+psycopg2-binary==2.9.9              # Sync PostgreSQL driver for alembic and sync operations
 
 # Authentication and Security - UPDATED FOR SECURITY
 PyJWT==2.10.1                       # JWT handling (latest security fix)

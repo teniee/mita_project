@@ -1,7 +1,7 @@
 """OCR receipt processing using Tesseract OCR."""
 
 import os
-from typing import Dict
+from typing import Dict, Union
 
 import pytesseract
 from PIL import Image
@@ -18,7 +18,7 @@ class OCRReceiptService:
     def __init__(self, temp_dir: str = "/tmp"):
         self.temp_dir = temp_dir
 
-    def process_image(self, image_path: str) -> Dict[str, str | float]:
+    def process_image(self, image_path: str) -> Dict[str, Union[str, float]]:
         """Extract structured data from a receipt image.
 
         Args:

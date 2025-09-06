@@ -32,7 +32,7 @@ def calculate_goal_progress(goal: Dict, calendar: Dict[int, Dict]) -> Dict:
             "target_amount": 1000,
             "saved": 120.5,
             "percent_complete": 12.05,
-            "status": "in_progress" | "completed"
+            "status": "in_progress"  # or "completed"
         }
     """
     saved_total = sum(day.get("savings", 0.0) for day in calendar.values())

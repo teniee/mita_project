@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
 from sqlalchemy.orm import Session
 import logging
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-@router.get("/", response_model=AdviceOut | None)
+@router.get("/", response_model=Optional[AdviceOut])
 async def latest_insight(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008

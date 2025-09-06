@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Union, Tuple
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -153,7 +153,7 @@ def run_streak_challenge(
     challenge_id: str,
     required_days: int,
     db: Session,
-) -> Dict[str, int | bool]:
+) -> Dict[str, Union[int, bool]]:
     """
     Checks if the user has an unbroken spending streak of `required_days`
     (e.g., “log expenses 7 days in a row”).
