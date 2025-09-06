@@ -117,19 +117,19 @@ class Settings(BaseSettings):
     APNS_USE_SANDBOX: bool = True
 
     # CORS - Allow configuration via environment
-    ALLOWED_ORIGINS: list[str] = ["https://app.mita.finance"]
+    ALLOWED_ORIGINS: str = "https://app.mita.finance"
     
     # Environment settings
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def split_origins(cls, v):
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    @property
+    def ALLOWED_ORIGINS_LIST(self):
+        """Get ALLOWED_ORIGINS as a list"""
+        if isinstance(self.ALLOWED_ORIGINS, str):
+            return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        return [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
 
     if ConfigDict:
         model_config = ConfigDict(

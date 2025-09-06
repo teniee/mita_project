@@ -51,7 +51,7 @@ class TestPushTokenManagement:
         
         # Step 2: Register push token
         push_registration = await mobile_client.post(
-            "/notifications/register-device",
+            "/notifications/register-token",
             headers=auth_headers,
             json={
                 "push_token": mobile_device_context["push_token"],
@@ -73,7 +73,7 @@ class TestPushTokenManagement:
         new_push_token = f"updated_{mobile_device_context['push_token']}"
         
         update_response = await mobile_client.put(
-            "/notifications/register-device",
+            "/notifications/register-token",
             headers=auth_headers,
             json={
                 "push_token": new_push_token,
@@ -111,7 +111,7 @@ class TestPushTokenManagement:
         
         # Register push token
         push_response = await mobile_client.post(
-            "/notifications/register-device",
+            "/notifications/register-token",
             headers=auth_headers,
             json={
                 "push_token": mobile_device_context["push_token"],
@@ -164,7 +164,7 @@ class TestPushTokenManagement:
         
         # Register push tokens from both devices
         ios_push = await mobile_client.post(
-            "/notifications/register-device",
+            "/notifications/register-token",
             headers=ios_headers,
             json={
                 "push_token": f"ios_{mobile_device_context['push_token']}",
@@ -174,7 +174,7 @@ class TestPushTokenManagement:
         )
         
         android_push = await android_client.post(
-            "/notifications/register-device", 
+            "/notifications/register-token", 
             headers=android_headers,
             json={
                 "push_token": f"android_{mobile_device_context['push_token']}",
@@ -292,7 +292,7 @@ class TestOfflineScenarios:
         refresh_token = login_response.json()["refresh_token"]
         
         # Simulate background refresh (when app comes to foreground)
-        refresh_response = await mobile_client.post("/auth/refresh", json={
+        refresh_response = await mobile_client.post("/auth/refresh-token", data={
             "refresh_token": refresh_token
         })
         

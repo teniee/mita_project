@@ -18,8 +18,8 @@ from typing import Dict, List, Any, Optional
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import asyncpg
+import asyncio
 
 class FinancialDataTypeValidator:
     """Validator for financial data types in MITA database"""
@@ -37,13 +37,14 @@ class FinancialDataTypeValidator:
         }
         
         # Critical financial columns that MUST use Numeric type
+        # Note: table existence will be checked asynchronously
         self.critical_financial_columns = {
             "transactions": ["amount"],
             "expenses": ["amount"],
             "users": ["annual_income"],
             "goals": ["target_amount", "saved_amount"],
-            "subscriptions": ["price", "amount"] if self.table_exists("subscriptions") else [],
-            "budget_advice": ["suggested_amount"] if self.table_exists("budget_advice") else []
+            "subscriptions": ["price", "amount"],
+            "budget_advice": ["suggested_amount"]
         }
     
     def get_database_url(self) -> str:
@@ -65,26 +66,21 @@ class FinancialDataTypeValidator:
         
         return db_url
     
-    def table_exists(self, table_name: str) -> bool:
+    async def table_exists(self, table_name: str) -> bool:
         """Check if table exists in database"""
         try:
-            conn = psycopg2.connect(self.db_url)
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
-                        AND table_name = %s
-                    );
-                """, (table_name,))
-                return cursor.fetchone()[0]
+            conn = await asyncpg.connect(self.db_url)
+            result = await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = $1
+                );
+            """, table_name)
+            await conn.close()
+            return result
         except Exception:
             return False
-        finally:
-            try:
-                conn.close()
-            except:
-                pass
     
     def add_critical_issue(self, issue: str):
         """Add a critical compliance issue"""
@@ -113,26 +109,27 @@ class FinancialDataTypeValidator:
         })
         print(f"💡 RECOMMENDATION: {recommendation}")
     
-    def validate_financial_data_types(self):
+    async def validate_financial_data_types(self):
         """Main validation of financial data types"""
         print("🔍 Validating Financial Data Types...")
         print("=" * 50)
         
+        conn = None
         try:
-            conn = psycopg2.connect(self.db_url)
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            conn = await asyncpg.connect(self.db_url)
             
             total_issues = 0
             total_columns_checked = 0
             
             for table_name, columns in self.critical_financial_columns.items():
-                if not columns:  # Skip if table doesn't exist
+                # Check if table exists
+                if not await self.table_exists(table_name):
                     continue
                     
                 print(f"\n📊 Analyzing table: {table_name}")
                 
                 # Get column information
-                cursor.execute("""
+                table_columns = await conn.fetch("""
                     SELECT 
                         column_name,
                         data_type,
@@ -140,12 +137,10 @@ class FinancialDataTypeValidator:
                         numeric_scale,
                         is_nullable
                     FROM information_schema.columns 
-                    WHERE table_name = %s 
+                    WHERE table_name = $1 
                     AND table_schema = 'public'
                     ORDER BY column_name
-                """, (table_name,))
-                
-                table_columns = cursor.fetchall()
+                """, table_name)
                 table_analysis = {
                     "columns_found": len(table_columns),
                     "financial_columns": {},
@@ -220,9 +215,6 @@ class FinancialDataTypeValidator:
                 else:
                     print(f"    ✅ No issues found in {table_name}")
             
-            cursor.close()
-            conn.close()
-            
             # Overall compliance assessment
             critical_count = len(self.validation_results["critical_issues"])
             warning_count = len(self.validation_results["warnings"])
@@ -250,14 +242,17 @@ class FinancialDataTypeValidator:
             self.add_critical_issue(error)
             self.validation_results["status"] = "error"
             print(f"💥 {error}")
+        finally:
+            if conn:
+                await conn.close()
     
-    def check_data_samples(self):
+    async def check_data_samples(self):
         """Check actual data samples for precision issues"""
         print(f"\n🔍 Checking Data Samples for Precision Issues...")
         
+        conn = None
         try:
-            conn = psycopg2.connect(self.db_url)
-            cursor = conn.cursor()
+            conn = await asyncpg.connect(self.db_url)
             
             precision_checks = [
                 ("transactions", "amount", "Check for floating point precision artifacts"),
@@ -269,14 +264,12 @@ class FinancialDataTypeValidator:
                 
                 try:
                     # Check for values with more than 2 decimal places (precision artifacts)
-                    cursor.execute(f"""
+                    precision_artifacts = await conn.fetchval(f"""
                         SELECT COUNT(*) 
                         FROM {table} 
                         WHERE {column}::text ~ '\\.[0-9]{{3,}}'
                         LIMIT 5
                     """)
-                    
-                    precision_artifacts = cursor.fetchone()[0]
                     
                     if precision_artifacts > 0:
                         issue = f"Found {precision_artifacts} records in {table}.{column} with >2 decimal places - likely Float precision artifacts"
@@ -285,15 +278,13 @@ class FinancialDataTypeValidator:
                         print(f"    ✅ No precision artifacts found in {table}.{column}")
                         
                     # Check for very small fractional amounts (common with Float errors)
-                    cursor.execute(f"""
+                    tiny_amounts = await conn.fetchval(f"""
                         SELECT COUNT(*)
                         FROM {table}
                         WHERE {column} > 0 
                         AND {column} < 0.01
                         AND {column}::text ~ '\\.[0-9]{{3,}}'
                     """)
-                    
-                    tiny_amounts = cursor.fetchone()[0]
                     
                     if tiny_amounts > 0:
                         issue = f"Found {tiny_amounts} records in {table}.{column} with tiny fractional amounts - possible Float precision errors"
@@ -302,12 +293,12 @@ class FinancialDataTypeValidator:
                 except Exception as e:
                     print(f"    ⚠️ Could not check {table}.{column}: {str(e)}")
             
-            cursor.close()
-            conn.close()
-            
         except Exception as e:
             error = f"Data sample validation failed: {str(e)}"
             self.add_warning(error)
+        finally:
+            if conn:
+                await conn.close()
     
     def generate_fix_sql(self):
         """Generate SQL statements to fix data type issues"""
@@ -382,7 +373,7 @@ TYPE NUMERIC(12,2);
         print(f"📊 Validation report saved: {report_file}")
         return report_file
 
-def main():
+async def main():
     print("🏦 MITA Finance Data Type Validation")
     print("=" * 50)
     print("Validating financial column data types for compliance...")
@@ -392,8 +383,8 @@ def main():
         validator = FinancialDataTypeValidator()
         
         # Run validation
-        validator.validate_financial_data_types()
-        validator.check_data_samples()
+        await validator.validate_financial_data_types()
+        await validator.check_data_samples()
         validator.generate_fix_sql()
         
         # Save report
@@ -420,4 +411,4 @@ def main():
         return 2
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(asyncio.run(main()))

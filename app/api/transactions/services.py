@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
@@ -81,9 +82,9 @@ def list_user_transactions(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
-    category: str | None = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    category: Optional[str] = None,
 ):
     query = db.query(Transaction).filter(Transaction.user_id == user.id)
     if category:

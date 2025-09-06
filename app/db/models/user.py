@@ -22,6 +22,16 @@ class User(Base):
     timezone = Column(String, default="UTC")
     token_version = Column(Integer, default=1, nullable=False)
     
+    # Password reset fields
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+    password_reset_attempts = Column(Integer, default=0, nullable=False)
+    
+    # Email verification fields
+    email_verified = Column(Boolean, default=False, nullable=False)
+    email_verification_token = Column(String, nullable=True)
+    email_verification_expires = Column(DateTime(timezone=True), nullable=True)
+    
     # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")

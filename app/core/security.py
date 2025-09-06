@@ -16,7 +16,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 import redis
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 
 from app.core.config import settings
 from app.core.error_handler import ValidationException, AuthenticationException, RateLimitException
@@ -1170,7 +1171,7 @@ class JWTSecurity:
             
             return payload
             
-        except JWTError as e:
+        except InvalidTokenError as e:
             logger.warning(f"JWT verification failed: {e}")
             raise AuthenticationException("Invalid token")
     

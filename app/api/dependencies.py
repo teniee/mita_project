@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from jwt import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
@@ -142,7 +142,7 @@ async def get_current_user(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except JWTError as jwt_error:
+    except InvalidTokenError as jwt_error:
         logger.warning(f"JWT validation error: {jwt_error}")
         log_security_event("authentication_failure", {
             "reason": "jwt_error",
@@ -325,7 +325,7 @@ async def get_refresh_token_user(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except JWTError as jwt_error:
+    except InvalidTokenError as jwt_error:
         logger.warning(f"JWT refresh token validation error: {jwt_error}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

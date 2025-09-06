@@ -10,7 +10,8 @@ import pytest
 import time
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
-from jose import jwt, JWTError
+import jwt
+from jwt import InvalidTokenError
 
 from app.services.auth_jwt_service import (
     create_access_token,

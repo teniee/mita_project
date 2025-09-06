@@ -1,31 +1,33 @@
 # Requirements for secret rotation Lambda functions
 # All packages must be compatible with AWS Lambda Python 3.11 runtime
 
-# Database connectivity
-psycopg2-binary==2.9.7
+# Database connectivity - Using asyncpg for consistency
+asyncpg==0.30.0                    # PostgreSQL async driver
+asyncio-compat==0.1.2              # Async compatibility helpers
 
 # AWS SDK (already available in Lambda runtime, but specified for local testing)
-boto3==1.29.0
-botocore==1.32.0
+boto3==1.35.60                     # Updated AWS SDK
+botocore==1.35.60                  # Updated boto core
 
 # JSON Web Token handling for JWT rotation
-PyJWT==2.8.0
-cryptography==41.0.7
+PyJWT==2.10.1                      # SECURITY UPDATE: Latest version
+cryptography==44.0.1               # SECURITY UPDATE: CVE-2024-12797 fixed
 
 # Redis connectivity for cache credential rotation
-redis==5.0.1
+redis==5.2.0                       # Updated Redis client
 
 # HTTP requests for API key validation
-requests==2.31.0
+requests==2.32.4                   # SECURITY UPDATE: CVE-2024-47081 fixed
 
 # Date/time handling
-python-dateutil==2.8.2
+python-dateutil==2.9.0             # Updated date utilities
 
 # Logging and monitoring
-structlog==23.1.0
+structlog==24.4.0                  # Updated structured logging
 
 # Security and encryption
-bcrypt==4.0.1
+bcrypt==4.2.0                      # Updated bcrypt
 
-# For email service credential testing
-smtplib-ssl==1.0.4
+# Email service libraries
+# Note: smtplib is built-in to Python, external SSL wrapper not needed
+email-validator==2.2.0             # Email validation utilities

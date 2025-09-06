@@ -164,7 +164,7 @@ class TestAuthenticationPerformance:
         
         for i in range(num_tests):
             start_time = time.perf_counter()
-            response = await mobile_client.post("/auth/refresh", json={
+            response = await mobile_client.post("/auth/refresh-token", data={
                 "refresh_token": refresh_token
             })
             end_time = time.perf_counter()

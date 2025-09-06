@@ -1,3 +1,4 @@
+from typing import Union
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,7 +130,7 @@ async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
 
 
 # Simplified registration function without complex async operations
-async def register_user_async(data: FastRegisterIn | RegisterIn, db: AsyncSession) -> TokenOut:
+async def register_user_async(data: Union[FastRegisterIn, RegisterIn], db: AsyncSession) -> TokenOut:
     """SIMPLIFIED: Clean registration without complex timeout operations that cause hangs."""
     
     # Basic validation

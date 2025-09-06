@@ -433,13 +433,13 @@ class AIFinancialAnalyzer:
         
         # Generic tips if no specific patterns
         if not patterns:
+            # Calculate user-specific savings target instead of fixed 20%
+            user_context = self._get_user_context()
+            savings_target = scale_threshold_by_income('savings_rate', user_context.monthly_income, 
+                                                     age=user_context.age,
+                                                     debt_to_income_ratio=user_context.debt_to_income_ratio)
             tips.extend([
                 "Track expenses daily to identify spending patterns",
-                # Calculate user-specific savings target instead of fixed 20%
-                user_context = self._get_user_context()
-                savings_target = scale_threshold_by_income('savings_rate', user_context.monthly_income, 
-                                                         age=user_context.age,
-                                                         debt_to_income_ratio=user_context.debt_to_income_ratio)
                 f"Set up automatic savings of {savings_target:.0%} of income",
                 "Review and optimize recurring expenses monthly",
                 "Use cash for discretionary spending to increase awareness"

@@ -1,57 +1,82 @@
-fastapi==0.104.1
-uvicorn[standard]==0.27.0.post1
-pydantic==2.5.0
-pydantic[email]
-pydantic-settings==2.2.1
-email-validator==2.1.0.post1
-phonenumbers==8.13.24
-pycountry==23.12.7
-bleach==6.1.0
-python-dotenv==1.0.0
-python-multipart==0.0.6
-numpy==1.24.3
-scikit-learn==1.3.0
-# Upgraded to SQLAlchemy 2.x for better async support
-SQLAlchemy==2.0.25
-alembic==1.13.1
-asyncpg==0.30.0
-psycopg2-binary==2.9.7
-PyJWT==2.8
-passlib[bcrypt]==1.7
-fastapi-limiter==0.1.6
-aioredis==2.0
-redis==4.6.0
-starlette==0.27.0
-pyyaml==6.0
-pytesseract==0.3.10
-Pillow==10.0.1
-firebase-admin==6.2.0
-google-cloud-storage==2.10.0
-spacy==3.7.2
-transformers==4.35.0
-Babel==2.13.0
-python-jose[cryptography]==3.3.0
-httpx==0.25.0
-requests==2.31.0
-google-cloud-vision==3.4.4
-google-auth==2.23.3
-google-api-python-client==2.103.0
-pytest==7.4.2
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+# =====================================================================
+# MITA Finance Application - Production Dependencies
+# CLEAN VERSION - All Emergency Dependencies Removed
+# =====================================================================
 
-openai==1.3.0
-boto3==1.29.7
-rq==1.15.1
-rq-scheduler==0.13.1
-# APNS temporarily disabled due to dependency conflicts
-# Will be replaced with compatible library in future update
-sentry-sdk==1.38.0
-prometheus-client==0.18.0
-psutil==5.9.6
-tenacity==8.2.3
-loguru==0.7.2
-aiohttp==3.9.0
-cryptography==41.0.7
-docker==6.1.3
-bcrypt==4.0.1
+# FastAPI Framework and Core Dependencies
+fastapi==0.115.4                    # Latest stable with security fixes
+uvicorn[standard]==0.32.1           # Updated ASGI server
+pydantic==2.9.2                     # Updated with validation improvements
+pydantic[email]==2.9.2              # Explicit version for email validation
+pydantic-settings==2.6.1            # Settings management
+email-validator==2.2.0              # Email validation
+phonenumbers==8.13.48               # Phone number validation
+pycountry==24.6.1                   # Country data
+bleach==6.2.0                       # HTML sanitization
+python-dotenv==1.0.1                # Environment variables
+python-multipart==0.0.18           # Latest file upload support (security fix)
+
+# Data Science and ML
+numpy==2.1.2                        # Updated for performance
+scikit-learn==1.5.2                 # Updated ML library
+
+# Database Layer - AsyncPG Only (Consolidated)
+SQLAlchemy==2.0.36                  # Latest async-compatible ORM
+alembic==1.14.0                     # Database migrations
+asyncpg==0.30.0                     # Primary PostgreSQL driver
+
+# Authentication and Security - UPDATED FOR SECURITY
+PyJWT==2.10.1                       # JWT handling (latest security fix)
+passlib[bcrypt]==1.7.4              # Password hashing
+bcrypt==4.2.0                       # Bcrypt implementation
+cryptography==44.0.1                # SECURITY UPDATE: CVE-2024-12797 fixed
+
+# Redis and Caching
+aioredis==2.0.1                     # Async Redis client
+redis==5.2.0                        # Redis client for sync operations
+fastapi-limiter==0.1.6              # Rate limiting
+
+# HTTP and API - UPDATED FOR SECURITY
+starlette==0.47.2                   # SECURITY UPDATE: CVE-2025-54121 fixed
+httpx==0.28.0                       # Modern HTTP client
+requests==2.32.4                    # SECURITY UPDATE: CVE-2024-47081 fixed
+
+# File Processing and OCR
+pyyaml==6.0.2                       # YAML processing
+pytesseract==0.3.13                 # OCR
+Pillow==11.0.0                      # Latest image processing (security fix)
+
+# Google Cloud Services
+firebase-admin==6.5.0               # Firebase integration
+google-cloud-storage==2.18.2        # Cloud storage
+google-cloud-vision==3.8.0          # Vision API
+google-auth==2.36.0                 # Google authentication
+google-api-python-client==2.149.0   # Google APIs
+
+# AI and NLP - UPDATED FOR SECURITY
+spacy==3.8.2                        # NLP library
+transformers==4.52.1                # SECURITY UPDATE: Multiple CVEs fixed
+openai==1.54.4                      # OpenAI API
+
+# Internationalization
+Babel==2.16.0                       # i18n support
+
+# Task Queue and Background Jobs
+rq==1.16.2                          # Task queue
+rq-scheduler==0.13.1                # Task scheduling
+
+# Cloud Services and Storage
+boto3==1.35.60                      # AWS SDK
+
+# Monitoring and Observability
+sentry-sdk==2.17.0                  # Error tracking
+prometheus-client==0.21.0           # Metrics
+psutil==6.1.0                       # System monitoring
+loguru==0.7.2                       # Advanced logging
+
+# HTTP Client and Network - UPDATED FOR SECURITY
+aiohttp==3.12.14                    # SECURITY UPDATE: CVE-2025-53643 fixed
+
+# Utilities
+tenacity==9.0.0                     # Retry logic
+docker==7.1.0                       # Docker client

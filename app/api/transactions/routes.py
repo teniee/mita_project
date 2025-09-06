@@ -212,7 +212,14 @@ async def get_transactions_standardized(
             end_date=end_date,
             category=category,
         )
-    )
+        
+        return success_response(
+            data=transactions,
+            message="Transactions retrieved successfully"
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving transactions for user {user.id}: {e}")
+        raise InternalServerError("Failed to retrieve transactions")
 
 
 @router.post(

@@ -33,7 +33,8 @@ from enum import Enum
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.core.config import settings
@@ -185,7 +186,7 @@ class TokenBlacklistService:
                 # Cap at 7 days for safety
                 return min(ttl, 86400 * 7)
                 
-        except JWTError:
+        except InvalidTokenError:
             # Try previous secret if available
             if hasattr(settings, 'JWT_PREVIOUS_SECRET') and settings.JWT_PREVIOUS_SECRET:
                 try:
@@ -199,7 +200,7 @@ class TokenBlacklistService:
                     if exp:
                         ttl = max(1, int(exp - time.time()))
                         return min(ttl, 86400 * 7)
-                except JWTError:
+                except InvalidTokenError:
                     pass
         
         # Default TTL if we can't decode token
@@ -224,7 +225,7 @@ class TokenBlacklistService:
                 "scope": payload.get("scope", "")
             }
             
-        except JWTError:
+        except InvalidTokenError:
             # Try previous secret
             if hasattr(settings, 'JWT_PREVIOUS_SECRET') and settings.JWT_PREVIOUS_SECRET:
                 try:
@@ -242,7 +243,7 @@ class TokenBlacklistService:
                         "iat": payload.get("iat"),
                         "scope": payload.get("scope", "")
                     }
-                except JWTError:
+                except InvalidTokenError:
                     pass
         
         return None

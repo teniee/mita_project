@@ -211,7 +211,8 @@ class TestDynamicThresholdEconomicSoundness:
         # High debt should reduce discretionary spending
         discretionary_categories = ['entertainment', 'shopping', 'miscellaneous']
         for category in discretionary_categories:
-            if category in both_allocations := (low_debt_allocations, high_debt_allocations):
+            both_allocations = (low_debt_allocations, high_debt_allocations)
+            if category in low_debt_allocations or category in high_debt_allocations:
                 low_disc = low_debt_allocations.get(category, 0)
                 high_disc = high_debt_allocations.get(category, 0)
                 if low_disc > 0:  # Only compare if category exists in low debt scenario
@@ -308,7 +309,8 @@ class TestDynamicThresholdEconomicSoundness:
         crisis_allocations = service_high_inflation.get_budget_allocation_thresholds(base_context)
         
         # During economic stress, savings should be prioritized more
-        if 'savings' in both_allocations := (normal_allocations, crisis_allocations):
+        both_allocations = (normal_allocations, crisis_allocations)
+        if 'savings' in normal_allocations and 'savings' in crisis_allocations:
             assert crisis_allocations['savings'] >= normal_allocations['savings'], (
                 "High recession risk should increase savings priority"
             )

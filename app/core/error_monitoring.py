@@ -273,7 +273,7 @@ class ErrorMonitor:
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 integrations=[
-                    FastApiIntegration(auto_enable=True),
+                    FastApiIntegration(),
                     SqlalchemyIntegration(),
                 ],
                 environment=getattr(settings, 'ENVIRONMENT', 'development'),

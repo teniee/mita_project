@@ -12,34 +12,60 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # UI and Icons
   cupertino_icons: ^1.0.8
-  dio: ^5.4.3+1                 # HTTP client
-  flutter_secure_storage: ^9.2.2
-  intl: ^0.20.2
-  google_sign_in: ^6.2.1
-  fl_chart: ^0.68.0
-  firebase_core: ^2.32.0
-  firebase_messaging: ^14.9.4
-  firebase_crashlytics: ^3.5.7
-  connectivity_plus: ^6.0.5
-  shared_preferences: ^2.3.2
-  http: ^1.2.2
-  sqflite: ^2.3.3+1
-  image_picker: ^1.1.2
-  image_cropper: ^7.1.0
-  flutter_local_notifications: ^17.2.2
-  in_app_purchase: ^3.2.0
-  sentry_flutter: ^8.9.0
-  geolocator: ^12.0.0
-  geocoding: ^3.0.0
-  path_provider: ^2.1.4
-  cached_network_image: ^3.4.0
-
-  device_info_plus: any
-  package_info_plus: ^8.0.2
-  url_launcher: ^6.3.1
-  path: any
-  crypto: any
+  fl_chart: ^0.69.0                    # Updated charts library
+  
+  # HTTP and Networking - Consolidated and Updated
+  dio: ^5.8.0                          # UPDATED: Latest HTTP client with security fixes
+  http: ^1.2.2                         # Fallback HTTP client
+  connectivity_plus: ^6.1.0           # UPDATED: Network connectivity
+  
+  # Security and Storage
+  flutter_secure_storage: ^9.2.2      # Secure storage
+  shared_preferences: ^2.3.2          # Preferences storage
+  
+  # Internationalization
+  intl: ^0.19.0                        # Date/number formatting
+  
+  # Authentication - Consolidated versions
+  google_sign_in: ^6.2.1              # Google authentication
+  
+  # Firebase Services - Latest stable versions
+  firebase_core: ^3.8.0               # UPDATED: Latest Firebase core
+  firebase_messaging: ^15.1.4         # UPDATED: Latest messaging
+  firebase_crashlytics: ^4.1.4        # UPDATED: Latest crashlytics
+  
+  # Local Database
+  sqflite: ^2.4.0                     # Updated SQLite
+  path_provider: ^2.1.4               # File system paths
+  path: ^1.9.0                        # Path manipulation
+  
+  # Media and File Handling
+  image_picker: ^1.1.2                # Camera/gallery picker
+  image_cropper: ^8.0.2               # Updated image cropper
+  cached_network_image: ^3.4.1        # Image caching
+  
+  # Notifications
+  flutter_local_notifications: ^18.0.1 # Updated local notifications
+  
+  # In-App Purchases
+  in_app_purchase: ^3.2.0             # IAP support
+  
+  # Monitoring and Analytics
+  sentry_flutter: ^8.12.0             # UPDATED: Latest error tracking
+  
+  # Location Services
+  geolocator: ^13.0.2                 # UPDATED: Latest location services
+  geocoding: ^3.0.1                   # UPDATED: Latest geocoding services
+  
+  # Device Information
+  device_info_plus: ^11.0.0           # UPDATED: Latest device information
+  package_info_plus: ^8.1.0           # UPDATED: Latest app package info
+  url_launcher: ^6.3.2                # UPDATED: Latest URL launching
+  
+  # Cryptography
+  crypto: ^3.0.5                      # Cryptographic functions
 dev_dependencies:
   flutter_test:
     sdk: flutter

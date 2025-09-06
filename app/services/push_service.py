@@ -50,7 +50,7 @@ if not firebase_admin._apps:
 
 
 def _record_log(
-    db: Session | None, *, user_id: int, channel: str, message: str, success: bool
+    db: Optional[Session], *, user_id: int, channel: str, message: str, success: bool
 ) -> None:
     if db:
         log_notification(

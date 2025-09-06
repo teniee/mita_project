@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="alert alert-danger">
+    <h1>🚨 Security Alert: {{ alert_type }}</h1>
+</div>
+
+<p>We've detected unusual activity on your MITA Finance account that requires your immediate attention.</p>
+
+<div class="financial-highlight" style="border-left: 4px solid #cc0000;">
+    <h3>⚠️ Security Event Details</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Event Type:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ alert_type }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date & Time:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ timestamp }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Account:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ email }}</td>
+        </tr>
+        {% if location %}
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Location:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ location }}</td>
+        </tr>
+        {% endif %}
+        {% if ip_address %}
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>IP Address:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ ip_address }}</td>
+        </tr>
+        {% endif %}
+        {% if device_info %}
+        <tr>
+            <td style="padding: 8px 0;"><strong>Device:</strong></td>
+            <td style="padding: 8px 0;">{{ device_info }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<h2>🔍 What Happened?</h2>
+<div class="alert alert-warning">
+    {{ alert_details }}
+</div>
+
+{% if action_taken %}
+<h2>✅ Actions Already Taken</h2>
+<div class="alert alert-info">
+    <p>For your security, we've automatically taken the following actions:</p>
+    <p>{{ action_taken }}</p>
+</div>
+{% endif %}
+
+<h2>🛡️ Immediate Actions Required</h2>
+
+<div class="alert alert-danger">
+    <strong>Please take these security steps immediately:</strong>
+</div>
+
+<ol>
+    {% for action in recommended_actions %}
+    <li><strong>{{ action }}</strong></li>
+    {% endfor %}
+</ol>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="https://app.mita.finance/security" class="btn btn-danger">Secure My Account Now</a>
+</div>
+
+<h2>🔐 Enhanced Security Measures</h2>
+
+<p>To better protect your account, consider enabling these security features:</p>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4 style="color: #0066cc; margin-top: 0;">🔐 Two-Factor Authentication</h4>
+        <p style="font-size: 14px; margin-bottom: 0;">Add an extra layer of security with 2FA using your phone or authenticator app.</p>
+    </div>
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4 style="color: #0066cc; margin-top: 0;">📧 Security Notifications</h4>
+        <p style="font-size: 14px; margin-bottom: 0;">Get instant alerts for login attempts and account changes.</p>
+    </div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4 style="color: #0066cc; margin-top: 0;">🔑 Strong Passwords</h4>
+        <p style="font-size: 14px; margin-bottom: 0;">Use unique, complex passwords and consider a password manager.</p>
+    </div>
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 6px;">
+        <h4 style="color: #0066cc; margin-top: 0;">📱 Device Management</h4>
+        <p style="font-size: 14px; margin-bottom: 0;">Regularly review and remove old devices from your account.</p>
+    </div>
+</div>
+
+<h2>🤔 Was This You?</h2>
+
+<p>If you recognize this activity and it was authorized by you:</p>
+<ul>
+    <li>No further action is needed</li>
+    <li>You can safely ignore this alert</li>
+    <li>Consider reviewing your security settings anyway</li>
+</ul>
+
+<p><strong>If you did NOT authorize this activity:</strong></p>
+<ul>
+    <li>🚨 <strong>Change your password immediately</strong></li>
+    <li>🔒 <strong>Enable two-factor authentication</strong></li>
+    <li>📞 <strong>Contact our security team right away</strong></li>
+    <li>🔍 <strong>Review your recent account activity</strong></li>
+</ul>
+
+<h2>📞 Need Help?</h2>
+
+<div style="background-color: #ffe6e6; border-left: 4px solid #cc0000; padding: 20px; margin: 20px 0;">
+    <h4 style="color: #cc0000; margin-top: 0;">🚨 Emergency Security Contact</h4>
+    <p style="margin-bottom: 10px;"><strong>If your account is compromised, contact us immediately:</strong></p>
+    <ul style="margin-bottom: 0;">
+        <li><strong>Security Hotline:</strong> <a href="mailto:security@mita.finance">security@mita.finance</a></li>
+        <li><strong>24/7 Support:</strong> Available through your MITA app</li>
+        <li><strong>Phone Support:</strong> 1-800-MITA-SEC (1-800-648-2732)</li>
+    </ul>
+</div>
+
+<div style="background-color: #e6f3ff; border-left: 4px solid #0066cc; padding: 20px; margin: 20px 0;">
+    <h4 style="color: #0066cc; margin-top: 0;">💬 General Support</h4>
+    <ul style="margin-bottom: 0;">
+        <li><strong>Email:</strong> <a href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+        <li><strong>Help Center:</strong> <a href="https://mita.finance/help/security">Security Help</a></li>
+        <li><strong>Live Chat:</strong> Available in your MITA app</li>
+    </ul>
+</div>
+
+<h2>🛡️ How We Protect You</h2>
+
+<p>MITA Finance uses advanced security measures to protect your account:</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 32px;">🔐</div>
+        <strong>Bank-Level Encryption</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">256-bit SSL encryption</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 32px;">🛡️</div>
+        <strong>24/7 Monitoring</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">AI-powered fraud detection</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 32px;">🏆</div>
+        <strong>SOC 2 Compliant</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Industry-standard security</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 32px;">🔒</div>
+        <strong>Multi-Factor Auth</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Extra account protection</p>
+    </div>
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <h3>Take action now to secure your account</h3>
+    <a href="https://app.mita.finance/security" class="btn btn-danger">Review Security Settings</a>
+</div>
+
+<p>Stay secure,<br>
+<strong>The MITA Finance Security Team</strong></p>
+
+<div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 30px; font-size: 11px; color: #6c757d;">
+    <p><strong>Security Alert ID:</strong> {{ alert_id if alert_id else 'N/A' }}</p>
+    <p><strong>Generated:</strong> {{ timestamp }}</p>
+    <p><strong>Severity:</strong> High Priority</p>
+    
+    <p style="margin-top: 15px;">
+        <strong>Important:</strong> This is an automated security alert. MITA Finance will never ask you to provide passwords, PINs, or other sensitive information via email. If you suspect this email is fraudulent, please forward it to <a href="mailto:security@mita.finance">security@mita.finance</a>.
+    </p>
+</div>
+{% endblock %}

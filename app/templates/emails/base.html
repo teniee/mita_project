@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{{ subject }}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style type="text/css">
+        /* Reset styles */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            border-collapse: collapse;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Main styles */
+        body {
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+        }
+
+        /* MITA Finance Branding */
+        .brand-primary { color: #0066cc !important; }
+        .brand-secondary { color: #004499 !important; }
+        .brand-accent { color: #00cc66 !important; }
+        .brand-warning { color: #ff6600 !important; }
+        .brand-danger { color: #cc0000 !important; }
+
+        /* Container styles */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Header styles */
+        .email-header {
+            background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            text-decoration: none;
+            letter-spacing: 2px;
+        }
+
+        .tagline {
+            color: #e6f2ff;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        /* Content styles */
+        .email-content {
+            padding: 40px;
+            line-height: 1.6;
+            color: #333333;
+        }
+
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+
+        .main-content {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .main-content h1, .main-content h2, .main-content h3 {
+            color: #004499;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .main-content h1 { font-size: 24px; }
+        .main-content h2 { font-size: 20px; }
+        .main-content h3 { font-size: 18px; }
+
+        .main-content p {
+            margin-bottom: 16px;
+        }
+
+        .main-content ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        .main-content li {
+            margin-bottom: 8px;
+        }
+
+        /* Button styles */
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background-color: #0066cc;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 20px 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #0052a3 !important;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62 !important;
+        }
+
+        .btn-success {
+            background-color: #00cc66;
+        }
+
+        .btn-success:hover {
+            background-color: #00a052 !important;
+        }
+
+        .btn-warning {
+            background-color: #ff6600;
+        }
+
+        .btn-warning:hover {
+            background-color: #cc5200 !important;
+        }
+
+        .btn-danger {
+            background-color: #cc0000;
+        }
+
+        .btn-danger:hover {
+            background-color: #990000 !important;
+        }
+
+        /* Alert boxes */
+        .alert {
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background-color: #e6f3ff;
+            border-left-color: #0066cc;
+            color: #004499;
+        }
+
+        .alert-success {
+            background-color: #e6ffe6;
+            border-left-color: #00cc66;
+            color: #006633;
+        }
+
+        .alert-warning {
+            background-color: #fff2e6;
+            border-left-color: #ff6600;
+            color: #cc5200;
+        }
+
+        .alert-danger {
+            background-color: #ffe6e6;
+            border-left-color: #cc0000;
+            color: #990000;
+        }
+
+        /* Financial data styles */
+        .financial-highlight {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        .amount.negative {
+            color: #cc0000;
+        }
+
+        .amount.positive {
+            color: #00cc66;
+        }
+
+        /* Footer styles */
+        .email-footer {
+            background-color: #f8f9fa;
+            padding: 30px 40px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .footer-links {
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: #6c757d;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+
+        .footer-links a:hover {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+
+        .footer-info {
+            font-size: 12px;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+
+        .unsubscribe {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #868e96;
+        }
+
+        .unsubscribe a {
+            color: #868e96;
+        }
+
+        /* Security badges */
+        .security-badge {
+            display: inline-block;
+            background-color: #e6f3ff;
+            color: #0066cc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 5px;
+        }
+
+        /* Responsive design */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+            }
+            
+            .email-header,
+            .email-content,
+            .email-footer {
+                padding: 20px !important;
+            }
+            
+            .btn {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            
+            .amount {
+                font-size: 20px !important;
+            }
+            
+            .footer-links a {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .email-container {
+                background-color: #1a1a1a !important;
+            }
+            
+            .email-content {
+                color: #e0e0e0 !important;
+            }
+            
+            .main-content h1,
+            .main-content h2,
+            .main-content h3 {
+                color: #4da6ff !important;
+            }
+            
+            .financial-highlight {
+                background-color: #2d2d2d !important;
+                border-color: #404040 !important;
+            }
+            
+            .email-footer {
+                background-color: #2d2d2d !important;
+                border-top-color: #404040 !important;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .btn {
+                background-color: transparent !important;
+                color: #0066cc !important;
+                border: 2px solid #0066cc !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div style="background-color: #f4f7fa; padding: 20px 0; min-height: 100vh;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center">
+                    <div class="email-container">
+                        <!-- Header -->
+                        <div class="email-header">
+                            <a href="https://mita.finance" class="logo">MITA</a>
+                            <div class="tagline">Your Intelligent Financial Assistant</div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="email-content">
+                            {% if user_name %}
+                            <div class="greeting">Hello {{ user_name }},</div>
+                            {% endif %}
+                            
+                            <div class="main-content">
+                                {% block content %}
+                                <!-- Template-specific content goes here -->
+                                {% endblock %}
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="email-footer">
+                            <div class="footer-links">
+                                <a href="https://mita.finance">Home</a>
+                                <a href="https://mita.finance/support">Support</a>
+                                <a href="{{ privacy_policy_link }}">Privacy</a>
+                                <a href="{{ terms_of_service_link }}">Terms</a>
+                            </div>
+                            
+                            <div class="footer-info">
+                                <strong>{{ company_name }}</strong><br>
+                                Secure Financial Management Platform<br>
+                                
+                                <div style="margin-top: 15px;">
+                                    <span class="security-badge">🔒 Bank-Level Security</span>
+                                    <span class="security-badge">🛡️ SOC 2 Compliant</span>
+                                    <span class="security-badge">🔐 256-bit Encryption</span>
+                                </div>
+                                
+                                <div style="margin-top: 15px; font-size: 11px;">
+                                    This email was sent to {{ email }}.<br>
+                                    If you have questions, contact us at {{ support_email }}<br>
+                                    © {{ current_year }} {{ company_name }}. All rights reserved.
+                                </div>
+                            </div>
+                            
+                            {% if unsubscribe_link and unsubscribe_link != '#' %}
+                            <div class="unsubscribe">
+                                <a href="{{ unsubscribe_link }}">Unsubscribe from these emails</a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

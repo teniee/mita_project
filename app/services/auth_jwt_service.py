@@ -5,11 +5,12 @@ import logging
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set
+from typing import Optional, Dict, Any, List, Set, Union
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from app.core.config import ALGORITHM, settings
 from app.core.audit_logging import log_security_event
 # UPDATED: Use centralized password security configuration
@@ -174,7 +175,7 @@ def _current_secret() -> str:
     return settings.SECRET_KEY
 
 
-def _previous_secret() -> str | None:
+def _previous_secret() -> Optional[str]:
     return settings.JWT_PREVIOUS_SECRET
 
 
@@ -370,7 +371,7 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
             }
             
             return token_info
-        except JWTError:
+        except InvalidTokenError:
             continue
     
     return None
@@ -410,7 +411,7 @@ async def validate_token_security(token: str) -> Dict[str, Any]:
 
 def create_access_token(
     data: dict, 
-    expires_delta: timedelta | None = None, 
+    expires_delta: Optional[timedelta] = None, 
     scopes: List[str] = None,
     user_role: str = None
 ) -> str:
@@ -505,7 +506,7 @@ async def verify_token(
     token: str, 
     token_type: str = "access_token", 
     required_scopes: List[str] = None
-) -> Dict[str, Any] | None:
+) -> Optional[Dict[str, Any]]:
     """Verify JWT token with comprehensive security checks.
     
     Args:
@@ -537,7 +538,7 @@ async def verify_token(
                     "expected_type": token_type,
                     "actual_type": payload.get("token_type")
                 })
-                raise JWTError("Invalid token type")
+                raise InvalidTokenError("Invalid token type")
             
             # Validate issuer (iss) and audience (aud)
             if payload.get("iss") != JWT_ISSUER:
@@ -546,7 +547,7 @@ async def verify_token(
                     "expected_issuer": JWT_ISSUER,
                     "actual_issuer": payload.get("iss")
                 })
-                raise JWTError("Invalid token issuer")
+                raise InvalidTokenError("Invalid token issuer")
             
             if payload.get("aud") != JWT_AUDIENCE:
                 logger.warning(f"Token audience mismatch: expected {JWT_AUDIENCE}, got {payload.get('aud')}")
@@ -554,7 +555,7 @@ async def verify_token(
                     "expected_audience": JWT_AUDIENCE,
                     "actual_audience": payload.get("aud")
                 })
-                raise JWTError("Invalid token audience")
+                raise InvalidTokenError("Invalid token audience")
             
             # Validate required scopes if specified
             if required_scopes:
@@ -568,13 +569,13 @@ async def verify_token(
                         "missing_scopes": missing_scopes,
                         "user_id": payload.get("sub")
                     })
-                    raise JWTError(f"Insufficient token scopes: {missing_scopes}")
+                    raise InvalidTokenError(f"Insufficient token scopes: {missing_scopes}")
             
             # Check expiration
             exp = payload.get("exp")
             if exp and exp < time.time():
                 logger.debug("Token has expired")
-                raise JWTError("Token expired")
+                raise InvalidTokenError("Token expired")
             
             # Check blacklist using new blacklist service
             jti = payload.get("jti")
@@ -590,7 +591,7 @@ async def verify_token(
                             "jti": jti[:8] + "...",
                             "token_type": token_type
                         })
-                        raise JWTError("Token is blacklisted")
+                        raise InvalidTokenError("Token is blacklisted")
                 except Exception as blacklist_error:
                     logger.error(f"Error checking token blacklist: {blacklist_error}")
                     # Fail-open for blacklist checks to maintain availability
@@ -605,18 +606,18 @@ async def verify_token(
             for claim in required_claims:
                 if not payload.get(claim):
                     logger.warning(f"Missing required claim: {claim}")
-                    raise JWTError(f"Missing claim: {claim}")
+                    raise InvalidTokenError(f"Missing claim: {claim}")
             
             # Validate not-before (nbf) claim if present
             nbf = payload.get("nbf")
             if nbf and nbf > time.time():
                 logger.warning("Token not yet valid (nbf claim)")
-                raise JWTError("Token not yet valid")
+                raise InvalidTokenError("Token not yet valid")
             
             logger.debug(f"Token verified successfully with secret {i + 1}")
             return payload
             
-        except JWTError as e:
+        except InvalidTokenError as e:
             last_error = e
             continue
     

@@ -1,4 +1,4 @@
-from jose import jwt
+import jwt
 
 from app.services import auth_jwt_service as svc
 

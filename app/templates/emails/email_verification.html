@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>📧 Verify Your Email Address</h1>
+
+<p>Welcome to MITA Finance! To complete your account setup and ensure the security of your financial data, please verify your email address.</p>
+
+<div class="alert alert-info">
+    <strong>🔐 Security First:</strong> Email verification helps us protect your account and ensures you receive important security notifications.
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <h3>Click the button below to verify your email</h3>
+    <a href="{{ verification_link }}" class="btn btn-success">Verify Email Address</a>
+</div>
+
+<div class="financial-highlight">
+    <h3>✉️ Verification Details</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; width: 40%;"><strong>Email Address:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">{{ email }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Verification Code:</strong></td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><code style="background-color: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">{{ verification_code }}</code></td>
+        </tr>
+        {% if expires_at %}
+        <tr>
+            <td style="padding: 8px 0;"><strong>Expires:</strong></td>
+            <td style="padding: 8px 0;">{{ expires_at }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<h2>🔄 Alternative Verification Method</h2>
+
+<p>If the button above doesn't work, you can also verify your email by:</p>
+
+<ol>
+    <li>Copying this verification code: <strong><code>{{ verification_code }}</code></strong></li>
+    <li>Going to <a href="https://app.mita.finance/verify">https://app.mita.finance/verify</a></li>
+    <li>Entering your email address and the verification code</li>
+</ol>
+
+<div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+    <h4 style="margin-top: 0;">📋 Or copy this link:</h4>
+    <div style="background-color: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; word-break: break-all;">
+        {{ verification_link }}
+    </div>
+</div>
+
+<h2>🚀 What Happens After Verification?</h2>
+
+<p>Once your email is verified, you'll unlock the full MITA Finance experience:</p>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #e6f3ff; padding: 20px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 10px;">🔒</div>
+        <h4 style="color: #0066cc; margin-bottom: 10px;">Enhanced Security</h4>
+        <p style="font-size: 14px; margin: 0;">Receive security alerts and account notifications</p>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background-color: #e6ffe6; padding: 20px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 10px;">💰</div>
+        <h4 style="color: #00cc66; margin-bottom: 10px;">Full Features</h4>
+        <p style="font-size: 14px; margin: 0;">Access all budgeting and financial tracking tools</p>
+    </div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #fff2e6; padding: 20px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 10px;">📊</div>
+        <h4 style="color: #ff6600; margin-bottom: 10px;">Smart Insights</h4>
+        <p style="font-size: 14px; margin: 0;">Get personalized financial advice and reports</p>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background-color: #f3e6ff; padding: 20px; border-radius: 6px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 10px;">🔔</div>
+        <h4 style="color: #6f42c1; margin-bottom: 10px;">Smart Alerts</h4>
+        <p style="font-size: 14px; margin: 0;">Receive budget alerts and transaction notifications</p>
+    </div>
+</div>
+
+<h2>🛡️ Why Email Verification Matters</h2>
+
+<p>Email verification is a crucial security step that:</p>
+
+<ul>
+    <li><strong>🔐 Protects Your Account:</strong> Ensures only you can access your financial data</li>
+    <li><strong>📧 Enables Communications:</strong> Allows us to send important security and account updates</li>
+    <li><strong>🔄 Account Recovery:</strong> Provides a secure way to reset your password if needed</li>
+    <li><strong>⚠️ Security Alerts:</strong> Notifies you of suspicious account activity</li>
+    <li><strong>💡 Financial Insights:</strong> Delivers personalized financial advice and tips</li>
+</ul>
+
+<div class="alert alert-warning">
+    <h4 style="margin-top: 0;">⏰ Time Sensitive</h4>
+    <p style="margin-bottom: 0;">This verification link {% if expires_at %}expires on {{ expires_at }}{% else %}will expire soon{% endif %}. Please verify your email as soon as possible to ensure uninterrupted access to your account.</p>
+</div>
+
+<h2>🔧 Having Trouble?</h2>
+
+<p>If you're experiencing issues with email verification:</p>
+
+<div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+    <h4 style="margin-top: 0;">🔍 Common Solutions:</h4>
+    <ul style="margin-bottom: 0;">
+        <li><strong>Check spam folder:</strong> Sometimes verification emails end up in spam</li>
+        <li><strong>Whitelist our domain:</strong> Add mita.finance to your email's safe sender list</li>
+        <li><strong>Try manual entry:</strong> Use the verification code method above</li>
+        <li><strong>Clear browser cache:</strong> Sometimes cached data interferes with links</li>
+        <li><strong>Try different browser:</strong> Test the link in an incognito/private window</li>
+    </ul>
+</div>
+
+<h2>📞 Still Need Help?</h2>
+
+<p>Our support team is ready to assist you:</p>
+
+<ul>
+    <li>📧 <strong>Email Support:</strong> <a href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+    <li>💬 <strong>Live Chat:</strong> Available in the MITA Finance app</li>
+    <li>📚 <strong>Help Center:</strong> <a href="https://mita.finance/help/verification">Email Verification Guide</a></li>
+    <li>🎥 <strong>Video Tutorial:</strong> <a href="https://mita.finance/tutorials/email-verification">How to Verify Your Email</a></li>
+</ul>
+
+<div class="alert alert-info">
+    <h4 style="margin-top: 0;">🔄 Need a New Verification Code?</h4>
+    <p style="margin-bottom: 0;">If your verification code has expired, you can request a new one by logging into your account and visiting your profile settings.</p>
+</div>
+
+<h2>🌟 What Our Users Say</h2>
+
+<div style="background-color: #f8f9fa; border-left: 4px solid #0066cc; padding: 20px; margin: 20px 0;">
+    <blockquote style="margin: 0; font-style: italic;">
+        "MITA Finance has completely transformed how I manage my money. The email notifications keep me informed about my spending, and I've saved more money than ever before!"
+    </blockquote>
+    <p style="text-align: right; margin: 10px 0 0 0; font-size: 14px; color: #6c757d;">- Sarah K., MITA Finance User</p>
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <h3>Ready to start your financial journey?</h3>
+    <a href="{{ verification_link }}" class="btn btn-success">Verify Email & Get Started</a>
+</div>
+
+<h2>🔒 Your Privacy & Security</h2>
+
+<p>We take your privacy seriously:</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🔐</div>
+        <strong>Bank-Level Encryption</strong>
+        <p style="font-size: 11px; margin: 5px 0 0 0;">Your data is protected with 256-bit SSL</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🛡️</div>
+        <strong>No Data Selling</strong>
+        <p style="font-size: 11px; margin: 5px 0 0 0;">We never sell your personal information</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🏆</div>
+        <strong>SOC 2 Compliant</strong>
+        <p style="font-size: 11px; margin: 5px 0 0 0;">Industry-standard security practices</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🔍</div>
+        <strong>24/7 Monitoring</strong>
+        <p style="font-size: 11px; margin: 5px 0 0 0;">Continuous security monitoring</p>
+    </div>
+</div>
+
+<p>Thank you for choosing MITA Finance for your financial journey!<br>
+<strong>The MITA Finance Team</strong></p>
+
+<div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 30px; font-size: 11px; color: #6c757d;">
+    <p><strong>Verification Required:</strong> This email was sent because you created a MITA Finance account with this email address. Email verification is required to complete your account setup.</p>
+    
+    <p><strong>Security Note:</strong> If you didn't create a MITA Finance account, please ignore this email or contact our security team at <a href="mailto:security@mita.finance">security@mita.finance</a>.</p>
+    
+    {% if expires_at %}
+    <p><strong>Expires:</strong> {{ expires_at }}</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>✅ Transaction Confirmed</h1>
+
+<p>Your transaction has been successfully processed and added to your MITA Finance account.</p>
+
+<div class="financial-highlight">
+    <h3>💳 Transaction Details</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6; width: 40%;"><strong>Amount:</strong></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><span class="amount">{{ transaction_amount }}</span></td>
+        </tr>
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><strong>Description:</strong></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;">{{ description }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><strong>Date:</strong></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;">{{ transaction_date }}</td>
+        </tr>
+        {% if transaction_id %}
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><strong>Transaction ID:</strong></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><code>{{ transaction_id }}</code></td>
+        </tr>
+        {% endif %}
+        {% if category %}
+        <tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;"><strong>Category:</strong></td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #dee2e6;">
+                <span style="background-color: #e6f3ff; color: #0066cc; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    {{ category }}
+                </span>
+            </td>
+        </tr>
+        {% endif %}
+        {% if balance %}
+        <tr>
+            <td style="padding: 12px 0;"><strong>New Balance:</strong></td>
+            <td style="padding: 12px 0;"><span class="amount {% if balance|float >= 0 %}positive{% else %}negative{% endif %}">{{ balance }}</span></td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<div class="alert alert-success">
+    <strong>✅ Transaction Status:</strong> Successfully processed and recorded in your financial dashboard.
+</div>
+
+{% if category %}
+<h2>📊 Budget Impact</h2>
+
+<p>This transaction has been automatically categorized as <strong>{{ category }}</strong> and applied to your budget tracking.</p>
+
+<div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+    <h4 style="margin-top: 0;">💡 Smart Insights</h4>
+    <ul style="margin-bottom: 0;">
+        <li>This transaction represents part of your {{ category|lower }} spending</li>
+        <li>Your financial patterns are being analyzed for better budgeting</li>
+        <li>Check your dashboard for updated budget status</li>
+        {% if category == "Dining" %}
+        <li>💡 Tip: Track dining expenses to identify saving opportunities</li>
+        {% elif category == "Shopping" %}
+        <li>🛒 Consider if this purchase aligns with your financial goals</li>
+        {% elif category == "Transportation" %}
+        <li>🚗 Monitor transportation costs to optimize your commute budget</li>
+        {% elif category == "Entertainment" %}
+        <li>🎬 Balance entertainment spending with your savings goals</li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
+
+<h2>🎯 What's Next?</h2>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #e6f3ff; padding: 20px; border-radius: 6px; border-left: 4px solid #0066cc;">
+        <h4 style="color: #0066cc; margin-top: 0;">📱 View in App</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">See this transaction in your MITA Finance app for detailed analysis.</p>
+        <a href="https://app.mita.finance/transactions" class="btn" style="font-size: 14px; padding: 10px 20px;">View Transactions</a>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background-color: #e6ffe6; padding: 20px; border-radius: 6px; border-left: 4px solid #00cc66;">
+        <h4 style="color: #00cc66; margin-top: 0;">📊 Budget Check</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">Review how this transaction affects your monthly budget.</p>
+        <a href="https://app.mita.finance/budget" class="btn btn-success" style="font-size: 14px; padding: 10px 20px;">Check Budget</a>
+    </div>
+</div>
+
+<h2>🔍 Transaction Verification</h2>
+
+<p><strong>Please verify this transaction:</strong></p>
+
+<div class="alert alert-info">
+    <ul style="margin-bottom: 0;">
+        <li>✅ <strong>Recognize this transaction?</strong> No action needed.</li>
+        <li>❌ <strong>Don't recognize this transaction?</strong> Report it immediately.</li>
+        <li>🔧 <strong>Wrong category?</strong> You can update it in your app.</li>
+        <li>📝 <strong>Missing details?</strong> Add notes or receipts in your app.</li>
+    </ul>
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="https://app.mita.finance/transactions/dispute" class="btn btn-warning">Report Issue</a>
+    <a href="https://app.mita.finance/transactions" class="btn">View All Transactions</a>
+</div>
+
+<h2>💡 Financial Insights</h2>
+
+<p>Based on this transaction and your spending patterns, here are some insights:</p>
+
+<div style="background-color: #fff2e6; border-left: 4px solid #ff6600; padding: 20px; margin: 20px 0;">
+    <h4 style="color: #cc5200; margin-top: 0;">📈 Spending Analysis</h4>
+    <ul style="margin-bottom: 0;">
+        {% if category == "Dining" %}
+        <li>Your dining expenses are an important part of your lifestyle budget</li>
+        <li>Consider meal planning to optimize dining costs</li>
+        <li>Track frequency of dining out vs. home cooking</li>
+        {% elif category == "Transportation" %}
+        <li>Transportation costs impact your monthly budget significantly</li>
+        <li>Consider carpooling or public transit alternatives</li>
+        <li>Track fuel costs and maintenance expenses</li>
+        {% elif category == "Shopping" %}
+        <li>Retail purchases should align with your financial priorities</li>
+        <li>Consider waiting 24 hours before non-essential purchases</li>
+        <li>Track needs vs. wants in your shopping habits</li>
+        {% else %}
+        <li>This transaction is part of your overall spending pattern</li>
+        <li>Regular review of expenses helps maintain financial health</li>
+        <li>Consider if this expense aligns with your financial goals</li>
+        {% endif %}
+    </ul>
+</div>
+
+<h2>🔒 Security & Privacy</h2>
+
+<p>Your financial data security is our top priority:</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🔐</div>
+        <strong>Bank-Level Security</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">256-bit encryption</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🛡️</div>
+        <strong>Privacy Protected</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Your data stays private</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🔍</div>
+        <strong>Fraud Monitoring</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">24/7 security monitoring</p>
+    </div>
+</div>
+
+<h2>📞 Need Help?</h2>
+
+<p>If you have questions about this transaction or need support:</p>
+
+<ul>
+    <li>📧 Email: <a href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+    <li>💬 In-app chat support</li>
+    <li>📚 Visit our <a href="https://mita.finance/help">Help Center</a></li>
+    <li>🚨 Security concerns: <a href="mailto:security@mita.finance">security@mita.finance</a></li>
+</ul>
+
+<div class="alert alert-success">
+    <strong>🎯 Pro Tip:</strong> Regular transaction review helps you stay on track with your financial goals and catch any unusual activity early!
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <p><strong>Keep building your financial future with MITA!</strong></p>
+    <a href="https://app.mita.finance/dashboard" class="btn">View Dashboard</a>
+</div>
+
+<p>Best regards,<br>
+<strong>The MITA Finance Team</strong></p>
+
+<div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 30px; font-size: 11px; color: #6c757d;">
+    <p><strong>Transaction processed:</strong> {{ transaction_date }}</p>
+    {% if transaction_id %}
+    <p><strong>Reference ID:</strong> {{ transaction_id }}</p>
+    {% endif %}
+    <p><strong>Account:</strong> {{ email }}</p>
+    
+    <p style="margin-top: 15px;">
+        This confirmation was sent because a transaction was processed on your MITA Finance account. If you did not authorize this transaction, please contact our support team immediately at <a href="mailto:security@mita.finance">security@mita.finance</a>.
+    </p>
+</div>
+{% endblock %}

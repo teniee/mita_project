@@ -1,0 +1,586 @@
+# Sentry Alert Rules Configuration for MITA Finance
+# Comprehensive alerting for financial services with compliance requirements
+
+# Production Alert Rules
+production:
+  # Critical Financial Errors
+  financial_critical_errors:
+    name: "MITA Finance - Critical Financial Errors"
+    conditions:
+      - filter:
+          key: "tags.financial_service"
+          match: "equals"
+          value: "true"
+      - filter:
+          key: "tags.severity"
+          match: "equals"
+          value: "critical"
+    triggers:
+      - label: "Critical Financial Error"
+        threshold_type: 0  # Above threshold
+        alert_threshold: 1
+        resolve_threshold: 0
+        threshold_period: 1  # 1 minute
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "finance-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#finance-alerts"
+        tags: "environment,financial_operation,user_id,transaction_id"
+      - type: "pagerduty"
+        target_type: "specific"
+        target_identifier: "finance-critical"
+    environment: "production"
+    frequency: 5  # Alert every 5 minutes max
+
+  # Payment Processing Failures
+  payment_processing_failures:
+    name: "MITA Finance - Payment Processing Failures"
+    conditions:
+      - filter:
+          key: "tags.financial_operation"
+          match: "equals"
+          value: "payment_processing"
+      - filter:
+          key: "level"
+          match: "equals"
+          value: "error"
+    triggers:
+      - label: "Payment Failure"
+        threshold_type: 0
+        alert_threshold: 3
+        resolve_threshold: 0
+        threshold_period: 5  # 5 minutes
+      - label: "Multiple Payment Failures"
+        threshold_type: 0
+        alert_threshold: 10
+        resolve_threshold: 5
+        threshold_period: 15  # 15 minutes
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "payments-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#payments-critical"
+        tags: "user_id,amount,currency,payment_method"
+      - type: "webhook"
+        target_identifier: "${PAYMENTS_WEBHOOK_URL}"
+    environment: "production"
+    frequency: 10
+
+  # Authentication Security Events
+  authentication_security:
+    name: "MITA Finance - Authentication Security Events"
+    conditions:
+      - filter:
+          key: "tags.financial_operation"
+          match: "equals"
+          value: "authentication"
+      - filter:
+          key: "tags.security_critical"
+          match: "equals"
+          value: "true"
+    triggers:
+      - label: "Authentication Security Event"
+        threshold_type: 0
+        alert_threshold: 1
+        resolve_threshold: 0
+        threshold_period: 1
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "security-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#security-alerts"
+        tags: "user_id,ip_address,auth_method"
+      - type: "pagerduty"
+        target_type: "specific"
+        target_identifier: "security-critical"
+    environment: "production"
+    frequency: 1  # Immediate alerting
+
+  # High Error Rate
+  high_error_rate:
+    name: "MITA Finance - High Error Rate"
+    conditions:
+      - filter:
+          key: "event.type"
+          match: "equals"
+          value: "error"
+      - filter:
+          key: "tags.financial_service"
+          match: "equals"
+          value: "true"
+    triggers:
+      - label: "High Error Rate"
+        threshold_type: 2  # Percentage
+        alert_threshold: 5.0  # 5% error rate
+        resolve_threshold: 2.0  # 2% error rate
+        threshold_period: 5
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "devops-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#system-alerts"
+    environment: "production"
+    frequency: 15
+
+  # Slow Performance
+  slow_performance:
+    name: "MITA Finance - Slow Performance"
+    conditions:
+      - filter:
+          key: "tags.performance_issue"
+          match: "equals"
+          value: "true"
+      - filter:
+          key: "tags.financial_operation"
+          match: "not_equals"
+          value: ""
+    triggers:
+      - label: "Slow Financial Operations"
+        threshold_type: 0
+        alert_threshold: 5
+        resolve_threshold: 2
+        threshold_period: 10
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "performance-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#performance-alerts"
+        tags: "operation,duration_ms,user_id"
+    environment: "production"
+    frequency: 30
+
+  # Database Connection Issues
+  database_issues:
+    name: "MITA Finance - Database Connection Issues"
+    conditions:
+      - filter:
+          key: "message"
+          match: "contains"
+          value: "database"
+      - filter:
+          key: "level"
+          match: "gte"
+          value: "error"
+    triggers:
+      - label: "Database Connection Error"
+        threshold_type: 0
+        alert_threshold: 3
+        resolve_threshold: 0
+        threshold_period: 5
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "database-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#database-alerts"
+      - type: "pagerduty"
+        target_type: "specific"
+        target_identifier: "database-critical"
+    environment: "production"
+    frequency: 5
+
+  # Mobile App Crashes
+  mobile_crashes:
+    name: "MITA Finance - Mobile App Crashes"
+    conditions:
+      - filter:
+          key: "tags.component"
+          match: "equals"
+          value: "mobile_app"
+      - filter:
+          key: "level"
+          match: "equals"
+          value: "fatal"
+    triggers:
+      - label: "Mobile App Crash"
+        threshold_type: 0
+        alert_threshold: 5
+        resolve_threshold: 2
+        threshold_period: 15
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "mobile-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#mobile-alerts"
+        tags: "platform,screen_name,user_id"
+    environment: "production"
+    frequency: 20
+
+  # PCI Compliance Violations
+  pci_compliance_violations:
+    name: "MITA Finance - PCI Compliance Violations"
+    conditions:
+      - filter:
+          key: "tags.pci_violation"
+          match: "equals"
+          value: "true"
+    triggers:
+      - label: "PCI Compliance Violation"
+        threshold_type: 0
+        alert_threshold: 1
+        resolve_threshold: 0
+        threshold_period: 1
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "compliance-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#compliance-critical"
+      - type: "pagerduty"
+        target_type: "specific"
+        target_identifier: "compliance-critical"
+      - type: "webhook"
+        target_identifier: "${COMPLIANCE_WEBHOOK_URL}"
+    environment: "production"
+    frequency: 1
+
+  # Transaction Volume Anomalies
+  transaction_volume_anomaly:
+    name: "MITA Finance - Transaction Volume Anomaly"
+    conditions:
+      - filter:
+          key: "tags.financial_operation"
+          match: "equals"
+          value: "transaction_processing"
+      - filter:
+          key: "tags.anomaly_detected"
+          match: "equals"
+          value: "true"
+    triggers:
+      - label: "Transaction Volume Spike"
+        threshold_type: 0
+        alert_threshold: 1
+        resolve_threshold: 0
+        threshold_period: 5
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "fraud-team"
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#fraud-alerts"
+        tags: "user_id,transaction_count,time_window"
+    environment: "production"
+    frequency: 10
+
+# Staging Alert Rules (Less Aggressive)
+staging:
+  # Critical Errors Only
+  staging_critical_errors:
+    name: "MITA Finance Staging - Critical Errors"
+    conditions:
+      - filter:
+          key: "tags.severity"
+          match: "gte"
+          value: "high"
+    triggers:
+      - label: "Staging Critical Error"
+        threshold_type: 0
+        alert_threshold: 3
+        resolve_threshold: 0
+        threshold_period: 10
+    actions:
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#staging-alerts"
+    environment: "staging"
+    frequency: 15
+
+  # Performance Issues
+  staging_performance:
+    name: "MITA Finance Staging - Performance Issues"
+    conditions:
+      - filter:
+          key: "tags.performance_issue"
+          match: "equals"
+          value: "true"
+    triggers:
+      - label: "Staging Performance Issue"
+        threshold_type: 0
+        alert_threshold: 10
+        resolve_threshold: 5
+        threshold_period: 30
+    actions:
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#staging-performance"
+    environment: "staging"
+    frequency: 60
+
+# Development Alert Rules (Minimal)
+development:
+  # Only Fatal Errors
+  dev_fatal_errors:
+    name: "MITA Finance Dev - Fatal Errors"
+    conditions:
+      - filter:
+          key: "level"
+          match: "equals"
+          value: "fatal"
+    triggers:
+      - label: "Development Fatal Error"
+        threshold_type: 0
+        alert_threshold: 1
+        resolve_threshold: 0
+        threshold_period: 5
+    actions:
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#dev-alerts"
+    environment: "development"
+    frequency: 30
+
+# Alert Rule Templates for Common Scenarios
+templates:
+  # Financial Operation Error Template
+  financial_operation_error:
+    name: "Financial Operation Error - {operation_name}"
+    conditions:
+      - filter:
+          key: "tags.financial_operation"
+          match: "equals"
+          value: "{operation_name}"
+      - filter:
+          key: "level"
+          match: "equals"
+          value: "error"
+    triggers:
+      - label: "Financial Operation Error"
+        threshold_type: 0
+        alert_threshold: 5
+        resolve_threshold: 2
+        threshold_period: 15
+    actions:
+      - type: "slack"
+        target_type: "specific"
+        target_identifier: "#{operation_name}-alerts"
+    variables:
+      - operation_name: "string"
+
+  # User-Specific Error Pattern
+  user_error_pattern:
+    name: "User Error Pattern - {user_segment}"
+    conditions:
+      - filter:
+          key: "tags.subscription_tier"
+          match: "equals"
+          value: "{user_segment}"
+      - filter:
+          key: "level"
+          match: "gte"
+          value: "error"
+    triggers:
+      - label: "User Segment Error"
+        threshold_type: 0
+        alert_threshold: 10
+        resolve_threshold: 5
+        threshold_period: 30
+    actions:
+      - type: "email"
+        target_type: "team"
+        target_identifier: "customer-success"
+    variables:
+      - user_segment: "string"
+
+# Notification Channel Configurations
+notification_channels:
+  email:
+    finance_team:
+      emails:
+        - "finance-alerts@mita.finance"
+        - "cfo@mita.finance"
+      subject_template: "[MITA Finance] {alert_rule_name} - {trigger_label}"
+      
+    security_team:
+      emails:
+        - "security@mita.finance"
+        - "ciso@mita.finance"
+      subject_template: "[SECURITY ALERT] {alert_rule_name}"
+      
+    compliance_team:
+      emails:
+        - "compliance@mita.finance"
+        - "legal@mita.finance"
+        - "cfo@mita.finance"
+      subject_template: "[COMPLIANCE VIOLATION] {alert_rule_name}"
+
+  slack:
+    channels:
+      finance_alerts:
+        webhook_url: "${SLACK_FINANCE_WEBHOOK}"
+        channel: "#finance-alerts"
+        username: "Sentry Finance Bot"
+        icon_emoji: ":money_with_wings:"
+        
+      security_alerts:
+        webhook_url: "${SLACK_SECURITY_WEBHOOK}"
+        channel: "#security-alerts"
+        username: "Sentry Security Bot"
+        icon_emoji: ":shield:"
+        
+      compliance_critical:
+        webhook_url: "${SLACK_COMPLIANCE_WEBHOOK}"
+        channel: "#compliance-critical"
+        username: "Sentry Compliance Bot"
+        icon_emoji: ":warning:"
+        
+      payments_critical:
+        webhook_url: "${SLACK_PAYMENTS_WEBHOOK}"
+        channel: "#payments-critical"
+        username: "Sentry Payments Bot"
+        icon_emoji: ":credit_card:"
+
+  pagerduty:
+    services:
+      finance_critical:
+        integration_key: "${PAGERDUTY_FINANCE_KEY}"
+        service_name: "MITA Finance Critical"
+        escalation_policy: "Finance Team Escalation"
+        
+      security_critical:
+        integration_key: "${PAGERDUTY_SECURITY_KEY}"
+        service_name: "MITA Security Critical"
+        escalation_policy: "Security Team Escalation"
+        
+      compliance_critical:
+        integration_key: "${PAGERDUTY_COMPLIANCE_KEY}"
+        service_name: "MITA Compliance Critical"
+        escalation_policy: "Compliance Team Escalation"
+
+  webhooks:
+    custom_integrations:
+      fraud_detection:
+        url: "${FRAUD_DETECTION_WEBHOOK_URL}"
+        method: "POST"
+        headers:
+          Authorization: "Bearer ${FRAUD_DETECTION_TOKEN}"
+          Content-Type: "application/json"
+        
+      audit_system:
+        url: "${AUDIT_SYSTEM_WEBHOOK_URL}"
+        method: "POST"
+        headers:
+          Authorization: "Bearer ${AUDIT_SYSTEM_TOKEN}"
+          Content-Type: "application/json"
+        
+      compliance_dashboard:
+        url: "${COMPLIANCE_DASHBOARD_WEBHOOK_URL}"
+        method: "POST"
+        headers:
+          Authorization: "Bearer ${COMPLIANCE_DASHBOARD_TOKEN}"
+          Content-Type: "application/json"
+
+# Alert Routing Rules
+routing_rules:
+  # Route by severity
+  severity_routing:
+    critical:
+      channels: ["pagerduty", "email", "slack"]
+      immediate: true
+      
+    high:
+      channels: ["email", "slack"]
+      delay_minutes: 5
+      
+    medium:
+      channels: ["slack"]
+      delay_minutes: 15
+      
+    low:
+      channels: ["slack"]
+      delay_minutes: 60
+
+  # Route by operation type
+  operation_routing:
+    payment_processing:
+      channels: ["pagerduty", "email"]
+      teams: ["payments", "finance"]
+      immediate: true
+      
+    authentication:
+      channels: ["email", "slack"]
+      teams: ["security", "backend"]
+      
+    transaction_processing:
+      channels: ["slack", "email"]
+      teams: ["finance", "backend"]
+
+  # Route by environment
+  environment_routing:
+    production:
+      all_channels: true
+      escalation: true
+      
+    staging:
+      channels: ["slack"]
+      escalation: false
+      
+    development:
+      channels: ["slack"]
+      minimal: true
+
+# Alert Suppression Rules
+suppression_rules:
+  # Suppress during maintenance windows
+  maintenance_suppression:
+    conditions:
+      - deployment_in_progress: true
+      - maintenance_window: true
+    duration_minutes: 60
+    
+  # Suppress duplicate alerts
+  duplicate_suppression:
+    group_by: ["tags.financial_operation", "tags.user_id"]
+    window_minutes: 10
+    max_alerts: 3
+    
+  # Suppress low-priority alerts during high activity
+  activity_suppression:
+    conditions:
+      - high_transaction_volume: true
+      - severity: "low"
+    duration_minutes: 30
+
+# Escalation Policies
+escalation_policies:
+  finance_escalation:
+    steps:
+      - delay_minutes: 0
+        targets: ["finance_team_primary"]
+      - delay_minutes: 15
+        targets: ["finance_team_secondary", "finance_manager"]
+      - delay_minutes: 30
+        targets: ["cfo", "executive_team"]
+        
+  security_escalation:
+    steps:
+      - delay_minutes: 0
+        targets: ["security_team_primary"]
+      - delay_minutes: 10
+        targets: ["security_team_secondary", "security_manager"]
+      - delay_minutes: 20
+        targets: ["ciso", "executive_team"]
+        
+  compliance_escalation:
+    steps:
+      - delay_minutes: 0
+        targets: ["compliance_team"]
+      - delay_minutes: 5
+        targets: ["compliance_manager", "legal_team"]
+      - delay_minutes: 15
+        targets: ["cfo", "ciso", "executive_team"]

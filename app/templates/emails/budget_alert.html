@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>⚠️ Budget Alert: {{ budget_category }}</h1>
+
+<p>We're letting you know that you've reached a significant portion of your budget limit for {{ budget_category|lower }} spending this month.</p>
+
+<div class="financial-highlight" style="border-left: 4px solid #ff6600;">
+    <h3>📊 Budget Status Overview</h3>
+    <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>{{ budget_category }} Budget:</strong>
+            <span>{{ spent_amount }} / {{ budget_limit }}</span>
+        </div>
+        
+        <!-- Progress bar -->
+        <div style="background-color: #e9ecef; border-radius: 10px; height: 20px; position: relative; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #00cc66 0%, #ff6600 70%, #cc0000 90%); height: 100%; width: {{ percentage_used }}%; border-radius: 10px; transition: width 0.3s ease;"></div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-weight: bold; font-size: 12px;">
+                {{ percentage_used }}
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6c757d; margin-top: 5px;">
+            <span>$0</span>
+            <span>{{ budget_limit }}</span>
+        </div>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid #dee2e6;">
+        <div style="text-align: center;">
+            <div class="amount">{{ spent_amount }}</div>
+            <div style="font-size: 12px; color: #6c757d;">Spent</div>
+        </div>
+        <div style="text-align: center;">
+            <div class="amount positive">${{ (budget_limit|replace('$', '')|float - spent_amount|replace('$', '')|float)|round(2) }}</div>
+            <div style="font-size: 12px; color: #6c757d;">Remaining</div>
+        </div>
+        <div style="text-align: center;">
+            <div class="amount brand-warning">{{ percentage_used }}</div>
+            <div style="font-size: 12px; color: #6c757d;">Used</div>
+        </div>
+    </div>
+</div>
+
+{% if percentage_used|replace('%', '')|float >= 90 %}
+<div class="alert alert-danger">
+    <strong>🚨 Critical Alert:</strong> You've used {{ percentage_used }} of your {{ budget_category|lower }} budget! Consider reviewing your spending to avoid going over budget.
+</div>
+{% elif percentage_used|replace('%', '')|float >= 80 %}
+<div class="alert alert-warning">
+    <strong>⚠️ High Usage:</strong> You've used {{ percentage_used }} of your {{ budget_category|lower }} budget. It's a good time to monitor your remaining expenses.
+</div>
+{% else %}
+<div class="alert alert-info">
+    <strong>📊 Budget Update:</strong> You've used {{ percentage_used }} of your {{ budget_category|lower }} budget. You're doing well staying on track!
+</div>
+{% endif %}
+
+<h2>💡 Smart Recommendations</h2>
+
+<div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+    <h4 style="margin-top: 0;">🎯 Actions to Consider:</h4>
+    <ul>
+        {% for recommendation in recommendations %}
+        <li>{{ recommendation }}</li>
+        {% endfor %}
+    </ul>
+    
+    {% if budget_category == "Dining" %}
+    <div style="margin-top: 15px; padding: 15px; background-color: #e6f3ff; border-radius: 4px;">
+        <strong>🍽️ Dining Budget Tips:</strong>
+        <ul style="margin: 10px 0 0 0;">
+            <li>Try meal prepping to reduce restaurant visits</li>
+            <li>Look for happy hour deals and lunch specials</li>
+            <li>Consider cooking at home more frequently</li>
+            <li>Set a weekly dining out limit</li>
+        </ul>
+    </div>
+    {% elif budget_category == "Shopping" %}
+    <div style="margin-top: 15px; padding: 15px; background-color: #e6f3ff; border-radius: 4px;">
+        <strong>🛒 Shopping Budget Tips:</strong>
+        <ul style="margin: 10px 0 0 0;">
+            <li>Implement the 24-hour rule for non-essential purchases</li>
+            <li>Create shopping lists and stick to them</li>
+            <li>Look for sales and use cashback apps</li>
+            <li>Distinguish between wants and needs</li>
+        </ul>
+    </div>
+    {% elif budget_category == "Transportation" %}
+    <div style="margin-top: 15px; padding: 15px; background-color: #e6f3ff; border-radius: 4px;">
+        <strong>🚗 Transportation Budget Tips:</strong>
+        <ul style="margin: 10px 0 0 0;">
+            <li>Consider carpooling or public transportation</li>
+            <li>Plan errands to minimize trips</li>
+            <li>Maintain your vehicle to improve fuel efficiency</li>
+            <li>Explore bike or walking options for short distances</li>
+        </ul>
+    </div>
+    {% elif budget_category == "Entertainment" %}
+    <div style="margin-top: 15px; padding: 15px; background-color: #e6f3ff; border-radius: 4px;">
+        <strong>🎬 Entertainment Budget Tips:</strong>
+        <ul style="margin: 10px 0 0 0;">
+            <li>Look for free community events and activities</li>
+            <li>Use streaming services instead of movie theaters</li>
+            <li>Take advantage of group discounts</li>
+            <li>Explore hobbies that don't require spending</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<h2>📈 Spending Analysis</h2>
+
+<p>Here's how your {{ budget_category|lower }} spending compares to previous months:</p>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 6px;">
+        <div style="font-size: 24px;">📅</div>
+        <strong>This Month</strong>
+        <div class="amount">{{ spent_amount }}</div>
+    </div>
+    
+    <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 6px;">
+        <div style="font-size: 24px;">🎯</div>
+        <strong>Budget Goal</strong>
+        <div class="amount">{{ budget_limit }}</div>
+    </div>
+    
+    <div style="flex: 1; min-width: 200px; text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 6px;">
+        <div style="font-size: 24px;">💰</div>
+        <strong>Remaining</strong>
+        <div class="amount positive">${{ (budget_limit|replace('$', '')|float - spent_amount|replace('$', '')|float)|round(2) }}</div>
+    </div>
+</div>
+
+<h2>🔧 Budget Management Tools</h2>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #e6f3ff; padding: 20px; border-radius: 6px; border-left: 4px solid #0066cc;">
+        <h4 style="color: #0066cc; margin-top: 0;">📊 View Detailed Analytics</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">See where your money is going with detailed spending breakdowns.</p>
+        <a href="https://app.mita.finance/analytics" class="btn" style="font-size: 14px; padding: 10px 20px;">View Analytics</a>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background-color: #fff2e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ff6600;">
+        <h4 style="color: #cc5200; margin-top: 0;">⚙️ Adjust Budget</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">Modify your budget limits based on your actual spending patterns.</p>
+        <a href="https://app.mita.finance/budget/edit" class="btn btn-warning" style="font-size: 14px; padding: 10px 20px;">Edit Budget</a>
+    </div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+    <div style="flex: 1; min-width: 250px; background-color: #e6ffe6; padding: 20px; border-radius: 6px; border-left: 4px solid #00cc66;">
+        <h4 style="color: #00cc66; margin-top: 0;">🎯 Set Savings Goal</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">Convert unused budget into automatic savings.</p>
+        <a href="https://app.mita.finance/goals" class="btn btn-success" style="font-size: 14px; padding: 10px 20px;">Create Goal</a>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background-color: #f3e6ff; padding: 20px; border-radius: 6px; border-left: 4px solid #6f42c1;">
+        <h4 style="color: #6f42c1; margin-top: 0;">🔔 Alert Settings</h4>
+        <p style="font-size: 14px; margin-bottom: 15px;">Customize when and how you receive budget alerts.</p>
+        <a href="https://app.mita.finance/settings/notifications" class="btn" style="background-color: #6f42c1; font-size: 14px; padding: 10px 20px;">Manage Alerts</a>
+    </div>
+</div>
+
+<h2>📚 Financial Education</h2>
+
+<div class="alert alert-success">
+    <h4 style="margin-top: 0;">💡 Did You Know?</h4>
+    <p style="margin-bottom: 0;">People who track their spending are 3x more likely to stay within their budget and reach their financial goals. You're already on the right path by monitoring your {{ budget_category|lower }} expenses!</p>
+</div>
+
+<div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+    <h4 style="margin-top: 0;">📖 Recommended Reading</h4>
+    <ul style="margin-bottom: 0;">
+        <li><a href="https://mita.finance/learn/budgeting-101">Budgeting 101: Master the Basics</a></li>
+        <li><a href="https://mita.finance/learn/expense-tracking">Advanced Expense Tracking Strategies</a></li>
+        <li><a href="https://mita.finance/learn/saving-tips">50 Ways to Save Money This Month</a></li>
+        <li><a href="https://mita.finance/learn/financial-wellness">Building Long-term Financial Wellness</a></li>
+    </ul>
+</div>
+
+<h2>🏆 Stay on Track</h2>
+
+<p>Remember, budgeting is a skill that improves with practice. Here's how to stay motivated:</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🎯</div>
+        <strong>Set Clear Goals</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Know why you're budgeting</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">📊</div>
+        <strong>Track Progress</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Monitor your success</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🏆</div>
+        <strong>Celebrate Wins</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Acknowledge your achievements</p>
+    </div>
+    <div style="text-align: center; padding: 15px;">
+        <div style="font-size: 24px;">🔄</div>
+        <strong>Adjust & Improve</strong>
+        <p style="font-size: 12px; margin: 5px 0 0 0;">Refine your approach</p>
+    </div>
+</div>
+
+<div style="text-align: center; margin: 40px 0;">
+    <h3>Take control of your {{ budget_category|lower }} spending</h3>
+    <a href="https://app.mita.finance/budget" class="btn">Manage Budget</a>
+    <a href="https://app.mita.finance/transactions" class="btn btn-success">View Transactions</a>
+</div>
+
+<h2>📞 Need Support?</h2>
+
+<p>Our financial wellness team is here to help:</p>
+
+<ul>
+    <li>📧 Email: <a href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+    <li>💬 Live chat in your MITA app</li>
+    <li>📚 Browse our <a href="https://mita.finance/help">Help Center</a></li>
+    <li>🎥 Watch our <a href="https://mita.finance/tutorials/budgeting">budgeting tutorials</a></li>
+</ul>
+
+<p>Keep up the great work managing your finances!<br>
+<strong>The MITA Finance Team</strong></p>
+
+<div style="border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 30px; font-size: 11px; color: #6c757d;">
+    <p><strong>Budget Alert Settings:</strong> You're receiving this alert because you've enabled budget notifications for {{ budget_category|lower }} spending. You can manage your notification preferences in your account settings.</p>
+    
+    <p><strong>Alert Triggered:</strong> {{ percentage_used }} of budget used</p>
+    <p><strong>Category:</strong> {{ budget_category }}</p>
+    <p><strong>Current Period:</strong> {{ transaction_date|default('Current Month') }}</p>
+</div>
+{% endblock %}

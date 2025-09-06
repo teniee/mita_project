@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Welcome to MITA Finance! 🎉</h1>
+
+<p>We're thrilled to have you join our community of smart financial managers. MITA is your intelligent financial assistant designed to help you take control of your finances with confidence.</p>
+
+<div class="alert alert-success">
+    <strong>🚀 Your account is ready!</strong><br>
+    You can now start tracking expenses, setting budgets, and achieving your financial goals.
+</div>
+
+<h2>Here's what you can do with MITA:</h2>
+
+<ul>
+    <li><strong>📊 Smart Budgeting:</strong> Create intelligent budgets that adapt to your spending patterns</li>
+    <li><strong>💰 Expense Tracking:</strong> Automatically categorize and track your expenses</li>
+    <li><strong>🎯 Goal Setting:</strong> Set and track financial goals with personalized recommendations</li>
+    <li><strong>📱 Mobile App:</strong> Manage your finances on-the-go with our mobile app</li>
+    <li><strong>🤖 AI Insights:</strong> Get personalized financial advice powered by artificial intelligence</li>
+    <li><strong>🔒 Bank-Level Security:</strong> Your data is protected with enterprise-grade security</li>
+</ul>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ onboarding_link }}" class="btn">Start Your Financial Journey</a>
+</div>
+
+<div class="financial-highlight">
+    <h3>🏆 Join thousands of users who have already:</h3>
+    <ul style="margin-bottom: 0;">
+        <li>Saved an average of $500 per month</li>
+        <li>Reduced overspending by 40%</li>
+        <li>Achieved their savings goals 3x faster</li>
+    </ul>
+</div>
+
+<h2>Getting Started is Easy:</h2>
+
+<ol>
+    <li><strong>Complete Your Profile:</strong> Tell us about your financial situation</li>
+    <li><strong>Set Your First Budget:</strong> Create budgets for your main spending categories</li>
+    <li><strong>Connect Your Accounts:</strong> Securely link your bank accounts for automatic tracking</li>
+    <li><strong>Set Financial Goals:</strong> Define what you want to achieve</li>
+</ol>
+
+<div class="alert alert-info">
+    <strong>💡 Pro Tip:</strong> The more you use MITA, the smarter it gets at helping you make better financial decisions!
+</div>
+
+<h2>Need Help?</h2>
+
+<p>Our support team is here to help you succeed:</p>
+<ul>
+    <li>📧 Email us at <a href="mailto:{{ support_email }}">{{ support_email }}</a></li>
+    <li>💬 Use the in-app chat feature</li>
+    <li>📚 Check out our comprehensive <a href="https://mita.finance/help">Help Center</a></li>
+    <li>🎥 Watch our <a href="https://mita.finance/tutorials">video tutorials</a></li>
+</ul>
+
+<div style="text-align: center; margin: 40px 0;">
+    <h3>Ready to take control of your financial future?</h3>
+    <a href="{{ onboarding_link }}" class="btn btn-success">Let's Get Started! 🚀</a>
+</div>
+
+<div class="alert alert-warning">
+    <strong>🔐 Security Reminder:</strong> Never share your MITA login credentials with anyone. We will never ask for your password via email or phone.
+</div>
+
+<p>Welcome aboard,<br>
+<strong>The MITA Finance Team</strong></p>
+
+<p style="font-size: 14px; color: #6c757d; margin-top: 30px;">
+    <em>This welcome email was sent because you successfully created a MITA Finance account. If you didn't create this account, please contact our support team immediately.</em>
+</p>
+{% endblock %}

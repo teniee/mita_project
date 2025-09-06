@@ -60,10 +60,12 @@ from app.api.style.routes import router as style_router
 from app.api.tasks.routes import router as tasks_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
+from app.api.email.routes import router as email_router
 from app.api.endpoints.audit import router as audit_router
 from app.api.endpoints.database_performance import router as db_performance_router
 from app.api.endpoints.cache_management import router as cache_management_router
 from app.api.endpoints.feature_flags import router as feature_flags_router
+from app.api.health.external_services_routes import router as external_services_health_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
@@ -98,21 +100,189 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 # ---- Sentry setup ----
-sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN"),
-    integrations=[FastApiIntegration(), RqIntegration()],
-    traces_sample_rate=1.0,
-    send_default_pii=True,
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.httpx import HttpxIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+import sentry_sdk
+from sentry_sdk import set_user, set_tag, set_context
+
+# Configure Sentry logging integration
+sentry_logging = LoggingIntegration(
+    level=logging.INFO,  # Capture info and above as breadcrumbs
+    event_level=logging.ERROR  # Send errors and above as events
 )
+
+def configure_sentry():
+    """Configure Sentry with comprehensive error monitoring for financial services"""
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    environment = os.getenv("ENVIRONMENT", "development")
+    
+    if not sentry_dsn:
+        logger.warning("Sentry DSN not configured - error monitoring disabled")
+        return
+    
+    # Determine sample rates based on environment
+    if environment == "production":
+        traces_sample_rate = 0.1  # 10% of transactions for production
+        profiles_sample_rate = 0.1  # 10% profiling in production
+    elif environment == "staging":
+        traces_sample_rate = 0.5  # 50% for staging
+        profiles_sample_rate = 0.5
+    else:
+        traces_sample_rate = 1.0  # 100% for development
+        profiles_sample_rate = 1.0
+    
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment=environment,
+        
+        # Comprehensive integrations for financial services
+        integrations=[
+            FastApiIntegration(
+                auto_enable=True,
+                transaction_style="endpoint",
+                failed_request_status_codes=[400, range(500, 600)]
+            ),
+            RqIntegration(),
+            SqlalchemyIntegration(
+                auto_enable=True
+            ),
+            AsyncPGIntegration(),
+            RedisIntegration(),
+            HttpxIntegration(),
+            sentry_logging
+        ],
+        
+        # Performance monitoring
+        traces_sample_rate=traces_sample_rate,
+        profiles_sample_rate=profiles_sample_rate,
+        
+        # Security and compliance for financial services
+        send_default_pii=False,  # Don't send PII data by default
+        
+        # Release and version tracking
+        release=os.getenv("SENTRY_RELEASE", "mita-finance@1.0.0"),
+        
+        # Server metadata
+        server_name=os.getenv("SERVER_NAME", "mita-api-server"),
+        
+        # Custom configuration
+        max_breadcrumbs=50,
+        attach_stacktrace=True,
+        
+        # Custom before_send filter
+        before_send=filter_sensitive_data,
+        before_send_transaction=filter_sensitive_transactions,
+        
+        # Custom error sampling
+        sample_rate=1.0,  # Capture all errors
+        
+        # Debug mode for development
+        debug=environment == "development",
+        
+        # Custom tags for financial services
+        _experiments={
+            "profiles_sample_rate": profiles_sample_rate,
+        }
+    )
+    
+    # Set global context for financial services
+    set_context("application", {
+        "name": "MITA Finance API",
+        "version": "1.0.0",
+        "type": "financial_services",
+        "compliance": "PCI_DSS"
+    })
+    
+    # Set global tags
+    set_tag("service", "mita-api")
+    set_tag("component", "backend")
+    set_tag("environment", environment)
+    
+    logger.info(f"Sentry error monitoring initialized for {environment} environment")
+
+def filter_sensitive_data(event, hint):
+    """Filter out sensitive financial data before sending to Sentry"""
+    
+    # Remove sensitive keys from request data
+    sensitive_keys = {
+        'password', 'token', 'secret', 'key', 'authorization',
+        'card_number', 'cvv', 'pin', 'ssn', 'tax_id',
+        'account_number', 'routing_number', 'sort_code',
+        'iban', 'swift', 'bank_account'
+    }
+    
+    def sanitize_dict(data):
+        if isinstance(data, dict):
+            sanitized = {}
+            for key, value in data.items():
+                key_lower = key.lower()
+                if any(sensitive_key in key_lower for sensitive_key in sensitive_keys):
+                    sanitized[key] = "[REDACTED]"
+                elif isinstance(value, dict):
+                    sanitized[key] = sanitize_dict(value)
+                elif isinstance(value, list):
+                    sanitized[key] = [sanitize_dict(item) if isinstance(item, dict) else item for item in value]
+                else:
+                    sanitized[key] = value
+            return sanitized
+        return data
+    
+    # Sanitize request data
+    if 'request' in event:
+        if 'data' in event['request']:
+            event['request']['data'] = sanitize_dict(event['request']['data'])
+        if 'query_string' in event['request']:
+            # Remove sensitive query parameters
+            query_string = event['request']['query_string']
+            if query_string and any(key in query_string.lower() for key in sensitive_keys):
+                event['request']['query_string'] = "[REDACTED]"
+    
+    # Sanitize extra data
+    if 'extra' in event:
+        event['extra'] = sanitize_dict(event['extra'])
+    
+    # Add financial service context
+    if 'tags' not in event:
+        event['tags'] = {}
+    
+    event['tags']['financial_service'] = True
+    event['tags']['pci_compliant'] = True
+    
+    return event
+
+def filter_sensitive_transactions(event, hint):
+    """Filter sensitive data from transaction events"""
+    
+    # Add financial context to transactions
+    if 'contexts' not in event:
+        event['contexts'] = {}
+    
+    event['contexts']['financial_operation'] = {
+        'type': 'financial_transaction',
+        'compliance_level': 'pci_dss',
+        'data_classification': 'confidential'
+    }
+    
+    return event
+
+# Initialize Sentry
+configure_sentry()
 
 # Initialize comprehensive logging
 setup_logging()
 
-# Apply platform-specific optimizations
-deployment_config = apply_platform_optimizations()
-
 # Initialize logger after logging setup
 logger = logging.getLogger(__name__)
+
+# Validate dependencies before continuing startup
+from app.core.dependency_validator import validate_dependencies_on_startup
+validate_dependencies_on_startup()
+
+# Apply platform-specific optimizations
+deployment_config = apply_platform_optimizations()
 logger.info(f"Applied optimizations for platform: {deployment_config['platform']}")
 
 # Import standardized error handling middleware and documentation
@@ -332,8 +502,31 @@ async def performance_logging_middleware(request: Request, call_next):
             f"ERROR: {request.method} {request.url.path} failed after {duration*1000:.0f}ms: {exc}"
         )
         
-        # Send to Sentry for critical errors only
-        sentry_sdk.capture_exception(exc)
+        # Send to Sentry with comprehensive context
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("error_type", "middleware_exception")
+            scope.set_tag("endpoint", request.url.path)
+            scope.set_tag("method", request.method)
+            scope.set_context("request", {
+                "url": str(request.url),
+                "method": request.method,
+                "headers": dict(request.headers),
+                "duration_ms": duration * 1000
+            })
+            
+            # Extract user context if available
+            try:
+                auth_header = request.headers.get("Authorization")
+                if auth_header and auth_header.startswith("Bearer "):
+                    from app.services.auth_jwt_service import get_token_info
+                    token_info = get_token_info(auth_header.replace("Bearer ", ""))
+                    if token_info:
+                        scope.set_user({"id": token_info.get("user_id")})
+                        scope.set_tag("user_authenticated", True)
+            except Exception:
+                scope.set_tag("user_authenticated", False)
+            
+            sentry_sdk.capture_exception(exc)
         raise
 
 
@@ -457,6 +650,7 @@ app.include_router(
 private_routers_list = [
     (financial_router, "/api", ["Financial"]),
     (users_router, "/api", ["Users"]),
+    (email_router, "/api", ["Email"]),
     (calendar_router, "/api", ["Calendar"]),
     (challenge_router, "/api", ["Challenges"]),
     (expense_router, "/api", ["Expenses"]),
@@ -486,6 +680,7 @@ private_routers_list = [
     (db_performance_router, "/api", ["Database Performance"]),
     (cache_management_router, "/api", ["Cache Management"]),
     (feature_flags_router, "/api", ["Feature Flags"]),
+    (external_services_health_router, "", ["Health"]),  # No /api prefix for health endpoints
 ]
 
 for router, prefix, tags in private_routers_list:

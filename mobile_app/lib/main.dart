@@ -22,6 +22,7 @@ import 'services/message_service.dart';
 import 'services/logging_service.dart';
 import 'services/localization_service.dart';
 import 'services/app_version_service.dart';
+import 'services/sentry_service.dart';
 import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
@@ -77,14 +78,33 @@ void main() async {
   // Initialize app version service
   await AppVersionService.instance.initialize();
   
+  // Initialize comprehensive Sentry monitoring for financial application
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+  const environment = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
+  const sentryRelease = String.fromEnvironment('SENTRY_RELEASE', defaultValue: 'mita-mobile@1.0.0');
+  
+  if (sentryDsn.isNotEmpty) {
+    await sentryService.initialize(
+      dsn: sentryDsn,
+      environment: environment,
+      release: sentryRelease,
+      enableCrashReporting: true,
+      enablePerformanceMonitoring: !kDebugMode, // Disable in debug for performance
+      enableUserInteractionTracing: true,
+      tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
+    );
+  } else {
+    print('⚠️ Sentry DSN not configured - advanced error monitoring disabled');
+  }
+  
   await _initFirebase();
 
-  // Enhanced error handling that integrates with our custom system
+  // Enhanced error handling that integrates with all monitoring systems
   FlutterError.onError = (FlutterErrorDetails details) {
     // Send to Firebase Crashlytics
     FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     
-    // Also send to our custom error handler
+    // Send to our custom error handler
     AppErrorHandler.reportError(
       details.exception,
       stackTrace: details.stack,
@@ -95,13 +115,30 @@ void main() async {
         'context': details.context?.toString(),
       },
     );
+    
+    // Send to enhanced Sentry service
+    sentryService.captureFinancialError(
+      details.exception,
+      category: FinancialErrorCategory.uiError,
+      severity: FinancialSeverity.critical,
+      stackTrace: details.stack.toString(),
+      additionalContext: {
+        'library': details.library,
+        'context': details.context?.toString(),
+        'error_source': 'flutter_error',
+      },
+      tags: {
+        'error_source': 'flutter_error_handler',
+        'ui_error': 'true',
+      },
+    );
   };
   
   PlatformDispatcher.instance.onError = (error, stack) {
     // Send to Firebase Crashlytics
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     
-    // Also send to our custom error handler
+    // Send to our custom error handler
     AppErrorHandler.reportError(
       error,
       stackTrace: stack,
@@ -110,14 +147,42 @@ void main() async {
       context: {'source': 'platform_dispatcher'},
     );
     
+    // Send to enhanced Sentry service
+    sentryService.captureFinancialError(
+      error,
+      category: FinancialErrorCategory.systemError,
+      severity: FinancialSeverity.critical,
+      stackTrace: stack.toString(),
+      additionalContext: {
+        'source': 'platform_dispatcher',
+        'error_source': 'platform',
+      },
+      tags: {
+        'error_source': 'platform_dispatcher',
+        'system_error': 'true',
+        'fatal': 'true',
+      },
+    );
+    
     return true;
   };
 
-  await SentryFlutter.init(
-    (o) =>
-        o.dsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: ''),
-    appRunner: () => runApp(const MITAApp()),
-  );
+  // Run the app with comprehensive error monitoring
+  if (sentryDsn.isNotEmpty) {
+    // Use Sentry's runApp wrapper for additional error capture
+    await SentryFlutter.init(
+      (options) {
+        // Sentry is already initialized by our service, this is just to use the runApp wrapper
+        options.dsn = sentryDsn;
+        options.environment = environment;
+        options.release = sentryRelease;
+        // Minimal configuration as our service handles the comprehensive setup
+      },
+      appRunner: () => runApp(const MITAApp()),
+    );
+  } else {
+    runApp(const MITAApp());
+  }
 }
 
 class MITAApp extends StatelessWidget {

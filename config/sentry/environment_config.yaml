@@ -1,0 +1,417 @@
+# Sentry Environment Configuration for MITA Finance
+# Provides environment-specific settings for comprehensive error monitoring
+
+# Development Environment
+development:
+  sentry:
+    # Higher sampling for debugging
+    traces_sample_rate: 1.0
+    profiles_sample_rate: 1.0
+    sample_rate: 1.0
+    debug: true
+    attach_stacktrace: true
+    send_default_pii: false
+    max_breadcrumbs: 100
+    
+    # Development-specific integrations
+    integrations:
+      - FastAPI: 
+          auto_enable: true
+          transaction_style: "endpoint"
+          failed_request_status_codes: [400, "500-600"]
+      - SQLAlchemy:
+          auto_enable: true
+      - Redis: 
+          auto_enable: true
+      - AsyncPG:
+          auto_enable: true
+      - Logging:
+          level: "INFO"
+          event_level: "ERROR"
+    
+    # Alert thresholds (more relaxed for development)
+    performance_thresholds:
+      api_requests:
+        GET: 1000    # 1 second
+        POST: 2000   # 2 seconds
+        PUT: 1500
+        DELETE: 1000
+        PATCH: 1200
+      
+      database_queries:
+        SELECT: 500
+        INSERT: 800
+        UPDATE: 1000
+        DELETE: 600
+      
+      financial_operations:
+        transaction_processing: 2000
+        budget_calculation: 3000
+        financial_analysis: 8000
+        payment_processing: 2500
+        authentication: 2000
+    
+    # Environment tags
+    tags:
+      environment: "development"
+      compliance_level: "development"
+      monitoring_level: "full"
+      data_sensitivity: "low"
+
+  mobile:
+    traces_sample_rate: 1.0
+    sample_rate: 1.0
+    debug: true
+    enable_auto_session_tracking: true
+    enable_user_interaction_tracing: true
+    attach_screenshot: false
+    
+    performance_thresholds:
+      screen_render:
+        WelcomeScreen: 1500
+        LoginScreen: 1200
+        MainScreen: 2000
+        TransactionsScreen: 1500
+      
+      api_requests:
+        login: 3000
+        register: 4000
+        fetch_transactions: 2500
+        add_expense: 1500
+      
+      financial_operations:
+        budget_calculation: 3000
+        expense_calculation: 1000
+        ocr_processing: 8000
+
+# Staging Environment
+staging:
+  sentry:
+    # Moderate sampling for testing
+    traces_sample_rate: 0.5
+    profiles_sample_rate: 0.3
+    sample_rate: 1.0
+    debug: false
+    attach_stacktrace: true
+    send_default_pii: false
+    max_breadcrumbs: 75
+    
+    integrations:
+      - FastAPI: 
+          auto_enable: true
+          transaction_style: "endpoint"
+          failed_request_status_codes: [400, "500-600"]
+      - SQLAlchemy:
+          auto_enable: true
+      - Redis: 
+          auto_enable: true
+      - AsyncPG:
+          auto_enable: true
+      - Logging:
+          level: "INFO"
+          event_level: "WARNING"
+    
+    # Production-like thresholds
+    performance_thresholds:
+      api_requests:
+        GET: 800
+        POST: 1500
+        PUT: 1200
+        DELETE: 800
+        PATCH: 1000
+      
+      database_queries:
+        SELECT: 300
+        INSERT: 500
+        UPDATE: 600
+        DELETE: 400
+      
+      financial_operations:
+        transaction_processing: 1500
+        budget_calculation: 2000
+        financial_analysis: 5000
+        payment_processing: 1800
+        authentication: 1500
+    
+    tags:
+      environment: "staging"
+      compliance_level: "pci_testing"
+      monitoring_level: "production_like"
+      data_sensitivity: "medium"
+
+  mobile:
+    traces_sample_rate: 0.5
+    sample_rate: 1.0
+    debug: false
+    enable_auto_session_tracking: true
+    enable_user_interaction_tracing: true
+    attach_screenshot: false
+    
+    performance_thresholds:
+      screen_render:
+        WelcomeScreen: 1200
+        LoginScreen: 1000
+        MainScreen: 1500
+        TransactionsScreen: 1200
+      
+      api_requests:
+        login: 2500
+        register: 3000
+        fetch_transactions: 2000
+        add_expense: 1200
+      
+      financial_operations:
+        budget_calculation: 2500
+        expense_calculation: 800
+        ocr_processing: 6000
+
+# Production Environment
+production:
+  sentry:
+    # Conservative sampling for performance
+    traces_sample_rate: 0.1
+    profiles_sample_rate: 0.1
+    sample_rate: 1.0  # Capture all errors
+    debug: false
+    attach_stacktrace: true
+    send_default_pii: false  # Critical for financial compliance
+    max_breadcrumbs: 50
+    
+    integrations:
+      - FastAPI: 
+          auto_enable: true
+          transaction_style: "endpoint"
+          failed_request_status_codes: [400, "500-600"]
+      - SQLAlchemy:
+          auto_enable: true
+      - Redis: 
+          auto_enable: true
+      - AsyncPG:
+          auto_enable: true
+      - Logging:
+          level: "WARNING"
+          event_level: "ERROR"
+    
+    # Strict production thresholds
+    performance_thresholds:
+      api_requests:
+        GET: 500
+        POST: 1000
+        PUT: 800
+        DELETE: 600
+        PATCH: 700
+      
+      database_queries:
+        SELECT: 200
+        INSERT: 300
+        UPDATE: 400
+        DELETE: 250
+      
+      financial_operations:
+        transaction_processing: 1000
+        budget_calculation: 1500
+        financial_analysis: 3000
+        payment_processing: 1200
+        authentication: 1000
+      
+      # Specific endpoint thresholds for financial operations
+      critical_endpoints:
+        "/api/auth/login": 1500
+        "/api/transactions": 800
+        "/api/financial/balance": 300
+        "/api/payments/process": 1000
+        "/api/budget/calculate": 1500
+    
+    # Alert configuration
+    alerts:
+      cooldown_minutes: 15
+      escalation_thresholds:
+        critical_errors: 1     # Alert immediately
+        high_errors: 3         # Alert after 3 occurrences
+        medium_errors: 10      # Alert after 10 occurrences
+        low_errors: 50         # Alert after 50 occurrences
+      
+      notification_channels:
+        - webhook: "${SLACK_WEBHOOK_URL}"
+        - email: "${ALERT_EMAIL_ADDRESSES}"
+        - pagerduty: "${PAGERDUTY_INTEGRATION_KEY}"
+    
+    tags:
+      environment: "production"
+      compliance_level: "pci_dss"
+      monitoring_level: "critical"
+      data_sensitivity: "high"
+      financial_service: "true"
+
+  mobile:
+    traces_sample_rate: 0.1
+    sample_rate: 1.0
+    debug: false
+    enable_auto_session_tracking: true
+    enable_user_interaction_tracing: false  # Disabled for performance
+    attach_screenshot: false  # Disabled for privacy
+    
+    # Strict mobile performance thresholds
+    performance_thresholds:
+      screen_render:
+        WelcomeScreen: 1000
+        LoginScreen: 800
+        MainScreen: 1200
+        TransactionsScreen: 1000
+        ProfileScreen: 600
+      
+      api_requests:
+        login: 2000
+        register: 2500
+        fetch_transactions: 1500
+        add_expense: 1000
+        sync_data: 3000
+      
+      financial_operations:
+        budget_calculation: 2000
+        expense_calculation: 500
+        ocr_processing: 5000
+        payment_processing: 1500
+
+# Release Tracking Configuration
+release_tracking:
+  backend:
+    # Semantic versioning
+    version_format: "mita-backend@{version}"
+    
+    # Release metadata
+    release_metadata:
+      - git_commit: "${GIT_COMMIT_SHA}"
+      - build_time: "${BUILD_TIMESTAMP}"
+      - build_number: "${BUILD_NUMBER}"
+      - deployment_environment: "${ENVIRONMENT}"
+      - kubernetes_namespace: "${K8S_NAMESPACE}"
+      - docker_image: "${DOCKER_IMAGE_TAG}"
+    
+    # Deployment tracking
+    deployment_hooks:
+      pre_deploy:
+        - create_sentry_release
+        - set_deployment_commits
+        - notify_deployment_start
+      
+      post_deploy:
+        - finalize_sentry_release
+        - set_deployment_success
+        - notify_deployment_complete
+      
+      rollback:
+        - mark_release_failed
+        - create_rollback_release
+        - notify_rollback_complete
+
+  mobile:
+    # Mobile app versioning
+    version_format: "mita-mobile@{version}+{build_number}"
+    
+    # Platform-specific tracking
+    ios:
+      bundle_id: "com.mita.finance"
+      version_tracking: "CFBundleVersion"
+      build_tracking: "CFBundleShortVersionString"
+    
+    android:
+      package_name: "com.mita.finance"
+      version_tracking: "versionCode"
+      build_tracking: "versionName"
+    
+    # App store deployment tracking
+    deployment_tracking:
+      - testflight_beta: "beta"
+      - app_store_review: "review"
+      - app_store_production: "production"
+      - google_play_internal: "internal"
+      - google_play_production: "production"
+
+# Financial Compliance Configuration
+financial_compliance:
+  # PCI DSS Requirements
+  pci_dss:
+    data_classification:
+      - cardholder_data: "RESTRICTED"
+      - sensitive_authentication_data: "RESTRICTED"
+      - financial_data: "CONFIDENTIAL"
+      - personal_data: "CONFIDENTIAL"
+    
+    monitoring_requirements:
+      - log_access_to_cardholder_data: true
+      - monitor_all_access_to_network_resources: true
+      - track_all_changes_to_system_components: true
+      - implement_audit_trails: true
+    
+    retention_policies:
+      error_logs: "7_years"
+      access_logs: "1_year"
+      performance_logs: "6_months"
+      debug_logs: "30_days"
+  
+  # SOX Compliance (if applicable)
+  sox_compliance:
+    controls:
+      - change_management: true
+      - access_control: true
+      - system_monitoring: true
+      - data_integrity: true
+    
+    reporting:
+      - quarterly_reports: true
+      - management_attestation: true
+      - external_audit_support: true
+
+# Data Privacy and Security
+privacy_security:
+  # GDPR Compliance
+  gdpr:
+    data_minimization: true
+    purpose_limitation: true
+    storage_limitation: true
+    data_protection_by_design: true
+  
+  # Data anonymization in monitoring
+  data_anonymization:
+    user_identifiers: "hash"  # Hash user IDs
+    financial_amounts: "range"  # Show ranges instead of exact amounts
+    personal_data: "redact"  # Remove personal information
+    ip_addresses: "mask"  # Mask IP addresses
+  
+  # Security monitoring
+  security_monitoring:
+    failed_login_attempts: true
+    suspicious_transaction_patterns: true
+    unauthorized_access_attempts: true
+    data_breach_detection: true
+    
+# Custom Error Categories for Financial Services
+error_categories:
+  authentication:
+    severity_mapping:
+      failed_login: "medium"
+      account_lockout: "high"
+      suspicious_login: "critical"
+      mfa_failure: "medium"
+  
+  financial_transactions:
+    severity_mapping:
+      transaction_failure: "high"
+      payment_processing_error: "critical"
+      insufficient_funds: "medium"
+      fraud_detection: "critical"
+  
+  compliance_violations:
+    severity_mapping:
+      pci_violation: "critical"
+      data_leak: "critical"
+      unauthorized_access: "critical"
+      audit_failure: "high"
+  
+  system_performance:
+    severity_mapping:
+      database_timeout: "high"
+      api_timeout: "medium"
+      memory_leak: "high"
+      disk_space_low: "high"
