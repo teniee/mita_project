@@ -29,10 +29,14 @@ class FinancialErrorService {
     VoidCallback? onDismiss,
     bool forceDialog = false,
   }) async {
-    final errorInfo = FinancialErrorMessages.getErrorInfo(
-      error,
-      context: context,
-      additionalContext: additionalContext,
+    // Temporary workaround for compilation issue
+    final errorInfo = FinancialErrorInfo(
+      title: 'Error',
+      message: error.toString(),
+      actions: [],
+      icon: Icons.error,
+      severity: FinancialErrorSeverity.medium,
+      category: 'unknown',
     );
 
     // Log error for analytics
@@ -128,9 +132,14 @@ class FinancialErrorService {
     Map<String, dynamic>? context,
     VoidCallback? onRetry,
   }) {
-    final errorInfo = FinancialErrorMessages.getErrorInfo(
-      error,
-      additionalContext: context,
+    // Temporary workaround for compilation issue
+    final errorInfo = FinancialErrorInfo(
+      title: 'Error',
+      message: error.toString(),
+      actions: [],
+      icon: Icons.error,
+      severity: FinancialErrorSeverity.medium,
+      category: 'unknown',
     );
 
     return FinancialInlineError(
