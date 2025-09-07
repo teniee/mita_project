@@ -40,7 +40,7 @@ class FinancialErrorService {
       'Financial error displayed: ${errorInfo.title}',
       tag: 'FINANCIAL_ERROR_SERVICE',
       error: error,
-      context: {
+      extra: {
         'error_type': errorInfo.category,
         'severity': errorInfo.severity.toString(),
         'has_retry': errorInfo.allowsRetry,
@@ -528,7 +528,7 @@ class GlobalFinancialErrorHandler {
       'Global financial error: $error',
       tag: 'GLOBAL_FINANCIAL_ERROR',
       error: error,
-      context: {
+      extra: {
         'operation': operation,
         ...?context,
       },

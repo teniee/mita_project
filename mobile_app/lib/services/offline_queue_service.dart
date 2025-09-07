@@ -17,7 +17,8 @@ class OfflineQueueService {
   bool _isOnline = true;
 
   void _init() {
-    _connectivity.onConnectivityChanged.listen((result) {
+    _connectivity.onConnectivityChanged.listen((results) {
+      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
       final online = result != ConnectivityResult.none;
       if (online && !_isOnline) {
         _flushQueue();

@@ -128,7 +128,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle nudge generation failure gracefully
-      LoggingService.instance.logError('Nudge generation failed', error: e);
+      logError('Nudge generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 9: Generate Tomorrow's Forecast
@@ -139,7 +139,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle forecast generation failure gracefully
-      LoggingService.instance.logError('Forecast generation failed', error: e);
+      logError('Forecast generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 10: Generate Social Insights
@@ -162,7 +162,7 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle social insights failure gracefully
-      LoggingService.instance.logError('Social insights generation failed', error: e);
+      logError('Social insights generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 11: Generate Explanation

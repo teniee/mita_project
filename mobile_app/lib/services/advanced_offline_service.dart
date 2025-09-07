@@ -161,7 +161,8 @@ class AdvancedOfflineService {
   /// Start monitoring connectivity
   Future<void> _startConnectivityMonitoring() async {
     // Check initial connectivity
-    final result = await _connectivity.checkConnectivity();
+    final results = await _connectivity.checkConnectivity();
+    final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
     _isOnline = result != ConnectivityResult.none;
 
     // Listen for connectivity changes

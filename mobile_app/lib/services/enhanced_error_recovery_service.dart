@@ -4,7 +4,7 @@ Provides advanced error recovery patterns, intelligent retry logic, and user exp
 */
 
 import 'dart:async';
-import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
@@ -55,17 +55,20 @@ class EnhancedErrorRecoveryService {
     int maxRetries = 3,
     Duration initialDelay = const Duration(seconds: 1),
     bool exponentialBackoff = true,
-    List<Type> retryableExceptions = const [
-      DioException,
-      TimeoutException,
-      SocketException,
-    ],
+    List<Type>? retryableExceptions,
     T? fallbackValue,
     RecoveryOptions? customRecovery,
     VoidCallback? onRecoveryAttempt,
     void Function(T result)? onSuccess,
     void Function(dynamic error)? onFinalFailure,
   }) async {
+    // Default retryable exceptions
+    retryableExceptions ??= [
+      DioException,
+      TimeoutException,
+      SocketException,
+    ];
+    
     final context = RecoveryContext(
       operationId: operationId,
       operationName: operationName ?? operationId,
@@ -101,7 +104,6 @@ class EnhancedErrorRecoveryService {
           logWarning(
             'Error in ${context.operationName} - Attempt $attempt/$maxRetries: $error',
             tag: 'ERROR_RECOVERY',
-            error: error,
           );
           
           // Report error with recovery context
@@ -132,7 +134,7 @@ class EnhancedErrorRecoveryService {
                 : initialDelay;
                 
               logDebug('Retrying ${context.operationName} in ${delay.inSeconds}s after recovery attempt', tag: 'ERROR_RECOVERY');
-              await Future.delayed(delay);
+              await Future<void>.delayed(delay);
             } else {
               // Recovery failed, stop retrying
               logError('Recovery failed for ${context.operationName}, stopping retries', tag: 'ERROR_RECOVERY');

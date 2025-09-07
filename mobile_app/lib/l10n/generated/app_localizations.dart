@@ -946,6 +946,384 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please log in to continue'**
   String get pleaseLoginToContinue;
+
+  /// Generic error dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Something Went Wrong'**
+  String get errorTitle;
+
+  /// Title for session expired error
+  ///
+  /// In en, this message translates to:
+  /// **'Session Expired'**
+  String get errorSessionExpiredTitle;
+
+  /// Message explaining session expiration
+  ///
+  /// In en, this message translates to:
+  /// **'Your secure session has expired for your protection. Please sign in again to continue managing your finances.'**
+  String get errorSessionExpiredMessage;
+
+  /// Title for invalid credentials error
+  ///
+  /// In en, this message translates to:
+  /// **'Login Failed'**
+  String get errorInvalidCredentialsTitle;
+
+  /// Message for invalid login credentials
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t verify your credentials. Please check your email and password, then try again.'**
+  String get errorInvalidCredentialsMessage;
+
+  /// Title for budget exceeded warning
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Alert'**
+  String get errorBudgetExceededTitle;
+
+  /// Message when transaction exceeds budget
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction would exceed your daily budget by {amount}. You can still proceed, or consider adjusting the amount.'**
+  String errorBudgetExceededMessage(String amount);
+
+  /// Title for transaction failure
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Failed'**
+  String get errorTransactionFailedTitle;
+
+  /// Message when transaction fails to save
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t save your transaction right now. Your data is safe, and you can try again.'**
+  String get errorTransactionFailedMessage;
+
+  /// Title for no internet connection error
+  ///
+  /// In en, this message translates to:
+  /// **'No Internet Connection'**
+  String get errorNoInternetTitle;
+
+  /// Message explaining offline mode
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re currently offline. Your transactions will be saved locally and synced when you reconnect.'**
+  String get errorNoInternetMessage;
+
+  /// Title for invalid amount error
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid Amount'**
+  String get errorInvalidAmountTitle;
+
+  /// Message for invalid amount format
+  ///
+  /// In en, this message translates to:
+  /// **'The amount entered is not valid. Please enter a positive number with up to 2 decimal places.'**
+  String get errorInvalidAmountMessage;
+
+  /// Title for duplicate transaction warning
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate Transaction Detected'**
+  String get errorDuplicateTransactionTitle;
+
+  /// Message asking about potential duplicate transaction
+  ///
+  /// In en, this message translates to:
+  /// **'A similar transaction was already recorded today. Is this a new expense or the same one?'**
+  String get errorDuplicateTransactionMessage;
+
+  /// Title for camera permission request
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Access Needed'**
+  String get errorCameraPermissionTitle;
+
+  /// Message explaining camera permission need
+  ///
+  /// In en, this message translates to:
+  /// **'To scan receipts and capture expenses, MITA needs access to your camera.'**
+  String get errorCameraPermissionMessage;
+
+  /// Title for server maintenance error
+  ///
+  /// In en, this message translates to:
+  /// **'Service Temporarily Unavailable'**
+  String get errorServerMaintenanceTitle;
+
+  /// Message explaining server maintenance
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re performing maintenance to improve your experience. This usually takes just a few minutes.'**
+  String get errorServerMaintenanceMessage;
+
+  /// Financial context message about data security
+  ///
+  /// In en, this message translates to:
+  /// **'Your financial data remains secure while your session is refreshed.'**
+  String get errorFinancialContextSecurity;
+
+  /// Financial context message about authentication protection
+  ///
+  /// In en, this message translates to:
+  /// **'Your financial data is protected by secure authentication.'**
+  String get errorFinancialContextProtection;
+
+  /// Financial context message about budget management
+  ///
+  /// In en, this message translates to:
+  /// **'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.'**
+  String get errorFinancialContextBudget;
+
+  /// Financial context message about data accuracy
+  ///
+  /// In en, this message translates to:
+  /// **'Your financial records remain accurate and secure.'**
+  String get errorFinancialContextAccuracy;
+
+  /// Financial context message about offline data storage
+  ///
+  /// In en, this message translates to:
+  /// **'Your financial data is safely stored locally until connection is restored.'**
+  String get errorFinancialContextOffline;
+
+  /// Financial context message about data validation
+  ///
+  /// In en, this message translates to:
+  /// **'Accurate amounts help maintain precise financial records.'**
+  String get errorFinancialContextValidation;
+
+  /// Financial context message about receipt scanning
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt scanning makes expense tracking faster and more accurate.'**
+  String get errorFinancialContextReceipts;
+
+  /// Action button to sign in again
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In Again'**
+  String get errorActionSignInAgain;
+
+  /// Generic try again action button
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get errorActionTryAgain;
+
+  /// Action button to reset password
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get errorActionForgotPassword;
+
+  /// Action button to modify amount
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust Amount'**
+  String get errorActionAdjustAmount;
+
+  /// Action button to override warning and proceed
+  ///
+  /// In en, this message translates to:
+  /// **'Proceed Anyway'**
+  String get errorActionProceedAnyway;
+
+  /// Action button to navigate to budget screen
+  ///
+  /// In en, this message translates to:
+  /// **'View Budget'**
+  String get errorActionViewBudget;
+
+  /// Action button to save as draft
+  ///
+  /// In en, this message translates to:
+  /// **'Save Draft'**
+  String get errorActionSaveDraft;
+
+  /// Action button to work in offline mode
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Offline'**
+  String get errorActionContinueOffline;
+
+  /// Action button to retry network connection
+  ///
+  /// In en, this message translates to:
+  /// **'Check Connection'**
+  String get errorActionCheckConnection;
+
+  /// Action button to correct invalid amount
+  ///
+  /// In en, this message translates to:
+  /// **'Fix Amount'**
+  String get errorActionFixAmount;
+
+  /// Action button confirming new transaction (not duplicate)
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s New'**
+  String get errorActionItsNew;
+
+  /// Action button to see existing transactions
+  ///
+  /// In en, this message translates to:
+  /// **'View Existing'**
+  String get errorActionViewExisting;
+
+  /// Action button to grant permissions
+  ///
+  /// In en, this message translates to:
+  /// **'Grant Access'**
+  String get errorActionGrantAccess;
+
+  /// Action button to enter data manually instead of using camera
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Manually'**
+  String get errorActionEnterManually;
+
+  /// Action button to retry later
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again Later'**
+  String get errorActionTryLater;
+
+  /// Action button to continue working offline
+  ///
+  /// In en, this message translates to:
+  /// **'Work Offline'**
+  String get errorActionWorkOffline;
+
+  /// Action button to contact customer support
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Support'**
+  String get errorActionContactSupport;
+
+  /// Section title for error resolution tips
+  ///
+  /// In en, this message translates to:
+  /// **'What you can do:'**
+  String get errorTipsTitle;
+
+  /// Tip for budget management
+  ///
+  /// In en, this message translates to:
+  /// **'Review your spending categories to find areas to save'**
+  String get errorTipBudgetReview;
+
+  /// Tip for budget management
+  ///
+  /// In en, this message translates to:
+  /// **'Consider postponing non-essential purchases'**
+  String get errorTipBudgetPostpone;
+
+  /// Tip for budget management
+  ///
+  /// In en, this message translates to:
+  /// **'Check if you can use a different payment method or account'**
+  String get errorTipBudgetPaymentMethod;
+
+  /// Tip for connectivity issues
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection'**
+  String get errorTipConnectionCheck;
+
+  /// Tip for transaction errors
+  ///
+  /// In en, this message translates to:
+  /// **'Verify all required fields are filled correctly'**
+  String get errorTipTransactionFields;
+
+  /// Generic retry tip
+  ///
+  /// In en, this message translates to:
+  /// **'Try again in a few moments'**
+  String get errorTipRetryMoment;
+
+  /// Tip for connectivity issues
+  ///
+  /// In en, this message translates to:
+  /// **'Check your WiFi or mobile data connection'**
+  String get errorTipWiFiData;
+
+  /// Tip about offline capabilities
+  ///
+  /// In en, this message translates to:
+  /// **'You can still record transactions offline'**
+  String get errorTipOfflineMode;
+
+  /// Tip about automatic synchronization
+  ///
+  /// In en, this message translates to:
+  /// **'Data will sync automatically when reconnected'**
+  String get errorTipAutoSync;
+
+  /// Tip for amount formatting
+  ///
+  /// In en, this message translates to:
+  /// **'Use numbers only (e.g., 25.50)'**
+  String get errorTipAmountFormat;
+
+  /// Tip for amount formatting
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t include currency symbols'**
+  String get errorTipNoCurrency;
+
+  /// Tip for amount formatting
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum 2 decimal places for cents'**
+  String get errorTipDecimalPlaces;
+
+  /// Tip for camera permission
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings > Privacy > Camera'**
+  String get errorTipCameraSettings;
+
+  /// Tip for camera permission
+  ///
+  /// In en, this message translates to:
+  /// **'Find MITA and toggle camera access on'**
+  String get errorTipCameraAccess;
+
+  /// Tip about manual data entry
+  ///
+  /// In en, this message translates to:
+  /// **'You can always enter expenses manually'**
+  String get errorTipManualEntry;
+
+  /// Tip for server maintenance
+  ///
+  /// In en, this message translates to:
+  /// **'Try again in a few minutes'**
+  String get errorTipMaintenanceWait;
+
+  /// Tip about offline feature availability
+  ///
+  /// In en, this message translates to:
+  /// **'You can still use offline features'**
+  String get errorTipOfflineFeatures;
+
+  /// Tip to check service status
+  ///
+  /// In en, this message translates to:
+  /// **'Check our status page for updates'**
+  String get errorTipStatusPage;
+
+  /// Tip to contact support for persistent issues
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support if the issue persists'**
+  String get errorTipSupportContact;
 }
 
 class _AppLocalizationsDelegate

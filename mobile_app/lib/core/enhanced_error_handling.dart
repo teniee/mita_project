@@ -4,17 +4,13 @@ Provides additional error handling utilities and patterns for robust error manag
 */
 
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/logging_service.dart';
 import '../services/financial_error_service.dart';
 import 'app_error_handler.dart';
 import 'error_handling.dart';
-import 'financial_error_messages.dart';
 
 /// Enhanced error handling patterns for Flutter operations
 class EnhancedErrorHandling {
@@ -46,7 +42,6 @@ class EnhancedErrorHandling {
         logWarning(
           'Error in $opName - Attempt $attempt/$maxRetries: $error', 
           tag: 'ENHANCED_ERROR_HANDLING',
-          error: error,
         );
         
         // Report error to error handler
@@ -70,7 +65,7 @@ class EnhancedErrorHandling {
             : retryDelay;
             
           logDebug('Retrying $opName in ${delay.inSeconds}s', tag: 'ENHANCED_ERROR_HANDLING');
-          await Future.delayed(delay);
+          await Future<void>.delayed(delay);
         } else {
           logError('Final failure for $opName after $attempt attempts', tag: 'ENHANCED_ERROR_HANDLING');
           return fallbackValue;

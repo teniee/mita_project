@@ -446,4 +446,215 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pleaseLoginToContinue => 'Please log in to continue';
+
+  @override
+  String get errorTitle => 'Something Went Wrong';
+
+  @override
+  String get errorSessionExpiredTitle => 'Session Expired';
+
+  @override
+  String get errorSessionExpiredMessage =>
+      'Your secure session has expired for your protection. Please sign in again to continue managing your finances.';
+
+  @override
+  String get errorInvalidCredentialsTitle => 'Login Failed';
+
+  @override
+  String get errorInvalidCredentialsMessage =>
+      'We couldn\'t verify your credentials. Please check your email and password, then try again.';
+
+  @override
+  String get errorBudgetExceededTitle => 'Budget Alert';
+
+  @override
+  String errorBudgetExceededMessage(String amount) {
+    return 'This transaction would exceed your daily budget by $amount. You can still proceed, or consider adjusting the amount.';
+  }
+
+  @override
+  String get errorTransactionFailedTitle => 'Transaction Failed';
+
+  @override
+  String get errorTransactionFailedMessage =>
+      'We couldn\'t save your transaction right now. Your data is safe, and you can try again.';
+
+  @override
+  String get errorNoInternetTitle => 'No Internet Connection';
+
+  @override
+  String get errorNoInternetMessage =>
+      'You\'re currently offline. Your transactions will be saved locally and synced when you reconnect.';
+
+  @override
+  String get errorInvalidAmountTitle => 'Invalid Amount';
+
+  @override
+  String get errorInvalidAmountMessage =>
+      'The amount entered is not valid. Please enter a positive number with up to 2 decimal places.';
+
+  @override
+  String get errorDuplicateTransactionTitle => 'Duplicate Transaction Detected';
+
+  @override
+  String get errorDuplicateTransactionMessage =>
+      'A similar transaction was already recorded today. Is this a new expense or the same one?';
+
+  @override
+  String get errorCameraPermissionTitle => 'Camera Access Needed';
+
+  @override
+  String get errorCameraPermissionMessage =>
+      'To scan receipts and capture expenses, MITA needs access to your camera.';
+
+  @override
+  String get errorServerMaintenanceTitle => 'Service Temporarily Unavailable';
+
+  @override
+  String get errorServerMaintenanceMessage =>
+      'We\'re performing maintenance to improve your experience. This usually takes just a few minutes.';
+
+  @override
+  String get errorFinancialContextSecurity =>
+      'Your financial data remains secure while your session is refreshed.';
+
+  @override
+  String get errorFinancialContextProtection =>
+      'Your financial data is protected by secure authentication.';
+
+  @override
+  String get errorFinancialContextBudget =>
+      'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.';
+
+  @override
+  String get errorFinancialContextAccuracy =>
+      'Your financial records remain accurate and secure.';
+
+  @override
+  String get errorFinancialContextOffline =>
+      'Your financial data is safely stored locally until connection is restored.';
+
+  @override
+  String get errorFinancialContextValidation =>
+      'Accurate amounts help maintain precise financial records.';
+
+  @override
+  String get errorFinancialContextReceipts =>
+      'Receipt scanning makes expense tracking faster and more accurate.';
+
+  @override
+  String get errorActionSignInAgain => 'Sign In Again';
+
+  @override
+  String get errorActionTryAgain => 'Try Again';
+
+  @override
+  String get errorActionForgotPassword => 'Forgot Password?';
+
+  @override
+  String get errorActionAdjustAmount => 'Adjust Amount';
+
+  @override
+  String get errorActionProceedAnyway => 'Proceed Anyway';
+
+  @override
+  String get errorActionViewBudget => 'View Budget';
+
+  @override
+  String get errorActionSaveDraft => 'Save Draft';
+
+  @override
+  String get errorActionContinueOffline => 'Continue Offline';
+
+  @override
+  String get errorActionCheckConnection => 'Check Connection';
+
+  @override
+  String get errorActionFixAmount => 'Fix Amount';
+
+  @override
+  String get errorActionItsNew => 'It\'s New';
+
+  @override
+  String get errorActionViewExisting => 'View Existing';
+
+  @override
+  String get errorActionGrantAccess => 'Grant Access';
+
+  @override
+  String get errorActionEnterManually => 'Enter Manually';
+
+  @override
+  String get errorActionTryLater => 'Try Again Later';
+
+  @override
+  String get errorActionWorkOffline => 'Work Offline';
+
+  @override
+  String get errorActionContactSupport => 'Contact Support';
+
+  @override
+  String get errorTipsTitle => 'What you can do:';
+
+  @override
+  String get errorTipBudgetReview =>
+      'Review your spending categories to find areas to save';
+
+  @override
+  String get errorTipBudgetPostpone =>
+      'Consider postponing non-essential purchases';
+
+  @override
+  String get errorTipBudgetPaymentMethod =>
+      'Check if you can use a different payment method or account';
+
+  @override
+  String get errorTipConnectionCheck => 'Check your internet connection';
+
+  @override
+  String get errorTipTransactionFields =>
+      'Verify all required fields are filled correctly';
+
+  @override
+  String get errorTipRetryMoment => 'Try again in a few moments';
+
+  @override
+  String get errorTipWiFiData => 'Check your WiFi or mobile data connection';
+
+  @override
+  String get errorTipOfflineMode => 'You can still record transactions offline';
+
+  @override
+  String get errorTipAutoSync =>
+      'Data will sync automatically when reconnected';
+
+  @override
+  String get errorTipAmountFormat => 'Use numbers only (e.g., 25.50)';
+
+  @override
+  String get errorTipNoCurrency => 'Don\'t include currency symbols';
+
+  @override
+  String get errorTipDecimalPlaces => 'Maximum 2 decimal places for cents';
+
+  @override
+  String get errorTipCameraSettings => 'Go to Settings > Privacy > Camera';
+
+  @override
+  String get errorTipCameraAccess => 'Find MITA and toggle camera access on';
+
+  @override
+  String get errorTipManualEntry => 'You can always enter expenses manually';
+
+  @override
+  String get errorTipMaintenanceWait => 'Try again in a few minutes';
+
+  @override
+  String get errorTipOfflineFeatures => 'You can still use offline features';
+
+  @override
+  String get errorTipStatusPage => 'Check our status page for updates';
+
+  @override
+  String get errorTipSupportContact => 'Contact support if the issue persists';
 }

@@ -148,11 +148,11 @@ class EnhancedApiWrapper {
   }
   
   /// Transaction operations with data integrity protection
-  Future<Response?> addTransaction({
+  Future<void> addTransaction({
     required Map<String, dynamic> transactionData,
   }) async {
-    return await executeApiCall<Response>(
-      () async => await _apiService.addTransaction(transactionData),
+    await executeApiCall<void>(
+      () async => await _apiService.createExpense(transactionData),
       operationName: 'Add Transaction',
       maxRetries: 1, // Limited retries for financial operations
       timeout: const Duration(seconds: 15),
@@ -161,8 +161,8 @@ class EnhancedApiWrapper {
   }
   
   /// Budget redistribution with careful error handling
-  Future<Response?> redistributeBudget(Map<String, Map<String, dynamic>> calendarData) async {
-    return await executeApiCall<Response>(
+  Future<Map<String, dynamic>?> redistributeBudget(Map<String, dynamic> calendarData) async {
+    return await executeApiCall<Map<String, dynamic>>(
       () async => await _apiService.redistributeCalendarBudget(calendarData),
       operationName: 'Budget Redistribution',
       maxRetries: 1, // No retries for critical financial operations

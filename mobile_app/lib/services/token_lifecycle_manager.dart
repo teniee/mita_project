@@ -341,9 +341,8 @@ class TokenLifecycleManager {
       
       // Show in-app notification
       messageService.showMessage(
-        title,
-        body,
-        MessageType.warning,
+        '$title - $body',
+        type: MessageType.warning,
         duration: const Duration(seconds: 5),
       );
       

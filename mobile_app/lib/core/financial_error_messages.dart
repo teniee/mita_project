@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:async';
 import '../l10n/generated/app_localizations.dart';
+import '../widgets/financial_error_widgets.dart';
 
 /// Categories of errors specific to financial applications
 enum FinancialErrorType {
@@ -557,7 +558,7 @@ extension FinancialErrorHandling on BuildContext {
     VoidCallback? onRetry,
     VoidCallback? onDismiss,
   }) {
-    showDialog(
+    showDialog<void>(
       context: this,
       barrierDismissible: false,
       builder: (context) => FinancialErrorDialog(
@@ -573,7 +574,7 @@ extension FinancialErrorHandling on BuildContext {
     VoidCallback? onRetry,
     VoidCallback? onDismiss,
   }) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: this,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

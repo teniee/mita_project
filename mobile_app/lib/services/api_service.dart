@@ -483,6 +483,23 @@ class ApiService {
     return await register(email, password);
   }
 
+  /// Public method to refresh access tokens
+  Future<Map<String, String>?> refreshAccessToken() async {
+    final refreshed = await _refreshTokens();
+    if (refreshed) {
+      final newAccessToken = await getToken();
+      final newRefreshToken = await getRefreshToken();
+      
+      if (newAccessToken != null && newRefreshToken != null) {
+        return {
+          'access_token': newAccessToken,
+          'refresh_token': newRefreshToken,
+        };
+      }
+    }
+    return null;
+  }
+
   // ---------------------------------------------------------------------------
   // Generic HTTP Methods
   // ---------------------------------------------------------------------------

@@ -98,38 +98,39 @@ class SentryFinancialService {
           options.enableNativeCrashHandling = enableCrashReporting;
           options.enableAutoNativeBreadcrumbs = true;
           
-          // Filter sensitive data
-          options.beforeSend = _filterSensitiveData;
-          options.beforeSendTransaction = _filterSensitiveTransactions;
           
           // Configure screenshot attachment (disabled for financial compliance)
           options.attachScreenshot = false; // Disabled for financial privacy
           
-          // Set global tags for financial application
-          options.initialScope = (scope) {
-            scope.setTag('application_type', 'financial_services');
-            scope.setTag('compliance_level', 'pci_dss');
-            scope.setTag('platform', Platform.operatingSystem);
-            scope.setTag('environment', environment);
-            scope.setTag('component', 'mobile_app');
-            
-            if (_deviceInfo != null) {
-              scope.setTag('device_info', _deviceInfo!);
-            }
-            
-            // Set application context
-            scope.setContext('application', {
-              'name': 'MITA Finance Mobile',
-              'version': '1.0.0',
-              'type': 'financial_mobile_app',
-              'compliance': 'PCI_DSS',
-              'platform': Platform.operatingSystem,
-            });
-          };
+          // Set before send callbacks
+          options.beforeSend = _filterSensitiveData;
+          options.beforeSendTransaction = (transaction) => _filterSensitiveTransactions(transaction, Hint());
         },
       );
 
       _isInitialized = true;
+      
+      // Configure initial scope after initialization
+      await Sentry.configureScope((scope) {
+        scope.setTag('application_type', 'financial_services');
+        scope.setTag('compliance_level', 'pci_dss');
+        scope.setTag('platform', Platform.operatingSystem);
+        scope.setTag('environment', environment);
+        scope.setTag('component', 'mobile_app');
+        
+        if (_deviceInfo != null) {
+          scope.setTag('device_info', _deviceInfo!);
+        }
+        
+        // Set application context
+        scope.setContexts('application', {
+          'name': 'MITA Finance Mobile',
+          'version': '1.0.0',
+          'type': 'financial_mobile_app',
+          'compliance': 'PCI_DSS',
+          'platform': Platform.operatingSystem,
+        });
+      });
       
       // Add initial breadcrumb
       Sentry.addBreadcrumb(Breadcrumb(
@@ -257,7 +258,7 @@ class SentryFinancialService {
       'platform': Platform.operatingSystem,
     };
 
-    return transaction.copyWith(contexts: contexts);
+    return transaction.copyWith(contexts: Contexts.fromJson(contexts));
   }
 
   /// Capture financial-specific errors with enhanced context
@@ -298,7 +299,7 @@ class SentryFinancialService {
         // Set screen context
         if (screenName != null) {
           scope.setTag('screen_name', screenName);
-          scope.setContext('screen', {'name': screenName});
+          scope.setContexts('screen', {'name': screenName});
         }
 
         // Set financial context
@@ -319,7 +320,7 @@ class SentryFinancialService {
           financialContext['currency'] = currency;
         }
 
-        scope.setContext('financial_operation', financialContext);
+        scope.setContexts('financial_operation', financialContext);
 
         // Set additional context
         if (additionalContext != null) {
@@ -449,7 +450,9 @@ class SentryFinancialService {
     String? screenName,
     String? stackTrace,
   }) async {
-    final connectivity = await Connectivity().checkConnectivity();
+    final results = await Connectivity().checkConnectivity();
+    final connectivity = results.isNotEmpty ? results.first : ConnectivityResult.none;
+    final connectivityName = connectivity.name;
     
     return captureFinancialError(
       exception,
@@ -461,12 +464,12 @@ class SentryFinancialService {
         'endpoint': endpoint,
         'method': method,
         'status_code': statusCode,
-        'connectivity': connectivity.name,
+        'connectivity': connectivityName,
         'platform': Platform.operatingSystem,
       },
       tags: {
         'network_error': 'true',
-        'connectivity': connectivity.name,
+        'connectivity': connectivityName,
       },
     );
   }
@@ -567,13 +570,15 @@ class SentryFinancialService {
 
   /// Add network context to scope
   void _addNetworkContext(Scope scope) {
-    Connectivity().checkConnectivity().then((connectivity) {
-      scope.setContext('network', {
-        'connectivity': connectivity.name,
+    Connectivity().checkConnectivity().then((results) {
+      final connectivity = results.isNotEmpty ? results.first : ConnectivityResult.none;
+      final connectivityName = connectivity.name;
+      scope.setContexts('network', {
+        'connectivity': connectivityName,
         'platform': Platform.operatingSystem,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      scope.setTag('connectivity', connectivity.name);
+      scope.setTag('connectivity', connectivityName);
     }).catchError((e) {
       // Ignore network context errors
     });
@@ -588,11 +593,12 @@ class SentryFinancialService {
     _subscriptionTier = null;
 
     Sentry.configureScope((scope) {
-      scope.removeUser();
+      scope.clearBreadcrumbs();
       scope.removeTag('subscription_tier');
       scope.removeTag('account_type');
       scope.removeTag('risk_level');
       scope.setTag('has_user_context', 'false');
+      scope.setUser(null);
     });
 
     addFinancialBreadcrumb(
@@ -612,10 +618,10 @@ final sentryService = SentryFinancialService();
 /// No-op Sentry span for when Sentry is not initialized
 class NoOpSentrySpan implements ISentrySpan {
   @override
-  void finish([SentrySpanStatus? status]) {}
+  Future<void> finish({SpanStatus? status, DateTime? endTimestamp}) async {}
 
   @override
-  ISentrySpan startChild(String operation, {String? description}) => this;
+  ISentrySpan startChild(String operation, {String? description, DateTime? startTimestamp}) => this;
 
   @override
   void setData(String key, dynamic value) {}
@@ -648,7 +654,7 @@ class NoOpSentrySpan implements ISentrySpan {
   Map<String, dynamic> get data => {};
 
   @override
-  SentrySpanStatus? get status => SentrySpanStatus.ok();
+  SpanStatus? get status => SpanStatus.ok();
 
   @override
   String? get description => null;
@@ -666,5 +672,39 @@ class NoOpSentrySpan implements ISentrySpan {
   SentryId get traceId => const SentryId.empty();
 
   @override
-  void setStatus(SentrySpanStatus status) {}
+  void setStatus(SpanStatus status) {}
+
+  @override
+  dynamic get localMetricsAggregator => null;
+
+  @override
+  void setMeasurement(String name, num value, {SentryMeasurementUnit? unit}) {}
+
+  // Missing interface implementations
+  @override
+  set origin(String? origin) {}
+
+  @override
+  SentryTracesSamplingDecision? get samplingDecision => null;
+
+  @override
+  void scheduleFinish() {}
+
+  @override
+  set status(SpanStatus? status) {}
+
+  @override
+  dynamic get throwable => null;
+
+  @override
+  set throwable(dynamic throwable) {}
+
+  @override
+  SentryBaggageHeader? toBaggageHeader() => null;
+
+  @override
+  SentryTraceHeader toSentryTrace() => SentryTraceHeader(traceId, SpanId.fromId(spanId.toString()));
+
+  @override
+  SentryTraceContextHeader? traceContext() => null;
 }
