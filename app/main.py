@@ -292,8 +292,7 @@ from app.middleware.standardized_error_middleware import (
     RequestContextMiddleware
 )
 from app.core.openapi_documentation import (
-    get_standardized_openapi_schema,
-    add_endpoint_examples
+    get_standardized_openapi_schema
 )
 
 # Create FastAPI app with enhanced documentation
@@ -783,9 +782,6 @@ async def get_enhanced_openapi():
             version="1.0.0",
             description=app.description
         )
-        
-        # Add comprehensive error examples to specific endpoints
-        add_endpoint_examples(app.openapi_schema)
     
     return app.openapi_schema
 
