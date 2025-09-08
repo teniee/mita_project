@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Production-grade bcrypt settings - configurable via environment
-BCRYPT_ROUNDS = getattr(settings, 'BCRYPT_ROUNDS_PRODUCTION', 12)  # Industry standard for financial applications
+BCRYPT_ROUNDS = getattr(settings, 'BCRYPT_ROUNDS_PRODUCTION', 10)  # Optimized for performance while maintaining security
 BCRYPT_PERFORMANCE_TARGET_MS = getattr(settings, 'BCRYPT_PERFORMANCE_TARGET_MS', 500)  # Maximum acceptable hash time
 
 # Emergency/development settings (only for testing)
@@ -49,7 +49,7 @@ def get_thread_pool() -> ThreadPoolExecutor:
     global _thread_pool
     if _thread_pool is None:
         _thread_pool = ThreadPoolExecutor(
-            max_workers=4, 
+            max_workers=8,  # Increased for better concurrency
             thread_name_prefix="password_"
         )
     return _thread_pool

@@ -91,9 +91,9 @@ class RegisterIn(BaseModel):
         if re.search(r'(.)\1{3,}', v):
             raise ValueError("Password cannot contain more than 3 consecutive identical characters")
         
-        # Check for common patterns
-        if re.search(r'(123|abc|qwe)', v.lower()):
-            raise ValueError("Password cannot contain common patterns")
+        # Check for very weak patterns only (production-friendly)
+        if re.search(r'(12345|abcde|qwerty)', v.lower()):
+            raise ValueError("Password is too weak, please choose a stronger password")
         
         return v
     

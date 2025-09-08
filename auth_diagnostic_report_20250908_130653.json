@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-08T13:06:52.049474",
+  "version": "1.0.0",
+  "status": "completed",
+  "issues_found": [
+    "Schema test failed: DATABASE_URL is required but not set",
+    "Registration data validation failed: 1 validation error for RegisterIn\npassword\n  Value error, Password cannot contain common patterns [type=value_error, input_value='TestPassword123!', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.9/v/value_error"
+  ],
+  "critical_issues": [
+    "Missing critical environment variables: DATABASE_URL",
+    "Database test setup failed: DATABASE_URL is required but not set",
+    "Token verification failed"
+  ],
+  "warnings": [],
+  "components_tested": [
+    "environment_config",
+    "database_connection",
+    "password_security",
+    "auth_components",
+    "error_handling",
+    "database_schema",
+    "rate_limiting",
+    "registration_flow",
+    "login_flow"
+  ],
+  "recommendations": [
+    "\ud83d\udea8 CRITICAL: Address critical issues immediately - authentication system is broken"
+  ],
+  "summary": {
+    "total_tests": 9,
+    "critical_issues": 3,
+    "issues_found": 2,
+    "warnings": 0,
+    "overall_status": "CRITICAL"
+  }
+}

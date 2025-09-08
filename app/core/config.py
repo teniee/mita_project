@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Password Security Configuration
-    BCRYPT_ROUNDS_PRODUCTION: int = 12  # Industry standard for financial apps
+    BCRYPT_ROUNDS_PRODUCTION: int = 10  # Optimized for performance while maintaining security
     BCRYPT_ROUNDS_DEVELOPMENT: int = 10  # Balanced for development
     BCRYPT_PERFORMANCE_TARGET_MS: int = 500  # Maximum acceptable hash time
     

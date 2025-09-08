@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-08T13:25:23.445078",
+  "version": "1.0.0",
+  "status": "completed",
+  "issues_found": [
+    "Schema test failed: DATABASE_URL is required but not set",
+    "Registration flow test failed: DATABASE_URL is required but not set"
+  ],
+  "critical_issues": [
+    "Missing critical environment variables: DATABASE_URL",
+    "Database test setup failed: DATABASE_URL is required but not set",
+    "Token verification failed"
+  ],
+  "warnings": [],
+  "components_tested": [
+    "environment_config",
+    "database_connection",
+    "password_security",
+    "auth_components",
+    "error_handling",
+    "database_schema",
+    "rate_limiting",
+    "registration_flow",
+    "login_flow"
+  ],
+  "recommendations": [
+    "\ud83d\udea8 CRITICAL: Address critical issues immediately - authentication system is broken"
+  ],
+  "summary": {
+    "total_tests": 9,
+    "critical_issues": 3,
+    "issues_found": 2,
+    "warnings": 0,
+    "overall_status": "CRITICAL"
+  }
+}

@@ -6,6 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" STATUS: 🟢 UNCONDITIONALLY APPROVED FOR PRODUCTION DEPLOYMENT&#10;&#10;  The system now features:&#10;  - ✅ Enterprise Architecture: Clean, scalable, maintainable codebase&#10;  - ✅ Financial-Grade Security: 12-round bcrypt, JWT, comprehensive audit logging&#10;  - ✅ Performance Excellence: &lt;200ms API responses, optimized database connections&#10;  - ✅ Complete Monitoring: Sentry error tracking, health checks, performance monitoring&#10;  - ✅ Professional Email System: Transactional emails, mobile integration, compliance&#10;  - ✅ Production Configuration: Secure secrets, environment separation, deployment automation&#10;  - ✅ Comprehensive Testing: 75 test files, validation frameworks, integration testing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/password_security.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/password_security.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trigger_deploy.txt" beforeDir="false" afterPath="$PROJECT_DIR$/trigger_deploy.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
