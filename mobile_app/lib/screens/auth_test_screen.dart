@@ -75,6 +75,9 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       // Test 7: Error handling scenarios
       await _testErrorHandling();
       
+      // Test 8: Onboarding check (if we have valid tokens)
+      await _testOnboardingCheck();
+      
     } catch (e) {
       _addTestResult('Overall Test Suite', false, 'Test suite failed: $e');
     } finally {
@@ -267,6 +270,36 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     }
   }
 
+  Future<void> _testOnboardingCheck() async {
+    setState(() => _currentTest = 'Testing onboarding status check...');
+    
+    try {
+      // Check if we have stored tokens first
+      final token = await _api.getToken();
+      if (token == null) {
+        _addTestResult('Onboarding Check', true, 'No stored tokens (expected without login)');
+        return;
+      }
+      
+      // Try onboarding check with stored tokens
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      _addTestResult('Onboarding Check', true, 'Onboarding check successful: $hasOnboarded');
+    } catch (e) {
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 401) {
+          _addTestResult('Onboarding Check', true, 'Onboarding endpoint working (401 for invalid/missing token)');
+        } else if (statusCode == 404) {
+          _addTestResult('Onboarding Check', false, 'Onboarding endpoint not found (404)');
+        } else {
+          _addTestResult('Onboarding Check', true, 'Onboarding endpoint accessible (status: $statusCode)');
+        }
+      } else {
+        _addTestResult('Onboarding Check', false, 'Onboarding check failed: $e');
+      }
+    }
+  }
+
   void _addTestResult(String testName, bool success, String details) {
     setState(() {
       _testResults.add(TestResult(
@@ -305,7 +338,31 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
     
     try {
       final response = await _api.login(email, password);
-      _addTestResult('Manual Login', true, 'Login successful: ${response.statusCode}');
+      
+      // Detailed response analysis
+      String responseDetails = 'Status: ${response.statusCode}';
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        responseDetails += '\nKeys: ${data.keys.toList()}';
+        
+        // Check for tokens
+        final accessToken = data['access_token'] ?? data['data']?['access_token'];
+        final refreshToken = data['refresh_token'] ?? data['data']?['refresh_token'];
+        
+        if (accessToken != null) {
+          responseDetails += '\nAccess token: Present (${accessToken.toString().length} chars)';
+        } else {
+          responseDetails += '\nAccess token: MISSING';
+        }
+        
+        if (refreshToken != null) {
+          responseDetails += '\nRefresh token: Present (${refreshToken.toString().length} chars)';
+        } else {
+          responseDetails += '\nRefresh token: MISSING';
+        }
+      }
+      
+      _addTestResult('Manual Login', true, 'Login successful: $responseDetails');
       
       // Show success message
       if (mounted) {

@@ -210,92 +210,206 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.selectionClick();
     final l10n = AppLocalizations.of(context);
 
-    // Execute Google sign-in with enhanced error handling
-    await executeRobustly<void>(
-      () async {
-        final googleUser = await GoogleSignIn().signIn().executeSafely(
-          operationName: 'Google Sign In',
-          category: ErrorCategory.authentication,
+    // Set loading state immediately
+    setState(() {
+      _loading = true;
+    });
+
+    try {
+      print('LOGIN_DEBUG: Starting Google sign-in process');
+      
+      final googleUser = await GoogleSignIn().signIn();
+        
+      if (googleUser == null) {
+        setState(() {
+          _loading = false;
+        });
+        print('Google sign-in cancelled by user');
+        return;
+      }
+
+      print('Google user obtained, getting authentication');
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        setState(() {
+          _loading = false;
+        });
+        throw AuthenticationException('Missing Google authentication token');
+      }
+
+      print('Google ID token obtained, calling backend');
+      final response = await _api.loginWithGoogle(idToken);
+        
+      print('Google login API response received: ${response.statusCode}');
+      print('Google login response data keys: ${response.data?.keys?.toList()}');
+
+      if (response.statusCode != 200) {
+        throw AuthenticationException('Google login failed with status: ${response.statusCode}');
+      }
+
+      // Enhanced token extraction with multiple fallback patterns (same as email login)
+      String? accessToken;
+      String? refreshToken;
+      
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        // Pattern 1: Direct access
+        accessToken = responseData['access_token'];
+        refreshToken = responseData['refresh_token'];
+        
+        // Pattern 2: Nested in 'data' object
+        if (accessToken == null && responseData['data'] != null) {
+          final data = responseData['data'] as Map<String, dynamic>?;
+          accessToken = data?['access_token'];
+          refreshToken = data?['refresh_token'];
+        }
+        
+        // Pattern 3: Different key names
+        if (accessToken == null) {
+          accessToken = responseData['accessToken'] ?? responseData['access_token'] ?? responseData['token'];
+          refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+        }
+        
+        print('Google login extracted tokens - Access: ${accessToken != null ? 'YES' : 'NO'}, Refresh: ${refreshToken != null ? 'YES' : 'NO'}');
+      }
+
+      if (accessToken == null) {
+        print('No access token found in Google login response: $responseData');
+        throw AuthenticationException('Google login successful but no access token received');
+      }
+        
+      if (_rememberMe) {
+        print('Saving Google login tokens to storage');
+        await _api.saveTokens(accessToken, refreshToken ?? '');
+        
+        // Verify token storage
+        final storedToken = await _api.getToken();
+        print('Google login token storage verification: ${storedToken != null ? 'SUCCESS' : 'FAILED'}');
+      }
+
+      if (!mounted) {
+        print('Widget unmounted during Google login process');
+        return;
+      }
+        
+      // SECURITY: Initialize push tokens AFTER successful authentication
+      try {
+        await SecurePushTokenManager.instance.initializePostAuthentication();
+      } catch (e) {
+        print('Google login push token initialization failed: $e');
+        AppErrorHandler.reportError(
+          e,
+          severity: ErrorSeverity.low,
+          category: ErrorCategory.system,
+          context: {'operation': 'push_token_init_google'},
         );
+      }
         
-        if (googleUser == null) {
-          throw AuthenticationException('Sign-in cancelled by user');
-        }
+      // Check if user has completed onboarding
+      print('Checking onboarding status after Google login');
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      
+      if (!mounted) {
+        print('Widget unmounted during Google login onboarding check');
+        return;
+      }
 
-        final googleAuth = await googleUser.authentication;
-        final idToken = googleAuth.idToken;
-
-        if (idToken == null) {
-          throw AuthenticationException('Missing Google authentication token');
-        }
-
-        final response = await _api.loginWithGoogle(idToken).executeSafely(
-          operationName: 'Google Login API',
-          maxRetries: 2,
-          category: ErrorCategory.authentication,
-        );
+      setState(() {
+        _loading = false;
+      });
         
-        if (response == null) {
-          throw AuthenticationException('Google login failed - no response received');
-        }
-
-        final accessToken = response.data['access_token'];
-        final refreshToken = response.data['refresh_token'];
-        
-        if (_rememberMe) {
-          await _api.saveTokens(accessToken, refreshToken);
-        }
-
-        if (!mounted) return;
-        
-        // SECURITY: Initialize push tokens AFTER successful authentication
-        try {
-          await SecurePushTokenManager.instance.initializePostAuthentication();
-        } catch (e) {
-          AppErrorHandler.reportError(
-            e,
-            severity: ErrorSeverity.low,
-            category: ErrorCategory.system,
-            context: {'operation': 'push_token_init_google'},
-          );
-        }
-        
-        // Check if user has completed onboarding
-        final hasOnboarded = await _api.hasCompletedOnboarding();
-        if (!mounted) return;
-        
+      print('Google login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
+      
+      // Force navigation with explicit error handling
+      try {
         if (hasOnboarded) {
           _accessibilityService.announceToScreenReader(
             'Google sign-in successful. Navigating to dashboard.',
             isImportant: true,
           );
-          Navigator.pushReplacementNamed(context, '/main');
+          await Navigator.pushReplacementNamed(context, '/main');
         } else {
           _accessibilityService.announceToScreenReader(
             'Google sign-in successful. Navigating to onboarding.',
             isImportant: true,
           );
-          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          await Navigator.pushReplacementNamed(context, '/onboarding_region');
         }
-      },
-      operationName: 'Google Sign-In Process',
-      showLoadingState: true,
-      onError: () {
-        // Show enhanced error dialog with retry option
-        if (mounted) {
-          final errorMsg = errorMessage?.contains('cancelled') == true 
-            ? 'Sign-in was cancelled. Please try again when ready.'
-            : errorMessage ?? 'Google sign-in failed. Please try again or use email login.';
+        print('Google login navigation completed successfully');
+      } catch (navigationError) {
+        print('Google login navigation failed: $navigationError');
+        
+        // Fallback navigation mechanism for Google login
+        try {
+          print('Attempting fallback navigation for Google login');
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          if (mounted) {
+            if (hasOnboarded) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+            } else {
+              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
+            }
+            print('Google login fallback navigation successful');
+          }
+        } catch (fallbackError) {
+          print('Google login fallback navigation also failed: $fallbackError');
+          // Show manual navigation instruction
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Google Sign-In Successful'),
+                content: const Text(
+                  'You have successfully signed in with Google, but there was a navigation issue. '
+                  'Please restart the app to continue.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }
+      
+    } catch (e, stackTrace) {
+      print('Google sign-in process failed: $e');
+      
+      setState(() {
+        _loading = false;
+      });
+      
+      if (mounted) {
+        String errorMsg = 'Google sign-in failed. Please try again or use email login.';
+        
+        if (e.toString().contains('cancelled')) {
+          errorMsg = 'Sign-in was cancelled. Please try again when ready.';
+        } else if (e is DioException) {
+          final statusCode = e.response?.statusCode;
+          if (statusCode != null) {
+            errorMsg = 'Google sign-in failed (${statusCode}). Please try again.';
+          }
+        }
             
-          showEnhancedErrorDialog(
-            'Google Sign-In Failed',
-            errorMsg,
-            onRetry: _handleGoogleSignIn,
-            canRetry: !errorMsg.contains('cancelled'),
-          );
-        }
-      },
-    );
+        showEnhancedErrorDialog(
+          'Google Sign-In Failed',
+          errorMsg,
+          onRetry: _handleGoogleSignIn,
+          canRetry: !errorMsg.contains('cancelled'),
+          additionalContext: {
+            'provider': 'google',
+            'error_type': e.runtimeType.toString(),
+            'status_code': e is DioException ? e.response?.statusCode : null,
+          },
+        );
+      }
+    }
   }
 
   Future<void> _handleEmailLogin() async {
@@ -321,76 +435,196 @@ class _LoginScreenState extends State<LoginScreen>
     // Provide haptic feedback
     HapticFeedback.selectionClick();
 
-    // Execute login with enhanced error handling and automatic retry
-    await executeRobustly<void>(
-      () async {
-        final response = await _api.reliableLogin(
-          _emailController.text.trim(),
-          _passwordController.text,
-        ).executeSafely(
-          operationName: 'Email Login',
-          maxRetries: 2,
-          category: ErrorCategory.authentication,
+    // Set loading state immediately
+    setState(() {
+      _loading = true;
+    });
+
+    try {
+      print('Starting login process for ${_emailController.text.substring(0, 3)}***');
+      
+      final response = await _api.reliableLogin(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      print('Login API response received: ${response.statusCode}');
+      print('Login response data keys: ${response.data?.keys?.toList()}');
+
+      if (response.statusCode != 200) {
+        throw AuthenticationException('Login failed with status: ${response.statusCode}');
+      }
+
+      // Enhanced token extraction with multiple fallback patterns
+      String? accessToken;
+      String? refreshToken;
+      
+      // Try different response data structures
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        // Pattern 1: Direct access
+        accessToken = responseData['access_token'];
+        refreshToken = responseData['refresh_token'];
+        
+        // Pattern 2: Nested in 'data' object
+        if (accessToken == null && responseData['data'] != null) {
+          final data = responseData['data'] as Map<String, dynamic>?;
+          accessToken = data?['access_token'];
+          refreshToken = data?['refresh_token'];
+        }
+        
+        // Pattern 3: Different key names
+        if (accessToken == null) {
+          accessToken = responseData['accessToken'] ?? responseData['access_token'] ?? responseData['token'];
+          refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+        }
+        
+        print('Extracted tokens - Access: ${accessToken != null ? 'YES' : 'NO'}, Refresh: ${refreshToken != null ? 'YES' : 'NO'}');
+      }
+
+      if (accessToken == null) {
+        print('No access token found in response: $responseData');
+        throw AuthenticationException('Login successful but no access token received');
+      }
+      
+      // Save tokens if remember me is checked
+      if (_rememberMe) {
+        print('Saving tokens to storage');
+        await _api.saveTokens(accessToken, refreshToken ?? '');
+        
+        // Verify token storage
+        final storedToken = await _api.getToken();
+        print('Token storage verification: ${storedToken != null ? 'SUCCESS' : 'FAILED'}');
+      }
+
+      if (!mounted) {
+        print('Widget unmounted during login process');
+        return;
+      }
+        
+      // SECURITY: Initialize push tokens AFTER successful authentication
+      try {
+        await SecurePushTokenManager.instance.initializePostAuthentication();
+      } catch (e) {
+        // Log but don't block login for push token issues
+        print('Push token initialization failed: $e');
+        AppErrorHandler.reportError(
+          e,
+          severity: ErrorSeverity.low,
+          category: ErrorCategory.system,
+          context: {'operation': 'push_token_init'},
         );
+      }
+        
+      // Check if user has completed onboarding
+      print('Checking onboarding status');
+      final hasOnboarded = await _api.hasCompletedOnboarding();
+      
+      if (!mounted) {
+        print('Widget unmounted during onboarding check');
+        return;
+      }
 
-        if (response == null) {
-          throw AuthenticationException('Login failed - no response received');
-        }
-
-        final accessToken = response.data['access_token'];
-        final refreshToken = response.data['refresh_token'];
+      setState(() {
+        _loading = false;
+      });
         
-        if (_rememberMe) {
-          await _api.saveTokens(accessToken, refreshToken);
-        }
-
-        if (!mounted) return;
-        
-        // SECURITY: Initialize push tokens AFTER successful authentication
-        try {
-          await SecurePushTokenManager.instance.initializePostAuthentication();
-        } catch (e) {
-          // Log but don't block login for push token issues
-          AppErrorHandler.reportError(
-            e,
-            severity: ErrorSeverity.low,
-            category: ErrorCategory.system,
-            context: {'operation': 'push_token_init'},
-          );
-        }
-        
-        // Check if user has completed onboarding
-        final hasOnboarded = await _api.hasCompletedOnboarding();
-        if (!mounted) return;
-        
+      print('Login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
+      
+      // Force navigation with explicit error handling
+      try {
         if (hasOnboarded) {
           _accessibilityService.announceToScreenReader(
             'Login successful. Navigating to dashboard.',
             isImportant: true,
           );
-          Navigator.pushReplacementNamed(context, '/main');
+          await Navigator.pushReplacementNamed(context, '/main');
         } else {
           _accessibilityService.announceToScreenReader(
             'Login successful. Navigating to onboarding.',
             isImportant: true,
           );
-          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          await Navigator.pushReplacementNamed(context, '/onboarding_region');
         }
-      },
-      operationName: 'Email Login Process',
-      showLoadingState: true,
-      onError: () {
-        // Show enhanced error dialog with retry option
-        if (mounted) {
-          showEnhancedErrorDialog(
-            'Login Failed',
-            errorMessage ?? 'Unable to sign in. Please check your credentials and try again.',
-            onRetry: _handleEmailLogin,
-            canRetry: true,
-          );
+        print('Navigation completed successfully');
+      } catch (navigationError) {
+        print('Navigation failed: $navigationError');
+        
+        // Fallback navigation mechanism
+        try {
+          print('Attempting fallback navigation');
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          if (mounted) {
+            if (hasOnboarded) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+            } else {
+              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
+            }
+            print('Fallback navigation successful');
+          }
+        } catch (fallbackError) {
+          print('Fallback navigation also failed: $fallbackError');
+          // Show manual navigation instruction
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Login Successful'),
+                content: const Text(
+                  'You have successfully logged in, but there was a navigation issue. '
+                  'Please restart the app to continue.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
         }
-      },
-    );
+      }
+      
+    } catch (e, stackTrace) {
+      print('Login process failed: $e');
+      
+      setState(() {
+        _loading = false;
+      });
+      
+      if (mounted) {
+        String errorMsg = 'Unable to sign in. Please check your credentials and try again.';
+        
+        if (e is DioException) {
+          final statusCode = e.response?.statusCode;
+          if (statusCode == 401) {
+            errorMsg = 'Invalid email or password. Please try again.';
+          } else if (statusCode == 422) {
+            errorMsg = 'Invalid credentials format. Please check your input.';
+          } else if (statusCode == 429) {
+            errorMsg = 'Too many login attempts. Please try again in a few minutes.';
+          } else if (statusCode != null) {
+            errorMsg = 'Login failed (${statusCode}). Please try again.';
+          }
+        } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
+          errorMsg = 'Login request timed out. Please check your connection and try again.';
+        }
+        
+        showEnhancedErrorDialog(
+          'Login Failed',
+          errorMsg,
+          onRetry: _handleEmailLogin,
+          canRetry: true,
+          additionalContext: {
+            'email': _emailController.text,
+            'error_type': e.runtimeType.toString(),
+            'status_code': e is DioException ? e.response?.statusCode : null,
+          },
+        );
+      }
+    }
   }
 
   @override
