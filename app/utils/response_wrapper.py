@@ -94,13 +94,15 @@ class StandardizedResponse:
     def created(
         data: Optional[Dict[str, Any]] = None,
         message: str = "Resource created successfully",
-        location: Optional[str] = None
+        location: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None
     ) -> JSONResponse:
         """Create standardized response for resource creation"""
         
         response = StandardizedResponse.success(
             data=data,
             message=message,
+            meta=meta,
             status_code=status.HTTP_201_CREATED
         )
         

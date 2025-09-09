@@ -1,0 +1,319 @@
+🔍 SYSTEM_8001 Error Isolation Test Report
+==================================================
+Generated: 2025-09-09T14:58:29.163954Z
+Server: https://mita-docker-ready-project-manus.onrender.com
+
+📊 Test Summary:
+  Total Tests: 4
+  Successful: 0
+  Failed: 4
+  Success Rate: 0.0%
+  SYSTEM_8001 Count: 4
+
+🚨 SYSTEM_8001 Error Analysis:
+------------------------------
+  Component: password_hashing
+  Error Code: SYSTEM_8001
+  Message: An unexpected error occurred
+  Error ID: mita_8358c4c57a8a
+  Timestamp: 2025-09-09T14:58:27.598946Z
+
+  Component: database_operations
+  Error Code: SYSTEM_8001
+  Message: An unexpected error occurred
+  Error ID: mita_2f1299b7f0c4
+  Timestamp: 2025-09-09T14:58:28.501934Z
+
+  Component: response_generation
+  Error Code: SYSTEM_8001
+  Message: An unexpected error occurred
+  Error ID: mita_33d87ba6a0b8
+  Timestamp: 2025-09-09T14:58:28.794929Z
+
+  Component: full_registration
+  Error Code: SYSTEM_8001
+  Message: An unexpected error occurred
+  Error ID: mita_f8f7cb8cbf83
+  Timestamp: 2025-09-09T14:58:29.093615Z
+
+❌ Failed Components:
+--------------------
+  password_hashing:
+    Error: Unknown error
+    Status Code: 500
+    Response Time: 714.5ms
+
+  database_operations:
+    Error: Unknown error
+    Status Code: 500
+    Response Time: 698.2ms
+
+  response_generation:
+    Error: Unknown error
+    Status Code: 500
+    Response Time: 275.1ms
+
+⚡ Performance Analysis:
+----------------------
+  Average Response Time: 491.8ms
+  Maximum Response Time: 714.5ms
+  Minimum Response Time: 275.1ms
+
+💡 Recommendations:
+-----------------
+  [HIGH] SYSTEM_8001 Error Detected:
+    Focus investigation on components showing SYSTEM_8001 errors
+    Components: password_hashing, database_operations, response_generation, full_registration
+
+  [MEDIUM] Component Failures Detected:
+    Review failed components for underlying issues
+    Components: password_hashing, database_operations, response_generation
+
+📝 Detailed Results:
+------------------
+{
+  "test_id": "bffd0c53",
+  "test_email": "test_bffd0c53@system8001test.com",
+  "start_time": "2025-09-09T14:58:27.186197",
+  "server_url": "https://mita-docker-ready-project-manus.onrender.com",
+  "component_tests": {
+    "password_hashing": {
+      "component": "Password Hashing",
+      "endpoint": "test-password-hashing",
+      "status_code": 500,
+      "response_time_ms": 714.4570350646973,
+      "success": false,
+      "response_size": 265,
+      "headers": {
+        "Date": "Tue, 09 Sep 2025 14:58:27 GMT",
+        "Content-Type": "application/json",
+        "Transfer-Encoding": "chunked",
+        "Connection": "keep-alive",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "permissions-policy": "geolocation=(), microphone=()",
+        "referrer-policy": "same-origin",
+        "rndr-id": "c5edb9f3-d538-4875",
+        "strict-transport-security": "max-age=63072000; includeSubDomains",
+        "Vary": "Accept-Encoding",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "x-render-origin-server": "uvicorn",
+        "x-request-id": "req_6124931cde51",
+        "x-response-time-ms": "9.01",
+        "x-xss-protection": "1; mode=block",
+        "cf-cache-status": "DYNAMIC",
+        "Server": "cloudflare",
+        "CF-RAY": "97c78b397decd0eb-SOF",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "timestamp": "2025-09-09T14:58:27.900781",
+      "response_data": {
+        "success": false,
+        "error": {
+          "code": "SYSTEM_8001",
+          "message": "An unexpected error occurred",
+          "error_id": "mita_8358c4c57a8a",
+          "timestamp": "2025-09-09T14:58:27.598946Z",
+          "details": {},
+          "debug_info": {
+            "method": "POST",
+            "path": "/api/auth/test-password-hashing",
+            "query_params": {}
+          }
+        }
+      },
+      "system_8001_detected": true,
+      "error_details": {
+        "code": "SYSTEM_8001",
+        "message": "An unexpected error occurred",
+        "error_id": "mita_8358c4c57a8a",
+        "timestamp": "2025-09-09T14:58:27.598946Z",
+        "details": {},
+        "debug_info": {
+          "method": "POST",
+          "path": "/api/auth/test-password-hashing",
+          "query_params": {}
+        }
+      }
+    },
+    "database_operations": {
+      "component": "Database Operations",
+      "endpoint": "test-database-operations",
+      "status_code": 500,
+      "response_time_ms": 698.1551647186279,
+      "success": false,
+      "response_size": 268,
+      "headers": {
+        "Date": "Tue, 09 Sep 2025 14:58:28 GMT",
+        "Content-Type": "application/json",
+        "Transfer-Encoding": "chunked",
+        "Connection": "keep-alive",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "permissions-policy": "geolocation=(), microphone=()",
+        "referrer-policy": "same-origin",
+        "rndr-id": "a7880837-7147-4159",
+        "strict-transport-security": "max-age=63072000; includeSubDomains",
+        "Vary": "Accept-Encoding",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "x-render-origin-server": "uvicorn",
+        "x-request-id": "req_99c927babfd0",
+        "x-response-time-ms": "5.52",
+        "x-xss-protection": "1; mode=block",
+        "cf-cache-status": "DYNAMIC",
+        "Server": "cloudflare",
+        "CF-RAY": "97c78b3d082cd0eb-SOF",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "timestamp": "2025-09-09T14:58:28.603411",
+      "response_data": {
+        "success": false,
+        "error": {
+          "code": "SYSTEM_8001",
+          "message": "An unexpected error occurred",
+          "error_id": "mita_2f1299b7f0c4",
+          "timestamp": "2025-09-09T14:58:28.501934Z",
+          "details": {},
+          "debug_info": {
+            "method": "POST",
+            "path": "/api/auth/test-database-operations",
+            "query_params": {}
+          }
+        }
+      },
+      "system_8001_detected": true,
+      "error_details": {
+        "code": "SYSTEM_8001",
+        "message": "An unexpected error occurred",
+        "error_id": "mita_2f1299b7f0c4",
+        "timestamp": "2025-09-09T14:58:28.501934Z",
+        "details": {},
+        "debug_info": {
+          "method": "POST",
+          "path": "/api/auth/test-database-operations",
+          "query_params": {}
+        }
+      }
+    },
+    "response_generation": {
+      "component": "Response Generation",
+      "endpoint": "test-response-generation",
+      "status_code": 500,
+      "response_time_ms": 275.0687599182129,
+      "success": false,
+      "response_size": 268,
+      "headers": {
+        "Date": "Tue, 09 Sep 2025 14:58:28 GMT",
+        "Content-Type": "application/json",
+        "Transfer-Encoding": "chunked",
+        "Connection": "keep-alive",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "permissions-policy": "geolocation=(), microphone=()",
+        "referrer-policy": "same-origin",
+        "rndr-id": "ec637ddc-b782-4543",
+        "strict-transport-security": "max-age=63072000; includeSubDomains",
+        "Vary": "Accept-Encoding",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "x-render-origin-server": "uvicorn",
+        "x-request-id": "req_42569f835294",
+        "x-response-time-ms": "6.41",
+        "x-xss-protection": "1; mode=block",
+        "cf-cache-status": "DYNAMIC",
+        "Server": "cloudflare",
+        "CF-RAY": "97c78b414b93d0eb-SOF",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "timestamp": "2025-09-09T14:58:28.883740",
+      "response_data": {
+        "success": false,
+        "error": {
+          "code": "SYSTEM_8001",
+          "message": "An unexpected error occurred",
+          "error_id": "mita_33d87ba6a0b8",
+          "timestamp": "2025-09-09T14:58:28.794929Z",
+          "details": {},
+          "debug_info": {
+            "method": "POST",
+            "path": "/api/auth/test-response-generation",
+            "query_params": {}
+          }
+        }
+      },
+      "system_8001_detected": true,
+      "error_details": {
+        "code": "SYSTEM_8001",
+        "message": "An unexpected error occurred",
+        "error_id": "mita_33d87ba6a0b8",
+        "timestamp": "2025-09-09T14:58:28.794929Z",
+        "details": {},
+        "debug_info": {
+          "method": "POST",
+          "path": "/api/auth/test-response-generation",
+          "query_params": {}
+        }
+      }
+    }
+  },
+  "full_registration": {
+    "component": "Full Registration Flow",
+    "endpoint": "test-registration",
+    "status_code": 500,
+    "response_time_ms": 279.3457508087158,
+    "success": false,
+    "response_size": 261,
+    "headers": {
+      "Date": "Tue, 09 Sep 2025 14:58:29 GMT",
+      "Content-Type": "application/json",
+      "Transfer-Encoding": "chunked",
+      "Connection": "keep-alive",
+      "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      "permissions-policy": "geolocation=(), microphone=()",
+      "referrer-policy": "same-origin",
+      "rndr-id": "ff3a1c9b-d6ad-4bc4",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "Vary": "Accept-Encoding",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "x-render-origin-server": "uvicorn",
+      "x-request-id": "req_af0037912e87",
+      "x-response-time-ms": "5.32",
+      "x-xss-protection": "1; mode=block",
+      "cf-cache-status": "DYNAMIC",
+      "Server": "cloudflare",
+      "CF-RAY": "97c78b42fff8d0eb-SOF",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "timestamp": "2025-09-09T14:58:29.163727",
+    "response_data": {
+      "success": false,
+      "error": {
+        "code": "SYSTEM_8001",
+        "message": "An unexpected error occurred",
+        "error_id": "mita_f8f7cb8cbf83",
+        "timestamp": "2025-09-09T14:58:29.093615Z",
+        "details": {},
+        "debug_info": {
+          "method": "POST",
+          "path": "/api/auth/test-registration",
+          "query_params": {}
+        }
+      }
+    },
+    "system_8001_detected": true,
+    "error_details": {
+      "code": "SYSTEM_8001",
+      "message": "An unexpected error occurred",
+      "error_id": "mita_f8f7cb8cbf83",
+      "timestamp": "2025-09-09T14:58:29.093615Z",
+      "details": {},
+      "debug_info": {
+        "method": "POST",
+        "path": "/api/auth/test-registration",
+        "query_params": {}
+      }
+    }
+  },
+  "end_time": "2025-09-09T14:58:29.163901",
+  "total_duration_seconds": 1.977704
+}

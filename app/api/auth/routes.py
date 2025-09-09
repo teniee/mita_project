@@ -1578,6 +1578,254 @@ async def confirm_password_reset(
         )
 
 
+@router.post("/test-registration")
+async def test_registration_isolated(request: Request):
+    """🔍 MINIMAL TEST: Isolate SYSTEM_8001 error with detailed step-by-step logging"""
+    import json
+    import time
+    import uuid
+    import os
+    from datetime import datetime, timedelta
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+    
+    # Initialize detailed logging for each step
+    step_results = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "request_id": str(uuid.uuid4())[:8],
+        "steps": {}
+    }
+    
+    try:
+        # STEP 1: Parse request body
+        step_start = time.time()
+        logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Starting minimal registration test")
+        
+        try:
+            body_bytes = await request.body()
+            body_str = body_bytes.decode('utf-8')
+            data = json.loads(body_str)
+            
+            step_results["steps"]["1_request_parsing"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "body_length": len(body_str),
+                "keys_present": list(data.keys())
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 1 PASSED: Request parsing")
+            
+        except Exception as e:
+            step_results["steps"]["1_request_parsing"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e)
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 1 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "request_parsing"}
+        
+        # STEP 2: Basic validation
+        step_start = time.time()
+        try:
+            email = data.get('email', '').lower().strip()
+            password = data.get('password', '')
+            country = data.get('country', 'US')
+            
+            if not email or '@' not in email:
+                raise ValueError("Invalid email format")
+            if not password or len(password) < 8:
+                raise ValueError("Password too short")
+            
+            step_results["steps"]["2_basic_validation"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "email_valid": True,
+                "password_length": len(password)
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 2 PASSED: Basic validation")
+            
+        except Exception as e:
+            step_results["steps"]["2_basic_validation"] = {
+                "status": "error", 
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e)
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 2 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "basic_validation"}
+        
+        # STEP 3: Database connection
+        step_start = time.time()
+        try:
+            DATABASE_URL = os.getenv("DATABASE_URL", "")
+            if not DATABASE_URL:
+                raise ValueError("DATABASE_URL not configured")
+            
+            sync_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+            engine = create_engine(sync_url, pool_pre_ping=True, pool_size=1)
+            Session = sessionmaker(bind=engine)
+            
+            step_results["steps"]["3_database_connection"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "database_configured": True
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 3 PASSED: Database connection")
+            
+        except Exception as e:
+            step_results["steps"]["3_database_connection"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e)
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 3 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "database_connection"}
+        
+        # STEP 4: Password hashing
+        step_start = time.time()
+        try:
+            password_hash = await hash_password_async(password)
+            
+            step_results["steps"]["4_password_hashing"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "hash_length": len(password_hash),
+                "hash_starts_with": password_hash[:10]
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 4 PASSED: Password hashing")
+            
+        except Exception as e:
+            step_results["steps"]["4_password_hashing"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 4 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "password_hashing"}
+        
+        # STEP 5: Database operations
+        step_start = time.time()
+        try:
+            with Session() as session:
+                # Check if user exists
+                existing_user = session.execute(
+                    text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                    {"email": email}
+                ).scalar()
+                
+                if existing_user:
+                    raise ValueError("Email already exists")
+                
+                # Insert new user
+                user_id = str(uuid.uuid4())
+                session.execute(text("""
+                    INSERT INTO users (id, email, password_hash, country, created_at)
+                    VALUES (:id, :email, :password_hash, :country, NOW())
+                """), {
+                    "id": user_id,
+                    "email": email,
+                    "password_hash": password_hash,
+                    "country": country
+                })
+                session.commit()
+                
+                step_results["steps"]["5_database_operations"] = {
+                    "status": "success",
+                    "time_ms": (time.time() - step_start) * 1000,
+                    "user_id": user_id,
+                    "user_created": True
+                }
+                logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 5 PASSED: Database operations")
+                
+        except Exception as e:
+            step_results["steps"]["5_database_operations"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 5 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "database_operations"}
+        
+        # STEP 6: Token generation
+        step_start = time.time()
+        try:
+            payload = {
+                'sub': user_id,
+                'email': email,
+                'exp': datetime.utcnow() + timedelta(days=30),
+                'iat': datetime.utcnow(),
+                'is_premium': False,
+                'country': country
+            }
+            
+            JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "fallback-secret-key"
+            import jwt
+            access_token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            
+            step_results["steps"]["6_token_generation"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "token_length": len(access_token),
+                "jwt_secret_configured": bool(os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY"))
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 6 PASSED: Token generation")
+            
+        except Exception as e:
+            step_results["steps"]["6_token_generation"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 6 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "token_generation"}
+        
+        # STEP 7: Response generation
+        step_start = time.time()
+        try:
+            response_data = {
+                "success": True,
+                "access_token": access_token,
+                "refresh_token": access_token,
+                "token_type": "bearer",
+                "user_id": user_id,
+                "message": "Test registration successful",
+                "test_results": step_results
+            }
+            
+            step_results["steps"]["7_response_generation"] = {
+                "status": "success",
+                "time_ms": (time.time() - step_start) * 1000,
+                "response_keys": list(response_data.keys())
+            }
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] Step 7 PASSED: Response generation")
+            logger.info(f"🔍 TEST-REG [{step_results['request_id']}] ALL STEPS COMPLETED SUCCESSFULLY")
+            
+            return response_data
+            
+        except Exception as e:
+            step_results["steps"]["7_response_generation"] = {
+                "status": "error",
+                "time_ms": (time.time() - step_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔍 TEST-REG [{step_results['request_id']}] Step 7 FAILED: {e}")
+            return {"success": False, "test_results": step_results, "failed_at": "response_generation"}
+            
+    except Exception as e:
+        logger.error(f"🔍 TEST-REG [{step_results['request_id']}] UNEXPECTED ERROR: {e}")
+        return {
+            "success": False,
+            "test_results": step_results,
+            "failed_at": "unexpected_error",
+            "unexpected_error": {
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+        }
+
+
 @router.get("/emergency-diagnostics")
 async def emergency_diagnostics(
     db: AsyncSession = Depends(get_async_db)
@@ -1679,6 +1927,7 @@ async def emergency_diagnostics(
         
         # Endpoint availability
         diagnostics["registration_endpoints"] = {
+            "test_registration": "🔍 NEW - /api/auth/test-registration (Debugging endpoint)",
             "emergency_register": "✅ AVAILABLE - /api/auth/emergency-register",
             "regular_register": "⚠️ SLOW - /api/auth/register", 
             "full_register": "🐌 VERY SLOW - /api/auth/register-full"
@@ -1686,7 +1935,7 @@ async def emergency_diagnostics(
         
         return {
             "status": "EMERGENCY_DIAGNOSTICS_COMPLETE",
-            "message": "🚨 Use /api/auth/emergency-register for immediate registration",
+            "message": "🔍 Use /api/auth/test-registration to isolate SYSTEM_8001 errors",
             "diagnostics": diagnostics
         }
         
@@ -1695,6 +1944,509 @@ async def emergency_diagnostics(
             "status": "EMERGENCY_DIAGNOSTICS_FAILED",
             "error": str(e),
             "partial_diagnostics": diagnostics
+        }
+
+
+@router.post("/test-password-hashing")
+async def test_password_hashing_isolated(request: Request):
+    """🔍 TEST: Isolate password hashing component specifically"""
+    import json
+    import time
+    from datetime import datetime
+    
+    test_id = str(hash(time.time()))[:8]
+    logger.info(f"🔐 HASH-TEST [{test_id}] Starting password hashing test")
+    
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode('utf-8'))
+        password = data.get('password', 'DefaultTestPassword123!')
+        
+        results = {
+            "test_id": test_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "password_length": len(password),
+            "tests": {}
+        }
+        
+        # Test 1: Sync password hashing
+        test_start = time.time()
+        try:
+            from app.core.password_security import hash_password_sync
+            sync_hash = hash_password_sync(password)
+            
+            results["tests"]["sync_hashing"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "hash_length": len(sync_hash),
+                "hash_prefix": sync_hash[:10],
+                "function_used": "hash_password_sync"
+            }
+            logger.info(f"🔐 HASH-TEST [{test_id}] Sync hashing PASSED")
+        except Exception as e:
+            results["tests"]["sync_hashing"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔐 HASH-TEST [{test_id}] Sync hashing FAILED: {e}")
+        
+        # Test 2: Async password hashing
+        test_start = time.time()
+        try:
+            from app.core.password_security import hash_password_async
+            async_hash = await hash_password_async(password)
+            
+            results["tests"]["async_hashing"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "hash_length": len(async_hash),
+                "hash_prefix": async_hash[:10],
+                "function_used": "hash_password_async"
+            }
+            logger.info(f"🔐 HASH-TEST [{test_id}] Async hashing PASSED")
+        except Exception as e:
+            results["tests"]["async_hashing"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔐 HASH-TEST [{test_id}] Async hashing FAILED: {e}")
+        
+        # Test 3: Legacy hash function
+        test_start = time.time()
+        try:
+            from app.core.password_security import hash_password
+            legacy_hash = hash_password(password)
+            
+            results["tests"]["legacy_hashing"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "hash_length": len(legacy_hash),
+                "hash_prefix": legacy_hash[:10],
+                "function_used": "hash_password (legacy)"
+            }
+            logger.info(f"🔐 HASH-TEST [{test_id}] Legacy hashing PASSED")
+        except Exception as e:
+            results["tests"]["legacy_hashing"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔐 HASH-TEST [{test_id}] Legacy hashing FAILED: {e}")
+        
+        # Test 4: Direct bcrypt
+        test_start = time.time()
+        try:
+            import bcrypt
+            password_bytes = password.encode('utf-8')
+            salt = bcrypt.gensalt(rounds=10)
+            direct_hash = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+            
+            results["tests"]["direct_bcrypt"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "hash_length": len(direct_hash),
+                "hash_prefix": direct_hash[:10],
+                "function_used": "bcrypt.hashpw direct"
+            }
+            logger.info(f"🔐 HASH-TEST [{test_id}] Direct bcrypt PASSED")
+        except Exception as e:
+            results["tests"]["direct_bcrypt"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🔐 HASH-TEST [{test_id}] Direct bcrypt FAILED: {e}")
+        
+        # Summary
+        passed_tests = sum(1 for test in results["tests"].values() if test["status"] == "success")
+        total_tests = len(results["tests"])
+        
+        results["summary"] = {
+            "passed": passed_tests,
+            "total": total_tests,
+            "success_rate": f"{(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "0%",
+            "all_passed": passed_tests == total_tests
+        }
+        
+        logger.info(f"🔐 HASH-TEST [{test_id}] Completed: {passed_tests}/{total_tests} tests passed")
+        
+        return {
+            "success": results["summary"]["all_passed"],
+            "component": "password_hashing",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"🔐 HASH-TEST [{test_id}] UNEXPECTED ERROR: {e}")
+        return {
+            "success": False,
+            "component": "password_hashing", 
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+
+
+@router.post("/test-database-operations")  
+async def test_database_operations_isolated(request: Request):
+    """🔍 TEST: Isolate database operations component specifically"""
+    import json
+    import time
+    import uuid
+    import os
+    from datetime import datetime
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+    
+    test_id = str(hash(time.time()))[:8]
+    logger.info(f"🗄️ DB-TEST [{test_id}] Starting database operations test")
+    
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode('utf-8'))
+        
+        test_email = data.get('email', f'test{test_id}@example.com')
+        test_password_hash = '$2b$10$testhashabcdefghijklmnopqr'  # Mock hash
+        test_country = data.get('country', 'TEST')
+        
+        results = {
+            "test_id": test_id,
+            "timestamp": datetime.utcnow().isoformat(), 
+            "test_email": test_email,
+            "tests": {}
+        }
+        
+        # Test 1: Database connection
+        test_start = time.time()
+        try:
+            DATABASE_URL = os.getenv("DATABASE_URL", "")
+            if not DATABASE_URL:
+                raise ValueError("DATABASE_URL not configured")
+            
+            sync_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+            engine = create_engine(sync_url, pool_pre_ping=True, pool_size=1)
+            Session = sessionmaker(bind=engine)
+            
+            results["tests"]["connection"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "database_url_configured": True
+            }
+            logger.info(f"🗄️ DB-TEST [{test_id}] Connection PASSED")
+        except Exception as e:
+            results["tests"]["connection"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🗄️ DB-TEST [{test_id}] Connection FAILED: {e}")
+            return {"success": False, "component": "database_operations", "results": results}
+        
+        # Test 2: Table access
+        test_start = time.time()
+        try:
+            with Session() as session:
+                result = session.execute(text("SELECT COUNT(*) FROM users LIMIT 1"))
+                user_count = result.scalar()
+                
+                results["tests"]["table_access"] = {
+                    "status": "success",
+                    "time_ms": (time.time() - test_start) * 1000,
+                    "user_count": user_count
+                }
+                logger.info(f"🗄️ DB-TEST [{test_id}] Table access PASSED")
+        except Exception as e:
+            results["tests"]["table_access"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🗄️ DB-TEST [{test_id}] Table access FAILED: {e}")
+        
+        # Test 3: User existence check
+        test_start = time.time()
+        try:
+            with Session() as session:
+                existing_user = session.execute(
+                    text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                    {"email": test_email}
+                ).scalar()
+                
+                results["tests"]["existence_check"] = {
+                    "status": "success",
+                    "time_ms": (time.time() - test_start) * 1000,
+                    "user_exists": bool(existing_user),
+                    "existing_user_id": str(existing_user) if existing_user else None
+                }
+                logger.info(f"🗄️ DB-TEST [{test_id}] Existence check PASSED")
+        except Exception as e:
+            results["tests"]["existence_check"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"🗄️ DB-TEST [{test_id}] Existence check FAILED: {e}")
+        
+        # Test 4: User insertion (if email doesn't exist)
+        if not results["tests"]["existence_check"].get("user_exists", True):
+            test_start = time.time()
+            try:
+                user_id = str(uuid.uuid4())
+                with Session() as session:
+                    session.execute(text("""
+                        INSERT INTO users (id, email, password_hash, country, created_at)
+                        VALUES (:id, :email, :password_hash, :country, NOW())
+                    """), {
+                        "id": user_id,
+                        "email": test_email,
+                        "password_hash": test_password_hash,
+                        "country": test_country
+                    })
+                    session.commit()
+                    
+                    results["tests"]["user_insertion"] = {
+                        "status": "success",
+                        "time_ms": (time.time() - test_start) * 1000,
+                        "user_id": user_id,
+                        "inserted": True
+                    }
+                    logger.info(f"🗄️ DB-TEST [{test_id}] User insertion PASSED")
+            except Exception as e:
+                results["tests"]["user_insertion"] = {
+                    "status": "error",
+                    "time_ms": (time.time() - test_start) * 1000,
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+                logger.error(f"🗄️ DB-TEST [{test_id}] User insertion FAILED: {e}")
+        else:
+            results["tests"]["user_insertion"] = {
+                "status": "skipped",
+                "reason": "User already exists",
+                "time_ms": 0
+            }
+        
+        # Summary
+        passed_tests = sum(1 for test in results["tests"].values() if test["status"] == "success")
+        total_tests = sum(1 for test in results["tests"].values() if test["status"] != "skipped")
+        
+        results["summary"] = {
+            "passed": passed_tests,
+            "total": total_tests,
+            "skipped": sum(1 for test in results["tests"].values() if test["status"] == "skipped"),
+            "success_rate": f"{(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "0%",
+            "all_passed": passed_tests == total_tests
+        }
+        
+        logger.info(f"🗄️ DB-TEST [{test_id}] Completed: {passed_tests}/{total_tests} tests passed")
+        
+        return {
+            "success": results["summary"]["all_passed"],
+            "component": "database_operations",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"🗄️ DB-TEST [{test_id}] UNEXPECTED ERROR: {e}")
+        return {
+            "success": False,
+            "component": "database_operations",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+
+
+@router.post("/test-response-generation")
+async def test_response_generation_isolated(request: Request):
+    """🔍 TEST: Isolate response generation component specifically"""
+    import json
+    import time
+    from datetime import datetime
+    
+    test_id = str(hash(time.time()))[:8]
+    logger.info(f"📤 RESPONSE-TEST [{test_id}] Starting response generation test")
+    
+    try:
+        body_bytes = await request.body()
+        data = json.loads(body_bytes.decode('utf-8'))
+        
+        results = {
+            "test_id": test_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "tests": {}
+        }
+        
+        # Test 1: Simple JSON response
+        test_start = time.time()
+        try:
+            simple_response = {
+                "message": "Simple test response",
+                "timestamp": datetime.utcnow().isoformat(),
+                "success": True
+            }
+            
+            # Verify JSON serialization
+            json.dumps(simple_response)
+            
+            results["tests"]["simple_json"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "response_keys": list(simple_response.keys()),
+                "serializable": True
+            }
+            logger.info(f"📤 RESPONSE-TEST [{test_id}] Simple JSON PASSED")
+        except Exception as e:
+            results["tests"]["simple_json"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"📤 RESPONSE-TEST [{test_id}] Simple JSON FAILED: {e}")
+        
+        # Test 2: Complex nested response
+        test_start = time.time()
+        try:
+            complex_response = {
+                "success": True,
+                "data": {
+                    "user": {
+                        "id": "test-user-123",
+                        "email": "test@example.com",
+                        "country": "US"
+                    },
+                    "tokens": {
+                        "access_token": "mock.jwt.token",
+                        "refresh_token": "mock.refresh.token",
+                        "token_type": "bearer"
+                    },
+                    "metadata": {
+                        "created_at": datetime.utcnow().isoformat(),
+                        "expires_in": 3600
+                    }
+                },
+                "message": "Registration successful"
+            }
+            
+            # Verify JSON serialization
+            json.dumps(complex_response)
+            
+            results["tests"]["complex_nested"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "response_keys": list(complex_response.keys()),
+                "nested_levels": 3,
+                "serializable": True
+            }
+            logger.info(f"📤 RESPONSE-TEST [{test_id}] Complex nested PASSED")
+        except Exception as e:
+            results["tests"]["complex_nested"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"📤 RESPONSE-TEST [{test_id}] Complex nested FAILED: {e}")
+        
+        # Test 3: Error response format
+        test_start = time.time()
+        try:
+            error_response = {
+                "success": False,
+                "error": {
+                    "code": "TEST_ERROR",
+                    "message": "Test error message",
+                    "details": {
+                        "field": "test_field",
+                        "reason": "validation_failed"
+                    },
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            }
+            
+            # Verify JSON serialization
+            json.dumps(error_response)
+            
+            results["tests"]["error_format"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "response_keys": list(error_response.keys()),
+                "error_structure": list(error_response["error"].keys()),
+                "serializable": True
+            }
+            logger.info(f"📤 RESPONSE-TEST [{test_id}] Error format PASSED")
+        except Exception as e:
+            results["tests"]["error_format"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"📤 RESPONSE-TEST [{test_id}] Error format FAILED: {e}")
+        
+        # Test 4: FastAPI JSONResponse compatibility
+        test_start = time.time()
+        try:
+            from fastapi.responses import JSONResponse
+            
+            test_data = {
+                "test": "FastAPI compatibility",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            
+            # Try to create JSONResponse
+            json_response = JSONResponse(content=test_data)
+            
+            results["tests"]["fastapi_compatibility"] = {
+                "status": "success",
+                "time_ms": (time.time() - test_start) * 1000,
+                "fastapi_response_created": True,
+                "status_code": json_response.status_code
+            }
+            logger.info(f"📤 RESPONSE-TEST [{test_id}] FastAPI compatibility PASSED")
+        except Exception as e:
+            results["tests"]["fastapi_compatibility"] = {
+                "status": "error",
+                "time_ms": (time.time() - test_start) * 1000,
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
+            logger.error(f"📤 RESPONSE-TEST [{test_id}] FastAPI compatibility FAILED: {e}")
+        
+        # Summary
+        passed_tests = sum(1 for test in results["tests"].values() if test["status"] == "success")
+        total_tests = len(results["tests"])
+        
+        results["summary"] = {
+            "passed": passed_tests,
+            "total": total_tests,
+            "success_rate": f"{(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "0%",
+            "all_passed": passed_tests == total_tests
+        }
+        
+        logger.info(f"📤 RESPONSE-TEST [{test_id}] Completed: {passed_tests}/{total_tests} tests passed")
+        
+        return {
+            "success": results["summary"]["all_passed"],
+            "component": "response_generation",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"📤 RESPONSE-TEST [{test_id}] UNEXPECTED ERROR: {e}")
+        return {
+            "success": False,
+            "component": "response_generation",
+            "error": str(e),
+            "error_type": type(e).__name__
         }
 
 

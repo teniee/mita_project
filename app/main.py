@@ -1,5 +1,5 @@
 # flake8: noqa
-
+# MITA Finance API - Production Ready
 # Fix for Python 3.10+ collections compatibility BEFORE any other imports
 import collections
 import collections.abc

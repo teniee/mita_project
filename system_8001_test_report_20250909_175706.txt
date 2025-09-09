@@ -1,0 +1,95 @@
+🔍 SYSTEM_8001 Error Isolation Test Report
+==================================================
+Generated: 2025-09-09T14:57:07.261154Z
+Server: http://localhost:8000
+
+📊 Test Summary:
+  Total Tests: 4
+  Successful: 0
+  Failed: 4
+  Success Rate: 0.0%
+  SYSTEM_8001 Count: 0
+
+✅ No SYSTEM_8001 errors detected
+
+❌ Failed Components:
+--------------------
+  password_hashing:
+    Error: Cannot connect to host localhost:8000 ssl:default [Connect call failed ('127.0.0.1', 8000)]
+    Status Code: None
+    Response Time: 5.7ms
+
+  database_operations:
+    Error: Cannot connect to host localhost:8000 ssl:default [Connect call failed ('::1', 8000, 0, 0)]
+    Status Code: None
+    Response Time: 0.4ms
+
+  response_generation:
+    Error: Cannot connect to host localhost:8000 ssl:default [Connect call failed ('127.0.0.1', 8000)]
+    Status Code: None
+    Response Time: 0.3ms
+
+⚡ Performance Analysis:
+----------------------
+  Average Response Time: 1.7ms
+  Maximum Response Time: 5.7ms
+  Minimum Response Time: 0.3ms
+
+💡 Recommendations:
+-----------------
+  [MEDIUM] Component Failures Detected:
+    Review failed components for underlying issues
+    Components: password_hashing, database_operations, response_generation
+
+📝 Detailed Results:
+------------------
+{
+  "test_id": "824e7469",
+  "test_email": "test_824e7469@system8001test.com",
+  "start_time": "2025-09-09T14:57:07.254134",
+  "server_url": "http://localhost:8000",
+  "component_tests": {
+    "password_hashing": {
+      "component": "Password Hashing",
+      "endpoint": "test-password-hashing",
+      "error": "Cannot connect to host localhost:8000 ssl:default [Connect call failed ('127.0.0.1', 8000)]",
+      "error_type": "ClientConnectorError",
+      "response_time_ms": 5.740642547607422,
+      "success": false,
+      "system_8001_detected": false,
+      "timestamp": "2025-09-09T14:57:07.259963"
+    },
+    "database_operations": {
+      "component": "Database Operations",
+      "endpoint": "test-database-operations",
+      "error": "Cannot connect to host localhost:8000 ssl:default [Connect call failed ('::1', 8000, 0, 0)]",
+      "error_type": "ClientConnectorError",
+      "response_time_ms": 0.3688335418701172,
+      "success": false,
+      "system_8001_detected": false,
+      "timestamp": "2025-09-09T14:57:07.260383"
+    },
+    "response_generation": {
+      "component": "Response Generation",
+      "endpoint": "test-response-generation",
+      "error": "Cannot connect to host localhost:8000 ssl:default [Connect call failed ('127.0.0.1', 8000)]",
+      "error_type": "ClientConnectorError",
+      "response_time_ms": 0.2570152282714844,
+      "success": false,
+      "system_8001_detected": false,
+      "timestamp": "2025-09-09T14:57:07.260680"
+    }
+  },
+  "full_registration": {
+    "component": "Full Registration Flow",
+    "endpoint": "test-registration",
+    "error": "Cannot connect to host localhost:8000 ssl:default [Connect call failed ('::1', 8000, 0, 0)]",
+    "error_type": "ClientConnectorError",
+    "response_time_ms": 0.37384033203125,
+    "success": false,
+    "system_8001_detected": false,
+    "timestamp": "2025-09-09T14:57:07.261111"
+  },
+  "end_time": "2025-09-09T14:57:07.261113",
+  "total_duration_seconds": 0.006979
+}

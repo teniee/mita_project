@@ -146,7 +146,7 @@ class SecurityEventQueue:
     async def _store_batch(self, events: List['AuditEvent']):
         """Store a batch of events to database"""
         try:
-            async with _audit_db_pool.get_session() as session:
+            async with await _audit_db_pool.get_session() as session:
                 # Ensure audit table exists
                 await self._ensure_audit_table(session)
                 
@@ -696,7 +696,7 @@ class AuditLogger:
     ) -> Dict[str, Any]:
         """Generate audit report using separate database pool"""
         try:
-            async with _audit_db_pool.get_session() as session:
+            async with await _audit_db_pool.get_session() as session:
                 # Build query conditions
                 conditions = ["timestamp BETWEEN :start_date AND :end_date"]
                 params = {'start_date': start_date, 'end_date': end_date}
