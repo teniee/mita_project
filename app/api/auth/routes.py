@@ -109,8 +109,7 @@ async def register_user_standardized(
     """
     
     # Apply rate limiting
-    client_ip = request.client.host if request.client else "unknown"
-    check_register_rate_limit(client_ip)
+    await check_register_rate_limit(request)
     
     # Validate required fields
     registration_dict = registration_data.dict()
@@ -225,8 +224,7 @@ async def login_user_standardized(
     """
     
     # Apply rate limiting
-    client_ip = request.client.host if request.client else "unknown"
-    check_login_rate_limit(client_ip)
+    await check_login_rate_limit(request)
     
     # Validate required fields
     login_dict = login_data.dict()
@@ -319,7 +317,7 @@ async def login_user_standardized(
         user_data=user_response_data,
         login_info={
             "login_time": datetime.utcnow().isoformat() + "Z",
-            "client_ip": client_ip,
+            "client_ip": request.client.host if request.client else 'unknown',
             "requires_password_change": False  # Add logic for password expiry if needed
         }
     )
@@ -343,8 +341,7 @@ async def refresh_token_standardized(
     """
     
     # Apply rate limiting
-    client_ip = request.client.host if request.client else "unknown"
-    check_token_refresh_rate_limit(client_ip)
+    await check_token_refresh_rate_limit(request)
     
     if not refresh_token or not refresh_token.strip():
         raise ValidationError(
@@ -1437,8 +1434,7 @@ async def confirm_password_reset(
     from sqlalchemy import select
     
     # Apply rate limiting for password reset confirmation
-    client_ip = request.client.host if request.client else "unknown"
-    check_password_reset_rate_limit(client_ip)
+    await check_password_reset_rate_limit(request)
     
     # Validate inputs
     validate_required_fields({"email": email, "token": token, "new_password": new_password})
