@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../mixins/onboarding_session_mixin.dart';
 
 class OnboardingHabitsScreen extends StatefulWidget {
   const OnboardingHabitsScreen({super.key});
@@ -9,7 +10,8 @@ class OnboardingHabitsScreen extends StatefulWidget {
   State<OnboardingHabitsScreen> createState() => _OnboardingHabitsScreenState();
 }
 
-class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
+class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
+    with OnboardingSessionMixin {
   final List<Map<String, dynamic>> habits = [
     {'id': 'impulse_buying', 'label': 'Impulse purchases', 'icon': Icons.shopping_cart},
     {'id': 'no_budgeting', 'label': 'No budgeting', 'icon': Icons.money_off},
@@ -30,8 +32,13 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen> {
     });
   }
 
-  void _submitHabits() {
+  void _submitHabits() async {
     if (selectedHabits.isEmpty) return;
+    
+    // Validate session before proceeding to final step
+    final isValid = await validateSessionBeforeNavigation();
+    if (!isValid) return;
+    
     // Save habits and optional comment
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();

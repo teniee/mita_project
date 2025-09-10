@@ -171,8 +171,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       setState(() => _statusText = l10n.verifyingSession);
       await Future.delayed(const Duration(milliseconds: 300));
       
-      // Check if user has completed onboarding
-      final hasOnboarded = await UserDataManager.instance.hasCompletedOnboarding();
+      // Check if user has completed onboarding with enhanced verification
+      final hasOnboarded = await _verifyOnboardingCompletion();
       logInfo('Onboarding status checked: $hasOnboarded', tag: 'WELCOME_SCREEN');
       
       if (hasOnboarded) {
@@ -198,6 +198,35 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       setState(() => _statusText = l10n.pleaseLoginToContinue);
       await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) _navigateToLogin();
+    }
+  }
+
+  /// Enhanced onboarding verification to prevent navigation loops
+  Future<bool> _verifyOnboardingCompletion() async {
+    try {
+      // First check UserDataManager
+      final hasOnboarded = await UserDataManager.instance.hasCompletedOnboarding();
+      if (hasOnboarded) {
+        logInfo('UserDataManager confirms onboarding completed', tag: 'WELCOME_SCREEN');
+        return true;
+      }
+
+      // Double-check with API to be sure
+      final apiResult = await _api.hasCompletedOnboarding();
+      if (apiResult) {
+        logInfo('API confirms onboarding completed', tag: 'WELCOME_SCREEN');
+        // Cache this result for future use
+        await UserDataManager.instance.refreshUserData();
+        return true;
+      }
+
+      logInfo('Onboarding not completed - both checks confirm', tag: 'WELCOME_SCREEN');
+      return false;
+      
+    } catch (e) {
+      logWarning('Onboarding verification failed, assuming not completed: $e', tag: 'WELCOME_SCREEN');
+      // If we can't verify, assume onboarding is not complete to be safe
+      return false;
     }
   }
 

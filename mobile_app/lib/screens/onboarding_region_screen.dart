@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../mixins/onboarding_session_mixin.dart';
 
 class OnboardingRegionScreen extends StatefulWidget {
   const OnboardingRegionScreen({super.key});
@@ -8,7 +9,8 @@ class OnboardingRegionScreen extends StatefulWidget {
   State<OnboardingRegionScreen> createState() => _OnboardingRegionScreenState();
 }
 
-class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
+class _OnboardingRegionScreenState extends State<OnboardingRegionScreen>
+    with OnboardingSessionMixin {
   final List<String> regions = [
     'United States',
     'Canada',
@@ -19,6 +21,10 @@ class _OnboardingRegionScreenState extends State<OnboardingRegionScreen> {
 
   void _submitRegion() async {
     if (selectedRegion == null) return;
+
+    // Validate session before proceeding
+    final isValid = await validateSessionBeforeNavigation();
+    if (!isValid) return;
 
     // Persist region choice until the final onboarding step
     OnboardingState.instance.region = selectedRegion;
