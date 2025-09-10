@@ -9,11 +9,11 @@ class TimeoutManagerService {
   factory TimeoutManagerService() => _instance;
   TimeoutManagerService._internal();
 
-  // Timeout configurations - optimized for fast backend (<200ms response times)
-  static const Duration _shortTimeout = Duration(seconds: 3);
-  static const Duration _mediumTimeout = Duration(seconds: 8);
-  static const Duration _longTimeout = Duration(seconds: 12);
-  static const Duration _maxTimeout = Duration(seconds: 20);
+  // Timeout configurations - adjusted for slow backend (up to 90 seconds response times)
+  static const Duration _shortTimeout = Duration(seconds: 10);
+  static const Duration _mediumTimeout = Duration(seconds: 30);
+  static const Duration _longTimeout = Duration(seconds: 90);
+  static const Duration _maxTimeout = Duration(seconds: 120);
   
   // Retry configurations
   static const int _maxRetries = 3;
@@ -238,7 +238,7 @@ class TimeoutManagerService {
     return executeWithTimeout<T>(
       operation: operation,
       timeout: getRecommendedTimeout(OperationType.authentication),
-      maxRetries: 2, // Reduced retries for auth to avoid long wait times
+      maxRetries: 1, // Reduced retries for slow server to avoid extremely long wait times
       operationName: operationName ?? 'Authentication Operation',
     );
   }
@@ -308,21 +308,21 @@ class TimeoutManagerService {
     );
   }
 
-  /// Get recommended timeout based on operation type - optimized for fast backend
+  /// Get recommended timeout based on operation type - adjusted for slow backend
   Duration getRecommendedTimeout(OperationType type) {
     switch (type) {
       case OperationType.authentication:
-        return const Duration(seconds: 12); // Reduced from 30s
+        return const Duration(seconds: 90); // Increased to handle slow server
       case OperationType.dataSync:
-        return const Duration(seconds: 10); // Reduced from 15s
+        return const Duration(seconds: 45); // Increased from 10s
       case OperationType.fileUpload:
-        return const Duration(seconds: 20); // Reduced from 30s
+        return const Duration(seconds: 120); // Increased from 20s
       case OperationType.backgroundSync:
-        return const Duration(seconds: 3); // Reduced from 5s
+        return const Duration(seconds: 15); // Increased from 3s
       case OperationType.userAction:
-        return const Duration(seconds: 6); // Reduced from 8s
+        return const Duration(seconds: 30); // Increased from 6s
       case OperationType.criticalData:
-        return const Duration(seconds: 15); // Reduced from 20s
+        return const Duration(seconds: 60); // Increased from 15s
       default:
         return _mediumTimeout;
     }

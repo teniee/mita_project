@@ -23,11 +23,11 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   ApiService._internal() {
-    // Create timeout-aware Dio instance with optimized timeouts for fast backend
+    // Create timeout-aware Dio instance with extended timeouts for slow backend
     _dio = TimeoutManagerService().createTimeoutAwareDio(
-      connectTimeout: const Duration(seconds: 10), // Reduced for fast backend (<200ms response times)
-      receiveTimeout: const Duration(seconds: 15), // Reduced for fast backend
-      sendTimeout: const Duration(seconds: 10), // Reduced for fast backend
+      connectTimeout: const Duration(seconds: 30), // Increased for slow backend (up to 90s response)
+      receiveTimeout: const Duration(seconds: 90), // Increased for slow backend
+      sendTimeout: const Duration(seconds: 30), // Increased for slow backend
     );
     
     _dio.options.baseUrl = _baseUrl;

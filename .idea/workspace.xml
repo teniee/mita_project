@@ -6,6 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" What's Working Now:&#10;&#10;  - ✅ Mobile app builds and runs without compilation errors&#10;  - ✅ Backend authentication is working (confirmed by server logs showing 200 responses)&#10;  - ✅ Token extraction logic can handle various response formats&#10;  - ✅ Navigation system has multiple fallback mechanisms&#10;  - ✅ Detailed logging shows exactly what's happening during login">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/login_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/timeout_manager_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trigger_deploy.txt" beforeDir="false" afterPath="$PROJECT_DIR$/trigger_deploy.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

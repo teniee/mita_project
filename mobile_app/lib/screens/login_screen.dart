@@ -27,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen>
   final ApiService _api = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
   bool _loading = false;
+  bool _slowConnectionDetected = false;
+  Timer? _slowConnectionTimer;
   
   // Form controllers and validation
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -103,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen>
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _signInButtonFocusNode.dispose();
+    _slowConnectionTimer?.cancel();
     super.dispose();
   }
   
@@ -210,9 +213,23 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.selectionClick();
     final l10n = AppLocalizations.of(context);
 
-    // Set loading state immediately
+    // Set loading state immediately and start slow connection detection
     setState(() {
       _loading = true;
+      _slowConnectionDetected = false;
+    });
+    
+    // Detect slow connection after 15 seconds
+    _slowConnectionTimer = Timer(const Duration(seconds: 15), () {
+      if (_loading && mounted) {
+        setState(() {
+          _slowConnectionDetected = true;
+        });
+        _accessibilityService.announceToScreenReader(
+          'Google sign-in is taking longer than usual. Please wait while we connect to the server.',
+          isImportant: true,
+        );
+      }
     });
 
     try {
@@ -221,8 +238,10 @@ class _LoginScreenState extends State<LoginScreen>
       final googleUser = await GoogleSignIn().signIn();
         
       if (googleUser == null) {
+        _slowConnectionTimer?.cancel();
         setState(() {
           _loading = false;
+          _slowConnectionDetected = false;
         });
         print('Google sign-in cancelled by user');
         return;
@@ -233,8 +252,10 @@ class _LoginScreenState extends State<LoginScreen>
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
+        _slowConnectionTimer?.cancel();
         setState(() {
           _loading = false;
+          _slowConnectionDetected = false;
         });
         throw AuthenticationException('Missing Google authentication token');
       }
@@ -316,8 +337,10 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
+      _slowConnectionTimer?.cancel();
       setState(() {
         _loading = false;
+        _slowConnectionDetected = false;
       });
         
       print('Google login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
@@ -381,8 +404,10 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (e, stackTrace) {
       print('Google sign-in process failed: $e');
       
+      _slowConnectionTimer?.cancel();
       setState(() {
         _loading = false;
+        _slowConnectionDetected = false;
       });
       
       if (mounted) {
@@ -435,9 +460,23 @@ class _LoginScreenState extends State<LoginScreen>
     // Provide haptic feedback
     HapticFeedback.selectionClick();
 
-    // Set loading state immediately
+    // Set loading state immediately and start slow connection detection
     setState(() {
       _loading = true;
+      _slowConnectionDetected = false;
+    });
+    
+    // Detect slow connection after 15 seconds
+    _slowConnectionTimer = Timer(const Duration(seconds: 15), () {
+      if (_loading && mounted) {
+        setState(() {
+          _slowConnectionDetected = true;
+        });
+        _accessibilityService.announceToScreenReader(
+          'Login is taking longer than usual. The server may be under heavy load. Please wait.',
+          isImportant: true,
+        );
+      }
     });
 
     try {
@@ -525,8 +564,10 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
+      _slowConnectionTimer?.cancel();
       setState(() {
         _loading = false;
+        _slowConnectionDetected = false;
       });
         
       print('Login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
@@ -590,8 +631,10 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (e, stackTrace) {
       print('Login process failed: $e');
       
+      _slowConnectionTimer?.cancel();
       setState(() {
         _loading = false;
+        _slowConnectionDetected = false;
       });
       
       if (mounted) {
@@ -954,11 +997,48 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   child: _loading 
                                     ? Semantics(
-                                        label: 'Signing in to MITA. Please wait',
+                                        label: _slowConnectionDetected 
+                                          ? 'Signing in to MITA. Connection is slow, please wait'
+                                          : 'Signing in to MITA. Please wait',
                                         liveRegion: true,
                                         child: Center(
-                                          child: MitaTheme.createLoadingIndicator(
-                                            message: l10n.signingIn,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              MitaTheme.createLoadingIndicator(
+                                                message: l10n.signingIn,
+                                              ),
+                                              if (_slowConnectionDetected) ...[
+                                                const SizedBox(height: 16),
+                                                Container(
+                                                  padding: const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: colorScheme.surfaceContainerHighest,
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.info_outline,
+                                                        size: 16,
+                                                        color: colorScheme.primary,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Flexible(
+                                                        child: Text(
+                                                          'Server is responding slowly. Please wait...',
+                                                          style: theme.textTheme.bodySmall?.copyWith(
+                                                            color: colorScheme.onSurface,
+                                                          ),
+                                                          textAlign: TextAlign.center,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ),
                                       )
