@@ -54,11 +54,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Copy application code
 COPY --chown=mita:mita . .
 
-# Copy and set up scripts
-COPY --chown=mita:mita ./wait-for-it.sh /app/wait-for-it.sh
-COPY --chown=mita:mita ./start.sh /app/start.sh
-COPY --chown=mita:mita ./start_optimized.py /app/start_optimized.py
-RUN chmod +x /app/wait-for-it.sh /app/start.sh /app/start_optimized.py
+# Copy and set up scripts from new locations
+COPY --chown=mita:mita ./scripts/deployment/wait-for-it.sh /app/wait-for-it.sh
+COPY --chown=mita:mita ./scripts/deployment/start.sh /app/start.sh
+RUN chmod +x /app/wait-for-it.sh /app/start.sh
 
 # Switch to non-root user
 USER mita
