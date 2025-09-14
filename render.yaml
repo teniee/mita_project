@@ -10,7 +10,7 @@ services:
       pip install --upgrade pip setuptools wheel &&
       pip install -r requirements.txt &&
       echo "Build completed successfully"
-    startCommand: python start_optimized.py
+    startCommand: bash start.sh
     healthCheckPath: /health
     autoDeploy: true
     
