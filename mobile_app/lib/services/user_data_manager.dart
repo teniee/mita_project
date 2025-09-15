@@ -46,11 +46,17 @@ class UserDataManager {
         return _cachedUserProfile!;
       }
       
-      // Try to refresh from API
+      // Try to refresh from API with gentle error handling
       final profile = await _apiService.getUserProfile().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => <String, dynamic>{},
-      );
+        const Duration(seconds: 8), // Увеличиваем timeout для stability
+        onTimeout: () {
+          logWarning('getUserProfile timeout - using cached data', tag: 'USER_DATA_MANAGER');
+          return <String, dynamic>{};
+        },
+      ).catchError((error) {
+        logWarning('getUserProfile error - using cached data: $error', tag: 'USER_DATA_MANAGER');
+        return <String, dynamic>{};
+      });
       
       if (profile.isNotEmpty && profile.containsKey('data')) {
         final userData = profile['data'] as Map<String, dynamic>;

@@ -89,7 +89,7 @@ class ApiService {
             error: e,
           );
 
-          // Handle auth refresh / errors
+          // Handle auth refresh / errors with grace period
           if (e.response?.statusCode == 401) {
             final refreshed = await _refreshTokens();
             if (refreshed) {
@@ -101,8 +101,15 @@ class ApiService {
               final clone = await _dio.fetch(req);
               return handler.resolve(clone);
             } else {
-              MessageService.instance
-                  .showError('Session expired. Please log in.');
+              // НЕ показываем сразу диалог - может быть временная проблема
+              // Особенно на главном экране где много одновременных API вызовов
+              logWarning('Auth token refresh failed for ${e.requestOptions.path}', tag: 'API_AUTH');
+
+              // Показываем диалог только если это критический endpoint
+              final path = e.requestOptions.path ?? '';
+              if (path.contains('/auth/') || path.contains('/login') || path.contains('/register')) {
+                MessageService.instance.showError('Session expired. Please log in.');
+              }
             }
           } else if (e.response?.statusCode == 429) {
             MessageService.instance.showRateLimit();
