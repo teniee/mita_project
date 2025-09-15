@@ -23,13 +23,16 @@ from app.utils.response_wrapper import success_response
 
 
 def register_user(data: RegisterIn, db: Session) -> TokenOut:
-    if db.query(User).filter(User.email == data.email).first():
+    # Нормализуем email для корректной проверки
+    normalized_email = data.email.lower().strip()
+
+    if db.query(User).filter(User.email == normalized_email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists",
+            detail="An account with this email address already exists",
         )
     user = User(
-        email=data.email,
+        email=normalized_email,  # Используем нормализованный email
         password_hash=hash_password(data.password),
         country=data.country,
         annual_income=data.annual_income,
@@ -57,7 +60,9 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
 
 
 def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
-    user = db.query(User).filter(User.email == data.email).first()
+    # Нормализуем email для корректного поиска
+    normalized_email = data.email.lower().strip()
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

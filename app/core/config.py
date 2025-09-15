@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     JWT_PREVIOUS_SECRET: str = ""
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120  # Увеличиваем до 2 часов для устранения Session Expired
     
     # Password Security Configuration
     BCRYPT_ROUNDS_PRODUCTION: int = 10  # Optimized for performance while maintaining security

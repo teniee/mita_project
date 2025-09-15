@@ -11,19 +11,50 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    // Validate session when screen loads
+    // Дать больше времени на загрузку - не проверяем сессию сразу
+    // Пользователь только что залогинился, токен должен быть валидным
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _validateSession();
+      // Отложенная проверка через 3 секунды для stabilization
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          _validateSessionGently();
+        }
+      });
     });
   }
 
-  /// Validate user session and handle expiration
+  /// Gentle session validation - не показывает ошибки при первой неудаче
+  Future<void> _validateSessionGently() async {
+    try {
+      final token = await _apiService.getToken();
+
+      if (token == null) {
+        logWarning('No token found during onboarding - будем проверять позже',
+          tag: 'ONBOARDING_SESSION');
+        // НЕ показываем диалог сразу - возможно токен еще загружается
+        return;
+      }
+
+      // Мягкая проверка токена без агрессивного refresh
+      setState(() {
+        _sessionValidated = true;
+      });
+      logDebug('Session gently validated for onboarding', tag: 'ONBOARDING_SESSION');
+
+    } catch (e) {
+      logWarning('Gentle session validation failed: $e - будем проверять позже',
+        tag: 'ONBOARDING_SESSION');
+      // НЕ показываем диалог при первой ошибке
+    }
+  }
+
+  /// Validate user session and handle expiration (строгая проверка)
   Future<void> _validateSession() async {
     try {
       final token = await _apiService.getToken();
-      
+
       if (token == null) {
-        logWarning('No token found during onboarding - redirecting to login', 
+        logWarning('No token found during onboarding - redirecting to login',
           tag: 'ONBOARDING_SESSION');
         _handleSessionExpired();
         return;
@@ -37,11 +68,11 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
         });
         logDebug('Session validated for onboarding', tag: 'ONBOARDING_SESSION');
       } catch (e) {
-        logError('Token refresh failed during onboarding: $e', 
+        logError('Token refresh failed during onboarding: $e',
           tag: 'ONBOARDING_SESSION');
         _handleSessionExpired();
       }
-      
+
     } catch (e) {
       logError('Session validation failed: $e', tag: 'ONBOARDING_SESSION');
       _handleSessionExpired();
