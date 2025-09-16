@@ -589,9 +589,11 @@ class ApiService {
       }
       return false;
     } catch (e) {
-      // If there's an error (like 404/500), assume onboarding not completed
-      logWarning('Error checking onboarding status: $e', tag: 'ONBOARDING');
-      // For now, always show onboarding since backend routes aren't fully set up
+      // If there's an error checking the API, we should be conservative
+      logWarning('Error checking onboarding status via API: $e', tag: 'ONBOARDING');
+
+      // Don't assume onboarding is complete if API check fails
+      // Let the calling code (like UserDataManager) handle fallback logic
       return false;
     }
   }

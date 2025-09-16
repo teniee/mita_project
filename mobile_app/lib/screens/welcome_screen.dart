@@ -204,25 +204,30 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   /// Enhanced onboarding verification to prevent navigation loops
   Future<bool> _verifyOnboardingCompletion() async {
     try {
-      // First check UserDataManager
-      final hasOnboarded = await UserDataManager.instance.hasCompletedOnboarding();
-      if (hasOnboarded) {
-        logInfo('UserDataManager confirms onboarding completed', tag: 'WELCOME_SCREEN');
+      // First check if UserDataManager has cached onboarding data
+      final userDataManager = UserDataManager.instance;
+      if (userDataManager.hasCachedOnboardingData()) {
+        logInfo('Found cached onboarding data - user has completed onboarding', tag: 'WELCOME_SCREEN');
         return true;
       }
 
-      // Double-check with API to be sure
-      final apiResult = await _api.hasCompletedOnboarding();
-      if (apiResult) {
-        logInfo('API confirms onboarding completed', tag: 'WELCOME_SCREEN');
-        // Cache this result for future use
-        await UserDataManager.instance.refreshUserData();
-        return true;
+      // Try to check via API as secondary verification
+      try {
+        final apiResult = await _api.hasCompletedOnboarding();
+        if (apiResult) {
+          logInfo('API confirms onboarding completed', tag: 'WELCOME_SCREEN');
+          // Cache this result for future use
+          await userDataManager.refreshUserData();
+          return true;
+        }
+      } catch (apiError) {
+        logWarning('API onboarding check failed, relying on cache: $apiError', tag: 'WELCOME_SCREEN');
+        // If API fails but we have cache, we already checked it above
       }
 
-      logInfo('Onboarding not completed - both checks confirm', tag: 'WELCOME_SCREEN');
+      logInfo('Onboarding not completed - no cached data found', tag: 'WELCOME_SCREEN');
       return false;
-      
+
     } catch (e) {
       logWarning('Onboarding verification failed, assuming not completed: $e', tag: 'WELCOME_SCREEN');
       // If we can't verify, assume onboarding is not complete to be safe

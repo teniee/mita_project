@@ -130,6 +130,11 @@ class UserDataManager {
     }
   }
   
+  /// Check if we have cached onboarding data (non-recursive)
+  bool hasCachedOnboardingData() {
+    return _cachedOnboardingData != null;
+  }
+
   /// Check if user has completed onboarding
   Future<bool> hasCompletedOnboarding() async {
     try {
@@ -137,10 +142,10 @@ class UserDataManager {
       if (_cachedOnboardingData != null) {
         return true;
       }
-      
+
       // Check via API
       return await _apiService.hasCompletedOnboarding();
-      
+
     } catch (e) {
       logError('Failed to check onboarding status: $e', tag: 'USER_DATA_MANAGER');
       return false;
