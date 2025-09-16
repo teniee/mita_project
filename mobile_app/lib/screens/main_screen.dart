@@ -144,7 +144,15 @@ class _MainScreenState extends State<MainScreen> {
     try {
       // Get real user financial context from onboarding/profile data
       final financialContext = await UserDataManager.instance.getFinancialContext();
-      
+      logInfo('CRITICAL DEBUG: MainScreen got financial context: $financialContext', tag: 'MAIN_SCREEN');
+
+      // Check if onboarding is incomplete
+      if (financialContext['incomplete_onboarding'] == true) {
+        logWarning('CRITICAL DEBUG: Incomplete onboarding detected - using fallback data', tag: 'MAIN_SCREEN');
+        _loadCachedDataFromProvider(); // Use fallback approach
+        return;
+      }
+
       // Extract actual user income (not hardcoded)
       _monthlyIncome = financialContext['income'] as double;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);

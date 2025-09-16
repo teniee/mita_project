@@ -113,26 +113,36 @@ class UserDataManager {
   /// Save onboarding data for immediate use after completion
   Future<void> cacheOnboardingData(Map<String, dynamic> onboardingData) async {
     try {
-      logInfo('Caching onboarding data', tag: 'USER_DATA_MANAGER');
-      
+      logInfo('CRITICAL DEBUG: Starting to cache onboarding data: $onboardingData', tag: 'USER_DATA_MANAGER');
+
       _cachedOnboardingData = onboardingData;
-      
+      logInfo('CRITICAL DEBUG: Set _cachedOnboardingData in memory', tag: 'USER_DATA_MANAGER');
+
       // Transform onboarding data to user profile format
       _cachedUserProfile = _transformOnboardingToProfile(onboardingData);
       _lastRefresh = DateTime.now();
-      
+      logInfo('CRITICAL DEBUG: Transformed data and set timestamp', tag: 'USER_DATA_MANAGER');
+
       await _saveCachedData();
-      
-      logInfo('Onboarding data cached successfully', tag: 'USER_DATA_MANAGER');
-      
+      logInfo('CRITICAL DEBUG: Called _saveCachedData()', tag: 'USER_DATA_MANAGER');
+
+      // VERIFY IT ACTUALLY WORKED
+      final verifyCache = hasCachedOnboardingData();
+      logInfo('CRITICAL DEBUG: Verification after save: $verifyCache', tag: 'USER_DATA_MANAGER');
+
+      logInfo('CRITICAL DEBUG: Onboarding data cached successfully', tag: 'USER_DATA_MANAGER');
+
     } catch (e) {
-      logError('Failed to cache onboarding data: $e', tag: 'USER_DATA_MANAGER');
+      logError('CRITICAL DEBUG: Failed to cache onboarding data: $e', tag: 'USER_DATA_MANAGER');
+      rethrow;
     }
   }
   
   /// Check if we have cached onboarding data (non-recursive)
   bool hasCachedOnboardingData() {
-    return _cachedOnboardingData != null;
+    final result = _cachedOnboardingData != null;
+    logInfo('CRITICAL DEBUG: hasCachedOnboardingData() called, result: $result, data: $_cachedOnboardingData', tag: 'USER_DATA_MANAGER');
+    return result;
   }
 
   /// Check if user has completed onboarding
@@ -195,12 +205,30 @@ class UserDataManager {
   /// Get user's financial context for budget calculations
   Future<Map<String, dynamic>> getFinancialContext() async {
     final profile = await getUserProfile();
-    
+
     final income = (profile['income'] as num?)?.toDouble();
+    logInfo('CRITICAL DEBUG: getFinancialContext() - income: $income, profile: $profile', tag: 'USER_DATA_MANAGER');
+
     if (income == null || income <= 0) {
-      throw Exception('Income data required. Please complete onboarding.');
+      logWarning('CRITICAL DEBUG: No income data found - returning empty context instead of throwing', tag: 'USER_DATA_MANAGER');
+
+      // Return empty context instead of throwing to prevent crashes
+      // MainScreen should handle this gracefully
+      return {
+        'income': 0.0,
+        'expenses': [],
+        'goals': ['budgeting'],
+        'habits': [],
+        'region': 'United States',
+        'countryCode': 'US',
+        'stateCode': 'CA',
+        'incomeTier': 'middle',
+        'currency': 'USD',
+        'budgetMethod': '50/30/20 Rule',
+        'incomplete_onboarding': true, // Flag to indicate incomplete data
+      };
     }
-    
+
     return {
       'income': income,
       'expenses': profile['expenses'] as List<dynamic>? ?? [],
@@ -312,7 +340,26 @@ class UserDataManager {
   }
   
   Map<String, dynamic> _getDefaultUserProfile() {
-    throw Exception('Default user profile should not be used. Please complete onboarding to set up your profile.');
+    logWarning('CRITICAL DEBUG: Using default user profile - this means onboarding data is not available', tag: 'USER_DATA_MANAGER');
+
+    // Return a safe default profile instead of throwing
+    // This prevents crashes but indicates incomplete onboarding
+    return {
+      'name': 'MITA User',
+      'email': 'user@mita.finance',
+      'income': 0.0, // This will trigger onboarding flow in financial context
+      'expenses': [],
+      'goals': ['budgeting'],
+      'habits': [],
+      'currency': 'USD',
+      'region': 'United States',
+      'countryCode': 'US',
+      'stateCode': 'CA',
+      'incomeTier': 'middle',
+      'budgetMethod': '50/30/20 Rule',
+      'member_since': DateTime.now().toIso8601String(),
+      'profile_completion': 0, // Indicates incomplete profile
+    };
   }
 
   Map<String, dynamic> _getEmptyUserProfile() {

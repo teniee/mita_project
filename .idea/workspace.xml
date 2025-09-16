@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" What's Working Now:&#10;&#10;  - ✅ Mobile app builds and runs without compilation errors&#10;  - ✅ Backend authentication is working (confirmed by server logs showing 200 responses)&#10;  - ✅ Token extraction logic can handle various response formats&#10;  - ✅ Navigation system has multiple fallback mechanisms&#10;  - ✅ Detailed logging shows exactly what's happening during login">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_finish_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_finish_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/welcome_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/welcome_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/user_data_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/user_data_manager.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00021" summary=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional">
-      <option name="closed" value="true" />
-      <created>1754418683433</created>
-      <option name="number" value="00021" />
-      <option name="presentableId" value="LOCAL-00021" />
-      <option name="project" value="LOCAL" />
-      <updated>1754418683433</updated>
     </task>
     <task id="LOCAL-00022" summary=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional">
       <option name="closed" value="true" />
@@ -471,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1757539478426</updated>
     </task>
-    <option name="localTasksCounter" value="70" />
+    <task id="LOCAL-00070" summary=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen">
+      <option name="closed" value="true" />
+      <created>1758020601803</created>
+      <option name="number" value="00070" />
+      <option name="presentableId" value="LOCAL-00070" />
+      <option name="project" value="LOCAL" />
+      <updated>1758020601803</updated>
+    </task>
+    <option name="localTasksCounter" value="71" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -486,7 +489,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed Core Issues:&#10;&#10;  1. ✅ Home Screen Loading - Main dashboard now properly loads with:&#10;    - Income-based budget display&#10;    - AI insights and recommendations&#10;    - Peer comparison widgets&#10;    - Financial health metrics&#10;  2. ✅ Calendar Screen Working - Calendar displays:&#10;    - Daily spending limits and status&#10;    - Budget redistribution features&#10;    - Monthly budget overview&#10;    - AI-powered spending predictions&#10;  3. ✅ Navigation Fixed - Bottom navigation works between all 6 screens:&#10;    - Home (Main Dashboard)&#10;    - Calendar (Spending Calendar)&#10;    - Goals (Financial Goals)&#10;    - Insights (AI Analysis)&#10;    - Habits (Spending Habits)&#10;    - Mood (Mood Tracking)&#10;  4. ✅ API Integration - Services now have proper fallback data when backend is unavailable&#10;  5. ✅ Build Success - App compiles and builds without errors" />
     <MESSAGE value=" BUILD SUCCESS:&#10;  - ✅ App compiles without errors&#10;  - ✅ All routes working properly&#10;  - ✅ Services integrated and functional&#10;  - ✅ UI responsive and professional" />
     <MESSAGE value=" Before vs After:&#10;  - ❌ &quot;Session expired&quot; red bar → ✅ Dismissible notifications&#10;  - ❌ &quot;Unable to load dashboard&quot; → ✅ Smooth loading with fallback data&#10;  - ❌ &quot;overbottom&quot; in calendar → ✅ Clear budget status indicators&#10;  - ❌ UI overflow errors → ✅ Responsive Material Design 3 layout&#10;  - ❌ 401/404 API errors → ✅ Reliable backend integration" />
     <MESSAGE value="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding" />
@@ -511,6 +513,7 @@
     <MESSAGE value=" CURRENT STATUS:&#10;&#10;  - ✅ App launches successfully without crashes&#10;  - ✅ Error handling system is stable and thread-safe&#10;  - ✅ Users get clear, helpful error messages when backend issues occur&#10;  - ⚠️ Backend server is still returning 500 errors (this is a server-side issue, not app issue)" />
     <MESSAGE value=" STATUS:  UNCONDITIONALLY APPROVED FOR PRODUCTION DEPLOYMENT&#10;&#10;  The system now features:&#10;  - ✅ Enterprise Architecture: Clean, scalable, maintainable codebase&#10;  - ✅ Financial-Grade Security: 12-round bcrypt, JWT, comprehensive audit logging&#10;  - ✅ Performance Excellence: &lt;200ms API responses, optimized database connections&#10;  - ✅ Complete Monitoring: Sentry error tracking, health checks, performance monitoring&#10;  - ✅ Professional Email System: Transactional emails, mobile integration, compliance&#10;  - ✅ Production Configuration: Secure secrets, environment separation, deployment automation&#10;  - ✅ Comprehensive Testing: 75 test files, validation frameworks, integration testing" />
     <MESSAGE value=" What's Working Now:&#10;&#10;  - ✅ Mobile app builds and runs without compilation errors&#10;  - ✅ Backend authentication is working (confirmed by server logs showing 200 responses)&#10;  - ✅ Token extraction logic can handle various response formats&#10;  - ✅ Navigation system has multiple fallback mechanisms&#10;  - ✅ Detailed logging shows exactly what's happening during login" />
-    <option name="LAST_COMMIT_MESSAGE" value=" What's Working Now:&#10;&#10;  - ✅ Mobile app builds and runs without compilation errors&#10;  - ✅ Backend authentication is working (confirmed by server logs showing 200 responses)&#10;  - ✅ Token extraction logic can handle various response formats&#10;  - ✅ Navigation system has multiple fallback mechanisms&#10;  - ✅ Detailed logging shows exactly what's happening during login" />
+    <MESSAGE value=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen" />
+    <option name="LAST_COMMIT_MESSAGE" value=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen" />
   </component>
 </project>

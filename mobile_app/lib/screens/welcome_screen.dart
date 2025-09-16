@@ -172,8 +172,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       await Future.delayed(const Duration(milliseconds: 300));
       
       // Check if user has completed onboarding with enhanced verification
+      logInfo('CRITICAL DEBUG: About to call _verifyOnboardingCompletion()', tag: 'WELCOME_SCREEN');
       final hasOnboarded = await _verifyOnboardingCompletion();
-      logInfo('Onboarding status checked: $hasOnboarded', tag: 'WELCOME_SCREEN');
+      logInfo('CRITICAL DEBUG: _verifyOnboardingCompletion() returned: $hasOnboarded', tag: 'WELCOME_SCREEN');
       
       if (hasOnboarded) {
         setState(() => _statusText = l10n.loadingDashboard);
@@ -189,12 +190,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
       
     } catch (e) {
-      logError('Authentication check failed: $e', tag: 'WELCOME_SCREEN');
-      
+      logError('CRITICAL DEBUG: Authentication check failed - THIS CLEARS CACHE: $e', tag: 'WELCOME_SCREEN');
+
       // Clear invalid tokens and redirect to login
       await _api.clearTokens();
+      logInfo('CRITICAL DEBUG: About to clear user data - this will destroy onboarding cache!', tag: 'WELCOME_SCREEN');
       await UserDataManager.instance.clearUserData();
-      
+      logInfo('CRITICAL DEBUG: User data cleared - onboarding cache is now gone', tag: 'WELCOME_SCREEN');
+
       setState(() => _statusText = l10n.pleaseLoginToContinue);
       await Future.delayed(const Duration(milliseconds: 1000));
       if (mounted) _navigateToLogin();
@@ -204,32 +207,39 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   /// Enhanced onboarding verification to prevent navigation loops
   Future<bool> _verifyOnboardingCompletion() async {
     try {
+      logInfo('CRITICAL DEBUG: Starting onboarding verification', tag: 'WELCOME_SCREEN');
+
       // First check if UserDataManager has cached onboarding data
       final userDataManager = UserDataManager.instance;
-      if (userDataManager.hasCachedOnboardingData()) {
-        logInfo('Found cached onboarding data - user has completed onboarding', tag: 'WELCOME_SCREEN');
+      final hasCachedData = userDataManager.hasCachedOnboardingData();
+      logInfo('CRITICAL DEBUG: Cache check result: $hasCachedData', tag: 'WELCOME_SCREEN');
+
+      if (hasCachedData) {
+        logInfo('CRITICAL DEBUG: Found cached onboarding data - user has completed onboarding', tag: 'WELCOME_SCREEN');
         return true;
       }
 
       // Try to check via API as secondary verification
+      logInfo('CRITICAL DEBUG: No cache found, checking API', tag: 'WELCOME_SCREEN');
       try {
         final apiResult = await _api.hasCompletedOnboarding();
+        logInfo('CRITICAL DEBUG: API result: $apiResult', tag: 'WELCOME_SCREEN');
         if (apiResult) {
-          logInfo('API confirms onboarding completed', tag: 'WELCOME_SCREEN');
+          logInfo('CRITICAL DEBUG: API confirms onboarding completed', tag: 'WELCOME_SCREEN');
           // Cache this result for future use
           await userDataManager.refreshUserData();
           return true;
         }
       } catch (apiError) {
-        logWarning('API onboarding check failed, relying on cache: $apiError', tag: 'WELCOME_SCREEN');
+        logWarning('CRITICAL DEBUG: API onboarding check failed: $apiError', tag: 'WELCOME_SCREEN');
         // If API fails but we have cache, we already checked it above
       }
 
-      logInfo('Onboarding not completed - no cached data found', tag: 'WELCOME_SCREEN');
+      logInfo('CRITICAL DEBUG: Onboarding not completed - no cached data found, redirecting to onboarding', tag: 'WELCOME_SCREEN');
       return false;
 
     } catch (e) {
-      logWarning('Onboarding verification failed, assuming not completed: $e', tag: 'WELCOME_SCREEN');
+      logWarning('CRITICAL DEBUG: Onboarding verification failed completely: $e', tag: 'WELCOME_SCREEN');
       // If we can't verify, assume onboarding is not complete to be safe
       return false;
     }

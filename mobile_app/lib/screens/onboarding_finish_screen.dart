@@ -58,6 +58,10 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       await UserDataManager.instance.cacheOnboardingData(onboardingData);
       logInfo('Onboarding data cached for immediate use', tag: 'ONBOARDING_FINISH');
 
+      // CRITICAL DEBUG: Verify cache was actually saved
+      final cachedCheck = UserDataManager.instance.hasCachedOnboardingData();
+      logInfo('CRITICAL DEBUG: Cache verification after save: $cachedCheck', tag: 'ONBOARDING_FINISH');
+
       // Try to submit to backend with proper error handling
       try {
         await _api.submitOnboarding(onboardingData);
@@ -101,14 +105,20 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       
       if (!mounted) return;
 
+      // CRITICAL DEBUG: Final verification before navigation
+      final finalCacheCheck = UserDataManager.instance.hasCachedOnboardingData();
+      logInfo('CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck', tag: 'ONBOARDING_FINISH');
+
       // Clear temporary onboarding state only after successful completion
       OnboardingState.instance.reset();
+      logInfo('CRITICAL DEBUG: OnboardingState reset completed', tag: 'ONBOARDING_FINISH');
 
       // Navigate to main screen with proper replacement to prevent back navigation
       if (mounted) {
+        logInfo('CRITICAL DEBUG: Navigating to /main screen', tag: 'ONBOARDING_FINISH');
         Navigator.pushNamedAndRemoveUntil(
-          context, 
-          '/main', 
+          context,
+          '/main',
           (route) => false, // Remove all previous routes
         );
       }
