@@ -178,6 +178,8 @@ class AppErrorBoundary extends StatelessWidget {
   Widget build(BuildContext context) {
     return ErrorBoundary(
       onError: (error, stackTrace) {
+        print('CRITICAL DEBUG: ERROR CAUGHT IN ${screenName ?? 'Unknown'}: $error');
+        print('CRITICAL DEBUG: STACK TRACE: $stackTrace');
         AppErrorHandler.reportUIError(
           error,
           screenName: screenName,

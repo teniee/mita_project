@@ -229,6 +229,10 @@ class MITAApp extends StatelessWidget {
       },
       
       initialRoute: '/',
+      onGenerateRoute: (settings) {
+        logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}', tag: 'NAVIGATION');
+        return null; // Let the routes table handle it
+      },
       routes: {
         '/': (context) => const AppErrorBoundary(
           screenName: 'Welcome',

@@ -40,8 +40,10 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   @override
   void initState() {
     super.initState();
+    print('CRITICAL DEBUG: BottomNavigation initState called');
     _initializeAnimations();
     _subscribeToExpenseUpdates();
+    print('CRITICAL DEBUG: BottomNavigation initState completed');
   }
   
   void _initializeAnimations() {
