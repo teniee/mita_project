@@ -69,21 +69,21 @@ class OfflineFirstProvider {
       // Try to load cached dashboard
       final dashboardCache = await _offlineService.getCachedResponse('dashboard_data');
       if (dashboardCache != null && !dashboardCache.isExpired) {
-        _cachedDashboard = jsonDecode(dashboardCache.data);
+        _cachedDashboard = jsonDecode(dashboardCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached dashboard data', tag: 'OFFLINE_FIRST');
       }
       
       // Try to load cached calendar
       final calendarCache = await _offlineService.getCachedResponse('calendar_data');
       if (calendarCache != null && !calendarCache.isExpired) {
-        _cachedCalendar = jsonDecode(calendarCache.data);
+        _cachedCalendar = jsonDecode(calendarCache.data) as List<dynamic>;
         logDebug('Loaded cached calendar data', tag: 'OFFLINE_FIRST');
       }
       
       // Try to load cached user profile
       final profileCache = await _offlineService.getCachedResponse('user_profile');
       if (profileCache != null && !profileCache.isExpired) {
-        _cachedUserProfile = jsonDecode(profileCache.data);
+        _cachedUserProfile = jsonDecode(profileCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached user profile', tag: 'OFFLINE_FIRST');
       }
       
@@ -99,7 +99,27 @@ class OfflineFirstProvider {
 
   /// Generate fallback data when no cache is available
   Future<void> _generateFallbackData() async {
-    throw Exception('Fallback data should not be generated. Please complete onboarding to provide income data.');
+    try {
+      logInfo('Generating safe fallback data for offline-first provider', tag: 'OFFLINE_FIRST');
+
+      // Generate safe default dashboard data
+      _cachedDashboard = _generateDefaultDashboard();
+
+      // Generate safe default calendar data
+      _cachedCalendar = _generateDefaultCalendar();
+
+      // Generate safe default user profile (minimal data)
+      _cachedUserProfile = _generateDefaultUserProfile();
+
+      logInfo('Safe fallback data generated successfully', tag: 'OFFLINE_FIRST');
+    } catch (e) {
+      logError('Failed to generate fallback data: $e', tag: 'OFFLINE_FIRST');
+
+      // Ensure we at least have empty structures to prevent crashes
+      _cachedDashboard ??= <String, dynamic>{};
+      _cachedCalendar ??= <dynamic>[];
+      _cachedUserProfile ??= <String, dynamic>{'data': {'income': 0.0}};
+    }
   }
 
   /// Generate basic calendar fallback
@@ -107,13 +127,13 @@ class OfflineFirstProvider {
     final today = DateTime.now();
     final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
     final dailyBudget = (income * 0.55) / 30;
-    
+
     return List.generate(daysInMonth, (index) {
       final day = index + 1;
       final currentDate = DateTime(today.year, today.month, day);
       final isToday = day == today.day;
       final isPastDay = currentDate.isBefore(today);
-      
+
       return {
         'day': day,
         'limit': dailyBudget.round(),
@@ -122,6 +142,75 @@ class OfflineFirstProvider {
         'is_today': isToday,
         'is_weekend': currentDate.weekday >= 6,
       };
+    });
+  }
+
+  /// Generate safe default dashboard data
+  Map<String, dynamic> _generateDefaultDashboard() {
+    final now = DateTime.now();
+
+    return {
+      'balance': 0.0,
+      'spent': 0.0,
+      'daily_targets': <Map<String, dynamic>>[],
+      'week': _generateDefaultWeekData(),
+      'transactions': <Map<String, dynamic>>[],
+      'currency': 'USD',
+      'last_updated': now.toIso8601String(),
+      'default_data': true, // Flag to indicate this is fallback data
+    };
+  }
+
+  /// Generate safe default calendar data
+  List<dynamic> _generateDefaultCalendar() {
+    final today = DateTime.now();
+    final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
+
+    return List.generate(daysInMonth, (index) {
+      final day = index + 1;
+      final currentDate = DateTime(today.year, today.month, day);
+      final isToday = day == today.day;
+
+      return <String, dynamic>{
+        'day': day,
+        'limit': 0,
+        'spent': 0,
+        'status': 'neutral',
+        'is_today': isToday,
+        'is_weekend': currentDate.weekday >= 6,
+      };
+    });
+  }
+
+  /// Generate safe default user profile
+  Map<String, dynamic> _generateDefaultUserProfile() {
+    return {
+      'data': {
+        'name': 'MITA User',
+        'email': 'user@mita.finance',
+        'income': 0.0, // This will trigger proper onboarding flow
+        'expenses': <dynamic>[],
+        'goals': <String>['budgeting'],
+        'habits': <dynamic>[],
+        'currency': 'USD',
+        'region': 'United States',
+        'countryCode': 'US',
+        'stateCode': 'CA',
+        'incomeTier': 'middle',
+        'budgetMethod': '50/30/20 Rule',
+        'member_since': DateTime.now().toIso8601String(),
+        'profile_completion': 0, // Indicates incomplete profile
+        'fallback_profile': true, // Flag to indicate this is fallback data
+      }
+    };
+  }
+
+  /// Generate default week data for dashboard
+  List<Map<String, dynamic>> _generateDefaultWeekData() {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return List.generate(7, (index) => <String, dynamic>{
+      'day': days[index],
+      'status': 'neutral',
     });
   }
 
@@ -138,7 +227,8 @@ class OfflineFirstProvider {
   /// Get user profile (instant from cache)
   Map<String, dynamic> getUserProfile() {
     if (_cachedUserProfile == null) {
-      throw Exception('User profile not available. Please complete onboarding.');
+      logWarning('User profile not cached, generating default profile', tag: 'OFFLINE_FIRST');
+      _cachedUserProfile = _generateDefaultUserProfile();
     }
     return _cachedUserProfile!;
   }

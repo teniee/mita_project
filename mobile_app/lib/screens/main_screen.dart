@@ -272,16 +272,40 @@ class _MainScreenState extends State<MainScreen> {
 
   /// Load fallback data when cached data is not available
   void _loadFallbackData() {
-    // No fallback data - redirect to onboarding
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/onboarding_region');
-      return;
-    }
-    latestAdvice = _getDefaultAdvice();
-    incomeClassification = _getDefaultIncomeClassification();
-    peerComparison = _getDefaultPeerComparison();
-    cohortInsights = _getDefaultCohortInsights();
-    
+    print('CRITICAL DEBUG: MainScreen _loadFallbackData() called');
+
+    // Set safe default values for empty state
+    _monthlyIncome = 0.0;
+    _incomeTier = null; // No income tier when no data
+
+    // Set up default data structures with empty/zero values
+    dashboardData = {
+      'balance': 0.0,
+      'spent': 0.0,
+      'daily_targets': [],
+      'week': _generateEmptyWeekData(),
+      'transactions': [],
+      'empty_state': true, // Flag for UI to show appropriate messaging
+    };
+
+    userProfile = {
+      'data': {
+        'income': 0.0,
+        'name': 'MITA User',
+        'fallback_profile': true,
+      }
+    };
+
+    latestAdvice = {
+      'text': 'Welcome to MITA! Complete your onboarding to get personalized financial insights.',
+      'title': 'Get Started',
+    };
+
+    // Set empty income-based data
+    incomeClassification = null;
+    peerComparison = null;
+    cohortInsights = null;
+
     aiSnapshot = null;
     financialHealthScore = null;
     weeklyInsights = null;
@@ -293,8 +317,8 @@ class _MainScreenState extends State<MainScreen> {
         error = null;
       });
     }
-    
-    logDebug('Fallback data loaded to UI', tag: 'MAIN_SCREEN');
+
+    logDebug('Safe fallback data loaded to UI - no automatic redirect', tag: 'MAIN_SCREEN');
   }
 
   /// Process cached dashboard data for UI display
@@ -428,9 +452,13 @@ class _MainScreenState extends State<MainScreen> {
   };
   
   List<Map<String, dynamic>> _getDefaultDailyTargets() {
+    if (_monthlyIncome <= 0) {
+      return []; // Return empty list if no income data
+    }
+
     _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
     final dailyBudget = _monthlyIncome / 30;
-    
+
     return [
       {
         'category': 'Food & Dining',
@@ -463,40 +491,55 @@ class _MainScreenState extends State<MainScreen> {
     ];
   }
   
-  Map<String, dynamic> _getDefaultIncomeClassification() => {
-    'monthly_income': _monthlyIncome,
-    'tier': _incomeTier.toString().split('.').last,
-    'tier_name': _incomeService.getIncomeTierName(_incomeTier ?? IncomeTier.middle),
-    'range': _incomeService.getIncomeRangeString(_incomeTier ?? IncomeTier.middle),
-  };
+  Map<String, dynamic>? _getDefaultIncomeClassification() {
+    if (_monthlyIncome <= 0 || _incomeTier == null) {
+      return null; // Return null if no income data
+    }
+    return {
+      'monthly_income': _monthlyIncome,
+      'tier': _incomeTier.toString().split('.').last,
+      'tier_name': _incomeService.getIncomeTierName(_incomeTier!),
+      'range': _incomeService.getIncomeRangeString(_incomeTier!),
+    };
+  }
   
-  Map<String, dynamic> _getDefaultPeerComparison() => {
-    'your_spending': _monthlyIncome * 0.65,
-    'peer_average': _monthlyIncome * 0.72,
-    'peer_median': _monthlyIncome * 0.68,
-    'percentile': 35,
-    'categories': {
-      'food': {'your_amount': _monthlyIncome * 0.12, 'peer_average': _monthlyIncome * 0.15},
-      'transportation': {'your_amount': _monthlyIncome * 0.10, 'peer_average': _monthlyIncome * 0.15},
-      'entertainment': {'your_amount': _monthlyIncome * 0.06, 'peer_average': _monthlyIncome * 0.08},
-    },
-    'insights': [
-      'You spend 15% less than peers in your income group',
-      'Your food spending is well-controlled',
-      'Transportation costs are below average',
-    ],
-  };
+  Map<String, dynamic>? _getDefaultPeerComparison() {
+    if (_monthlyIncome <= 0) {
+      return null; // Return null if no income data
+    }
+    return {
+      'your_spending': _monthlyIncome * 0.65,
+      'peer_average': _monthlyIncome * 0.72,
+      'peer_median': _monthlyIncome * 0.68,
+      'percentile': 35,
+      'categories': {
+        'food': {'your_amount': _monthlyIncome * 0.12, 'peer_average': _monthlyIncome * 0.15},
+        'transportation': {'your_amount': _monthlyIncome * 0.10, 'peer_average': _monthlyIncome * 0.15},
+        'entertainment': {'your_amount': _monthlyIncome * 0.06, 'peer_average': _monthlyIncome * 0.08},
+      },
+      'insights': [
+        'You spend 15% less than peers in your income group',
+        'Your food spending is well-controlled',
+        'Transportation costs are below average',
+      ],
+    };
+  }
   
-  Map<String, dynamic> _getDefaultCohortInsights() => {
-    'cohort_size': 2847,
-    'your_rank': 842,
-    'percentile': 70,
-    'top_insights': [
-      'Users in your income group typically save 18% of income',
-      'Most peers allocate 15% to food expenses',
-      'Transportation costs vary widely in your group',
-    ],
-  };
+  Map<String, dynamic>? _getDefaultCohortInsights() {
+    if (_monthlyIncome <= 0) {
+      return null; // Return null if no income data
+    }
+    return {
+      'cohort_size': 2847,
+      'your_rank': 842,
+      'percentile': 70,
+      'top_insights': [
+        'Users in your income group typically save 18% of income',
+        'Most peers allocate 15% to food expenses',
+        'Transportation costs vary widely in your group',
+      ],
+    };
+  }
 
   Map<String, dynamic> _getDefaultAdvice() => {
     'text': 'Great job staying within your budget this week! Consider setting aside the extra savings for your emergency fund.',
@@ -556,6 +599,14 @@ class _MainScreenState extends State<MainScreen> {
     return List.generate(7, (index) => {
       'day': days[index],
       'status': statuses[index],
+    });
+  }
+
+  List<Map<String, dynamic>> _generateEmptyWeekData() {
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return List.generate(7, (index) => {
+      'day': days[index],
+      'status': 'neutral', // Neutral status for empty state
     });
   }
 
@@ -711,7 +762,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildHeader() {
     final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : 'User';
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
-    
+
     return Row(
       children: [
         Expanded(
@@ -734,6 +785,19 @@ class _MainScreenState extends State<MainScreen> {
                     fontFamily: 'Manrope',
                     fontSize: 14,
                     color: Colors.grey[600],
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/onboarding_region'),
+                  child: Text(
+                    'Tap to complete your profile',
+                    style: TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 14,
+                      color: Colors.blue[600],
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
             ],
