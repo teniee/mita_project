@@ -228,9 +228,9 @@ class UserDataManager {
             'incomplete_onboarding': true,
             'needs_onboarding': true,
             'income': 0.0,
-            'expenses': <dynamic>[]
-            'goals': <String>[]
-            'habits': <String>[]
+            'expenses': <dynamic>[],
+            'goals': <String>[],
+            'habits': <String>[],
             'region': '',
             'countryCode': '',
             'stateCode': '',
@@ -244,9 +244,9 @@ class UserDataManager {
             'incomplete_onboarding': false,
             'needs_onboarding': false,
             'income': 0.0,
-            'expenses': <dynamic>[]
-            'goals': <String>[]
-            'habits': <String>[]
+            'expenses': <dynamic>[],
+            'goals': <String>[],
+            'habits': <String>[],
             'region': '',
             'countryCode': '',
             'stateCode': '',

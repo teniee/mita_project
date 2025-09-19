@@ -6,15 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/engine/financial/installment_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/engine/financial/installment_evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/engine/risk_predictor.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/engine/risk_predictor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/logic/installment_evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/logic/installment_evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/user_data_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/user_data_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/main_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/profile_settings_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/profile_settings_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/transactions_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/transactions_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/api_service.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/user_data_manager.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/user_data_manager.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -87,14 +78,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00025" summary=" Before vs After:&#10;  - ❌ &quot;Session expired&quot; red bar → ✅ Dismissible notifications&#10;  - ❌ &quot;Unable to load dashboard&quot; → ✅ Smooth loading with fallback data&#10;  - ❌ &quot;overbottom&quot; in calendar → ✅ Clear budget status indicators&#10;  - ❌ UI overflow errors → ✅ Responsive Material Design 3 layout&#10;  - ❌ 401/404 API errors → ✅ Reliable backend integration">
-      <option name="closed" value="true" />
-      <created>1754506678620</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1754506678620</updated>
     </task>
     <task id="LOCAL-00026" summary="- ✅ Smooth main dashboard with intelligent financial insights&#10;  - ✅ Real-time calendar updates with immediate visual feedback&#10;  - ✅ AI-powered recommendations based on spending behavior&#10;  - ✅ Living, responsive interface that feels truly intelligent&#10;  - ✅ Sophisticated animations that enhance user understanding">
       <option name="closed" value="true" />
@@ -480,7 +463,15 @@
       <option name="project" value="LOCAL" />
       <updated>1758054092524</updated>
     </task>
-    <option name="localTasksCounter" value="74" />
+    <task id="LOCAL-00074" summary=" Основная проблема&#10;&#10;  В api_service.dart функция hasCompletedOnboarding() всегда возвращала false в catch блоке, даже после того как пользователь&#10;  успешно завершил онбординг.&#10;&#10;  Исправления&#10;&#10;  1. Добавлен метод hasCachedOnboardingData() в UserDataManager (/mobile_app/lib/services/user_data_manager.dart:134-136):&#10;    - Этот метод просто проверяет наличие кэшированных данных онбординга без рекурсивных вызовов&#10;  2. Улучшена логика проверки в Welcome Screen (/mobile_app/lib/screens/welcome_screen.dart:205-236):&#10;    - Сначала проверяется локальный кэш через hasCachedOnboardingData()&#10;    - Если есть кэшированные данные - пользователь завершил онбординг&#10;    - API проверяется только как дополнительная верификация&#10;    - Если API недоступен, полагаемся на локальные данные&#10;  3. Упрощена логика в API Service (/mobile_app/lib/services/api_service.dart:591-599):&#10;    - Убран проблемный код который всегда возвращал false&#10;    - Теперь API Service просто возвращает результат проверки без попыток исправить ситуацию&#10;    - Логика восстановления перенесена в UserDataManager и Welcome Screen">
+      <option name="closed" value="true" />
+      <created>1758278832643</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1758278832643</updated>
+    </task>
+    <option name="localTasksCounter" value="75" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
