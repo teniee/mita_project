@@ -58,21 +58,16 @@ class UserDataService:
                 db.add(dp)
         db.commit()
 
-    @staticmethod
-    def get_user_financial_profile(user_id: str) -> dict:
-        if user_id == "user_001":
-            return {
-                "monthly_income": 5000,
-                "monthly_expenses": [1000, 1200, 1100, 1300],
-                "savings_balance": 2000,
-                "missed_payments": 0,
-            }
-        elif user_id == "user_002":
-            return {
-                "monthly_income": 3000,
-                "monthly_expenses": [900, 1000, 950, 970],
-                "savings_balance": 1000,
-                "missed_payments": 2,
-            }
-        else:
+    def get_user_financial_profile(self, user_id: int, db: Session) -> dict:
+        """
+        Get user financial profile from the database.
+        Returns None if no profile exists.
+        """
+        try:
+            profile = db.query(UserProfile).filter_by(user_id=user_id).first()
+            if profile and profile.data:
+                return profile.data
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get user financial profile for user {user_id}: {str(e)}")
             return None

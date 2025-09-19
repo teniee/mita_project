@@ -40,40 +40,66 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      // Load from local storage first for instant display
-      _nameController.text = 'John Doe'; // Default values
-      _emailController.text = 'user@example.com';
-      _incomeController.text = '3000';
-      _savingsGoalController.text = '500';
-      
       // Try to load from API with timeout
       final profileData = await _apiService.getUserProfile().timeout(
         const Duration(seconds: 5),
         onTimeout: () => <String, dynamic>{},
       ).catchError((e) => <String, dynamic>{});
-      
+
       if (profileData.isNotEmpty && profileData['data'] != null) {
         final data = profileData['data'];
         setState(() {
-          _nameController.text = data['name'] ?? 'John Doe';
-          _emailController.text = data['email'] ?? 'user@example.com';
+          _nameController.text = data['name'] ?? '';
+          _emailController.text = data['email'] ?? '';
           final income = data['income'];
-          if (income == null || income <= 0) {
-            throw Exception('Income data is required. Please complete onboarding.');
+          if (income != null && income > 0) {
+            _incomeController.text = income.toString();
+          } else {
+            _incomeController.text = '';
           }
-          _incomeController.text = income.toString();
-          _savingsGoalController.text = (data['savings_goal'] ?? 500).toString();
+          final savingsGoal = data['savings_goal'];
+          if (savingsGoal != null && savingsGoal > 0) {
+            _savingsGoalController.text = savingsGoal.toString();
+          } else {
+            _savingsGoalController.text = '';
+          }
           _selectedCurrency = data['currency'] ?? 'USD';
           _selectedRegion = data['region'] ?? 'US';
-          _budgetMethod = data['budget_method'] ?? 'Percentage';
+          _budgetMethod = data['budget_method'] ?? '50/30/20 Rule';
           _notificationsEnabled = data['notifications'] ?? true;
           _darkModeEnabled = data['dark_mode'] ?? false;
+        });
+      } else {
+        // No user profile data found - show empty fields
+        setState(() {
+          _nameController.text = '';
+          _emailController.text = '';
+          _incomeController.text = '';
+          _savingsGoalController.text = '';
+          _selectedCurrency = 'USD';
+          _selectedRegion = 'US';
+          _budgetMethod = '50/30/20 Rule';
+          _notificationsEnabled = true;
+          _darkModeEnabled = false;
         });
       }
     } catch (e) {
       logWarning('Failed to load user profile', tag: 'PROFILE_SETTINGS', extra: {'error': e.toString()});
+
+      // Show empty fields on error
+      setState(() {
+        _nameController.text = '';
+        _emailController.text = '';
+        _incomeController.text = '';
+        _savingsGoalController.text = '';
+        _selectedCurrency = 'USD';
+        _selectedRegion = 'US';
+        _budgetMethod = '50/30/20 Rule';
+        _notificationsEnabled = true;
+        _darkModeEnabled = false;
+      });
     } finally {
       setState(() => _isLoading = false);
     }
@@ -81,20 +107,34 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSaving = true);
-    
+
     try {
+      // Validate required fields
+      if (_nameController.text.trim().isEmpty) {
+        throw Exception('Name is required');
+      }
+
+      if (_emailController.text.trim().isEmpty) {
+        throw Exception('Email is required');
+      }
+
       final parsedIncome = double.tryParse(_incomeController.text) ?? 0.0;
       if (parsedIncome <= 0) {
         throw Exception('Valid income is required');
       }
-      
+
+      final parsedSavingsGoal = double.tryParse(_savingsGoalController.text) ?? 0.0;
+      if (parsedSavingsGoal <= 0) {
+        throw Exception('Valid savings goal is required');
+      }
+
       final profileData = {
-        'name': _nameController.text,
-        'email': _emailController.text,
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
         'income': parsedIncome,
-        'savings_goal': double.tryParse(_savingsGoalController.text) ?? 500,
+        'savings_goal': parsedSavingsGoal,
         'currency': _selectedCurrency,
         'region': _selectedRegion,
         'budget_method': _budgetMethod,

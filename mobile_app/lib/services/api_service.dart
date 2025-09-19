@@ -2120,16 +2120,15 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo predictions if endpoint not available
+      // Return error when behavior predictions service is unavailable
+      logError('Behavior predictions service unavailable: $e', tag: 'BEHAVIOR');
       return {
-        'next_month_spending': 2850.00,
-        'confidence': 0.78,
-        'risk_factors': [
-          {'factor': 'Upcoming holiday season', 'impact': 'high'},
-          {'factor': 'Recent salary increase', 'impact': 'medium'},
-        ],
-        'recommended_budget': 2600.00,
-        'savings_potential': 250.00,
+        'error': 'Prediction service is currently unavailable',
+        'next_month_spending': null,
+        'confidence': null,
+        'risk_factors': [],
+        'recommended_budget': null,
+        'savings_potential': null,
       };
     }
   }
@@ -2147,27 +2146,9 @@ class ApiService {
       );
       return List<dynamic>.from(response.data['data'] ?? []);
     } catch (e) {
-      // Return demo anomalies if endpoint not available
-      return [
-        {
-          'date': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
-          'category': 'Entertainment',
-          'amount': 150.00,
-          'expected_amount': 45.00,
-          'anomaly_score': 0.85,
-          'description': 'Unusual entertainment spending - 233% above normal',
-          'possible_causes': ['Special event', 'Social gathering'],
-        },
-        {
-          'date': DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
-          'category': 'Food',
-          'amount': 85.00,
-          'expected_amount': 35.00,
-          'anomaly_score': 0.72,
-          'description': 'Higher than usual food spending',
-          'possible_causes': ['Dining out', 'Grocery stock-up'],
-        },
-      ];
+      // Return empty list when anomaly detection service is unavailable
+      logError('Behavior anomalies service unavailable: $e', tag: 'BEHAVIOR');
+      return [];
     }
   }
 
@@ -2181,29 +2162,15 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo insights if endpoint not available
+      // Return error when behavior insights service is unavailable
+      logError('Behavior insights service unavailable: $e', tag: 'BEHAVIOR');
       return {
-        'spending_personality': 'Mindful Spender',
-        'key_traits': [
-          'Plans purchases in advance',
-          'Responds well to visual budgeting',
-          'Weekend spending tends to increase',
-        ],
-        'improvement_areas': [
-          'Food spending optimization',
-          'Weekend budget control',
-          'Emotional spending awareness',
-        ],
-        'strengths': [
-          'Consistent daily spending habits',
-          'Good at tracking expenses',
-          'Responsive to budget alerts',
-        ],
-        'recommended_strategies': [
-          'Set specific weekend spending limits',
-          'Use meal planning to control food costs',
-          'Create emotional spending checkpoints',
-        ],
+        'error': 'Insights service is currently unavailable',
+        'spending_personality': null,
+        'key_traits': [],
+        'improvement_areas': [],
+        'strengths': [],
+        'recommended_strategies': [],
       };
     }
   }
@@ -2235,20 +2202,9 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo OCR results if service unavailable
-      return {
-        'merchant': 'Starbucks Coffee',
-        'amount': 12.45,
-        'date': DateTime.now().toIso8601String(),
-        'category': 'Food & Dining',
-        'items': [
-          {'name': 'Grande Latte', 'price': 5.25},
-          {'name': 'Blueberry Muffin', 'price': 3.95},
-          {'name': 'Tax', 'price': 0.85},
-        ],
-        'confidence': 0.89,
-        'processing_time': 2.3,
-      };
+      // Return error when OCR service is unavailable
+      logError('OCR service unavailable: $e', tag: 'OCR');
+      throw Exception('Receipt processing service is currently unavailable. Please try again later.');
     }
   }
 
@@ -2276,19 +2232,9 @@ class ApiService {
       );
       return List<String>.from(response.data['data']['suggestions'] ?? []);
     } catch (e) {
-      // Return demo suggestions based on common patterns
-      if (description.toLowerCase().contains('coffee') ||
-          description.toLowerCase().contains('restaurant') ||
-          description.toLowerCase().contains('food')) {
-        return ['Food & Dining', 'Coffee Shops', 'Restaurants'];
-      } else if (description.toLowerCase().contains('gas') ||
-                 description.toLowerCase().contains('fuel')) {
-        return ['Transportation', 'Gas Stations', 'Vehicle'];
-      } else if (description.toLowerCase().contains('store') ||
-                 description.toLowerCase().contains('shop')) {
-        return ['Shopping', 'Retail', 'General'];
-      }
-      return ['General', 'Other', 'Miscellaneous'];
+      // Return basic category fallback when AI categorization is unavailable
+      logError('Category suggestion service unavailable: $e', tag: 'CATEGORIZATION');
+      return ['General', 'Other'];
     }
   }
 
@@ -2351,57 +2297,9 @@ class ApiService {
       );
       return List<dynamic>.from(response.data['data'] ?? []);
     } catch (e) {
-      // Return demo challenges if endpoint not available
-      return [
-        {
-          'id': '1',
-          'title': 'Coffee Saver Challenge',
-          'description': 'Skip buying coffee for 5 days and save money',
-          'type': 'spending_reduction',
-          'target_value': 5,
-          'current_progress': 2,
-          'reward_points': 100,
-          'reward_amount': 25.0,
-          'status': 'active',
-          'difficulty': 'easy',
-          'duration_days': 7,
-          'start_date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
-          'end_date': DateTime.now().add(const Duration(days: 5)).toIso8601String(),
-          'category': 'Food & Dining',
-        },
-        {
-          'id': '2',
-          'title': 'Weekend Budget Master',
-          'description': 'Stay within weekend budget for 4 consecutive weekends',
-          'type': 'budget_adherence',
-          'target_value': 4,
-          'current_progress': 1,
-          'reward_points': 250,
-          'reward_amount': 50.0,
-          'status': 'active',
-          'difficulty': 'medium',
-          'duration_days': 28,
-          'start_date': DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
-          'end_date': DateTime.now().add(const Duration(days: 21)).toIso8601String(),
-          'category': 'Entertainment',
-        },
-        {
-          'id': '3',
-          'title': 'Transportation Optimizer',
-          'description': 'Reduce transportation costs by 20% this month',
-          'type': 'category_reduction',
-          'target_value': 20.0,
-          'current_progress': 8.5,
-          'reward_points': 500,
-          'reward_amount': 100.0,
-          'status': 'active',
-          'difficulty': 'hard',
-          'duration_days': 30,
-          'start_date': DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
-          'end_date': DateTime.now().add(const Duration(days: 20)).toIso8601String(),
-          'category': 'Transportation',
-        },
-      ];
+      // Return empty list when challenges service is unavailable
+      logError('Challenges service unavailable: $e', tag: 'CHALLENGES');
+      return [];
     }
   }
 
@@ -2415,20 +2313,14 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo progress data
+      // Return error when challenge progress service is unavailable
+      logError('Challenge progress service unavailable: $e', tag: 'CHALLENGES');
       return {
+        'error': 'Challenge progress service is currently unavailable',
         'challenge_id': challengeId,
-        'current_progress': 2,
-        'target_value': 5,
-        'completion_percentage': 40.0,
-        'streak_days': 2,
-        'best_streak': 3,
-        'daily_progress': [
-          {'date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(), 'completed': true},
-          {'date': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(), 'completed': true},
-          {'date': DateTime.now().toIso8601String(), 'completed': false},
-        ],
-        'estimated_completion': DateTime.now().add(const Duration(days: 3)).toIso8601String(),
+        'current_progress': 0,
+        'target_value': 0,
+        'completion_percentage': 0.0,
       };
     }
   }
@@ -2461,45 +2353,22 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo gamification stats
+      // Return error when gamification stats service is unavailable
+      logError('Gamification stats service unavailable: $e', tag: 'GAMIFICATION');
       return {
-        'total_points': 1250,
-        'current_level': 5,
-        'next_level_points': 1500,
-        'points_to_next_level': 250,
-        'completed_challenges': 8,
-        'active_challenges': 3,
-        'current_streak': 12,
-        'best_streak': 18,
-        'badges_earned': [
-          {
-            'id': 'coffee_saver',
-            'name': 'Coffee Saver',
-            'description': 'Saved money by skipping coffee purchases',
-            'icon': 'coffee',
-            'earned_date': DateTime.now().subtract(const Duration(days: 5)).toIso8601String(),
-            'rarity': 'common',
-          },
-          {
-            'id': 'budget_master',
-            'name': 'Budget Master',
-            'description': 'Stayed within budget for 7 consecutive days',
-            'icon': 'trophy',
-            'earned_date': DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
-            'rarity': 'rare',
-          },
-          {
-            'id': 'early_bird',
-            'name': 'Early Bird',
-            'description': 'Completed 5 challenges in first month',
-            'icon': 'star',
-            'earned_date': DateTime.now().subtract(const Duration(days: 15)).toIso8601String(),
-            'rarity': 'epic',
-          },
-        ],
-        'leaderboard_position': 42,
-        'points_this_week': 150,
-        'challenges_completed_this_month': 2,
+        'error': 'Gamification service is currently unavailable',
+        'total_points': 0,
+        'current_level': 1,
+        'next_level_points': 100,
+        'points_to_next_level': 100,
+        'completed_challenges': 0,
+        'active_challenges': 0,
+        'current_streak': 0,
+        'best_streak': 0,
+        'badges_earned': [],
+        'leaderboard_position': null,
+        'points_this_week': 0,
+        'challenges_completed_this_month': 0,
       };
     }
   }
@@ -2665,23 +2534,16 @@ class ApiService {
       );
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      // Return demo peer comparison data
+      // Return error when peer comparison service is unavailable
+      logError('Peer comparison service unavailable: $e', tag: 'PEER_COMPARISON');
       return {
-        'your_spending': 2450.0,
-        'peer_average': 2680.0,
-        'peer_median': 2520.0,
-        'percentile': 35,
-        'categories': {
-          'food': {'your_amount': 450.0, 'peer_average': 480.0},
-          'transportation': {'your_amount': 320.0, 'peer_average': 380.0},
-          'entertainment': {'your_amount': 180.0, 'peer_average': 220.0},
-          'shopping': {'your_amount': 280.0, 'peer_average': 350.0},
-        },
-        'insights': [
-          'You spend 15% less than peers in your income group',
-          'Your food spending is very close to the average',
-          'You save more on transportation than most peers',
-        ],
+        'error': 'Peer comparison service is currently unavailable',
+        'your_spending': null,
+        'peer_average': null,
+        'peer_median': null,
+        'percentile': null,
+        'categories': {},
+        'insights': [],
       };
     }
   }

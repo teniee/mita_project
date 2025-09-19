@@ -69,138 +69,31 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
       
       _animationController.forward();
     } catch (e) {
-      // Generate demo data if API is not available
+      // Show empty state when peer comparison service is unavailable
       setState(() {
-        _peerData = _generateDemoPeerData();
-        _cohortInsights = _generateDemoCohortInsights();
+        _peerData = {
+          'error': 'Peer comparison service is currently unavailable',
+          'your_spending': null,
+          'peer_average': null,
+          'peer_median': null,
+          'percentile': null,
+          'categories': {},
+          'insights': [],
+        };
+        _cohortInsights = {
+          'error': 'Cohort insights service is currently unavailable',
+          'cohort_size': null,
+          'your_rank': null,
+          'percentile': null,
+          'top_insights': [],
+        };
         _isLoading = false;
       });
-      
+
       _animationController.forward();
     }
   }
 
-  Map<String, dynamic> _generateDemoPeerData() {
-    // Generate realistic demo data based on income tier
-    final baseSpending = _monthlyIncome * 0.75; // 75% spending rate
-    final tierMultiplier = _incomeTier == IncomeTier.low ? 0.9 
-                         : _incomeTier == IncomeTier.lowerMiddle ? 0.95
-                         : _incomeTier == IncomeTier.middle ? 1.0 
-                         : _incomeTier == IncomeTier.upperMiddle ? 1.05
-                         : 1.1;
-    
-    return {
-      'your_spending': baseSpending * 0.85, // User spends less than average
-      'peer_average': baseSpending * tierMultiplier,
-      'peer_median': baseSpending * tierMultiplier * 0.95,
-      'percentile': 35, // User is in the 35th percentile (doing well)
-      'categories': {
-        'food': {'your_amount': _monthlyIncome * 0.12, 'peer_average': _monthlyIncome * 0.15},
-        'transportation': {'your_amount': _monthlyIncome * 0.10, 'peer_average': _monthlyIncome * 0.15},
-        'entertainment': {'your_amount': _monthlyIncome * 0.06, 'peer_average': _monthlyIncome * 0.08},
-        'shopping': {'your_amount': _monthlyIncome * 0.08, 'peer_average': _monthlyIncome * 0.12},
-      },
-      'insights': [
-        'You spend 15% less than peers in your income group',
-        'Your food spending is very close to the average',
-        'You save more on transportation than most peers',
-        'Your entertainment budget is well-controlled',
-      ],
-    };
-  }
-
-  Map<String, dynamic> _generateDemoCohortInsights() {
-    return {
-      'cohort_size': _incomeTier == IncomeTier.low ? 2847 
-                   : _incomeTier == IncomeTier.lowerMiddle ? 3241
-                   : _incomeTier == IncomeTier.middle ? 4126 
-                   : _incomeTier == IncomeTier.upperMiddle ? 2089
-                   : 1653,
-      'your_rank': _incomeTier == IncomeTier.low ? 842 
-                 : _incomeTier == IncomeTier.lowerMiddle ? 973
-                 : _incomeTier == IncomeTier.middle ? 1247 
-                 : _incomeTier == IncomeTier.upperMiddle ? 542
-                 : 423,
-      'percentile': 70,
-      'top_insights': _getTierSpecificInsights(),
-      'recommendations': _getTierSpecificRecommendations(),
-    };
-  }
-
-  List<String> _getTierSpecificInsights() {
-    switch (_incomeTier) {
-      case IncomeTier.low:
-        return [
-          'Essential Earners typically save 8-12% of their income',
-          'Most peers allocate 40% to housing costs',
-          'Food expenses average 15-18% for your income group',
-          'Transportation costs vary from 12-20% among peers',
-        ];
-      case IncomeTier.lowerMiddle:
-        return [
-          'Rising Savers typically save 12-16% of their income',
-          'Most peers allocate 35-38% to housing costs',
-          'Food expenses average 13-16% for your income group',
-          'Emergency fund building becomes a priority at this level',
-        ];
-      case IncomeTier.middle:
-        return [
-          'Growing Professionals typically save 15-20% of their income',
-          'Most peers allocate 30-35% to housing costs',
-          'Food expenses average 12-15% for your income group',
-          'Investment activity increases significantly in this tier',
-        ];
-      case IncomeTier.upperMiddle:
-        return [
-          'Established Professionals typically save 20-28% of their income',
-          'Most peers allocate 28-32% to housing costs',
-          'Food expenses average 10-13% for your income group',
-          'Advanced investment strategies become common at this level',
-        ];
-      case IncomeTier.high:
-        return [
-          'High Achievers typically save 25-35% of their income',
-          'Most peers allocate 25-30% to housing costs',
-          'Food expenses average 8-12% for your income group',
-          'Tax optimization becomes a major focus at this level',
-        ];
-    }
-  }
-
-  List<String> _getTierSpecificRecommendations() {
-    switch (_incomeTier) {
-      case IncomeTier.low:
-        return [
-          'Focus on building a small emergency fund first',
-          'Look for ways to reduce transportation costs',
-          'Consider meal planning to optimize food spending',
-        ];
-      case IncomeTier.lowerMiddle:
-        return [
-          'Build a 3-month emergency fund as your foundation',
-          'Invest in skills development to increase income potential',
-          'Create a debt elimination plan for high-interest debt',
-        ];
-      case IncomeTier.middle:
-        return [
-          'Consider increasing your savings rate to match top performers',
-          'Start exploring investment opportunities',
-          'Look into employer benefits optimization',
-        ];
-      case IncomeTier.upperMiddle:
-        return [
-          'Diversify your investment portfolio across asset classes',
-          'Explore tax loss harvesting strategies',
-          'Consider real estate investment opportunities',
-        ];
-      case IncomeTier.high:
-        return [
-          'Maximize tax-advantaged investment accounts',
-          'Consider working with a financial advisor',
-          'Explore advanced wealth-building strategies',
-        ];
-    }
-  }
 
   void _continueToFinish() {
     Navigator.pushNamed(context, '/onboarding_finish');

@@ -160,15 +160,36 @@ class _MainScreenState extends State<MainScreen> {
       print('CRITICAL DEBUG: MainScreen got financial context: $financialContext');
       logInfo('CRITICAL DEBUG: MainScreen got financial context: $financialContext', tag: 'MAIN_SCREEN');
 
-      // Check if onboarding is incomplete
+      // Check if user needs to complete onboarding
+      if (financialContext['needs_onboarding'] == true) {
+        logInfo('User needs to complete onboarding - redirecting', tag: 'MAIN_SCREEN');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          return;
+        }
+      }
+
+      // Check if there was an API error
+      if (financialContext['api_error'] == true) {
+        logWarning('API error detected - showing error state', tag: 'MAIN_SCREEN');
+        if (mounted) {
+          setState(() {
+            error = financialContext['error_message'] as String? ?? 'Unable to load your financial data. Please try again.';
+            isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Check if onboarding is incomplete (fallback data scenario)
       if (financialContext['incomplete_onboarding'] == true) {
-        logWarning('CRITICAL DEBUG: Incomplete onboarding detected - using fallback data', tag: 'MAIN_SCREEN');
-        _loadCachedDataFromProvider(); // Use fallback approach
+        logWarning('Incomplete onboarding detected - using safe fallback', tag: 'MAIN_SCREEN');
+        _loadSafeIncompleteState(); // Use safe incomplete state
         return;
       }
 
       // Extract actual user income (not hardcoded)
-      _monthlyIncome = financialContext['income'] as double;
+      _monthlyIncome = (financialContext['income'] as num).toDouble();
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
       
       // Get personalized dashboard data using real user data
@@ -211,50 +232,65 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  /// Fallback to original cached data approach with user data
+  /// Fallback to cached data approach when production budget data fails
   Future<void> _loadCachedDataFromProvider() async {
     try {
       // Try to get real user data first
       final financialContext = await UserDataManager.instance.getFinancialContext().timeout(
         const Duration(seconds: 2),
-        onTimeout: () => <String, dynamic>{},
+        onTimeout: () => <String, dynamic>{'api_error': true, 'error_message': 'Timeout getting financial context'},
       );
-      
-      // Get cached data from offline provider as backup
-      final cachedDashboard = _offlineProvider.getDashboardData();
-      final cachedProfile = _offlineProvider.getUserProfile();
-      
-      // Extract income - require valid user data
-      final userIncome = financialContext['income'] as double? ?? 
-                        (cachedProfile['data']?['income'] as num?)?.toDouble();
-      
-      if (userIncome == null || userIncome <= 0) {
-        // Redirect to onboarding if no valid income data
+
+      // Check for various error states
+      if (financialContext['needs_onboarding'] == true) {
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/onboarding_region');
           return;
         }
       }
-      
-      _monthlyIncome = userIncome!;
+
+      if (financialContext['api_error'] == true) {
+        if (mounted) {
+          setState(() {
+            error = 'Unable to load your financial data. Please check your internet connection and try again.';
+            isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Get cached data from offline provider as backup
+      final cachedDashboard = _offlineProvider.getDashboardData();
+      final cachedProfile = _offlineProvider.getUserProfile();
+
+      // Extract income from financial context
+      final userIncome = (financialContext['income'] as num?)?.toDouble() ?? 0.0;
+
+      if (userIncome <= 0) {
+        // No valid income data available
+        _loadSafeIncompleteState();
+        return;
+      }
+
+      _monthlyIncome = userIncome;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
-      
-      // Process the dashboard data
+
+      // Process the dashboard data with real user income
       dashboardData = _processCachedDashboardData(cachedDashboard);
-      userProfile = cachedProfile;
+      userProfile = cachedProfile.isNotEmpty ? cachedProfile : {'data': financialContext};
       latestAdvice = _getDefaultAdvice();
-      
+
       // Set up income-based data
       incomeClassification = _getDefaultIncomeClassification();
       peerComparison = _getDefaultPeerComparison();
       cohortInsights = _getDefaultCohortInsights();
-      
+
       // Initialize other data as empty for now
       aiSnapshot = null;
       financialHealthScore = null;
       weeklyInsights = null;
       spendingAnomalies = [];
-      
+
       // Update UI immediately
       if (mounted) {
         setState(() {
@@ -262,19 +298,19 @@ class _MainScreenState extends State<MainScreen> {
           error = null;
         });
       }
-      
-      logDebug('Cached data loaded to UI instantly', tag: 'MAIN_SCREEN');
+
+      logDebug('Cached data loaded with real user income', tag: 'MAIN_SCREEN');
     } catch (e) {
-      logWarning('Error loading cached data, using fallback', tag: 'MAIN_SCREEN');
-      _loadFallbackData();
+      logWarning('Error loading cached data: $e', tag: 'MAIN_SCREEN');
+      _loadSafeIncompleteState();
     }
   }
 
-  /// Load fallback data when cached data is not available
-  void _loadFallbackData() {
-    print('CRITICAL DEBUG: MainScreen _loadFallbackData() called');
+  /// Load safe incomplete state when user has incomplete/missing data
+  void _loadSafeIncompleteState() {
+    print('CRITICAL DEBUG: MainScreen _loadSafeIncompleteState() called');
 
-    // Set safe default values for empty state
+    // Set safe default values for incomplete state
     _monthlyIncome = 0.0;
     _incomeTier = null; // No income tier when no data
 
@@ -282,23 +318,25 @@ class _MainScreenState extends State<MainScreen> {
     dashboardData = {
       'balance': 0.0,
       'spent': 0.0,
-      'daily_targets': [],
+      'daily_targets': <Map<String, dynamic>>[],
       'week': _generateEmptyWeekData(),
-      'transactions': [],
+      'transactions': <Map<String, dynamic>>[],
       'empty_state': true, // Flag for UI to show appropriate messaging
+      'incomplete_profile': true, // Flag for incomplete profile state
     };
 
     userProfile = {
       'data': {
         'income': 0.0,
         'name': 'MITA User',
-        'fallback_profile': true,
+        'incomplete_profile': true,
       }
     };
 
     latestAdvice = {
-      'text': 'Welcome to MITA! Complete your onboarding to get personalized financial insights.',
-      'title': 'Get Started',
+      'text': 'Complete your profile setup to get personalized financial insights and budget recommendations.',
+      'title': 'Complete Your Profile',
+      'action': 'complete_profile',
     };
 
     // Set empty income-based data
@@ -318,7 +356,59 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
 
-    logDebug('Safe fallback data loaded to UI - no automatic redirect', tag: 'MAIN_SCREEN');
+    logDebug('Safe incomplete state loaded - user can complete profile', tag: 'MAIN_SCREEN');
+  }
+
+  /// Load fallback data when all other methods fail (network issues, etc.)
+  void _loadFallbackData() {
+    print('CRITICAL DEBUG: MainScreen _loadFallbackData() called');
+
+    // Set safe default values for emergency fallback
+    _monthlyIncome = 0.0;
+    _incomeTier = null;
+
+    // Set up minimal data structures
+    dashboardData = {
+      'balance': 0.0,
+      'spent': 0.0,
+      'daily_targets': <Map<String, dynamic>>[],
+      'week': _generateEmptyWeekData(),
+      'transactions': <Map<String, dynamic>>[],
+      'empty_state': true,
+      'network_error': true, // Flag for network error state
+    };
+
+    userProfile = {
+      'data': {
+        'income': 0.0,
+        'name': 'MITA User',
+        'network_error': true,
+      }
+    };
+
+    latestAdvice = {
+      'text': 'Unable to load your data. Please check your internet connection and try refreshing.',
+      'title': 'Connection Issue',
+      'action': 'retry',
+    };
+
+    // Set empty data
+    incomeClassification = null;
+    peerComparison = null;
+    cohortInsights = null;
+    aiSnapshot = null;
+    financialHealthScore = null;
+    weeklyInsights = null;
+    spendingAnomalies = [];
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        error = null; // Don't set error here, let UI handle network_error flag
+      });
+    }
+
+    logDebug('Emergency fallback data loaded', tag: 'MAIN_SCREEN');
   }
 
   /// Process cached dashboard data for UI display
@@ -508,20 +598,13 @@ class _MainScreenState extends State<MainScreen> {
       return null; // Return null if no income data
     }
     return {
-      'your_spending': _monthlyIncome * 0.65,
-      'peer_average': _monthlyIncome * 0.72,
-      'peer_median': _monthlyIncome * 0.68,
-      'percentile': 35,
-      'categories': {
-        'food': {'your_amount': _monthlyIncome * 0.12, 'peer_average': _monthlyIncome * 0.15},
-        'transportation': {'your_amount': _monthlyIncome * 0.10, 'peer_average': _monthlyIncome * 0.15},
-        'entertainment': {'your_amount': _monthlyIncome * 0.06, 'peer_average': _monthlyIncome * 0.08},
-      },
-      'insights': [
-        'You spend 15% less than peers in your income group',
-        'Your food spending is well-controlled',
-        'Transportation costs are below average',
-      ],
+      'error': 'Peer comparison data not available',
+      'your_spending': null,
+      'peer_average': null,
+      'peer_median': null,
+      'percentile': null,
+      'categories': {},
+      'insights': ['Peer comparison data will be available once you start tracking expenses'],
     };
   }
   
@@ -530,67 +613,22 @@ class _MainScreenState extends State<MainScreen> {
       return null; // Return null if no income data
     }
     return {
-      'cohort_size': 2847,
-      'your_rank': 842,
-      'percentile': 70,
-      'top_insights': [
-        'Users in your income group typically save 18% of income',
-        'Most peers allocate 15% to food expenses',
-        'Transportation costs vary widely in your group',
-      ],
+      'error': 'Cohort insights data not available',
+      'cohort_size': null,
+      'your_rank': null,
+      'percentile': null,
+      'top_insights': ['Cohort insights will be available once you start tracking expenses'],
     };
   }
 
   Map<String, dynamic> _getDefaultAdvice() => {
-    'text': 'Great job staying within your budget this week! Consider setting aside the extra savings for your emergency fund.',
-    'title': 'Weekly Budget Update',
+    'text': 'Start tracking your expenses to receive personalized financial insights and advice.',
+    'title': 'Getting Started',
   };
 
   List<Map<String, dynamic>> _getDefaultTransactions() {
-    final now = DateTime.now();
-    
-    return [
-      {
-        'action': 'Morning Coffee',
-        'amount': (12.50).toStringAsFixed(2),
-        'date': now.subtract(const Duration(hours: 2)).toIso8601String(),
-        'category': 'Food',
-        'icon': Icons.local_cafe,
-        'color': const Color(0xFF8D6E63),
-      },
-      {
-        'action': 'Grocery Shopping',
-        'amount': (89.32).toStringAsFixed(2),
-        'date': now.subtract(const Duration(days: 1)).toIso8601String(),
-        'category': 'Food',
-        'icon': Icons.local_grocery_store,
-        'color': const Color(0xFF4CAF50),
-      },
-      {
-        'action': 'Uber Ride',
-        'amount': (24.75).toStringAsFixed(2),
-        'date': now.subtract(const Duration(hours: 6)).toIso8601String(),
-        'category': 'Transportation',
-        'icon': Icons.local_taxi,
-        'color': const Color(0xFF2196F3),
-      },
-      {
-        'action': 'Lunch at Work',
-        'amount': (15.80).toStringAsFixed(2),
-        'date': now.subtract(const Duration(days: 1, hours: 5)).toIso8601String(),
-        'category': 'Food',
-        'icon': Icons.restaurant,
-        'color': const Color(0xFF4CAF50),
-      },
-      {
-        'action': 'Netflix Subscription',
-        'amount': (15.99).toStringAsFixed(2),
-        'date': now.subtract(const Duration(days: 2)).toIso8601String(),
-        'category': 'Entertainment',
-        'icon': Icons.movie,
-        'color': const Color(0xFF9C27B0),
-      },
-    ];
+    // Return empty list instead of demo transactions
+    return [];
   }
 
   List<Map<String, dynamic>> _generateWeekData() {
@@ -786,6 +824,48 @@ class _MainScreenState extends State<MainScreen> {
                     fontSize: 14,
                     color: Colors.grey[600],
                   ),
+                )
+              else if (dashboardData?['incomplete_profile'] == true)
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/onboarding_region'),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Colors.orange[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Complete your profile for personalized insights',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 14,
+                          color: Colors.orange[600],
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (dashboardData?['network_error'] == true)
+                Row(
+                  children: [
+                    Icon(
+                      Icons.cloud_off,
+                      size: 16,
+                      color: Colors.red[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Connection issue - tap refresh to retry',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: Colors.red[600],
+                      ),
+                    ),
+                  ],
                 )
               else
                 GestureDetector(
@@ -1210,7 +1290,18 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildAIInsightsCard() {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/insights'),
+      onTap: () {
+        final advice = latestAdvice ?? {};
+        final action = advice['action'] as String?;
+
+        if (action == 'complete_profile' && dashboardData?['incomplete_profile'] == true) {
+          Navigator.pushNamed(context, '/onboarding_region');
+        } else if (action == 'retry' && dashboardData?['network_error'] == true) {
+          refreshData();
+        } else {
+          Navigator.pushNamed(context, '/insights');
+        }
+      },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -1267,17 +1358,7 @@ class _MainScreenState extends State<MainScreen> {
             else if (financialHealthScore != null)
               _buildBudgetEngineInsightsPreview()
             else
-              Text(
-                latestAdvice?['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
-                style: TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  height: 1.4,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+              _buildAdviceContent(),
             if (spendingAnomalies.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
@@ -1398,7 +1479,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildBudgetEngineInsightsPreview() {
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1434,6 +1515,103 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildAdviceContent() {
+    final advice = latestAdvice ?? {};
+    final action = advice['action'] as String?;
+
+    // Handle different advice types
+    if (action == 'complete_profile' && dashboardData?['incomplete_profile'] == true) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'PROFILE INCOMPLETE',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            advice['text'] ?? 'Complete your profile setup to get personalized financial insights and budget recommendations.',
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.9),
+              height: 1.4,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    } else if (action == 'retry' && dashboardData?['network_error'] == true) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'CONNECTION ISSUE',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            advice['text'] ?? 'Unable to load your data. Please check your internet connection and try refreshing.',
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.9),
+              height: 1.4,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    } else {
+      // Default advice content
+      return Text(
+        advice['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
+        style: TextStyle(
+          fontFamily: 'Manrope',
+          fontSize: 14,
+          color: Colors.white.withValues(alpha: 0.9),
+          height: 1.4,
+        ),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
   }
 
 

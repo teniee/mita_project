@@ -204,42 +204,92 @@ class UserDataManager {
   
   /// Get user's financial context for budget calculations
   Future<Map<String, dynamic>> getFinancialContext() async {
-    final profile = await getUserProfile();
+    try {
+      // First check if we have cached onboarding data (immediate after onboarding completion)
+      if (_cachedOnboardingData != null) {
+        logInfo('Using cached onboarding data for financial context', tag: 'USER_DATA_MANAGER');
+        return _transformOnboardingToFinancialContext(_cachedOnboardingData!);
+      }
 
-    final income = (profile['income'] as num?)?.toDouble();
-    logInfo('CRITICAL DEBUG: getFinancialContext() - income: $income, profile: $profile', tag: 'USER_DATA_MANAGER');
+      // Try to get user profile from API
+      final profile = await getUserProfile();
+      logInfo('Retrieved user profile for financial context: $profile', tag: 'USER_DATA_MANAGER');
 
-    if (income == null || income <= 0) {
-      logWarning('CRITICAL DEBUG: No income data found - returning empty context instead of throwing', tag: 'USER_DATA_MANAGER');
+      // Check if profile has required financial data
+      final income = (profile['income'] as num?)?.toDouble();
 
-      // Return empty context instead of throwing to prevent crashes
-      // MainScreen should handle this gracefully
+      if (income == null || income <= 0) {
+        // Check onboarding status to determine if user needs to complete onboarding
+        final hasCompleted = await hasCompletedOnboarding();
+
+        if (!hasCompleted) {
+          logInfo('User has not completed onboarding - returning incomplete context', tag: 'USER_DATA_MANAGER');
+          return {
+            'incomplete_onboarding': true,
+            'needs_onboarding': true,
+            'income': 0.0,
+            'expenses': <dynamic>[]
+            'goals': <String>[]
+            'habits': <String>[]
+            'region': '',
+            'countryCode': '',
+            'stateCode': '',
+            'currency': 'USD',
+          };
+        } else {
+          // User completed onboarding but data is missing from profile - API issue
+          logWarning('User completed onboarding but profile missing income data', tag: 'USER_DATA_MANAGER');
+          return {
+            'api_error': true,
+            'incomplete_onboarding': false,
+            'needs_onboarding': false,
+            'income': 0.0,
+            'expenses': <dynamic>[]
+            'goals': <String>[]
+            'habits': <String>[]
+            'region': '',
+            'countryCode': '',
+            'stateCode': '',
+            'currency': 'USD',
+          };
+        }
+      }
+
+      // Profile has valid income data - return complete financial context
       return {
+        'income': income,
+        'expenses': profile['expenses'] as List<dynamic>? ?? [],
+        'goals': profile['goals'] as List<dynamic>? ?? ['budgeting'],
+        'habits': profile['habits'] as List<dynamic>? ?? [],
+        'region': profile['region'] as String? ?? '',
+        'countryCode': profile['countryCode'] as String? ?? '',
+        'stateCode': profile['stateCode'] as String? ?? '',
+        'incomeTier': profile['incomeTier'] as String? ?? 'middle',
+        'currency': profile['currency'] as String? ?? 'USD',
+        'budgetMethod': profile['budgetMethod'] as String? ?? '50/30/20 Rule',
+        'incomplete_onboarding': false,
+        'needs_onboarding': false,
+      };
+
+    } catch (e) {
+      logError('Error getting financial context: $e', tag: 'USER_DATA_MANAGER');
+
+      // Return error context to indicate API failure
+      return {
+        'api_error': true,
+        'error_message': e.toString(),
+        'incomplete_onboarding': false,
+        'needs_onboarding': false,
         'income': 0.0,
         'expenses': [],
-        'goals': ['budgeting'],
+        'goals': [],
         'habits': [],
-        'region': 'United States',
-        'countryCode': 'US',
-        'stateCode': 'CA',
-        'incomeTier': 'middle',
+        'region': '',
+        'countryCode': '',
+        'stateCode': '',
         'currency': 'USD',
-        'budgetMethod': '50/30/20 Rule',
-        'incomplete_onboarding': true, // Flag to indicate incomplete data
       };
     }
-
-    return {
-      'income': income,
-      'expenses': profile['expenses'] as List<dynamic>? ?? [],
-      'goals': profile['goals'] as List<dynamic>? ?? ['budgeting'],
-      'habits': profile['habits'] as List<dynamic>? ?? [],
-      'region': profile['region'] as String? ?? 'United States',
-      'stateCode': profile['stateCode'] as String? ?? 'CA',
-      'incomeTier': profile['incomeTier'] as String? ?? 'middle',
-      'currency': profile['currency'] as String? ?? 'USD',
-      'budgetMethod': profile['budgetMethod'] as String? ?? '50/30/20 Rule',
-    };
   }
   
   // Private helper methods
@@ -317,7 +367,7 @@ class UserDataManager {
     if (income == null) {
       throw ArgumentError('Income is required in onboarding data');
     }
-    
+
     return {
       'income': income,
       'expenses': onboardingData['expenses'] ?? [],
@@ -336,6 +386,29 @@ class UserDataManager {
       'verified_email': true,
       'dark_mode': false,
       'notifications': true,
+    };
+  }
+
+  /// Transform onboarding data directly to financial context format
+  Map<String, dynamic> _transformOnboardingToFinancialContext(Map<String, dynamic> onboardingData) {
+    final income = onboardingData['income'];
+    if (income == null) {
+      throw ArgumentError('Income is required in onboarding data');
+    }
+
+    return {
+      'income': income,
+      'expenses': onboardingData['expenses'] ?? [],
+      'goals': onboardingData['goals'] ?? ['budgeting'],
+      'habits': onboardingData['habits'] ?? [],
+      'region': onboardingData['region'] ?? '',
+      'countryCode': onboardingData['countryCode'] ?? '',
+      'stateCode': onboardingData['stateCode'] ?? '',
+      'incomeTier': onboardingData['incomeTier'] ?? 'middle',
+      'currency': 'USD',
+      'budgetMethod': '50/30/20 Rule',
+      'incomplete_onboarding': false,
+      'needs_onboarding': false,
     };
   }
   

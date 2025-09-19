@@ -1,8 +1,10 @@
+from sqlalchemy.orm import Session
 from app.services.user_data_service import UserDataService
 
 
-def can_user_afford_installment(user_id: str, price: float, months: int) -> dict:
-    profile = UserDataService.get_user_financial_profile(user_id)
+def can_user_afford_installment(user_id: int, price: float, months: int, db: Session) -> dict:
+    user_data_service = UserDataService()
+    profile = user_data_service.get_user_financial_profile(user_id, db)
     if not profile:
         return {"can_afford": False, "monthly_payment": 0, "reason": "User not found."}
 

@@ -1,8 +1,10 @@
+from sqlalchemy.orm import Session
 from app.services.user_data_service import UserDataService
 
 
-def evaluate_user_risk(user_id: str) -> dict:
-    profile = UserDataService.get_user_financial_profile(user_id)
+def evaluate_user_risk(user_id: int, db: Session) -> dict:
+    user_data_service = UserDataService()
+    profile = user_data_service.get_user_financial_profile(user_id, db)
     if not profile:
         return {"risk_level": "unknown", "reason": "User not found."}
 

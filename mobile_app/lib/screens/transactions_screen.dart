@@ -39,57 +39,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       logError('Error loading transactions: $e');
       if (!mounted) return;
       setState(() {
-        // Show demo data if backend is not available
-        _expenses = _getDemoTransactions();
+        // Show empty state when backend is not available
+        _expenses = [];
         _isLoading = false;
         });
     }
   }
 
-  List<Map<String, dynamic>> _getDemoTransactions() {
-    return [
-      {
-        'id': '1',
-        'action': 'Coffee Shop',
-        'category': 'Food & Dining',
-        'amount': '4.50',
-        'date': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        'description': 'Morning coffee',
-      },
-      {
-        'id': '2',
-        'action': 'Metro Card',
-        'category': 'Transportation',
-        'amount': '15.00',
-        'date': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-        'description': 'Weekly metro pass',
-      },
-      {
-        'id': '3',
-        'action': 'Grocery Store',
-        'category': 'Food & Dining',
-        'amount': '67.85',
-        'date': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-        'description': 'Weekly groceries',
-      },
-      {
-        'id': '4',
-        'action': 'Netflix',
-        'category': 'Entertainment',
-        'amount': '15.99',
-        'date': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
-        'description': 'Monthly subscription',
-      },
-      {
-        'id': '5',
-        'action': 'Gas Station',
-        'category': 'Transportation',
-        'amount': '45.20',
-        'date': DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
-        'description': 'Fuel',
-      },
-    ];
-  }
 
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
