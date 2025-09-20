@@ -117,7 +117,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(widget.date);
       final transactions = await _apiService.getTransactionsByDate(dateStr);
-      
+
       if (mounted) {
         setState(() {
           _transactions = List<Map<String, dynamic>>.from(transactions);
@@ -125,10 +125,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       }
     } catch (e) {
       logWarning('Failed to load transactions: $e', tag: 'CALENDAR_DAY_DETAILS');
-      // Use mock data for demonstration
+      // Don't use mock data - show empty state instead
       if (mounted) {
         setState(() {
-          _transactions = _generateMockTransactions();
+          _transactions = <Map<String, dynamic>>[];
         });
       }
     }
@@ -163,10 +163,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       }
     } catch (e) {
       logWarning('Failed to load predictions: $e', tag: 'CALENDAR_DAY_DETAILS');
-      // Use mock predictions
+      // Don't use mock predictions - show empty state instead
       if (mounted) {
         setState(() {
-          _predictions = _generateMockPredictions();
+          _predictions = null;
         });
       }
     }
@@ -647,7 +647,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           const SizedBox(height: 24),
           
           // Recent Transactions (for past dates)
-          if (_isPast() && _transactions.isNotEmpty) ...[
+          if (_isPast()) ...[
             Text(
               'Transactions',
               style: textTheme.titleMedium?.copyWith(
@@ -656,9 +656,12 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               ),
             ),
             const SizedBox(height: 16),
-            
-            ..._transactions.take(5).map((transaction) => 
-                _buildTransactionItem(transaction, colorScheme, textTheme)),
+
+            if (_transactions.isNotEmpty)
+              ..._transactions.take(5).map((transaction) =>
+                  _buildTransactionItem(transaction, colorScheme, textTheme))
+            else
+              _buildEmptyTransactionsState(colorScheme, textTheme),
           ],
         ],
       ),
@@ -1287,50 +1290,55 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     ];
   }
   
-  List<Map<String, dynamic>> _generateMockTransactions() {
-    return [
-      {
-        'amount': 12.50,
-        'description': 'Coffee Shop',
-        'category': 'Food & Dining',
-        'time': '08:30',
-      },
-      {
-        'amount': 25.00,
-        'description': 'Lunch',
-        'category': 'Food & Dining',
-        'time': '12:45',
-      },
-      {
-        'amount': 8.50,
-        'description': 'Bus fare',
-        'category': 'Transportation',
-        'time': '17:20',
-      },
-    ];
-  }
-  
-  Map<String, dynamic> _generateMockPredictions() {
-    return {
-      'Food & Dining': {
-        'predicted_amount': 35.0,
-        'confidence': 0.85,
-        'scenarios': [],
-        'factors': ['Similar weekday patterns', 'Historical spending trend'],
-      },
-      'Transportation': {
-        'predicted_amount': 15.0,
-        'confidence': 0.92,
-        'scenarios': [],
-        'factors': ['Regular commute pattern', 'No weekend premium'],
-      },
-      'Entertainment': {
-        'predicted_amount': 20.0,
-        'confidence': 0.65,
-        'scenarios': [],
-        'factors': ['Weekend spending increase', 'Seasonal variation'],
-      },
-    };
+  Widget _buildEmptyTransactionsState(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 48,
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No transactions recorded',
+            style: textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Add your first expense to start tracking spending for this day',
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/add_expense');
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Transaction'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
   
   List<Map<String, dynamic>> _generateInsights() {

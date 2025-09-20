@@ -2792,11 +2792,11 @@ class ApiService {
         return transactions;
       } else {
         logWarning('Unexpected response format for transactions by date', tag: 'API_TRANSACTIONS');
-        return _generateMockTransactionsForDate(date);
+        return <Map<String, dynamic>>[];
       }
     } catch (e) {
       logError('Failed to fetch transactions for date $date: $e', tag: 'API_TRANSACTIONS', error: e);
-      return _generateMockTransactionsForDate(date);
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -2813,46 +2813,14 @@ class ApiService {
         return patterns;
       } else {
         logWarning('Unexpected response format for seasonal patterns', tag: 'API_SEASONAL');
-        return _generateMockSeasonalPatterns();
+        return <String, dynamic>{};
       }
     } catch (e) {
       logError('Failed to fetch seasonal patterns: $e', tag: 'API_SEASONAL', error: e);
-      return _generateMockSeasonalPatterns();
+      return <String, dynamic>{};
     }
   }
 
-  /// Generate mock transactions for demonstration
-  List<Map<String, dynamic>> _generateMockTransactionsForDate(String date) {
-    final random = Random();
-    final transactionTypes = [
-      {'description': 'Coffee Shop', 'category': 'Food & Dining', 'amount': 4.50 + random.nextDouble() * 10},
-      {'description': 'Lunch', 'category': 'Food & Dining', 'amount': 12.00 + random.nextDouble() * 15},
-      {'description': 'Gas Station', 'category': 'Transportation', 'amount': 35.00 + random.nextDouble() * 25},
-      {'description': 'Grocery Store', 'category': 'Food & Dining', 'amount': 45.00 + random.nextDouble() * 30},
-      {'description': 'Bus Fare', 'category': 'Transportation', 'amount': 2.50 + random.nextDouble() * 5},
-      {'description': 'Movie Ticket', 'category': 'Entertainment', 'amount': 12.00 + random.nextDouble() * 8},
-      {'description': 'Online Shopping', 'category': 'Shopping', 'amount': 25.00 + random.nextDouble() * 50},
-    ];
-
-    final transactions = <Map<String, dynamic>>[];
-    final numTransactions = random.nextInt(4) + 1; // 1-4 transactions
-
-    for (int i = 0; i < numTransactions; i++) {
-      final transaction = transactionTypes[random.nextInt(transactionTypes.length)];
-      transactions.add({
-        'id': 'mock_${date}_$i',
-        'amount': double.parse((transaction['amount']! as double).toStringAsFixed(2)),
-        'description': transaction['description'],
-        'category': transaction['category'],
-        'date': date,
-        'time': '${8 + random.nextInt(12)}:${random.nextInt(60).toString().padLeft(2, '0')}',
-        'merchant': transaction['description'],
-        'payment_method': random.nextBool() ? 'Card' : 'Cash',
-      });
-    }
-
-    return transactions;
-  }
 
   /// Get behavioral insights for spending patterns
   Future<Map<String, dynamic>> getBehavioralInsights() async {
@@ -2867,113 +2835,15 @@ class ApiService {
         return insights;
       } else {
         logWarning('Unexpected response format for behavioral insights', tag: 'API_BEHAVIORAL');
-        return _generateMockBehavioralInsights();
+        return <String, dynamic>{};
       }
     } catch (e) {
       logError('Failed to fetch behavioral insights: $e', tag: 'API_BEHAVIORAL', error: e);
-      return _generateMockBehavioralInsights();
+      return <String, dynamic>{};
     }
   }
 
-  /// Generate mock behavioral insights for demonstration
-  Map<String, dynamic> _generateMockBehavioralInsights() {
-    return {
-      'spending_personality': 'Conservative Spender',
-      'risk_tolerance': 'moderate',
-      'patterns': {
-        'weekend_increase': 1.2,
-        'weekday_discipline': 0.8,
-        'impulse_spending': 0.15,
-      },
-      'insights': [
-        {
-          'id': 'weekend_spending',
-          'type': 'pattern',
-          'title': 'Weekend Spending Increase',
-          'message': 'You tend to spend 20% more on weekends',
-          'category': 'Entertainment',
-          'impact': 'medium',
-          'confidence': 0.85,
-          'actionable': true,
-          'recommendations': ['Set weekend budget limits', 'Plan weekend activities in advance'],
-          'related_patterns': ['social_spending', 'leisure_activities'],
-          'timeframe': 'current',
-        },
-        {
-          'id': 'weekday_discipline',
-          'type': 'positive',
-          'title': 'Good Weekday Control',
-          'message': 'You show excellent spending discipline on weekdays',
-          'category': null,
-          'impact': 'high',
-          'confidence': 0.92,
-          'actionable': false,
-          'recommendations': ['Continue current weekday habits'],
-          'related_patterns': ['routine_spending'],
-          'timeframe': 'current',
-        },
-      ],
-      'recommendations': [
-        'Set aside weekend entertainment budget',
-        'Use the 24-hour rule for purchases over \$50',
-        'Track emotional triggers for spending',
-      ],
-      'confidence': 0.78,
-    };
-  }
 
-  /// Generate mock seasonal patterns for demonstration
-  Map<String, dynamic> _generateMockSeasonalPatterns() {
-    return {
-      'monthly_patterns': {
-        '1': 1.1, // January - post-holiday spending increase
-        '2': 0.9, // February - lower spending
-        '3': 1.0, // March - normal
-        '4': 1.05, // April - spring spending
-        '5': 1.0, // May - normal
-        '6': 1.15, // June - summer increase
-        '7': 1.2, // July - vacation spending
-        '8': 1.1, // August - continued summer spending
-        '9': 0.95, // September - back to school, lower discretionary
-        '10': 1.0, // October - normal
-        '11': 1.3, // November - holiday shopping
-        '12': 1.4, // December - peak holiday spending
-      },
-      'category_seasonality': {
-        'Food & Dining': {
-          '1': 0.9, '2': 0.85, '3': 1.0, '4': 1.05, '5': 1.1, '6': 1.2,
-          '7': 1.25, '8': 1.2, '9': 1.0, '10': 1.05, '11': 1.15, '12': 1.3,
-        },
-        'Transportation': {
-          '1': 0.95, '2': 0.9, '3': 1.0, '4': 1.05, '5': 1.1, '6': 1.2,
-          '7': 1.3, '8': 1.25, '9': 1.0, '10': 1.0, '11': 1.05, '12': 1.1,
-        },
-        'Entertainment': {
-          '1': 0.8, '2': 0.75, '3': 0.9, '4': 1.0, '5': 1.1, '6': 1.3,
-          '7': 1.4, '8': 1.3, '9': 0.9, '10': 1.1, '11': 1.2, '12': 1.5,
-        },
-        'Shopping': {
-          '1': 0.7, '2': 0.8, '3': 0.9, '4': 1.0, '5': 1.0, '6': 1.1,
-          '7': 1.1, '8': 1.0, '9': 1.0, '10': 1.1, '11': 1.8, '12': 2.0,
-        },
-      },
-      'holiday_impact': {
-        'New Year': 1.2,
-        'Valentine\'s Day': 1.15,
-        'Spring Break': 1.3,
-        'Easter': 1.1,
-        'Memorial Day': 1.2,
-        'Summer Vacation': 1.4,
-        'Labor Day': 1.1,
-        'Halloween': 1.15,
-        'Thanksgiving': 1.25,
-        'Black Friday': 2.0,
-        'Christmas': 1.8,
-      },
-      'yoy_growth': 0.03, // 3% year-over-year growth
-      'confidence': 0.85,
-    };
-  }
 
   // ---------------------------------------------------------------------------
   // Password reset functionality

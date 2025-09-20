@@ -36,7 +36,7 @@ class BudgetAdapterService {
       return {
         'balance': await _calculateCurrentBalance(onboardingData),
         'spent': await _calculateTodaySpent(),
-        'daily_targets': _convertToLegacyDailyTargets(categoryBudget),
+        'daily_targets': await _convertToLegacyDailyTargets(categoryBudget),
         'week': await _generateWeekData(onboardingData),
         'transactions': await _getRecentTransactions(),
       };
@@ -417,7 +417,7 @@ class BudgetAdapterService {
   }
 
   /// Convert category budget to legacy daily targets format
-  List<Map<String, dynamic>> _convertToLegacyDailyTargets(legacy.CategoryBudgetAllocation categoryBudget) {
+  Future<List<Map<String, dynamic>>> _convertToLegacyDailyTargets(legacy.CategoryBudgetAllocation categoryBudget) async {
     final targets = <Map<String, dynamic>>[];
     final categoryIcons = {
       'food': Icons.restaurant,
@@ -432,7 +432,7 @@ class BudgetAdapterService {
       'savings': Icons.savings,
       'investments': Icons.trending_up,
     };
-    
+
     final categoryColors = {
       'food': const Color(0xFF4CAF50),
       'transportation': const Color(0xFF2196F3),
@@ -446,25 +446,35 @@ class BudgetAdapterService {
       'savings': const Color(0xFF4CAF50),
       'investments': const Color(0xFF00BCD4),
     };
-    
+
     // Convert to legacy format, focusing on main spending categories
     final mainCategories = ['food', 'transportation', 'entertainment', 'shopping'];
-    
-    categoryBudget.dailyAllocations.forEach((category, dailyAmount) {
+
+    // Get today's actual spending by category
+    final today = DateTime.now();
+    final todaySpending = await _getSpendingForDate(today);
+
+    for (final entry in categoryBudget.dailyAllocations.entries) {
+      final category = entry.key;
+      final dailyAmount = entry.value;
+
       if (mainCategories.contains(category) || dailyAmount > 10.0) { // Include if major category or significant amount
+        // Use actual spending data instead of hardcoded estimation
+        final actualSpent = todaySpending[category] ?? 0.0;
+
         targets.add({
           'category': _formatCategoryName(category),
           'limit': dailyAmount,
-          'spent': dailyAmount * 0.4, // Estimate 40% spent for demo
+          'spent': actualSpent,
           'icon': categoryIcons[category] ?? Icons.category,
           'color': categoryColors[category] ?? const Color(0xFF757575),
         });
       }
-    });
-    
+    }
+
     // Sort by daily amount descending
     targets.sort((a, b) => (b['limit'] as double).compareTo(a['limit'] as double));
-    
+
     // Return top 6 for UI
     return targets.take(6).toList();
   }
@@ -537,15 +547,16 @@ class BudgetAdapterService {
   ) async {
     final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
     final breakdown = <String, int>{};
-    
-    // Get actual or estimated spending by category
+
+    // Get actual spending by category
     final spentByCategory = await _getSpendingForDate(date);
-    
+
     categoryBudget.dailyAllocations.forEach((category, budgetAmount) {
-      final spent = spentByCategory[category] ?? (budgetAmount * 0.4); // 40% default estimate
+      // Use actual spending data only, no fallback estimates
+      final spent = spentByCategory[category] ?? 0.0;
       breakdown[category] = spent.round();
     });
-    
+
     return breakdown;
   }
 
@@ -644,27 +655,37 @@ class BudgetAdapterService {
   /// Get spending breakdown by category for a specific date
   Future<Map<String, double>> _getSpendingForDate(DateTime date) async {
     try {
-      // Try to get actual spending from API
-      // Note: getCategorySpending method doesn't exist, using fallback
-      final spendingData = <String, dynamic>{}; // Use fallback calculation instead
-      
-      if (spendingData.isNotEmpty) {
-        return Map<String, double>.from(spendingData.map((key, value) => 
-          MapEntry(key, (value as num).toDouble())));
+      // Try to get actual spending from API using real transaction data
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final transactions = await _apiService.getTransactionsByDate(dateStr).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => <Map<String, dynamic>>[],
+      );
+
+      if (transactions.isNotEmpty) {
+        // Aggregate spending by category from real transactions
+        final categorySpending = <String, double>{};
+
+        for (final transaction in transactions) {
+          final category = (transaction['category'] as String?)?.toLowerCase() ?? 'other';
+          final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+
+          // Normalize category names to match our system
+          final normalizedCategory = _normalizeCategoryName(category);
+          categorySpending[normalizedCategory] = (categorySpending[normalizedCategory] ?? 0.0) + amount;
+        }
+
+        logInfo('Retrieved actual spending data for $dateStr: ${categorySpending.length} categories', tag: 'BUDGET_ADAPTER');
+        return categorySpending;
       }
     } catch (e) {
-      logWarning('Failed to get actual category spending: $e', tag: 'BUDGET_ADAPTER');
+      logWarning('Failed to get actual category spending for ${date.toIso8601String()}: $e', tag: 'BUDGET_ADAPTER');
     }
-    
-    // Fallback: Generate realistic estimates
-    final totalSpent = await _estimateSpentForDate(date, 100.0); // Use base 100 for calculation
-    return {
-      'food': totalSpent * 0.35,
-      'transportation': totalSpent * 0.25,
-      'entertainment': totalSpent * 0.20,
-      'shopping': totalSpent * 0.15,
-      'other': totalSpent * 0.05,
-    };
+
+    // Return empty spending data instead of fake estimates
+    // This ensures users see authentic data or proper empty states
+    logInfo('No transaction data available for ${date.toIso8601String()}, returning empty spending', tag: 'BUDGET_ADAPTER');
+    return <String, double>{};
   }
 
   /// Get recent transactions
@@ -787,6 +808,75 @@ class BudgetAdapterService {
       case 'housing': return const Color(0xFF795548);
       case 'education': return const Color(0xFF3F51B5);
       default: return const Color(0xFF757575);
+    }
+  }
+
+  /// Normalize category names from API to match our internal system
+  String _normalizeCategoryName(String category) {
+    final normalizedCategory = category.toLowerCase().trim();
+
+    // Map common variations to our standard categories
+    switch (normalizedCategory) {
+      case 'food':
+      case 'food & dining':
+      case 'restaurants':
+      case 'groceries':
+      case 'dining':
+        return 'food';
+      case 'transport':
+      case 'transportation':
+      case 'travel':
+      case 'gas':
+      case 'fuel':
+      case 'car':
+      case 'taxi':
+      case 'uber':
+      case 'public transport':
+        return 'transportation';
+      case 'entertainment':
+      case 'movies':
+      case 'music':
+      case 'games':
+      case 'streaming':
+        return 'entertainment';
+      case 'shopping':
+      case 'retail':
+      case 'clothes':
+      case 'clothing':
+      case 'online shopping':
+        return 'shopping';
+      case 'utilities':
+      case 'electricity':
+      case 'water':
+      case 'internet':
+      case 'phone':
+        return 'utilities';
+      case 'healthcare':
+      case 'health':
+      case 'medical':
+      case 'pharmacy':
+      case 'doctor':
+        return 'healthcare';
+      case 'housing':
+      case 'rent':
+      case 'mortgage':
+      case 'home':
+        return 'housing';
+      case 'education':
+      case 'school':
+      case 'tuition':
+      case 'books':
+        return 'education';
+      case 'debt':
+      case 'credit card':
+      case 'loan':
+        return 'debt';
+      case 'savings':
+      case 'investment':
+      case 'investments':
+        return 'savings';
+      default:
+        return 'other';
     }
   }
 
