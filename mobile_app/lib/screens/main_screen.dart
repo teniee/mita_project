@@ -46,23 +46,23 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    print('CRITICAL DEBUG: MainScreen initState called');
+    print('🚀 MAIN SCREEN: initState called - starting initialization');
     _initializeOfflineFirst();
-    print('CRITICAL DEBUG: MainScreen initState completed');
+    print('🚀 MAIN SCREEN: initState completed - initialization started');
   }
 
   /// Initialize offline-first loading - instant UI with cached data
   Future<void> _initializeOfflineFirst() async {
     try {
-      print('CRITICAL DEBUG: MainScreen _initializeOfflineFirst started');
+      print('🔥 CRITICAL DEBUG: MainScreen _initializeOfflineFirst started');
 
       // Initialize offline provider (this is very fast)
       await _offlineProvider.initialize();
-      print('CRITICAL DEBUG: MainScreen _offlineProvider.initialize() completed');
+      print('🔥 CRITICAL DEBUG: MainScreen _offlineProvider.initialize() completed');
 
       // Load data immediately from cache/fallback
       _loadCachedDataToUI();
-      print('CRITICAL DEBUG: MainScreen _loadCachedDataToUI() completed');
+      print('🔥 CRITICAL DEBUG: MainScreen _loadCachedDataToUI() completed');
 
       // Set up listener for background sync status
       _offlineProvider.isBackgroundSyncing.addListener(_onBackgroundSyncChanged);
@@ -154,11 +154,11 @@ class _MainScreenState extends State<MainScreen> {
   /// Load data using production budget engine with real user data
   Future<void> _loadProductionBudgetData() async {
     try {
-      print('CRITICAL DEBUG: MainScreen _loadProductionBudgetData() started');
+      print('🔥 CRITICAL DEBUG: MainScreen _loadProductionBudgetData() started');
       // Get real user financial context from onboarding/profile data
       final financialContext = await UserDataManager.instance.getFinancialContext();
-      print('CRITICAL DEBUG: MainScreen got financial context: $financialContext');
-      logInfo('CRITICAL DEBUG: MainScreen got financial context: $financialContext', tag: 'MAIN_SCREEN');
+      print('🔥 CRITICAL DEBUG: MainScreen got financial context: $financialContext');
+      logInfo('🔥 CRITICAL DEBUG: MainScreen got financial context: $financialContext', tag: 'MAIN_SCREEN');
 
       // Check if user needs to complete onboarding
       if (financialContext['needs_onboarding'] == true) {
@@ -328,7 +328,7 @@ class _MainScreenState extends State<MainScreen> {
     userProfile = {
       'data': {
         'income': 0.0,
-        'name': 'MITA User',
+        'name': '', // Empty name when profile is incomplete
         'incomplete_profile': true,
       }
     };
@@ -381,7 +381,7 @@ class _MainScreenState extends State<MainScreen> {
     userProfile = {
       'data': {
         'income': 0.0,
-        'name': 'MITA User',
+        'name': '', // Empty name when network error occurs
         'network_error': true,
       }
     };
@@ -424,8 +424,8 @@ class _MainScreenState extends State<MainScreen> {
 
     // Transform cached data to expected format
     return {
-      'balance': cachedData['balance'] ?? (_monthlyIncome * 0.85),
-      'spent': cachedData['today_spent'] ?? ((_monthlyIncome / 30) * 0.45),
+      'balance': cachedData['balance'] ?? _monthlyIncome, // Show full income if no cached balance
+      'spent': cachedData['today_spent'] ?? 0.0, // Show 0 spent if no cached data
       'daily_targets': cachedData['daily_targets'] ?? _getDefaultDailyTargets(),
       'week': cachedData['week'] ?? _generateWeekData(),
       'transactions': cachedData['transactions'] ?? _getDefaultTransactions(),
@@ -534,8 +534,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Map<String, dynamic> _getDefaultDashboard() => {
-    'balance': _monthlyIncome * 0.85, // Higher balance for better UX
-    'spent': (_monthlyIncome / 30) * 0.45, // 45% of daily budget spent
+    'balance': _monthlyIncome, // Show full income when no spending data available
+    'spent': 0.0, // Show 0 spent when no real transaction data
     'daily_targets': _getDefaultDailyTargets(),
     'week': _generateWeekData(),
     'transactions': _getDefaultTransactions(),
@@ -552,29 +552,29 @@ class _MainScreenState extends State<MainScreen> {
     return [
       {
         'category': 'Food & Dining',
-        'limit': dailyBudget * 0.35, // More realistic food budget
-        'spent': dailyBudget * 0.35 * 0.60, // 60% spent
+        'limit': dailyBudget * 0.35, // Budget allocation based on income tier
+        'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.restaurant,
         'color': const Color(0xFF4CAF50),
       },
       {
         'category': 'Transportation',
         'limit': dailyBudget * 0.25,
-        'spent': dailyBudget * 0.25 * 0.40, // 40% spent
+        'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.directions_car,
         'color': const Color(0xFF2196F3),
       },
       {
         'category': 'Entertainment',
         'limit': dailyBudget * 0.20,
-        'spent': dailyBudget * 0.20 * 0.30, // 30% spent
+        'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.movie,
         'color': const Color(0xFF9C27B0),
       },
       {
         'category': 'Shopping',
         'limit': dailyBudget * 0.20,
-        'spent': dailyBudget * 0.20 * 0.25, // 25% spent
+        'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.shopping_bag,
         'color': const Color(0xFFFF9800),
       },
@@ -633,10 +633,10 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Map<String, dynamic>> _generateWeekData() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final statuses = ['good', 'good', 'warning', 'good', 'good', 'over', 'good'];
+    // Return neutral status for all days when no real spending data is available
     return List.generate(7, (index) => {
       'day': days[index],
-      'status': statuses[index],
+      'status': 'neutral', // Neutral status when no real data available
     });
   }
 
