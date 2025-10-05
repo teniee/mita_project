@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as dev;
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -47,8 +48,8 @@ class SentryFinancialService {
 
   bool _isInitialized = false;
   String? _userId;
-  String? _userEmail;
-  String? _subscriptionTier;
+  String? _userEmail; // Reserved for future user tracking
+  String? _subscriptionTier; // Reserved for future tier-based monitoring
   String? _deviceInfo;
   
   /// Initialize comprehensive Sentry monitoring for financial application
@@ -144,12 +145,12 @@ class SentryFinancialService {
         },
       ));
       
-      print('✅ Sentry financial monitoring initialized for $environment');
+      if (kDebugMode) dev.log('Sentry financial monitoring initialized for $environment', name: 'SentryService');
       
     } catch (e, stackTrace) {
-      print('❌ Failed to initialize Sentry: $e');
+      if (kDebugMode) dev.log('Failed to initialize Sentry: $e', name: 'SentryService', error: e);
       if (kDebugMode) {
-        print('Stack trace: $stackTrace');
+        if (kDebugMode) dev.log('Stack trace: $stackTrace', name: 'SentryService');
       }
       // Don't let Sentry initialization failure crash the app
     }
@@ -276,7 +277,7 @@ class SentryFinancialService {
     Map<String, String>? tags,
   }) async {
     if (!_isInitialized) {
-      print('⚠️ Sentry not initialized - error not captured: $exception');
+      if (kDebugMode) dev.log('Sentry not initialized - error not captured: $exception', name: 'SentryService');
       return const SentryId.empty();
     }
 

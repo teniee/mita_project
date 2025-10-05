@@ -1,7 +1,6 @@
 from app.agent.gpt_agent_service import GPTAgentService
+from app.core.config import settings
 from app.services.template_service import AIAdviceTemplateService
-
-# API key should be configured via settings or secrets
 
 
 def explain_day_status(
@@ -14,7 +13,7 @@ def explain_day_status(
     template = tmpl_service.get("day_status_prompt")
     system_prompt = tmpl_service.get("system_prompt")
     gpt = GPTAgentService(
-        api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt
+        api_key=settings.OPENAI_API_KEY, model="gpt-4o", system_prompt=system_prompt
     )
     if template:
         prompt = template.format(status=status.upper(), date=date or "today")

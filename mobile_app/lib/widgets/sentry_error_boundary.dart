@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -28,7 +29,7 @@ class SentryErrorBoundary extends StatefulWidget {
 
 class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
   Object? _error;
-  StackTrace? _stackTrace;
+  StackTrace? _stackTrace; // Kept for potential future use
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +104,7 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
     } catch (e) {
       // Don't let error reporting crash the error boundary
       if (kDebugMode) {
-        print('Failed to report error to Sentry: $e');
+        dev.log('Failed to report error to Sentry: $e', name: 'SentryErrorBoundary');
       }
     }
   }

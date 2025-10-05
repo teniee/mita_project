@@ -1,4 +1,6 @@
 
+import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/offline_first_provider.dart';
@@ -46,35 +48,35 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    print('🚀 MAIN SCREEN: initState called - starting initialization');
+    if (kDebugMode) dev.log('initState called - starting initialization', name: 'MainScreen');
     _initializeOfflineFirst();
-    print('🚀 MAIN SCREEN: initState completed - initialization started');
+    if (kDebugMode) dev.log('initState completed - initialization started', name: 'MainScreen');
   }
 
   /// Initialize offline-first loading - instant UI with cached data
   Future<void> _initializeOfflineFirst() async {
     try {
-      print('🔥 CRITICAL DEBUG: MainScreen _initializeOfflineFirst started');
+      if (kDebugMode) dev.log('_initializeOfflineFirst started', name: 'MainScreen');
 
       // Initialize offline provider (this is very fast)
       await _offlineProvider.initialize();
-      print('🔥 CRITICAL DEBUG: MainScreen _offlineProvider.initialize() completed');
+      if (kDebugMode) dev.log('_offlineProvider.initialize() completed', name: 'MainScreen');
 
       // Load data immediately from cache/fallback
       _loadCachedDataToUI();
-      print('🔥 CRITICAL DEBUG: MainScreen _loadCachedDataToUI() completed');
+      if (kDebugMode) dev.log('_loadCachedDataToUI() completed', name: 'MainScreen');
 
       // Set up listener for background sync status
       _offlineProvider.isBackgroundSyncing.addListener(_onBackgroundSyncChanged);
-      print('CRITICAL DEBUG: MainScreen background sync listener set up');
+      if (kDebugMode) dev.log('background sync listener set up', name: 'MainScreen');
 
       // Initialize live updates
       await _initializeLiveUpdates();
-      print('CRITICAL DEBUG: MainScreen _initializeLiveUpdates() completed');
+      if (kDebugMode) dev.log('_initializeLiveUpdates() completed', name: 'MainScreen');
 
       logDebug('Offline-first initialization completed', tag: 'MAIN_SCREEN');
     } catch (e) {
-      print('CRITICAL DEBUG: ERROR in MainScreen _initializeOfflineFirst: $e');
+      if (kDebugMode) dev.log('ERROR in _initializeOfflineFirst: $e', name: 'MainScreen', error: e);
       logError('Error in offline-first initialization: $e', tag: 'MAIN_SCREEN');
       // Still show fallback data
       _loadFallbackData();
@@ -138,14 +140,14 @@ class _MainScreenState extends State<MainScreen> {
   /// Load cached data to UI immediately (no loading state)
   void _loadCachedDataToUI() {
     try {
-      print('CRITICAL DEBUG: MainScreen _loadCachedDataToUI() started');
+      if (kDebugMode) dev.log('_loadCachedDataToUI() started', name: 'MainScreen');
       // Load data using new production budget engine
       _loadProductionBudgetData();
-      print('CRITICAL DEBUG: MainScreen _loadProductionBudgetData() completed');
+      if (kDebugMode) dev.log('_loadProductionBudgetData() completed', name: 'MainScreen');
 
       logDebug('Production budget data loaded to UI instantly', tag: 'MAIN_SCREEN');
     } catch (e) {
-      print('CRITICAL DEBUG: ERROR in MainScreen _loadCachedDataToUI(): $e');
+      if (kDebugMode) dev.log('ERROR in _loadCachedDataToUI(): $e', name: 'MainScreen', error: e);
       logWarning('Error loading production budget data, using fallback', tag: 'MAIN_SCREEN');
       _loadFallbackData();
     }
@@ -154,10 +156,10 @@ class _MainScreenState extends State<MainScreen> {
   /// Load data using production budget engine with real user data
   Future<void> _loadProductionBudgetData() async {
     try {
-      print('🔥 CRITICAL DEBUG: MainScreen _loadProductionBudgetData() started');
+      if (kDebugMode) dev.log('_loadProductionBudgetData() started', name: 'MainScreen');
       // Get real user financial context from onboarding/profile data
       final financialContext = await UserDataManager.instance.getFinancialContext();
-      print('🔥 CRITICAL DEBUG: MainScreen got financial context: $financialContext');
+      if (kDebugMode) dev.log('got financial context: $financialContext', name: 'MainScreen');
       logInfo('🔥 CRITICAL DEBUG: MainScreen got financial context: $financialContext', tag: 'MAIN_SCREEN');
 
       // Check if user needs to complete onboarding
@@ -225,7 +227,7 @@ class _MainScreenState extends State<MainScreen> {
       
       logDebug('Production budget data loaded successfully', tag: 'MAIN_SCREEN');
     } catch (e) {
-      print('CRITICAL DEBUG: ERROR in MainScreen _loadProductionBudgetData(): $e');
+      if (kDebugMode) dev.log('ERROR in _loadProductionBudgetData(): $e', name: 'MainScreen', error: e);
       logError('Error loading production budget data: $e', tag: 'MAIN_SCREEN', error: e);
       // Fall back to cached data approach
       _loadCachedDataFromProvider();
@@ -308,7 +310,7 @@ class _MainScreenState extends State<MainScreen> {
 
   /// Load safe incomplete state when user has incomplete/missing data
   void _loadSafeIncompleteState() {
-    print('CRITICAL DEBUG: MainScreen _loadSafeIncompleteState() called');
+    if (kDebugMode) dev.log('_loadSafeIncompleteState() called', name: 'MainScreen');
 
     // Set safe default values for incomplete state
     _monthlyIncome = 0.0;
@@ -361,7 +363,7 @@ class _MainScreenState extends State<MainScreen> {
 
   /// Load fallback data when all other methods fail (network issues, etc.)
   void _loadFallbackData() {
-    print('CRITICAL DEBUG: MainScreen _loadFallbackData() called');
+    if (kDebugMode) dev.log('_loadFallbackData() called', name: 'MainScreen');
 
     // Set safe default values for emergency fallback
     _monthlyIncome = 0.0;

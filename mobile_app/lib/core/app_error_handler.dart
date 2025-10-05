@@ -4,6 +4,7 @@ Initializes and configures the error handling system for the MITA app
 */
 
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'error_handling.dart';
 
@@ -178,8 +179,8 @@ class AppErrorBoundary extends StatelessWidget {
   Widget build(BuildContext context) {
     return ErrorBoundary(
       onError: (error, stackTrace) {
-        print('CRITICAL DEBUG: ERROR CAUGHT IN ${screenName ?? 'Unknown'}: $error');
-        print('CRITICAL DEBUG: STACK TRACE: $stackTrace');
+        if (kDebugMode) dev.log('ERROR CAUGHT IN ${screenName ?? "Unknown"}: $error', name: 'AppErrorHandler', error: error);
+        if (kDebugMode) dev.log('STACK TRACE: $stackTrace', name: 'AppErrorHandler');
         AppErrorHandler.reportUIError(
           error,
           screenName: screenName,

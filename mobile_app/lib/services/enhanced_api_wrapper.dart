@@ -5,7 +5,6 @@ for all API operations with comprehensive error reporting and recovery
 */
 
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import '../core/enhanced_error_handling.dart';
 import '../core/app_error_handler.dart';

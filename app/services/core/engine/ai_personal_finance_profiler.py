@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.agent.gpt_agent_service import GPTAgentService
+from app.core.config import settings
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.user import User
 from app.engine.behavior.spending_pattern_extractor import extract_patterns
@@ -75,7 +76,7 @@ def generate_financial_rating(user_profile: dict, db) -> dict:
     # Ask GPT model
     system_prompt = tmpl_service.get("system_prompt")
     gpt = GPTAgentService(
-        api_key="sk-REPLACE_ME", model="gpt-4o", system_prompt=system_prompt
+        api_key=settings.OPENAI_API_KEY, model="gpt-4o", system_prompt=system_prompt
     )
     result = gpt.ask([{"role": "user", "content": prompt}])
 

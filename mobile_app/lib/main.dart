@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -94,7 +95,7 @@ void main() async {
       tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
     );
   } else {
-    print('⚠️ Sentry DSN not configured - advanced error monitoring disabled');
+    if (kDebugMode) dev.log('Sentry DSN not configured - advanced error monitoring disabled', name: 'MitaApp');
   }
   
   await _initFirebase();

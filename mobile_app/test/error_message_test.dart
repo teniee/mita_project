@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:mockito/mockito.dart';
-import '../lib/core/financial_error_messages.dart' as core_errors;
+import '../lib/core/financial_error_messages.dart';
 import '../lib/services/financial_error_service.dart';
 import '../lib/widgets/financial_error_widgets.dart';
 

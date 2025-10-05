@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'dart:developer' as dev;
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'sentry_service.dart';
 
@@ -518,7 +519,7 @@ class MobilePerformanceMonitor {
     // Log slow interactions
     if (durationMs > 1000) {
       if (kDebugMode) {
-        print('Slow user interaction: $interaction took ${durationMs}ms');
+        if (kDebugMode) dev.log('Slow user interaction: $interaction took ${durationMs}ms', name: 'PerformanceMonitor');
       }
     }
   }
@@ -536,13 +537,13 @@ class MobilePerformanceMonitor {
     if (kDebugMode) {
       if (metric.category == MobilePerformanceCategory.screenRender && 
           metric.durationMs > 1000) {
-        print('Slow screen render: ${metric.operationName} took ${metric.durationMs}ms');
+        if (kDebugMode) dev.log('Slow screen render: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
       } else if (metric.category == MobilePerformanceCategory.apiRequest && 
                  metric.durationMs > 2000) {
-        print('Slow API request: ${metric.operationName} took ${metric.durationMs}ms');
+        if (kDebugMode) dev.log('Slow API request: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
       } else if (metric.category == MobilePerformanceCategory.financialCalculation && 
                  metric.durationMs > 1500) {
-        print('Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms');
+        if (kDebugMode) dev.log('Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
       }
     }
   }
@@ -604,7 +605,7 @@ class MobilePerformanceMonitor {
       );
 
       if (kDebugMode) {
-        print(
+        if (kDebugMode) dev.log(
           'Performance alert: $operationName took ${durationMs}ms '
           '(threshold: ${threshold}ms)',
         );
@@ -612,7 +613,7 @@ class MobilePerformanceMonitor {
 
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to send performance alert to Sentry: $e');
+        if (kDebugMode) dev.log('Failed to send performance alert to Sentry: $e');
       }
     }
   }

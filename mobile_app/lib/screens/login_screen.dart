@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as dev;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +16,6 @@ import '../l10n/generated/app_localizations.dart';
 import '../core/enhanced_error_handling.dart';
 import '../core/app_error_handler.dart';
 import '../core/error_handling.dart';
-import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -233,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      print('LOGIN_DEBUG: Starting Google sign-in process');
+      if (kDebugMode) dev.log('Starting Google sign-in process', name: 'LoginScreen');
       
       final googleUser = await GoogleSignIn().signIn();
         
@@ -243,11 +245,11 @@ class _LoginScreenState extends State<LoginScreen>
           _loading = false;
           _slowConnectionDetected = false;
         });
-        print('Google sign-in cancelled by user');
+        if (kDebugMode) dev.log('Google sign-in cancelled by user', name: 'LoginScreen');
         return;
       }
 
-      print('Google user obtained, getting authentication');
+      if (kDebugMode) dev.log('Google user obtained, getting authentication', name: 'LoginScreen');
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
@@ -260,11 +262,11 @@ class _LoginScreenState extends State<LoginScreen>
         throw AuthenticationException('Missing Google authentication token');
       }
 
-      print('Google ID token obtained, calling backend');
+      if (kDebugMode) dev.log('Google ID token obtained, calling backend', name: 'LoginScreen');
       final response = await _api.loginWithGoogle(idToken);
         
-      print('Google login API response received: ${response.statusCode}');
-      print('Google login response data keys: ${response.data?.keys?.toList()}');
+      if (kDebugMode) dev.log('Google login API response received: ${response.statusCode}', name: 'LoginScreen');
+      if (kDebugMode) dev.log('Google login response data keys: ${response.data?.keys?.toList()}', name: 'LoginScreen');
 
       if (response.statusCode != 200) {
         throw AuthenticationException('Google login failed with status: ${response.statusCode}');
@@ -293,25 +295,25 @@ class _LoginScreenState extends State<LoginScreen>
           refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
         }
         
-        print('Google login extracted tokens - Access: ${accessToken != null ? 'YES' : 'NO'}, Refresh: ${refreshToken != null ? 'YES' : 'NO'}');
+        if (kDebugMode) dev.log('Google login extracted tokens - Access: ${accessToken != null ? "YES" : "NO"}, Refresh: ${refreshToken != null ? "YES" : "NO"}', name: 'LoginScreen');
       }
 
       if (accessToken == null) {
-        print('No access token found in Google login response: $responseData');
+        if (kDebugMode) dev.log('No access token found in Google login response: $responseData', name: 'LoginScreen');
         throw AuthenticationException('Google login successful but no access token received');
       }
         
       if (_rememberMe) {
-        print('Saving Google login tokens to storage');
+        if (kDebugMode) dev.log('Saving Google login tokens to storage', name: 'LoginScreen');
         await _api.saveTokens(accessToken, refreshToken ?? '');
         
         // Verify token storage
         final storedToken = await _api.getToken();
-        print('Google login token storage verification: ${storedToken != null ? 'SUCCESS' : 'FAILED'}');
+        if (kDebugMode) dev.log('Google login token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
       }
 
       if (!mounted) {
-        print('Widget unmounted during Google login process');
+        if (kDebugMode) dev.log('Widget unmounted during Google login process', name: 'LoginScreen');
         return;
       }
         
@@ -319,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen>
       try {
         await SecurePushTokenManager.instance.initializePostAuthentication();
       } catch (e) {
-        print('Google login push token initialization failed: $e');
+        if (kDebugMode) dev.log('Google login push token initialization failed: $e', name: 'LoginScreen');
         AppErrorHandler.reportError(
           e,
           severity: ErrorSeverity.low,
@@ -329,11 +331,11 @@ class _LoginScreenState extends State<LoginScreen>
       }
         
       // Check if user has completed onboarding
-      print('Checking onboarding status after Google login');
+      if (kDebugMode) dev.log('Checking onboarding status after Google login', name: 'LoginScreen');
       final hasOnboarded = await _api.hasCompletedOnboarding();
       
       if (!mounted) {
-        print('Widget unmounted during Google login onboarding check');
+        if (kDebugMode) dev.log('Widget unmounted during Google login onboarding check', name: 'LoginScreen');
         return;
       }
 
@@ -343,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen>
         _slowConnectionDetected = false;
       });
         
-      print('Google login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
+      if (kDebugMode) dev.log('Google login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}', name: 'LoginScreen');
       
       // Force navigation with explicit error handling
       try {
@@ -360,13 +362,13 @@ class _LoginScreenState extends State<LoginScreen>
           );
           await Navigator.pushReplacementNamed(context, '/onboarding_region');
         }
-        print('Google login navigation completed successfully');
+        if (kDebugMode) dev.log('Google login navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
-        print('Google login navigation failed: $navigationError');
+        if (kDebugMode) dev.log('Google login navigation failed: $navigationError', name: 'LoginScreen');
         
         // Fallback navigation mechanism for Google login
         try {
-          print('Attempting fallback navigation for Google login');
+          if (kDebugMode) dev.log('Attempting fallback navigation for Google login', name: 'LoginScreen');
           await Future.delayed(const Duration(milliseconds: 100));
           
           if (mounted) {
@@ -375,10 +377,10 @@ class _LoginScreenState extends State<LoginScreen>
             } else {
               Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
             }
-            print('Google login fallback navigation successful');
+            if (kDebugMode) dev.log('Google login fallback navigation successful', name: 'LoginScreen');
           }
         } catch (fallbackError) {
-          print('Google login fallback navigation also failed: $fallbackError');
+          if (kDebugMode) dev.log('Google login fallback navigation also failed: $fallbackError', name: 'LoginScreen');
           // Show manual navigation instruction
           if (mounted) {
             showDialog(
@@ -402,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
       
     } catch (e, stackTrace) {
-      print('Google sign-in process failed: $e');
+      if (kDebugMode) dev.log('Google sign-in process failed: $e', name: 'LoginScreen', error: e);
       
       _slowConnectionTimer?.cancel();
       setState(() {
@@ -480,15 +482,15 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      print('Starting login process for ${_emailController.text.substring(0, 3)}***');
+      if (kDebugMode) dev.log('Starting login process for ${_emailController.text.substring(0, 3)}***', name: 'LoginScreen');
       
       final response = await _api.reliableLogin(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
-      print('Login API response received: ${response.statusCode}');
-      print('Login response data keys: ${response.data?.keys?.toList()}');
+      if (kDebugMode) dev.log('Login API response received: ${response.statusCode}', name: 'LoginScreen');
+      if (kDebugMode) dev.log('Login response data keys: ${response.data?.keys?.toList()}', name: 'LoginScreen');
 
       if (response.statusCode != 200) {
         throw AuthenticationException('Login failed with status: ${response.statusCode}');
@@ -518,26 +520,26 @@ class _LoginScreenState extends State<LoginScreen>
           refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
         }
         
-        print('Extracted tokens - Access: ${accessToken != null ? 'YES' : 'NO'}, Refresh: ${refreshToken != null ? 'YES' : 'NO'}');
+        if (kDebugMode) dev.log('Extracted tokens - Access: ${accessToken != null ? "YES" : "NO"}, Refresh: ${refreshToken != null ? "YES" : "NO"}', name: 'LoginScreen');
       }
 
       if (accessToken == null) {
-        print('No access token found in response: $responseData');
+        if (kDebugMode) dev.log('No access token found in response: $responseData', name: 'LoginScreen');
         throw AuthenticationException('Login successful but no access token received');
       }
       
       // Save tokens if remember me is checked
       if (_rememberMe) {
-        print('Saving tokens to storage');
+        if (kDebugMode) dev.log('Saving tokens to storage', name: 'LoginScreen');
         await _api.saveTokens(accessToken, refreshToken ?? '');
         
         // Verify token storage
         final storedToken = await _api.getToken();
-        print('Token storage verification: ${storedToken != null ? 'SUCCESS' : 'FAILED'}');
+        if (kDebugMode) dev.log('Token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
       }
 
       if (!mounted) {
-        print('Widget unmounted during login process');
+        if (kDebugMode) dev.log('Widget unmounted during login process', name: 'LoginScreen');
         return;
       }
         
@@ -546,7 +548,7 @@ class _LoginScreenState extends State<LoginScreen>
         await SecurePushTokenManager.instance.initializePostAuthentication();
       } catch (e) {
         // Log but don't block login for push token issues
-        print('Push token initialization failed: $e');
+        if (kDebugMode) dev.log('Push token initialization failed: $e', name: 'LoginScreen');
         AppErrorHandler.reportError(
           e,
           severity: ErrorSeverity.low,
@@ -556,11 +558,11 @@ class _LoginScreenState extends State<LoginScreen>
       }
         
       // Check if user has completed onboarding
-      print('Checking onboarding status');
+      if (kDebugMode) dev.log('Checking onboarding status', name: 'LoginScreen');
       final hasOnboarded = await _api.hasCompletedOnboarding();
       
       if (!mounted) {
-        print('Widget unmounted during onboarding check');
+        if (kDebugMode) dev.log('Widget unmounted during onboarding check', name: 'LoginScreen');
         return;
       }
 
@@ -570,7 +572,7 @@ class _LoginScreenState extends State<LoginScreen>
         _slowConnectionDetected = false;
       });
         
-      print('Login successful, navigating to ${hasOnboarded ? 'main' : 'onboarding'}');
+      if (kDebugMode) dev.log('Login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}', name: 'LoginScreen');
       
       // Force navigation with explicit error handling
       try {
@@ -587,13 +589,13 @@ class _LoginScreenState extends State<LoginScreen>
           );
           await Navigator.pushReplacementNamed(context, '/onboarding_region');
         }
-        print('Navigation completed successfully');
+        if (kDebugMode) dev.log('Navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
-        print('Navigation failed: $navigationError');
+        if (kDebugMode) dev.log('Navigation failed: $navigationError', name: 'LoginScreen');
         
         // Fallback navigation mechanism
         try {
-          print('Attempting fallback navigation');
+          if (kDebugMode) dev.log('Attempting fallback navigation', name: 'LoginScreen');
           await Future.delayed(const Duration(milliseconds: 100));
           
           if (mounted) {
@@ -602,10 +604,10 @@ class _LoginScreenState extends State<LoginScreen>
             } else {
               Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
             }
-            print('Fallback navigation successful');
+            if (kDebugMode) dev.log('Fallback navigation successful', name: 'LoginScreen');
           }
         } catch (fallbackError) {
-          print('Fallback navigation also failed: $fallbackError');
+          if (kDebugMode) dev.log('Fallback navigation also failed: $fallbackError', name: 'LoginScreen');
           // Show manual navigation instruction
           if (mounted) {
             showDialog(
@@ -629,7 +631,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
       
     } catch (e, stackTrace) {
-      print('Login process failed: $e');
+      if (kDebugMode) dev.log('Login process failed: $e', name: 'LoginScreen', error: e);
       
       _slowConnectionTimer?.cancel();
       setState(() {

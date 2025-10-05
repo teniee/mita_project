@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/expense_state_service.dart';
@@ -40,10 +42,10 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   @override
   void initState() {
     super.initState();
-    print('CRITICAL DEBUG: BottomNavigation initState called');
+    if (kDebugMode) dev.log('BottomNavigation initState called', name: 'BottomNavigation');
     _initializeAnimations();
     _subscribeToExpenseUpdates();
-    print('CRITICAL DEBUG: BottomNavigation initState completed');
+    if (kDebugMode) dev.log('BottomNavigation initState completed', name: 'BottomNavigation');
   }
   
   void _initializeAnimations() {
