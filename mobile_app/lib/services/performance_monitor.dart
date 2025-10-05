@@ -585,7 +585,7 @@ class MobilePerformanceMonitor {
             scope.setUser(SentryUser(id: userId));
           }
 
-          scope.setContext('performance', {
+          scope.setContexts('performance', {
             'operation': operationName,
             'duration_ms': durationMs,
             'threshold_ms': threshold,

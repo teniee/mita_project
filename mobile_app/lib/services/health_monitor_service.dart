@@ -1,11 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../config.dart';
 import 'logging_service.dart';
 import 'api_service.dart';
 
@@ -82,18 +78,18 @@ class HealthMetric {
 
   factory HealthMetric.fromJson(Map<String, dynamic> json) {
     return HealthMetric(
-      name: json['name'] ?? '',
+      name: (json['name'] ?? '') as String,
       status: HealthStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => HealthStatus.unhealthy,
       ),
-      message: json['message'] ?? '',
-      responseTimeMs: json['response_time_ms']?.toDouble(),
-      value: json['value']?.toDouble(),
-      thresholdWarning: json['threshold_warning']?.toDouble(),
-      thresholdCritical: json['threshold_critical']?.toDouble(),
-      timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
-      details: json['details'],
+      message: (json['message'] ?? '') as String,
+      responseTimeMs: (json['response_time_ms'] as num?)?.toDouble(),
+      value: (json['value'] as num?)?.toDouble(),
+      thresholdWarning: (json['threshold_warning'] as num?)?.toDouble(),
+      thresholdCritical: (json['threshold_critical'] as num?)?.toDouble(),
+      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ?? DateTime.now(),
+      details: json['details'] as Map<String, dynamic>?,
     );
   }
 
@@ -138,7 +134,7 @@ class HealthReport {
     final Map<String, HealthMetric> metrics = {};
     metricsData.forEach((key, value) {
       if (value is Map<String, dynamic>) {
-        metrics[key] = HealthMetric.fromJson({
+        metrics[key as String] = HealthMetric.fromJson({
           'name': key,
           ...value,
           'timestamp': json['timestamp'],
@@ -151,14 +147,14 @@ class HealthReport {
         (e) => e.name == json['status'],
         orElse: () => HealthStatus.unhealthy,
       ),
-      timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
+      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ?? DateTime.now(),
       middlewareMetrics: metrics,
-      performanceSummary: middlewareData['performance_summary'] ?? {},
-      alerts: List<String>.from(json['alerts'] ?? []),
-      issuesDetected: List<String>.from(json['issues_detected'] ?? []),
-      recommendations: List<String>.from(json['recommendations'] ?? []),
-      responseTimeMs: middlewareData['response_time_ms']?.toDouble() ?? 0.0,
-      message: json['message'] ?? '',
+      performanceSummary: (middlewareData['performance_summary'] ?? {}) as Map<String, dynamic>,
+      alerts: List<String>.from((json['alerts'] ?? []) as List),
+      issuesDetected: List<String>.from((json['issues_detected'] ?? []) as List),
+      recommendations: List<String>.from((json['recommendations'] ?? []) as List),
+      responseTimeMs: (middlewareData['response_time_ms'] as num?)?.toDouble() ?? 0.0,
+      message: (json['message'] ?? '') as String,
     );
   }
 
@@ -268,7 +264,7 @@ class HealthMonitorService {
       
       if (response.statusCode == 200 || response.statusCode == 503) {
         // 503 is expected for degraded/critical health status
-        final healthReport = HealthReport.fromJson(response.data);
+        final healthReport = HealthReport.fromJson(response.data as Map<String, dynamic>);
         
         // Update internal state
         _lastHealthReport = healthReport;
@@ -328,7 +324,7 @@ class HealthMonitorService {
       final response = await _apiService.get('/health/middleware/$component');
       
       if (response.statusCode == 200 || response.statusCode == 503) {
-        return HealthMetric.fromJson(response.data);
+        return HealthMetric.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw Exception('Component health check failed: ${response.statusCode}');
       }
@@ -350,7 +346,7 @@ class HealthMonitorService {
       final response = await _apiService.get('/health/performance');
       
       if (response.statusCode == 200) {
-        return response.data;
+        return response.data as Map<String, dynamic>?;
       } else {
         throw Exception('Performance health check failed: ${response.statusCode}');
       }
@@ -369,9 +365,9 @@ class HealthMonitorService {
       logDebug('Getting current health alerts', tag: 'HealthMonitor');
       
       final response = await _apiService.get('/health/alerts');
-      
+
       if (response.statusCode == 200) {
-        return response.data;
+        return response.data as Map<String, dynamic>?;
       } else {
         throw Exception('Alerts check failed: ${response.statusCode}');
       }

@@ -7,7 +7,6 @@
 /// with calls to this service for personalized, income-appropriate values.
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:logging/logging.dart';
 
 import 'api_service.dart';
@@ -331,10 +330,7 @@ class DynamicThresholdService {
   /// Fallback thresholds when API is unavailable
   DynamicThresholds _getFallbackThresholds(ThresholdType type, UserContext userContext) {
     _logger.warning('Using fallback thresholds for ${type.value}');
-    
-    // Simple income-based scaling for fallbacks
-    final incomeMultiplier = (userContext.monthlyIncome / 5000).clamp(0.5, 2.0);
-    
+
     switch (type) {
       case ThresholdType.budgetAllocation:
         return DynamicThresholds({

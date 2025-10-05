@@ -208,9 +208,9 @@ class SentryFinancialService {
         for (final entry in data.entries) {
           final key = entry.key.toString().toLowerCase();
           if (sensitiveKeys.any((sensitiveKey) => key.contains(sensitiveKey))) {
-            sanitized[entry.key] = '[REDACTED]';
+            sanitized[entry.key as String] = '[REDACTED]';
           } else {
-            sanitized[entry.key] = sanitizeData(entry.value);
+            sanitized[entry.key as String] = sanitizeData(entry.value);
           }
         }
         return sanitized;

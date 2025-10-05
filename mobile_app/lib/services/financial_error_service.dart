@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/financial_error_messages.dart';
 import '../widgets/financial_error_widgets.dart';
-import '../l10n/generated/app_localizations.dart';
 import 'accessibility_service.dart';
 import 'logging_service.dart';
 
@@ -401,7 +400,7 @@ class FinancialErrorService {
             Text(
               financialContext,
               style: TextStyle(
-                color: colorScheme.onPrimary.withOpacity(0.9),
+                color: colorScheme.onPrimary.withValues(alpha: 0.9),
                 fontSize: 12,
               ),
             ),

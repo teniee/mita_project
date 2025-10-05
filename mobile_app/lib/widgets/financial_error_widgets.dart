@@ -100,7 +100,7 @@ class _FinancialErrorDialogState extends State<FinancialErrorDialog>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: widget.errorInfo.getColor(colorScheme).withOpacity(0.1),
+                      color: widget.errorInfo.getColor(colorScheme).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -137,10 +137,10 @@ class _FinancialErrorDialogState extends State<FinancialErrorDialog>
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withOpacity(0.3),
+                          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: colorScheme.primary.withOpacity(0.2),
+                            color: colorScheme.primary.withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -362,7 +362,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                   width: 32,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -375,7 +375,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: widget.errorInfo.getColor(colorScheme).withOpacity(0.1),
+                      color: widget.errorInfo.getColor(colorScheme).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -425,7 +425,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.3),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -593,7 +593,7 @@ class FinancialErrorSnackBar {
                   Text(
                     errorInfo.message,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onErrorContainer.withOpacity(0.9),
+                      color: colorScheme.onErrorContainer.withValues(alpha: 0.9),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -619,7 +619,7 @@ class FinancialErrorSnackBar {
             )
           : SnackBarAction(
               label: 'Dismiss',
-              textColor: colorScheme.onErrorContainer.withOpacity(0.7),
+              textColor: colorScheme.onErrorContainer.withValues(alpha: 0.7),
               onPressed: () {
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
               },
@@ -648,10 +648,10 @@ class FinancialInlineError extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.errorContainer.withOpacity(0.3),
+        color: colorScheme.errorContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: colorScheme.error.withOpacity(0.3),
+          color: colorScheme.error.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -724,7 +724,7 @@ class FinancialLoadingState extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.1),
+              color: colorScheme.shadow.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -838,7 +838,7 @@ class FinancialEmptyState extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: (hasError ? colorScheme.errorContainer : colorScheme.primaryContainer)
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(

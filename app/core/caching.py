@@ -511,9 +511,23 @@ class QueryCache:
         await self.cache.clear_by_tags(tags)
 
 
-# Global cache instance
-cache_manager = MultiTierCache()
-query_cache = QueryCache(cache_manager)
+# Global cache instance - lazy initialization to avoid event loop issues
+cache_manager = None
+query_cache = None
+
+def get_cache_manager() -> MultiTierCache:
+    """Lazy initialization of cache manager"""
+    global cache_manager
+    if cache_manager is None:
+        cache_manager = MultiTierCache()
+    return cache_manager
+
+def get_query_cache() -> QueryCache:
+    """Lazy initialization of query cache"""
+    global query_cache
+    if query_cache is None:
+        query_cache = QueryCache(get_cache_manager())
+    return query_cache
 
 
 def cached(

@@ -5,8 +5,6 @@ Provides advanced error tracking, analytics, and insights for improving app stab
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/error_handling.dart';
 import 'logging_service.dart';
@@ -330,7 +328,7 @@ class ErrorAnalyticsService {
         
         for (final entry in metricsJson.entries) {
           try {
-            final metrics = ErrorMetrics.fromJson(entry.value);
+            final metrics = ErrorMetrics.fromJson(entry.value as Map<String, dynamic>);
             _errorMetrics[entry.key] = metrics;
             
             // Populate recent errors
@@ -431,18 +429,18 @@ class ErrorMetrics {
   
   factory ErrorMetrics.fromJson(Map<String, dynamic> json) {
     final metrics = ErrorMetrics(
-      errorKey: json['errorKey'],
-      errorType: json['errorType'],
-      firstOccurrence: DateTime.parse(json['firstOccurrence']),
+      errorKey: json['errorKey'] as String,
+      errorType: json['errorType'] as String,
+      firstOccurrence: DateTime.parse(json['firstOccurrence'] as String),
     );
-    
-    metrics.lastOccurrence = DateTime.parse(json['lastOccurrence']);
-    metrics.totalCount = json['totalCount'];
-    
+
+    metrics.lastOccurrence = DateTime.parse(json['lastOccurrence'] as String);
+    metrics.totalCount = json['totalCount'] as int;
+
     final occurrencesList = json['occurrences'] as List<dynamic>;
     for (final occurrenceJson in occurrencesList) {
       try {
-        metrics.occurrences.add(ErrorOccurrence.fromJson(occurrenceJson));
+        metrics.occurrences.add(ErrorOccurrence.fromJson(occurrenceJson as Map<String, dynamic>));
       } catch (e) {
         // Skip corrupted occurrences
       }
@@ -489,7 +487,7 @@ class ErrorOccurrence {
   
   factory ErrorOccurrence.fromJson(Map<String, dynamic> json) {
     return ErrorOccurrence(
-      error: json['error'],
+      error: json['error'] as String,
       severity: ErrorSeverity.values.firstWhere(
         (e) => e.toString() == json['severity'],
         orElse: () => ErrorSeverity.medium,
@@ -498,11 +496,11 @@ class ErrorOccurrence {
         (e) => e.toString() == json['category'],
         orElse: () => ErrorCategory.unknown,
       ),
-      operationName: json['operationName'],
-      screenName: json['screenName'],
-      context: Map<String, dynamic>.from(json['context'] ?? {}),
-      stackTrace: json['stackTrace'],
-      timestamp: DateTime.parse(json['timestamp']),
+      operationName: json['operationName'] as String?,
+      screenName: json['screenName'] as String?,
+      context: Map<String, dynamic>.from((json['context'] ?? {}) as Map),
+      stackTrace: json['stackTrace'] as String?,
+      timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
 }
