@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:mockito/mockito.dart';
-import '../lib/core/financial_error_messages.dart';
+import '../lib/core/financial_error_messages.dart' as ErrorMessages;
 import '../lib/services/financial_error_service.dart';
 import '../lib/widgets/financial_error_widgets.dart';
 
@@ -31,11 +31,11 @@ void main() {
           ),
         );
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
         
         expect(errorInfo.title, contains('Session'));
         expect(errorInfo.category, equals('Authentication'));
-        expect(errorInfo.severity, equals(FinancialErrorSeverity.medium));
+        expect(errorInfo.severity, equals(ErrorMessages.FinancialErrorSeverity.medium));
         expect(errorInfo.financialContext, isNotNull);
         expect(errorInfo.actions.isNotEmpty, isTrue);
       });
@@ -44,7 +44,7 @@ void main() {
         final error = Exception('Budget exceeded by \$25.50');
         final context = {'operation': 'transaction', 'amount': '\$25.50'};
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(
           error, 
           additionalContext: context,
         );
@@ -62,20 +62,20 @@ void main() {
           type: DioExceptionType.connectionTimeout,
         );
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         expect(errorInfo.category, contains('Connectivity'));
-        expect(errorInfo.actions.any((a) => a.action == FinancialErrorActionType.retry), isTrue);
+        expect(errorInfo.actions.any((a) => a.action == ErrorMessages.FinancialErrorActionType.retry), isTrue);
         expect(errorInfo.financialContext, contains('secure'));
       });
 
       test('should categorize validation errors correctly', () {
         final error = Exception('Invalid email format');
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
-        expect(errorInfo.severity, equals(FinancialErrorSeverity.low));
-        expect(errorInfo.actions.any((a) => a.action == FinancialErrorActionType.edit), isTrue);
+        expect(errorInfo.severity, equals(ErrorMessages.FinancialErrorSeverity.low));
+        expect(errorInfo.actions.any((a) => a.action == ErrorMessages.FinancialErrorActionType.edit), isTrue);
       });
     });
 
@@ -83,7 +83,7 @@ void main() {
       test('should provide user-friendly language', () {
         final error = Exception('TransactionException: Database connection failed');
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         // Should not contain technical terms
         expect(errorInfo.title, isNot(contains('Exception')));
@@ -100,7 +100,7 @@ void main() {
           type: DioExceptionType.connectionTimeout,
         );
 
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         // Should have at least one actionable step
         expect(errorInfo.actions.isNotEmpty, isTrue);
@@ -129,7 +129,7 @@ void main() {
         ];
 
         for (final error in errors) {
-          final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+          final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
           
           // Financial errors should have context about data security/accuracy
           if (errorInfo.category.contains('Authentication') || 
@@ -145,7 +145,7 @@ void main() {
       test('should provide helpful tips for complex errors', () {
         final error = Exception('Budget exceeded by \$50.00');
         
-        final errorInfo = FinancialErrorMessages.getErrorInfo(
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(
           error,
           additionalContext: {'operation': 'transaction'},
         );
@@ -172,7 +172,7 @@ void main() {
         ];
 
         for (final error in errors) {
-          final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+          final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
           
           // Required fields
           expect(errorInfo.title, isNotEmpty);
@@ -196,14 +196,14 @@ void main() {
 
       test('should use appropriate severity levels', () {
         final testCases = {
-          Exception('Session expired'): FinancialErrorSeverity.medium,
-          Exception('Invalid email'): FinancialErrorSeverity.low,
-          Exception('Data corruption detected'): FinancialErrorSeverity.high,
-          Exception('Security breach'): FinancialErrorSeverity.critical,
+          Exception('Session expired'): ErrorMessages.FinancialErrorSeverity.medium,
+          Exception('Invalid email'): ErrorMessages.FinancialErrorSeverity.low,
+          Exception('Data corruption detected'): ErrorMessages.FinancialErrorSeverity.high,
+          Exception('Security breach'): ErrorMessages.FinancialErrorSeverity.critical,
         };
 
         testCases.forEach((error, expectedSeverity) {
-          final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+          final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
           expect(errorInfo.severity, equals(expectedSeverity));
         });
       });
@@ -212,7 +212,7 @@ void main() {
     group('Action Button Quality', () {
       test('should have clear, actionable button labels', () {
         final error = Exception('Transaction failed');
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         for (final action in errorInfo.actions) {
           // Labels should be clear and specific
@@ -235,7 +235,7 @@ void main() {
         ];
 
         for (final error in errors) {
-          final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+          final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
           final primaryActions = errorInfo.actions.where((a) => a.isPrimary);
           
           // Should have exactly one primary action (or very few)
@@ -245,10 +245,10 @@ void main() {
           // Primary action should be the most helpful
           final primaryAction = primaryActions.first;
           expect(primaryAction.action, anyOf(
-            FinancialErrorActionType.retry,
-            FinancialErrorActionType.reauth,
-            FinancialErrorActionType.edit,
-            FinancialErrorActionType.override,
+            ErrorMessages.FinancialErrorActionType.retry,
+            ErrorMessages.FinancialErrorActionType.reauth,
+            ErrorMessages.FinancialErrorActionType.edit,
+            ErrorMessages.FinancialErrorActionType.override,
           ));
         }
       });
@@ -257,7 +257,7 @@ void main() {
     group('Accessibility', () {
       test('should provide screen reader appropriate content', () {
         final error = Exception('Budget exceeded by \$25.50');
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         // Content should be readable by screen readers
         final screenReaderContent = '${errorInfo.category} Error: ${errorInfo.title}. ${errorInfo.message}';
@@ -274,7 +274,7 @@ void main() {
 
       test('should have appropriate semantic structure', () {
         final error = Exception('Transaction failed');
-        final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+        final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
 
         // Icons should have semantic meaning
         expect(errorInfo.icon, isNotNull);
@@ -285,10 +285,10 @@ void main() {
         
         // Severity should map to importance levels
         final importanceMapping = {
-          FinancialErrorSeverity.low: false,
-          FinancialErrorSeverity.medium: false,
-          FinancialErrorSeverity.high: true,
-          FinancialErrorSeverity.critical: true,
+          ErrorMessages.FinancialErrorSeverity.low: false,
+          ErrorMessages.FinancialErrorSeverity.medium: false,
+          ErrorMessages.FinancialErrorSeverity.high: true,
+          ErrorMessages.FinancialErrorSeverity.critical: true,
         };
         
         expect(importanceMapping.containsKey(errorInfo.severity), isTrue);
@@ -332,18 +332,18 @@ void main() {
 
   group('Error Widget Tests', () {
     testWidgets('FinancialErrorDialog should display correctly', (WidgetTester tester) async {
-      final errorInfo = FinancialErrorInfo(
+      final errorInfo = ErrorMessages.FinancialErrorInfo(
         title: 'Test Error',
         message: 'This is a test error message',
         actions: [
-          FinancialErrorAction(
+          ErrorMessages.FinancialErrorAction(
             label: 'Retry',
-            action: FinancialErrorActionType.retry,
+            action: ErrorMessages.FinancialErrorActionType.retry,
             isPrimary: true,
           ),
         ],
         icon: Icons.error_outline,
-        severity: FinancialErrorSeverity.medium,
+        severity: ErrorMessages.FinancialErrorSeverity.medium,
         category: 'Test',
       );
 
@@ -367,18 +367,18 @@ void main() {
     });
 
     testWidgets('FinancialErrorSnackBar should display correctly', (WidgetTester tester) async {
-      final errorInfo = FinancialErrorInfo(
+      final errorInfo = ErrorMessages.FinancialErrorInfo(
         title: 'Network Error',
         message: 'Please check your connection',
         actions: [
-          FinancialErrorAction(
+          ErrorMessages.FinancialErrorAction(
             label: 'Retry',
-            action: FinancialErrorActionType.retry,
+            action: ErrorMessages.FinancialErrorActionType.retry,
             isPrimary: true,
           ),
         ],
         icon: Icons.wifi_off,
-        severity: FinancialErrorSeverity.low,
+        severity: ErrorMessages.FinancialErrorSeverity.low,
         category: 'Network',
       );
 
@@ -415,7 +415,7 @@ void main() {
       final error = Exception('Test error');
       
       // Test without context (no localization)
-      final errorInfo = FinancialErrorMessages.getErrorInfo(error);
+      final errorInfo = ErrorMessages.FinancialErrorMessages.getErrorInfo(error);
       
       expect(errorInfo.title, isNotEmpty);
       expect(errorInfo.message, isNotEmpty);
@@ -434,7 +434,7 @@ void main() {
       ];
 
       final errorInfos = errorTypes.map((e) => 
-          FinancialErrorMessages.getErrorInfo(e)).toList();
+          ErrorMessages.FinancialErrorMessages.getErrorInfo(e)).toList();
 
       // All should have consistent structure
       for (final info in errorInfos) {
