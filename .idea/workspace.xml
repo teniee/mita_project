@@ -5,9 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" 1. 🔧 Основные хардкоды убраны:&#10;  - ❌ 'name': 'MITA User' → ✅ 'name': '' (пустое поле)&#10;  - ❌ Фальшивые статусы недели ['good', 'good', 'warning', 'over'] → ✅ 'neutral' для всех дней&#10;  - ❌ Процентные расчеты _monthlyIncome * 0.85, dailyAmount * 0.4 → ✅ Реальные суммы или 0.0&#10;  - ❌ Фальшивые траты dailyBudget * 0.35 * 0.60 → ✅ 0.0 (показать реальные траты или ноль)">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/error_analytics_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/error_analytics_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
