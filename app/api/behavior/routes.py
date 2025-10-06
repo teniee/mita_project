@@ -567,12 +567,59 @@ async def get_category_behavioral_insights(
     db: Session = Depends(get_db),
 ):
     """Get behavioral insights for specific category"""
+    from app.db.models import Transaction
+    from datetime import datetime, timedelta
+
+    # Default to last 90 days if no year/month specified
+    if year and month:
+        start_date = datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1)
+        else:
+            end_date = datetime(year, month + 1, 1)
+    else:
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=90)
+
+    # Query transactions for this category
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.category == category,
+        Transaction.spent_at >= start_date,
+        Transaction.spent_at < end_date
+    ).all()
+
+    if not transactions:
+        return success_response({
+            "category": category,
+            "average_spending": 0.0,
+            "frequency": 0,
+            "patterns": [],
+            "recommendations": [],
+            "note": f"No transactions found for category '{category}'"
+        })
+
+    total_spent = sum(float(t.amount) for t in transactions)
+    avg_spending = total_spent / len(transactions)
+
     return success_response({
         "category": category,
-        "average_spending": 0.0,
-        "frequency": 0,
-        "patterns": [],
-        "recommendations": []
+        "average_spending": round(avg_spending, 2),
+        "total_spent": round(total_spent, 2),
+        "frequency": len(transactions),
+        "patterns": [
+            {
+                "type": "frequency",
+                "value": len(transactions),
+                "description": f"{len(transactions)} transactions in the period"
+            }
+        ],
+        "recommendations": [
+            {
+                "message": f"Consider budgeting ${round(total_spent * 1.1, 2)} for {category} next month",
+                "type": "budgeting"
+            }
+        ] if len(transactions) > 5 else []
     })
 
 
@@ -584,10 +631,65 @@ async def get_behavioral_warnings(
     db: Session = Depends(get_db),
 ):
     """Get behavioral warnings and alerts"""
+    from app.db.models import Transaction
+    from datetime import datetime
+    import statistics
+
+    now = datetime.utcnow()
+    year = year or now.year
+    month = month or now.month
+
+    # Get transactions for the month
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= start_date,
+        Transaction.spent_at < end_date
+    ).all()
+
+    warnings = []
+    critical_alerts = []
+    suggestions = []
+
+    if len(transactions) > 10:
+        # Check for overspending patterns
+        amounts = [float(t.amount) for t in transactions]
+        total = sum(amounts)
+        avg = statistics.mean(amounts)
+
+        # High spending warning
+        if total > 5000:  # Arbitrary threshold, should be based on user income
+            warnings.append({
+                "type": "high_total_spending",
+                "severity": "medium",
+                "message": f"Total spending this month: ${total:.2f}",
+                "threshold": 5000
+            })
+
+        # Frequent small transactions warning
+        if len(transactions) > 30 and avg < 20:
+            warnings.append({
+                "type": "frequent_small_transactions",
+                "severity": "low",
+                "message": f"{len(transactions)} small transactions detected - consider batch shopping",
+                "average_amount": round(avg, 2)
+            })
+
+        suggestions.append({
+            "type": "tracking",
+            "message": "Great job tracking your expenses!"
+        })
+
     return success_response({
-        "warnings": [],
-        "critical_alerts": [],
-        "suggestions": []
+        "warnings": warnings,
+        "critical_alerts": critical_alerts,
+        "suggestions": suggestions,
+        "transactions_analyzed": len(transactions)
     })
 
 
@@ -598,15 +700,64 @@ async def get_behavioral_expense_suggestions(
     db: Session = Depends(get_db),
 ):
     """Get smart expense suggestions based on behavioral patterns"""
+    from app.db.models import Transaction
+    from datetime import datetime, timedelta
+    from collections import Counter
+
     category = data.get("category")
     amount = data.get("amount")
-    context = data.get("context", {})
+
+    # Analyze past transactions to suggest category
+    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    past_transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= sixty_days_ago
+    ).all()
+
+    if not past_transactions:
+        return success_response({
+            "suggested_category": category or "general",
+            "suggested_amount": amount or 0.0,
+            "confidence": 0.0,
+            "alternatives": [],
+            "note": "Not enough transaction history for suggestions"
+        })
+
+    # Find most common categories
+    categories = [t.category for t in past_transactions if t.category]
+    category_counts = Counter(categories)
+    top_categories = category_counts.most_common(3)
+
+    alternatives = []
+    if not category and top_categories:
+        # Suggest category based on frequency
+        suggested_cat = top_categories[0][0]
+        alternatives = [
+            {"category": cat, "reason": f"Used {count} times recently"}
+            for cat, count in top_categories
+        ]
+    else:
+        suggested_cat = category
+
+    # Suggest amount based on category history
+    if suggested_cat and not amount:
+        cat_transactions = [float(t.amount) for t in past_transactions if t.category == suggested_cat]
+        if cat_transactions:
+            import statistics
+            suggested_amt = statistics.median(cat_transactions)
+        else:
+            suggested_amt = 0.0
+    else:
+        suggested_amt = amount or 0.0
+
+    confidence = min(1.0, len(past_transactions) / 50.0)
 
     return success_response({
-        "suggested_category": category,
-        "suggested_amount": amount,
-        "confidence": 0.0,
-        "alternatives": []
+        "suggested_category": suggested_cat,
+        "suggested_amount": round(suggested_amt, 2) if suggested_amt else None,
+        "confidence": round(confidence, 2),
+        "alternatives": alternatives[:3],
+        "based_on_transactions": len(past_transactions)
     })
 
 
