@@ -106,10 +106,78 @@ async def get_behavioral_anomalies(
     db: Session = Depends(get_db),
 ):
     """Get spending anomalies and unusual patterns"""
+    from app.db.models import Transaction
+    from datetime import datetime
+    import statistics
+
+    now = datetime.utcnow()
+    year = year or now.year
+    month = month or now.month
+
+    # Get transactions for the month
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= start_date,
+        Transaction.spent_at < end_date
+    ).all()
+
+    if len(transactions) < 5:
+        return success_response({
+            "anomalies": [],
+            "unusual_transactions": [],
+            "alerts": [],
+            "note": "Need at least 5 transactions to detect anomalies"
+        })
+
+    # Calculate statistical anomalies
+    amounts = [float(t.amount) for t in transactions]
+    mean_amount = statistics.mean(amounts)
+    stdev_amount = statistics.stdev(amounts) if len(amounts) > 1 else 0
+    threshold = mean_amount + (2.5 * stdev_amount)
+
+    anomalies = []
+    unusual_transactions = []
+
+    for txn in transactions:
+        amount = float(txn.amount)
+        if amount > threshold:
+            anomalies.append({
+                "type": "high_spending",
+                "severity": "warning" if amount < threshold * 1.5 else "critical",
+                "amount": amount,
+                "category": txn.category or "uncategorized",
+                "date": txn.spent_at.isoformat(),
+                "description": f"Spending {amount:.2f} is {((amount/mean_amount - 1) * 100):.0f}% above your average"
+            })
+            unusual_transactions.append({
+                "id": str(txn.id),
+                "amount": amount,
+                "category": txn.category,
+                "merchant": txn.merchant_name,
+                "date": txn.spent_at.isoformat()
+            })
+
+    # Generate alerts
+    alerts = []
+    if len(anomalies) > 3:
+        alerts.append({
+            "type": "spending_spike",
+            "message": f"Detected {len(anomalies)} unusual transactions this month",
+            "severity": "warning"
+        })
+
     return success_response({
-        "anomalies": [],
-        "unusual_transactions": [],
-        "alerts": []
+        "anomalies": anomalies,
+        "unusual_transactions": unusual_transactions,
+        "alerts": alerts,
+        "threshold": round(threshold, 2),
+        "average": round(mean_amount, 2)
     })
 
 
@@ -119,15 +187,77 @@ async def get_adaptive_behavior_recommendations(
     db: Session = Depends(get_db),
 ):
     """Get personalized recommendations based on behavior"""
-    return success_response({
-        "recommendations": [
-            {
-                "type": "spending_habit",
-                "message": "Consider setting a weekly limit for dining out based on your patterns",
+    from app.db.models import Transaction
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+
+    # Analyze last 60 days of transactions
+    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= sixty_days_ago
+    ).all()
+
+    if len(transactions) < 5:
+        return success_response({
+            "recommendations": [
+                {
+                    "type": "getting_started",
+                    "message": "Add more transactions to get personalized recommendations",
+                    "priority": "low"
+                }
+            ],
+            "action_items": []
+        })
+
+    # Analyze spending by category
+    category_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
+    for txn in transactions:
+        cat = txn.category or "uncategorized"
+        category_spending[cat]["amount"] += float(txn.amount)
+        category_spending[cat]["count"] += 1
+
+    # Generate recommendations
+    recommendations = []
+    action_items = []
+
+    # Check for high-frequency categories
+    for cat, data in category_spending.items():
+        if data["count"] > 10:  # More than 10 transactions in 60 days
+            avg_per_txn = data["amount"] / data["count"]
+            recommendations.append({
+                "type": "spending_pattern",
+                "category": cat,
+                "message": f"You spend frequently on {cat} (${avg_per_txn:.2f} per transaction). Consider setting a monthly budget.",
                 "priority": "medium"
-            }
-        ],
-        "action_items": []
+            })
+
+    # Check for large one-time expenses
+    total_spent = sum(float(t.amount) for t in transactions)
+    avg_transaction = total_spent / len(transactions) if transactions else 0
+
+    for txn in transactions:
+        if float(txn.amount) > avg_transaction * 3:
+            recommendations.append({
+                "type": "large_expense",
+                "category": txn.category,
+                "message": f"Large expense detected: ${float(txn.amount):.2f} on {txn.category}. Plan ahead for similar expenses.",
+                "priority": "high"
+            })
+
+    # Generate action items
+    if len(recommendations) > 2:
+        action_items.append({
+            "action": "set_category_budgets",
+            "description": "Set monthly budgets for your top spending categories",
+            "categories": list(category_spending.keys())[:3]
+        })
+
+    return success_response({
+        "recommendations": recommendations[:5],  # Limit to top 5
+        "action_items": action_items,
+        "analysis_period_days": 60,
+        "transactions_analyzed": len(transactions)
     })
 
 
@@ -139,11 +269,82 @@ async def get_spending_triggers(
     db: Session = Depends(get_db),
 ):
     """Get spending triggers and behavioral insights"""
+    from app.db.models import Transaction
+    from datetime import datetime
+    from collections import defaultdict
+
+    now = datetime.utcnow()
+    year = year or now.year
+    month = month or now.month
+
+    # Get transactions for the month
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= start_date,
+        Transaction.spent_at < end_date
+    ).all()
+
+    # Analyze temporal patterns
+    day_of_week_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
+    hour_of_day_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
+
+    for txn in transactions:
+        day_name = txn.spent_at.strftime("%A")
+        hour = txn.spent_at.hour
+
+        day_of_week_spending[day_name]["amount"] += float(txn.amount)
+        day_of_week_spending[day_name]["count"] += 1
+
+        hour_of_day_spending[hour]["amount"] += float(txn.amount)
+        hour_of_day_spending[hour]["count"] += 1
+
+    # Find temporal triggers
+    temporal_triggers = []
+    for day, data in day_of_week_spending.items():
+        if data["count"] > 2:  # Significant pattern
+            avg = data["amount"] / data["count"]
+            temporal_triggers.append({
+                "type": "day_of_week",
+                "trigger": day,
+                "average_spending": round(avg, 2),
+                "frequency": data["count"],
+                "insight": f"You tend to spend ${avg:.2f} on {day}s"
+            })
+
+    # Find peak spending hours
+    if hour_of_day_spending:
+        peak_hour = max(hour_of_day_spending.items(), key=lambda x: x[1]["amount"])
+        temporal_triggers.append({
+            "type": "time_of_day",
+            "trigger": f"{peak_hour[0]}:00",
+            "total_spending": round(peak_hour[1]["amount"], 2),
+            "insight": f"Most spending occurs around {peak_hour[0]}:00"
+        })
+
+    # Generate insights
+    insights = []
+    if len(transactions) > 5:
+        avg_per_day = len(transactions) / 30  # Approximate
+        if avg_per_day > 3:
+            insights.append({
+                "type": "frequency",
+                "message": f"High transaction frequency: {avg_per_day:.1f} transactions per day",
+                "recommendation": "Consider batch shopping to reduce impulse purchases"
+            })
+
     return success_response({
-        "emotional_triggers": [],
-        "temporal_triggers": [],
-        "location_triggers": [],
-        "insights": []
+        "emotional_triggers": [],  # Would need mood data for this
+        "temporal_triggers": temporal_triggers,
+        "location_triggers": [],  # Would need merchant location data
+        "insights": insights,
+        "analysis_period": f"{year}-{month:02d}",
+        "transactions_analyzed": len(transactions)
     })
 
 
@@ -265,11 +466,95 @@ async def get_behavioral_progress(
     db: Session = Depends(get_db),
 ):
     """Get behavioral improvement progress over time"""
+    from app.db.models import Transaction
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+
+    # Analyze transactions over the requested months
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=months * 30)
+
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= start_date,
+        Transaction.spent_at <= end_date
+    ).order_by(Transaction.spent_at).all()
+
+    if not transactions:
+        return success_response({
+            "months_tracked": months,
+            "improvement_score": 0.0,
+            "milestones": [],
+            "trends": [],
+            "note": "No transaction data available for analysis"
+        })
+
+    # Group transactions by month
+    monthly_data = defaultdict(lambda: {"total": 0.0, "count": 0, "categories": set()})
+
+    for txn in transactions:
+        month_key = txn.spent_at.strftime("%Y-%m")
+        monthly_data[month_key]["total"] += float(txn.amount)
+        monthly_data[month_key]["count"] += 1
+        if txn.category:
+            monthly_data[month_key]["categories"].add(txn.category)
+
+    # Calculate trends
+    trends = []
+    month_keys = sorted(monthly_data.keys())
+
+    if len(month_keys) >= 2:
+        first_month = monthly_data[month_keys[0]]
+        last_month = monthly_data[month_keys[-1]]
+
+        # Spending trend
+        spending_change = ((last_month["total"] - first_month["total"]) / first_month["total"] * 100) if first_month["total"] > 0 else 0
+        trends.append({
+            "metric": "total_spending",
+            "change_percent": round(spending_change, 1),
+            "direction": "decreased" if spending_change < 0 else "increased",
+            "is_improvement": spending_change < 0
+        })
+
+        # Transaction frequency trend
+        freq_change = last_month["count"] - first_month["count"]
+        trends.append({
+            "metric": "transaction_frequency",
+            "change": freq_change,
+            "direction": "decreased" if freq_change < 0 else "increased",
+            "is_improvement": freq_change < 5  # Lower frequency can be good
+        })
+
+    # Calculate improvement score (0-100)
+    improvement_score = 50.0  # Baseline
+    if trends:
+        for trend in trends:
+            if trend.get("is_improvement"):
+                improvement_score += 10
+
+    # Generate milestones
+    milestones = []
+    if len(transactions) >= 30:
+        milestones.append({
+            "type": "data_collection",
+            "message": "Tracked 30+ transactions",
+            "achieved_at": transactions[29].spent_at.isoformat()
+        })
+
     return success_response({
         "months_tracked": months,
-        "improvement_score": 0.0,
-        "milestones": [],
-        "trends": []
+        "improvement_score": round(min(100, max(0, improvement_score)), 1),
+        "milestones": milestones,
+        "trends": trends,
+        "monthly_breakdown": [
+            {
+                "month": month,
+                "total_spent": round(data["total"], 2),
+                "transaction_count": data["count"],
+                "unique_categories": len(data["categories"])
+            }
+            for month, data in sorted(monthly_data.items())
+        ]
     })
 
 
