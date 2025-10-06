@@ -435,11 +435,28 @@ async def get_receipt_image(
     db: Session = db_dep,
 ):
     """Get receipt image URL"""
-    # TODO: Fetch receipt image from storage
+    from app.db.models import OCRJob
+
+    # Query OCR job to get image path
+    ocr_job = db.query(OCRJob).filter(
+        and_(
+            OCRJob.job_id == receipt_id,
+            OCRJob.user_id == user.id
+        )
+    ).first()
+
+    if not ocr_job or not ocr_job.image_url:
+        return success_response({
+            "receipt_id": receipt_id,
+            "image_url": None,
+            "thumbnail_url": None,
+            "error": "Receipt image not found"
+        })
+
     return success_response({
         "receipt_id": receipt_id,
-        "image_url": f"https://storage.example.com/receipts/{receipt_id}.jpg",
-        "thumbnail_url": f"https://storage.example.com/receipts/{receipt_id}_thumb.jpg"
+        "image_url": ocr_job.image_url or f"file://{ocr_job.image_path}",
+        "thumbnail_url": ocr_job.image_url or f"file://{ocr_job.image_path}"
     })
 
 
@@ -451,16 +468,69 @@ async def process_receipt_advanced(
     db: Session = db_dep,
 ):
     """Advanced receipt processing with OCR and categorization"""
-    # TODO: Use advanced OCR with item-level extraction
-    return success_response({
-        "receipt_id": f"rcpt_{datetime.now().timestamp()}",
-        "status": "processing",
-        "items": [],
-        "total": 0.0,
-        "merchant": "",
-        "date": "",
-        "confidence": 0.0
-    })
+    import tempfile
+    import os
+    from app.db.models import OCRJob
+
+    # Save uploaded file temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
+        content = await file.read()
+        temp.write(content)
+        temp_path = temp.name
+
+    try:
+        # Process receipt with REAL OCR service
+        ocr_service = OCRReceiptService()
+        result = ocr_service.process_image(temp_path)
+
+        job_id = f"rcpt_{datetime.now().timestamp()}"
+
+        # Store in database
+        ocr_job = OCRJob(
+            job_id=job_id,
+            user_id=user.id,
+            status="completed",
+            progress=100.0,
+            image_path=temp_path,
+            store_name=result.get("store", ""),
+            amount=result.get("amount", 0.0),
+            date=result.get("date", ""),
+            category_hint=result.get("category_hint", ""),
+            confidence=result.get("confidence", 0.0),
+            raw_result=result,
+            completed_at=datetime.utcnow()
+        )
+        db.add(ocr_job)
+        db.commit()
+
+        return success_response({
+            "receipt_id": job_id,
+            "status": "completed",
+            "items": result.get("items", []),
+            "total": result.get("amount", 0.0),
+            "merchant": result.get("store", ""),
+            "date": result.get("date", ""),
+            "confidence": result.get("confidence", 0.0)
+        })
+    except Exception as e:
+        logger.error(f"Advanced receipt processing failed: {e}")
+        return success_response({
+            "receipt_id": f"rcpt_{datetime.now().timestamp()}",
+            "status": "failed",
+            "items": [],
+            "total": 0.0,
+            "merchant": "",
+            "date": "",
+            "confidence": 0.0,
+            "error": str(e)
+        })
+    finally:
+        # Cleanup
+        try:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except Exception:
+            pass
 
 
 @router.post("/receipt/batch")
@@ -470,14 +540,78 @@ async def process_receipts_batch(
     db: Session = db_dep,
 ):
     """Process multiple receipts in batch"""
-    # TODO: Queue batch receipt processing
-    receipt_ids = [f"rcpt_{datetime.now().timestamp()}_{i}" for i in range(len(files))]
+    import tempfile
+    import os
+    from app.db.models import OCRJob
+
+    batch_id = f"batch_{datetime.now().timestamp()}"
+    receipt_ids = []
+    results = []
+
+    for idx, file in enumerate(files):
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
+            content = await file.read()
+            temp.write(content)
+            temp_path = temp.name
+
+        try:
+            # Process each receipt with OCR service
+            ocr_service = OCRReceiptService()
+            result = ocr_service.process_image(temp_path)
+
+            receipt_id = f"rcpt_{datetime.now().timestamp()}_{idx}"
+            receipt_ids.append(receipt_id)
+
+            # Store in database
+            ocr_job = OCRJob(
+                job_id=receipt_id,
+                user_id=user.id,
+                status="completed",
+                progress=100.0,
+                image_path=temp_path,
+                store_name=result.get("store", ""),
+                amount=result.get("amount", 0.0),
+                date=result.get("date", ""),
+                category_hint=result.get("category_hint", ""),
+                confidence=result.get("confidence", 0.0),
+                raw_result=result,
+                completed_at=datetime.utcnow()
+            )
+            db.add(ocr_job)
+
+            results.append({
+                "receipt_id": receipt_id,
+                "status": "completed",
+                "store": result.get("store", ""),
+                "amount": result.get("amount", 0.0)
+            })
+
+        except Exception as e:
+            logger.error(f"Batch receipt processing failed for file {idx}: {e}")
+            receipt_id = f"rcpt_{datetime.now().timestamp()}_{idx}"
+            receipt_ids.append(receipt_id)
+            results.append({
+                "receipt_id": receipt_id,
+                "status": "failed",
+                "error": str(e)
+            })
+        finally:
+            # Cleanup
+            try:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+            except Exception:
+                pass
+
+    db.commit()
 
     return success_response({
-        "job_id": f"batch_{datetime.now().timestamp()}",
+        "job_id": batch_id,
         "receipt_count": len(files),
         "receipt_ids": receipt_ids,
-        "status": "queued"
+        "status": "completed",
+        "results": results
     })
 
 
@@ -488,14 +622,73 @@ async def get_receipt_processing_status(
     db: Session = db_dep,
 ):
     """Get status of receipt processing job"""
-    # TODO: Check processing status
-    return success_response({
-        "job_id": job_id,
-        "status": "completed",
-        "progress": 100,
-        "results": [],
-        "errors": []
-    })
+    from app.db.models import OCRJob
+
+    # Check if it's a batch job
+    if job_id.startswith("batch_"):
+        # Query all jobs that match the batch
+        ocr_jobs = db.query(OCRJob).filter(
+            OCRJob.user_id == user.id,
+            OCRJob.job_id.like(f"rcpt_{job_id.split('_')[1]}_%")
+        ).all()
+
+        if not ocr_jobs:
+            return success_response({
+                "job_id": job_id,
+                "status": "not_found",
+                "progress": 0,
+                "results": [],
+                "errors": ["Batch job not found"]
+            })
+
+        completed_count = sum(1 for j in ocr_jobs if j.status == "completed")
+        progress = int((completed_count / len(ocr_jobs)) * 100) if ocr_jobs else 0
+
+        results = [{
+            "receipt_id": j.job_id,
+            "status": j.status,
+            "store": j.store_name,
+            "amount": float(j.amount) if j.amount else 0.0
+        } for j in ocr_jobs]
+
+        errors = [j.error_message for j in ocr_jobs if j.error_message]
+
+        return success_response({
+            "job_id": job_id,
+            "status": "completed" if completed_count == len(ocr_jobs) else "processing",
+            "progress": progress,
+            "results": results,
+            "errors": errors
+        })
+    else:
+        # Single job query
+        ocr_job = db.query(OCRJob).filter(
+            and_(
+                OCRJob.job_id == job_id,
+                OCRJob.user_id == user.id
+            )
+        ).first()
+
+        if not ocr_job:
+            return success_response({
+                "job_id": job_id,
+                "status": "not_found",
+                "progress": 0,
+                "results": [],
+                "errors": ["Job not found"]
+            })
+
+        return success_response({
+            "job_id": job_id,
+            "status": ocr_job.status,
+            "progress": int(ocr_job.progress),
+            "results": [{
+                "receipt_id": ocr_job.job_id,
+                "store": ocr_job.store_name,
+                "amount": float(ocr_job.amount) if ocr_job.amount else 0.0
+            }] if ocr_job.status == "completed" else [],
+            "errors": [ocr_job.error_message] if ocr_job.error_message else []
+        })
 
 
 @router.post("/receipt/validate")

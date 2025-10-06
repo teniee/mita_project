@@ -189,22 +189,73 @@ async def update_behavioral_preferences(
     db: Session = Depends(get_db),
 ):
     """Update behavioral analysis preferences"""
-    # TODO: Store in database
+    from app.db.models import UserPreference
+
+    # Get or create user preference record
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        user_pref = UserPreference(user_id=user.id)
+        db.add(user_pref)
+
+    # Update preference fields
+    if "auto_insights" in preferences:
+        user_pref.auto_insights = preferences["auto_insights"]
+    if "anomaly_detection" in preferences:
+        user_pref.anomaly_detection = preferences["anomaly_detection"]
+    if "predictive_alerts" in preferences:
+        user_pref.predictive_alerts = preferences["predictive_alerts"]
+    if "peer_comparison" in preferences:
+        user_pref.peer_comparison = preferences["peer_comparison"]
+
+    # Store any additional preferences in JSON field
+    additional = {k: v for k, v in preferences.items()
+                  if k not in ["auto_insights", "anomaly_detection", "predictive_alerts", "peer_comparison"]}
+    if additional:
+        user_pref.additional_preferences = additional
+
+    db.commit()
+
     return success_response({"updated": True, "preferences": preferences})
 
 
 @router.get("/preferences")
 async def get_behavioral_preferences(
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """Get behavioral analysis preferences"""
-    default_preferences = {
-        "auto_insights": True,
-        "anomaly_detection": True,
-        "predictive_alerts": True,
-        "peer_comparison": False
+    from app.db.models import UserPreference
+
+    # Query user preferences
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        # Return default preferences if not set
+        default_preferences = {
+            "auto_insights": True,
+            "anomaly_detection": True,
+            "predictive_alerts": True,
+            "peer_comparison": False
+        }
+        return success_response(default_preferences)
+
+    preferences = {
+        "auto_insights": user_pref.auto_insights,
+        "anomaly_detection": user_pref.anomaly_detection,
+        "predictive_alerts": user_pref.predictive_alerts,
+        "peer_comparison": user_pref.peer_comparison
     }
-    return success_response(default_preferences)
+
+    # Add any additional preferences
+    if user_pref.additional_preferences:
+        preferences.update(user_pref.additional_preferences)
+
+    return success_response(preferences)
 
 
 @router.get("/progress")
@@ -281,19 +332,60 @@ async def update_behavioral_notification_settings(
     db: Session = Depends(get_db),
 ):
     """Update behavioral notification preferences"""
-    # TODO: Store in database
+    from app.db.models import UserPreference
+
+    # Get or create user preference record
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        user_pref = UserPreference(user_id=user.id)
+        db.add(user_pref)
+
+    # Update notification settings
+    if "anomaly_alerts" in settings:
+        user_pref.anomaly_alerts = settings["anomaly_alerts"]
+    if "pattern_insights" in settings:
+        user_pref.pattern_insights = settings["pattern_insights"]
+    if "weekly_summary" in settings:
+        user_pref.weekly_summary = settings["weekly_summary"]
+    if "spending_warnings" in settings:
+        user_pref.spending_warnings = settings["spending_warnings"]
+
+    db.commit()
+
     return success_response({"updated": True, "settings": settings})
 
 
 @router.get("/notification_settings")
 async def get_behavioral_notification_settings(
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """Get behavioral notification preferences"""
-    default_settings = {
-        "anomaly_alerts": True,
-        "pattern_insights": True,
-        "weekly_summary": True,
-        "spending_warnings": True
+    from app.db.models import UserPreference
+
+    # Query user preferences
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        # Return default settings if not set
+        default_settings = {
+            "anomaly_alerts": True,
+            "pattern_insights": True,
+            "weekly_summary": True,
+            "spending_warnings": True
+        }
+        return success_response(default_settings)
+
+    settings = {
+        "anomaly_alerts": user_pref.anomaly_alerts,
+        "pattern_insights": user_pref.pattern_insights,
+        "weekly_summary": user_pref.weekly_summary,
+        "spending_warnings": user_pref.spending_warnings
     }
-    return success_response(default_settings)
+
+    return success_response(settings)

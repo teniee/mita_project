@@ -280,6 +280,8 @@ async def get_live_budget_status(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Get real-time budget status"""
+    from app.db.models import Transaction
+
     now = datetime.utcnow()
 
     # Get today's plan
@@ -288,15 +290,26 @@ async def get_live_budget_status(
         DailyPlan.date == now.date()
     ).first()
 
+    # Calculate monthly spending from transactions
+    month_start = datetime(now.year, now.month, 1)
+    monthly_transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= month_start
+    ).all()
+
+    monthly_spent = sum(float(t.amount) for t in monthly_transactions)
+    monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
+    on_track = monthly_spent <= (monthly_budget * (now.day / 30.0)) if monthly_budget > 0 else True
+
     status_data = {
         "date": now.date().isoformat(),
         "daily_budget": float(today_plan.daily_budget) if today_plan and today_plan.daily_budget else 0.0,
         "spent_today": float(today_plan.spent) if today_plan and today_plan.spent else 0.0,
         "remaining_today": float(today_plan.daily_budget - today_plan.spent) if today_plan and today_plan.daily_budget and today_plan.spent else 0.0,
         "status": today_plan.status if today_plan else "neutral",
-        "monthly_budget": float(user.monthly_income) if user.monthly_income else 0.0,
-        "monthly_spent": 0.0,  # TODO: Calculate from transactions
-        "on_track": True
+        "monthly_budget": monthly_budget,
+        "monthly_spent": round(monthly_spent, 2),
+        "on_track": on_track
     }
 
     return success_response(status_data)
@@ -309,22 +322,65 @@ async def update_budget_automation_settings(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Update budget automation preferences"""
-    # TODO: Store in user preferences table
+    from app.db.models import UserPreference
+
+    # Get or create user preference record
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        user_pref = UserPreference(user_id=user.id)
+        db.add(user_pref)
+
+    # Update automation settings
+    if "auto_adapt_enabled" in settings:
+        user_pref.auto_adapt_enabled = settings["auto_adapt_enabled"]
+    if "redistribution_enabled" in settings:
+        user_pref.redistribution_enabled = settings["redistribution_enabled"]
+    if "ai_suggestions_enabled" in settings:
+        user_pref.ai_suggestions_enabled = settings["ai_suggestions_enabled"]
+    if "notification_threshold" in settings:
+        user_pref.notification_threshold = {"value": settings["notification_threshold"]}
+    if "budget_mode" in settings:
+        user_pref.budget_mode = settings["budget_mode"]
+
+    db.commit()
+
     return success_response({"updated": True, "settings": settings})
 
 
 @router.get("/automation_settings")
 async def get_budget_automation_settings(
     user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     """Get budget automation preferences"""
-    default_settings = {
-        "auto_adapt_enabled": True,
-        "redistribution_enabled": True,
-        "ai_suggestions_enabled": True,
-        "notification_threshold": 0.8
+    from app.db.models import UserPreference
+
+    # Query user preferences
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == user.id
+    ).first()
+
+    if not user_pref:
+        # Return default settings if not set
+        default_settings = {
+            "auto_adapt_enabled": True,
+            "redistribution_enabled": True,
+            "ai_suggestions_enabled": True,
+            "notification_threshold": 0.8
+        }
+        return success_response(default_settings)
+
+    settings = {
+        "auto_adapt_enabled": user_pref.auto_adapt_enabled,
+        "redistribution_enabled": user_pref.redistribution_enabled,
+        "ai_suggestions_enabled": user_pref.ai_suggestions_enabled,
+        "notification_threshold": user_pref.notification_threshold.get("value", 0.8) if user_pref.notification_threshold else 0.8
     }
-    return success_response(default_settings)
+
+    return success_response(settings)
 
 
 @router.post("/income_based_recommendations")

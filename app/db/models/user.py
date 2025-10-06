@@ -32,6 +32,10 @@ class User(Base):
     email_verification_token = Column(String, nullable=True)
     email_verification_expires = Column(DateTime(timezone=True), nullable=True)
     
+    # Additional fields for budget tracking
+    monthly_income = Column(Numeric, default=0)
+
     # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")
+    challenge_participations = relationship("ChallengeParticipation", back_populates="user")

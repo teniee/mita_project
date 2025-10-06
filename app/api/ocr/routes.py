@@ -9,6 +9,7 @@ from typing import Dict, Any
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -46,7 +47,23 @@ async def process_receipt_ocr(
         job_id = f"ocr_{user.id}_{int(datetime.now().timestamp())}"
 
         # Store result in database for status checking
-        # TODO: Create OCRJob model if doesn't exist
+        from app.db.models import OCRJob
+        ocr_job = OCRJob(
+            job_id=job_id,
+            user_id=user.id,
+            status="completed",
+            progress=100.0,
+            image_path=temp_path,
+            store_name=result.get("store", ""),
+            amount=result.get("amount", 0.0),
+            date=result.get("date", ""),
+            category_hint=result.get("category_hint", ""),
+            confidence=result.get("confidence", 0.0),
+            raw_result=result,
+            completed_at=datetime.utcnow()
+        )
+        db.add(ocr_job)
+        db.commit()
 
         return success_response({
             "job_id": job_id,
@@ -185,43 +202,46 @@ async def get_ocr_job_status(
     """
     Get status of OCR processing job.
     """
-    # TODO: Query OCRJob model from database
-    # For now, return mock status based on job_id pattern
+    from app.db.models import OCRJob
 
     try:
-        # Parse job_id to check if it's recent
-        if ocr_job_id.startswith("ocr_"):
-            parts = ocr_job_id.split("_")
-            if len(parts) >= 3:
-                timestamp = int(parts[2])
-                age_seconds = datetime.now().timestamp() - timestamp
+        # Query OCRJob from database
+        ocr_job = db.query(OCRJob).filter(
+            and_(
+                OCRJob.job_id == ocr_job_id,
+                OCRJob.user_id == user.id
+            )
+        ).first()
 
-                if age_seconds < 60:
-                    status = "processing"
-                    progress = min(100, int((age_seconds / 60) * 100))
-                else:
-                    status = "completed"
-                    progress = 100
-            else:
-                status = "unknown"
-                progress = 0
-        else:
-            status = "unknown"
-            progress = 0
+        if not ocr_job:
+            return success_response({
+                "job_id": ocr_job_id,
+                "status": "not_found",
+                "progress": 0,
+                "error": "Job not found or does not belong to user"
+            })
 
         return success_response({
             "job_id": ocr_job_id,
-            "status": status,
-            "progress": progress,
-            "created_at": None,
-            "completed_at": None if status != "completed" else datetime.utcnow().isoformat()
+            "status": ocr_job.status,
+            "progress": float(ocr_job.progress),
+            "created_at": ocr_job.created_at.isoformat() if ocr_job.created_at else None,
+            "completed_at": ocr_job.completed_at.isoformat() if ocr_job.completed_at else None,
+            "result": {
+                "store": ocr_job.store_name,
+                "amount": float(ocr_job.amount) if ocr_job.amount else 0.0,
+                "date": ocr_job.date,
+                "category_hint": ocr_job.category_hint,
+                "confidence": float(ocr_job.confidence) if ocr_job.confidence else 0.0
+            } if ocr_job.status == "completed" else None,
+            "error": ocr_job.error_message if ocr_job.status == "failed" else None
         })
 
     except Exception as e:
         logger.error(f"Status check failed: {e}")
         return success_response({
             "job_id": ocr_job_id,
-            "status": "unknown",
+            "status": "error",
             "progress": 0,
             "error": str(e)
         })

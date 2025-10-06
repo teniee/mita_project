@@ -15,6 +15,10 @@ from .transaction import Transaction
 from .user import User
 from .user_answer import UserAnswer
 from .user_profile import UserProfile
+from .challenge import Challenge, ChallengeParticipation
+from .ocr_job import OCRJob
+from .analytics_log import FeatureUsageLog, FeatureAccessLog, PaywallImpressionLog
+from .user_preference import UserPreference
 
 __all__ = [
     "Base",
@@ -33,4 +37,11 @@ __all__ = [
     "Habit",
     "BudgetAdvice",
     "AIAdviceTemplate",
+    "Challenge",
+    "ChallengeParticipation",
+    "OCRJob",
+    "FeatureUsageLog",
+    "FeatureAccessLog",
+    "PaywallImpressionLog",
+    "UserPreference",
 ]

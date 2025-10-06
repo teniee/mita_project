@@ -53,39 +53,49 @@ async def get_available_challenges(
     db: Session = Depends(get_db),
 ):
     """Get list of available challenges for user"""
-    # TODO: Connect to real challenge discovery service
-    available_challenges = [
-        {
-            "id": "savings_streak_7",
-            "name": "7-Day Savings Streak",
-            "description": "Stay under budget for 7 consecutive days",
-            "type": "streak",
-            "duration_days": 7,
-            "reward_points": 100,
-            "difficulty": "easy",
-            "participants": 1250
-        },
-        {
-            "id": "no_dining_out_30",
-            "name": "30-Day No Dining Out",
-            "description": "Avoid restaurant spending for 30 days",
-            "type": "category_restriction",
-            "duration_days": 30,
-            "reward_points": 500,
-            "difficulty": "hard",
-            "participants": 380
-        },
-        {
-            "id": "reduce_transport_15",
-            "name": "Reduce Transport Costs 15%",
-            "description": "Cut transportation spending by 15% this month",
-            "type": "category_reduction",
-            "duration_days": 30,
-            "reward_points": 250,
-            "difficulty": "medium",
-            "participants": 820
-        }
-    ]
+    from datetime import datetime
+    from app.db.models import Challenge, ChallengeParticipation
+    from sqlalchemy import and_, func
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Get all active challenges for this month
+    active_challenges = db.query(Challenge).filter(
+        and_(
+            Challenge.start_month <= current_month,
+            Challenge.end_month >= current_month
+        )
+    ).all()
+
+    available_challenges = []
+    for ch in active_challenges:
+        # Check if user already joined this challenge
+        joined = db.query(ChallengeParticipation).filter(
+            and_(
+                ChallengeParticipation.user_id == user.id,
+                ChallengeParticipation.challenge_id == ch.id,
+                ChallengeParticipation.month == current_month
+            )
+        ).first()
+
+        # Only include if not joined
+        if not joined:
+            # Count total participants
+            participants_count = db.query(func.count(ChallengeParticipation.id)).filter(
+                ChallengeParticipation.challenge_id == ch.id
+            ).scalar() or 0
+
+            available_challenges.append({
+                "id": ch.id,
+                "name": ch.name,
+                "description": ch.description,
+                "type": ch.type,
+                "duration_days": ch.duration_days,
+                "reward_points": ch.reward_points,
+                "difficulty": ch.difficulty,
+                "participants": participants_count
+            })
+
     return success_response(available_challenges)
 
 
@@ -95,14 +105,76 @@ async def get_challenge_stats(
     db: Session = Depends(get_db),
 ):
     """Get user's challenge statistics"""
-    # TODO: Query from database
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation, Challenge
+    from sqlalchemy import func
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Count completed challenges
+    total_completed = db.query(func.count(ChallengeParticipation.id)).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "completed"
+        )
+    ).scalar() or 0
+
+    # Count active challenges
+    active_count = db.query(func.count(ChallengeParticipation.id)).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "active"
+        )
+    ).scalar() or 0
+
+    # Get current streak (max streak from active challenges)
+    max_streak = db.query(func.max(ChallengeParticipation.current_streak)).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "active"
+        )
+    ).scalar() or 0
+
+    # Calculate total points earned
+    completed_participations = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "completed"
+        )
+    ).all()
+
+    total_points = 0
+    for cp in completed_participations:
+        challenge = db.query(Challenge).filter(Challenge.id == cp.challenge_id).first()
+        if challenge:
+            total_points += challenge.reward_points
+
+    # Count challenges completed this month
+    completed_this_month = db.query(func.count(ChallengeParticipation.id)).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "completed",
+            ChallengeParticipation.month == current_month
+        )
+    ).scalar() or 0
+
+    # Calculate success rate
+    total_participations = db.query(func.count(ChallengeParticipation.id)).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status.in_(["completed", "failed"])
+        )
+    ).scalar() or 0
+
+    success_rate = (total_completed / total_participations) if total_participations > 0 else 0.0
+
     stats = {
-        "total_challenges_completed": 0,
-        "active_challenges": 0,
-        "current_streak": 0,
-        "total_points_earned": 0,
-        "challenges_completed_this_month": 0,
-        "success_rate": 0.0,
+        "total_challenges_completed": total_completed,
+        "active_challenges": active_count,
+        "current_streak": max_streak,
+        "total_points_earned": total_points,
+        "challenges_completed_this_month": completed_this_month,
+        "success_rate": round(success_rate, 2),
         "rank": None,
         "badges_earned": []
     }
@@ -116,18 +188,49 @@ async def get_challenge_progress(
     db: Session = Depends(get_db),
 ):
     """Get user's progress on specific challenge"""
-    # TODO: Query from database
-    progress = {
-        "challenge_id": challenge_id,
-        "status": "not_started",
-        "progress_percentage": 0.0,
-        "days_completed": 0,
-        "days_remaining": 0,
-        "current_streak": 0,
-        "best_streak": 0,
-        "started_at": None,
-        "completed_at": None
-    }
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation, Challenge
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Query participation record
+    participation = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.challenge_id == challenge_id,
+            ChallengeParticipation.month == current_month
+        )
+    ).first()
+
+    if not participation:
+        progress = {
+            "challenge_id": challenge_id,
+            "status": "not_started",
+            "progress_percentage": 0.0,
+            "days_completed": 0,
+            "days_remaining": 0,
+            "current_streak": 0,
+            "best_streak": 0,
+            "started_at": None,
+            "completed_at": None
+        }
+    else:
+        # Get challenge details for duration
+        challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+        days_remaining = challenge.duration_days - participation.days_completed if challenge else 0
+
+        progress = {
+            "challenge_id": challenge_id,
+            "status": participation.status,
+            "progress_percentage": float(participation.progress_percentage),
+            "days_completed": participation.days_completed,
+            "days_remaining": max(0, days_remaining),
+            "current_streak": participation.current_streak,
+            "best_streak": participation.best_streak,
+            "started_at": participation.started_at.isoformat() if participation.started_at else None,
+            "completed_at": participation.completed_at.isoformat() if participation.completed_at else None
+        }
+
     return success_response(progress)
 
 
@@ -138,11 +241,54 @@ async def join_challenge(
     db: Session = Depends(get_db),
 ):
     """Join a challenge"""
-    # TODO: Create challenge participation record in database
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation, Challenge
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Check if challenge exists
+    challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+    if not challenge:
+        return success_response({
+            "joined": False,
+            "message": "Challenge not found"
+        })
+
+    # Check if already joined
+    existing = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.challenge_id == challenge_id,
+            ChallengeParticipation.month == current_month
+        )
+    ).first()
+
+    if existing:
+        return success_response({
+            "joined": False,
+            "message": "Already joined this challenge"
+        })
+
+    # Create participation record
+    participation = ChallengeParticipation(
+        user_id=user.id,
+        challenge_id=challenge_id,
+        month=current_month,
+        status="active",
+        progress_percentage=0,
+        days_completed=0,
+        current_streak=0,
+        best_streak=0,
+        started_at=datetime.utcnow()
+    )
+
+    db.add(participation)
+    db.commit()
+
     result = {
         "joined": True,
         "challenge_id": challenge_id,
-        "started_at": "2025-10-06T00:00:00Z",
+        "started_at": participation.started_at.isoformat(),
         "message": "Successfully joined challenge!"
     }
     return success_response(result)
@@ -155,7 +301,30 @@ async def leave_challenge(
     db: Session = Depends(get_db),
 ):
     """Leave a challenge"""
-    # TODO: Update challenge participation record
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Find participation record
+    participation = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.challenge_id == challenge_id,
+            ChallengeParticipation.month == current_month
+        )
+    ).first()
+
+    if not participation:
+        return success_response({
+            "left": False,
+            "message": "You are not participating in this challenge"
+        })
+
+    # Update status to abandoned
+    participation.status = "abandoned"
+    db.commit()
+
     result = {
         "left": True,
         "challenge_id": challenge_id,
@@ -172,11 +341,51 @@ async def update_challenge_progress(
     db: Session = Depends(get_db),
 ):
     """Update progress on a challenge"""
-    # TODO: Update challenge progress in database
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation
+
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Find participation record
+    participation = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.challenge_id == challenge_id,
+            ChallengeParticipation.month == current_month
+        )
+    ).first()
+
+    if not participation:
+        return success_response({
+            "updated": False,
+            "message": "You are not participating in this challenge"
+        })
+
+    # Update progress fields
+    if "days_completed" in progress_data:
+        participation.days_completed = progress_data["days_completed"]
+    if "current_streak" in progress_data:
+        participation.current_streak = progress_data["current_streak"]
+        participation.best_streak = max(participation.best_streak, progress_data["current_streak"])
+    if "progress_percentage" in progress_data:
+        participation.progress_percentage = progress_data["progress_percentage"]
+    if "status" in progress_data:
+        participation.status = progress_data["status"]
+        if progress_data["status"] == "completed":
+            participation.completed_at = datetime.utcnow()
+
+    participation.last_updated = datetime.utcnow()
+    db.commit()
+
     result = {
         "updated": True,
         "challenge_id": challenge_id,
-        "new_progress": progress_data
+        "new_progress": {
+            "days_completed": participation.days_completed,
+            "current_streak": participation.current_streak,
+            "progress_percentage": participation.progress_percentage,
+            "status": participation.status
+        }
     }
     return success_response(result)
 
@@ -187,8 +396,35 @@ async def get_active_challenges(
     db: Session = Depends(get_db),
 ):
     """Get user's active challenges"""
-    # TODO: Query from database
+    from datetime import datetime
+    from app.db.models import ChallengeParticipation, Challenge
+
+    # Query active participations
+    participations = db.query(ChallengeParticipation).filter(
+        and_(
+            ChallengeParticipation.user_id == user.id,
+            ChallengeParticipation.status == "active"
+        )
+    ).all()
+
     active_challenges: List[Dict[str, Any]] = []
+    for p in participations:
+        challenge = db.query(Challenge).filter(Challenge.id == p.challenge_id).first()
+        if challenge:
+            active_challenges.append({
+                "id": challenge.id,
+                "name": challenge.name,
+                "description": challenge.description,
+                "type": challenge.type,
+                "duration_days": challenge.duration_days,
+                "reward_points": challenge.reward_points,
+                "difficulty": challenge.difficulty,
+                "progress_percentage": float(p.progress_percentage),
+                "days_completed": p.days_completed,
+                "current_streak": p.current_streak,
+                "started_at": p.started_at.isoformat() if p.started_at else None
+            })
+
     return success_response(active_challenges)
 
 
@@ -199,15 +435,25 @@ async def get_challenge_details(
     db: Session = Depends(get_db),
 ):
     """Get detailed information about a specific challenge"""
-    # TODO: Query from database
+    from app.db.models import Challenge
+
+    challenge_obj = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+
+    if not challenge_obj:
+        return success_response({
+            "error": "Challenge not found"
+        })
+
     challenge = {
-        "id": challenge_id,
-        "name": "Challenge Name",
-        "description": "Challenge description",
-        "type": "streak",
-        "duration_days": 7,
-        "reward_points": 100,
-        "difficulty": "easy",
+        "id": challenge_obj.id,
+        "name": challenge_obj.name,
+        "description": challenge_obj.description,
+        "type": challenge_obj.type,
+        "duration_days": challenge_obj.duration_days,
+        "reward_points": challenge_obj.reward_points,
+        "difficulty": challenge_obj.difficulty,
+        "start_month": challenge_obj.start_month,
+        "end_month": challenge_obj.end_month,
         "rules": [],
         "tips": []
     }
@@ -220,11 +466,41 @@ async def get_challenge_leaderboard(
     db: Session = Depends(get_db),
 ):
     """Get challenge leaderboard"""
-    # TODO: Query from database
+    from app.db.models import ChallengeParticipation, Challenge
+    from sqlalchemy import func, desc
+
+    # Count completed challenges per user
+    leaderboard_query = db.query(
+        ChallengeParticipation.user_id,
+        func.count(ChallengeParticipation.id).label('completed_count')
+    ).filter(
+        ChallengeParticipation.status == "completed"
+    ).group_by(
+        ChallengeParticipation.user_id
+    ).order_by(
+        desc('completed_count')
+    ).limit(10).all()
+
+    top_users = []
+    user_rank = None
+    for idx, (uid, count) in enumerate(leaderboard_query, 1):
+        top_users.append({
+            "rank": idx,
+            "user_id": str(uid),
+            "completed_challenges": count
+        })
+        if uid == user.id:
+            user_rank = idx
+
+    # Total participants
+    total_participants = db.query(
+        func.count(func.distinct(ChallengeParticipation.user_id))
+    ).scalar() or 0
+
     leaderboard = {
-        "top_users": [],
-        "user_rank": None,
-        "total_participants": 0,
+        "top_users": top_users,
+        "user_rank": user_rank,
+        "total_participants": total_participants,
         "period": "all_time"
     }
     return success_response(leaderboard)
