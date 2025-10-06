@@ -16,7 +16,7 @@ from app.core.session import get_db
 from app.db.models.user import User
 from app.utils.response_wrapper import success_response
 from app.ocr.ocr_receipt_service import OCRReceiptService
-from app.categorization.receipt_categorization_service import categorize_receipt
+from app.categorization.receipt_categorization_service import ReceiptCategorizationService
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,8 @@ async def categorize_receipt_data(
         items = data.get("items", [])
 
         # Use REAL categorization service
-        category = categorize_receipt(merchant, amount, items)
+        categorization_service = ReceiptCategorizationService()
+        category = categorization_service.categorize(merchant, amount, items)
 
         return success_response({
             "category": category,

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.api.cohort.schemas import CohortOut, DriftOut, DriftRequest, ProfileRequest
 from app.api.dependencies import get_current_user
 from app.services.cohort_service import assign_user_cohort, get_user_drift
 from app.utils.response_wrapper import success_response
-from sqlalchemy.orm import Session
 from app.core.session import get_db
+from app.db.models.user import User
 
 router = APIRouter(prefix="/cohort", tags=["cohort"])
 

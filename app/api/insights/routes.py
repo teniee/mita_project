@@ -6,6 +6,7 @@ import logging
 from app.api.dependencies import get_current_user, require_premium_user
 from app.core.session import get_db
 from app.db.models import BudgetAdvice
+from app.db.models.user import User
 from app.utils.response_wrapper import success_response
 
 from .schemas import AdviceOut

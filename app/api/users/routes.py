@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.api.users.schemas import UserProfileOut, UserUpdateIn
 from app.core.session import get_db
+from app.db.models.user import User
 from app.services.users_service import update_user_profile
 from app.utils.response_wrapper import success_response
 

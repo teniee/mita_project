@@ -17,10 +17,13 @@ from app.api.budget.services import fetch_remaining_budget  # isort:skip
 from app.api.budget.services import fetch_spent_by_category  # isort:skip
 
 # Import real services
-from app.services.core.behavior.behavioral_budget_allocator import allocate_behavioral_budget
-from app.services.core.engine.budget_auto_adapter import adapt_budget_automatically
-from app.services.core.engine.budget_suggestion_engine import generate_budget_suggestions
-from app.services.core.engine.budget_mode_selector import select_optimal_budget_mode
+from app.services.core.behavior.behavioral_budget_allocator import (
+    get_behavioral_allocation,
+    allocate_behavioral_budget
+)
+from app.services.core.engine.budget_auto_adapter import adapt_category_weights
+from app.services.core.engine.budget_suggestion_engine import suggest_budget_adjustments
+from app.services.core.engine.budget_mode_selector import resolve_budget_mode
 
 
 router = APIRouter(prefix="/budget", tags=["budget"])
