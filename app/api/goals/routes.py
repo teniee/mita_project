@@ -117,3 +117,52 @@ def delete_goal(
     db.delete(goal)
     db.commit()
     return success_response({"status": "deleted"})
+
+
+@router.get("/income_based_suggestions")
+def get_income_based_suggestions(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """Get goal suggestions based on user's income level"""
+    monthly_income = user.monthly_income or 3000.0
+
+    # Calculate suggested goals based on income
+    suggestions = []
+
+    # Emergency fund
+    suggestions.append({
+        "type": "emergency_fund",
+        "title": "Build Emergency Fund",
+        "target_amount": monthly_income * 6,
+        "monthly_contribution": monthly_income * 0.10,
+        "priority": "high",
+        "description": f"Save {int(monthly_income * 6)} for 6 months of expenses"
+    })
+
+    # Savings goal
+    suggestions.append({
+        "type": "savings",
+        "title": "Monthly Savings Goal",
+        "target_amount": monthly_income * 0.20,
+        "monthly_contribution": monthly_income * 0.20,
+        "priority": "high",
+        "description": "Save 20% of your monthly income"
+    })
+
+    # Vacation fund
+    if monthly_income > 2000:
+        suggestions.append({
+            "type": "vacation",
+            "title": "Vacation Fund",
+            "target_amount": monthly_income * 2,
+            "monthly_contribution": monthly_income * 0.05,
+            "priority": "medium",
+            "description": "Save for a well-deserved vacation"
+        })
+
+    return success_response({
+        "suggestions": suggestions,
+        "monthly_income": float(monthly_income),
+        "recommended_savings_rate": 0.20
+    })

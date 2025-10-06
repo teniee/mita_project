@@ -2801,3 +2801,262 @@ async def delete_account(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete account"
         )
+
+
+# ============================================================================
+# PASSWORD RESET ENDPOINTS - Mobile App Integration
+# ============================================================================
+
+@router.post("/forgot-password", summary="Initiate password reset")
+@handle_auth_errors
+async def forgot_password(
+    request: Request,
+    email: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Initiate password reset process by sending reset token to user's email.
+    """
+    try:
+        validate_email(email)
+        
+        # Find user by email
+        from app.db.models.user import User
+        from sqlalchemy import select
+        
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            # Don't reveal if email exists - security best practice
+            return success_response({
+                "message": "If the email exists, a password reset link has been sent.",
+                "email": email
+            })
+        
+        # Generate reset token
+        from app.services.auth_jwt_service import generate_password_reset_token
+        reset_token = generate_password_reset_token(user.id)
+        
+        # Store token in database
+        from datetime import timedelta
+        user.password_reset_token = reset_token
+        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        user.password_reset_attempts = 0
+        
+        await db.commit()
+        
+        # Send reset email
+        try:
+            from app.services.email_service import send_password_reset_email
+            await send_password_reset_email(user.email, reset_token, user.name or "User")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {e}")
+            # Don't fail the request if email fails
+        
+        log_security_event("password_reset_initiated", {
+            "user_id": str(user.id),
+            "email": email
+        }, request)
+        
+        return success_response({
+            "message": "If the email exists, a password reset link has been sent.",
+            "email": email
+        })
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset initiation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to initiate password reset"
+        )
+
+
+@router.post("/verify-reset-token", summary="Verify password reset token")
+@handle_auth_errors
+async def verify_reset_token(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify if password reset token is valid and not expired.
+    """
+    try:
+        from app.services.auth_jwt_service import verify_password_reset_token
+        
+        # Verify token and get user_id
+        user_id = verify_password_reset_token(token)
+        
+        if not user_id:
+            raise ValidationError(
+                "Invalid or expired reset token",
+                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+            )
+        
+        # Check if token exists in database
+        from app.db.models.user import User
+        from sqlalchemy import select
+        
+        result = await db.execute(select(User).where(User.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise ResourceNotFoundError("User not found")
+        
+        # Check if token matches and not expired
+        if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
+            raise ValidationError(
+                "Invalid reset token",
+                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+            )
+        
+        if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
+            if user.password_reset_expires < datetime.utcnow():
+                raise ValidationError(
+                    "Reset token has expired",
+                    ErrorCode.AUTHENTICATION_TOKEN_EXPIRED
+                )
+        
+        return success_response({
+            "valid": True,
+            "message": "Reset token is valid",
+            "user_id": user_id
+        })
+        
+    except (ValidationError, ResourceNotFoundError):
+        raise
+    except Exception as e:
+        logger.error(f"Token verification failed: {e}")
+        return success_response({
+            "valid": False,
+            "message": "Invalid or expired token"
+        })
+
+
+@router.post("/reset-password", summary="Reset password with token")
+@handle_auth_errors
+async def reset_password(
+    request: Request,
+    token: str,
+    new_password: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Reset user password using valid reset token.
+    """
+    try:
+        # Validate new password
+        validate_password(new_password)
+        
+        # Verify token
+        from app.services.auth_jwt_service import verify_password_reset_token
+        user_id = verify_password_reset_token(token)
+        
+        if not user_id:
+            raise ValidationError(
+                "Invalid or expired reset token",
+                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+            )
+        
+        # Get user
+        from app.db.models.user import User
+        from sqlalchemy import select
+        
+        result = await db.execute(select(User).where(User.id == int(user_id)))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise ResourceNotFoundError("User not found")
+        
+        # Verify token matches
+        if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
+            raise ValidationError(
+                "Invalid reset token",
+                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+            )
+        
+        # Check expiration
+        if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
+            if user.password_reset_expires < datetime.utcnow():
+                raise ValidationError(
+                    "Reset token has expired",
+                    ErrorCode.AUTHENTICATION_TOKEN_EXPIRED
+                )
+        
+        # Hash new password
+        hashed_password = await hash_password_async(new_password)
+        
+        # Update password and clear reset token
+        user.password = hashed_password
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        user.password_reset_attempts = 0
+        
+        await db.commit()
+        
+        # Revoke all existing tokens for security
+        try:
+            from app.services.auth_jwt_service import revoke_user_tokens
+            await revoke_user_tokens(str(user.id), "password_reset")
+        except Exception as e:
+            logger.warning(f"Failed to revoke tokens after password reset: {e}")
+        
+        log_security_event("password_reset_completed", {
+            "user_id": str(user.id),
+            "email": user.email
+        }, request)
+        
+        return success_response({
+            "message": "Password has been reset successfully. Please login with your new password.",
+            "success": True
+        })
+        
+    except (ValidationError, ResourceNotFoundError):
+        raise
+    except Exception as e:
+        logger.error(f"Password reset failed: {e}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password"
+        )
+
+
+@router.post("/google", summary="Google OAuth authentication")
+@handle_auth_errors
+async def google_auth(
+    request: Request,
+    google_data: GoogleAuthIn,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Authenticate user with Google OAuth token.
+    """
+    try:
+        # Use existing Google authentication service
+        result = await authenticate_google(google_data, db)
+        
+        if not result:
+            raise AuthenticationError(
+                "Google authentication failed",
+                ErrorCode.AUTHENTICATION_GOOGLE_FAILED
+            )
+        
+        log_security_event("google_auth_success", {
+            "email": google_data.email if hasattr(google_data, 'email') else None
+        }, request)
+        
+        return success_response(result)
+        
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        logger.error(f"Google authentication failed: {e}")
+        raise AuthenticationError(
+            "Google authentication failed",
+            ErrorCode.AUTHENTICATION_GOOGLE_FAILED,
+            details={"error": str(e)}
+        )

@@ -53,6 +53,7 @@ from app.api.insights.routes import router as insights_router
 from app.api.mood.routes import router as mood_router
 from app.api.notifications.routes import router as notifications_router
 from app.api.onboarding.routes import router as onboarding_router
+from app.api.ocr.routes import router as ocr_router
 from app.api.plan.routes import router as plan_router
 from app.api.referral.routes import router as referral_router
 from app.api.spend.routes import router as spend_router
@@ -671,6 +672,7 @@ private_routers_list = [
     (mood_router, "/api", ["Mood"]),
     (referral_router, "/api", ["Referrals"]),
     (onboarding_router, "/api", ["Onboarding"]),
+    (ocr_router, "/api", ["OCR"]),
     (cohort_router, "/api", ["Cohorts"]),
     (cluster_router, "/api", ["Clusters"]),
     (checkpoint_router, "/api", ["Checkpoints"]),

@@ -102,3 +102,29 @@ async def income_classification(
             "peer_group": {},
             "recommendations": ["Continue tracking expenses for income classification"]
         })
+
+
+@router.get("/peer_comparison")
+async def get_peer_comparison(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get peer comparison data based on user's cohort"""
+    from app.db.models.transaction import Transaction
+    from sqlalchemy import func
+
+    # Get user's monthly spending
+    current_month_spending = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user.id
+    ).scalar() or 0.0
+
+    # Mock peer data (would calculate from cohort in production)
+    return success_response({
+        "your_spending": float(current_month_spending),
+        "peer_average": float(current_month_spending * 1.15),
+        "peer_median": float(current_month_spending * 1.05),
+        "percentile": 45,
+        "comparison": "below_average",
+        "savings_potential": float(current_month_spending * 0.10),
+        "peer_count": 150
+    })

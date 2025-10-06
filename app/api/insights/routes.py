@@ -103,3 +103,68 @@ async def insight_history(
         logger.error(f"Error fetching insight history for user {user.id}: {e}")
         # Return empty array instead of 500 error
         return success_response([])
+
+
+@router.get("/income_based_tips")
+async def get_income_based_tips(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get financial tips based on user's income level"""
+    monthly_income = user.monthly_income or 3000.0
+
+    tips = []
+
+    # Income-specific tips
+    if monthly_income < 2000:
+        tips.extend([
+            {
+                "category": "budgeting",
+                "tip": "Focus on the 50/30/20 rule: 50% needs, 30% wants, 20% savings",
+                "priority": "high"
+            },
+            {
+                "category": "savings",
+                "tip": "Start with a $500 emergency fund, then build to $1000",
+                "priority": "high"
+            }
+        ])
+    elif monthly_income < 5000:
+        tips.extend([
+            {
+                "category": "savings",
+                "tip": "Aim to save at least 15-20% of your income",
+                "priority": "high"
+            },
+            {
+                "category": "investment",
+                "tip": "Consider starting a retirement account with employer matching",
+                "priority": "medium"
+            }
+        ])
+    else:
+        tips.extend([
+            {
+                "category": "investment",
+                "tip": "Maximize retirement contributions and consider index funds",
+                "priority": "high"
+            },
+            {
+                "category": "tax",
+                "tip": "Explore tax-advantaged investment accounts",
+                "priority": "medium"
+            }
+        ])
+
+    # Universal tips
+    tips.append({
+        "category": "tracking",
+        "tip": "Track every expense to identify spending patterns",
+        "priority": "high"
+    })
+
+    return success_response({
+        "tips": tips,
+        "monthly_income": float(monthly_income),
+        "personalized": True
+    })

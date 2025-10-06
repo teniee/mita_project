@@ -78,3 +78,116 @@ async def send_test_notification(
         pass
 
     return success_response({"sent": True})
+
+
+# NEW ENDPOINTS for mobile app device management
+
+@router.post("/register-device")
+async def register_device(
+    device_data: dict,
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Register device for push notifications"""
+    device_id = device_data.get("device_id")
+    device_token = device_data.get("token")
+    platform = device_data.get("platform", "fcm")
+    device_name = device_data.get("device_name")
+
+    # Check if device already registered
+    existing = db.query(PushToken).filter(
+        PushToken.user_id == user.id,
+        PushToken.token == device_token
+    ).first()
+
+    if existing:
+        # Update existing
+        existing.platform = platform
+        db.commit()
+        return success_response({
+            "device_id": device_id,
+            "status": "updated",
+            "token_id": str(existing.id)
+        })
+
+    # Create new device registration
+    token = PushToken(
+        user_id=user.id,
+        token=device_token,
+        platform=platform
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
+
+    return success_response({
+        "device_id": device_id,
+        "status": "registered",
+        "token_id": str(token.id)
+    })
+
+
+@router.post("/unregister-device")
+async def unregister_device(
+    device_data: dict,
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Unregister device from push notifications"""
+    device_token = device_data.get("token")
+
+    if device_token:
+        db.query(PushToken).filter(
+            PushToken.user_id == user.id,
+            PushToken.token == device_token
+        ).delete()
+        db.commit()
+
+    return success_response({
+        "status": "unregistered",
+        "token": device_token
+    })
+
+
+@router.post("/update-device")
+async def update_device(
+    device_data: dict,
+    db: Session = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Update device registration info"""
+    old_token = device_data.get("old_token")
+    new_token = device_data.get("new_token")
+    platform = device_data.get("platform")
+
+    if old_token and new_token:
+        # Find and update existing token
+        existing = db.query(PushToken).filter(
+            PushToken.user_id == user.id,
+            PushToken.token == old_token
+        ).first()
+
+        if existing:
+            existing.token = new_token
+            if platform:
+                existing.platform = platform
+            db.commit()
+            return success_response({
+                "status": "updated",
+                "token_id": str(existing.id)
+            })
+
+    # If not found, create new
+    token = PushToken(
+        user_id=user.id,
+        token=new_token,
+        platform=platform or "fcm"
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
+
+    return success_response({
+        "status": "created",
+        "token_id": str(token.id)
+    })
