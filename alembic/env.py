@@ -25,8 +25,13 @@ fileConfig(config.config_file_name)
 # Set your target metadata
 target_metadata = Base.metadata
 
-# Get the database URL and replace async driver with sync if needed
-url = config.get_main_option("sqlalchemy.url")
+# Get the database URL - try environment variable first, then config
+url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+if not url:
+    raise ValueError(
+        "No database URL found. Set DATABASE_URL environment variable or "
+        "configure sqlalchemy.url in alembic.ini"
+    )
 sync_url = make_url(url)
 if sync_url.drivername.endswith("+asyncpg"):
     sync_url = sync_url.set(drivername="postgresql+psycopg2")
@@ -47,9 +52,10 @@ def run_migrations_offline():
 
 def run_migrations_online():
     """Run migrations in 'online' mode."""
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
+    # Create engine directly with our URL (already validated above)
+    from sqlalchemy import create_engine
+    connectable = create_engine(
+        str(sync_url),
         poolclass=pool.NullPool,
     )
 
