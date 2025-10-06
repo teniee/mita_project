@@ -301,13 +301,34 @@ async def get_transactions_by_date(
 ):
     """Get transactions filtered by date range"""
     from datetime import datetime
+    from sqlalchemy import and_
 
     # Parse dates
     start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
     end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else None
 
-    # TODO: Query transactions with date filter
-    transactions = []
+    # Query transactions with date filter using REAL database query
+    from app.db.models.transaction import Transaction
+    query = db.query(Transaction).filter(Transaction.user_id == user.id)
+
+    if start:
+        query = query.filter(Transaction.spent_at >= start)
+    if end:
+        query = query.filter(Transaction.spent_at <= end)
+
+    txns = query.order_by(Transaction.spent_at.desc()).all()
+
+    transactions = [
+        {
+            "id": txn.id,
+            "amount": float(txn.amount),
+            "category": txn.category,
+            "description": txn.description,
+            "spent_at": txn.spent_at.isoformat() if txn.spent_at else None,
+            "created_at": txn.created_at.isoformat() if txn.created_at else None
+        }
+        for txn in txns
+    ]
 
     return success_response({
         "transactions": transactions,
@@ -324,15 +345,32 @@ async def get_merchant_suggestions(
     db: Session = db_dep,
 ):
     """Get merchant name suggestions based on user's history"""
-    # TODO: Query user's transaction history for merchant autocomplete
-    suggestions = []
+    from app.db.models.transaction import Transaction
+    from sqlalchemy import func
+
+    # Query user's transaction history for merchant autocomplete
+    query_filter = db.query(
+        Transaction.description,
+        Transaction.category,
+        func.count(Transaction.id).label('frequency')
+    ).filter(Transaction.user_id == user.id)
 
     if query:
-        # Mock suggestions based on query
-        suggestions = [
-            {"name": f"{query} Store", "category": "shopping", "frequency": 15},
-            {"name": f"{query} Market", "category": "groceries", "frequency": 8},
-        ]
+        query_filter = query_filter.filter(Transaction.description.ilike(f'%{query}%'))
+
+    merchants = query_filter.group_by(
+        Transaction.description,
+        Transaction.category
+    ).order_by(func.count(Transaction.id).desc()).limit(10).all()
+
+    suggestions = [
+        {
+            "name": merchant.description,
+            "category": merchant.category,
+            "frequency": merchant.frequency
+        }
+        for merchant in merchants
+    ]
 
     return success_response({
         "suggestions": suggestions,
@@ -347,12 +385,47 @@ async def upload_receipt(
     db: Session = db_dep,
 ):
     """Upload and process receipt image"""
-    # TODO: Process receipt with OCR service
-    return success_response({
-        "receipt_id": f"rcpt_{datetime.now().timestamp()}",
-        "status": "processing",
-        "message": "Receipt uploaded successfully"
-    })
+    import tempfile
+    import os
+
+    # Save uploaded file temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
+        content = await file.read()
+        temp.write(content)
+        temp_path = temp.name
+
+    try:
+        # Process receipt with REAL OCR service
+        ocr_service = OCRReceiptService()
+        result = ocr_service.process_image(temp_path)
+
+        receipt_id = f"rcpt_{datetime.now().timestamp()}"
+
+        return success_response({
+            "receipt_id": receipt_id,
+            "status": "completed",
+            "message": "Receipt processed successfully",
+            "data": {
+                "store": result.get("store", ""),
+                "amount": result.get("amount", 0.0),
+                "date": result.get("date", ""),
+                "category_hint": result.get("category_hint", "")
+            }
+        })
+    except Exception as e:
+        logger.error(f"Receipt processing failed: {e}")
+        return success_response({
+            "receipt_id": f"rcpt_{datetime.now().timestamp()}",
+            "status": "failed",
+            "message": f"Receipt processing failed: {str(e)}"
+        })
+    finally:
+        # Cleanup
+        try:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except Exception:
+            pass
 
 
 @router.get("/receipt/{receipt_id}/image")
