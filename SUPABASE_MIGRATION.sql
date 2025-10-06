@@ -144,8 +144,22 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 
 CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
 
+-- 8. Habit Completions table
+CREATE TABLE IF NOT EXISTS habit_completions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    habit_id UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_habit_completions_habit ON habit_completions(habit_id);
+CREATE INDEX IF NOT EXISTS idx_habit_completions_user ON habit_completions(user_id);
+CREATE INDEX IF NOT EXISTS idx_habit_completions_date ON habit_completions(completed_at DESC);
+
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE 'Migration completed successfully! All 7 new tables created.';
+    RAISE NOTICE 'Migration completed successfully! All 8 new tables created.';
 END $$;
