@@ -288,3 +288,164 @@ async def process_receipt(
             status_code=500,
             detail=f"Failed to process receipt: {str(e)}"
         )
+
+
+# NEW ENDPOINTS for mobile app integration
+
+@router.get("/by-date")
+async def get_transactions_by_date(
+    start_date: str = None,
+    end_date: str = None,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Get transactions filtered by date range"""
+    from datetime import datetime
+
+    # Parse dates
+    start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
+    end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else None
+
+    # TODO: Query transactions with date filter
+    transactions = []
+
+    return success_response({
+        "transactions": transactions,
+        "start_date": start_date,
+        "end_date": end_date,
+        "count": len(transactions)
+    })
+
+
+@router.get("/merchants/suggestions")
+async def get_merchant_suggestions(
+    query: str = None,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Get merchant name suggestions based on user's history"""
+    # TODO: Query user's transaction history for merchant autocomplete
+    suggestions = []
+
+    if query:
+        # Mock suggestions based on query
+        suggestions = [
+            {"name": f"{query} Store", "category": "shopping", "frequency": 15},
+            {"name": f"{query} Market", "category": "groceries", "frequency": 8},
+        ]
+
+    return success_response({
+        "suggestions": suggestions,
+        "query": query
+    })
+
+
+@router.post("/receipt")
+async def upload_receipt(
+    file: UploadFile = File(...),
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Upload and process receipt image"""
+    # TODO: Process receipt with OCR service
+    return success_response({
+        "receipt_id": f"rcpt_{datetime.now().timestamp()}",
+        "status": "processing",
+        "message": "Receipt uploaded successfully"
+    })
+
+
+@router.get("/receipt/{receipt_id}/image")
+async def get_receipt_image(
+    receipt_id: str,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Get receipt image URL"""
+    # TODO: Fetch receipt image from storage
+    return success_response({
+        "receipt_id": receipt_id,
+        "image_url": f"https://storage.example.com/receipts/{receipt_id}.jpg",
+        "thumbnail_url": f"https://storage.example.com/receipts/{receipt_id}_thumb.jpg"
+    })
+
+
+@router.post("/receipt/advanced")
+async def process_receipt_advanced(
+    file: UploadFile = File(...),
+    options: dict = {},
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Advanced receipt processing with OCR and categorization"""
+    # TODO: Use advanced OCR with item-level extraction
+    return success_response({
+        "receipt_id": f"rcpt_{datetime.now().timestamp()}",
+        "status": "processing",
+        "items": [],
+        "total": 0.0,
+        "merchant": "",
+        "date": "",
+        "confidence": 0.0
+    })
+
+
+@router.post("/receipt/batch")
+async def process_receipts_batch(
+    files: List[UploadFile] = File(...),
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Process multiple receipts in batch"""
+    # TODO: Queue batch receipt processing
+    receipt_ids = [f"rcpt_{datetime.now().timestamp()}_{i}" for i in range(len(files))]
+
+    return success_response({
+        "job_id": f"batch_{datetime.now().timestamp()}",
+        "receipt_count": len(files),
+        "receipt_ids": receipt_ids,
+        "status": "queued"
+    })
+
+
+@router.get("/receipt/status/{job_id}")
+async def get_receipt_processing_status(
+    job_id: str,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Get status of receipt processing job"""
+    # TODO: Check processing status
+    return success_response({
+        "job_id": job_id,
+        "status": "completed",
+        "progress": 100,
+        "results": [],
+        "errors": []
+    })
+
+
+@router.post("/receipt/validate")
+async def validate_receipt_data(
+    data: dict,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Validate extracted receipt data before saving"""
+    total = data.get("total", 0.0)
+    merchant = data.get("merchant", "")
+    items = data.get("items", [])
+
+    validation_errors = []
+
+    if total <= 0:
+        validation_errors.append("Total amount must be positive")
+
+    if not merchant:
+        validation_errors.append("Merchant name is required")
+
+    return success_response({
+        "valid": len(validation_errors) == 0,
+        "errors": validation_errors,
+        "warnings": []
+    })
