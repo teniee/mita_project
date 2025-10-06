@@ -36,6 +36,17 @@ sync_url = make_url(url)
 if sync_url.drivername.endswith("+asyncpg"):
     sync_url = sync_url.set(drivername="postgresql+psycopg2")
 
+# Remove Supabase-specific query parameters that psycopg2 doesn't support
+# psycopg2 uses sslmode instead of ssl, and doesn't support prepared_statement_cache_size
+if sync_url.query:
+    filtered_query = {}
+    for k, v in sync_url.query.items():
+        if k == 'ssl' and v == 'require':
+            filtered_query['sslmode'] = 'require'  # Convert to psycopg2 format
+        elif k not in ['prepared_statement_cache_size', 'ssl']:
+            filtered_query[k] = v
+    sync_url = sync_url.set(query=filtered_query)
+
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode."""
