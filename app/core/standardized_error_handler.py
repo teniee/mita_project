@@ -197,13 +197,25 @@ class ExternalServiceError(StandardizedAPIException):
 
 class RateLimitError(StandardizedAPIException):
     """Rate limiting errors"""
-    
+
     def __init__(self, message: str = "Rate limit exceeded", retry_after: int = 60, **kwargs):
         super().__init__(
-            message, 
-            ErrorCode.RATE_LIMIT_EXCEEDED, 
+            message,
+            ErrorCode.RATE_LIMIT_EXCEEDED,
             status.HTTP_429_TOO_MANY_REQUESTS,
             retry_after=retry_after,
+            **kwargs
+        )
+
+
+class InternalServerError(StandardizedAPIException):
+    """Internal server errors"""
+
+    def __init__(self, message: str = "Internal server error", **kwargs):
+        super().__init__(
+            message,
+            ErrorCode.SYSTEM_INTERNAL_ERROR,
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
             **kwargs
         )
 
