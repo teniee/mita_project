@@ -40,7 +40,30 @@ async def add_expense(
     today = date.today()
     # This could query user's daily expenses and check against limits
     
-    result = add_user_expense(expense_data)
+    # Note: expense_service expects AsyncSession but we have sync Session
+    # Use Transaction model instead for now (more complete implementation)
+    from app.db.models import Transaction
+    from datetime import datetime
+
+    # Create transaction record (expense tracking via Transaction model)
+    transaction = Transaction(
+        user_id=user.id,
+        amount=expense_data['amount'],
+        category=expense_data.get('action', 'expense'),
+        description=f"Expense: {expense_data.get('action', 'general')}",
+        spent_at=datetime.utcnow()
+    )
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+
+    result = {
+        "id": str(transaction.id),
+        "user_id": str(user.id),
+        "amount": float(transaction.amount),
+        "action": transaction.category,
+        "date": transaction.spent_at.date().isoformat()
+    }
     return success_response(result)
 
 
@@ -54,6 +77,30 @@ async def get_history(
     # Validate user access (already handled by get_current_user, but explicit check)
     if not user or not user.id:
         raise ValidationException("Invalid user session")
-    
-    result = get_user_expense_history(user.id)
+
+    # Query transactions (expenses) from database
+    from app.db.models import Transaction
+    from datetime import datetime, timedelta
+
+    # Get last 90 days of expenses
+    ninety_days_ago = datetime.utcnow() - timedelta(days=90)
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= ninety_days_ago
+    ).order_by(Transaction.spent_at.desc()).all()
+
+    result = {
+        "expenses": [
+            {
+                "id": str(t.id),
+                "user_id": str(user.id),
+                "amount": float(t.amount),
+                "action": t.category or "expense",
+                "date": t.spent_at.date().isoformat()
+            }
+            for t in transactions
+        ],
+        "total_count": len(transactions),
+        "period_days": 90
+    }
     return success_response(result)
