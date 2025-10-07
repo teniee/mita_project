@@ -371,16 +371,75 @@ async def get_behavioral_cluster(
     db: Session = Depends(get_db),
 ):
     """Get user's behavioral cluster classification"""
-    return success_response({
-        "cluster_id": "balanced_spender",
-        "cluster_name": "Balanced Spender",
-        "characteristics": [
-            "Consistent spending patterns",
-            "Good budget adherence",
-            "Moderate risk profile"
-        ],
-        "peer_count": 0
-    })
+    try:
+        from app.services.cluster_service import get_user_cluster_label
+        from app.db.models import User as UserModel
+
+        # Get cluster label for this user
+        cluster_label = get_user_cluster_label(str(user.id))
+
+        # Count peers in same cluster (users with similar spending patterns)
+        # This would require storing cluster assignments in DB
+        # For now, return the cluster classification
+
+        # Map cluster labels to readable descriptions
+        cluster_info = {
+            "impulsive_spender": {
+                "name": "Impulsive Spender",
+                "characteristics": [
+                    "Frequent unplanned purchases",
+                    "Variable spending patterns",
+                    "High discretionary spending"
+                ]
+            },
+            "balanced_spender": {
+                "name": "Balanced Spender",
+                "characteristics": [
+                    "Consistent spending patterns",
+                    "Good budget adherence",
+                    "Moderate risk profile"
+                ]
+            },
+            "conservative_saver": {
+                "name": "Conservative Saver",
+                "characteristics": [
+                    "Low discretionary spending",
+                    "High savings rate",
+                    "Planned purchases only"
+                ]
+            },
+            "lifestyle_spender": {
+                "name": "Lifestyle Spender",
+                "characteristics": [
+                    "High category-specific spending",
+                    "Regular entertainment expenses",
+                    "Premium preferences"
+                ]
+            }
+        }
+
+        info = cluster_info.get(cluster_label, cluster_info["balanced_spender"])
+
+        return success_response({
+            "cluster_id": cluster_label,
+            "cluster_name": info["name"],
+            "characteristics": info["characteristics"],
+            "peer_count": 0,  # Would need cluster assignments table
+            "note": "Cluster determined by spending behavior analysis"
+        })
+
+    except Exception as e:
+        # Fallback if clustering not trained yet
+        return success_response({
+            "cluster_id": "unclustered",
+            "cluster_name": "Analyzing...",
+            "characteristics": [
+                "Building your spending profile",
+                "More data needed for classification"
+            ],
+            "peer_count": 0,
+            "note": "Cluster analysis requires more transaction history"
+        })
 
 
 @router.patch("/preferences")
