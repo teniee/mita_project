@@ -1,11 +1,14 @@
 import 'dart:math';
 import '../models/budget_intelligence_models.dart';
+import 'country_profiles_service.dart';
 
 /// Enhanced income classification with smooth tier transitions and intelligent blending
 class EnhancedIncomeService {
   static final EnhancedIncomeService _instance = EnhancedIncomeService._internal();
   factory EnhancedIncomeService() => _instance;
   EnhancedIncomeService._internal();
+
+  final _countryProfilesService = CountryProfilesService();
 
   /// Transition zone width (percentage of threshold)
   static const double _transitionZoneWidth = 0.15; // 15% transition zone
@@ -157,18 +160,38 @@ class EnhancedIncomeService {
     );
   }
 
-  /// Get regional income data
+  /// Get regional income data from CountryProfilesService
   Future<RegionalIncomeData?> _getRegionalIncomeData(String? countryCode, String? stateCode) async {
     if (countryCode == null) return null;
-    
+
     try {
-      // Mock implementation - would integrate with real data sources
+      // Get real thresholds from CountryProfilesService
+      final thresholdsMap = _countryProfilesService.getIncomeThresholds(
+        countryCode,
+        stateCode: stateCode,
+      );
+
+      // Convert string keys to IncomeTier enum
+      final tierThresholds = <IncomeTier, double>{
+        IncomeTier.low: 0.0,
+        IncomeTier.lowerMiddle: _countryProfilesService.annualToMonthly(thresholdsMap['low'] ?? 36000.0),
+        IncomeTier.middle: _countryProfilesService.annualToMonthly(thresholdsMap['lower_middle'] ?? 57600.0),
+        IncomeTier.upperMiddle: _countryProfilesService.annualToMonthly(thresholdsMap['middle'] ?? 86400.0),
+        IncomeTier.high: _countryProfilesService.annualToMonthly(thresholdsMap['upper_middle'] ?? 144000.0),
+      };
+
+      // Calculate median income from thresholds
+      final medianIncome = tierThresholds[IncomeTier.middle] ?? 4800.0;
+
       return RegionalIncomeData(
         regionId: '${countryCode}_${stateCode ?? 'default'}',
-        regionName: countryCode,
-        tierThresholds: _getDefaultTierThresholds(),
-        medianIncome: 4800.0,
-        costOfLivingAdjustments: <String, dynamic>{},
+        regionName: _countryProfilesService.getCountryName(countryCode),
+        tierThresholds: tierThresholds,
+        medianIncome: medianIncome,
+        costOfLivingAdjustments: <String, dynamic>{
+          'currency': _countryProfilesService.getCurrency(countryCode),
+          'hasSubregions': _countryProfilesService.hasSubregions(countryCode),
+        },
         lastUpdated: DateTime.now(),
       );
     } catch (e) {

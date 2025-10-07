@@ -1,10 +1,13 @@
 import '../models/budget_intelligence_models.dart';
+import 'api_service.dart';
 
 /// Social comparison intelligence service for peer-based insights
 class SocialComparisonService {
   static final SocialComparisonService _instance = SocialComparisonService._internal();
   factory SocialComparisonService() => _instance;
   SocialComparisonService._internal();
+
+  final _apiService = ApiService();
 
   /// Generate social comparison insights
   Future<List<SocialComparisonInsight>> generateSocialInsights(
@@ -13,9 +16,18 @@ class SocialComparisonService {
     Map<String, dynamic> userMetrics,
   ) async {
     final insights = <SocialComparisonInsight>[];
-    
-    // Mock peer data (in production, this would come from anonymized user data)
-    final peerData = _generateMockPeerData(userProfile.incomeTier);
+
+    // Get real peer comparison data from backend
+    final peerComparisonData = await _apiService.getPeerComparison();
+
+    // Check if API returned valid data
+    if (peerComparisonData['error'] != null) {
+      // Fallback to estimated data if API is unavailable
+      final peerData = _generateFallbackPeerData(userProfile.incomeTier);
+      return _generateInsightsFromFallbackData(peerData, userMetrics);
+    }
+
+    final peerData = _extractPeerData(peerComparisonData);
     
     // Spending comparison
     final userSpending = (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
@@ -62,8 +74,47 @@ class SocialComparisonService {
     return insights;
   }
 
-  Map<String, double> _generateMockPeerData(IncomeTier incomeTier) {
-    // Mock peer averages based on income tier
+  /// Extract peer data from API response
+  Map<String, double> _extractPeerData(Map<String, dynamic> apiResponse) {
+    return {
+      'averageSpending': (apiResponse['peer_average'] as num?)?.toDouble() ?? 0.0,
+      'averageSavingsRate': (apiResponse['peer_savings_rate'] as num?)?.toDouble() ?? 0.15,
+      'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble() ?? 1000.0,
+    };
+  }
+
+  /// Generate fallback insights when API is unavailable
+  List<SocialComparisonInsight> _generateInsightsFromFallbackData(
+    Map<String, double> peerData,
+    Map<String, dynamic> userMetrics,
+  ) {
+    final insights = <SocialComparisonInsight>[];
+
+    final userSpending = (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
+    final peerAverageSpending = peerData['averageSpending']!;
+    final spendingPercentile = _calculatePercentile(userSpending, peerAverageSpending);
+
+    insights.add(SocialComparisonInsight(
+      insightId: 'spending_comparison_${DateTime.now().millisecondsSinceEpoch}',
+      insightType: 'spending_comparison',
+      category: 'overall_spending',
+      userValue: userSpending,
+      peerAverage: peerAverageSpending,
+      percentile: spendingPercentile,
+      comparisonText: _generateComparisonText('spending', spendingPercentile, userSpending, peerAverageSpending),
+      recommendation: _generateRecommendation('spending', spendingPercentile),
+      confidenceLevel: 0.6, // Lower confidence for fallback data
+      metadata: {
+        'sampleSize': peerData['sampleSize'],
+        'fallback': true,
+      },
+    ));
+
+    return insights;
+  }
+
+  Map<String, double> _generateFallbackPeerData(IncomeTier incomeTier) {
+    // Fallback peer averages based on income tier (used when API is unavailable)
     switch (incomeTier) {
       case IncomeTier.low:
         return {

@@ -290,11 +290,16 @@ class OCRService {
   /// Get merchant name suggestions based on OCR input
   Future<List<String>> getMerchantSuggestions(String partialName) async {
     try {
-      // This would call a backend endpoint for merchant suggestions
-      // For now, return mock suggestions
-      await _simulateProcessingDelay(200);
-      
-      final suggestions = [
+      // Call backend endpoint for merchant suggestions
+      if (partialName.trim().isEmpty) return [];
+
+      final suggestions = await _apiService.getMerchantSuggestions(partialName);
+      return suggestions;
+    } catch (e) {
+      logError('Error getting merchant suggestions: $e', tag: 'OCR_SERVICE');
+
+      // Fallback to local suggestions if API fails
+      final fallbackSuggestions = [
         'Walmart Supercenter',
         'Target Store',
         'Whole Foods Market',
@@ -303,14 +308,13 @@ class OCRService {
         'McDonald\'s',
         'Home Depot',
         'Best Buy',
-      ].where((name) => 
+        'Amazon',
+        'Costco',
+      ].where((name) =>
         name.toLowerCase().contains(partialName.toLowerCase())
       ).toList();
 
-      return suggestions.take(5).toList();
-    } catch (e) {
-      logError('Error getting merchant suggestions: $e', tag: 'OCR_SERVICE');
-      return [];
+      return fallbackSuggestions.take(5).toList();
     }
   }
 

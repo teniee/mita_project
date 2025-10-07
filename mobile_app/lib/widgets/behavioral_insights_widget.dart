@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/advanced_financial_engine.dart';
+import '../services/api_service.dart';
+import '../services/logging_service.dart';
 
 /// Behavioral Insights Widget
-/// 
+///
 /// Displays adaptive learning insights, spending pattern recognition,
 /// and personalized behavioral recommendations from the Advanced Financial Engine.
 class BehavioralInsightsWidget extends StatefulWidget {
@@ -23,17 +25,20 @@ class BehavioralInsightsWidget extends StatefulWidget {
   State<BehavioralInsightsWidget> createState() => _BehavioralInsightsWidgetState();
 }
 
-class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget> 
+class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
     with TickerProviderStateMixin {
 
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
+  final _apiService = ApiService();
+
   Map<String, dynamic>? _behavioralAnalysis;
   Map<String, dynamic>? _userProfile;
   int _selectedTab = 0;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -80,21 +85,54 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
 
   void _onDataUpdated() {
     if (mounted) {
-      setState(() {
-        // FUTURE FEATURE: Behavioral analysis backend integration
-        // This will be connected to behavioral analytics service in a future release
-        _behavioralAnalysis = null;
-        _userProfile = null;
-      });
+      _loadBehavioralData();
     }
   }
 
   void _loadInitialData() {
+    _loadBehavioralData();
+  }
+
+  Future<void> _loadBehavioralData() async {
+    if (_isLoading) return;
+
     setState(() {
-      // TODO: Connect to actual behavioral analysis when implemented
-      _behavioralAnalysis = null;
-      _userProfile = null;
+      _isLoading = true;
     });
+
+    try {
+      // Fetch behavioral insights from API
+      final behavioralInsights = await _apiService.getBehavioralInsights();
+
+      // Fetch user profile for personality profile
+      final userProfile = await _apiService.getUserProfile();
+
+      // Fetch spending pattern analysis
+      final spendingPatterns = await _apiService.getSpendingPatternAnalysis();
+
+      setState(() {
+        _behavioralAnalysis = {
+          'insights': behavioralInsights,
+          'spending_patterns': spendingPatterns,
+        };
+
+        _userProfile = userProfile['data'] ?? {};
+        _isLoading = false;
+      });
+
+      // Restart animations when new data loads
+      _fadeController.reset();
+      _slideController.reset();
+      _fadeController.forward();
+      _slideController.forward();
+    } catch (e) {
+      logError('Failed to load behavioral insights: $e', tag: 'BEHAVIORAL_WIDGET');
+      setState(() {
+        _behavioralAnalysis = null;
+        _userProfile = null;
+        _isLoading = false;
+      });
+    }
   }
 
   @override

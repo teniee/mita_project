@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/advanced_financial_engine.dart';
+import '../services/api_service.dart';
+import '../services/logging_service.dart';
 
 /// Intelligent Notifications Widget
 /// 
@@ -24,16 +26,19 @@ class IntelligentNotificationsWidget extends StatefulWidget {
   State<IntelligentNotificationsWidget> createState() => _IntelligentNotificationsWidgetState();
 }
 
-class _IntelligentNotificationsWidgetState extends State<IntelligentNotificationsWidget> 
+class _IntelligentNotificationsWidgetState extends State<IntelligentNotificationsWidget>
     with TickerProviderStateMixin {
-  
+
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
+  final _apiService = ApiService();
+
   List<Map<String, dynamic>> _notifications = [];
   bool _isExpanded = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -79,30 +84,61 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
 
   void _onNotificationsUpdated() {
     if (mounted) {
-      // FUTURE FEATURE: Intelligent notifications backend integration
-      // This will be connected to AI-powered notification service in a future release
-      final newNotifications = <Map<String, dynamic>>[];
+      _loadNotifications();
+    }
+  }
+
+  void _loadInitialNotifications() {
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Fetch notifications from API
+      final notificationsResponse = await _apiService.getNotifications();
+
+      // Convert to Map format expected by the widget
+      final newNotifications = notificationsResponse.map((notification) {
+        return {
+          'id': notification['id'] ?? '',
+          'type': notification['type'] ?? 'info',
+          'priority': notification['priority'] ?? 'low',
+          'title': notification['title'] ?? 'Notification',
+          'message': notification['message'] ?? '',
+          'timestamp': notification['timestamp'] ?? DateTime.now().toIso8601String(),
+          'isRead': notification['is_read'] ?? false,
+        };
+      }).toList();
+
       if (newNotifications != _notifications) {
         setState(() {
           _notifications = List<Map<String, dynamic>>.from(newNotifications);
+          _isLoading = false;
         });
-        
+
         // Animate new notifications
         _slideController.forward().then((_) {
           Future.delayed(const Duration(milliseconds: 100), () {
             if (mounted) _slideController.reset();
           });
         });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      logError('Failed to load notifications: $e', tag: 'NOTIFICATIONS_WIDGET');
+      setState(() {
+        _isLoading = false;
+      });
     }
-  }
-
-  void _loadInitialNotifications() {
-    setState(() {
-      // FUTURE FEATURE: Intelligent notifications backend integration
-      // This will be connected to AI-powered notification service in a future release
-      _notifications = <Map<String, dynamic>>[];
-    });
   }
 
   @override

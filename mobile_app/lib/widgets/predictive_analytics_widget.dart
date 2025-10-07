@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../services/advanced_financial_engine.dart';
+import '../services/api_service.dart';
+import '../services/logging_service.dart';
 
 /// Predictive Analytics Widget
-/// 
+///
 /// Displays AI-powered financial predictions, risk assessment, and future
 /// spending insights using data from the Advanced Financial Engine.
 class PredictiveAnalyticsWidget extends StatefulWidget {
@@ -24,17 +26,20 @@ class PredictiveAnalyticsWidget extends StatefulWidget {
   State<PredictiveAnalyticsWidget> createState() => _PredictiveAnalyticsWidgetState();
 }
 
-class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget> 
+class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
     with TickerProviderStateMixin {
 
   late AnimationController _chartAnimationController;
   late AnimationController _riskAnimationController;
   late Animation<double> _chartAnimation;
   late Animation<double> _riskAnimation;
-  
+
+  final _apiService = ApiService();
+
   Map<String, dynamic>? _predictiveAnalytics;
   Map<String, dynamic>? _riskAssessment;
   int _selectedTimeFrame = 30; // days
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -81,21 +86,58 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
 
   void _onDataUpdated() {
     if (mounted) {
-      setState(() {
-        // FUTURE FEATURE: Predictive analytics backend integration
-        // This will be connected to ML-powered analytics service in a future release
-        _predictiveAnalytics = null;
-        _riskAssessment = null;
-      });
+      _loadPredictiveData();
     }
   }
 
   void _loadInitialData() {
+    _loadPredictiveData();
+  }
+
+  Future<void> _loadPredictiveData() async {
+    if (_isLoading) return;
+
     setState(() {
-      // TODO: Connect to actual predictive analytics when implemented
-      _predictiveAnalytics = null;
-      _riskAssessment = null;
+      _isLoading = true;
     });
+
+    try {
+      // Fetch spending prediction from API
+      final spendingPrediction = await _apiService.getAISpendingPrediction(
+        daysAhead: _selectedTimeFrame,
+      );
+
+      // Fetch financial health score for risk assessment
+      final healthScore = await _apiService.getAIFinancialHealthScore();
+
+      setState(() {
+        _predictiveAnalytics = {
+          'spending_prediction': spendingPrediction,
+          'behavior_predictions': {}, // Can be populated with getBehavioralPredictions
+        };
+
+        _riskAssessment = {
+          'risk_score': healthScore['risk_score'] ?? 0.0,
+          'risk_level': healthScore['risk_level'] ?? 'moderate',
+          'recommendations': healthScore['recommendations'] ?? [],
+        };
+
+        _isLoading = false;
+      });
+
+      // Restart animations when new data loads
+      _chartAnimationController.reset();
+      _riskAnimationController.reset();
+      _chartAnimationController.forward();
+      _riskAnimationController.forward();
+    } catch (e) {
+      logError('Failed to load predictive analytics: $e', tag: 'PREDICTIVE_WIDGET');
+      setState(() {
+        _predictiveAnalytics = null;
+        _riskAssessment = null;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -219,6 +261,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               setState(() {
                 _selectedTimeFrame = days;
               });
+              // Reload data with new time frame
+              _loadPredictiveData();
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

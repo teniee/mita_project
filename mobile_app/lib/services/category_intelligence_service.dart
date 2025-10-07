@@ -707,8 +707,29 @@ class CategoryIntelligenceService {
     Map<String, dynamic> categoryData,
     List<Map<String, dynamic>> categorySpending,
   ) async {
-    // Placeholder for seasonal analysis
-    return [];
+    try {
+      // Get seasonal patterns from API
+      final seasonalData = await _apiService.getSeasonalSpendingPatterns();
+      final insights = <Map<String, dynamic>>[];
+
+      final categoryId = categoryData['categoryId'] as String?;
+      if (categoryId != null && seasonalData[categoryId] != null) {
+        final categorySeasonalData = seasonalData[categoryId] as Map<String, dynamic>;
+
+        insights.add({
+          'categoryId': categoryId,
+          'insightType': 'seasonal_pattern',
+          'insight': 'Seasonal spending pattern detected',
+          'impactScore': (categorySeasonalData['impact_score'] as num?)?.toDouble() ?? 0.6,
+          'actionableRecommendations': categorySeasonalData['recommendations'] ?? [],
+          'supportingData': categorySeasonalData,
+        });
+      }
+
+      return insights;
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<List<Map<String, dynamic>>> _generateGoalAlignmentInsights(
@@ -716,15 +737,70 @@ class CategoryIntelligenceService {
     List<Map<String, dynamic>> categorySpending,
     Map<String, dynamic> userGoals,
   ) async {
-    // Placeholder for goal alignment analysis
-    return [];
+    try {
+      final categoryId = categoryData['categoryId'] as String?;
+      if (categoryId == null) return [];
+
+      // Get category behavioral insights from API
+      final behavioralInsights = await _apiService.getCategoryBehavioralInsights(categoryId);
+      final insights = <Map<String, dynamic>>[];
+
+      if (behavioralInsights['goal_alignment'] != null) {
+        final alignmentData = behavioralInsights['goal_alignment'] as Map<String, dynamic>;
+
+        insights.add({
+          'categoryId': categoryId,
+          'insightType': 'goal_alignment',
+          'insight': alignmentData['message'] ?? 'Category aligned with financial goals',
+          'impactScore': (alignmentData['alignment_score'] as num?)?.toDouble() ?? 0.7,
+          'actionableRecommendations': alignmentData['recommendations'] ?? [],
+          'supportingData': alignmentData,
+        });
+      }
+
+      return insights;
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<List<Map<String, dynamic>>> _generateOptimizationInsights(
     Map<String, dynamic> categoryData,
     List<Map<String, dynamic>> categorySpending,
   ) async {
-    // Placeholder for optimization insights
-    return [];
+    try {
+      // Get spending anomalies from API for optimization opportunities
+      final anomalies = await _apiService.getSpendingAnomalies();
+      final insights = <Map<String, dynamic>>[];
+
+      final categoryId = categoryData['categoryId'] as String?;
+      if (categoryId != null) {
+        // Filter anomalies for this category
+        final categoryAnomalies = anomalies.where((anomaly) =>
+          anomaly['category'] == categoryId
+        ).toList();
+
+        if (categoryAnomalies.isNotEmpty) {
+          insights.add({
+            'categoryId': categoryId,
+            'insightType': 'optimization_opportunity',
+            'insight': 'Optimization opportunities detected',
+            'impactScore': 0.75,
+            'actionableRecommendations': [
+              'Review unusual spending patterns',
+              'Consider setting category limits',
+            ],
+            'supportingData': {
+              'anomaly_count': categoryAnomalies.length,
+              'anomalies': categoryAnomalies,
+            },
+          });
+        }
+      }
+
+      return insights;
+    } catch (e) {
+      return [];
+    }
   }
 }

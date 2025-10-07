@@ -412,7 +412,39 @@ class FinancialHealthScore {
 
   // Methods for test compatibility
   double calculateBudgetHealth(Map<String, double> spending, Map<String, double> budget) {
-    return 75.0; // Stub implementation
+    if (budget.isEmpty) return 0.0;
+
+    double totalBudget = 0.0;
+    double totalSpending = 0.0;
+    int categoriesWithinBudget = 0;
+    int totalCategories = 0;
+
+    for (final category in budget.keys) {
+      final budgetAmount = budget[category] ?? 0.0;
+      final spendingAmount = spending[category] ?? 0.0;
+
+      totalBudget += budgetAmount;
+      totalSpending += spendingAmount;
+      totalCategories++;
+
+      // Category is healthy if spending is within budget
+      if (spendingAmount <= budgetAmount) {
+        categoriesWithinBudget++;
+      }
+    }
+
+    if (totalCategories == 0) return 0.0;
+
+    // Calculate health as a weighted score:
+    // 60% from staying within total budget
+    // 40% from number of categories within budget
+    final totalBudgetHealth = totalBudget > 0
+        ? (1.0 - (totalSpending / totalBudget).clamp(0.0, 2.0) / 2.0) * 60.0
+        : 0.0;
+
+    final categoryHealth = (categoriesWithinBudget / totalCategories) * 40.0;
+
+    return (totalBudgetHealth + categoryHealth).clamp(0.0, 100.0);
   }
 
   double calculateSavingsRate(double savings, double income) {
