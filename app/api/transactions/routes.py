@@ -15,6 +15,7 @@ from app.core.standardized_error_handler import (
     ValidationError,
     BusinessLogicError,
     ResourceNotFoundError,
+    InternalServerError,
     ErrorCode,
     validate_amount,
     validate_required_fields
@@ -378,54 +379,8 @@ async def get_merchant_suggestions(
     })
 
 
-@router.post("/receipt")
-async def upload_receipt(
-    file: UploadFile = File(...),
-    user=current_user_dep,
-    db: Session = db_dep,
-):
-    """Upload and process receipt image"""
-    import tempfile
-    import os
-
-    # Save uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
-        content = await file.read()
-        temp.write(content)
-        temp_path = temp.name
-
-    try:
-        # Process receipt with REAL OCR service
-        ocr_service = OCRReceiptService()
-        result = ocr_service.process_image(temp_path)
-
-        receipt_id = f"rcpt_{datetime.now().timestamp()}"
-
-        return success_response({
-            "receipt_id": receipt_id,
-            "status": "completed",
-            "message": "Receipt processed successfully",
-            "data": {
-                "store": result.get("store", ""),
-                "amount": result.get("amount", 0.0),
-                "date": result.get("date", ""),
-                "category_hint": result.get("category_hint", "")
-            }
-        })
-    except Exception as e:
-        logger.error(f"Receipt processing failed: {e}")
-        return success_response({
-            "receipt_id": f"rcpt_{datetime.now().timestamp()}",
-            "status": "failed",
-            "message": f"Receipt processing failed: {str(e)}"
-        })
-    finally:
-        # Cleanup
-        try:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-        except Exception:
-            pass
+# REMOVED DUPLICATE: /receipt endpoint already defined at line 228
+# This was causing FastAPI routing conflict
 
 
 @router.get("/receipt/{receipt_id}/image")
@@ -436,6 +391,7 @@ async def get_receipt_image(
 ):
     """Get receipt image URL"""
     from app.db.models import OCRJob
+    from sqlalchemy import and_
 
     # Query OCR job to get image path
     ocr_job = db.query(OCRJob).filter(
@@ -623,6 +579,7 @@ async def get_receipt_processing_status(
 ):
     """Get status of receipt processing job"""
     from app.db.models import OCRJob
+    from sqlalchemy import and_
 
     # Check if it's a batch job
     if job_id.startswith("batch_"):
