@@ -23,98 +23,151 @@ class BudgetAdapterService {
   legacy.CategoryBudgetAllocation? _cachedCategoryBudget;
   DateTime? _lastCacheUpdate;
 
-  /// Get dashboard data using production budget engine
+  /// Get dashboard data from API (real backend data)
   Future<Map<String, dynamic>> getDashboardData() async {
     try {
-      logInfo('Generating dashboard data from production budget engine', tag: 'BUDGET_ADAPTER');
-      
-      final onboardingData = await _getOnboardingData();
-      final dailyBudget = await _getDailyBudget(onboardingData);
-      final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
-      
-      // Convert to format expected by main screen
-      return {
-        'balance': await _calculateCurrentBalance(onboardingData),
-        'spent': await _calculateTodaySpent(),
-        'daily_targets': await _convertToLegacyDailyTargets(categoryBudget),
-        'week': await _generateWeekData(onboardingData),
-        'transactions': await _getRecentTransactions(),
-      };
-      
+      logInfo('Fetching dashboard data from API', tag: 'BUDGET_ADAPTER');
+
+      // Call the real API endpoint instead of local calculations
+      final dashboardData = await _apiService.getDashboard();
+
+      logInfo('Successfully fetched dashboard data from API', tag: 'BUDGET_ADAPTER');
+      return dashboardData;
+
     } catch (e) {
-      logError('Error generating dashboard data: $e', tag: 'BUDGET_ADAPTER', error: e);
-      return _getFallbackDashboardData();
+      logError('Error fetching dashboard data from API: $e', tag: 'BUDGET_ADAPTER', error: e);
+
+      // Only fall back to local calculations if API fails
+      try {
+        logWarning('Falling back to local budget calculations', tag: 'BUDGET_ADAPTER');
+        final onboardingData = await _getOnboardingData();
+        final dailyBudget = await _getDailyBudget(onboardingData);
+        final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
+
+        return {
+          'balance': await _calculateCurrentBalance(onboardingData),
+          'spent': await _calculateTodaySpent(),
+          'daily_targets': await _convertToLegacyDailyTargets(categoryBudget),
+          'week': await _generateWeekData(onboardingData),
+          'transactions': await _getRecentTransactions(),
+        };
+      } catch (fallbackError) {
+        logError('Fallback calculation also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        return _getFallbackDashboardData();
+      }
     }
   }
 
-  /// Get calendar data using production budget engine
+  /// Get calendar data from API (real backend data)
   Future<List<Map<String, dynamic>>> getCalendarData() async {
     try {
-      logInfo('Generating calendar data from production budget engine', tag: 'BUDGET_ADAPTER');
-      
-      final onboardingData = await _getOnboardingData();
-      final today = DateTime.now();
-      final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
-      final firstDayOfMonth = DateTime(today.year, today.month, 1);
-      final firstWeekday = firstDayOfMonth.weekday % 7;
-      
-      List<Map<String, dynamic>> calendarDays = [];
-      
-      // Add empty cells for days before the first day of the month
-      for (int i = 0; i < firstWeekday; i++) {
-        calendarDays.add({
-          'day': 0,
-          'status': 'empty',
-          'limit': 0,
-          'spent': 0,
-        });
-      }
-      
-      // Generate each day using production budget engine
-      for (int day = 1; day <= daysInMonth; day++) {
-        final dayDate = DateTime(today.year, today.month, day);
-        final dayData = await _generateDayData(onboardingData, dayDate, day == today.day);
-        calendarDays.add(dayData);
-      }
-      
-      return calendarDays;
-      
+      logInfo('Fetching calendar data from API', tag: 'BUDGET_ADAPTER');
+
+      // Call the real API endpoint instead of local calculations
+      final calendarData = await _apiService.getCalendar();
+
+      // Convert List<dynamic> to List<Map<String, dynamic>>
+      final calendarList = calendarData.map((item) {
+        if (item is Map<String, dynamic>) {
+          return item;
+        } else if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        }
+        return <String, dynamic>{};
+      }).toList();
+
+      logInfo('Successfully fetched calendar data from API', tag: 'BUDGET_ADAPTER');
+      return calendarList;
+
     } catch (e) {
-      logError('Error generating calendar data: $e', tag: 'BUDGET_ADAPTER', error: e);
-      return _getFallbackCalendarData();
+      logError('Error fetching calendar data from API: $e', tag: 'BUDGET_ADAPTER', error: e);
+
+      // Only fall back to local calculations if API fails
+      try {
+        logWarning('Falling back to local calendar calculations', tag: 'BUDGET_ADAPTER');
+        final onboardingData = await _getOnboardingData();
+        final today = DateTime.now();
+        final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
+        final firstDayOfMonth = DateTime(today.year, today.month, 1);
+        final firstWeekday = firstDayOfMonth.weekday % 7;
+
+        List<Map<String, dynamic>> calendarDays = [];
+
+        // Add empty cells for days before the first day of the month
+        for (int i = 0; i < firstWeekday; i++) {
+          calendarDays.add({
+            'day': 0,
+            'status': 'empty',
+            'limit': 0,
+            'spent': 0,
+          });
+        }
+
+        // Generate each day using production budget engine
+        for (int day = 1; day <= daysInMonth; day++) {
+          final dayDate = DateTime(today.year, today.month, day);
+          final dayData = await _generateDayData(onboardingData, dayDate, day == today.day);
+          calendarDays.add(dayData);
+        }
+
+        return calendarDays;
+      } catch (fallbackError) {
+        logError('Fallback calendar calculation also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        return _getFallbackCalendarData();
+      }
     }
   }
 
-  /// Get personalized budget insights for insights screen
+  /// Get personalized budget insights from API
   Future<Map<String, dynamic>> getBudgetInsights() async {
     try {
-      final onboardingData = await _getOnboardingData();
-      final dailyBudget = await _getDailyBudget(onboardingData);
-      final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
-      // Legacy personalization - replaced by enhanced intelligence
-      // final personalization = _budgetEngine.createPersonalizationEngine(onboardingData: onboardingData);
-      
-      return {
-        'confidence': dailyBudget.confidence,
-        'methodology': dailyBudget.methodology,
-        'category_insights': categoryBudget.insights.map((insight) => {
-          'category': insight.category,
-          'message': insight.message,
-          'type': insight.type.toString(),
-          'priority': insight.priority.toString(),
-        }).toList(),
-        'intelligent_insights': dailyBudget.intelligentInsights.map((insight) => {
-          'message': insight,
-          'type': 'optimization',
-          'priority': 'medium',
-        }).toList(),
-        'risk_assessment': dailyBudget.riskAssessment,
-        'enhanced_features': dailyBudget.advancedMetrics,
-      };
-      
+      logInfo('Fetching budget insights from API', tag: 'BUDGET_ADAPTER');
+
+      // Get user income first
+      final profile = await _apiService.getUserProfile();
+      final income = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+
+      if (income <= 0) {
+        throw Exception('Income data required for budget insights');
+      }
+
+      // Call the real API endpoint for budget recommendations
+      final budgetRecommendations = await _apiService.getIncomeBasedBudgetRecommendations(income);
+
+      logInfo('Successfully fetched budget insights from API', tag: 'BUDGET_ADAPTER');
+      return budgetRecommendations;
+
     } catch (e) {
-      logError('Error generating budget insights: $e', tag: 'BUDGET_ADAPTER', error: e);
-      return {'insights': <Map<String, dynamic>>[], 'confidence': 0.5};
+      logError('Error fetching budget insights from API: $e', tag: 'BUDGET_ADAPTER', error: e);
+
+      // Only fall back to local calculations if API fails
+      try {
+        logWarning('Falling back to local budget insights', tag: 'BUDGET_ADAPTER');
+        final onboardingData = await _getOnboardingData();
+        final dailyBudget = await _getDailyBudget(onboardingData);
+        final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
+
+        return {
+          'confidence': dailyBudget.confidence,
+          'methodology': dailyBudget.methodology,
+          'category_insights': categoryBudget.insights.map((insight) => {
+            'category': insight.category,
+            'message': insight.message,
+            'type': insight.type.toString(),
+            'priority': insight.priority.toString(),
+          }).toList(),
+          'intelligent_insights': dailyBudget.intelligentInsights.map((insight) => {
+            'message': insight,
+            'type': 'optimization',
+            'priority': 'medium',
+          }).toList(),
+          'risk_assessment': dailyBudget.riskAssessment,
+          'enhanced_features': dailyBudget.advancedMetrics,
+        };
+      } catch (fallbackError) {
+        logError('Fallback budget insights also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        return {'insights': <Map<String, dynamic>>[], 'confidence': 0.5};
+      }
     }
   }
 

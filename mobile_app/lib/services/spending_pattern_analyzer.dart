@@ -399,8 +399,10 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
   /// Calculate current spending velocity
   double _calculateCurrentVelocity(SpendingPattern pattern) {
-    // This would calculate based on recent transactions
-    return pattern.averageAmount * 1.1; // Placeholder
+    // Calculate velocity based on recent frequency and average amount
+    // Velocity = spending rate per day
+    final daysPerTransaction = pattern.frequency > 0 ? 30.0 / pattern.frequency : 30.0;
+    return daysPerTransaction > 0 ? pattern.averageAmount / daysPerTransaction : 0.0;
   }
 
   /// Calculate spending acceleration
@@ -444,8 +446,17 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
   /// Calculate trend magnitude
   double _calculateTrendMagnitude(SpendingPattern pattern, TrendPeriod period) {
-    // Implementation would analyze historical data for trend strength
-    return pattern.variability; // Placeholder
+    // Trend magnitude combines variability and consistency
+    // High magnitude means strong, consistent trend
+    // Returns value between 0 and 1
+    final baseStrength = pattern.consistency * (1.0 - pattern.variability.clamp(0.0, 1.0));
+
+    // Adjust based on period
+    final periodMultiplier = period == TrendPeriod.weekly ? 0.7 :
+                            period == TrendPeriod.monthly ? 1.0 :
+                            period == TrendPeriod.quarterly ? 1.2 : 1.0;
+
+    return (baseStrength * periodMultiplier).clamp(0.0, 1.0);
   }
 
   /// Calculate trend significance
