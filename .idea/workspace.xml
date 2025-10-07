@@ -6,16 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" 1. 🔧 Основные хардкоды убраны:&#10;  - ❌ 'name': 'MITA User' → ✅ 'name': '' (пустое поле)&#10;  - ❌ Фальшивые статусы недели ['good', 'good', 'warning', 'over'] → ✅ 'neutral' для всех дней&#10;  - ❌ Процентные расчеты _monthlyIncome * 0.85, dailyAmount * 0.4 → ✅ Реальные суммы или 0.0&#10;  - ❌ Фальшивые траты dailyBudget * 0.35 * 0.60 → ✅ 0.0 (показать реальные траты или ноль)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/ai/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/ai/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/analytics/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/analytics/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/behavior/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/behavior/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/budget/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/budget/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/challenge/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/challenge/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/ocr/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/ocr/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/transactions/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/users/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/users/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/user.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

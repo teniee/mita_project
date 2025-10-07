@@ -76,65 +76,177 @@ async def remaining(
 @router.get("/suggestions")
 async def get_budget_suggestions(
     user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
-    """Get AI-powered budget suggestions"""
-    # Mock data for now - this would be replaced with actual AI analysis
-    suggestions_data = {
-        "suggestions": [
-            {
-                "id": 1,
-                "text": "Consider reducing dining out expenses by 20% to meet your savings goal",
-                "category": "dining",
-                "potential_savings": 120.0,
-                "difficulty": "easy"
-            },
-            {
-                "id": 2, 
-                "text": "You could save $45/month by switching to generic brands for groceries",
-                "category": "groceries",
-                "potential_savings": 45.0,
-                "difficulty": "easy"
-            }
+    """Get AI-powered budget suggestions based on actual spending patterns"""
+    from app.db.models import Transaction, DailyPlan, User as UserModel
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+
+    # Get user's income
+    user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
+    user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+
+    # Build calendar structure for last 30 days
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    transactions = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.spent_at >= thirty_days_ago
+    ).all()
+
+    # Get planned budgets for comparison
+    daily_plans = db.query(DailyPlan).filter(
+        DailyPlan.user_id == user.id,
+        DailyPlan.date >= thirty_days_ago.date()
+    ).all()
+
+    # Build calendar dict: date -> {actual_spending: {cat: amt}, planned_budget: {cat: amt}}
+    calendar = defaultdict(lambda: {"actual_spending": defaultdict(float), "planned_budget": {}})
+
+    for txn in transactions:
+        date_key = txn.spent_at.date().isoformat()
+        category = txn.category or "other"
+        calendar[date_key]["actual_spending"][category] += float(txn.amount)
+
+    for plan in daily_plans:
+        date_key = plan.date.isoformat()
+        if plan.category_budgets:
+            calendar[date_key]["planned_budget"] = plan.category_budgets
+
+    # Call the actual suggestion engine
+    suggestions_map = suggest_budget_adjustments(dict(calendar), user_income)
+
+    # Convert to structured response
+    suggestions_list = []
+    total_potential_savings = 0.0
+
+    for idx, (category, suggestion_text) in enumerate(suggestions_map.items(), start=1):
+        # Calculate potential savings from actual vs planned data
+        category_actual = sum(
+            day["actual_spending"].get(category, 0)
+            for day in calendar.values()
+        )
+        category_planned = sum(
+            day["planned_budget"].get(category, 0)
+            for day in calendar.values()
+        )
+
+        potential_savings = max(0, category_actual - category_planned) if category_planned > 0 else 0
+
+        if potential_savings > 0:
+            total_potential_savings += potential_savings
+            suggestions_list.append({
+                "id": idx,
+                "text": suggestion_text,
+                "category": category,
+                "potential_savings": round(potential_savings, 2),
+                "difficulty": "easy" if potential_savings < 50 else "moderate"
+            })
+
+    # Find priority areas (top 3 overspending categories)
+    category_totals = defaultdict(float)
+    for day in calendar.values():
+        for cat, amt in day["actual_spending"].items():
+            category_totals[cat] += amt
+
+    priority_areas = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)[:3]
+    priority_categories = [cat for cat, _ in priority_areas]
+
+    return success_response({
+        "suggestions": suggestions_list if suggestions_list else [
+            {"id": 1, "text": "Keep tracking expenses for personalized suggestions", "category": "general", "potential_savings": 0, "difficulty": "easy"}
         ],
-        "total_potential_savings": 165.0,
-        "priority_areas": ["dining", "groceries", "entertainment"]
-    }
-    return success_response(suggestions_data)
+        "total_potential_savings": round(total_potential_savings, 2),
+        "priority_areas": priority_categories if priority_categories else ["general"]
+    })
 
 
 @router.get("/mode")
 async def get_budget_mode(
     user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
-    """Get current budget mode setting"""
-    # Mock data for now - this would be retrieved from user preferences
-    return success_response("flexible")
+    """Get current budget mode based on user preferences and behavior"""
+    from app.db.models import User as UserModel
+
+    # Get user data to build settings dict
+    user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
+
+    user_settings = {}
+    if user_data:
+        # Check if user has high income and savings goals
+        monthly_income = float(user_data.monthly_income) if user_data.monthly_income else 0
+        user_settings["income_stability"] = "high" if monthly_income > 100000 else "medium" if monthly_income > 50000 else "low"
+
+        # Check for aggressive savings preference (could be from user_preferences table)
+        from app.db.models import UserPreferences
+        prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user.id).first()
+        if prefs:
+            user_settings["aggressive_savings"] = prefs.behavioral_savings_target and prefs.behavioral_savings_target > 25.0
+            user_settings["has_family"] = False  # Could be added to user profile later
+
+    # Call the actual mode resolver
+    mode = resolve_budget_mode(user_settings)
+
+    return success_response(mode)
 
 
 @router.get("/redistribution_history")
 async def get_redistribution_history(
     user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
-    """Get budget redistribution history"""
-    # Mock data for now - this would be retrieved from database
-    history_data = [
-        {
+    """Get budget redistribution history from DailyPlan changes"""
+    from app.db.models import DailyPlan
+    from datetime import datetime, timedelta
+
+    # Get last 30 days of daily plans
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    daily_plans = db.query(DailyPlan).filter(
+        DailyPlan.user_id == user.id,
+        DailyPlan.date >= thirty_days_ago
+    ).order_by(DailyPlan.date.desc()).all()
+
+    # Track redistributions by analyzing plan_json changes
+    history_data = []
+    previous_plan = None
+
+    for plan in reversed(daily_plans):  # Process chronologically
+        if previous_plan and plan.plan_json:
+            # Check if budget allocations changed
+            prev_budget = previous_plan.plan_json.get("category_budgets", {})
+            curr_budget = plan.plan_json.get("category_budgets", {})
+
+            # Find categories where budget changed
+            for category, curr_amount in curr_budget.items():
+                prev_amount = prev_budget.get(category, 0)
+                if prev_amount != curr_amount and prev_amount > 0:
+                    diff = curr_amount - prev_amount
+                    if abs(diff) > 1.0:  # Only track significant changes
+                        history_data.append({
+                            "id": len(history_data) + 1,
+                            "from": category if diff < 0 else "unallocated",
+                            "to": category if diff > 0 else "unallocated",
+                            "amount": abs(diff),
+                            "date": plan.date.isoformat(),
+                            "reason": "manual_adjustment" if abs(diff) > 10 else "automatic_redistribution"
+                        })
+
+        previous_plan = plan
+
+    # Limit to most recent 20 redistributions
+    history_data = history_data[-20:] if len(history_data) > 20 else history_data
+
+    if not history_data:
+        history_data = [{
             "id": 1,
-            "from": "15",
-            "to": "20",
-            "amount": 25.0,
-            "date": "2025-01-28T10:30:00Z",
-            "reason": "automatic_redistribution"
-        },
-        {
-            "id": 2,
-            "from": "12",
-            "to": "18",
-            "amount": 15.0,
-            "date": "2025-01-27T14:22:00Z",
-            "reason": "overspending_adjustment"
-        }
-    ]
+            "from": "none",
+            "to": "none",
+            "amount": 0,
+            "date": datetime.utcnow().isoformat(),
+            "reason": "no_redistributions_yet"
+        }]
+
     return success_response(history_data)
 
 
