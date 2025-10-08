@@ -154,6 +154,9 @@ class OfflineQueueService {
   Future<void> _refreshBudget() async {
     try {
       await ApiService().getDashboard();
-    } catch (_) {}
+    } catch (e) {
+      logWarning('Failed to refresh budget after sync: $e', tag: 'OFFLINE_QUEUE');
+      // Non-critical - dashboard will refresh on next navigation
+    }
   }
 }

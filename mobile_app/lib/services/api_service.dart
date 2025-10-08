@@ -350,7 +350,10 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
-      final data = response.data as Map<String, dynamic>;
+      final data = response.data as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('Refresh token response data is null');
+      }
       final newAccess = data['access_token'] as String?;
       final newRefresh = data['refresh_token'] as String?;
 
@@ -669,17 +672,17 @@ class ApiService {
           logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'DASHBOARD');
           // Provide fallback calendar data based on the shell configuration
           final income = actualIncome;
-          final weights = shellConfig['weights'] as Map<String, dynamic>;
+          final weights = shellConfig['weights'] as Map<String, dynamic>? ?? {};
           calendarData = {
             'flexible': {
-              'food': income * (weights['food'] as double),
-              'transportation': income * (weights['transportation'] as double),
-              'entertainment': income * (weights['entertainment'] as double),
-              'shopping': income * (weights['shopping'] as double),
-              'healthcare': income * (weights['healthcare'] as double),
+              'food': income * ((weights['food'] as num?)?.toDouble() ?? 0.12),
+              'transportation': income * ((weights['transportation'] as num?)?.toDouble() ?? 0.10),
+              'entertainment': income * ((weights['entertainment'] as num?)?.toDouble() ?? 0.08),
+              'shopping': income * ((weights['shopping'] as num?)?.toDouble() ?? 0.08),
+              'healthcare': income * ((weights['healthcare'] as num?)?.toDouble() ?? 0.05),
             },
-            'fixed': shellConfig['fixed'],
-            'savings': shellConfig['savings_target'],
+            'fixed': shellConfig['fixed'] ?? 0,
+            'savings': shellConfig['savings_target'] ?? 0,
           };
         }
         
@@ -693,8 +696,8 @@ class ApiService {
         };
         
         if (calendarData.containsKey('flexible')) {
-          final flexible = calendarData['flexible'] as Map<String, dynamic>;
-          final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + (amount as num).toDouble());
+          final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
+          final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
           
           dashboardData['today_budget'] = totalDaily;
           dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
@@ -895,8 +898,8 @@ class ApiService {
     
     if (calendarData.containsKey('flexible')) {
       // Transform flexible budget format to daily calendar
-      final flexible = calendarData['flexible'] as Map<String, dynamic>;
-      final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + (amount as num).toDouble());
+      final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
+      final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
       
       // Generate days for current month
       final now = DateTime.now();
@@ -1214,7 +1217,7 @@ class ApiService {
       '/transactions/',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data['data'] as List<dynamic>;
+    return (response.data['data'] as List<dynamic>?) ?? [];
   }
 
   // ---------------------------------------------------------------------------
@@ -1645,7 +1648,7 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     final data = response.data['data'] as List?;
-    return data?.isNotEmpty == true ? data!.first as Map<String, dynamic> : null;
+    return data?.isNotEmpty == true ? data!.first as Map<String, dynamic>? : null;
   }
 
   /// Create a new AI snapshot analysis for a specific month
