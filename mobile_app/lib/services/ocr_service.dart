@@ -222,9 +222,15 @@ class OCRService {
       await _simulateProcessingDelay(500);
       processingProgress.value = 0.3;
 
-      // Step 2: OCR extraction
+      // Step 2: OCR extraction - Use advanced processing for premium users
       processingStatus.value = OCRProcessingStatus.extracting;
-      final rawResult = await _apiService.uploadReceipt(receiptFile);
+      final rawResult = isPremiumUser
+          ? await _apiService.processReceiptAdvanced(
+              receiptFile,
+              usePremiumOCR: true,
+              processingOptions: processingOptions,
+            )
+          : await _apiService.uploadReceipt(receiptFile);
       processingProgress.value = 0.7;
 
       // Step 3: Enhanced categorization and confidence scoring
@@ -234,7 +240,7 @@ class OCRService {
 
       // Step 4: Build enhanced result
       final enhancedResult = _buildEnhancedResult(rawResult, isPremiumUser);
-      
+
       processingStatus.value = OCRProcessingStatus.complete;
       processingProgress.value = 1.0;
 
@@ -338,15 +344,106 @@ class OCRService {
   /// Validate and correct OCR results using AI
   Future<OCRResult> validateAndCorrectOCR(OCRResult result) async {
     try {
-      // This would call a backend validation service
-      await _simulateProcessingDelay(1000);
-      
-      // For now, return the original result
-      // In a real implementation, this would use AI to improve accuracy
-      return result;
+      // Call the API service to validate OCR data
+      final validatedData = await _apiService.validateOCRResult(result.toJson());
+
+      // Rebuild the result with validated data
+      return OCRResult.fromJson(validatedData);
     } catch (e) {
       logError('Error validating OCR result: $e', tag: 'OCR_SERVICE');
+      // Return original result if validation fails
       return result;
+    }
+  }
+
+  /// Enhance OCR data with additional context and corrections
+  Future<OCRResult> enhanceOCRData(OCRResult result) async {
+    try {
+      // Call the API service to enhance OCR data
+      final enhancedData = await _apiService.enhanceReceiptData(result.toJson());
+
+      // Rebuild the result with enhanced data
+      return OCRResult.fromJson(enhancedData);
+    } catch (e) {
+      logError('Error enhancing OCR data: $e', tag: 'OCR_SERVICE');
+      // Return original result if enhancement fails
+      return result;
+    }
+  }
+
+  /// Check OCR processing status for async operations (using job ID)
+  Future<Map<String, dynamic>> checkOCRProcessingStatus(String jobId) async {
+    try {
+      return await _apiService.getOCRProcessingStatus(jobId);
+    } catch (e) {
+      logError('Error checking OCR processing status: $e', tag: 'OCR_SERVICE');
+      rethrow;
+    }
+  }
+
+  /// Alternative status check method (direct OCR service endpoint)
+  Future<Map<String, dynamic>> checkOCRStatus(String ocrJobId) async {
+    try {
+      return await _apiService.getOCRStatus(ocrJobId);
+    } catch (e) {
+      logError('Error checking OCR status: $e', tag: 'OCR_SERVICE');
+      rethrow;
+    }
+  }
+
+  /// Poll OCR status until processing is complete
+  Future<Map<String, dynamic>> pollOCRStatus(
+    String jobId, {
+    Duration pollInterval = const Duration(seconds: 2),
+    Duration timeout = const Duration(minutes: 5),
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    while (stopwatch.elapsed < timeout) {
+      try {
+        final status = await checkOCRProcessingStatus(jobId);
+        final statusValue = status['status'] as String?;
+
+        if (statusValue == 'complete' || statusValue == 'completed') {
+          return status;
+        } else if (statusValue == 'failed' || statusValue == 'error') {
+          throw Exception('OCR processing failed: ${status['error'] ?? 'Unknown error'}');
+        }
+
+        // Update progress if available
+        final progress = status['progress'] as num?;
+        if (progress != null) {
+          processingProgress.value = progress.toDouble();
+        }
+
+        // Wait before polling again
+        await Future<void>.delayed(pollInterval);
+      } catch (e) {
+        logError('Error polling OCR status: $e', tag: 'OCR_SERVICE');
+        rethrow;
+      }
+    }
+
+    throw Exception('OCR processing timeout after ${timeout.inSeconds} seconds');
+  }
+
+  /// Get receipt image URL for viewing/downloading
+  Future<String> getReceiptImageUrl(String receiptId) async {
+    try {
+      return await _apiService.getReceiptImageUrl(receiptId);
+    } catch (e) {
+      logError('Error getting receipt image URL: $e', tag: 'OCR_SERVICE');
+      rethrow;
+    }
+  }
+
+  /// Delete receipt image from storage
+  Future<void> deleteReceiptImage(String receiptId) async {
+    try {
+      await _apiService.deleteReceiptImage(receiptId);
+    } catch (e) {
+      logError('Error deleting receipt image: $e', tag: 'OCR_SERVICE');
+      rethrow;
     }
   }
 
@@ -393,7 +490,7 @@ class OCRService {
   }
 
   Future<void> _simulateProcessingDelay(int milliseconds) async {
-    await Future.delayed(Duration(milliseconds: milliseconds));
+    await Future<void>.delayed(Duration(milliseconds: milliseconds));
   }
 
   void dispose() {

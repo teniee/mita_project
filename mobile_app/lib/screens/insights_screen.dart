@@ -47,11 +47,16 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   List<Map<String, dynamic>> spendingAnomalies = [];
   Map<String, dynamic>? savingsOptimization;
   Map<String, dynamic>? weeklyInsights;
-  
+  Map<String, dynamic>? aiMonthlyReport;
+  Map<String, dynamic>? aiBudgetOptimization;
+  Map<String, dynamic>? aiGoalAnalysis;
+
   // Income-based insights
   Map<String, dynamic>? _peerComparison;
   List<String> _incomeBasedTips = [];
   Map<String, dynamic>? _budgetOptimization;
+  Map<String, dynamic>? _incomeClassification;
+  List<Map<String, dynamic>> _incomeBasedGoals = [];
 
   @override
   void initState() {
@@ -77,7 +82,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       // Fetch enhanced budget insights and AI insights in parallel
       await Future.wait([
         _fetchEnhancedBudgetInsights(), // NEW: Enhanced budget intelligence
-        _fetchAISnapshot(),
+        _createAndFetchAISnapshot(), // Create fresh AI snapshot
         _fetchAIProfile(),
         _fetchSpendingPatterns(),
         _fetchPersonalizedFeedback(),
@@ -85,6 +90,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         _fetchSpendingAnomalies(),
         _fetchSavingsOptimization(),
         _fetchWeeklyInsights(),
+        _fetchAIMonthlyReport(), // NEW: AI monthly report
+        _fetchAIBudgetOptimization(), // NEW: AI budget optimization
+        _fetchAIGoalAnalysis(), // NEW: AI goal analysis
         // Income-based insights
         _fetchIncomeBasedInsights(),
       ]);
@@ -123,12 +131,16 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         _apiService.getPeerComparison(),
         _apiService.getCohortInsights(),
         _apiService.getIncomeBasedTips(_monthlyIncome),
+        _apiService.getIncomeClassification(),
+        _apiService.getIncomeBasedGoals(_monthlyIncome),
       ]);
-      
+
       _peerComparison = futures[0] as Map<String, dynamic>;
       // Note: futures[1] was _cohortInsights but it was unused, so removed
       _incomeBasedTips = List<String>.from(futures[2] as List);
-      
+      _incomeClassification = futures[3] as Map<String, dynamic>;
+      _incomeBasedGoals = List<Map<String, dynamic>>.from(futures[4] as List? ?? []);
+
       // Generate budget optimization insights
       if (categoryTotals.isNotEmpty) {
         _budgetOptimization = _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
@@ -202,17 +214,31 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     });
   }
 
-  Future<void> _fetchAISnapshot() async {
+  /// Create a fresh AI snapshot and fetch it (replaces old _fetchAISnapshot)
+  Future<void> _createAndFetchAISnapshot() async {
     try {
+      final now = DateTime.now();
+      // First, create a fresh AI snapshot for the current month
+      await _apiService.createAISnapshot(year: now.year, month: now.month);
+      // Then fetch the latest snapshot
       aiSnapshot = await _apiService.getLatestAISnapshot();
     } catch (e) {
-      logError('Error fetching AI snapshot: $e');
+      logError('Error creating/fetching AI snapshot: $e');
       // Provide sample AI snapshot data
       aiSnapshot = {
         'rating': 'B+',
         'risk': 'moderate',
         'summary': 'Your spending patterns show good discipline with occasional room for improvement. You\'re doing well with food budgeting but could optimize transportation costs.',
       };
+    }
+  }
+
+  Future<void> _fetchAIMonthlyReport() async {
+    try {
+      final now = DateTime.now();
+      aiMonthlyReport = await _apiService.getAIMonthlyReport(year: now.year, month: now.month);
+    } catch (e) {
+      logError('Error fetching AI monthly report: $e');
     }
   }
 
@@ -269,6 +295,22 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       weeklyInsights = await _apiService.getAIWeeklyInsights();
     } catch (e) {
       logError('Error fetching weekly insights: $e');
+    }
+  }
+
+  Future<void> _fetchAIBudgetOptimization() async {
+    try {
+      aiBudgetOptimization = await _apiService.getAIBudgetOptimization();
+    } catch (e) {
+      logError('Error fetching AI budget optimization: $e');
+    }
+  }
+
+  Future<void> _fetchAIGoalAnalysis() async {
+    try {
+      aiGoalAnalysis = await _apiService.getAIGoalAnalysis();
+    } catch (e) {
+      logError('Error fetching AI goal analysis: $e');
     }
   }
 
@@ -540,19 +582,23 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           // AI Financial Health Score
           _buildFinancialHealthCard(),
           const SizedBox(height: 20),
-          
+
           // AI Snapshot
           _buildAISnapshotCard(),
           const SizedBox(height: 20),
-          
+
+          // AI Monthly Report (NEW)
+          _buildAIMonthlyReportCard(),
+          const SizedBox(height: 20),
+
           // Spending Patterns
           _buildSpendingPatternsCard(),
           const SizedBox(height: 20),
-          
+
           // Weekly Insights
           _buildWeeklyInsightsCard(),
           const SizedBox(height: 20),
-          
+
           // Anomalies Detection
           _buildAnomaliesCard(),
         ],
@@ -1939,6 +1985,148 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     if (score >= 80) return Colors.green;
     if (score >= 60) return Colors.orange;
     return Colors.red;
+  }
+
+  /// NEW: Build AI Monthly Report Card
+  Widget _buildAIMonthlyReportCard() {
+    if (aiMonthlyReport == null) return Container();
+
+    final summary = aiMonthlyReport!['summary'] ?? 'No monthly summary available';
+    final highlights = List<String>.from(aiMonthlyReport!['highlights'] ?? []);
+    final recommendations = List<String>.from(aiMonthlyReport!['recommendations'] ?? []);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6B73FF).withValues(alpha: 0.1),
+            const Color(0xFF6B73FF).withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF6B73FF).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B73FF).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.summarize,
+                  color: Color(0xFF6B73FF),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'AI Monthly Report',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF6B73FF),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            summary,
+            style: const TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 14,
+              color: Color(0xFF666666),
+              height: 1.5,
+            ),
+          ),
+          if (highlights.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Key Highlights:',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Color(0xFF193C57),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...highlights.map((highlight) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.star,
+                    color: Color(0xFFFFD25F),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      highlight,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: Color(0xFF666666),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+          if (recommendations.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Recommendations:',
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Color(0xFF193C57),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...recommendations.map((rec) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Color(0xFF6B73FF),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      rec,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: Color(0xFF666666),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -14,6 +14,7 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
   final ApiService _apiService = ApiService();
   bool _loading = true;
   List<dynamic> _items = [];
+  Map<String, dynamic>? _latestAdvice;
 
   @override
   void initState() {
@@ -23,9 +24,13 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
 
   Future<void> fetchHistory() async {
     try {
-      final data = await _apiService.getAdviceHistory();
+      final results = await Future.wait([
+        _apiService.getAdviceHistory(),
+        _apiService.getLatestAdvice(),
+      ]);
       setState(() {
-        _items = data;
+        _items = results[0] as List;
+        _latestAdvice = results[1] as Map<String, dynamic>?;
         _loading = false;
       });
     } catch (e) {

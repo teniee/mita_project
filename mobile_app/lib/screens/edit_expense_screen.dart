@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/ocr_service.dart';
+import '../services/logging_service.dart';
 
 class EditExpenseScreen extends StatefulWidget {
   final Map<String, dynamic> expense;
@@ -15,10 +17,13 @@ class EditExpenseScreen extends StatefulWidget {
 class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
+  final OCRService _ocrService = OCRService();
 
   late double _amount;
   late String _action;
   late DateTime _selectedDate;
+  String? _receiptImageUrl;
+  bool _isLoadingReceiptImage = false;
 
   final List<String> _actions = [
     'Food', 'Transport', 'Entertainment', 'Health',

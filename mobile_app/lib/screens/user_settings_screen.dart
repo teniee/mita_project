@@ -23,6 +23,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   String _language = 'English';
   String _dateFormat = 'MM/dd/yyyy';
   double _budgetAlertThreshold = 80.0;
+
+  // Behavioral notification settings
+  bool _patternAlerts = true;
+  bool _anomalyDetection = true;
+  bool _budgetAdaptation = true;
+  bool _weeklyInsights = true;
+
+  // Behavioral preferences
+  Map<String, dynamic> _behavioralPreferences = {};
   
   final List<String> _currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
   final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
@@ -37,32 +46,59 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       setState(() => _isLoading = true);
-      
-      // Try to load settings from API
-      final settings = await _apiService.getUserProfile().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
-      
-      if (mounted && settings.isNotEmpty) {
+
+      // Load general settings and behavioral settings in parallel
+      final results = await Future.wait([
+        _apiService.getUserProfile().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => <String, dynamic>{},
+        ).catchError((e) => <String, dynamic>{}),
+        _apiService.getBehavioralNotificationSettings().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => <String, dynamic>{},
+        ).catchError((e) => <String, dynamic>{}),
+        _apiService.getBehavioralPreferences().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => <String, dynamic>{},
+        ).catchError((e) => <String, dynamic>{}),
+      ]);
+
+      final settings = results[0] as Map<String, dynamic>;
+      final behavioralNotifications = results[1] as Map<String, dynamic>;
+      final behavioralPrefs = results[2] as Map<String, dynamic>;
+
+      if (mounted) {
         setState(() {
-          _darkModeEnabled = settings['dark_mode'] ?? false;
-          _notificationsEnabled = settings['notifications'] ?? true;
-          _biometricEnabled = settings['biometric_auth'] ?? false;
-          _autoSyncEnabled = settings['auto_sync'] ?? true;
-          _offlineModeEnabled = settings['offline_mode'] ?? true;
-          _defaultCurrency = settings['currency'] ?? 'USD';
-          _language = settings['language'] ?? 'English';
-          _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
-          _budgetAlertThreshold = (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
+          // General settings
+          if (settings.isNotEmpty) {
+            _darkModeEnabled = settings['dark_mode'] ?? false;
+            _notificationsEnabled = settings['notifications'] ?? true;
+            _biometricEnabled = settings['biometric_auth'] ?? false;
+            _autoSyncEnabled = settings['auto_sync'] ?? true;
+            _offlineModeEnabled = settings['offline_mode'] ?? true;
+            _defaultCurrency = settings['currency'] ?? 'USD';
+            _language = settings['language'] ?? 'English';
+            _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
+            _budgetAlertThreshold = (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
+          }
+
+          // Behavioral notification settings
+          if (behavioralNotifications.isNotEmpty) {
+            _patternAlerts = behavioralNotifications['pattern_alerts'] ?? true;
+            _anomalyDetection = behavioralNotifications['anomaly_detection'] ?? true;
+            _budgetAdaptation = behavioralNotifications['budget_adaptation'] ?? true;
+            _weeklyInsights = behavioralNotifications['weekly_insights'] ?? true;
+          }
+
+          // Behavioral preferences
+          _behavioralPreferences = behavioralPrefs;
+
           _isLoading = false;
         });
-      } else {
-        setState(() => _isLoading = false);
       }
     } catch (e) {
       logError('Failed to load settings: $e', tag: 'USER_SETTINGS');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
   
@@ -79,12 +115,24 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         'date_format': _dateFormat,
         'budget_alert_threshold': _budgetAlertThreshold,
       };
-      
-      await _apiService.updateUserProfile(settings).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw Exception('Settings save timeout'),
-      );
-      
+
+      // Save general settings and behavioral settings in parallel
+      await Future.wait([
+        _apiService.updateUserProfile(settings).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw Exception('Settings save timeout'),
+        ),
+        _apiService.updateBehavioralNotificationSettings(
+          patternAlerts: _patternAlerts,
+          anomalyDetection: _anomalyDetection,
+          budgetAdaptation: _budgetAdaptation,
+          weeklyInsights: _weeklyInsights,
+        ).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw Exception('Behavioral settings save timeout'),
+        ),
+      ]);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -207,7 +255,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           ),
           
           const SizedBox(height: 24),
-          
+
           // Notifications Settings
           _buildSectionCard(
             'Notifications',
@@ -226,6 +274,46 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 Icons.warning,
                 _budgetAlertThreshold,
                 (value) => setState(() => _budgetAlertThreshold = value),
+              ),
+            ],
+            colorScheme,
+            textTheme,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Behavioral Insights Settings
+          _buildSectionCard(
+            'Behavioral Insights',
+            Icons.psychology,
+            [
+              _buildSwitchTile(
+                'Pattern Alerts',
+                'Get notified about your spending patterns',
+                Icons.pattern,
+                _patternAlerts,
+                (value) => setState(() => _patternAlerts = value),
+              ),
+              _buildSwitchTile(
+                'Anomaly Detection',
+                'Alert me about unusual spending behavior',
+                Icons.warning_amber,
+                _anomalyDetection,
+                (value) => setState(() => _anomalyDetection = value),
+              ),
+              _buildSwitchTile(
+                'Budget Adaptation',
+                'Receive adaptive budget recommendations',
+                Icons.auto_fix_high,
+                _budgetAdaptation,
+                (value) => setState(() => _budgetAdaptation = value),
+              ),
+              _buildSwitchTile(
+                'Weekly Insights',
+                'Get weekly behavioral insights summary',
+                Icons.insights,
+                _weeklyInsights,
+                (value) => setState(() => _weeklyInsights = value),
               ),
             ],
             colorScheme,

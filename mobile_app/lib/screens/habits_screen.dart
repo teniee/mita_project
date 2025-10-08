@@ -64,6 +64,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
   List<Habit> _habits = [];
   String? _errorMessage;
   late AnimationController _animationController;
+  Map<int, Map<String, dynamic>> _habitProgress = {};
 
   @override
   void initState() {
@@ -94,6 +95,11 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         _isLoading = false;
       });
       _animationController.forward();
+
+      // Load progress for each habit
+      for (final habit in _habits) {
+        _loadHabitProgress(habit.id);
+      }
     } catch (e) {
       logError('Error loading habits: $e');
       if (!mounted) return;
@@ -102,6 +108,19 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
         _isLoading = false;
         _errorMessage = 'Failed to load habits. Please try again.';
       });
+    }
+  }
+
+  Future<void> _loadHabitProgress(int habitId) async {
+    try {
+      final progress = await _apiService.getHabitProgress(habitId);
+      if (mounted) {
+        setState(() {
+          _habitProgress[habitId] = progress;
+        });
+      }
+    } catch (e) {
+      // Silently fail - progress not critical for display
     }
   }
 

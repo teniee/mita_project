@@ -30,6 +30,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
   List<dynamic> _redistributionHistory = [];
   String _budgetMode = 'default';
   Timer? _liveUpdateTimer;
+  Map<String, dynamic>? _aiOptimization; // NEW: AI budget optimization
+  Map<String, dynamic>? _budgetAdaptations; // NEW: Real-time budget adaptations
 
   @override
   void initState() {
@@ -56,6 +58,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     await _fetchBudgetSuggestions();
     await _fetchBudgetMode();
     await _fetchRedistributionHistory();
+    await _fetchAIBudgetOptimization(); // NEW: Fetch AI optimization
+    await _fetchBudgetAdaptations(); // NEW: Fetch budget adaptations
   }
 
   void _startLiveUpdates() {
@@ -170,6 +174,43 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
       }
     } catch (e) {
       logError('Error loading redistribution history: $e');
+    }
+  }
+
+  /// NEW: Fetch AI budget optimization suggestions
+  Future<void> _fetchAIBudgetOptimization() async {
+    try {
+      // Get calendar data to provide context for AI optimization
+      final calendarData = await _apiService.getCalendar();
+
+      // Convert to map format expected by AI
+      Map<String, dynamic> calendarDict = {};
+      for (var day in calendarData) {
+        final dayNum = day['day'].toString();
+        calendarDict[dayNum] = {
+          'spent': (day['spent'] ?? 0).toDouble(),
+          'limit': (day['limit'] ?? 0).toDouble(),
+        };
+      }
+
+      // Get user income
+      final profile = await _apiService.getUserProfile();
+      final income = (profile['data']?['income'] as num?)?.toDouble();
+
+      // Fetch AI optimization
+      final optimization = await _apiService.getAIBudgetOptimization(
+        calendar: calendarDict,
+        income: income,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiOptimization = optimization;
+        });
+      }
+      logInfo('AI budget optimization loaded successfully', tag: 'DAILY_BUDGET');
+    } catch (e) {
+      logError('Error loading AI budget optimization: $e', tag: 'DAILY_BUDGET');
     }
   }
 

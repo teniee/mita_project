@@ -52,8 +52,35 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     super.dispose();
   }
 
+  Map<String, dynamic>? budgetRemaining;
+  Map<String, dynamic>? monthlyBudget;
+
   Future<void> _initializeData() async {
     await fetchCalendarData();
+    await _fetchBudgetRemaining();
+    await _fetchMonthlyBudget();
+  }
+
+  Future<void> _fetchBudgetRemaining() async {
+    try {
+      budgetRemaining = await _apiService.getBudgetRemaining(
+        year: currentMonth.year,
+        month: currentMonth.month,
+      );
+    } catch (e) {
+      logError('Error fetching budget remaining: $e', tag: 'CALENDAR_SCREEN');
+    }
+  }
+
+  Future<void> _fetchMonthlyBudget() async {
+    try {
+      monthlyBudget = await _apiService.getMonthlyBudget(
+        currentMonth.year,
+        currentMonth.month,
+      );
+    } catch (e) {
+      logError('Error fetching monthly budget: $e', tag: 'CALENDAR_SCREEN');
+    }
   }
 
 
@@ -78,51 +105,89 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       // First try to get data from production budget engine
       logInfo('Loading calendar data from production budget engine', tag: 'CALENDAR_SCREEN');
       final productionData = await _budgetService.getCalendarData();
-      
+
       if (!mounted) return;
       setState(() {
         calendarData = productionData;
         isLoading = false;
       });
-      
+
       logInfo('Calendar data loaded from production budget engine successfully', tag: 'CALENDAR_SCREEN');
     } catch (e) {
       logError('Error loading production calendar data: $e', tag: 'CALENDAR_SCREEN');
-      
+
       try {
-        // Fallback to API
-        final data = await _apiService.getCalendar();
+        // Try behavioral calendar endpoint
+        logInfo('Attempting to load behavioral calendar', tag: 'CALENDAR_SCREEN');
+        final behavioralCalendar = await _apiService.getBehaviorCalendar(
+          year: currentMonth.year,
+          month: currentMonth.month,
+        );
+
         if (!mounted) return;
+
+        // Convert behavioral calendar format to standard calendar format
+        final convertedData = _convertBehavioralCalendarData(behavioralCalendar);
         setState(() {
-          calendarData = data;
+          calendarData = convertedData;
           isLoading = false;
         });
-      } catch (apiError) {
-        logError('Error loading API calendar: $apiError', tag: 'CALENDAR_SCREEN');
-        if (!mounted) return;
-        
-        // Final fallback to user-based data generation
-        final userBasedData = await _generateUserBasedCalendarData();
-        setState(() {
-          calendarData = userBasedData;
-          isLoading = false;
-          error = null; // Don't show error, just use user-based data
-        });
-        
-        // Show user-friendly error message but don't break the UI
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Using personalized budget calculations'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+
+        logInfo('Loaded behavioral calendar successfully', tag: 'CALENDAR_SCREEN');
+      } catch (behavioralError) {
+        logError('Error loading behavioral calendar: $behavioralError', tag: 'CALENDAR_SCREEN');
+
+        try {
+          // Fallback to standard API
+          final data = await _apiService.getCalendar();
+          if (!mounted) return;
+          setState(() {
+            calendarData = data;
+            isLoading = false;
           });
+        } catch (apiError) {
+          logError('Error loading API calendar: $apiError', tag: 'CALENDAR_SCREEN');
+          if (!mounted) return;
+
+          // Final fallback to user-based data generation
+          final userBasedData = await _generateUserBasedCalendarData();
+          setState(() {
+            calendarData = userBasedData;
+            isLoading = false;
+            error = null; // Don't show error, just use user-based data
+          });
+
+          // Show user-friendly error message but don't break the UI
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Using personalized budget calculations'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            });
+          }
         }
       }
     }
+  }
+
+  /// Convert behavioral calendar data format to standard calendar format
+  List<Map<String, dynamic>> _convertBehavioralCalendarData(Map<String, dynamic> behavioralData) {
+    if (behavioralData['calendar_days'] != null) {
+      return List<Map<String, dynamic>>.from(behavioralData['calendar_days']);
+    }
+
+    // If the data is already in the correct format
+    if (behavioralData['days'] != null) {
+      return List<Map<String, dynamic>>.from(behavioralData['days']);
+    }
+
+    // Return empty list if format is unknown
+    logWarning('Unknown behavioral calendar format', tag: 'CALENDAR_SCREEN');
+    return [];
   }
 
   Future<List<Map<String, dynamic>>> _generateUserBasedCalendarData() async {

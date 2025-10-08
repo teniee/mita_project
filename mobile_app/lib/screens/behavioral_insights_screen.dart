@@ -19,11 +19,22 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   Map<String, dynamic> _predictions = {};
   List<dynamic> _anomalies = [];
   Map<String, dynamic> _insights = {};
+  Map<String, dynamic> _behavioralPredictions = {};
+  Map<String, dynamic> _adaptiveRecommendations = {};
+  Map<String, dynamic> _behavioralCluster = {};
+  Map<String, dynamic> _behavioralProgress = {};
+  Map<String, dynamic> _behavioralAnomalies = {};
+  Map<String, dynamic> _spendingTriggers = {};
+  Map<String, dynamic> _behavioralWarnings = {};
+  Map<String, dynamic> _behavioralPreferences = {};
+  Map<String, dynamic> _behavioralCalendar = {};
+  List<Map<String, dynamic>> _behavioralExpenseSuggestions = [];
+  Map<String, dynamic> _behavioralNotificationSettings = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _loadBehavioralData();
   }
 
@@ -35,13 +46,24 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
   Future<void> _loadBehavioralData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final results = await Future.wait([
         _apiService.getSpendingPatterns(),
         _apiService.getBehaviorPredictions(),
         _apiService.getBehaviorAnomalies(),
         _apiService.getBehaviorInsights(),
+        _apiService.getBehavioralPredictions(),
+        _apiService.getAdaptiveBehaviorRecommendations(),
+        _apiService.getBehavioralCluster(),
+        _apiService.getBehavioralProgress(months: 6),
+        _apiService.getBehavioralAnomalies(),
+        _apiService.getSpendingTriggers(),
+        _apiService.getBehavioralWarnings(),
+        _apiService.getBehavioralPreferences(),
+        _apiService.getBehaviorCalendar(),
+        _apiService.getBehavioralExpenseSuggestions(categoryPreferences: {}),
+        _apiService.getBehavioralNotificationSettings(),
       ]);
 
       if (!mounted) return;
@@ -50,6 +72,17 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
         _predictions = Map<String, dynamic>.from(results[1] as Map);
         _anomalies = List<dynamic>.from(results[2] as List);
         _insights = Map<String, dynamic>.from(results[3] as Map);
+        _behavioralPredictions = Map<String, dynamic>.from(results[4] as Map);
+        _adaptiveRecommendations = Map<String, dynamic>.from(results[5] as Map);
+        _behavioralCluster = Map<String, dynamic>.from(results[6] as Map);
+        _behavioralProgress = Map<String, dynamic>.from(results[7] as Map);
+        _behavioralAnomalies = Map<String, dynamic>.from(results[8] as Map);
+        _spendingTriggers = Map<String, dynamic>.from(results[9] as Map);
+        _behavioralWarnings = Map<String, dynamic>.from(results[10] as Map);
+        _behavioralPreferences = Map<String, dynamic>.from(results[11] as Map);
+        _behavioralCalendar = Map<String, dynamic>.from(results[12] as Map);
+        _behavioralExpenseSuggestions = List<Map<String, dynamic>>.from(results[13] as List? ?? []);
+        _behavioralNotificationSettings = Map<String, dynamic>.from(results[14] as Map);
         _isLoading = false;
       });
     } catch (e) {
@@ -93,6 +126,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             Tab(text: 'Predictions'),
             Tab(text: 'Anomalies'),
             Tab(text: 'Insights'),
+            Tab(text: 'Progress'),
+            Tab(text: 'Cluster'),
           ],
         ),
       ),
@@ -105,6 +140,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 _buildPredictionsTab(),
                 _buildAnomaliesTab(),
                 _buildInsightsTab(),
+                _buildProgressTab(),
+                _buildClusterTab(),
               ],
             ),
     );
@@ -853,6 +890,306 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       backgroundColor: Colors.grey[100],
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     )).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressTab() {
+    return RefreshIndicator(
+      onRefresh: _loadBehavioralData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('Behavioral Progress', Icons.trending_up),
+            const SizedBox(height: 16),
+
+            // Progress overview card
+            if (_behavioralProgress.isNotEmpty) ...[
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Your Progress Score',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${_behavioralProgress['overall_score'] ?? 0}/100',
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          color: Colors.white,
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _behavioralProgress['progress_message'] ?? 'Keep up the great work!',
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Progress metrics
+            if (_behavioralProgress['metrics'] != null) ...[
+              _buildSectionHeader('Monthly Metrics', Icons.assessment),
+              const SizedBox(height: 12),
+              ...(_behavioralProgress['metrics'] as List).map((metric) =>
+                  _buildMetricCard(metric)),
+              const SizedBox(height: 24),
+            ],
+
+            // Improvements
+            if (_behavioralProgress['improvements'] != null) ...[
+              _buildSectionHeader('Improvements', Icons.star),
+              const SizedBox(height: 12),
+              ...(_behavioralProgress['improvements'] as List).map((improvement) =>
+                  _buildInfoTile(improvement.toString(), Icons.check_circle, const Color(0xFF4CAF50))),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClusterTab() {
+    return RefreshIndicator(
+      onRefresh: _loadBehavioralData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('Your Behavioral Cluster', Icons.group),
+            const SizedBox(height: 16),
+
+            // Cluster info card
+            if (_behavioralCluster.isNotEmpty) ...[
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF673AB7), Color(0xFF9575CD)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Your Spending Cluster',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _behavioralCluster['cluster_name'] ?? 'Unknown',
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _behavioralCluster['description'] ?? '',
+                        style: const TextStyle(
+                          fontFamily: 'Manrope',
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Cluster characteristics
+            if (_behavioralCluster['characteristics'] != null) ...[
+              _buildSectionHeader('Cluster Characteristics', Icons.psychology),
+              const SizedBox(height: 12),
+              ...(_behavioralCluster['characteristics'] as List).map((char) =>
+                  _buildInfoTile(char.toString(), Icons.check_circle)),
+              const SizedBox(height: 24),
+            ],
+
+            // Adaptive recommendations
+            if (_adaptiveRecommendations.isNotEmpty) ...[
+              _buildSectionHeader('Personalized Recommendations', Icons.lightbulb),
+              const SizedBox(height: 12),
+              if (_adaptiveRecommendations['recommendations'] != null)
+                ...(_adaptiveRecommendations['recommendations'] as List).map((rec) =>
+                    _buildRecommendationTile(rec.toString())),
+              const SizedBox(height: 24),
+            ],
+
+            // Spending triggers
+            if (_spendingTriggers.isNotEmpty) ...[
+              _buildSectionHeader('Your Spending Triggers', Icons.warning_amber),
+              const SizedBox(height: 12),
+              if (_spendingTriggers['triggers'] != null)
+                ...(_spendingTriggers['triggers'] as List).map((trigger) =>
+                    _buildTriggerCard(trigger)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(Map<String, dynamic> metric) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.analytics, color: Color(0xFF4CAF50), size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    metric['name'] ?? '',
+                    style: const TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Color(0xFF193C57),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${metric['value'] ?? 0}',
+                    style: const TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Color(0xFF4CAF50),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (metric['trend'] != null)
+              Icon(
+                metric['trend'] == 'up' ? Icons.trending_up : Icons.trending_down,
+                color: metric['trend'] == 'up' ? Colors.green : Colors.red,
+                size: 24,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTriggerCard(Map<String, dynamic> trigger) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.flag, color: Colors.orange, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    trigger['trigger_name'] ?? '',
+                    style: const TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Color(0xFF193C57),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              trigger['description'] ?? '',
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                color: Color(0xFF666666),
+              ),
+            ),
+            if (trigger['frequency'] != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Frequency: ${trigger['frequency']}',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
               ),
             ],
           ],

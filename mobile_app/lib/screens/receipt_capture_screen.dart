@@ -34,6 +34,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   String? _error;
   bool _isPremiumUser = false;
   List<String> _merchantSuggestions = [];
+  bool _isValidating = false;
+  bool _isEnhancing = false;
   
   // Animation controllers
   late AnimationController _slideController;
@@ -229,6 +231,90 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
       });
     } catch (e) {
       debugPrint('Error loading merchant suggestions: $e');
+    }
+  }
+
+  Future<void> _validateOCRResult() async {
+    if (_ocrResult == null) return;
+
+    setState(() {
+      _isValidating = true;
+      _error = null;
+    });
+
+    try {
+      final validatedResult = await _ocrService.validateAndCorrectOCR(_ocrResult!);
+
+      setState(() {
+        _ocrResult = validatedResult;
+        _isValidating = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.onInverseSurface,
+                ),
+                const SizedBox(width: 8.0),
+                const Text('OCR data validated successfully'),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isValidating = false;
+        _error = 'Validation failed: $e';
+      });
+    }
+  }
+
+  Future<void> _enhanceOCRResult() async {
+    if (_ocrResult == null) return;
+
+    setState(() {
+      _isEnhancing = true;
+      _error = null;
+    });
+
+    try {
+      final enhancedResult = await _ocrService.enhanceOCRData(_ocrResult!);
+
+      setState(() {
+        _ocrResult = enhancedResult;
+        _isEnhancing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: Theme.of(context).colorScheme.onInverseSurface,
+                ),
+                const SizedBox(width: 8.0),
+                const Text('Receipt data enhanced with AI'),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isEnhancing = false;
+        _error = 'Enhancement failed: $e';
+      });
     }
   }
 
@@ -655,8 +741,53 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
             ],
           ),
           
+          const SizedBox(height: 16.0),
+
+          // Action buttons for validation and enhancement
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isValidating ? null : _validateOCRResult,
+                  icon: _isValidating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.verified),
+                  label: const Text('Validate'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isEnhancing ? null : _enhanceOCRResult,
+                  icon: _isEnhancing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome),
+                  label: const Text('Enhance'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
           const SizedBox(height: 24.0),
-          
+
           Expanded(
             child: SingleChildScrollView(
               child: Column(

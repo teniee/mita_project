@@ -19,6 +19,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   List<dynamic> _availableChallenges = [];
   Map<String, dynamic> _gamificationStats = {};
   List<dynamic> _leaderboard = [];
+  Map<String, Map<String, dynamic>> _challengeProgress = {};
 
   @override
   void initState() {
@@ -52,6 +53,14 @@ class _ChallengesScreenState extends State<ChallengesScreen>
         _leaderboard = results[3] as List<dynamic>;
         _isLoading = false;
       });
+
+      // Load progress for each active challenge
+      for (final challenge in _activeChallenges) {
+        final challengeId = challenge['id']?.toString();
+        if (challengeId != null) {
+          _loadChallengeProgress(challengeId);
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -73,6 +82,35 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to join challenge: $e')),
+      );
+    }
+  }
+
+  Future<void> _loadChallengeProgress(String challengeId) async {
+    try {
+      final progress = await _apiService.getChallengeProgress(challengeId);
+      if (mounted) {
+        setState(() {
+          _challengeProgress[challengeId] = progress;
+        });
+      }
+    } catch (e) {
+      // Silently fail - progress not critical for display
+    }
+  }
+
+  Future<void> _updateChallengeProgress(String challengeId, Map<String, dynamic> progressData) async {
+    try {
+      await _apiService.updateChallengeProgress(challengeId, progressData);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Progress updated successfully')),
+      );
+      _loadChallengeProgress(challengeId); // Refresh progress
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update progress: $e')),
       );
     }
   }

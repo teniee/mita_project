@@ -20,11 +20,15 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   String _currentBudgetMode = 'default';
   Map<String, dynamic> _automationSettings = {};
   bool _isUpdating = false;
-  
+
   // Income-related data
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
   Map<String, dynamic>? _budgetRecommendations;
+
+  // Budget status data
+  Map<String, dynamic>? _budgetRemaining;
+  Map<String, dynamic>? _behavioralAllocation;
 
   final List<Map<String, dynamic>> _budgetModes = [
     {
@@ -92,21 +96,28 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       _monthlyIncome = incomeValue;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
       
+      final now = DateTime.now();
       final futures = await Future.wait([
         _apiService.getBudgetMode(),
         _apiService.getBudgetAutomationSettings(),
         _apiService.getIncomeBasedBudgetRecommendations(_monthlyIncome),
+        _apiService.getBudgetRemaining(year: now.year, month: now.month),
+        _apiService.getBehavioralBudgetAllocation(_monthlyIncome, profile: {'income_tier': _incomeTier.toString()}),
       ]);
-      
+
       final budgetMode = futures[0] as String;
       final automationSettings = futures[1] as Map<String, dynamic>;
       final budgetRecommendations = futures[2] as Map<String, dynamic>;
-      
+      final budgetRemaining = futures[3] as Map<String, dynamic>;
+      final behavioralAllocation = futures[4] as Map<String, dynamic>;
+
       if (mounted) {
         setState(() {
           _currentBudgetMode = budgetMode;
           _automationSettings = automationSettings;
           _budgetRecommendations = budgetRecommendations;
+          _budgetRemaining = budgetRemaining;
+          _behavioralAllocation = behavioralAllocation;
           _isLoading = false;
         });
       }
@@ -344,9 +355,135 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     );
   }
 
+  Widget _buildBudgetRemainingCard() {
+    if (_budgetRemaining == null) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
+
+    final totalBudget = (_budgetRemaining!['total_budget'] as num?)?.toDouble() ?? 0.0;
+    final totalSpent = (_budgetRemaining!['total_spent'] as num?)?.toDouble() ?? 0.0;
+    final remaining = (_budgetRemaining!['remaining'] as num?)?.toDouble() ?? 0.0;
+    final percentageUsed = totalBudget > 0 ? (totalSpent / totalBudget * 100) : 0.0;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet, color: primaryColor),
+                const SizedBox(width: 12),
+                Text(
+                  'Budget Status This Month',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                    fontFamily: 'Sora',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: percentageUsed / 100,
+                minHeight: 12,
+                backgroundColor: Colors.grey[200],
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  percentageUsed > 90 ? Colors.red : percentageUsed > 70 ? Colors.orange : primaryColor,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Budget stats
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Budget',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    Text(
+                      '\$${totalBudget.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Sora',
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Spent',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    Text(
+                      '\$${totalSpent.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Sora',
+                        color: percentageUsed > 90 ? Colors.red : null,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Remaining',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    Text(
+                      '\$${remaining.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Sora',
+                        color: remaining < 0 ? Colors.red : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAutomationSettings() {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
@@ -490,7 +627,10 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   
                   if (_incomeTier != null)
                     const SizedBox(height: 16),
-                  
+
+                  // Budget Remaining Status
+                  _buildBudgetRemainingCard(),
+
                   // Income-based Budget Recommendations
                   if (_budgetRecommendations != null)
                     Card(
@@ -570,8 +710,116 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     ),
                   
                   if (_budgetRecommendations != null)
+                    const SizedBox(height: 16),
+
+                  // Behavioral Budget Allocation (AI-powered)
+                  if (_behavioralAllocation != null && _behavioralAllocation!['allocations'] != null)
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.psychology,
+                                  color: const Color(0xFF6B73FF),
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'AI Behavioral Allocation',
+                                  style: TextStyle(
+                                    fontFamily: 'Sora',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Budget allocation based on your behavioral patterns',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...(_behavioralAllocation!['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
+                              final category = entry.key;
+                              final data = entry.value as Map<String, dynamic>;
+                              final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                              final confidence = (data['confidence'] as num?)?.toDouble() ?? 0.0;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          category.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontFamily: 'Sora',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          '\$${amount.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            fontFamily: 'Sora',
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: LinearProgressIndicator(
+                                              value: confidence / 100,
+                                              minHeight: 6,
+                                              backgroundColor: Colors.grey[200],
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                const Color(0xFF6B73FF),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${confidence.toStringAsFixed(0)}% confidence',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList() ?? [],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  if (_behavioralAllocation != null)
                     const SizedBox(height: 24),
-                  
+
                   // Current Mode Display
                   Card(
                     elevation: 4,
