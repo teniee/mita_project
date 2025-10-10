@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
 import '../services/budget_adapter_service.dart';
+import '../services/live_updates_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
@@ -17,11 +18,12 @@ class DailyBudgetScreen extends StatefulWidget {
   State<DailyBudgetScreen> createState() => _DailyBudgetScreenState();
 }
 
-class _DailyBudgetScreenState extends State<DailyBudgetScreen> 
+class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     with RobustErrorHandlingMixin {
   final ApiService _apiService = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
   final BudgetAdapterService _budgetService = BudgetAdapterService();
+  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
   bool _isLoading = true;
   bool _isRedistributing = false;
   List<dynamic> _budgets = [];
@@ -29,7 +31,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
   Map<String, dynamic> _budgetSuggestions = {};
   List<dynamic> _redistributionHistory = [];
   String _budgetMode = 'default';
-  Timer? _liveUpdateTimer;
+  StreamSubscription? _budgetUpdateSubscription;
   Map<String, dynamic>? _aiOptimization; // NEW: AI budget optimization
   Map<String, dynamic>? _budgetAdaptations; // NEW: Real-time budget adaptations
 
@@ -43,12 +45,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
       );
     });
     _initializeData();
-    _startLiveUpdates();
+    _subscribeToBudgetUpdates();
   }
 
   @override
   void dispose() {
-    _liveUpdateTimer?.cancel();
+    _budgetUpdateSubscription?.cancel();
     super.dispose();
   }
 
@@ -62,12 +64,13 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     await _fetchBudgetAdaptations(); // NEW: Fetch budget adaptations
   }
 
-  void _startLiveUpdates() {
-    // Re-enabled live updates for stable backend with fast response times
-    logInfo('Starting daily budget live updates for stable backend', tag: 'DAILY_BUDGET_UPDATES');
-    
-    _liveUpdateTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+  void _subscribeToBudgetUpdates() {
+    // Subscribe to centralized live updates instead of creating duplicate timer
+    logInfo('Subscribing to centralized budget updates', tag: 'DAILY_BUDGET_SCREEN');
+
+    _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
       if (mounted) {
+        logDebug('Received budget update, refreshing status', tag: 'DAILY_BUDGET_SCREEN');
         _fetchLiveBudgetStatus();
       }
     });

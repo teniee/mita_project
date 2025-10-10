@@ -298,7 +298,8 @@ class ErrorAnalyticsService {
   
   /// Start analytics collection
   void _startAnalyticsCollection() {
-    _analyticsTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
+    // Increased interval to reduce timer load - persist less frequently
+    _analyticsTimer = Timer.periodic(const Duration(minutes: 15), (_) async {
       await _persistMetrics();
       await _cleanupOldData();
     });

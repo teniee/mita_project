@@ -134,7 +134,8 @@ class MemoryCache implements CacheBackend {
   }
 
   void _startCleanupTimer() {
-    _cleanupTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    // Increased cleanup interval to reduce timer load
+    _cleanupTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
       cleanup();
     });
   }
@@ -769,10 +770,12 @@ class SmartCacheService {
   }
 
   void _startAnalytics() {
-    _analyticsTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
-      final stats = getStats();
-      logDebug('Cache Stats: ${stats['overall']}', tag: 'CACHE');
-    });
+    // DISABLED: Analytics logging creates unnecessary background timer load
+    // Re-enable only for debugging cache performance
+    // _analyticsTimer = Timer.periodic(const Duration(minutes: 30), (timer) {
+    //   final stats = getStats();
+    //   logDebug('Cache Stats: ${stats['overall']}', tag: 'CACHE');
+    // });
   }
 
   List<String> _generateRecommendations() {

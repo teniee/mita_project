@@ -190,9 +190,16 @@ class LiveUpdatesService {
   /// Check for budget updates
   Future<void> _checkBudgetUpdates() async {
     try {
-      // For now, budget updates are triggered by dashboard changes
-      // In the future, this could check for specific budget modifications
-      logDebug('Budget update check completed', tag: 'LIVE_UPDATES');
+      // Trigger budget update notification for subscribers (calendar, daily budget screens)
+      // This is coordinated with dashboard updates to avoid duplicate API calls
+      if (_lastDashboardData != null) {
+        _budgetUpdatesController.add({
+          'timestamp': DateTime.now().toIso8601String(),
+          'source': 'live_updates_service',
+          'dashboard_changed': true,
+        });
+        logDebug('Budget update notification sent to subscribers', tag: 'LIVE_UPDATES');
+      }
     } catch (e) {
       logWarning('Failed to check budget updates: $e', tag: 'LIVE_UPDATES');
     }

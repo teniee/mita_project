@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/user_data_manager.dart';
+import '../services/live_updates_service.dart';
 import 'dart:async';
 import '../services/logging_service.dart';
 import 'calendar_day_details_screen.dart';
@@ -24,12 +25,13 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   final BudgetAdapterService _budgetService = BudgetAdapterService();
+  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
   List<dynamic> calendarData = [];
   bool isLoading = true;
   bool isRedistributing = false;
   String? error;
   DateTime currentMonth = DateTime.now();
-  Timer? _liveUpdateTimer;
+  StreamSubscription? _budgetUpdateSubscription;
   late AnimationController _redistributionAnimationController;
   
 
@@ -40,14 +42,14 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     _initializeData();
-    _startLiveUpdates();
+    _subscribeToBudgetUpdates();
   }
 
   @override
   void dispose() {
-    _liveUpdateTimer?.cancel();
+    _budgetUpdateSubscription?.cancel();
     _redistributionAnimationController.dispose();
     super.dispose();
   }
@@ -84,12 +86,13 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   }
 
 
-  void _startLiveUpdates() {
-    // Re-enabled live updates for stable backend with fast response times
-    logInfo('Starting calendar live updates for stable backend', tag: 'CALENDAR_UPDATES');
-    
-    _liveUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+  void _subscribeToBudgetUpdates() {
+    // Subscribe to centralized live updates instead of creating duplicate timer
+    logInfo('Subscribing to centralized budget updates', tag: 'CALENDAR_SCREEN');
+
+    _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
       if (mounted && !isRedistributing) {
+        logDebug('Received budget update, refreshing calendar', tag: 'CALENDAR_SCREEN');
         fetchCalendarData();
       }
     });

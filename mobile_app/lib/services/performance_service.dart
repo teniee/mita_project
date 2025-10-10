@@ -286,13 +286,16 @@ class PerformanceService {
 
   /// Start memory monitoring
   Future<void> _startMemoryMonitoring() async {
+    // DISABLED: Memory monitoring creates unnecessary background timer load
+    // Re-enable only for debugging performance issues
     if (!enableMemoryMonitoring) return;
-    
-    _memoryTimer = Timer.periodic(const Duration(seconds: 45), (timer) { // Increased monitoring interval
-      _collectMemoryInfo();
-    });
-    
-    // Initial memory snapshot
+
+    // Commented out to reduce timer load
+    // _memoryTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    //   _collectMemoryInfo();
+    // });
+
+    // Initial memory snapshot only
     await _collectMemoryInfo();
   }
 
