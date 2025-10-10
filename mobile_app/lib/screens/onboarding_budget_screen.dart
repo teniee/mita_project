@@ -69,7 +69,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
       'type': 'budget_allocation',
     }).toList();
     
-    Navigator.pushNamed(context, '/onboarding_goals');
+    Navigator.pushNamed(context, '/onboarding_goal');
   }
 
   double get _totalAllocated => _customAllocations.values.fold(0.0, (sum, amount) => sum + amount);
