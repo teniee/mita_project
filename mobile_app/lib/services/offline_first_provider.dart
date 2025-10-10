@@ -48,11 +48,11 @@ class OfflineFirstProvider {
       // Mark as initialized immediately so UI can render
       _isInitialized.value = true;
       _hasInitialized = true;
-      
-      // Start background sync (don't wait for it)
-      _startBackgroundSync();
-      
-      logDebug('Offline-first provider initialized successfully', tag: 'OFFLINE_FIRST');
+
+      // DISABLED: Background sync creates duplicate polling - LiveUpdatesService handles this
+      // _startBackgroundSync();
+
+      logDebug('Offline-first provider initialized (background sync disabled - using LiveUpdatesService)', tag: 'OFFLINE_FIRST');
     } catch (e) {
       logError('Failed to initialize offline-first provider', tag: 'OFFLINE_FIRST', error: e);
       
