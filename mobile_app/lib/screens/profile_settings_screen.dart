@@ -151,6 +151,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           const Duration(seconds: 8),
           onTimeout: () => throw Exception('Profile update timeout'),
         );
+
+        // Also update income separately for income-specific tracking
+        await _apiService.updateUserIncome(parsedIncome);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
