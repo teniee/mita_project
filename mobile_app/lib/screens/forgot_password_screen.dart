@@ -76,10 +76,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     super.dispose();
   }
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        .hasMatch(email);
-  }
 
   Future<void> _sendResetEmail() async {
     if (!_formKey.currentState!.validate()) {
@@ -181,8 +177,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               if (value == null || value.isEmpty) {
                 return 'Please enter your email address';
               }
-              if (!_isValidEmail(value)) {
-                return 'Please enter a valid email address';
+              // Use centralized email validation
+              final emailError = FormErrorHandler.validateEmail(value, reportError: false);
+              if (emailError != null) {
+                return emailError;
               }
               return null;
             },

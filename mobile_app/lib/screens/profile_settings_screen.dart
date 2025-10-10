@@ -271,8 +271,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value?.isEmpty ?? true) return 'Please enter your email';
-                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!)) return 'Please enter a valid email';
-                      return null;
+                      // Use centralized email validation
+                      return FormErrorHandler.validateEmail(value, reportError: false);
                     },
                   ),
                   const SizedBox(height: 32),

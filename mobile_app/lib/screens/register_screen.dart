@@ -19,10 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
-  }
-
   PasswordValidationResult _validatePassword(String password) {
     return PasswordValidationService.validatePassword(password);
   }
@@ -34,8 +30,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (email.isEmpty) {
       return 'Please enter your email';
     }
-    if (!_isValidEmail(email)) {
-      return 'Please enter a valid email address';
+
+    // Use centralized email validation
+    final emailError = FormErrorHandler.validateEmail(email, reportError: false);
+    if (emailError != null) {
+      return emailError;
     }
     if (password.isEmpty) {
       return 'Please enter a password';
