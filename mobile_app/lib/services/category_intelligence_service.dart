@@ -1,11 +1,14 @@
 import 'dart:math';
 import '../models/budget_intelligence_models.dart';
+import 'api_service.dart';
 
 /// Advanced category intelligence with dynamic optimization and life event detection
 class CategoryIntelligenceService {
   static final CategoryIntelligenceService _instance = CategoryIntelligenceService._internal();
   factory CategoryIntelligenceService() => _instance;
   CategoryIntelligenceService._internal();
+
+  final ApiService _apiService = ApiService();
 
   // Category learning storage
   final Map<String, Map<String, dynamic>> _categoryData = {};
