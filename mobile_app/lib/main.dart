@@ -32,6 +32,8 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'screens/ai_assistant_screen.dart';
 import 'screens/onboarding_region_screen.dart';
 import 'screens/onboarding_location_screen.dart';
 import 'screens/onboarding_income_screen.dart';
@@ -250,6 +252,14 @@ class MITAApp extends StatelessWidget {
         '/forgot-password': (context) => const AppErrorBoundary(
           screenName: 'ForgotPassword',
           child: ForgotPasswordScreen(),
+        ),
+        '/reset-password': (context) => const AppErrorBoundary(
+          screenName: 'ResetPassword',
+          child: ResetPasswordScreen(),
+        ),
+        '/ai-assistant': (context) => const AppErrorBoundary(
+          screenName: 'AIAssistant',
+          child: AIAssistantScreen(),
         ),
         '/main': (context) => const AppErrorBoundary(
           screenName: 'Main',
