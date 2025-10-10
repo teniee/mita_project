@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../services/password_validation_service.dart';
 import '../services/timeout_manager_service.dart';
+import '../core/enhanced_error_handling.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
