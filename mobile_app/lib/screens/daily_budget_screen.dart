@@ -217,6 +217,20 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     }
   }
 
+  Future<void> _fetchBudgetAdaptations() async {
+    try {
+      final adaptations = await _apiService.getBudgetAdaptations();
+      if (mounted) {
+        setState(() {
+          _budgetAdaptations = adaptations;
+        });
+      }
+      logInfo('Budget adaptations loaded successfully', tag: 'DAILY_BUDGET');
+    } catch (e) {
+      logError('Error loading budget adaptations: $e', tag: 'DAILY_BUDGET');
+    }
+  }
+
   Future<void> _triggerBudgetRedistribution() async {
     if (_isRedistributing) return;
 
