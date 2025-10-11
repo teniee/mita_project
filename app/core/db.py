@@ -13,9 +13,13 @@ DATABASE_URL = settings.ASYNC_DATABASE_URL
 if not hasattr(settings, 'ASYNC_DATABASE_URL'):
     raise RuntimeError("CRITICAL: Code changes not deployed - ASYNC_DATABASE_URL missing!")
 
-# Fix SSL parameters for asyncpg before parsing
-if "sslmode=" in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
+# asyncpg doesn't support sslmode parameter, remove it if present
+# Supabase connections already use SSL by default with asyncpg
+if "?sslmode=" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.split("?sslmode=")[0]
+elif "&sslmode=" in DATABASE_URL:
+    import re
+    DATABASE_URL = re.sub(r'&sslmode=[^&]*', '', DATABASE_URL)
 
 url = make_url(DATABASE_URL)
 
