@@ -351,7 +351,7 @@ async def refresh_token_standardized(
     
     # Verify refresh token
     try:
-        token_data = verify_token(refresh_token)
+        token_data = await verify_token(refresh_token)
         if not token_data or token_data.get("token_type") != "refresh":
             raise AuthenticationError(
                 "Invalid refresh token",
