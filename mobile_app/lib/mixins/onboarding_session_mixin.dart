@@ -11,16 +11,9 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    // Дать больше времени на загрузку - не проверяем сессию сразу
-    // Пользователь только что залогинился, токен должен быть валидным
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Отложенная проверка через 3 секунды для stabilization
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          _validateSessionGently();
-        }
-      });
-    });
+    // DISABLED: No session validation during onboarding
+    // User just logged in, token is fresh for 2 hours
+    // Any validation would be redundant and potentially disruptive
   }
 
   /// Gentle session validation - не показывает ошибки при первой неудаче

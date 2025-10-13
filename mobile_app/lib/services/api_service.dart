@@ -346,7 +346,8 @@ class ApiService {
 
     try {
       final response = await _dio.post(
-        '/auth/refresh',
+        '/refresh-token',
+        data: {'refresh_token': refresh},
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
