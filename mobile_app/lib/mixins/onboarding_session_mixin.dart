@@ -113,23 +113,17 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
 
   /// Validate session before proceeding to next onboarding step
   Future<bool> validateSessionBeforeNavigation() async {
-    if (!_sessionValidated) {
-      await _validateSession();
-    }
-
-    if (!_sessionValidated) {
-      logWarning('Session invalid - cannot proceed with onboarding', 
-        tag: 'ONBOARDING_SESSION');
-      return false;
-    }
-
-    // Double-check token is still valid
+    // Just check if token exists - don't do aggressive validation during onboarding
+    // User just logged in, token should be fresh for 2 hours
     final token = await _apiService.getToken();
     if (token == null) {
+      logWarning('No token found - cannot proceed with onboarding',
+        tag: 'ONBOARDING_SESSION');
       _handleSessionExpired();
       return false;
     }
 
+    logDebug('Token exists, allowing navigation', tag: 'ONBOARDING_SESSION');
     return true;
   }
 
