@@ -342,47 +342,57 @@ class ApiService {
 
   Future<bool> _refreshTokens() async {
     final refresh = await getRefreshToken();
-    if (refresh == null) return false;
+    if (refresh == null) {
+      logWarning('No refresh token available', tag: 'TOKEN_REFRESH');
+      return false;
+    }
 
     try {
+      logInfo('Attempting token refresh...', tag: 'TOKEN_REFRESH');
       final response = await _dio.post(
         '/refresh-token',
         data: {'refresh_token': refresh},
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
+      logInfo('Token refresh response received: ${response.statusCode}', tag: 'TOKEN_REFRESH');
+
       final data = response.data as Map<String, dynamic>?;
       if (data == null) {
+        logError('Refresh token response data is null', tag: 'TOKEN_REFRESH');
         throw Exception('Refresh token response data is null');
       }
       final newAccess = data['access_token'] as String?;
       final newRefresh = data['refresh_token'] as String?;
 
+      if (newAccess == null || newRefresh == null) {
+        logError('Refresh response missing tokens: access=$newAccess, refresh=$newRefresh', tag: 'TOKEN_REFRESH');
+        throw Exception('Missing tokens in refresh response');
+      }
+
       // Use secure storage for token refresh when available
       final secureStorage = await _getSecureStorage();
-      
-      if (secureStorage != null && newAccess != null && newRefresh != null) {
+
+      if (secureStorage != null) {
         try {
           await secureStorage.storeTokens(newAccess, newRefresh);
-          logInfo('Refreshed tokens stored securely', tag: 'API_SECURITY');
+          logInfo('✅ Tokens refreshed and stored securely', tag: 'TOKEN_REFRESH');
           return true;
         } catch (e) {
-          logError('Failed to store refreshed tokens securely: $e', 
-            tag: 'API_SECURITY', error: e);
+          logError('Failed to store refreshed tokens securely: $e',
+            tag: 'TOKEN_REFRESH', error: e);
           // Continue with fallback below
         }
       }
-      
+
       // Fallback to legacy storage
-      if (newAccess != null) {
-        await _storage.write(key: 'access_token', value: newAccess);
-      }
-      if (newRefresh != null) {
-        await _storage.write(key: 'refresh_token', value: newRefresh);
-      }
+      await _storage.write(key: 'access_token', value: newAccess);
+      await _storage.write(key: 'refresh_token', value: newRefresh);
+      logInfo('✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
       return true;
-    } catch (_) {
-      await clearTokens();
+    } catch (e) {
+      logError('❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
+      // DON'T clear tokens immediately - might be temporary network issue
       return false;
     }
   }
