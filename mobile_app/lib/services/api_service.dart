@@ -350,8 +350,7 @@ class ApiService {
     try {
       logInfo('Attempting token refresh...', tag: 'TOKEN_REFRESH');
       final response = await _dio.post(
-        '/refresh-token',
-        data: {'refresh_token': refresh},
+        '/refresh-token?refresh_token=$refresh',
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
