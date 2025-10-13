@@ -31,6 +31,7 @@ engine = create_async_engine(
     url.render_as_string(hide_password=False),
     future=True,
     echo=False,
+    connect_args={"statement_cache_size": 0},  # Required for Supabase pooler (pgbouncer)
 )
 
 async_session = async_sessionmaker(
