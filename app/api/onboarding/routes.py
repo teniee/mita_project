@@ -32,7 +32,17 @@ async def submit_onboarding(
     db: Session = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
 ):
+    # Save income to user profile
+    income = answers.get('income')
+    if income is not None:
+        current_user.monthly_income = income
+        db.add(current_user)
+        db.flush()
+
     budget_plan = generate_budget_from_answers(answers)
     calendar_data = build_calendar({**answers, **budget_plan})
     save_calendar_for_user(db, current_user.id, calendar_data)
+
+    db.commit()  # Commit all changes including income
+
     return success_response({"status": "success", "calendar_days": len(calendar_data)})

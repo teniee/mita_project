@@ -1002,49 +1002,14 @@ class BudgetAdapterService {
   // ============================================================================
 
   Map<String, dynamic> _getFallbackDashboardData() {
+    // Return empty data structure - no hardcoded values
+    // App should use real data from backend API
     return {
-      'balance': 2850.00,
-      'spent': 45.50,
-      'daily_targets': [
-        {
-          'category': 'Food & Dining',
-          'limit': 40.0,
-          'spent': 18.0,
-          'icon': Icons.restaurant,
-          'color': const Color(0xFF4CAF50),
-        },
-        {
-          'category': 'Transportation',
-          'limit': 25.0,
-          'spent': 12.0,
-          'icon': Icons.directions_car,
-          'color': const Color(0xFF2196F3),
-        },
-        {
-          'category': 'Entertainment',
-          'limit': 20.0,
-          'spent': 8.0,
-          'icon': Icons.movie,
-          'color': const Color(0xFF9C27B0),
-        },
-        {
-          'category': 'Shopping',
-          'limit': 15.0,
-          'spent': 7.5,
-          'icon': Icons.shopping_bag,
-          'color': const Color(0xFFFF9800),
-        },
-      ],
-      'week': [
-        {'day': 'Mon', 'status': 'good'},
-        {'day': 'Tue', 'status': 'good'},
-        {'day': 'Wed', 'status': 'warning'},
-        {'day': 'Thu', 'status': 'good'},
-        {'day': 'Fri', 'status': 'good'},
-        {'day': 'Sat', 'status': 'over'},
-        {'day': 'Sun', 'status': 'good'},
-      ],
-      'transactions': _generateSampleTransactions(),
+      'balance': 0.0,
+      'spent': 0.0,
+      'daily_targets': [],
+      'week': [],
+      'transactions': [],
     };
   }
 

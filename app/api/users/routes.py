@@ -20,6 +20,7 @@ async def get_profile(current_user=Depends(get_current_user)):
             "country": current_user.country,
             "created_at": current_user.created_at.isoformat(),
             "timezone": current_user.timezone,
+            "income": float(current_user.monthly_income or 0),
         }
     )
 
