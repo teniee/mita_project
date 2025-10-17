@@ -302,15 +302,14 @@ class _LoginScreenState extends State<LoginScreen>
         if (kDebugMode) dev.log('No access token found in Google login response: $responseData', name: 'LoginScreen');
         throw AuthenticationException('Google login successful but no access token received');
       }
-        
-      if (_rememberMe) {
-        if (kDebugMode) dev.log('Saving Google login tokens to storage', name: 'LoginScreen');
-        await _api.saveTokens(accessToken, refreshToken ?? '');
-        
-        // Verify token storage
-        final storedToken = await _api.getToken();
-        if (kDebugMode) dev.log('Google login token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
-      }
+
+      // ALWAYS save tokens - they're required for API calls
+      if (kDebugMode) dev.log('Saving Google login tokens to storage', name: 'LoginScreen');
+      await _api.saveTokens(accessToken, refreshToken ?? '');
+
+      // Verify token storage
+      final storedToken = await _api.getToken();
+      if (kDebugMode) dev.log('Google login token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode) dev.log('Widget unmounted during Google login process', name: 'LoginScreen');
@@ -527,16 +526,14 @@ class _LoginScreenState extends State<LoginScreen>
         if (kDebugMode) dev.log('No access token found in response: $responseData', name: 'LoginScreen');
         throw AuthenticationException('Login successful but no access token received');
       }
-      
-      // Save tokens if remember me is checked
-      if (_rememberMe) {
-        if (kDebugMode) dev.log('Saving tokens to storage', name: 'LoginScreen');
-        await _api.saveTokens(accessToken, refreshToken ?? '');
-        
-        // Verify token storage
-        final storedToken = await _api.getToken();
-        if (kDebugMode) dev.log('Token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
-      }
+
+      // ALWAYS save tokens - they're required for API calls
+      if (kDebugMode) dev.log('Saving tokens to storage', name: 'LoginScreen');
+      await _api.saveTokens(accessToken, refreshToken ?? '');
+
+      // Verify token storage
+      final storedToken = await _api.getToken();
+      if (kDebugMode) dev.log('Token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}', name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode) dev.log('Widget unmounted during login process', name: 'LoginScreen');

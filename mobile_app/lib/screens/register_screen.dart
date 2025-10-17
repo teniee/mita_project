@@ -74,10 +74,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-      
-      final accessToken = response.data['access_token'] as String;
-      final refreshToken = response.data['refresh_token'] as String?;
-      
+
+      // Extract tokens from standardized response structure
+      final responseData = response.data['data'] ?? response.data;
+      final accessToken = responseData['access_token'] as String;
+      final refreshToken = responseData['refresh_token'] as String?;
+
+      logInfo('Tokens received - access: ${accessToken.substring(0, 20)}..., refresh: ${refreshToken?.substring(0, 20) ?? 'null'}', tag: 'REGISTER');
+
       // Save tokens from FastAPI registration
       await _api.saveTokens(accessToken, refreshToken ?? '');
       
