@@ -595,10 +595,17 @@ class ApiService {
         '/users/me',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      // Check if user has basic profile data (country indicates some onboarding)
+      // Check if user has completed onboarding using the has_onboarded flag
       final userData = response.data['data'];
-      if (userData != null && userData['country'] != null) {
-        return true;
+      if (userData != null) {
+        // Use has_onboarded flag if available (new approach)
+        if (userData.containsKey('has_onboarded')) {
+          return userData['has_onboarded'] == true;
+        }
+        // Fallback: check if user has income set (legacy approach for backward compatibility)
+        if (userData.containsKey('income') && userData['income'] != null && userData['income'] > 0) {
+          return true;
+        }
       }
       return false;
     } catch (e) {

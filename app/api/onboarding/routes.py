@@ -32,17 +32,98 @@ async def submit_onboarding(
     db: Session = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
 ):
-    # Save income to user profile
-    income = answers.get('income')
-    if income is not None:
-        current_user.monthly_income = income
+    """
+    Submit onboarding data and generate user's budget plan and calendar.
+
+    Expected data format:
+    {
+        "income": {"monthly_income": float, "additional_income": float},
+        "fixed_expenses": {"category": float, ...},
+        "spending_habits": {"dining_out_per_month": int, ...},
+        "goals": {"savings_goal_amount_per_month": float, ...},
+        "region": str (optional)
+    }
+    """
+    try:
+        # Validate required data structure
+        income_data = answers.get('income')
+        if not income_data or not isinstance(income_data, dict):
+            return {
+                "success": False,
+                "error": "Invalid income data format. Expected object with monthly_income.",
+                "code": "INVALID_INCOME_FORMAT"
+            }
+
+        monthly_income = income_data.get('monthly_income', 0)
+        if monthly_income <= 0:
+            return {
+                "success": False,
+                "error": "Monthly income must be greater than 0",
+                "code": "INVALID_INCOME_VALUE"
+            }
+
+        # Validate fixed expenses
+        fixed_expenses = answers.get('fixed_expenses', {})
+        if not isinstance(fixed_expenses, dict):
+            return {
+                "success": False,
+                "error": "Invalid fixed_expenses format. Expected object.",
+                "code": "INVALID_EXPENSES_FORMAT"
+            }
+
+        # Save income to user profile
+        current_user.monthly_income = monthly_income
         db.add(current_user)
         db.flush()
 
-    budget_plan = generate_budget_from_answers(answers)
-    calendar_data = build_calendar({**answers, **budget_plan})
-    save_calendar_for_user(db, current_user.id, calendar_data)
+        # Generate budget plan with error handling
+        try:
+            budget_plan = generate_budget_from_answers(answers)
+        except ValueError as e:
+            db.rollback()
+            return {
+                "success": False,
+                "error": str(e),
+                "code": "BUDGET_GENERATION_FAILED"
+            }
+        except Exception as e:
+            db.rollback()
+            return {
+                "success": False,
+                "error": f"Failed to generate budget: {str(e)}",
+                "code": "BUDGET_GENERATION_ERROR"
+            }
 
-    db.commit()  # Commit all changes including income
+        # Build calendar with error handling
+        try:
+            calendar_data = build_calendar({**answers, **budget_plan})
+            save_calendar_for_user(db, current_user.id, calendar_data)
+        except Exception as e:
+            db.rollback()
+            return {
+                "success": False,
+                "error": f"Failed to build calendar: {str(e)}",
+                "code": "CALENDAR_BUILD_ERROR"
+            }
 
-    return success_response({"status": "success", "calendar_days": len(calendar_data)})
+        # Mark user as having completed onboarding
+        current_user.has_onboarded = True
+        db.add(current_user)
+
+        # Commit all changes including income, calendar, and onboarding flag
+        db.commit()
+
+        return success_response({
+            "status": "success",
+            "calendar_days": len(calendar_data),
+            "budget_plan": budget_plan,
+            "message": "Onboarding completed successfully"
+        })
+
+    except Exception as e:
+        db.rollback()
+        return {
+            "success": False,
+            "error": f"Unexpected error during onboarding: {str(e)}",
+            "code": "ONBOARDING_ERROR"
+        }
