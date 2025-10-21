@@ -158,8 +158,28 @@ CREATE INDEX IF NOT EXISTS idx_habit_completions_habit ON habit_completions(habi
 CREATE INDEX IF NOT EXISTS idx_habit_completions_user ON habit_completions(user_id);
 CREATE INDEX IF NOT EXISTS idx_habit_completions_date ON habit_completions(completed_at DESC);
 
+-- 9. Daily Plan table (Budget tracking)
+CREATE TABLE IF NOT EXISTS daily_plan (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TIMESTAMP WITH TIME ZONE NOT NULL,
+    category VARCHAR(100),
+    planned_amount NUMERIC(12, 2) DEFAULT 0.00,
+    spent_amount NUMERIC(12, 2) DEFAULT 0.00,
+    daily_budget NUMERIC(12, 2),
+    status VARCHAR(20) DEFAULT 'green',
+    plan_json JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for efficient budget queries
+CREATE INDEX IF NOT EXISTS idx_daily_plan_user ON daily_plan(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_plan_date ON daily_plan(date);
+CREATE INDEX IF NOT EXISTS idx_daily_plan_category ON daily_plan(category);
+CREATE INDEX IF NOT EXISTS idx_daily_plan_user_date_category ON daily_plan(user_id, date, category);
+
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE 'Migration completed successfully! All 8 new tables created.';
+    RAISE NOTICE 'Migration completed successfully! All 9 tables created including daily_plan.';
 END $$;
