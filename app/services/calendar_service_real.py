@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from typing import Any, Dict
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,7 @@ from app.db.models import DailyPlan
 
 
 def save_calendar_for_user(
-    db: Session, user_id: int, calendar: Dict[str, Dict[str, float]]
+    db: Session, user_id: UUID, calendar: Dict[str, Dict[str, float]]
 ):
     for day_str, categories in calendar.items():
         day_date = date.fromisoformat(day_str)
@@ -25,7 +26,7 @@ def save_calendar_for_user(
 
 
 def fetch_calendar(
-    db: Session, user_id: int, year: int, month: int
+    db: Session, user_id: UUID, year: int, month: int
 ) -> Dict[str, Dict[str, float]]:
     results = (
         db.query(DailyPlan)
@@ -44,7 +45,7 @@ def fetch_calendar(
     return calendar
 
 
-def update_day_entry(db: Session, user_id: int, day: date, updates: Dict[str, Any]):
+def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, Any]):
     for category, new_amount in updates.items():
         plan = (
             db.query(DailyPlan)

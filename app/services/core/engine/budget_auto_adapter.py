@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Dict
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,7 @@ from app.db.models import AIAnalysisSnapshot
 
 
 def adapt_category_weights(
-    user_id: int, default_weights: Dict[str, float], db: Session
+    user_id: UUID, default_weights: Dict[str, float], db: Session
 ) -> Dict[str, float]:
     snapshot = (
         db.query(AIAnalysisSnapshot)
