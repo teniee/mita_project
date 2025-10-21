@@ -35,6 +35,9 @@ class User(Base):
     # Additional fields for budget tracking
     monthly_income = Column(Numeric, default=0)
 
+    # Onboarding tracking
+    has_onboarded = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")

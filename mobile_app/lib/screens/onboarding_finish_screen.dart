@@ -28,17 +28,52 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
     try {
       // Gather answers from the temporary onboarding state
       final state = OnboardingState.instance;
+
+      // Transform expenses from array to dict format expected by backend
+      final Map<String, double> fixedExpenses = {};
+      for (var expense in state.expenses) {
+        final category = (expense['category'] as String).toLowerCase().replaceAll(' ', '_').replaceAll('/', '_or_');
+        final amount = double.tryParse(expense['amount'].toString()) ?? 0.0;
+        fixedExpenses[category] = amount;
+      }
+
+      // Transform goals from list to dict format expected by backend
+      final goalsData = {
+        "savings_goal_amount_per_month": 0.0,
+        "savings_goal_type": state.goals.isNotEmpty ? state.goals.first : "general",
+        "has_emergency_fund": state.goals.contains("Build an emergency fund"),
+      };
+
+      // Transform habits to spending habits format (use defaults for now)
+      final spendingHabits = {
+        "dining_out_per_month": state.habits.contains("Impulse purchases") ? 15 : 8,
+        "entertainment_per_month": 4,
+        "clothing_per_month": 2,
+        "travel_per_year": 2,
+        "coffee_per_week": 5,
+        "transport_per_month": 20,
+      };
+
+      // Format data to match backend expectations
       final onboardingData = {
-        "region": state.region,
-        "countryCode": state.countryCode,
-        "stateCode": state.stateCode,
-        "income": state.income,
-        "incomeTier": state.incomeTier?.name,
-        "expenses": state.expenses,
-        "goals": state.goals,
-        "habits": state.habits,
-        if (state.habitsComment != null && state.habitsComment!.isNotEmpty)
-          "habits_comment": state.habitsComment,
+        "region": state.region ?? "US",
+        "income": {
+          "monthly_income": state.income ?? 0,
+          "additional_income": 0,
+        },
+        "fixed_expenses": fixedExpenses,
+        "spending_habits": spendingHabits,
+        "goals": goalsData,
+        // Also include original format for backward compatibility
+        "_meta": {
+          "countryCode": state.countryCode,
+          "stateCode": state.stateCode,
+          "incomeTier": state.incomeTier?.name,
+          "goals_list": state.goals,
+          "habits_list": state.habits,
+          if (state.habitsComment != null && state.habitsComment!.isNotEmpty)
+            "habits_comment": state.habitsComment,
+        },
       };
 
       logInfo('Submitting onboarding data: $onboardingData', tag: 'ONBOARDING_FINISH');
