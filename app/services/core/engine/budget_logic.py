@@ -51,7 +51,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
         "user_class": user_class,
         "behavior": behavior,
         "total_income": round(income, 2),
-        "fixed_expenses": round(fixed_total, 2),
+        "fixed_expenses_total": round(fixed_total, 2),  # Renamed to avoid overwriting dict
         "discretionary_total": round(discretionary, 2),
         "discretionary_breakdown": {
             k: round(discretionary * w, 2) for k, w in weights.items()

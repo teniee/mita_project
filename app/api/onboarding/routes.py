@@ -96,7 +96,15 @@ async def submit_onboarding(
 
         # Build calendar with error handling
         try:
-            calendar_data = build_calendar({**answers, **budget_plan})
+            # Prepare calendar config by merging answers and budget_plan
+            # Add top-level monthly_income for calendar engine compatibility
+            calendar_config = {
+                **answers,
+                **budget_plan,
+                "monthly_income": monthly_income,  # Add top-level for calendar engine
+                "user_id": str(current_user.id),  # Required by calendar engine
+            }
+            calendar_data = build_calendar(calendar_config)
             save_calendar_for_user(db, current_user.id, calendar_data)
         except Exception as e:
             db.rollback()

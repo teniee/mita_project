@@ -1782,7 +1782,7 @@ class ApiService {
       },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data['data']['response'] as String? ?? 'I\'m unable to provide a response right now.';
+    return response.data['data']['answer'] as String? ?? 'I\'m unable to provide a response right now.';
   }
 
   /// Get AI-powered anomaly detection in spending patterns
