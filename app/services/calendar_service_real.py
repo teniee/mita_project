@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -9,8 +9,26 @@ from app.db.models import DailyPlan
 
 
 def save_calendar_for_user(
-    db: Session, user_id: UUID, calendar: Dict[str, Dict[str, float]]
+    db: Session, user_id: UUID, calendar: Union[Dict[str, Dict[str, float]], List[Dict]]
 ):
+    """
+    Save calendar data to DailyPlan table.
+
+    Accepts two formats:
+    1. Dict format: {"2025-01-01": {"food": 50, "transport": 20}, ...}
+    2. List format: [{"date": "2025-01-01", "planned_budget": {"food": 50, ...}}, ...]
+    """
+    # Handle list format (returned by build_monthly_budget)
+    if isinstance(calendar, list):
+        calendar_dict = {}
+        for day_entry in calendar:
+            date_str = day_entry.get("date")
+            planned_budget = day_entry.get("planned_budget", {})
+            if date_str and planned_budget:
+                calendar_dict[date_str] = planned_budget
+        calendar = calendar_dict
+
+    # Now process as dict format
     for day_str, categories in calendar.items():
         day_date = date.fromisoformat(day_str)
         for category, amount in categories.items():
