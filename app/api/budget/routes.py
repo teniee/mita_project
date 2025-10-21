@@ -110,8 +110,8 @@ async def get_budget_suggestions(
 
     for plan in daily_plans:
         date_key = plan.date.isoformat()
-        if plan.category_budgets:
-            calendar[date_key]["planned_budget"] = plan.category_budgets
+        if plan.plan_json and plan.plan_json.get("category_budgets"):
+            calendar[date_key]["planned_budget"] = plan.plan_json.get("category_budgets")
 
     # Call the actual suggestion engine
     suggestions_map = suggest_budget_adjustments(dict(calendar), user_income)
@@ -273,8 +273,8 @@ async def get_daily_budgets(
         {
             "date": plan.date.isoformat(),
             "budget": float(plan.daily_budget) if plan.daily_budget else 0.0,
-            "spent": float(plan.spent) if plan.spent else 0.0,
-            "remaining": float(plan.daily_budget - plan.spent) if plan.daily_budget and plan.spent else 0.0,
+            "spent": float(plan.spent_amount) if plan.spent_amount else 0.0,
+            "remaining": float(plan.daily_budget - plan.spent_amount) if plan.daily_budget and plan.spent_amount else 0.0,
             "status": plan.status or "neutral"
         }
         for plan in daily_plans
@@ -416,8 +416,8 @@ async def get_live_budget_status(
     status_data = {
         "date": now.date().isoformat(),
         "daily_budget": float(today_plan.daily_budget) if today_plan and today_plan.daily_budget else 0.0,
-        "spent_today": float(today_plan.spent) if today_plan and today_plan.spent else 0.0,
-        "remaining_today": float(today_plan.daily_budget - today_plan.spent) if today_plan and today_plan.daily_budget and today_plan.spent else 0.0,
+        "spent_today": float(today_plan.spent_amount) if today_plan and today_plan.spent_amount else 0.0,
+        "remaining_today": float(today_plan.daily_budget - today_plan.spent_amount) if today_plan and today_plan.daily_budget and today_plan.spent_amount else 0.0,
         "status": today_plan.status if today_plan else "neutral",
         "monthly_budget": monthly_budget,
         "monthly_spent": round(monthly_spent, 2),
