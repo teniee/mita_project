@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Dict
+from uuid import UUID
 
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from app.db.models.daily_plan import DailyPlan
 
 
 class BudgetTracker:
-    def __init__(self, db: Session, user_id: int, year: int, month: int):
+    def __init__(self, db: Session, user_id: UUID, year: int, month: int):
         self.db = db
         self.user_id = user_id
         self.year = year

@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Any
+from uuid import UUID
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
@@ -9,11 +10,11 @@ from app.core.error_handler import MITAException
 logger = logging.getLogger(__name__)
 
 
-def fetch_spent_by_category(db: Session, user_id: int, year: int, month: int) -> Dict[str, Any]:
+def fetch_spent_by_category(db: Session, user_id: UUID, year: int, month: int) -> Dict[str, Any]:
     """Fetch spending by category with proper error handling"""
     try:
         # Validate input parameters
-        if not user_id or user_id <= 0:
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid user ID"
@@ -50,11 +51,11 @@ def fetch_spent_by_category(db: Session, user_id: int, year: int, month: int) ->
         )
 
 
-def fetch_remaining_budget(db: Session, user_id: int, year: int, month: int) -> Dict[str, Any]:
+def fetch_remaining_budget(db: Session, user_id: UUID, year: int, month: int) -> Dict[str, Any]:
     """Fetch remaining budget with proper error handling"""
     try:
         # Validate input parameters
-        if not user_id or user_id <= 0:
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid user ID"
