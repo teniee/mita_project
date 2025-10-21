@@ -2,6 +2,7 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,7 @@ from app.services.template_service import AIAdviceTemplateService
 
 
 def generate_push_advice(
-    user_id: int,
+    user_id: UUID,
     db: Session,
     year: int,
     month: int,

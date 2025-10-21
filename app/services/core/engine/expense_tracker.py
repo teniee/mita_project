@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,7 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
 
 def record_expense(
     db: Session,
-    user_id: int,
+    user_id: UUID,
     day: date,
     category: str,
     amount: float,

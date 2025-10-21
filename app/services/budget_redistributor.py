@@ -1,12 +1,13 @@
 from collections import defaultdict
 from datetime import date
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan
 
 
-def redistribute_budget_for_user(db: Session, user_id: int, year: int, month: int):
+def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: int):
     start = date(year, month, 1)
     end = date(year + (month // 12), (month % 12) + 1, 1)
 

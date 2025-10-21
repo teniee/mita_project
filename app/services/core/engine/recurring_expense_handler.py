@@ -1,12 +1,13 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.db.models import RecurringExpense
 
 
-def inject_recurring_expenses(db: Session, user_id: int, calendar: list):
+def inject_recurring_expenses(db: Session, user_id: UUID, calendar: list):
     """Insert recurring expenses into the calendar.
 
     ``calendar`` is a list of dictionaries with keys ``date`` and
