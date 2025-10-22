@@ -635,7 +635,36 @@ class ApiService {
     return await _timeoutManager.executeWithFallback<Map<String, dynamic>>(
       operation: () async {
         final token = await getToken();
-        
+
+        // Try new dedicated dashboard endpoint first
+        try {
+          logInfo('Fetching dashboard from /api/dashboard', tag: 'DASHBOARD');
+
+          final response = await _dio.get(
+            '/dashboard',
+            options: Options(headers: {'Authorization': 'Bearer $token'}),
+          );
+
+          // Transform response to expected format
+          final data = response.data['data'] as Map<String, dynamic>?;
+          if (data != null) {
+            logInfo('Dashboard data fetched successfully from new endpoint', tag: 'DASHBOARD');
+
+            // Transform to the format expected by Main Screen
+            return {
+              'balance': data['balance'] ?? 0.0,
+              'spent': data['spent'] ?? 0.0,
+              'daily_targets': data['daily_targets'] ?? [],
+              'week': data['week'] ?? [],
+              'transactions': data['transactions'] ?? [],
+              'insights_preview': data['insights_preview'],
+            };
+          }
+        } catch (e) {
+          logWarning('New dashboard endpoint failed, using fallback: $e', tag: 'DASHBOARD');
+        }
+
+        // Fallback to legacy approach if new endpoint fails
         // Get user profile to retrieve actual income if not provided
         double actualIncome = userIncome ?? 0.0;
         if (actualIncome == 0.0) {
