@@ -27,6 +27,9 @@ from app.utils.response_wrapper import StandardizedResponse, FinancialResponseHe
 from app.api.transactions.services import (
     add_transaction,
     list_user_transactions,
+    get_transaction_by_id,
+    update_transaction,
+    delete_transaction,
 )
 
 # isort: on
@@ -672,3 +675,101 @@ async def validate_receipt_data(
         "errors": validation_errors,
         "warnings": []
     })
+
+
+# CRUD endpoints for individual transactions
+@router.get("/{transaction_id}", response_model=TxnOut, summary="Get transaction by ID")
+@handle_financial_errors
+async def get_transaction(
+    request: Request,
+    transaction_id: str,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Get a specific transaction by ID"""
+    from uuid import UUID
+
+    try:
+        txn_uuid = UUID(transaction_id)
+    except ValueError:
+        raise ValidationError(
+            "Invalid transaction ID format",
+            ErrorCode.VALIDATION_ID_INVALID,
+            details={"transaction_id": transaction_id}
+        )
+
+    txn = get_transaction_by_id(user, txn_uuid, db)
+
+    if not txn:
+        raise ResourceNotFoundError(
+            f"Transaction {transaction_id} not found",
+            details={"transaction_id": transaction_id}
+        )
+
+    return success_response(txn, message="Transaction retrieved successfully")
+
+
+@router.put("/{transaction_id}", response_model=TxnOut, summary="Update transaction")
+@handle_financial_errors
+async def update_transaction_endpoint(
+    request: Request,
+    transaction_id: str,
+    txn_update: TxnUpdate,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Update an existing transaction"""
+    from uuid import UUID
+
+    try:
+        txn_uuid = UUID(transaction_id)
+    except ValueError:
+        raise ValidationError(
+            "Invalid transaction ID format",
+            ErrorCode.VALIDATION_ID_INVALID,
+            details={"transaction_id": transaction_id}
+        )
+
+    updated_txn = update_transaction(user, txn_uuid, txn_update, db)
+
+    if not updated_txn:
+        raise ResourceNotFoundError(
+            f"Transaction {transaction_id} not found",
+            details={"transaction_id": transaction_id}
+        )
+
+    return FinancialResponseHelper.transaction_updated(updated_txn)
+
+
+@router.delete("/{transaction_id}", summary="Delete transaction")
+@handle_financial_errors
+async def delete_transaction_endpoint(
+    request: Request,
+    transaction_id: str,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """Delete a transaction"""
+    from uuid import UUID
+
+    try:
+        txn_uuid = UUID(transaction_id)
+    except ValueError:
+        raise ValidationError(
+            "Invalid transaction ID format",
+            ErrorCode.VALIDATION_ID_INVALID,
+            details={"transaction_id": transaction_id}
+        )
+
+    success = delete_transaction(user, txn_uuid, db)
+
+    if not success:
+        raise ResourceNotFoundError(
+            f"Transaction {transaction_id} not found",
+            details={"transaction_id": transaction_id}
+        )
+
+    return success_response(
+        data={"deleted": True, "transaction_id": transaction_id},
+        message="Transaction deleted successfully"
+    )
