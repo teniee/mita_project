@@ -69,8 +69,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           _selectedCurrency = data['currency'] ?? 'USD';
           _selectedRegion = data['region'] ?? 'US';
           _budgetMethod = data['budget_method'] ?? '50/30/20 Rule';
-          _notificationsEnabled = data['notifications'] ?? true;
-          _darkModeEnabled = data['dark_mode'] ?? false;
+          _notificationsEnabled = data['notifications_enabled'] ?? true;
+          _darkModeEnabled = data['dark_mode_enabled'] ?? false;
         });
       } else {
         // No user profile data found - show empty fields
@@ -139,8 +139,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         'currency': _selectedCurrency,
         'region': _selectedRegion,
         'budget_method': _budgetMethod,
-        'notifications': _notificationsEnabled,
-        'dark_mode': _darkModeEnabled,
+        'notifications_enabled': _notificationsEnabled,
+        'dark_mode_enabled': _darkModeEnabled,
       };
 
       // Save locally first for instant feedback
