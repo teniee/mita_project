@@ -16,8 +16,6 @@ This migration adds comprehensive user profile fields including:
 - has_onboarded: Onboarding completion status
 """
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0008_add_user_profile_fields'
@@ -29,42 +27,33 @@ depends_on = None
 def upgrade() -> None:
     """Add user profile and preference columns to users table"""
 
-    # Add profile fields
-    op.add_column('users', sa.Column('name', sa.String(), nullable=True))
-    op.add_column('users', sa.Column('savings_goal', sa.Numeric(), nullable=False, server_default='0'))
-    op.add_column('users', sa.Column('budget_method', sa.String(), nullable=False, server_default='50/30/20 Rule'))
-    op.add_column('users', sa.Column('currency', sa.String(length=3), nullable=False, server_default='USD'))
-    op.add_column('users', sa.Column('region', sa.String(), nullable=True))
+    # Add profile fields (guarded to avoid duplicate-column errors on pre-patched DBs)
+    op.execute("""
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS name VARCHAR,
+            ADD COLUMN IF NOT EXISTS savings_goal NUMERIC NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS budget_method VARCHAR NOT NULL DEFAULT '50/30/20 Rule',
+            ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+            ADD COLUMN IF NOT EXISTS region VARCHAR;
+    """)
 
-    # Add preference fields
-    op.add_column('users', sa.Column('notifications_enabled', sa.Boolean(), nullable=False, server_default='true'))
-    op.add_column('users', sa.Column('dark_mode_enabled', sa.Boolean(), nullable=False, server_default='false'))
+    # Add preference fields with IF NOT EXISTS safeguards
+    op.execute("""
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT true,
+            ADD COLUMN IF NOT EXISTS dark_mode_enabled BOOLEAN NOT NULL DEFAULT false;
+    """)
 
     # Add monthly income field (if not already present)
-    # Note: This field may already exist in some deployments, so we use a conditional approach
     op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='users' AND column_name='monthly_income'
-            ) THEN
-                ALTER TABLE users ADD COLUMN monthly_income NUMERIC DEFAULT 0;
-            END IF;
-        END $$;
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS monthly_income NUMERIC DEFAULT 0;
     """)
 
     # Add has_onboarded field (if not already present)
     op.execute("""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='users' AND column_name='has_onboarded'
-            ) THEN
-                ALTER TABLE users ADD COLUMN has_onboarded BOOLEAN NOT NULL DEFAULT false;
-            END IF;
-        END $$;
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS has_onboarded BOOLEAN NOT NULL DEFAULT false;
     """)
 
     # Create indexes for commonly queried fields
