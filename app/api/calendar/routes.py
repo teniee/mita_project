@@ -124,14 +124,14 @@ async def get_shell(
                 for category, weight in payload.weights.items()
             }
         }
-        
+
         # Add fixed expenses to budget plan
         for category, amount in payload.fixed.items():
             if category in shell_data["budget_plan"]:
                 shell_data["budget_plan"][category] += float(amount)
             else:
                 shell_data["budget_plan"][category] = float(amount)
-        
+
         calendar = generate_shell_calendar(user.id, shell_data)
         return success_response({"calendar": calendar})
     except Exception as e:
@@ -145,3 +145,94 @@ async def get_shell(
                 "total": 0.0
             }]
         })
+
+
+@router.get("/saved/{year}/{month}")
+async def get_saved_calendar(
+    year: int,
+    month: int,
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """
+    Retrieve saved calendar data for a specific month from DailyPlan table.
+    This returns the calendar that was saved during onboarding or budget updates.
+
+    Returns empty list if no saved data exists for this month.
+    This endpoint is used by the mobile app to retrieve the budget created during onboarding.
+    """
+    from sqlalchemy.orm import Session
+    from sqlalchemy import extract
+    from app.db.session import get_db
+    from app.db.models import DailyPlan
+    from collections import defaultdict
+
+    try:
+        # Get database session
+        db = next(get_db())
+
+        # Query DailyPlan entries for the specified month
+        rows = db.query(DailyPlan).filter(
+            DailyPlan.user_id == user.id,
+            extract('year', DailyPlan.date) == year,
+            extract('month', DailyPlan.date) == month,
+        ).order_by(DailyPlan.date).all()
+
+        if not rows:
+            logger.info(f"No saved calendar data found for user {user.id}, {year}-{month}")
+            return success_response({"calendar": []})
+
+        logger.info(f"Retrieved {len(rows)} saved calendar entries for user {user.id}, {year}-{month}")
+
+        # Group by date to aggregate categories for each day
+        days_data = defaultdict(lambda: {
+            'date': None,
+            'day': 0,
+            'total_budget': 0,
+            'total_planned': 0,
+            'total_spent': 0,
+            'categories': {}
+        })
+
+        for row in rows:
+            day_key = row.date.isoformat()
+            day_data = days_data[day_key]
+
+            if day_data['date'] is None:
+                day_data['date'] = row.date.isoformat()
+                day_data['day'] = row.date.day
+
+            # Aggregate amounts
+            day_data['total_budget'] += (row.daily_budget or 0)
+            day_data['total_planned'] += (row.planned_amount or 0)
+            day_data['total_spent'] += (row.spent_amount or 0)
+
+            # Add category details
+            category_name = row.category or 'uncategorized'
+            day_data['categories'][category_name] = {
+                'planned': row.planned_amount or 0,
+                'spent': row.spent_amount or 0,
+                'status': row.status or 'pending'
+            }
+
+        # Convert to list format matching the shell calendar structure
+        calendar_days = []
+        for day_data in days_data.values():
+            calendar_days.append({
+                'date': day_data['date'],
+                'day': day_data['day'],
+                'planned_budget': day_data['categories'],  # Dict of {category: {planned, spent, status}}
+                'limit': day_data['total_budget'],
+                'total': day_data['total_planned'],
+                'spent': day_data['total_spent'],
+                'status': 'active' if day_data['total_spent'] > 0 else 'pending'
+            })
+
+        # Sort by date
+        calendar_days.sort(key=lambda x: x['date'])
+
+        return success_response({"calendar": calendar_days})
+
+    except Exception as e:
+        logger.error(f"Error retrieving saved calendar: {str(e)}")
+        # Return empty calendar on error to allow fallback
+        return success_response({"calendar": []})

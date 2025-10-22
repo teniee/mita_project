@@ -11,8 +11,10 @@ class OnboardingState {
   IncomeTier? incomeTier;
   List<Map<String, dynamic>> expenses = [];
   List<String> goals = [];
+  double? savingsGoalAmount;  // NEW: Actual savings goal dollar amount
   List<String> habits = [];
   String? habitsComment;
+  Map<String, int>? spendingFrequencies;  // NEW: Real user spending frequencies
 
   void reset() {
     region = null;
@@ -22,7 +24,9 @@ class OnboardingState {
     incomeTier = null;
     expenses = [];
     goals = [];
+    savingsGoalAmount = null;
     habits = [];
     habitsComment = null;
+    spendingFrequencies = null;
   }
 }

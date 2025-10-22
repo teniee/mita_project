@@ -39,13 +39,14 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // Transform goals from list to dict format expected by backend
       final goalsData = {
-        "savings_goal_amount_per_month": 0.0,
+        "savings_goal_amount_per_month": state.savingsGoalAmount ?? 0.0,  // ✅ Use real savings goal
         "savings_goal_type": state.goals.isNotEmpty ? state.goals.first : "general",
         "has_emergency_fund": state.goals.contains("Build an emergency fund"),
       };
 
-      // Transform habits to spending habits format (use defaults for now)
-      final spendingHabits = {
+      // Use REAL spending frequencies from user input (not hardcoded!)
+      final spendingHabits = state.spendingFrequencies ?? {
+        // Fallback to defaults only if user didn't provide input
         "dining_out_per_month": state.habits.contains("Impulse purchases") ? 15 : 8,
         "entertainment_per_month": 4,
         "clothing_per_month": 2,

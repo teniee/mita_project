@@ -59,11 +59,36 @@ class BudgetAdapterService {
   }
 
   /// Get calendar data from API (real backend data)
+  /// First attempts to retrieve saved calendar from onboarding, then falls back to generation
   Future<List<Map<String, dynamic>>> getCalendarData() async {
     try {
       logInfo('Fetching calendar data from API', tag: 'BUDGET_ADAPTER');
 
-      // Call the real API endpoint instead of local calculations
+      // First, try to get saved calendar from onboarding/budget updates
+      final now = DateTime.now();
+      final savedCalendar = await _apiService.getSavedCalendar(
+        year: now.year,
+        month: now.month,
+      );
+
+      if (savedCalendar != null && savedCalendar.isNotEmpty) {
+        logInfo('Using saved calendar data from onboarding (${savedCalendar.length} days)', tag: 'BUDGET_ADAPTER');
+
+        // Convert saved calendar to expected format
+        final calendarList = savedCalendar.map((item) {
+          if (item is Map<String, dynamic>) {
+            return item;
+          } else if (item is Map) {
+            return Map<String, dynamic>.from(item);
+          }
+          return <String, dynamic>{};
+        }).toList();
+
+        return calendarList;
+      }
+
+      // If no saved data, generate calendar using shell endpoint
+      logInfo('No saved calendar found, generating new calendar', tag: 'BUDGET_ADAPTER');
       final calendarData = await _apiService.getCalendar();
 
       // Convert List<dynamic> to List<Map<String, dynamic>>

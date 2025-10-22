@@ -18,6 +18,13 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   ];
 
   final Set<String> selectedGoals = {};
+  final _savingsAmountController = TextEditingController();
+
+  @override
+  void dispose() {
+    _savingsAmountController.dispose();
+    super.dispose();
+  }
 
   void _toggleGoal(String id) {
     setState(() {
@@ -31,9 +38,15 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
 
   void _submitGoals() {
     if (selectedGoals.isEmpty) return;
-    // Save selected goals for the final onboarding request
+
+    // Save selected goals
     OnboardingState.instance.goals = selectedGoals.toList();
-    Navigator.pushNamed(context, '/onboarding_habits');
+
+    // Save savings goal amount (if provided)
+    final savingsAmount = double.tryParse(_savingsAmountController.text);
+    OnboardingState.instance.savingsGoalAmount = savingsAmount ?? 0.0;
+
+    Navigator.pushNamed(context, '/onboarding_spending_frequency');
   }
 
   @override
@@ -102,7 +115,33 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              const Text(
+                'Monthly savings goal (optional)',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: Color(0xFF193C57),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _savingsAmountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  hintText: 'How much do you want to save per month?',
+                  prefixText: '\$ ',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF193C57)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                ),
+              ),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
