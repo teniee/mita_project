@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config.dart';
@@ -650,11 +651,44 @@ class ApiService {
           if (data != null) {
             logInfo('Dashboard data fetched successfully from new endpoint', tag: 'DASHBOARD');
 
+            // Transform icons and colors from strings to proper Flutter objects
+            final targets = (data['daily_targets'] as List?)?.map((target) {
+              if (target is! Map<String, dynamic>) return target;
+
+              // Map icon names to Flutter Icons
+              final iconMap = {
+                'restaurant': Icons.restaurant,
+                'directions_car': Icons.directions_car,
+                'movie': Icons.movie,
+                'shopping_bag': Icons.shopping_bag,
+                'local_hospital': Icons.local_hospital,
+                'power': Icons.power,
+                'category': Icons.category,
+                'attach_money': Icons.attach_money,
+              };
+
+              // Parse color hex string to Color object
+              Color? parseColor(String? colorStr) {
+                if (colorStr == null) return null;
+                final hex = colorStr.replaceAll('#', '');
+                if (hex.length == 6) {
+                  return Color(int.parse('FF$hex', radix: 16));
+                }
+                return null;
+              }
+
+              return {
+                ...target,
+                'icon': iconMap[target['icon']] ?? Icons.category,
+                'color': parseColor(target['color']) ?? const Color(0xFF193C57),
+              };
+            }).toList() ?? [];
+
             // Transform to the format expected by Main Screen
             return {
               'balance': data['balance'] ?? 0.0,
               'spent': data['spent'] ?? 0.0,
-              'daily_targets': data['daily_targets'] ?? [],
+              'daily_targets': targets,
               'week': data['week'] ?? [],
               'transactions': data['transactions'] ?? [],
               'insights_preview': data['insights_preview'],

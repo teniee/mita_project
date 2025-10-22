@@ -46,8 +46,8 @@ async def get_dashboard(
     """
     try:
         user_id = user.id
-        today = datetime.now().date()
-        now = datetime.now()
+        today = datetime.utcnow().date()
+        now = datetime.utcnow()
 
         # Get user's monthly income
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
@@ -281,9 +281,9 @@ async def get_quick_stats(
     """
     try:
         user_id = user.id
-        today = datetime.now().date()
+        today = datetime.utcnow().date()
         first_day_of_month = today.replace(day=1)
-        now = datetime.now()
+        now = datetime.utcnow()
 
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
 
