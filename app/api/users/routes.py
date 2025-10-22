@@ -13,6 +13,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserProfileOut, summary="Get current user's profile")
 async def get_profile(current_user=Depends(get_current_user)):
+    # Calculate profile completion percentage
+    completion_fields = [
+        getattr(current_user, 'name', None),
+        current_user.monthly_income and current_user.monthly_income > 0,
+        getattr(current_user, 'savings_goal', None) and getattr(current_user, 'savings_goal', 0) > 0,
+        getattr(current_user, 'budget_method', None),
+        getattr(current_user, 'currency', None),
+        getattr(current_user, 'region', None),
+        getattr(current_user, 'email_verified', False),
+    ]
+    profile_completion = int((sum(1 for field in completion_fields if field) / len(completion_fields)) * 100)
+
     return success_response(
         {
             "id": current_user.id,
@@ -20,8 +32,23 @@ async def get_profile(current_user=Depends(get_current_user)):
             "country": current_user.country,
             "created_at": current_user.created_at.isoformat(),
             "timezone": current_user.timezone,
+            # Profile fields
+            "name": getattr(current_user, 'name', None),
             "income": float(current_user.monthly_income or 0),
+            "savings_goal": float(getattr(current_user, 'savings_goal', 0) or 0),
+            "budget_method": getattr(current_user, 'budget_method', '50/30/20 Rule'),
+            "currency": getattr(current_user, 'currency', 'USD'),
+            "region": getattr(current_user, 'region', None),
+            # Preferences
+            "notifications_enabled": getattr(current_user, 'notifications_enabled', True),
+            "dark_mode_enabled": getattr(current_user, 'dark_mode_enabled', False),
+            # Status
             "has_onboarded": getattr(current_user, 'has_onboarded', False),
+            "email_verified": getattr(current_user, 'email_verified', False),
+            # UI fields (for mobile app compatibility)
+            "member_since": current_user.created_at.isoformat(),
+            "profile_completion": profile_completion,
+            "verified_email": getattr(current_user, 'email_verified', False),
         }
     )
 
@@ -35,13 +62,43 @@ async def update_profile(
     current_user=Depends(get_current_user),
 ):
     user = update_user_profile(current_user, data, db)
+
+    # Calculate profile completion percentage
+    completion_fields = [
+        getattr(user, 'name', None),
+        user.monthly_income and user.monthly_income > 0,
+        getattr(user, 'savings_goal', None) and getattr(user, 'savings_goal', 0) > 0,
+        getattr(user, 'budget_method', None),
+        getattr(user, 'currency', None),
+        getattr(user, 'region', None),
+        getattr(user, 'email_verified', False),
+    ]
+    profile_completion = int((sum(1 for field in completion_fields if field) / len(completion_fields)) * 100)
+
     return success_response(
         {
             "id": user.id,
             "email": user.email,
             "country": user.country,
+            "created_at": user.created_at.isoformat(),
             "timezone": user.timezone,
-            "updated_at": user.updated_at.isoformat(),
+            # Profile fields
+            "name": getattr(user, 'name', None),
+            "income": float(user.monthly_income or 0),
+            "savings_goal": float(getattr(user, 'savings_goal', 0) or 0),
+            "budget_method": getattr(user, 'budget_method', '50/30/20 Rule'),
+            "currency": getattr(user, 'currency', 'USD'),
+            "region": getattr(user, 'region', None),
+            # Preferences
+            "notifications_enabled": getattr(user, 'notifications_enabled', True),
+            "dark_mode_enabled": getattr(user, 'dark_mode_enabled', False),
+            # Status
+            "has_onboarded": getattr(user, 'has_onboarded', False),
+            "email_verified": getattr(user, 'email_verified', False),
+            # UI fields (for mobile app compatibility)
+            "member_since": user.created_at.isoformat(),
+            "profile_completion": profile_completion,
+            "verified_email": getattr(user, 'email_verified', False),
         }
     )
 

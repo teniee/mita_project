@@ -38,6 +38,17 @@ class User(Base):
     # Onboarding tracking
     has_onboarded = Column(Boolean, default=False, nullable=False)
 
+    # User profile fields
+    name = Column(String, nullable=True)
+    savings_goal = Column(Numeric, default=0)
+    budget_method = Column(String, default="50/30/20 Rule")
+    currency = Column(String(3), default="USD")
+    region = Column(String, nullable=True)
+
+    # User preferences
+    notifications_enabled = Column(Boolean, default=True, nullable=False)
+    dark_mode_enabled = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     ai_snapshots = relationship("AIAnalysisSnapshot", back_populates="user")
     transactions = relationship("Transaction", back_populates="user")

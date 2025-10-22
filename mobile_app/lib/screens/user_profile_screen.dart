@@ -81,7 +81,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
   }
   
   Map<String, dynamic> _getDefaultProfile() {
-    throw Exception('Default profile should not be used. Please complete onboarding.');
+    return {
+      'name': 'Guest User',
+      'email': 'user@mita.finance',
+      'member_since': DateTime.now().toIso8601String(),
+      'profile_completion': 0,
+      'verified_email': false,
+      'income': 0.0,
+      'budget_method': '50/30/20 Rule',
+      'currency': 'USD',
+      'region': 'US',
+    };
   }
 
   
