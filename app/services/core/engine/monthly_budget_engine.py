@@ -42,30 +42,43 @@ def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict
     if discretionary < 0:
         raise ValueError("Fixed expenses + goal exceed income")
 
-    # Adaptive category weights (based on quiz answers, region, behavior)
-    category_weights = profile.get(
-        "category_weights",
-        {
-            "food": 0.3,
-            "transport": 0.15,
-            "entertainment": 0.1,
-            "bills": 0.25,
-            "savings": 0.2,
-        },
-    )
+    # ✅ FIX: Use user's calculated discretionary_breakdown if available
+    # This contains the personalized budget based on their spending habits
+    discretionary_breakdown = user_answers.get("discretionary_breakdown")
 
-    # Normalize weights if needed
-    total_weight = sum(category_weights.values())
-    if not (0.99 <= total_weight <= 1.01):
-        category_weights = {k: v / total_weight for k, v in category_weights.items()}
-
-    # Allocate flexible budget across categories
-    flexible_alloc = {
-        category: (discretionary * Decimal(str(weight))).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
+    if discretionary_breakdown:
+        # Use user's personalized budget allocation
+        flexible_alloc = {
+            category: Decimal(str(amount)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            for category, amount in discretionary_breakdown.items()
+        }
+    else:
+        # Fall back to regional defaults only if no personalized data exists
+        category_weights = profile.get(
+            "category_weights",
+            {
+                "food": 0.3,
+                "transport": 0.15,
+                "entertainment": 0.1,
+                "bills": 0.25,
+                "savings": 0.2,
+            },
         )
-        for category, weight in category_weights.items()
-    }
+
+        # Normalize weights if needed
+        total_weight = sum(category_weights.values())
+        if not (0.99 <= total_weight <= 1.01):
+            category_weights = {k: v / total_weight for k, v in category_weights.items()}
+
+        # Allocate flexible budget across categories
+        flexible_alloc = {
+            category: (discretionary * Decimal(str(weight))).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            for category, weight in category_weights.items()
+        }
 
     # Compute total month plan
     full_month_plan = {}

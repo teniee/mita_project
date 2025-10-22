@@ -39,6 +39,7 @@ import 'screens/onboarding_location_screen.dart';
 import 'screens/onboarding_income_screen.dart';
 import 'screens/onboarding_expenses_screen.dart';
 import 'screens/onboarding_goal_screen.dart';
+import 'screens/onboarding_spending_frequency_screen.dart';
 import 'screens/onboarding_habits_screen.dart';
 import 'screens/onboarding_finish_screen.dart';
 import 'screens/daily_budget_screen.dart';
@@ -285,6 +286,10 @@ class MITAApp extends StatelessWidget {
         '/onboarding_goal': (context) => const AppErrorBoundary(
           screenName: 'OnboardingGoal',
           child: OnboardingGoalScreen(),
+        ),
+        '/onboarding_spending_frequency': (context) => const AppErrorBoundary(
+          screenName: 'OnboardingSpendingFrequency',
+          child: OnboardingSpendingFrequencyScreen(),
         ),
         '/onboarding_habits': (context) => const AppErrorBoundary(
           screenName: 'OnboardingHabits',
