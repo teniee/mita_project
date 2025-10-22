@@ -12,18 +12,46 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserProfileOut, summary="Get current user's profile")
-async def get_profile(current_user=Depends(get_current_user)):
-    return success_response(
-        {
-            "id": current_user.id,
-            "email": current_user.email,
-            "country": current_user.country,
-            "created_at": current_user.created_at.isoformat(),
-            "timezone": current_user.timezone,
-            "income": float(current_user.monthly_income or 0),
-            "has_onboarded": getattr(current_user, 'has_onboarded', False),
-        }
-    )
+async def get_profile(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's complete profile including preferences"""
+    from app.db.models import UserPreference
+
+    # Get user preferences if they exist
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == current_user.id
+    ).first()
+
+    # Build complete profile response
+    profile = {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": getattr(current_user, 'name', None) or current_user.email.split('@')[0],
+        "country": current_user.country,
+        "region": current_user.country,  # Alias for compatibility
+        "created_at": current_user.created_at.isoformat(),
+        "timezone": current_user.timezone,
+        "income": float(current_user.monthly_income or 0),
+        "monthly_income": float(current_user.monthly_income or 0),  # Alias
+        "has_onboarded": getattr(current_user, 'has_onboarded', False),
+
+        # User preferences (with defaults if not set)
+        "currency": user_pref.currency if user_pref and hasattr(user_pref, 'currency') and user_pref.currency else "USD",
+        "language": user_pref.language if user_pref and hasattr(user_pref, 'language') and user_pref.language else "English",
+        "dark_mode": user_pref.dark_mode if user_pref and hasattr(user_pref, 'dark_mode') and user_pref.dark_mode is not None else False,
+        "notifications": user_pref.notifications_enabled if user_pref and hasattr(user_pref, 'notifications_enabled') and user_pref.notifications_enabled is not None else True,
+        "biometric_auth": user_pref.biometric_enabled if user_pref and hasattr(user_pref, 'biometric_enabled') and user_pref.biometric_enabled is not None else False,
+        "auto_sync": user_pref.auto_sync if user_pref and hasattr(user_pref, 'auto_sync') and user_pref.auto_sync is not None else True,
+        "offline_mode": user_pref.offline_mode if user_pref and hasattr(user_pref, 'offline_mode') and user_pref.offline_mode is not None else True,
+        "date_format": user_pref.date_format if user_pref and hasattr(user_pref, 'date_format') and user_pref.date_format else "MM/dd/yyyy",
+        "budget_alert_threshold": float(user_pref.budget_alert_threshold) if user_pref and hasattr(user_pref, 'budget_alert_threshold') and user_pref.budget_alert_threshold else 80.0,
+        "savings_goal": float(user_pref.savings_goal) if user_pref and hasattr(user_pref, 'savings_goal') and user_pref.savings_goal else 0.0,
+        "budget_method": user_pref.budget_method if user_pref and hasattr(user_pref, 'budget_method') and user_pref.budget_method else "50/30/20 Rule",
+    }
+
+    return success_response(profile)
 
 
 @router.patch(
@@ -34,14 +62,72 @@ async def update_profile(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    user = update_user_profile(current_user, data, db)
+    """Update current user's profile and preferences
+
+    Supports updating:
+    - User basic info: name, country, timezone, income
+    - Preferences: currency, language, dark_mode, notifications, etc.
+    """
+    from app.db.models import UserPreference
+
+    # Get or create user preference record
+    user_pref = db.query(UserPreference).filter(
+        UserPreference.user_id == current_user.id
+    ).first()
+
+    if not user_pref:
+        user_pref = UserPreference(user_id=current_user.id)
+        db.add(user_pref)
+
+    # Update user basic info
+    data_dict = data.dict(exclude_unset=True) if hasattr(data, 'dict') else data
+
+    if 'name' in data_dict:
+        current_user.name = data_dict['name']
+    if 'country' in data_dict or 'region' in data_dict:
+        current_user.country = data_dict.get('country') or data_dict.get('region')
+    if 'timezone' in data_dict:
+        current_user.timezone = data_dict['timezone']
+    if 'income' in data_dict or 'monthly_income' in data_dict:
+        current_user.monthly_income = data_dict.get('income') or data_dict.get('monthly_income')
+
+    # Update user preferences
+    if 'currency' in data_dict:
+        user_pref.currency = data_dict['currency']
+    if 'language' in data_dict:
+        user_pref.language = data_dict['language']
+    if 'dark_mode' in data_dict:
+        user_pref.dark_mode = data_dict['dark_mode']
+    if 'notifications' in data_dict:
+        user_pref.notifications_enabled = data_dict['notifications']
+    if 'biometric_auth' in data_dict:
+        user_pref.biometric_enabled = data_dict['biometric_auth']
+    if 'auto_sync' in data_dict:
+        user_pref.auto_sync = data_dict['auto_sync']
+    if 'offline_mode' in data_dict:
+        user_pref.offline_mode = data_dict['offline_mode']
+    if 'date_format' in data_dict:
+        user_pref.date_format = data_dict['date_format']
+    if 'budget_alert_threshold' in data_dict:
+        user_pref.budget_alert_threshold = data_dict['budget_alert_threshold']
+    if 'savings_goal' in data_dict:
+        user_pref.savings_goal = data_dict['savings_goal']
+    if 'budget_method' in data_dict:
+        user_pref.budget_method = data_dict['budget_method']
+
+    db.commit()
+    db.refresh(current_user)
+
     return success_response(
         {
-            "id": user.id,
-            "email": user.email,
-            "country": user.country,
-            "timezone": user.timezone,
-            "updated_at": user.updated_at.isoformat(),
+            "id": current_user.id,
+            "email": current_user.email,
+            "name": getattr(current_user, 'name', None) or current_user.email.split('@')[0],
+            "country": current_user.country,
+            "timezone": current_user.timezone,
+            "income": float(current_user.monthly_income or 0),
+            "updated_at": current_user.updated_at.isoformat() if hasattr(current_user, 'updated_at') else None,
+            "message": "Profile updated successfully"
         }
     )
 

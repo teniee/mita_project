@@ -826,7 +826,14 @@ async def update_behavioral_notification_settings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update behavioral notification preferences"""
+    """Update behavioral notification preferences
+
+    Supports both old and new field names for backwards compatibility:
+    - pattern_alerts / pattern_insights
+    - anomaly_detection / anomaly_alerts
+    - budget_adaptation / spending_warnings
+    - weekly_insights / weekly_summary
+    """
     from app.db.models import UserPreference
 
     # Get or create user preference record
@@ -838,15 +845,15 @@ async def update_behavioral_notification_settings(
         user_pref = UserPreference(user_id=user.id)
         db.add(user_pref)
 
-    # Update notification settings
-    if "anomaly_alerts" in settings:
-        user_pref.anomaly_alerts = settings["anomaly_alerts"]
-    if "pattern_insights" in settings:
-        user_pref.pattern_insights = settings["pattern_insights"]
-    if "weekly_summary" in settings:
-        user_pref.weekly_summary = settings["weekly_summary"]
-    if "spending_warnings" in settings:
-        user_pref.spending_warnings = settings["spending_warnings"]
+    # Update notification settings - support both old and new field names
+    if "anomaly_alerts" in settings or "anomaly_detection" in settings:
+        user_pref.anomaly_alerts = settings.get("anomaly_alerts") or settings.get("anomaly_detection")
+    if "pattern_insights" in settings or "pattern_alerts" in settings:
+        user_pref.pattern_insights = settings.get("pattern_insights") or settings.get("pattern_alerts")
+    if "weekly_summary" in settings or "weekly_insights" in settings:
+        user_pref.weekly_summary = settings.get("weekly_summary") or settings.get("weekly_insights")
+    if "spending_warnings" in settings or "budget_adaptation" in settings:
+        user_pref.spending_warnings = settings.get("spending_warnings") or settings.get("budget_adaptation")
 
     db.commit()
 
@@ -858,7 +865,14 @@ async def get_behavioral_notification_settings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get behavioral notification preferences"""
+    """Get behavioral notification preferences
+
+    Returns notification settings with mobile app compatible field names:
+    - pattern_alerts
+    - anomaly_detection
+    - budget_adaptation
+    - weekly_insights
+    """
     from app.db.models import UserPreference
 
     # Query user preferences
@@ -867,8 +881,13 @@ async def get_behavioral_notification_settings(
     ).first()
 
     if not user_pref:
-        # Return default settings if not set
+        # Return default settings if not set - using mobile app field names
         default_settings = {
+            "pattern_alerts": True,
+            "anomaly_detection": True,
+            "budget_adaptation": True,
+            "weekly_insights": True,
+            # Also include old names for backwards compatibility
             "anomaly_alerts": True,
             "pattern_insights": True,
             "weekly_summary": True,
@@ -876,11 +895,18 @@ async def get_behavioral_notification_settings(
         }
         return success_response(default_settings)
 
+    # Return settings with mobile app field names
     settings = {
-        "anomaly_alerts": user_pref.anomaly_alerts,
-        "pattern_insights": user_pref.pattern_insights,
-        "weekly_summary": user_pref.weekly_summary,
-        "spending_warnings": user_pref.spending_warnings
+        # New mobile app field names
+        "pattern_alerts": user_pref.pattern_insights if user_pref.pattern_insights is not None else True,
+        "anomaly_detection": user_pref.anomaly_alerts if user_pref.anomaly_alerts is not None else True,
+        "budget_adaptation": user_pref.spending_warnings if user_pref.spending_warnings is not None else True,
+        "weekly_insights": user_pref.weekly_summary if user_pref.weekly_summary is not None else True,
+        # Old field names for backwards compatibility
+        "anomaly_alerts": user_pref.anomaly_alerts if user_pref.anomaly_alerts is not None else True,
+        "pattern_insights": user_pref.pattern_insights if user_pref.pattern_insights is not None else True,
+        "weekly_summary": user_pref.weekly_summary if user_pref.weekly_summary is not None else True,
+        "spending_warnings": user_pref.spending_warnings if user_pref.spending_warnings is not None else True
     }
 
     return success_response(settings)
