@@ -757,11 +757,47 @@ class ApiService {
     };
   }
 
+  /// Retrieve saved calendar data from onboarding
+  /// Returns null if no saved data exists, allowing fallback to generation
+  Future<List<dynamic>?> getSavedCalendar({
+    required int year,
+    required int month,
+  }) async {
+    try {
+      final token = await getToken();
+
+      logDebug('Attempting to retrieve saved calendar for $year-$month', tag: 'CALENDAR_SAVED');
+
+      final response = await _dio.get(
+        '/calendar/saved/$year/$month',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+
+      final calendarData = response.data['data']['calendar'];
+
+      if (calendarData == null || (calendarData as List).isEmpty) {
+        logInfo('No saved calendar data found for $year-$month', tag: 'CALENDAR_SAVED');
+        return null;
+      }
+
+      logInfo('Successfully retrieved ${(calendarData as List).length} saved calendar days', tag: 'CALENDAR_SAVED');
+      return calendarData as List<dynamic>;
+
+    } catch (e) {
+      logWarning('Failed to retrieve saved calendar: $e', tag: 'CALENDAR_SAVED');
+      return null;
+    }
+  }
+
   Future<List<dynamic>> getCalendar({double? userIncome}) async {
     return await _timeoutManager.executeWithFallback<List<dynamic>>(
       operation: () async {
         final token = await getToken();
-        
+
         // Get user profile to retrieve actual income and location if not provided
         double actualIncome = userIncome ?? 0.0;
         String? userLocation;
