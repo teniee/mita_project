@@ -41,6 +41,7 @@ from app.api.challenge.routes import router as challenge_router
 from app.api.checkpoint.routes import router as checkpoint_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
+from app.api.dashboard.routes import router as dashboard_router
 from app.api.dependencies import get_current_user
 from app.api.drift.routes import router as drift_router
 from app.api.expense.routes import router as expense_router
@@ -651,6 +652,7 @@ private_routers_list = [
     (financial_router, "/api", ["Financial"]),
     (users_router, "/api", ["Users"]),
     (email_router, "/api", ["Email"]),
+    (dashboard_router, "/api", ["Dashboard"]),
     (calendar_router, "/api", ["Calendar"]),
     (challenge_router, "/api", ["Challenges"]),
     (expense_router, "/api", ["Expenses"]),
