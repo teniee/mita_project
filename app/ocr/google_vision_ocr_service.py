@@ -15,6 +15,17 @@ class GoogleVisionOCRService:
         self.client = vision.ImageAnnotatorClient()
 
     def process_image(self, image_path: str) -> dict:
+        """
+        Process receipt image using Google Cloud Vision API.
+
+        Args:
+            image_path: Path to the receipt image.
+
+        Returns:
+            dict: Parsed receipt data with merchant, items, amount, date, category.
+        """
+        from app.ocr.ocr_parser import parse_receipt_details
+
         with io.open(image_path, "rb") as image_file:
             content = image_file.read()
 
@@ -31,16 +42,15 @@ class GoogleVisionOCRService:
 
         full_text = annotations[0].description.strip()
 
-        amount_match = re.search(r"(\d+[.,]\d{2})", full_text)
-        if amount_match:
-            amount = float(amount_match.group(1).replace(",", "."))
-        else:
-            amount = 0.0
+        # Use the real parser instead of hardcoded/simple regex
+        parsed = parse_receipt_details(full_text)
 
+        # Map to expected format
         return {
-            "store": "Detected Store (Google Vision Real)",
-            "amount": amount,
-            "category_hint": "shopping",
-            "date": "2025-04-26",
+            "store": parsed.get("merchant", "Unknown Store"),
+            "amount": parsed.get("total", 0.0),
+            "category_hint": parsed.get("category", "other"),
+            "date": parsed.get("date", ""),
+            "items": parsed.get("items", []),
             "raw_text": full_text,
         }

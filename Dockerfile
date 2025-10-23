@@ -30,6 +30,8 @@ FROM python:3.10-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    tesseract-ocr \
+    libtesseract-dev \
     && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
