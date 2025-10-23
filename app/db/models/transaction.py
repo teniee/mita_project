@@ -13,6 +13,9 @@ class Transaction(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
+    # MODULE 5: Goal Integration - Link transaction to a savings goal
+    goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True)
+
     # Basic transaction data
     category = Column(String(50), nullable=False, index=True)  # Index for category filtering
     amount = Column(Numeric(precision=12, scale=2), nullable=False)  # Precise decimal for money
@@ -43,5 +46,6 @@ class Transaction(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship to user
+    # Relationships
     user = relationship("User", back_populates="transactions")
+    goal = relationship("Goal", backref="transactions")  # Link to Goal for savings tracking
