@@ -7,7 +7,7 @@ from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.transactions.schemas import TxnIn, TxnOut
+from app.api.transactions.schemas import TxnIn, TxnOut, TxnUpdate
 from app.ocr.ocr_receipt_service import OCRReceiptService
 
 # Import standardized error handling system

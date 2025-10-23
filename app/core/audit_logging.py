@@ -48,8 +48,8 @@ class AuditDatabasePool:
                 
             try:
                 # Create separate engine with dedicated connection pool for audit operations
-                audit_db_url = settings.DATABASE_URL
-                
+                audit_db_url = settings.ASYNC_DATABASE_URL
+
                 # Configure engine for audit operations (separate from main app pool)
                 self._engine = create_async_engine(
                     audit_db_url,
