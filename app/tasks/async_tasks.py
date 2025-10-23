@@ -19,7 +19,7 @@ from app.services.push_service import send_push_notification
 from app.services.budget_redistributor import redistribute_budget_for_user
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.ocr.advanced_ocr_service import AdvancedOCRService
-from app.orchestrator.receipt_orchestrator import process_receipt_from_text
+from app.orchestrator.receipt_orchestrator import process_receipt_from_ocr_result
 from app.utils.email_utils import send_reminder_email
 from app.storage.receipt_image_storage import get_receipt_storage
 
@@ -92,10 +92,11 @@ def process_ocr_task(
             db.add(ocr_job)
             db.commit()
 
-            # Process the OCR text and create transaction
-            transaction_result = process_receipt_from_text(
+            # Process the OCR result and create transaction
+            # Use the efficient method that doesn't re-parse the already-parsed OCR data
+            transaction_result = process_receipt_from_ocr_result(
                 user_id=user_id,
-                text=ocr_result.get('raw_text', ''),
+                ocr_result=ocr_result,
                 db=db
             )
 
