@@ -21,7 +21,7 @@ from sqlalchemy import extract, func
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.user import User
-from app.db.models import Transaction, DailyPlan, Goal
+from app.db.models import Transaction, DailyPlan, Goal, ChallengeParticipation, Challenge
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -291,6 +291,67 @@ async def get_dashboard(
             logger.error(f"Error loading goals for dashboard: {str(e)}", exc_info=True)
             # Continue with empty goals data
 
+        # MODULE 5: Get active challenges
+        challenges_data = []
+        challenges_summary = {
+            'active_challenges': 0,
+            'completed_this_month': 0,
+            'current_streak': 0,
+        }
+
+        try:
+            current_month = today.strftime("%Y-%m")
+
+            # Get active challenge participations
+            active_participations = db.query(ChallengeParticipation).filter(
+                ChallengeParticipation.user_id == user_id,
+                ChallengeParticipation.status == 'active'
+            ).order_by(
+                ChallengeParticipation.progress_percentage.desc()
+            ).limit(3).all()  # Show top 3 active challenges
+
+            challenges_summary['active_challenges'] = db.query(func.count(ChallengeParticipation.id)).filter(
+                ChallengeParticipation.user_id == user_id,
+                ChallengeParticipation.status == 'active'
+            ).scalar() or 0
+
+            challenges_summary['completed_this_month'] = db.query(func.count(ChallengeParticipation.id)).filter(
+                ChallengeParticipation.user_id == user_id,
+                ChallengeParticipation.status == 'completed',
+                ChallengeParticipation.month == current_month
+            ).scalar() or 0
+
+            # Get max current streak
+            max_streak = db.query(func.max(ChallengeParticipation.current_streak)).filter(
+                ChallengeParticipation.user_id == user_id,
+                ChallengeParticipation.status == 'active'
+            ).scalar() or 0
+            challenges_summary['current_streak'] = max_streak
+
+            for participation in active_participations:
+                challenge = db.query(Challenge).filter(
+                    Challenge.id == participation.challenge_id
+                ).first()
+
+                if challenge:
+                    challenges_data.append({
+                        'id': challenge.id,
+                        'name': challenge.name,
+                        'description': challenge.description,
+                        'type': challenge.type,
+                        'difficulty': challenge.difficulty,
+                        'duration_days': challenge.duration_days,
+                        'reward_points': challenge.reward_points,
+                        'progress_percentage': participation.progress_percentage,
+                        'days_completed': participation.days_completed,
+                        'current_streak': participation.current_streak,
+                        'started_at': participation.started_at.isoformat() if participation.started_at else None,
+                    })
+
+        except Exception as e:
+            logger.error(f"Error loading challenges for dashboard: {str(e)}", exc_info=True)
+            # Continue with empty challenges data
+
         return success_response({
             'balance': float(current_balance),
             'spent': float(today_spent),
@@ -301,6 +362,8 @@ async def get_dashboard(
             'user_income': monthly_income,
             'goals': goals_data,
             'goals_summary': goals_summary,
+            'challenges': challenges_data,
+            'challenges_summary': challenges_summary,
         })
 
     except Exception as e:
@@ -319,6 +382,8 @@ async def get_dashboard(
             },
             'goals': [],
             'goals_summary': {'total_active': 0, 'near_completion': 0, 'overdue': 0},
+            'challenges': [],
+            'challenges_summary': {'active_challenges': 0, 'completed_this_month': 0, 'current_streak': 0},
             'error': True,
         })
 

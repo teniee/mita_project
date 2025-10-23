@@ -2480,10 +2480,10 @@ class ApiService {
 
   Future<List<dynamic>> getChallenges() async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
-        '/challenge/eligibility',
+        '/challenge/active',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return List<dynamic>.from(response.data['data'] ?? []);
@@ -2527,8 +2527,8 @@ class ApiService {
 
   Future<void> leaveChallenge(String challengeId) async {
     final token = await getToken();
-    
-    await _dio.delete(
+
+    await _dio.post(
       '/challenge/$challengeId/leave',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -2634,14 +2634,18 @@ class ApiService {
 
   Future<List<dynamic>> getLeaderboard({String? period = 'weekly'}) async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/challenge/leaderboard',
         queryParameters: {'period': period},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      return List<dynamic>.from(response.data['data'] ?? []);
+      final leaderboard = response.data['data'];
+      if (leaderboard is Map && leaderboard.containsKey('top_users')) {
+        return List<dynamic>.from(leaderboard['top_users'] ?? []);
+      }
+      return List<dynamic>.from(leaderboard ?? []);
     } catch (e) {
       // Return demo leaderboard
       return [
