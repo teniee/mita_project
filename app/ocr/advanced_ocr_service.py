@@ -8,6 +8,7 @@ import pytesseract
 from PIL import Image
 
 from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
+from app.ocr.confidence_scorer import ConfidenceScorer
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,24 +47,27 @@ class AdvancedOCRService:
         else:
             result = self._tesseract_ocr(image_path)
 
-        # After processing, delete the image
-        try:
-            os.remove(image_path)
-        except Exception as e:
-            logger.warning(f"Could not delete temporary image file: {str(e)}")
+        # Add confidence scores to the result
+        raw_text = result.get("raw_text", "")
+        result = ConfidenceScorer.score_ocr_result(result, raw_text)
+
+        # Note: File cleanup is handled by the caller (API routes)
+        # Do NOT delete the file here to avoid double-deletion issues
 
         return result
 
     def _tesseract_ocr(self, image_path: str) -> dict:
         """
-        Extract text using Tesseract OCR.
+        Extract text using Tesseract OCR and parse receipt details.
 
         Args:
             image_path (str): Path to image.
 
         Returns:
-            dict: Simulated parsed receipt data.
+            dict: Parsed receipt data with merchant, items, amount, date, category.
         """
+        from app.ocr.ocr_parser import parse_receipt_details
+
         try:
             image = Image.open(image_path)
             raw_text = pytesseract.image_to_string(image)
@@ -71,11 +75,16 @@ class AdvancedOCRService:
             if not raw_text.strip():
                 raise ValueError("No text detected on the image.")
 
+            # Use the real parser instead of hardcoded values
+            parsed = parse_receipt_details(raw_text)
+
+            # Map to expected format
             return {
-                "store": "Detected Store (Tesseract)",
-                "amount": 50.0,
-                "category_hint": "groceries",
-                "date": "2025-04-26",
+                "store": parsed.get("merchant", "Unknown Store"),
+                "amount": parsed.get("total", 0.0),
+                "category_hint": parsed.get("category", "other"),
+                "date": parsed.get("date", ""),
+                "items": parsed.get("items", []),
                 "raw_text": raw_text,
             }
 

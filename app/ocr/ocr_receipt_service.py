@@ -7,6 +7,7 @@ import pytesseract
 from PIL import Image
 
 from app.ocr.ocr_parser import parse_receipt_details
+from app.ocr.confidence_scorer import ConfidenceScorer
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -31,15 +32,17 @@ class OCRReceiptService:
         if not os.path.exists(image_path):
             raise FileNotFoundError("Image file not found.")
 
-        try:
-            image = Image.open(image_path)
-            raw_text = pytesseract.image_to_string(image)
-        finally:
-            try:
-                os.remove(image_path)
-            except Exception as e:  # pragma: no cover - best effort cleanup
-                logger.warning(f"Could not delete temporary image file: {e}")
+        # Process image with Tesseract OCR
+        image = Image.open(image_path)
+        raw_text = pytesseract.image_to_string(image)
+
+        # Note: File cleanup is handled by the caller (API routes)
+        # Do NOT delete the file here to avoid double-deletion issues
 
         parsed = parse_receipt_details(raw_text)
+
+        # Add confidence scores
+        parsed["raw_text"] = raw_text
+        parsed = ConfidenceScorer.score_ocr_result(parsed, raw_text)
 
         return parsed

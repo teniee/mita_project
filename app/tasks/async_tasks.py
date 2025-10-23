@@ -21,6 +21,7 @@ from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.ocr.advanced_ocr_service import AdvancedOCRService
 from app.orchestrator.receipt_orchestrator import process_receipt_from_text
 from app.utils.email_utils import send_reminder_email
+from app.storage.receipt_image_storage import get_receipt_storage
 
 logger = get_logger(__name__)
 
@@ -50,55 +51,120 @@ def process_ocr_task(
         Dict containing OCR results and created transaction data
     """
     logger.info(f"Starting OCR processing for user {user_id}, image: {image_path}")
-    
+
+    temp_path = image_path
+    storage_path = None
+
     try:
         # Initialize OCR service
         ocr_service = AdvancedOCRService()
-        
+
         # Process the image
         ocr_result = ocr_service.process_image(image_path, is_premium_user)
-        
+
+        # Save image to persistent storage
+        job_id = task_id or f"ocr_{user_id}_{int(datetime.now().timestamp())}"
+        storage = get_receipt_storage()
+        storage_path, image_url = storage.save_image(temp_path, user_id, job_id)
+
         # Get database session
         db: Session = next(get_db())
-        
+
         try:
+            # Create/update OCRJob record
+            from app.db.models import OCRJob
+
+            ocr_job = OCRJob(
+                job_id=job_id,
+                user_id=user_id,
+                status="completed",
+                progress=100.0,
+                image_path=storage_path,
+                image_url=image_url,
+                store_name=ocr_result.get("store", ocr_result.get("merchant", "")),
+                amount=ocr_result.get("amount", ocr_result.get("total", 0.0)),
+                date=ocr_result.get("date", ""),
+                category_hint=ocr_result.get("category_hint", ocr_result.get("category", "")),
+                confidence=ocr_result.get("confidence", 0.0),
+                raw_result=ocr_result,
+                completed_at=datetime.utcnow()
+            )
+            db.add(ocr_job)
+            db.commit()
+
             # Process the OCR text and create transaction
             transaction_result = process_receipt_from_text(
                 user_id=user_id,
                 text=ocr_result.get('raw_text', ''),
                 db=db
             )
-            
+
             logger.info(
                 f"OCR processing completed for user {user_id}: "
                 f"Amount: {ocr_result.get('amount')}, "
-                f"Store: {ocr_result.get('store')}"
+                f"Store: {ocr_result.get('store')}, "
+                f"Confidence: {ocr_result.get('confidence')}"
             )
-            
+
+            # Clean up temp file after successful processing
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up temp file: {cleanup_error}")
+
             return {
                 'status': 'success',
                 'ocr_result': ocr_result,
                 'transaction': transaction_result,
+                'job_id': job_id,
+                'image_url': image_url,
                 'processed_at': datetime.utcnow().isoformat()
             }
-            
+
         finally:
             db.close()
-            
+
     except Exception as e:
         logger.error(
             f"OCR processing failed for user {user_id}: {str(e)}",
             extra={'user_id': user_id, 'image_path': image_path},
             exc_info=True
         )
-        
-        # Clean up image file on error
+
+        # Update OCRJob with error status if possible
         try:
-            if os.path.exists(image_path):
-                os.remove(image_path)
+            db: Session = next(get_db())
+            from app.db.models import OCRJob
+
+            job_id = task_id or f"ocr_{user_id}_{int(datetime.now().timestamp())}"
+            ocr_job = db.query(OCRJob).filter_by(job_id=job_id).first()
+
+            if ocr_job:
+                ocr_job.status = "failed"
+                ocr_job.error_message = str(e)
+            else:
+                ocr_job = OCRJob(
+                    job_id=job_id,
+                    user_id=user_id,
+                    status="failed",
+                    error_message=str(e),
+                    image_path=storage_path or temp_path
+                )
+                db.add(ocr_job)
+
+            db.commit()
+            db.close()
+        except Exception as db_error:
+            logger.error(f"Failed to update OCRJob error status: {db_error}")
+
+        # Clean up temp file on error
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
         except Exception as cleanup_error:
-            logger.warning(f"Failed to clean up image file: {cleanup_error}")
-        
+            logger.warning(f"Failed to clean up temp file: {cleanup_error}")
+
         raise
 
 
