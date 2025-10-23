@@ -8,7 +8,7 @@ from app.core.validators import InputSanitizer, FinancialConstants
 
 class TxnIn(BaseModel):
     """Enhanced transaction input schema with comprehensive financial validation"""
-    
+
     amount: condecimal(max_digits=12, decimal_places=2, gt=0) = Field(
         ..., description="Transaction amount with precise decimal handling"
     )
@@ -22,6 +22,9 @@ class TxnIn(BaseModel):
     is_recurring: Optional[bool] = Field(False, description="Is this a recurring transaction")
     confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="OCR confidence score")
     receipt_url: Optional[str] = Field(None, max_length=500, description="Receipt image URL")
+
+    # MODULE 5: Goal Integration
+    goal_id: Optional[str] = Field(None, description="Link transaction to a savings goal (UUID)")
     
     @field_validator('amount')
     @classmethod
@@ -193,7 +196,7 @@ class TxnIn(BaseModel):
 
 class TxnOut(BaseModel):
     """Enhanced transaction output schema"""
-    
+
     id: str
     category: str
     amount: Decimal
@@ -208,6 +211,9 @@ class TxnOut(BaseModel):
     receipt_url: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    # MODULE 5: Goal Integration
+    goal_id: Optional[str] = None
     
     class Config:
         from_attributes = True

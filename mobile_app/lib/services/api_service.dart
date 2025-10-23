@@ -1170,42 +1170,114 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
-  // Goals
+  // Goals - MODULE 5: Budgeting Goals
   // ---------------------------------------------------------------------------
 
-  Future<List<dynamic>> getGoals() async {
+  /// Get all goals with optional filters
+  Future<List<dynamic>> getGoals({String? status, String? category}) async {
     final token = await getToken();
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    if (category != null) queryParams['category'] = category;
+
     final response = await _dio.get(
       '/goals/',
+      queryParameters: queryParams,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return List<dynamic>.from(response.data['data'] ?? []);
   }
 
-  Future<void> createGoal(Map<String, dynamic> data) async {
+  /// Get a specific goal by ID
+  Future<Map<String, dynamic>> getGoal(String id) async {
     final token = await getToken();
-    await _dio.post(
+    final response = await _dio.get(
+      '/goals/$id',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Create a new goal
+  Future<Map<String, dynamic>> createGoal(Map<String, dynamic> data) async {
+    final token = await getToken();
+    final response = await _dio.post(
       '/goals/',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  Future<void> updateGoal(int id, Map<String, dynamic> data) async {
+  /// Update an existing goal
+  Future<Map<String, dynamic>> updateGoal(String id, Map<String, dynamic> data) async {
     final token = await getToken();
-    await _dio.patch(
-      '/goals/$id/',
+    final response = await _dio.patch(
+      '/goals/$id',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  Future<void> deleteGoal(int id) async {
+  /// Delete a goal
+  Future<void> deleteGoal(String id) async {
     final token = await getToken();
     await _dio.delete(
-      '/goals/$id/',
+      '/goals/$id',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+  }
+
+  /// Get goal statistics
+  Future<Map<String, dynamic>> getGoalStatistics() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/goals/statistics',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Add savings to a goal
+  Future<Map<String, dynamic>> addSavingsToGoal(String goalId, double amount) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/goals/$goalId/add_savings',
+      data: {'amount': amount},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Mark goal as completed
+  Future<Map<String, dynamic>> completeGoal(String goalId) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/goals/$goalId/complete',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Pause a goal
+  Future<Map<String, dynamic>> pauseGoal(String goalId) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/goals/$goalId/pause',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Resume a paused goal
+  Future<Map<String, dynamic>> resumeGoal(String goalId) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/goals/$goalId/resume',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
   // ---------------------------------------------------------------------------

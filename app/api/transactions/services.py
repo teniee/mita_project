@@ -21,6 +21,15 @@ def add_transaction(user: User, data, db: Session):
     if amount > Decimal('1000000'):  # 1 million limit
         raise ValueError("Transaction amount exceeds maximum limit")
 
+    # MODULE 5: Parse goal_id if provided
+    goal_id = None
+    if hasattr(data, 'goal_id') and data.goal_id:
+        try:
+            from uuid import UUID as parse_uuid
+            goal_id = parse_uuid(data.goal_id)
+        except (ValueError, AttributeError):
+            pass  # Invalid UUID, ignore
+
     txn = Transaction(
         user_id=user.id,
         category=data.category,
@@ -35,6 +44,7 @@ def add_transaction(user: User, data, db: Session):
         receipt_url=getattr(data, 'receipt_url', None),
         notes=getattr(data, 'notes', None),
         spent_at=from_user_timezone(data.spent_at, user.timezone),
+        goal_id=goal_id,  # Link to goal
     )
     db.add(txn)
     db.commit()
@@ -48,6 +58,16 @@ def add_transaction(user: User, data, db: Session):
         from app.core.logging_config import get_logger
         logger = get_logger(__name__)
         logger.warning(f"Failed to update budget plan: {e}")
+
+    # MODULE 5: Update goal progress if linked
+    if goal_id:
+        try:
+            from app.services.goal_transaction_service import GoalTransactionService
+            GoalTransactionService.process_transaction_for_goal(db, txn, goal_id)
+        except Exception as e:
+            from app.core.logging_config import get_logger
+            logger = get_logger(__name__)
+            logger.warning(f"Failed to update goal progress: {e}")
 
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn

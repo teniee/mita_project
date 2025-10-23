@@ -762,7 +762,11 @@ class _MainScreenState extends State<MainScreen> {
                                   // Mini Calendar
                                   _buildMiniCalendar(),
                                   const SizedBox(height: 16),
-                                  
+
+                                  // MODULE 5: Active Goals
+                                  _buildActiveGoals(),
+                                  const SizedBox(height: 16),
+
                                   // AI Insights
                                   _buildAIInsightsCard(),
                                   const SizedBox(height: 16),
@@ -1286,6 +1290,395 @@ class _MainScreenState extends State<MainScreen> {
             );
           }).toList(),
         ),
+      ],
+    );
+  }
+
+  /// MODULE 5: Build Active Goals Widget
+  Widget _buildActiveGoals() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    // Get goals data from dashboard
+    final goalsData = dashboardData?['data']?['goals'] as List<dynamic>? ?? [];
+    final goalsSummary = dashboardData?['data']?['goals_summary'] as Map<String, dynamic>? ?? {};
+
+    final totalActive = goalsSummary['total_active'] ?? 0;
+    final nearCompletion = goalsSummary['near_completion'] ?? 0;
+    final overdue = goalsSummary['overdue'] ?? 0;
+
+    // If no goals, show empty state
+    if (goalsData.isEmpty && totalActive == 0) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(context, '/goals');
+        },
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.flag_outlined,
+                size: 48,
+                color: colorScheme.primary.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No Active Goals',
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Start tracking your financial goals',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/goals');
+                },
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Create Goal'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with summary
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.flag,
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Active Goals',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                if (totalActive > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$totalActive',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/goals');
+              },
+              child: const Text('View All'),
+            ),
+          ],
+        ),
+
+        // Warnings row (if any)
+        if (nearCompletion > 0 || overdue > 0) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (nearCompletion > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD25F).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFFFD25F),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: 14,
+                        color: const Color(0xFFFFD25F),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$nearCompletion near completion',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (overdue > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$overdue overdue',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // Goals list
+        ...goalsData.take(3).map((goalData) {
+          final goal = goalData as Map<String, dynamic>;
+          final title = goal['title'] ?? 'Untitled Goal';
+          final progress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
+          final targetAmount = (goal['target_amount'] as num?)?.toDouble() ?? 0.0;
+          final savedAmount = (goal['saved_amount'] as num?)?.toDouble() ?? 0.0;
+          final isOverdue = goal['is_overdue'] as bool? ?? false;
+          final priority = goal['priority'] ?? 'medium';
+          final category = goal['category'] ?? 'Other';
+
+          Color progressColor;
+          if (isOverdue) {
+            progressColor = Colors.red;
+          } else if (progress >= 80) {
+            progressColor = Colors.green;
+          } else if (progress >= 50) {
+            progressColor = const Color(0xFFFFD25F);
+          } else {
+            progressColor = const Color(0xFF193C57);
+          }
+
+          Color priorityColor;
+          IconData priorityIcon;
+          switch (priority) {
+            case 'high':
+              priorityColor = Colors.red;
+              priorityIcon = Icons.priority_high;
+              break;
+            case 'low':
+              priorityColor = Colors.blue;
+              priorityIcon = Icons.low_priority;
+              break;
+            default:
+              priorityColor = Colors.orange;
+              priorityIcon = Icons.flag;
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.surface,
+                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isOverdue
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and priority
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            priorityIcon,
+                            size: 16,
+                            color: priorityColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        category,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSecondaryContainer,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: (progress / 100).clamp(0.0, 1.0),
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    color: progressColor,
+                    minHeight: 8,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Amount and progress
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '\$${savedAmount.toStringAsFixed(0)} / \$${targetAmount.toStringAsFixed(0)}',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${progress.toStringAsFixed(0)}%',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: progressColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Overdue warning
+                if (isOverdue) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 12,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Overdue',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+
+        // Show more indicator if there are more goals
+        if (goalsData.length > 3) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/goals');
+              },
+              icon: const Icon(Icons.expand_more),
+              label: Text('+${goalsData.length - 3} more goals'),
+            ),
+          ),
+        ],
       ],
     );
   }

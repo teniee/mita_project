@@ -6,6 +6,7 @@ Provides goal-specific database operations
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
+from uuid import UUID
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +21,7 @@ class GoalRepository(BaseRepository[Goal]):
     def __init__(self):
         super().__init__(Goal)
     
-    async def get_by_user(self, user_id: int) -> List[Goal]:
+    async def get_by_user(self, user_id: UUID) -> List[Goal]:
         """Get all goals for a specific user"""
         async with get_async_db_context() as db:
             result = await db.execute(
@@ -30,7 +31,7 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_active_goals(self, user_id: int) -> List[Goal]:
+    async def get_active_goals(self, user_id: UUID) -> List[Goal]:
         """Get active goals for a user"""
         async with get_async_db_context() as db:
             result = await db.execute(
@@ -45,7 +46,7 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_completed_goals(self, user_id: int) -> List[Goal]:
+    async def get_completed_goals(self, user_id: UUID) -> List[Goal]:
         """Get completed goals for a user"""
         async with get_async_db_context() as db:
             result = await db.execute(
@@ -60,7 +61,7 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_by_category(self, user_id: int, category: str) -> List[Goal]:
+    async def get_by_category(self, user_id: UUID, category: str) -> List[Goal]:
         """Get goals by category for a user"""
         async with get_async_db_context() as db:
             result = await db.execute(
@@ -75,7 +76,7 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_goals_due_soon(self, user_id: int, days_ahead: int = 7) -> List[Goal]:
+    async def get_goals_due_soon(self, user_id: UUID, days_ahead: int = 7) -> List[Goal]:
         """Get goals with target dates within the next N days"""
         async with get_async_db_context() as db:
             future_date = datetime.now() + timedelta(days=days_ahead)
@@ -93,7 +94,7 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_overdue_goals(self, user_id: int) -> List[Goal]:
+    async def get_overdue_goals(self, user_id: UUID) -> List[Goal]:
         """Get goals that are past their target date but not completed"""
         async with get_async_db_context() as db:
             today = datetime.now().date()
@@ -112,7 +113,7 @@ class GoalRepository(BaseRepository[Goal]):
     
     async def get_goals_by_progress_range(
         self, 
-        user_id: int,
+        user_id: UUID,
         min_progress: float = 0.0,
         max_progress: float = 100.0
     ) -> List[Goal]:
@@ -131,11 +132,11 @@ class GoalRepository(BaseRepository[Goal]):
             )
             return list(result.scalars().all())
     
-    async def get_near_completion_goals(self, user_id: int, threshold: float = 80.0) -> List[Goal]:
+    async def get_near_completion_goals(self, user_id: UUID, threshold: float = 80.0) -> List[Goal]:
         """Get goals that are near completion (above threshold progress)"""
         return await self.get_goals_by_progress_range(user_id, threshold, 99.9)
     
-    async def update_goal_progress(self, goal_id: int, progress: float) -> bool:
+    async def update_goal_progress(self, goal_id: UUID, progress: float) -> bool:
         """Update progress for a specific goal"""
         update_data = {
             'progress': min(max(progress, 0.0), 100.0),  # Clamp between 0-100
@@ -151,7 +152,7 @@ class GoalRepository(BaseRepository[Goal]):
         
         return await self.update(goal_id, update_data) is not None
     
-    async def mark_goal_completed(self, goal_id: int) -> bool:
+    async def mark_goal_completed(self, goal_id: UUID) -> bool:
         """Mark a goal as completed"""
         update_data = {
             'status': 'completed',
@@ -161,7 +162,7 @@ class GoalRepository(BaseRepository[Goal]):
         }
         return await self.update(goal_id, update_data) is not None
     
-    async def pause_goal(self, goal_id: int) -> bool:
+    async def pause_goal(self, goal_id: UUID) -> bool:
         """Pause an active goal"""
         update_data = {
             'status': 'paused',
@@ -169,7 +170,7 @@ class GoalRepository(BaseRepository[Goal]):
         }
         return await self.update(goal_id, update_data) is not None
     
-    async def resume_goal(self, goal_id: int) -> bool:
+    async def resume_goal(self, goal_id: UUID) -> bool:
         """Resume a paused goal"""
         update_data = {
             'status': 'active',
@@ -177,7 +178,7 @@ class GoalRepository(BaseRepository[Goal]):
         }
         return await self.update(goal_id, update_data) is not None
     
-    async def get_goal_statistics(self, user_id: int) -> Dict[str, Any]:
+    async def get_goal_statistics(self, user_id: UUID) -> Dict[str, Any]:
         """Get comprehensive goal statistics for a user"""
         async with get_async_db_context() as db:
             # Total goals
@@ -243,7 +244,7 @@ class GoalRepository(BaseRepository[Goal]):
                 'due_soon': len(await self.get_goals_due_soon(user_id))
             }
     
-    async def get_goal_recommendations(self, user_id: int) -> List[Dict[str, Any]]:
+    async def get_goal_recommendations(self, user_id: UUID) -> List[Dict[str, Any]]:
         """Get goal recommendations based on user's goal patterns"""
         recommendations = []
         
@@ -286,7 +287,7 @@ class GoalRepository(BaseRepository[Goal]):
         
         return recommendations
     
-    async def search_goals(self, user_id: int, search_term: str) -> List[Goal]:
+    async def search_goals(self, user_id: UUID, search_term: str) -> List[Goal]:
         """Search goals by title or description"""
         async with get_async_db_context() as db:
             search_pattern = f"%{search_term.lower()}%"

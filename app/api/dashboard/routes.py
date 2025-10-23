@@ -7,6 +7,7 @@ Provides comprehensive dashboard data including:
 - Recent transactions
 - Weekly spending overview
 - AI insights preview
+- Active goals with progress tracking (MODULE 5)
 """
 import logging
 from datetime import datetime, timedelta
@@ -20,7 +21,7 @@ from sqlalchemy import extract, func
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.user import User
-from app.db.models import Transaction, DailyPlan
+from app.db.models import Transaction, DailyPlan, Goal
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -237,6 +238,59 @@ async def get_dashboard(
                     'title': 'Excellent',
                 }
 
+        # MODULE 5: Get active goals with progress
+        goals_data = []
+        goals_summary = {
+            'total_active': 0,
+            'near_completion': 0,
+            'overdue': 0,
+        }
+
+        try:
+            # Get active goals ordered by priority and progress
+            active_goals = db.query(Goal).filter(
+                Goal.user_id == user_id,
+                Goal.status == 'active'
+            ).order_by(
+                Goal.priority.desc(),
+                Goal.progress.desc()
+            ).limit(5).all()  # Show top 5 goals on dashboard
+
+            goals_summary['total_active'] = db.query(func.count(Goal.id)).filter(
+                Goal.user_id == user_id,
+                Goal.status == 'active'
+            ).scalar() or 0
+
+            for goal in active_goals:
+                progress = float(goal.progress or 0)
+
+                # Check if near completion (>= 80%)
+                if progress >= 80:
+                    goals_summary['near_completion'] += 1
+
+                # Check if overdue
+                is_overdue = False
+                if goal.target_date and goal.target_date < today:
+                    is_overdue = True
+                    goals_summary['overdue'] += 1
+
+                goals_data.append({
+                    'id': str(goal.id),
+                    'title': goal.title,
+                    'category': goal.category or 'Other',
+                    'target_amount': float(goal.target_amount),
+                    'saved_amount': float(goal.saved_amount),
+                    'progress': progress,
+                    'priority': goal.priority or 'medium',
+                    'is_overdue': is_overdue,
+                    'target_date': goal.target_date.isoformat() if goal.target_date else None,
+                    'remaining_amount': float(goal.target_amount) - float(goal.saved_amount),
+                })
+
+        except Exception as e:
+            logger.error(f"Error loading goals for dashboard: {str(e)}", exc_info=True)
+            # Continue with empty goals data
+
         return success_response({
             'balance': float(current_balance),
             'spent': float(today_spent),
@@ -245,6 +299,8 @@ async def get_dashboard(
             'transactions': transactions_data,
             'insights_preview': insights_preview,
             'user_income': monthly_income,
+            'goals': goals_data,
+            'goals_summary': goals_summary,
         })
 
     except Exception as e:
@@ -261,6 +317,8 @@ async def get_dashboard(
                 'text': 'Unable to load dashboard data. Please refresh.',
                 'title': 'Error',
             },
+            'goals': [],
+            'goals_summary': {'total_active': 0, 'near_completion': 0, 'overdue': 0},
             'error': True,
         })
 
@@ -278,6 +336,7 @@ async def get_quick_stats(
     - daily_average: Average daily spending
     - top_category: Category with most spending
     - savings_rate: Percentage of income saved
+    - goals_stats: Goals statistics (MODULE 5)
     """
     try:
         user_id = user.id
@@ -319,12 +378,40 @@ async def get_quick_stats(
         savings = monthly_income - float(monthly_spending)
         savings_rate = (savings / monthly_income * 100) if monthly_income > 0 else 0.0
 
+        # MODULE 5: Goals statistics
+        goals_stats = {
+            'total_goals': 0,
+            'active_goals': 0,
+            'completed_goals': 0,
+            'total_target_amount': 0.0,
+            'total_saved_amount': 0.0,
+            'average_progress': 0.0,
+        }
+
+        try:
+            all_goals = db.query(Goal).filter(Goal.user_id == user_id).all()
+            goals_stats['total_goals'] = len(all_goals)
+
+            active_goals = [g for g in all_goals if g.status == 'active']
+            completed_goals = [g for g in all_goals if g.status == 'completed']
+
+            goals_stats['active_goals'] = len(active_goals)
+            goals_stats['completed_goals'] = len(completed_goals)
+
+            if all_goals:
+                goals_stats['total_target_amount'] = sum(float(g.target_amount) for g in all_goals)
+                goals_stats['total_saved_amount'] = sum(float(g.saved_amount) for g in all_goals)
+                goals_stats['average_progress'] = sum(float(g.progress or 0) for g in all_goals) / len(all_goals)
+        except Exception as e:
+            logger.error(f"Error calculating goals stats: {str(e)}", exc_info=True)
+
         return success_response({
             'monthly_spending': float(monthly_spending),
             'daily_average': daily_average,
             'top_category': top_category,
             'savings_rate': savings_rate,
             'savings_amount': savings,
+            'goals_stats': goals_stats,
         })
 
     except Exception as e:
@@ -335,5 +422,13 @@ async def get_quick_stats(
             'top_category': {'name': 'None', 'amount': 0.0},
             'savings_rate': 0.0,
             'savings_amount': 0.0,
+            'goals_stats': {
+                'total_goals': 0,
+                'active_goals': 0,
+                'completed_goals': 0,
+                'total_target_amount': 0.0,
+                'total_saved_amount': 0.0,
+                'average_progress': 0.0,
+            },
             'error': True,
         })
