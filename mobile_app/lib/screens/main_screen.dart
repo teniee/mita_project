@@ -767,6 +767,10 @@ class _MainScreenState extends State<MainScreen> {
                                   _buildActiveGoals(),
                                   const SizedBox(height: 16),
 
+                                  // MODULE 5: Active Challenges
+                                  _buildActiveChallenges(),
+                                  const SizedBox(height: 16),
+
                                   // AI Insights
                                   _buildAIInsightsCard(),
                                   const SizedBox(height: 16),
@@ -1676,6 +1680,403 @@ class _MainScreenState extends State<MainScreen> {
               },
               icon: const Icon(Icons.expand_more),
               label: Text('+${goalsData.length - 3} more goals'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// MODULE 5: Build Active Challenges Widget
+  Widget _buildActiveChallenges() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    // Get challenges data from dashboard
+    final challengesData = dashboardData?['data']?['challenges'] as List<dynamic>? ?? [];
+    final challengesSummary = dashboardData?['data']?['challenges_summary'] as Map<String, dynamic>? ?? {};
+
+    final activeChallenges = challengesSummary['active_challenges'] ?? 0;
+    final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
+    final currentStreak = challengesSummary['current_streak'] ?? 0;
+
+    // If no challenges, show empty state
+    if (challengesData.isEmpty && activeChallenges == 0) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(context, '/challenges');
+        },
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF6A5ACD).withValues(alpha: 0.1),
+                const Color(0xFF9370DB).withValues(alpha: 0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF6A5ACD).withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.emoji_events_outlined,
+                size: 48,
+                color: const Color(0xFF6A5ACD).withValues(alpha: 0.7),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No Active Challenges',
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Join challenges to earn rewards and build habits',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/challenges');
+                },
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Browse Challenges'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header with summary
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.emoji_events,
+                  color: const Color(0xFF6A5ACD),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Active Challenges',
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                if (activeChallenges > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6A5ACD).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$activeChallenges',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF6A5ACD),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/challenges');
+              },
+              child: const Text('View All'),
+            ),
+          ],
+        ),
+
+        // Stats row
+        if (completedThisMonth > 0 || currentStreak > 0) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (completedThisMonth > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 14,
+                        color: Colors.green,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$completedThisMonth completed',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (currentStreak > 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5722).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFFF5722),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.local_fire_department,
+                        size: 14,
+                        color: const Color(0xFFFF5722),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$currentStreak day streak',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: const Color(0xFFFF5722),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // Challenges list
+        ...challengesData.take(3).map((challengeData) {
+          final challenge = challengeData as Map<String, dynamic>;
+          final name = challenge['name'] ?? 'Challenge';
+          final description = challenge['description'] ?? '';
+          final difficulty = challenge['difficulty'] ?? 'medium';
+          final progressPercentage = (challenge['progress_percentage'] as num?)?.toDouble() ?? 0.0;
+          final daysCompleted = challenge['days_completed'] ?? 0;
+          final durationDays = challenge['duration_days'] ?? 0;
+          final rewardPoints = challenge['reward_points'] ?? 0;
+
+          Color difficultyColor;
+          IconData difficultyIcon;
+          switch (difficulty.toLowerCase()) {
+            case 'easy':
+              difficultyColor = const Color(0xFF4CAF50);
+              difficultyIcon = Icons.star_outline;
+              break;
+            case 'hard':
+              difficultyColor = const Color(0xFFFF5722);
+              difficultyIcon = Icons.star;
+              break;
+            default:
+              difficultyColor = const Color(0xFFFF9800);
+              difficultyIcon = Icons.star_half;
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  difficultyColor.withValues(alpha: 0.05),
+                  difficultyColor.withValues(alpha: 0.02),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: difficultyColor.withValues(alpha: 0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and difficulty
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.emoji_events,
+                            size: 16,
+                            color: difficultyColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: difficultyColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            difficultyIcon,
+                            size: 12,
+                            color: difficultyColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            difficulty.toUpperCase(),
+                            style: textTheme.labelSmall?.copyWith(
+                              color: difficultyColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+
+                // Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: (progressPercentage / 100).clamp(0.0, 1.0),
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    color: difficultyColor,
+                    minHeight: 8,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Days and progress
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$daysCompleted / $durationDays days',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.stars,
+                          size: 14,
+                          color: Colors.amber,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$rewardPoints pts',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+
+        // Show more indicator if there are more challenges
+        if (challengesData.length > 3) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/challenges');
+              },
+              icon: const Icon(Icons.expand_more),
+              label: Text('+${challengesData.length - 3} more challenges'),
             ),
           ),
         ],

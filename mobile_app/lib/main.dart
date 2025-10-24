@@ -50,6 +50,8 @@ import 'screens/user_profile_screen.dart';
 import 'screens/user_settings_screen.dart';
 import 'screens/auth_test_screen.dart';
 import 'screens/transactions_screen.dart';
+import 'screens/goals_screen.dart';
+import 'screens/challenges_screen.dart';
 
 /// Initialise Firebase, Crashlytics and push notifications.
 Future<void> _initFirebase() async {
@@ -346,6 +348,14 @@ class MITAApp extends StatelessWidget {
         '/auth-test': (context) => const AppErrorBoundary(
           screenName: 'AuthTest',
           child: AuthTestScreen(),
+        ),
+        '/goals': (context) => const AppErrorBoundary(
+          screenName: 'Goals',
+          child: GoalsScreen(),
+        ),
+        '/challenges': (context) => const AppErrorBoundary(
+          screenName: 'Challenges',
+          child: ChallengesScreen(),
         ),
       },
     );
