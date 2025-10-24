@@ -3021,7 +3021,7 @@ class ApiService {
   Future<Map<String, dynamic>> getBehavioralInsights() async {
     try {
       logInfo('Fetching behavioral insights', tag: 'API_BEHAVIORAL');
-      
+
       final response = await _dio.get('/analytics/behavioral-insights');
 
       if (response.statusCode == 200 && response.data is Map) {
@@ -3038,6 +3038,122 @@ class ApiService {
     }
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Analytics Logging
+  // ---------------------------------------------------------------------------
+
+  /// Log feature usage for analytics tracking
+  Future<bool> logFeatureUsage({
+    required String feature,
+    String? screen,
+    String? action,
+    Map<String, dynamic>? metadata,
+    String? sessionId,
+    String? platform,
+    String? appVersion,
+  }) async {
+    try {
+      logDebug('Logging feature usage: $feature', tag: 'API_ANALYTICS');
+
+      final response = await _dio.post(
+        '/analytics/feature-usage',
+        data: {
+          'feature': feature,
+          'screen': screen,
+          'action': action,
+          'metadata': metadata ?? {},
+          'session_id': sessionId,
+          'platform': platform ?? Platform.operatingSystem,
+          'app_version': appVersion ?? await AppVersionService.getVersion(),
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logDebug('Feature usage logged successfully', tag: 'API_ANALYTICS');
+        return true;
+      } else {
+        logWarning('Failed to log feature usage: ${response.statusCode}', tag: 'API_ANALYTICS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception logging feature usage: $e', tag: 'API_ANALYTICS', error: e);
+      // Don't fail the app if analytics logging fails
+      return false;
+    }
+  }
+
+  /// Log feature access attempt (for premium features conversion tracking)
+  Future<bool> logFeatureAccessAttempt({
+    required String feature,
+    required bool hasAccess,
+    bool isPremiumFeature = true,
+    String? screen,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      logDebug('Logging feature access attempt: $feature', tag: 'API_ANALYTICS');
+
+      final response = await _dio.post(
+        '/analytics/feature-access-attempt',
+        data: {
+          'feature': feature,
+          'has_access': hasAccess,
+          'is_premium_feature': isPremiumFeature,
+          'screen': screen,
+          'metadata': metadata ?? {},
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logDebug('Feature access logged successfully', tag: 'API_ANALYTICS');
+        return true;
+      } else {
+        logWarning('Failed to log feature access: ${response.statusCode}', tag: 'API_ANALYTICS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception logging feature access: $e', tag: 'API_ANALYTICS', error: e);
+      // Don't fail the app if analytics logging fails
+      return false;
+    }
+  }
+
+  /// Log paywall impression for conversion funnel tracking
+  Future<bool> logPaywallImpression({
+    required String screen,
+    String? feature,
+    String? context,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      logDebug('Logging paywall impression: $screen', tag: 'API_ANALYTICS');
+
+      final response = await _dio.post(
+        '/analytics/paywall-impression',
+        data: {
+          'screen': screen,
+          'feature': feature,
+          'context': context,
+          'metadata': metadata ?? {},
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        logDebug('Paywall impression logged successfully', tag: 'API_ANALYTICS');
+        return true;
+      } else {
+        logWarning('Failed to log paywall impression: ${response.statusCode}', tag: 'API_ANALYTICS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception logging paywall impression: $e', tag: 'API_ANALYTICS', error: e);
+      // Don't fail the app if analytics logging fails
+      return false;
+    }
+  }
 
 
   // ---------------------------------------------------------------------------

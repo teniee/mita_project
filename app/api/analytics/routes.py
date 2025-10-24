@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, Body
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from app.api.analytics.schemas import (
