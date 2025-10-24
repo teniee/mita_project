@@ -18,7 +18,7 @@ from app.services.auth_jwt_service import (
     get_user_scopes,
     UserRole
 )
-from app.services.google_auth_service import authenticate_google_user
+from app.services.resilient_google_auth_service import authenticate_google_user
 from app.utils.response_wrapper import success_response
 
 
@@ -116,7 +116,7 @@ def revoke_token(user: User):
 
 
 async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
-    user = await authenticate_google_user(data.id_token, db)
+    user = await authenticate_google_user(data.id_token)
     # Determine user role and create tokens with appropriate scopes
     user_role = "premium_user" if user.is_premium else "basic_user"
     user_data = {
