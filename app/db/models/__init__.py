@@ -8,6 +8,7 @@ from .expense import Expense
 from .goal import Goal
 from .habit import Habit, HabitCompletion
 from .mood import Mood
+from .notification import Notification, NotificationType, NotificationPriority, NotificationStatus
 from .notification_log import NotificationLog
 from .push_token import PushToken
 from .subscription import Subscription
@@ -27,6 +28,10 @@ __all__ = [
     "DailyPlan",
     "Subscription",
     "PushToken",
+    "Notification",
+    "NotificationType",
+    "NotificationPriority",
+    "NotificationStatus",
     "NotificationLog",
     "UserAnswer",
     "UserProfile",

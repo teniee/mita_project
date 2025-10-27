@@ -1350,13 +1350,242 @@ class ApiService {
   // Notifications
   // ---------------------------------------------------------------------------
 
-  Future<List<dynamic>> getNotifications() async {
-    final token = await getToken();
-    final response = await _dio.get(
-      '/notifications/register-token',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return response.data;
+  /// Get list of notifications with optional filters
+  Future<Map<String, dynamic>> getNotifications({
+    int limit = 50,
+    int offset = 0,
+    bool unreadOnly = false,
+    String? type,
+    String? priority,
+    String? category,
+  }) async {
+    try {
+      logInfo('Fetching notifications', tag: 'API_NOTIFICATIONS', extra: {
+        'limit': limit,
+        'offset': offset,
+        'unreadOnly': unreadOnly,
+      });
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available for notifications', tag: 'API_NOTIFICATIONS');
+        return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+      }
+
+      final queryParams = {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+        'unread_only': unreadOnly.toString(),
+      };
+
+      if (type != null) queryParams['type'] = type;
+      if (priority != null) queryParams['priority'] = priority;
+      if (category != null) queryParams['category'] = category;
+
+      final response = await _dio.get(
+        '/notifications/list',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        logInfo('Notifications fetched successfully', tag: 'API_NOTIFICATIONS');
+        return response.data as Map<String, dynamic>;
+      } else {
+        logError('Failed to fetch notifications: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+      }
+    } catch (e) {
+      logError('Exception fetching notifications: $e', tag: 'API_NOTIFICATIONS');
+      return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+    }
+  }
+
+  /// Get a specific notification by ID
+  Future<Map<String, dynamic>?> getNotification(String notificationId) async {
+    try {
+      logInfo('Fetching notification $notificationId', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return null;
+      }
+
+      final response = await _dio.get('/notifications/$notificationId');
+
+      if (response.statusCode == 200) {
+        logInfo('Notification fetched successfully', tag: 'API_NOTIFICATIONS');
+        return response.data as Map<String, dynamic>;
+      } else {
+        logError('Failed to fetch notification: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return null;
+      }
+    } catch (e) {
+      logError('Exception fetching notification: $e', tag: 'API_NOTIFICATIONS');
+      return null;
+    }
+  }
+
+  /// Mark notification as read
+  Future<bool> markNotificationRead(String notificationId) async {
+    try {
+      logInfo('Marking notification $notificationId as read', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+
+      final response = await _dio.post('/notifications/$notificationId/mark-read');
+
+      if (response.statusCode == 200) {
+        logInfo('Notification marked as read', tag: 'API_NOTIFICATIONS');
+        return true;
+      } else {
+        logError('Failed to mark notification as read: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception marking notification as read: $e', tag: 'API_NOTIFICATIONS');
+      return false;
+    }
+  }
+
+  /// Mark all notifications as read
+  Future<bool> markAllNotificationsRead() async {
+    try {
+      logInfo('Marking all notifications as read', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+
+      final response = await _dio.post('/notifications/mark-all-read');
+
+      if (response.statusCode == 200) {
+        logInfo('All notifications marked as read', tag: 'API_NOTIFICATIONS');
+        return true;
+      } else {
+        logError('Failed to mark all notifications as read: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception marking all notifications as read: $e', tag: 'API_NOTIFICATIONS');
+      return false;
+    }
+  }
+
+  /// Delete a notification
+  Future<bool> deleteNotification(String notificationId) async {
+    try {
+      logInfo('Deleting notification $notificationId', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+
+      final response = await _dio.delete('/notifications/$notificationId');
+
+      if (response.statusCode == 200) {
+        logInfo('Notification deleted', tag: 'API_NOTIFICATIONS');
+        return true;
+      } else {
+        logError('Failed to delete notification: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception deleting notification: $e', tag: 'API_NOTIFICATIONS');
+      return false;
+    }
+  }
+
+  /// Get unread notification count
+  Future<int> getUnreadNotificationCount() async {
+    try {
+      logDebug('Fetching unread notification count', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return 0;
+      }
+
+      final response = await _dio.get('/notifications/unread-count');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data.containsKey('data')) {
+          return (data['data']['unread_count'] as num?)?.toInt() ?? 0;
+        }
+        return 0;
+      } else {
+        logError('Failed to fetch unread count: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return 0;
+      }
+    } catch (e) {
+      logError('Exception fetching unread count: $e', tag: 'API_NOTIFICATIONS');
+      return 0;
+    }
+  }
+
+  /// Get notification preferences
+  Future<Map<String, dynamic>?> getNotificationPreferences() async {
+    try {
+      logInfo('Fetching notification preferences', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return null;
+      }
+
+      final response = await _dio.get('/notifications/preferences');
+
+      if (response.statusCode == 200) {
+        logInfo('Notification preferences fetched', tag: 'API_NOTIFICATIONS');
+        return response.data as Map<String, dynamic>;
+      } else {
+        logError('Failed to fetch preferences: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return null;
+      }
+    } catch (e) {
+      logError('Exception fetching preferences: $e', tag: 'API_NOTIFICATIONS');
+      return null;
+    }
+  }
+
+  /// Update notification preferences
+  Future<bool> updateNotificationPreferences(Map<String, dynamic> preferences) async {
+    try {
+      logInfo('Updating notification preferences', tag: 'API_NOTIFICATIONS');
+
+      final token = await getToken();
+      if (token == null) {
+        logWarning('No auth token available', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+
+      final response = await _dio.put(
+        '/notifications/preferences',
+        data: preferences,
+      );
+
+      if (response.statusCode == 200) {
+        logInfo('Notification preferences updated', tag: 'API_NOTIFICATIONS');
+        return true;
+      } else {
+        logError('Failed to update preferences: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        return false;
+      }
+    } catch (e) {
+      logError('Exception updating preferences: $e', tag: 'API_NOTIFICATIONS');
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------------
