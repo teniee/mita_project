@@ -2,11 +2,10 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.core.session import get_async_db, get_db
+from app.core.session import get_db
 from app.db.models import PushToken, UserPreference
 from app.services.notification_log_service import log_notification
 from app.services.notification_service import NotificationService
@@ -210,14 +209,14 @@ async def update_device(
 # NEW ENDPOINTS for notification management
 
 @router.get("/list", response_model=NotificationListResponse)
-async def get_notifications(
+def get_notifications(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     unread_only: bool = Query(False),
     type: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """
@@ -234,7 +233,7 @@ async def get_notifications(
     service = NotificationService(db)
 
     # Get notifications
-    notifications = await service.get_user_notifications(
+    notifications = service.get_user_notifications(
         user_id=user.id,
         limit=limit,
         offset=offset,
@@ -245,7 +244,7 @@ async def get_notifications(
     )
 
     # Get unread count
-    unread_count = await service.get_unread_count(user.id)
+    unread_count = service.get_unread_count(user.id)
 
     # Convert to response format
     notification_responses = [
@@ -261,15 +260,15 @@ async def get_notifications(
 
 
 @router.get("/{notification_id}", response_model=NotificationResponse)
-async def get_notification(
+def get_notification(
     notification_id: UUID,
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Get a specific notification by ID"""
     service = NotificationService(db)
 
-    notification = await service.get_notification_by_id(notification_id, user.id)
+    notification = service.get_notification_by_id(notification_id, user.id)
 
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -278,15 +277,15 @@ async def get_notification(
 
 
 @router.post("/create", response_model=NotificationResponse)
-async def create_notification(
+def create_notification(
     payload: NotificationCreate,
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Create a new notification (mainly for admin/testing)"""
     service = NotificationService(db)
 
-    notification = await service.create_notification(
+    notification = service.create_notification(
         user_id=user.id,
         title=payload.title,
         message=payload.message,
@@ -305,15 +304,15 @@ async def create_notification(
 
 
 @router.post("/{notification_id}/mark-read", response_model=NotificationResponse)
-async def mark_notification_read(
+def mark_notification_read(
     notification_id: UUID,
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Mark a notification as read"""
     service = NotificationService(db)
 
-    notification = await service.mark_as_read(notification_id, user.id)
+    notification = service.mark_as_read(notification_id, user.id)
 
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -322,14 +321,14 @@ async def mark_notification_read(
 
 
 @router.post("/mark-all-read")
-async def mark_all_notifications_read(
-    db: AsyncSession = Depends(get_async_db),
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Mark all notifications as read for current user"""
     service = NotificationService(db)
 
-    count = await service.mark_all_as_read(user.id)
+    count = service.mark_all_as_read(user.id)
 
     return success_response({
         "marked_read": count,
@@ -338,15 +337,15 @@ async def mark_all_notifications_read(
 
 
 @router.delete("/{notification_id}")
-async def delete_notification(
+def delete_notification(
     notification_id: UUID,
-    db: AsyncSession = Depends(get_async_db),
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Delete a notification"""
     service = NotificationService(db)
 
-    success = await service.delete_notification(notification_id, user.id)
+    success = service.delete_notification(notification_id, user.id)
 
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -358,14 +357,14 @@ async def delete_notification(
 
 
 @router.get("/unread-count")
-async def get_unread_count(
-    db: AsyncSession = Depends(get_async_db),
+def get_unread_count(
+    db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Get count of unread notifications"""
     service = NotificationService(db)
 
-    count = await service.get_unread_count(user.id)
+    count = service.get_unread_count(user.id)
 
     return success_response({
         "unread_count": count
