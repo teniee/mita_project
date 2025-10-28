@@ -16,6 +16,7 @@ from app.api.dependencies import get_current_user, require_premium_user
 from app.core.session import get_db
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
+from app.services.notification_integration import get_notification_integration
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -179,6 +180,19 @@ def create_goal(
     db.add(goal)
     db.commit()
     db.refresh(goal)
+
+    # Send notification about goal creation
+    try:
+        notifier = get_notification_integration(db)
+        notifier.notify_goal_created(
+            user_id=user.id,
+            goal_title=goal.title,
+            target_amount=float(goal.target_amount)
+        )
+    except Exception as e:
+        # Don't fail goal creation if notification fails
+        import logging
+        logging.error(f"Failed to send goal creation notification: {e}")
 
     return success_response(goal_to_dict(goal))
 
@@ -375,11 +389,46 @@ def add_savings_to_goal(
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 
+    # Store old progress to check for milestones
+    old_progress = float(goal.progress)
+
     # Add savings
     goal.add_savings(Decimal(str(data.amount)))
 
     db.commit()
     db.refresh(goal)
+
+    # Send notifications based on progress
+    try:
+        notifier = get_notification_integration(db)
+        new_progress = float(goal.progress)
+
+        # Check if goal was just completed
+        if goal.status == 'completed' and old_progress < 100:
+            # Calculate days taken if created_at is available
+            days_taken = None
+            if goal.created_at and goal.completed_at:
+                days_taken = (goal.completed_at - goal.created_at).days
+
+            notifier.notify_goal_completed(
+                user_id=user.id,
+                goal_title=goal.title,
+                final_amount=float(goal.saved_amount),
+                days_taken=days_taken
+            )
+        else:
+            # Send progress milestone notification
+            notifier.notify_goal_progress(
+                user_id=user.id,
+                goal_title=goal.title,
+                progress=new_progress,
+                saved_amount=float(goal.saved_amount),
+                target_amount=float(goal.target_amount)
+            )
+    except Exception as e:
+        # Don't fail savings addition if notification fails
+        import logging
+        logging.error(f"Failed to send goal progress notification: {e}")
 
     return success_response(goal_to_dict(goal))
 
@@ -405,6 +454,24 @@ def mark_goal_completed(
 
     db.commit()
     db.refresh(goal)
+
+    # Send completion notification
+    try:
+        notifier = get_notification_integration(db)
+        days_taken = None
+        if goal.created_at and goal.completed_at:
+            days_taken = (goal.completed_at - goal.created_at).days
+
+        notifier.notify_goal_completed(
+            user_id=user.id,
+            goal_title=goal.title,
+            final_amount=float(goal.saved_amount),
+            days_taken=days_taken
+        )
+    except Exception as e:
+        # Don't fail completion if notification fails
+        import logging
+        logging.error(f"Failed to send goal completion notification: {e}")
 
     return success_response(goal_to_dict(goal))
 
