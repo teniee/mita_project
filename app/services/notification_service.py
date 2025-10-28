@@ -9,8 +9,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy.orm import Session
 
 from app.db.models.notification import (
     Notification,
@@ -28,10 +27,10 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """Service for managing notifications"""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Session):
         self.db = db
 
-    async def create_notification(
+    def create_notification(
         self,
         user_id: UUID,
         title: str,
@@ -85,19 +84,19 @@ class NotificationService:
         )
 
         self.db.add(notification)
-        await self.db.commit()
-        await self.db.refresh(notification)
+        self.db.commit()
+        self.db.refresh(notification)
 
         # Send immediately if requested and not scheduled
         if send_immediately and not scheduled_for:
-            await self._deliver_notification(notification)
+            self._deliver_notification(notification)
 
         logger.info(
             f"Created notification {notification.id} for user {user_id} - Type: {type}, Priority: {priority}"
         )
         return notification
 
-    async def _deliver_notification(self, notification: Notification) -> bool:
+    def _deliver_notification(self, notification: Notification) -> bool:
         """
         Deliver notification via push notification or email
 
@@ -109,10 +108,11 @@ class NotificationService:
         """
         try:
             # Get user's push tokens
-            result = await self.db.execute(
-                select(PushToken).where(PushToken.user_id == notification.user_id)
+            push_tokens = (
+                self.db.query(PushToken)
+                .filter(PushToken.user_id == notification.user_id)
+                .all()
             )
-            push_tokens = result.scalars().all()
 
             if push_tokens:
                 # Try push notification
@@ -133,12 +133,14 @@ class NotificationService:
                             fcm_data.update(notification.data)
 
                         # Send via FCM
-                        success = await send_push_notification(
+                        success = send_push_notification(
                             token=push_token.token,
                             title=notification.title,
                             body=notification.message,
                             data=fcm_data,
                             image_url=notification.image_url,
+                            user_id=notification.user_id,
+                            db=self.db,
                         )
 
                         if success:
@@ -146,10 +148,10 @@ class NotificationService:
                             notification.channel = "push"
                             notification.sent_at = datetime.utcnow()
                             notification.delivered_at = datetime.utcnow()
-                            await self.db.commit()
+                            self.db.commit()
 
                             # Log successful delivery
-                            await log_notification(
+                            log_notification(
                                 self.db,
                                 user_id=notification.user_id,
                                 channel="push",
@@ -168,7 +170,7 @@ class NotificationService:
             # TODO: Fallback to email if push fails
             notification.status = NotificationStatus.FAILED.value
             notification.error_message = "No valid push tokens found"
-            await self.db.commit()
+            self.db.commit()
 
             logger.warning(
                 f"Failed to deliver notification {notification.id} - No push tokens"
@@ -179,10 +181,10 @@ class NotificationService:
             logger.error(f"Error delivering notification {notification.id}: {e}")
             notification.status = NotificationStatus.FAILED.value
             notification.error_message = str(e)
-            await self.db.commit()
+            self.db.commit()
             return False
 
-    async def get_user_notifications(
+    def get_user_notifications(
         self,
         user_id: UUID,
         limit: int = 50,
@@ -207,23 +209,23 @@ class NotificationService:
         Returns:
             List of notifications
         """
-        query = select(Notification).where(Notification.user_id == user_id)
+        query = self.db.query(Notification).filter(Notification.user_id == user_id)
 
         # Apply filters
         if unread_only:
-            query = query.where(Notification.is_read == False)
+            query = query.filter(Notification.is_read == False)
 
         if notification_type:
-            query = query.where(Notification.type == notification_type)
+            query = query.filter(Notification.type == notification_type)
 
         if priority:
-            query = query.where(Notification.priority == priority)
+            query = query.filter(Notification.priority == priority)
 
         if category:
-            query = query.where(Notification.category == category)
+            query = query.filter(Notification.category == category)
 
         # Filter out expired notifications
-        query = query.where(
+        query = query.filter(
             or_(
                 Notification.expires_at.is_(None),
                 Notification.expires_at > datetime.utcnow(),
@@ -236,79 +238,81 @@ class NotificationService:
         # Apply pagination
         query = query.limit(limit).offset(offset)
 
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        return query.all()
 
-    async def get_notification_by_id(
+    def get_notification_by_id(
         self, notification_id: UUID, user_id: UUID
     ) -> Optional[Notification]:
         """Get a specific notification by ID for a user"""
-        result = await self.db.execute(
-            select(Notification).where(
+        return (
+            self.db.query(Notification)
+            .filter(
                 and_(
                     Notification.id == notification_id,
                     Notification.user_id == user_id,
                 )
             )
+            .first()
         )
-        return result.scalar_one_or_none()
 
-    async def mark_as_read(
+    def mark_as_read(
         self, notification_id: UUID, user_id: UUID
     ) -> Optional[Notification]:
         """Mark a notification as read"""
-        notification = await self.get_notification_by_id(notification_id, user_id)
+        notification = self.get_notification_by_id(notification_id, user_id)
 
         if notification and not notification.is_read:
             notification.is_read = True
             notification.read_at = datetime.utcnow()
-            await self.db.commit()
-            await self.db.refresh(notification)
+            self.db.commit()
+            self.db.refresh(notification)
 
             logger.info(f"Marked notification {notification_id} as read for user {user_id}")
 
         return notification
 
-    async def mark_all_as_read(self, user_id: UUID) -> int:
+    def mark_all_as_read(self, user_id: UUID) -> int:
         """Mark all notifications as read for a user"""
-        result = await self.db.execute(
-            select(Notification).where(
+        notifications = (
+            self.db.query(Notification)
+            .filter(
                 and_(
                     Notification.user_id == user_id,
                     Notification.is_read == False,
                 )
             )
+            .all()
         )
-        notifications = result.scalars().all()
 
         for notification in notifications:
             notification.is_read = True
             notification.read_at = datetime.utcnow()
 
-        await self.db.commit()
+        self.db.commit()
 
         count = len(notifications)
         logger.info(f"Marked {count} notifications as read for user {user_id}")
         return count
 
-    async def delete_notification(
+    def delete_notification(
         self, notification_id: UUID, user_id: UUID
     ) -> bool:
         """Delete a notification"""
-        notification = await self.get_notification_by_id(notification_id, user_id)
+        notification = self.get_notification_by_id(notification_id, user_id)
 
         if notification:
-            await self.db.delete(notification)
-            await self.db.commit()
+            self.db.delete(notification)
+            self.db.commit()
             logger.info(f"Deleted notification {notification_id} for user {user_id}")
             return True
 
         return False
 
-    async def get_unread_count(self, user_id: UUID) -> int:
+    def get_unread_count(self, user_id: UUID) -> int:
         """Get count of unread notifications for a user"""
-        result = await self.db.execute(
-            select(Notification).where(
+        return (
+            self.db.query(Notification)
+            .filter(
                 and_(
                     Notification.user_id == user_id,
                     Notification.is_read == False,
@@ -318,40 +322,42 @@ class NotificationService:
                     ),
                 )
             )
+            .count()
         )
-        return len(result.scalars().all())
 
-    async def send_scheduled_notifications(self):
+    def send_scheduled_notifications(self):
         """
         Send all notifications that are scheduled for delivery
         Should be called by a cron job or background task
         """
         now = datetime.utcnow()
 
-        result = await self.db.execute(
-            select(Notification).where(
+        scheduled_notifications = (
+            self.db.query(Notification)
+            .filter(
                 and_(
                     Notification.status == NotificationStatus.PENDING.value,
                     Notification.scheduled_for <= now,
                 )
             )
+            .all()
         )
-        scheduled_notifications = result.scalars().all()
 
         logger.info(f"Found {len(scheduled_notifications)} scheduled notifications to send")
 
         for notification in scheduled_notifications:
-            await self._deliver_notification(notification)
+            self._deliver_notification(notification)
 
-    async def cleanup_old_notifications(self, days: int = 30):
+    def cleanup_old_notifications(self, days: int = 30):
         """
         Clean up old notifications (older than specified days)
         Should be called by a cron job
         """
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-        result = await self.db.execute(
-            select(Notification).where(
+        old_notifications = (
+            self.db.query(Notification)
+            .filter(
                 or_(
                     Notification.created_at < cutoff_date,
                     and_(
@@ -360,37 +366,39 @@ class NotificationService:
                     ),
                 )
             )
+            .all()
         )
-        old_notifications = result.scalars().all()
 
         for notification in old_notifications:
-            await self.db.delete(notification)
+            self.db.delete(notification)
 
-        await self.db.commit()
+        self.db.commit()
 
         count = len(old_notifications)
         logger.info(f"Cleaned up {count} old notifications")
         return count
 
-    async def get_grouped_notifications(
+    def get_grouped_notifications(
         self, user_id: UUID, group_key: str
     ) -> List[Notification]:
         """Get all notifications with a specific group key"""
-        result = await self.db.execute(
-            select(Notification).where(
+        return (
+            self.db.query(Notification)
+            .filter(
                 and_(
                     Notification.user_id == user_id,
                     Notification.group_key == group_key,
                 )
-            ).order_by(Notification.created_at.desc())
+            )
+            .order_by(Notification.created_at.desc())
+            .all()
         )
-        return result.scalars().all()
 
 
 # Convenience functions for creating common notification types
 
-async def send_budget_alert(
-    db: AsyncSession,
+def send_budget_alert(
+    db: Session,
     user_id: UUID,
     budget_name: str,
     spent_amount: float,
@@ -400,7 +408,7 @@ async def send_budget_alert(
     """Send a budget alert notification"""
     service = NotificationService(db)
 
-    return await service.create_notification(
+    return service.create_notification(
         user_id=user_id,
         title=f"Budget Alert: {budget_name}",
         message=f"You've spent {percentage}% of your {budget_name} budget (${spent_amount:.2f} of ${budget_limit:.2f})",
@@ -411,8 +419,8 @@ async def send_budget_alert(
     )
 
 
-async def send_goal_achievement(
-    db: AsyncSession,
+def send_goal_achievement(
+    db: Session,
     user_id: UUID,
     goal_name: str,
     achieved_amount: float,
@@ -420,7 +428,7 @@ async def send_goal_achievement(
     """Send a goal achievement notification"""
     service = NotificationService(db)
 
-    return await service.create_notification(
+    return service.create_notification(
         user_id=user_id,
         title="Goal Achieved!",
         message=f"Congratulations! You've reached your goal: {goal_name} (${achieved_amount:.2f})",
@@ -430,15 +438,15 @@ async def send_goal_achievement(
     )
 
 
-async def send_daily_reminder(
-    db: AsyncSession,
+def send_daily_reminder(
+    db: Session,
     user_id: UUID,
     message: str,
 ) -> Notification:
     """Send a daily reminder notification"""
     service = NotificationService(db)
 
-    return await service.create_notification(
+    return service.create_notification(
         user_id=user_id,
         title="Daily Reminder",
         message=message,
@@ -448,8 +456,8 @@ async def send_daily_reminder(
     )
 
 
-async def send_ai_recommendation(
-    db: AsyncSession,
+def send_ai_recommendation(
+    db: Session,
     user_id: UUID,
     title: str,
     message: str,
@@ -458,7 +466,7 @@ async def send_ai_recommendation(
     """Send an AI-generated recommendation"""
     service = NotificationService(db)
 
-    return await service.create_notification(
+    return service.create_notification(
         user_id=user_id,
         title=title,
         message=message,
@@ -469,8 +477,8 @@ async def send_ai_recommendation(
     )
 
 
-async def send_transaction_alert(
-    db: AsyncSession,
+def send_transaction_alert(
+    db: Session,
     user_id: UUID,
     amount: float,
     merchant: str,
@@ -479,7 +487,7 @@ async def send_transaction_alert(
     """Send a transaction alert notification"""
     service = NotificationService(db)
 
-    return await service.create_notification(
+    return service.create_notification(
         user_id=user_id,
         title="New Transaction",
         message=f"${amount:.2f} spent at {merchant}",
