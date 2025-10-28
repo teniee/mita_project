@@ -531,6 +531,82 @@ curl -X POST http://localhost:8000/api/notifications/<id>/mark-read \
 - Circuit breaker pattern (TODO)
 - Queue-based delivery for high volume (TODO)
 
+## Module Integrations
+
+### Overview
+
+The notification system is fully integrated with all major MITA modules:
+- **Goals Module**: Achievement and progress notifications
+- **Transactions Module**: Large transaction alerts
+- **Budget Module**: Overspending warnings and alerts
+- **Scheduled Tasks**: Daily reminders, overdue goals, weekly summaries
+
+**See [NOTIFICATION_INTEGRATIONS.md](./NOTIFICATION_INTEGRATIONS.md) for complete integration guide.**
+
+### Quick Integration Examples
+
+#### Goals Integration
+```python
+from app.services.notification_integration import get_notification_integration
+
+notifier = get_notification_integration(db)
+notifier.notify_goal_created(user_id, "Emergency Fund", 5000.0)
+notifier.notify_goal_completed(user_id, "Emergency Fund", 5000.0, days_taken=180)
+```
+
+#### Budget Integration
+```python
+from app.services.budget_alert_service import get_budget_alert_service
+
+alert_service = get_budget_alert_service(db)
+alert_service.check_single_category(
+    user_id=user.id,
+    category="food",
+    spent_amount=850.0,
+    budget_limit=1000.0
+)
+```
+
+#### Scheduled Notifications
+```python
+from app.services.scheduled_notifications import get_scheduled_notification_service
+
+service = get_scheduled_notification_service(db)
+service.run_all_scheduled_tasks()  # Run daily via cron
+```
+
+### Integration Points
+
+| Module | File | Events | Notification Types |
+|--------|------|--------|-------------------|
+| Goals | `app/api/goals/routes.py` | Create, Progress, Complete | Achievement, Info |
+| Transactions | `app/api/transactions/services.py` | Large transaction (>$200) | Info |
+| Budget | `app/services/core/engine/expense_tracker.py` | Budget warning, Exceeded | Warning, Alert |
+| Scheduled | `app/services/scheduled_notifications.py` | Daily, Weekly, Overdue | Reminder, Info |
+
+### Helper Services
+
+**NotificationIntegration** (`app/services/notification_integration.py`)
+- Simplifies sending notifications from any module
+- Template-based notification creation
+- Automatic error handling (non-blocking)
+
+**NotificationTemplates** (`app/services/notification_templates.py`)
+- 25+ ready-to-use notification templates
+- Consistent messaging across app
+- Easy customization
+
+**BudgetAlertService** (`app/services/budget_alert_service.py`)
+- Automatic budget monitoring
+- Warning at 80% threshold
+- Critical alert at 100% (exceeded)
+
+**ScheduledNotificationService** (`app/services/scheduled_notifications.py`)
+- Daily budget reminders
+- Overdue goal checks
+- Weekly progress reports
+- Motivational tips
+
 ## Future Enhancements
 
 ### Planned Features
@@ -579,6 +655,18 @@ curl -X POST http://localhost:8000/api/notifications/<id>/mark-read \
 
 ## Changelog
 
+### Version 1.1.0 (2025-10-28)
+- ✅ **Full module integrations** with Goals, Transactions, Budget
+- ✅ **NotificationIntegration helper** for easy usage across modules
+- ✅ **NotificationTemplates system** with 25+ ready-to-use templates
+- ✅ **BudgetAlertService** with automatic budget monitoring
+- ✅ **ScheduledNotificationService** for daily/weekly reminders
+- ✅ **Goals integration**: Achievement and milestone notifications
+- ✅ **Transactions integration**: Large transaction alerts (>$200)
+- ✅ **Budget integration**: Warning at 80%, critical at 100%
+- ✅ **Scheduled tasks**: Daily reminders, overdue goals, weekly summaries
+- ✅ **Comprehensive documentation**: NOTIFICATION_INTEGRATIONS.md
+
 ### Version 1.0.0 (2025-10-27)
 - ✅ Initial implementation of notifications module
 - ✅ Complete backend API with all CRUD operations
@@ -589,7 +677,6 @@ curl -X POST http://localhost:8000/api/notifications/<id>/mark-read \
 - ✅ Rich notifications with images and actions
 - ✅ Scheduled notifications support
 - ✅ Notification history and tracking
-- ✅ Integration with all MITA modules
 
 ## Maintainers
 - Backend: MITA Backend Team

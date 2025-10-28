@@ -43,10 +43,22 @@ from app.services.notification_log_service import log_notification
 
 if not firebase_admin._apps:
     try:
-        cred = credentials.ApplicationDefault()
-        firebase_admin.initialize_app(cred)
-    except Exception:
-        firebase_admin.initialize_app()
+        # Try to use credentials from settings first
+        if settings.GOOGLE_APPLICATION_CREDENTIALS:
+            cred = credentials.Certificate(settings.GOOGLE_APPLICATION_CREDENTIALS)
+            firebase_admin.initialize_app(cred)
+        else:
+            # Fallback to Application Default Credentials (uses GOOGLE_APPLICATION_CREDENTIALS env var)
+            cred = credentials.ApplicationDefault()
+            firebase_admin.initialize_app(cred)
+    except Exception as e:
+        # Last resort: initialize without credentials (will fail for FCM but won't crash app startup)
+        import logging
+        logging.warning(f"Failed to initialize Firebase with credentials: {e}. FCM notifications will not work.")
+        try:
+            firebase_admin.initialize_app()
+        except Exception:
+            pass
 
 
 def _record_log(
@@ -61,39 +73,69 @@ def _record_log(
 def send_push_notification(
     *,
     user_id: int,
-    message: str,
+    message: str = None,
     token: Optional[str] = None,
     db: Optional[Session] = None,
-) -> dict:
+    title: Optional[str] = None,
+    body: Optional[str] = None,
+    data: Optional[dict] = None,
+    image_url: Optional[str] = None,
+) -> bool:
     """Send a push notification via Firebase Cloud Messaging.
 
     Args:
         user_id: Recipient user ID (for payload context only).
-        message: Text to display in the push notification.
+        message: Text to display in the push notification (legacy, use body instead).
         token: FCM device token. Required unless a default topic is used.
+        db: Database session for logging.
+        title: Notification title (defaults to "Mita Finance").
+        body: Notification body text (defaults to message if not provided).
+        data: Additional data payload (dict).
+        image_url: Optional image URL for rich notifications.
 
     Returns:
-        Firebase messaging response as a dict.
+        True if sent successfully, False otherwise.
     """
     if not token:
         raise ValueError("FCM device token must be provided")
 
+    # Use body if provided, otherwise fall back to message
+    notification_body = body or message
+    notification_title = title or "Mita Finance"
+
+    if not notification_body:
+        raise ValueError("Either 'body' or 'message' must be provided")
+
+    # Build notification data
+    notification_data = {"user_id": str(user_id)}
+    if data:
+        notification_data.update(data)
+
+    # Build FCM message
+    fcm_notification = messaging.Notification(
+        title=notification_title,
+        body=notification_body,
+    )
+
+    # Add image if provided
+    if image_url:
+        fcm_notification.image = image_url
+
     msg = messaging.Message(
-        notification=messaging.Notification(
-            title="Mita Finance",
-            body=message,
-        ),
+        notification=fcm_notification,
         token=token,
-        data={"user_id": str(user_id)},
+        data=notification_data,
     )
 
     try:
         resp = messaging.send(msg)
-        _record_log(db, user_id=user_id, channel="fcm", message=message, success=True)
-        return {"message_id": resp}
-    except Exception:
-        _record_log(db, user_id=user_id, channel="fcm", message=message, success=False)
-        raise
+        _record_log(db, user_id=user_id, channel="fcm", message=notification_body, success=True)
+        return True
+    except Exception as e:
+        _record_log(db, user_id=user_id, channel="fcm", message=notification_body, success=False)
+        import logging
+        logging.error(f"Failed to send FCM notification: {e}")
+        return False
 
 
 def send_apns_notification(

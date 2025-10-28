@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import apply_transaction_to_plan
 from app.utils.timezone_utils import from_user_timezone, to_user_timezone
+from app.services.notification_integration import get_notification_integration
 
 
 def add_transaction(user: User, data, db: Session):
@@ -68,6 +69,22 @@ def add_transaction(user: User, data, db: Session):
             from app.core.logging_config import get_logger
             logger = get_logger(__name__)
             logger.warning(f"Failed to update goal progress: {e}")
+
+    # MODULE 10: Send notification for large transactions (>$200)
+    LARGE_TRANSACTION_THRESHOLD = Decimal('200.00')
+    if amount > LARGE_TRANSACTION_THRESHOLD:
+        try:
+            notifier = get_notification_integration(db)
+            notifier.notify_large_transaction(
+                user_id=user.id,
+                amount=float(amount),
+                category=txn.category,
+                merchant=txn.merchant
+            )
+        except Exception as e:
+            from app.core.logging_config import get_logger
+            logger = get_logger(__name__)
+            logger.warning(f"Failed to send large transaction notification: {e}")
 
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn
