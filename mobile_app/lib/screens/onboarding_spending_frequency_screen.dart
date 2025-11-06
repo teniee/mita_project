@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingSpendingFrequencyScreen extends StatefulWidget {
   const OnboardingSpendingFrequencyScreen({super.key});
@@ -158,6 +159,12 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 8),
+                const OnboardingProgressIndicator(
+                  currentStep: 5,
+                  totalSteps: 7,
+                ),
+                const SizedBox(height: 24),
                 const Text(
                   'How often do you spend on these?',
                   style: TextStyle(

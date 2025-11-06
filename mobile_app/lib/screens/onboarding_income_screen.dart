@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingIncomeScreen extends StatefulWidget {
   const OnboardingIncomeScreen({super.key});
@@ -213,8 +214,14 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const SizedBox(height: 40),
-                
+                const SizedBox(height: 8),
+                OnboardingProgressIndicator(
+                  currentStep: 2,
+                  totalSteps: 7,
+                  activeColor: primaryColor,
+                ),
+                const SizedBox(height: 24),
+
                 // Main income input card
                 Card(
                   elevation: 3,

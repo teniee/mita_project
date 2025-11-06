@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/location_service.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingLocationScreen extends StatefulWidget {
   const OnboardingLocationScreen({super.key});
@@ -90,12 +91,17 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
       backgroundColor: const Color(0xFFFFF9F0),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
-              
+              const SizedBox(height: 8),
+              const OnboardingProgressIndicator(
+                currentStep: 1,
+                totalSteps: 7,
+              ),
+              const SizedBox(height: 24),
+
               // Header
               Card(
                 elevation: 3,

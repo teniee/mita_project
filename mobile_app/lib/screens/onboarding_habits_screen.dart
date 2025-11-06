@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 import '../mixins/onboarding_session_mixin.dart';
 
 class OnboardingHabitsScreen extends StatefulWidget {
@@ -55,6 +56,12 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 8),
+              const OnboardingProgressIndicator(
+                currentStep: 6,
+                totalSteps: 7,
+              ),
+              const SizedBox(height: 24),
               const Text(
                 'Which financial habits are hurting you?',
                 style: TextStyle(

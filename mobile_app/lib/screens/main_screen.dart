@@ -166,7 +166,7 @@ class _MainScreenState extends State<MainScreen> {
       if (financialContext['needs_onboarding'] == true) {
         logInfo('User needs to complete onboarding - redirecting', tag: 'MAIN_SCREEN');
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          Navigator.pushReplacementNamed(context, '/onboarding_location');
           return;
         }
       }
@@ -246,7 +246,7 @@ class _MainScreenState extends State<MainScreen> {
       // Check for various error states
       if (financialContext['needs_onboarding'] == true) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/onboarding_region');
+          Navigator.pushReplacementNamed(context, '/onboarding_location');
           return;
         }
       }
@@ -837,7 +837,7 @@ class _MainScreenState extends State<MainScreen> {
                 )
               else if (dashboardData?['incomplete_profile'] == true)
                 GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/onboarding_region'),
+                  onTap: () => Navigator.pushNamed(context, '/onboarding_location'),
                   child: Row(
                     children: [
                       Icon(
@@ -879,7 +879,7 @@ class _MainScreenState extends State<MainScreen> {
                 )
               else
                 GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/onboarding_region'),
+                  onTap: () => Navigator.pushNamed(context, '/onboarding_location'),
                   child: Text(
                     'Tap to complete your profile',
                     style: TextStyle(
@@ -2091,7 +2091,7 @@ class _MainScreenState extends State<MainScreen> {
         final action = advice['action'] as String?;
 
         if (action == 'complete_profile' && dashboardData?['incomplete_profile'] == true) {
-          Navigator.pushNamed(context, '/onboarding_region');
+          Navigator.pushNamed(context, '/onboarding_location');
         } else if (action == 'retry' && dashboardData?['network_error'] == true) {
           refreshData();
         } else {

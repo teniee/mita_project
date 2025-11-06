@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingGoalScreen extends StatefulWidget {
   const OnboardingGoalScreen({super.key});
@@ -59,6 +60,12 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 8),
+              const OnboardingProgressIndicator(
+                currentStep: 4,
+                totalSteps: 7,
+              ),
+              const SizedBox(height: 24),
               const Text(
                 'What are your financial goals?',
                 style: TextStyle(

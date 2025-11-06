@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class FixedExpense {
   String category;
@@ -44,8 +45,16 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
       body: SafeArea(
-        child: Center(
-          child: Card(
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            const OnboardingProgressIndicator(
+              currentStep: 3,
+              totalSteps: 7,
+            ),
+            Expanded(
+              child: Center(
+                child: Card(
             elevation: 3,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
@@ -182,6 +191,9 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
               ),
             ),
           ),
+              ),
+            ),
+          ],
         ),
       ),
     );

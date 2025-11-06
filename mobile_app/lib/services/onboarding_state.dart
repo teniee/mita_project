@@ -4,7 +4,6 @@ class OnboardingState {
   OnboardingState._();
   static final instance = OnboardingState._();
 
-  String? region;
   String? countryCode;
   String? stateCode;
   double? income;
@@ -17,7 +16,6 @@ class OnboardingState {
   Map<String, int>? spendingFrequencies;  // NEW: Real user spending frequencies
 
   void reset() {
-    region = null;
     countryCode = null;
     stateCode = null;
     income = null;

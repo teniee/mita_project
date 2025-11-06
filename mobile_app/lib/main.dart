@@ -34,7 +34,6 @@ import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/ai_assistant_screen.dart';
-import 'screens/onboarding_region_screen.dart';
 import 'screens/onboarding_location_screen.dart';
 import 'screens/onboarding_income_screen.dart';
 import 'screens/onboarding_expenses_screen.dart';
@@ -268,10 +267,6 @@ class MITAApp extends StatelessWidget {
         '/main': (context) => const AppErrorBoundary(
           screenName: 'Main',
           child: BottomNavigation(),
-        ),
-        '/onboarding_region': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingRegion',
-          child: OnboardingRegionScreen(),
         ),
         '/onboarding_location': (context) => const AppErrorBoundary(
           screenName: 'OnboardingLocation',

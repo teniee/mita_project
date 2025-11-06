@@ -57,7 +57,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // Format data to match backend expectations
       final onboardingData = {
-        "region": state.region ?? "US",
+        "region": state.countryCode ?? "US",
         "income": {
           "monthly_income": state.income ?? 0,
           "additional_income": 0,
@@ -80,7 +80,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       logInfo('Submitting onboarding data: $onboardingData', tag: 'ONBOARDING_FINISH');
 
       // Validate that we have essential data
-      if (state.income == null || state.region == null) {
+      if (state.income == null || state.countryCode == null) {
         throw Exception('Missing essential onboarding data. Please go back and complete all steps.');
       }
 

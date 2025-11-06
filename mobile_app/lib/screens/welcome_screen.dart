@@ -257,7 +257,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   void _navigateToOnboarding() {
     HapticFeedback.lightImpact();
-    Navigator.pushReplacementNamed(context, '/onboarding_region');
+    Navigator.pushReplacementNamed(context, '/onboarding_location');
   }
 
   @override
