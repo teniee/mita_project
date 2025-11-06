@@ -882,25 +882,12 @@ async def check_transaction_affordability(
     Check if user can afford transaction BEFORE creating it
     Returns budget status, warnings, and suggestions
     """
-    # Validate category
-    valid_categories = [
-        'food', 'dining', 'groceries',
-        'transportation', 'gas', 'public_transport',
-        'entertainment', 'shopping', 'clothing',
-        'healthcare', 'insurance',
-        'utilities', 'rent', 'mortgage',
-        'education', 'childcare', 'pets',
-        'travel', 'subscriptions', 'gifts', 'charity', 'other'
-    ]
-    
-    if check_request.category not in valid_categories:
+    # Validate category (basic validation only - accept any non-empty string)
+    if not check_request.category or not check_request.category.strip():
         raise ValidationError(
-            f"Invalid category '{check_request.category}'",
+            "Category cannot be empty",
             ErrorCode.VALIDATION_INVALID_VALUE,
-            details={
-                "category": check_request.category,
-                "valid_categories": valid_categories
-            }
+            details={"category": check_request.category}
         )
 
     # Validate amount
