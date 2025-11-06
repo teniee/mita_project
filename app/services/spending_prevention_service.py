@@ -13,7 +13,6 @@ from sqlalchemy import and_, func
 
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.transaction import Transaction
-from app.services.budget_redistributor import BudgetRedistributor
 
 
 class SpendingPreventionService:
@@ -31,7 +30,6 @@ class SpendingPreventionService:
     def __init__(self, db: Session, user_id: UUID):
         self.db = db
         self.user_id = user_id
-        self.redistributor = BudgetRedistributor(db)
 
     def check_affordability(
         self,
