@@ -17,6 +17,8 @@ from app.core.session import get_db
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
 from app.services.notification_integration import get_notification_integration
+from app.services.smart_goal_advisor import get_smart_goal_advisor
+from app.services.goal_budget_integration import get_goal_budget_integration
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -119,6 +121,11 @@ class GoalStatistics(BaseModel):
 class AddSavingsRequest(BaseModel):
     """Request to add savings to a goal"""
     amount: float = Field(..., gt=0, description="Amount to add to savings")
+
+
+class AutoTransferRequest(BaseModel):
+    """Request to auto-transfer funds to a goal"""
+    amount: float = Field(..., gt=0, description="Amount to transfer")
 
 
 # ============================================================================
@@ -534,7 +541,7 @@ def get_income_based_suggestions(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    """Get goal suggestions based on user's income level"""
+    """Get goal suggestions based on user's income level (Legacy - use /smart_recommendations instead)"""
     monthly_income = user.monthly_income or 3000.0
 
     suggestions = []
@@ -590,3 +597,210 @@ def get_income_based_suggestions(
         "monthly_income": float(monthly_income),
         "recommended_savings_rate": 0.20
     })
+
+
+# ============================================================================
+# AI-Powered Smart Goal Recommendations
+# ============================================================================
+
+@router.get("/smart_recommendations")
+def get_smart_recommendations(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Get AI-powered personalized goal recommendations based on:
+    - Income level
+    - Spending patterns
+    - Existing goals
+    - Historical behavior
+    """
+    try:
+        advisor = get_smart_goal_advisor(db)
+        recommendations = advisor.generate_personalized_recommendations(user.id)
+
+        return success_response({
+            "recommendations": recommendations,
+            "count": len(recommendations),
+            "generated_at": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"Error generating smart recommendations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{goal_id}/health")
+def analyze_goal_health(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Analyze the health of a goal and provide AI-powered insights:
+    - Health score (0-100)
+    - On-track status
+    - Predicted completion date
+    - Actionable recommendations
+    """
+    try:
+        advisor = get_smart_goal_advisor(db)
+        health_analysis = advisor.analyze_goal_health(goal_id, user.id)
+
+        if "error" in health_analysis:
+            raise HTTPException(status_code=404, detail=health_analysis["error"])
+
+        return success_response(health_analysis)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.error(f"Error analyzing goal health: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/adjustments/suggestions")
+def suggest_goal_adjustments(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Get AI-powered suggestions for adjusting existing goals based on:
+    - Current goal progress
+    - Recent spending patterns
+    - Available funds
+    """
+    try:
+        advisor = get_smart_goal_advisor(db)
+        suggestions = advisor.suggest_goal_adjustments(user.id)
+
+        return success_response({
+            "adjustments": suggestions,
+            "count": len(suggestions),
+            "generated_at": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"Error generating goal adjustment suggestions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/opportunities/detect")
+def detect_goal_opportunities(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Detect opportunities for new goals based on spending patterns:
+    - Recurring large expenses
+    - Consistent underspending in categories
+    - Surplus funds that could be saved
+    """
+    try:
+        advisor = get_smart_goal_advisor(db)
+        opportunities = advisor.detect_goal_opportunities(user.id)
+
+        return success_response({
+            "opportunities": opportunities,
+            "count": len(opportunities),
+            "generated_at": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"Error detecting goal opportunities: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Budget-Goals Integration
+# ============================================================================
+
+@router.get("/budget/allocate")
+def allocate_budget_for_goals(
+    month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
+    year: int = Query(..., ge=2020, le=2100, description="Year"),
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Automatically allocate budget for active goals from monthly income
+    """
+    try:
+        integration = get_goal_budget_integration(db)
+        allocation = integration.allocate_budget_for_goals(user.id, month, year)
+
+        return success_response(allocation)
+    except Exception as e:
+        import logging
+        logging.error(f"Error allocating budget for goals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/budget/progress")
+def track_goal_progress_from_budget(
+    month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
+    year: int = Query(..., ge=2020, le=2100, description="Year"),
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Track goal progress based on budget allocations and actual spending
+    """
+    try:
+        integration = get_goal_budget_integration(db)
+        progress = integration.track_goal_progress_from_budget(user.id, month, year)
+
+        return success_response(progress)
+    except Exception as e:
+        import logging
+        logging.error(f"Error tracking goal progress from budget: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/budget/adjustment_suggestions")
+def suggest_budget_adjustments(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Get suggestions for budget adjustments to better support goals
+    """
+    try:
+        integration = get_goal_budget_integration(db)
+        suggestions = integration.suggest_budget_adjustments_for_goals(user.id)
+
+        return success_response({
+            "suggestions": suggestions,
+            "count": len(suggestions)
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"Error suggesting budget adjustments: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{goal_id}/auto_transfer")
+def auto_transfer_to_goal(
+    goal_id: UUID,
+    data: AutoTransferRequest,
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Automatically create a savings transaction for a goal
+    """
+    try:
+        from decimal import Decimal
+        integration = get_goal_budget_integration(db)
+        result = integration.auto_transfer_to_savings_goal(user.id, goal_id, Decimal(str(data.amount)))
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return success_response(result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.error(f"Error auto-transferring to goal: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

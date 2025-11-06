@@ -1280,6 +1280,46 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
+  /// Get AI-powered smart goal recommendations
+  Future<Map<String, dynamic>> getSmartGoalRecommendations() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/goals/smart_recommendations',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Analyze goal health and get insights
+  Future<Map<String, dynamic>> analyzeGoalHealth(String goalId) async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/goals/$goalId/health',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Get suggestions for adjusting existing goals
+  Future<Map<String, dynamic>> getGoalAdjustmentSuggestions() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/goals/adjustments/suggestions',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Detect opportunities for new goals based on spending patterns
+  Future<Map<String, dynamic>> detectGoalOpportunities() async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/goals/opportunities/detect',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
   // ---------------------------------------------------------------------------
   // Habits
   // ---------------------------------------------------------------------------
