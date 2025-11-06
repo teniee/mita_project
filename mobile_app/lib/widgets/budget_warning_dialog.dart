@@ -15,7 +15,6 @@ class BudgetWarningDialog extends StatelessWidget {
   final List<dynamic> alternativeCategories;
   final List<dynamic> suggestions;
   final VoidCallback onProceed;
-  final VoidCallback onCancel;
   final Function(String)? onUseAlternative;
 
   const BudgetWarningDialog({
@@ -31,7 +30,6 @@ class BudgetWarningDialog extends StatelessWidget {
     required this.alternativeCategories,
     required this.suggestions,
     required this.onProceed,
-    required this.onCancel,
     this.onUseAlternative,
   });
 
@@ -219,8 +217,7 @@ class BudgetWarningDialog extends StatelessWidget {
                     backgroundColor: Colors.green.shade50,
                     side: BorderSide(color: Colors.green.shade300),
                     onPressed: () {
-                      Navigator.of(context).pop();
-                      onUseAlternative!(categoryName);
+                      onUseAlternative!(categoryName); // This will close the dialog and handle category switch
                     },
                   );
                 }).toList(),
@@ -234,8 +231,7 @@ class BudgetWarningDialog extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      Navigator.of(context).pop();
-                      onCancel();
+                      Navigator.of(context).pop(false); // Return false to indicate cancellation
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -257,8 +253,7 @@ class BudgetWarningDialog extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).pop();
-                      onProceed();
+                      onProceed(); // This will call Navigator.pop(true) from the callback
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -378,7 +373,6 @@ Future<bool?> showBudgetWarningDialog({
         alternativeCategories: affordabilityCheck['alternative_categories'] ?? [],
         suggestions: affordabilityCheck['suggestions'] ?? [],
         onProceed: onProceed,
-        onCancel: () {}, // Dialog already closed by Navigator.pop
         onUseAlternative: onUseAlternative,
       );
     },
