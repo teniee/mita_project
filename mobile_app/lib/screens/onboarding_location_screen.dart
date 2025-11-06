@@ -27,7 +27,21 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSavedProgress();
     _tryAutoDetectLocation();
+  }
+
+  Future<void> _loadSavedProgress() async {
+    // Load any saved onboarding progress
+    await OnboardingState.instance.load();
+
+    // Restore location if saved
+    if (OnboardingState.instance.countryCode != null) {
+      setState(() {
+        _selectedCountry = OnboardingState.instance.countryCode!;
+        _selectedState = OnboardingState.instance.stateCode;
+      });
+    }
   }
 
   Future<void> _tryAutoDetectLocation() async {
@@ -110,7 +124,11 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
     OnboardingState.instance.countryCode = _selectedCountry;
     OnboardingState.instance.stateCode = _selectedState;
 
+    // Save progress to persistent storage
+    await OnboardingState.instance.save();
+
     // Navigate to income screen
+    if (!mounted) return;
     Navigator.pushNamed(context, '/onboarding_income');
   }
 

@@ -18,10 +18,49 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   bool _success = false;
   String? _error;
 
+  // Retry rate limiting
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  DateTime? _lastRetryTime;
+  static const Duration _retryDelay = Duration(seconds: 5);
+
   @override
   void initState() {
     super.initState();
     _submitOnboardingData();
+  }
+
+  bool _canRetry() {
+    // Check max retries
+    if (_retryCount >= _maxRetries) {
+      return false;
+    }
+
+    // Check time-based rate limit
+    if (_lastRetryTime != null) {
+      final timeSinceLastRetry = DateTime.now().difference(_lastRetryTime!);
+      if (timeSinceLastRetry < _retryDelay) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String _getRetryMessage() {
+    if (_retryCount >= _maxRetries) {
+      return 'Maximum retry attempts reached. Please contact support or try again later.';
+    }
+
+    if (_lastRetryTime != null) {
+      final timeSinceLastRetry = DateTime.now().difference(_lastRetryTime!);
+      if (timeSinceLastRetry < _retryDelay) {
+        final remaining = _retryDelay.inSeconds - timeSinceLastRetry.inSeconds;
+        return 'Please wait $remaining seconds before retrying.';
+      }
+    }
+
+    return '';
   }
 
   Future<void> _submitOnboardingData() async {
@@ -274,24 +313,62 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 12),
+                        // Retry count indicator
+                        if (_retryCount > 0)
+                          Text(
+                            'Retry attempts: $_retryCount/$_maxRetries',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        // Rate limit message
+                        if (!_canRetry() && _getRetryMessage().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Text(
+                              _getRetryMessage(),
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 13,
+                                color: Colors.orange.shade800,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _loading = true;
-                              _error = null;
-                            });
-                            _submitOnboardingData();
-                          },
+                          onPressed: _canRetry()
+                              ? () {
+                                  setState(() {
+                                    _loading = true;
+                                    _error = null;
+                                    _retryCount++;
+                                    _lastRetryTime = DateTime.now();
+                                  });
+                                  _submitOnboardingData();
+                                }
+                              : null, // Disabled when rate limited
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF193C57),
                             foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            disabledForegroundColor: Colors.grey.shade600,
                             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          child: const Text('Retry'),
+                          child: Text(_canRetry() ? 'Retry' : 'Retry Disabled'),
                         ),
                         const SizedBox(height: 12),
                         TextButton(

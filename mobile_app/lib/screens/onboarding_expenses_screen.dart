@@ -49,6 +49,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
 
       // Preserve expenses for the final onboarding request
       OnboardingState.instance.expenses = apiExpenses;
+      await OnboardingState.instance.save();
 
       Navigator.pushNamed(context, '/onboarding_goal');
     }

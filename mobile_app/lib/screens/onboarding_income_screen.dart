@@ -89,6 +89,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
 
       // Store income and tier information
       OnboardingState.instance.income = income;
+    await OnboardingState.instance.save();
       OnboardingState.instance.incomeTier = tier;
 
       // Show personalized message before continuing

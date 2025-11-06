@@ -43,6 +43,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
     // Save habits and optional comment
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();
+    await OnboardingState.instance.save();
     Navigator.pushNamed(context, '/onboarding_finish');
   }
 

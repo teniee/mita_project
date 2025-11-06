@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/onboarding_state.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
@@ -11,134 +10,159 @@ class OnboardingSpendingFrequencyScreen extends StatefulWidget {
 }
 
 class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFrequencyScreen> {
-  final _formKey = GlobalKey<FormState>();
+  // Simplified to 3 categories with sliders (1-5 scale)
+  double _lifestyleFrequency = 3.0; // Dining, coffee, entertainment
+  double _shoppingFrequency = 3.0; // Clothing, online shopping
+  double _travelFrequency = 2.0; // Travel, vacations
 
-  // Controllers for each frequency input
-  final _diningOutController = TextEditingController();
-  final _entertainmentController = TextEditingController();
-  final _clothingController = TextEditingController();
-  final _travelController = TextEditingController();
-  final _coffeeController = TextEditingController();
-  final _transportController = TextEditingController();
+  final Map<int, String> _frequencyLabels = {
+    1: 'Rarely',
+    2: 'Occasionally',
+    3: 'Regularly',
+    4: 'Frequently',
+    5: 'Very Often',
+  };
 
-  @override
-  void initState() {
-    super.initState();
-    // Set default values
-    _diningOutController.text = '8';
-    _entertainmentController.text = '4';
-    _clothingController.text = '2';
-    _travelController.text = '2';
-    _coffeeController.text = '5';
-    _transportController.text = '20';
+  Future<void> _submitFrequencies() async {
+    // Convert simplified categories back to detailed format for backend
+    final frequencies = {
+      // Lifestyle (dining, coffee, entertainment)
+      'dining_out_per_month': (_lifestyleFrequency * 3).round(), // 3-15 times/month
+      'coffee_per_week': (_lifestyleFrequency * 1.5).round(), // 1.5-7.5 times/week
+      'entertainment_per_month': (_lifestyleFrequency * 2).round(), // 2-10 times/month
+
+      // Shopping (clothing, online)
+      'clothing_per_month': (_shoppingFrequency).round(), // 1-5 times/month
+      'transport_per_month': (_shoppingFrequency * 4).round(), // 4-20 times/month
+
+      // Travel
+      'travel_per_year': (_travelFrequency).round(), // 1-5 times/year
+    };
+
+    OnboardingState.instance.spendingFrequencies = frequencies;
+    await OnboardingState.instance.save();
+
+    if (!mounted) return;
+    Navigator.pushNamed(context, '/onboarding_habits');
   }
 
-  @override
-  void dispose() {
-    _diningOutController.dispose();
-    _entertainmentController.dispose();
-    _clothingController.dispose();
-    _travelController.dispose();
-    _coffeeController.dispose();
-    _transportController.dispose();
-    super.dispose();
-  }
-
-  void _submitFrequencies() {
-    if (_formKey.currentState?.validate() ?? false) {
-      // Save real user input to onboarding state
-      OnboardingState.instance.spendingFrequencies = {
-        'dining_out_per_month': int.parse(_diningOutController.text),
-        'entertainment_per_month': int.parse(_entertainmentController.text),
-        'clothing_per_month': int.parse(_clothingController.text),
-        'travel_per_year': int.parse(_travelController.text),
-        'coffee_per_week': int.parse(_coffeeController.text),
-        'transport_per_month': int.parse(_transportController.text),
-      };
-
-      Navigator.pushNamed(context, '/onboarding_habits');
-    }
-  }
-
-  Widget _buildFrequencyInput({
-    required String label,
-    required String unit,
-    required TextEditingController controller,
+  Widget _buildFrequencySlider({
+    required String title,
+    required String subtitle,
     required IconData icon,
+    required double value,
+    required ValueChanged<double> onChanged,
+    required Color accentColor,
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFD25F).withOpacity(0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: const Color(0xFF193C57), size: 24),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: accentColor, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: Color(0xFF193C57),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 20),
+            // Frequency label
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _frequencyLabels[value.round()] ?? 'Regularly',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Slider
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: accentColor,
+                inactiveTrackColor: accentColor.withOpacity(0.3),
+                thumbColor: accentColor,
+                overlayColor: accentColor.withOpacity(0.2),
+                trackHeight: 6,
+              ),
+              child: Slider(
+                value: value,
+                min: 1,
+                max: 5,
+                divisions: 4,
+                onChanged: onChanged,
+              ),
+            ),
+            // Scale labels
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    label,
-                    style: const TextStyle(
+                    'Rarely',
+                    style: TextStyle(
                       fontFamily: 'Manrope',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: Color(0xFF193C57),
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
                     ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    unit,
-                    style: const TextStyle(
+                    'Very Often',
+                    style: TextStyle(
                       fontFamily: 'Manrope',
-                      fontSize: 12,
-                      color: Colors.black54,
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
-              ),
-            ),
-            SizedBox(
-              width: 80,
-              child: TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Sora',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                  color: Color(0xFF193C57),
-                ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFFFFF9F0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  final num = int.tryParse(value);
-                  if (num == null || num < 0) {
-                    return 'Invalid';
-                  }
-                  return null;
-                },
               ),
             ),
           ],
@@ -160,123 +184,112 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 8),
-                const OnboardingProgressIndicator(
-                  currentStep: 5,
-                  totalSteps: 7,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              const OnboardingProgressIndicator(
+                currentStep: 5,
+                totalSteps: 7,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'How often do you spend on these?',
+                style: TextStyle(
+                  fontFamily: 'Sora',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                  color: Color(0xFF193C57),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'How often do you spend on these?',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 22,
-                    color: Color(0xFF193C57),
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Move the sliders to match your spending habits. This helps create a personalized budget.',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'This helps us create a personalized budget just for you. Be honest!',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      _buildFrequencyInput(
-                        label: 'Dining Out & Takeout',
-                        unit: 'times per month',
-                        controller: _diningOutController,
-                        icon: Icons.restaurant,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFrequencyInput(
-                        label: 'Coffee & Drinks',
-                        unit: 'times per week',
-                        controller: _coffeeController,
-                        icon: Icons.coffee,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFrequencyInput(
-                        label: 'Entertainment',
-                        unit: 'times per month',
-                        controller: _entertainmentController,
-                        icon: Icons.movie,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFrequencyInput(
-                        label: 'Shopping & Clothing',
-                        unit: 'times per month',
-                        controller: _clothingController,
-                        icon: Icons.shopping_bag,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFrequencyInput(
-                        label: 'Transportation',
-                        unit: 'times per month',
-                        controller: _transportController,
-                        icon: Icons.directions_car,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFrequencyInput(
-                        label: 'Travel & Vacations',
-                        unit: 'times per year',
-                        controller: _travelController,
-                        icon: Icons.flight,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitFrequencies,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF193C57),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      textStyle: const TextStyle(
-                        fontFamily: 'Sora',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+              ),
+              const SizedBox(height: 24),
+
+              // Lifestyle spending
+              _buildFrequencySlider(
+                title: 'Lifestyle',
+                subtitle: 'Dining out, coffee, entertainment',
+                icon: Icons.restaurant_menu,
+                value: _lifestyleFrequency,
+                onChanged: (value) => setState(() => _lifestyleFrequency = value),
+                accentColor: const Color(0xFFFF6B6B),
+              ),
+              const SizedBox(height: 16),
+
+              // Shopping
+              _buildFrequencySlider(
+                title: 'Shopping',
+                subtitle: 'Clothing, online shopping, personal items',
+                icon: Icons.shopping_bag,
+                value: _shoppingFrequency,
+                onChanged: (value) => setState(() => _shoppingFrequency = value),
+                accentColor: const Color(0xFF4ECDC4),
+              ),
+              const SizedBox(height: 16),
+
+              // Travel
+              _buildFrequencySlider(
+                title: 'Travel',
+                subtitle: 'Vacations, trips, weekend getaways',
+                icon: Icons.flight_takeoff,
+                value: _travelFrequency,
+                onChanged: (value) => setState(() => _travelFrequency = value),
+                accentColor: const Color(0xFFFFD93D),
+              ),
+              const SizedBox(height: 32),
+
+              // Continue button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitFrequencies,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF193C57),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Text("Continue"),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () {
-                      // Skip spending frequencies - will use defaults
-                      OnboardingState.instance.spendingFrequencies = null;
-                      Navigator.pushNamed(context, '/onboarding_habits');
-                    },
-                    child: const Text(
-                      "Skip for now",
-                      style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                    textStyle: const TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
                     ),
                   ),
+                  child: const Text("Continue"),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+
+              // Skip button
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () async {
+                    // Skip spending frequencies - will use defaults
+                    OnboardingState.instance.spendingFrequencies = null;
+                    await OnboardingState.instance.save();
+                    if (!mounted) return;
+                    Navigator.pushNamed(context, '/onboarding_habits');
+                  },
+                  child: const Text(
+                    "Skip for now",
+                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),

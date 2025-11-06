@@ -46,6 +46,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
     // Save savings goal amount (if provided)
     final savingsAmount = double.tryParse(_savingsAmountController.text);
     OnboardingState.instance.savingsGoalAmount = savingsAmount ?? 0.0;
+    await OnboardingState.instance.save();
 
     Navigator.pushNamed(context, '/onboarding_spending_frequency');
   }
