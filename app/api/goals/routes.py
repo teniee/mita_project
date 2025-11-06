@@ -123,6 +123,11 @@ class AddSavingsRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Amount to add to savings")
 
 
+class AutoTransferRequest(BaseModel):
+    """Request to auto-transfer funds to a goal"""
+    amount: float = Field(..., gt=0, description="Amount to transfer")
+
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -777,7 +782,7 @@ def suggest_budget_adjustments(
 @router.post("/{goal_id}/auto_transfer")
 def auto_transfer_to_goal(
     goal_id: UUID,
-    amount: float = Field(..., gt=0, description="Amount to transfer"),
+    data: AutoTransferRequest,
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
@@ -787,7 +792,7 @@ def auto_transfer_to_goal(
     try:
         from decimal import Decimal
         integration = get_goal_budget_integration(db)
-        result = integration.auto_transfer_to_savings_goal(user.id, goal_id, Decimal(str(amount)))
+        result = integration.auto_transfer_to_savings_goal(user.id, goal_id, Decimal(str(data.amount)))
 
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
