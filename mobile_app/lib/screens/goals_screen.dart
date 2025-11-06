@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../models/goal.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import 'goal_insights_screen.dart';
+import 'smart_goal_recommendations_screen.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -409,6 +411,14 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     }
   }
 
+  void _showGoalInsights(Goal goal) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => GoalInsightsScreen(goal: goal),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -439,11 +449,35 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "goals_fab",
-        onPressed: () => _showGoalForm(),
-        backgroundColor: const Color(0xFFFFD25F),
-        child: const Icon(Icons.add, color: Colors.black),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: "smart_recommendations_fab",
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SmartGoalRecommendationsScreen(),
+                ),
+              );
+              if (result == true) {
+                fetchGoals();
+                fetchStatistics();
+              }
+            },
+            backgroundColor: const Color(0xFF193C57),
+            label: const Text('AI Suggestions', style: TextStyle(color: Colors.white)),
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFFFFD25F)),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: "goals_fab",
+            onPressed: () => _showGoalForm(),
+            backgroundColor: const Color(0xFFFFD25F),
+            child: const Icon(Icons.add, color: Colors.black),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -622,6 +656,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                     PopupMenuButton<String>(
                       onSelected: (value) {
                         switch (value) {
+                          case 'insights':
+                            _showGoalInsights(goal);
+                            break;
                           case 'edit':
                             _showGoalForm(goal: goal);
                             break;
@@ -637,6 +674,10 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                         }
                       },
                       itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'insights',
+                          child: Row(children: [Icon(Icons.insights, size: 20), SizedBox(width: 8), Text('AI Insights')]),
+                        ),
                         const PopupMenuItem(
                           value: 'edit',
                           child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')]),
