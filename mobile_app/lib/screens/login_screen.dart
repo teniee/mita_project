@@ -359,7 +359,7 @@ class _LoginScreenState extends State<LoginScreen>
             'Google sign-in successful. Navigating to onboarding.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/onboarding_region');
+          await Navigator.pushReplacementNamed(context, '/onboarding_location');
         }
         if (kDebugMode) dev.log('Google login navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
@@ -374,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen>
             if (hasOnboarded) {
               Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
             } else {
-              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
+              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_location', (route) => false);
             }
             if (kDebugMode) dev.log('Google login fallback navigation successful', name: 'LoginScreen');
           }
@@ -584,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen>
             'Login successful. Navigating to onboarding.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/onboarding_region');
+          await Navigator.pushReplacementNamed(context, '/onboarding_location');
         }
         if (kDebugMode) dev.log('Navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
@@ -599,7 +599,7 @@ class _LoginScreenState extends State<LoginScreen>
             if (hasOnboarded) {
               Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
             } else {
-              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_region', (route) => false);
+              Navigator.of(context).pushNamedAndRemoveUntil('/onboarding_location', (route) => false);
             }
             if (kDebugMode) dev.log('Fallback navigation successful', name: 'LoginScreen');
           }

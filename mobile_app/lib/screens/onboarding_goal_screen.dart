@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingGoalScreen extends StatefulWidget {
   const OnboardingGoalScreen({super.key});
@@ -45,6 +46,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
     // Save savings goal amount (if provided)
     final savingsAmount = double.tryParse(_savingsAmountController.text);
     OnboardingState.instance.savingsGoalAmount = savingsAmount ?? 0.0;
+    await OnboardingState.instance.save();
 
     Navigator.pushNamed(context, '/onboarding_spending_frequency');
   }
@@ -53,12 +55,26 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 8),
+              const OnboardingProgressIndicator(
+                currentStep: 4,
+                totalSteps: 7,
+              ),
+              const SizedBox(height: 24),
               const Text(
                 'What are your financial goals?',
                 style: TextStyle(
@@ -160,6 +176,22 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     ),
                   ),
                   child: const Text("Continue"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    // Skip goals - set empty list
+                    OnboardingState.instance.goals = [];
+                    OnboardingState.instance.savingsGoalAmount = 0.0;
+                    Navigator.pushNamed(context, '/onboarding_spending_frequency');
+                  },
+                  child: const Text(
+                    "Skip for now",
+                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                  ),
                 ),
               ),
             ],

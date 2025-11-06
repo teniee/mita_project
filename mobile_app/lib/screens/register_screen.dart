@@ -90,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       logInfo('FastAPI registration SUCCESS - proceeding to onboarding', tag: 'REGISTER');
       
       // For new registration, always go to onboarding
-      Navigator.pushReplacementNamed(context, '/onboarding_region');
+      Navigator.pushReplacementNamed(context, '/onboarding_location');
       
     } catch (e) {
       logError('FastAPI registration FAILED', tag: 'REGISTER', error: e);

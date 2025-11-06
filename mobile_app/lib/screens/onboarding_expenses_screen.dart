@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/onboarding_state.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
-class FixedExpense {
-  String category;
+class PredefinedExpense {
+  final String id;
+  final String label;
+  final IconData icon;
+  bool isSelected;
   String amount;
 
-  FixedExpense({this.category = '', this.amount = ''});
+  PredefinedExpense({
+    required this.id,
+    required this.label,
+    required this.icon,
+    this.isSelected = false,
+    this.amount = '',
+  });
 }
 
 class OnboardingExpensesScreen extends StatefulWidget {
@@ -16,172 +27,252 @@ class OnboardingExpensesScreen extends StatefulWidget {
 }
 
 class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
-  final List<FixedExpense> expenses = [FixedExpense()];
   final _formKey = GlobalKey<FormState>();
 
-  void _addExpense() {
-    setState(() {
-      expenses.add(FixedExpense());
-    });
-  }
+  final List<PredefinedExpense> expenses = [
+    PredefinedExpense(id: 'rent', label: 'Rent/Mortgage', icon: Icons.home),
+    PredefinedExpense(id: 'utilities', label: 'Utilities (Electric, Water, Gas)', icon: Icons.bolt),
+    PredefinedExpense(id: 'internet', label: 'Internet & Phone', icon: Icons.wifi),
+    PredefinedExpense(id: 'insurance', label: 'Insurance', icon: Icons.shield),
+    PredefinedExpense(id: 'car_payment', label: 'Car Payment', icon: Icons.directions_car),
+    PredefinedExpense(id: 'subscriptions', label: 'Subscriptions (Netflix, Spotify, etc.)', icon: Icons.subscriptions),
+    PredefinedExpense(id: 'loan_payment', label: 'Loan Payments', icon: Icons.payment),
+    PredefinedExpense(id: 'childcare', label: 'Childcare', icon: Icons.child_care),
+  ];
 
-  void _submitExpenses() async {
+  void _submitExpenses() {
     if (_formKey.currentState?.validate() ?? false) {
       final apiExpenses = expenses
-          .where((e) => e.category.isNotEmpty && double.tryParse(e.amount) != null && double.parse(e.amount) > 0)
-          .map((e) => {"category": e.category, "amount": double.parse(e.amount)})
+          .where((e) => e.isSelected && e.amount.isNotEmpty && double.tryParse(e.amount) != null && double.parse(e.amount) > 0)
+          .map((e) => {"category": e.id, "amount": double.parse(e.amount)})
           .toList();
 
       // Preserve expenses for the final onboarding request
       OnboardingState.instance.expenses = apiExpenses;
+      await OnboardingState.instance.save();
 
       Navigator.pushNamed(context, '/onboarding_goal');
     }
   }
 
+  Widget _buildExpenseCard(PredefinedExpense expense) {
+    return Card(
+      elevation: expense.isSelected ? 3 : 1,
+      color: expense.isSelected ? const Color(0xFFFFD25F).withOpacity(0.3) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: expense.isSelected ? const Color(0xFF193C57) : Colors.grey.shade300,
+          width: expense.isSelected ? 2 : 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF193C57).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    expense.icon,
+                    color: const Color(0xFF193C57),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Label and checkbox
+                Expanded(
+                  child: Text(
+                    expense.label,
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Color(0xFF193C57),
+                    ),
+                  ),
+                ),
+                Checkbox(
+                  value: expense.isSelected,
+                  activeColor: const Color(0xFF193C57),
+                  onChanged: (value) {
+                    setState(() {
+                      expense.isSelected = value ?? false;
+                      if (!expense.isSelected) {
+                        expense.amount = '';
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+            // Amount field (shown only when selected)
+            if (expense.isSelected) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                initialValue: expense.amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Monthly Amount',
+                  prefixText: '\$ ',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                ),
+                onChanged: (value) {
+                  expense.amount = value;
+                },
+                validator: (value) {
+                  if (expense.isSelected) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter amount';
+                    }
+                    final amount = double.tryParse(value);
+                    if (amount == null || amount <= 0) {
+                      return 'Enter valid amount';
+                    }
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedCount = expenses.where((e) => e.isSelected).length;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
-        child: Center(
-          child: Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            const OnboardingProgressIndicator(
+              currentStep: 3,
+              totalSteps: 7,
             ),
-            color: Colors.white,
-            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "What are your fixed monthly expenses?",
-                      style: TextStyle(
-                        fontFamily: 'Sora',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                        color: Color(0xFF193C57),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Add your regular bills (rent, subscriptions, loans, etc.). No discipline — no freedom. Track everything honestly.",
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
-                        color: Colors.black54,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ...expenses.asMap().entries.map(
-                      (entry) {
-                        int idx = entry.key;
-                        FixedExpense exp = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 5,
-                                child: TextFormField(
-                                  initialValue: exp.category,
-                                  decoration: InputDecoration(
-                                    labelText: "Category",
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  onChanged: (val) => exp.category = val,
-                                  validator: (val) {
-                                    if (val == null || val.trim().isEmpty) {
-                                      return "Required";
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                flex: 3,
-                                child: TextFormField(
-                                  initialValue: exp.amount,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  decoration: InputDecoration(
-                                    labelText: "\$",
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  onChanged: (val) => exp.amount = val,
-                                  validator: (val) {
-                                    if (val == null || val.trim().isEmpty) {
-                                      return "Required";
-                                    }
-                                    final n = double.tryParse(val);
-                                    if (n == null || n <= 0) {
-                                      return "Enter a positive number";
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              if (idx > 0)
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.red),
-                                  onPressed: () {
-                                    setState(() {
-                                      expenses.removeAt(idx);
-                                    });
-                                  },
-                                )
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: _addExpense,
-                        icon: const Icon(Icons.add),
-                        label: const Text("Add More"),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF193C57),
-                          textStyle: const TextStyle(fontFamily: 'Sora'),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "What are your fixed monthly expenses?",
+                        style: TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 22,
+                          color: Color(0xFF193C57),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 22),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFD25F),
-                          foregroundColor: const Color(0xFF193C57),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Select your regular bills and enter the amounts. This helps create an accurate budget.",
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (selectedCount > 0) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF193C57).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
+                          child: Text(
+                            '$selectedCount expense${selectedCount == 1 ? '' : 's'} selected',
+                            style: const TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF193C57),
+                            ),
                           ),
                         ),
-                        onPressed: _submitExpenses,
-                        child: const Text("Continue"),
+                      ],
+                      const SizedBox(height: 20),
+                      // Expense cards
+                      ...expenses.map((expense) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildExpenseCard(expense),
+                      )),
+                      const SizedBox(height: 24),
+                      // Buttons
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF193C57),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            textStyle: const TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          onPressed: _submitExpenses,
+                          child: const Text("Continue"),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: () {
+                            // Skip expenses - set empty list
+                            OnboardingState.instance.expenses = [];
+                            Navigator.pushNamed(context, '/onboarding_goal');
+                          },
+                          child: const Text(
+                            "Skip for now",
+                            style: TextStyle(
+                              fontFamily: 'Sora',
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

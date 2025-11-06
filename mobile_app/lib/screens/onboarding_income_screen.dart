@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
+import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingIncomeScreen extends StatefulWidget {
   const OnboardingIncomeScreen({super.key});
@@ -88,6 +89,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
 
       // Store income and tier information
       OnboardingState.instance.income = income;
+    await OnboardingState.instance.save();
       OnboardingState.instance.incomeTier = tier;
 
       // Show personalized message before continuing
@@ -207,14 +209,28 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
     
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                const SizedBox(height: 40),
-                
+                const SizedBox(height: 8),
+                OnboardingProgressIndicator(
+                  currentStep: 2,
+                  totalSteps: 7,
+                  activeColor: primaryColor,
+                ),
+                const SizedBox(height: 24),
+
                 // Main income input card
                 Card(
                   elevation: 3,
@@ -276,6 +292,24 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                               if (income == null || income <= 0) {
                                 return "Enter a positive amount.";
                               }
+
+                              // Minimum income check
+                              if (income < 100) {
+                                return "Monthly income seems too low. Please verify.";
+                              }
+
+                              // Maximum income check
+                              if (income > 1000000) {
+                                return "Please verify this amount. It seems unusually high.";
+                              }
+
+                              // Check if user might have entered yearly income
+                              if (income > 100000 && income < 1000000) {
+                                // Might be yearly income (e.g., $120,000/year entered instead of $10,000/month)
+                                // Show warning but allow it (user confirmation in dialog)
+                                return "Are you sure? This is monthly income (not yearly).";
+                              }
+
                               return null;
                             },
                           ),
