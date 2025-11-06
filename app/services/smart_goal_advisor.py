@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 
-from app.db.models import Goal, Transaction, User, Budget
+from app.db.models import Goal, Transaction, User
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
