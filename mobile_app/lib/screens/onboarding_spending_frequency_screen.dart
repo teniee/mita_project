@@ -151,6 +151,14 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -250,6 +258,21 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                       ),
                     ),
                     child: const Text("Continue"),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      // Skip spending frequencies - will use defaults
+                      OnboardingState.instance.spendingFrequencies = null;
+                      Navigator.pushNamed(context, '/onboarding_habits');
+                    },
+                    child: const Text(
+                      "Skip for now",
+                      style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                    ),
                   ),
                 ),
               ],

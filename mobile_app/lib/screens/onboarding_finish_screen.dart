@@ -38,10 +38,25 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       }
 
       // Transform goals from list to dict format expected by backend
+      // Priority order for primary goal: emergency fund > debt > investing > budgeting
+      String primaryGoal = "general";
+      if (state.goals.contains("save_more")) {
+        primaryGoal = "save_more";
+      } else if (state.goals.contains("pay_off_debt")) {
+        primaryGoal = "pay_off_debt";
+      } else if (state.goals.contains("investing")) {
+        primaryGoal = "investing";
+      } else if (state.goals.contains("budgeting")) {
+        primaryGoal = "budgeting";
+      } else if (state.goals.isNotEmpty) {
+        primaryGoal = state.goals.first;
+      }
+
       final goalsData = {
-        "savings_goal_amount_per_month": state.savingsGoalAmount ?? 0.0,  // ✅ Use real savings goal
-        "savings_goal_type": state.goals.isNotEmpty ? state.goals.first : "general",
-        "has_emergency_fund": state.goals.contains("Build an emergency fund"),
+        "savings_goal_amount_per_month": state.savingsGoalAmount ?? 0.0,
+        "savings_goal_type": primaryGoal,
+        "has_emergency_fund": state.goals.contains("save_more"),
+        "all_goals": state.goals, // Include all selected goals
       };
 
       // Use REAL spending frequencies from user input (not hardcoded!)

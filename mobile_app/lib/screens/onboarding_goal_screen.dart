@@ -54,6 +54,14 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -167,6 +175,22 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     ),
                   ),
                   child: const Text("Continue"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    // Skip goals - set empty list
+                    OnboardingState.instance.goals = [];
+                    OnboardingState.instance.savingsGoalAmount = 0.0;
+                    Navigator.pushNamed(context, '/onboarding_spending_frequency');
+                  },
+                  child: const Text(
+                    "Skip for now",
+                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                  ),
                 ),
               ),
             ],

@@ -50,6 +50,14 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF9F0),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -162,7 +170,26 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                       fontSize: 16,
                     ),
                   ),
-                  child: const Text("Finish onboarding"),
+                  child: const Text("Continue"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () async {
+                    // Skip habits - set empty list
+                    final isValid = await validateSessionBeforeNavigation();
+                    if (!isValid) return;
+
+                    OnboardingState.instance.habits = [];
+                    OnboardingState.instance.habitsComment = null;
+                    Navigator.pushNamed(context, '/onboarding_finish');
+                  },
+                  child: const Text(
+                    "Skip for now",
+                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                  ),
                 ),
               ),
             ],
