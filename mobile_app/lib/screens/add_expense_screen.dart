@@ -5,6 +5,7 @@ import '../services/offline_queue_service.dart';
 import '../services/api_service.dart';
 import '../services/expense_state_service.dart';
 import '../services/accessibility_service.dart';
+import '../widgets/budget_warning_dialog.dart';
 import 'receipt_capture_screen.dart';
 import '../services/logging_service.dart';
 
@@ -45,6 +46,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   DateTime _selectedDate = DateTime.now();
   List<Map<String, dynamic>> _aiSuggestions = [];
   bool _loadingSuggestions = false;
+  Map<String, dynamic>? _budgetStatus;
+  bool _loadingBudgetStatus = false;
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'Food & Dining', 'icon': Icons.restaurant, 'color': Colors.orange, 'subcategories': ['Restaurants', 'Groceries', 'Fast Food', 'Coffee', 'Delivery']},
@@ -175,19 +178,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   void _selectAISuggestion(Map<String, dynamic> suggestion) {
     final category = suggestion['category'] as String?;
     final confidence = suggestion['confidence'] as double? ?? 0.0;
-    
+
     setState(() {
       _action = category;
       if (suggestion['confidence'] != null) {
         final confidencePercent = (confidence * 100).toInt();
         final message = 'AI suggestion applied with $confidencePercent% confidence';
-        
+
         // Announce to screen readers
         _accessibilityService.announceToScreenReader(
           'Category suggestion applied: $category with $confidencePercent percent confidence',
           financialContext: 'AI Assistant',
         );
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Semantics(
@@ -210,6 +213,81 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
         );
       }
     });
+  }
+
+  /// Check affordability before submitting transaction
+  /// Returns true if user can proceed, false if blocked or cancelled
+  Future<bool> _checkAffordability() async {
+    if (_amount == null || _action == null) {
+      return false;
+    }
+
+    try {
+      final affordabilityCheck = await _apiService.checkAffordability(
+        category: _action!,
+        amount: _amount!,
+        date: _selectedDate,
+      );
+
+      final warningLevel = affordabilityCheck['warning_level'] ?? 'safe';
+
+      // Safe transactions don't need a warning dialog
+      if (warningLevel == 'safe') {
+        return true;
+      }
+
+      // Show warning dialog for caution, danger, or blocked
+      final result = await showBudgetWarningDialog(
+        context: context,
+        affordabilityCheck: affordabilityCheck,
+        onProceed: () {
+          // User clicked "Continue" or "Proceed Anyway"
+          Navigator.of(context).pop(true);
+        },
+        onUseAlternative: (alternativeCategory) {
+          // User selected an alternative category
+          setState(() {
+            _action = alternativeCategory;
+            _selectedSubcategory = null; // Reset subcategory
+          });
+          // Re-check affordability with new category
+          Navigator.of(context).pop(false);
+          _checkAffordability().then((canProceed) {
+            if (canProceed) {
+              _submitExpense();
+            }
+          });
+        },
+      );
+
+      return result ?? false;
+    } catch (e) {
+      logError('Failed to check affordability: $e', tag: 'SPENDING_PREVENTION');
+      // If affordability check fails, allow submission (fail open)
+      // But show a warning to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Could not verify budget. Proceeding without check.',
+                    style: TextStyle(fontFamily: 'Manrope'),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return true; // Allow submission on error
+    }
   }
 
   Future<void> _submitExpense() async {
@@ -235,10 +313,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       );
       return;
     }
-    
+
     if (_isSubmitting) return; // Prevent double submission
-    
+
     _formKey.currentState!.save();
+
+    // REAL-TIME SPENDING PREVENTION CHECK
+    // Check affordability BEFORE submitting transaction
+    final canProceed = await _checkAffordability();
+    if (!canProceed) {
+      // User cancelled or chose alternative category
+      return;
+    }
     setState(() => _isSubmitting = true);
     
     // Start submit animation
