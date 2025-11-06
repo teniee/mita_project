@@ -2027,6 +2027,37 @@ class ApiService {
     );
   }
 
+  /// Check affordability before creating a transaction
+  /// Returns affordability check with warning level, budget status, and suggestions
+  Future<Map<String, dynamic>> checkAffordability({
+    required String category,
+    required double amount,
+    DateTime? date,
+  }) async {
+    final token = await getToken();
+    final response = await _dio.post(
+      '/transactions/check-affordability',
+      data: {
+        'category': category,
+        'amount': amount,
+        'date': date?.toIso8601String(),
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
+  /// Get current budget status for all categories
+  Future<Map<String, dynamic>> getBudgetStatus({DateTime? date}) async {
+    final token = await getToken();
+    final response = await _dio.get(
+      '/transactions/budget-status',
+      queryParameters: date != null ? {'date': date.toIso8601String()} : null,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
   // ---------------------------------------------------------------------------
   // Profile Updates
   // ---------------------------------------------------------------------------

@@ -773,3 +773,228 @@ async def delete_transaction_endpoint(
         data={"deleted": True, "transaction_id": transaction_id},
         message="Transaction deleted successfully"
     )
+
+
+# ============================================================================
+# SPENDING PREVENTION ENDPOINTS
+# Real-time budget validation BEFORE transaction creation
+# Implements MITA's core differentiator: preventive overspending protection
+# ============================================================================
+
+from pydantic import BaseModel, Field
+from decimal import Decimal
+from app.services.spending_prevention_service import SpendingPreventionService
+
+
+class AffordabilityCheckRequest(BaseModel):
+    """Request to check if user can afford a transaction"""
+    category: str = Field(..., description="Transaction category (e.g., 'food', 'transport')")
+    amount: Decimal = Field(..., gt=0, description="Transaction amount (must be positive)")
+    date: Optional[datetime] = Field(None, description="Transaction date (defaults to today)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "category": "food",
+                "amount": 45.50,
+                "date": "2025-11-06T14:30:00"
+            }
+        }
+
+
+@router.post(
+    "/check-affordability",
+    summary="Check if user can afford transaction",
+    description="""
+    **Real-time spending prevention**: Check if user can afford a transaction BEFORE creating it.
+    
+    This endpoint provides:
+    - Current budget status for category
+    - Warning level (safe/caution/danger/blocked)
+    - Remaining budget after transaction
+    - Alternative categories with available budget
+    - Actionable suggestions to stay within budget
+    
+    **Use this BEFORE calling POST /transactions to prevent overspending!**
+    
+    **Warning Levels:**
+    - `safe` (green): Under 70% of budget used
+    - `caution` (yellow): 70-90% of budget used
+    - `danger` (orange): 90-100% of budget used
+    - `blocked` (red): Over budget limit
+    
+    **Example Response:**
+    ```json
+    {
+        "can_afford": false,
+        "warning_level": "blocked",
+        "daily_budget": 50.00,
+        "current_spent": 35.00,
+        "remaining_budget": -30.50,
+        "overage": 30.50,
+        "impact_message": "🔴 This will exceed your food budget by $30.50!",
+        "alternative_categories": [
+            {"category": "entertainment", "available": 75.00}
+        ],
+        "suggestions": [
+            "Use 'entertainment' category instead ($75.00 available)",
+            "Reduce amount to $15.00 to stay within budget",
+            "Wait until tomorrow when daily budget resets"
+        ]
+    }
+    ```
+    """,
+    responses={
+        200: {
+            "description": "Affordability check completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "data": {
+                            "can_afford": True,
+                            "warning_level": "caution",
+                            "daily_budget": 50.00,
+                            "current_spent": 35.00,
+                            "remaining_budget": 5.50,
+                            "percentage_used": 80.9,
+                            "impact_message": "⚠️ This will use 81% of your food budget. $5.50 remaining.",
+                            "suggestions": ["This will leave only $5.50 for food today"]
+                        }
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid request (negative amount, invalid category)"},
+        401: {"description": "Unauthorized - user not authenticated"},
+        429: {"description": "Rate limit exceeded"}
+    },
+    dependencies=[Depends(RateLimiter(times=60, seconds=60))]  # Max 60 checks per minute
+)
+@handle_financial_errors
+async def check_transaction_affordability(
+    request: Request,
+    check_request: AffordabilityCheckRequest,
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """
+    Check if user can afford transaction BEFORE creating it
+    Returns budget status, warnings, and suggestions
+    """
+    # Validate category
+    valid_categories = [
+        'food', 'dining', 'groceries',
+        'transportation', 'gas', 'public_transport',
+        'entertainment', 'shopping', 'clothing',
+        'healthcare', 'insurance',
+        'utilities', 'rent', 'mortgage',
+        'education', 'childcare', 'pets',
+        'travel', 'subscriptions', 'gifts', 'charity', 'other'
+    ]
+    
+    if check_request.category not in valid_categories:
+        raise ValidationError(
+            f"Invalid category '{check_request.category}'",
+            ErrorCode.VALIDATION_INVALID_VALUE,
+            details={
+                "category": check_request.category,
+                "valid_categories": valid_categories
+            }
+        )
+
+    # Validate amount
+    if check_request.amount <= 0:
+        raise ValidationError(
+            "Transaction amount must be positive",
+            ErrorCode.VALIDATION_INVALID_VALUE,
+            details={"amount": float(check_request.amount)}
+        )
+
+    # Initialize prevention service
+    prevention_service = SpendingPreventionService(db, user.id)
+
+    # Check affordability
+    result = prevention_service.check_affordability(
+        category=check_request.category,
+        amount=check_request.amount,
+        transaction_date=check_request.date
+    )
+
+    # Return standardized response
+    return success_response(
+        data=result,
+        message=result['impact_message']
+    )
+
+
+@router.get(
+    "/budget-status",
+    summary="Get current budget status for all categories",
+    description="""
+    Get real-time budget status for ALL categories for today.
+    
+    Useful for:
+    - Dashboard overview
+    - Budget summary widgets
+    - Category selection UI (show which categories have budget available)
+    
+    **Example Response:**
+    ```json
+    {
+        "food": {
+            "daily_budget": 50.00,
+            "spent": 35.00,
+            "remaining": 15.00,
+            "percentage_used": 70.0,
+            "status": "caution"
+        },
+        "transportation": {
+            "daily_budget": 30.00,
+            "spent": 5.00,
+            "remaining": 25.00,
+            "percentage_used": 16.7,
+            "status": "safe"
+        }
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "Budget status retrieved successfully"},
+        401: {"description": "Unauthorized"}
+    },
+    dependencies=[Depends(RateLimiter(times=120, seconds=60))]  # Max 120 requests per minute
+)
+@handle_financial_errors
+async def get_budget_status(
+    request: Request,
+    date: Optional[str] = None,  # Format: YYYY-MM-DD
+    user=current_user_dep,
+    db: Session = db_dep,
+):
+    """
+    Get current budget status for all categories
+    Useful for dashboard and category selection screens
+    """
+    # Parse date if provided
+    transaction_date = None
+    if date:
+        try:
+            transaction_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError(
+                "Invalid date format. Use YYYY-MM-DD",
+                ErrorCode.VALIDATION_INVALID_VALUE,
+                details={"date": date, "expected_format": "YYYY-MM-DD"}
+            )
+
+    # Initialize prevention service
+    prevention_service = SpendingPreventionService(db, user.id)
+
+    # Get all category status
+    status = prevention_service.get_all_category_status(transaction_date)
+
+    return success_response(
+        data=status,
+        message=f"Budget status for {len(status)} categories"
+    )

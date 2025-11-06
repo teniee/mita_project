@@ -40,7 +40,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     PredefinedExpense(id: 'childcare', label: 'Childcare', icon: Icons.child_care),
   ];
 
-  void _submitExpenses() {
+  Future<void> _submitExpenses() async {
     if (_formKey.currentState?.validate() ?? false) {
       final apiExpenses = expenses
           .where((e) => e.isSelected && e.amount.isNotEmpty && double.tryParse(e.amount) != null && double.parse(e.amount) > 0)
@@ -253,9 +253,10 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: TextButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // Skip expenses - set empty list
                             OnboardingState.instance.expenses = [];
+                            await OnboardingState.instance.save();
                             Navigator.pushNamed(context, '/onboarding_goal');
                           },
                           child: const Text(
