@@ -12,12 +12,17 @@ class OnboardingLocationScreen extends StatefulWidget {
 
 class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
   final LocationService _locationService = LocationService();
-  
+  final TextEditingController _searchController = TextEditingController();
+
   String _selectedCountry = 'US'; // Always USA
   String? _selectedState;
   bool _isDetectingLocation = false;
   bool _isLocationDetected = false;
   String? _locationError;
+  String _searchQuery = '';
+
+  // Popular US states
+  final List<String> _popularStates = ['CA', 'NY', 'TX', 'FL', 'IL', 'PA'];
 
   @override
   void initState() {
@@ -65,6 +70,30 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
     setState(() {
       _selectedState = stateCode;
     });
+  }
+
+  List<Map<String, String>> _getFilteredStates() {
+    final allStates = _locationService.getUSStatesForSelection();
+    if (_searchQuery.isEmpty) {
+      return allStates;
+    }
+    return allStates.where((state) {
+      final name = state['name']!.toLowerCase();
+      final code = state['code']!.toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || code.contains(query);
+    }).toList();
+  }
+
+  List<Map<String, String>> _getPopularStatesList() {
+    final allStates = _locationService.getUSStatesForSelection();
+    return allStates.where((state) => _popularStates.contains(state['code'])).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _continueWithLocation() async {
@@ -276,7 +305,84 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
+              // Search field
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search states...',
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF193C57)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Popular states (shown only when no search query)
+              if (_searchQuery.isEmpty) ...[
+                const Text(
+                  'Popular States:',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _getPopularStatesList().map((state) {
+                    final isSelected = _selectedState == state['code'];
+                    return ActionChip(
+                      label: Text(
+                        state['name']!,
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : const Color(0xFF193C57),
+                        ),
+                      ),
+                      backgroundColor: isSelected ? const Color(0xFF193C57) : Colors.white,
+                      side: BorderSide(
+                        color: isSelected ? const Color(0xFF193C57) : Colors.grey.shade300,
+                      ),
+                      onPressed: () => _selectState(state['code']!),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'All States:',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               Container(
                 height: 300,
                 decoration: BoxDecoration(
@@ -284,10 +390,20 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                   borderRadius: BorderRadius.circular(12),
                   color: Colors.white,
                 ),
-                child: ListView.builder(
-                  itemCount: _locationService.getUSStatesForSelection().length,
-                  itemBuilder: (context, index) {
-                    final state = _locationService.getUSStatesForSelection()[index];
+                child: _getFilteredStates().isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No states found',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _getFilteredStates().length,
+                        itemBuilder: (context, index) {
+                          final state = _getFilteredStates()[index];
                     return ListTile(
                       title: Text(
                         state['name']!,

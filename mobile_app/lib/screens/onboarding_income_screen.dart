@@ -291,6 +291,24 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                               if (income == null || income <= 0) {
                                 return "Enter a positive amount.";
                               }
+
+                              // Minimum income check
+                              if (income < 100) {
+                                return "Monthly income seems too low. Please verify.";
+                              }
+
+                              // Maximum income check
+                              if (income > 1000000) {
+                                return "Please verify this amount. It seems unusually high.";
+                              }
+
+                              // Check if user might have entered yearly income
+                              if (income > 100000 && income < 1000000) {
+                                // Might be yearly income (e.g., $120,000/year entered instead of $10,000/month)
+                                // Show warning but allow it (user confirmation in dialog)
+                                return "Are you sure? This is monthly income (not yearly).";
+                              }
+
                               return null;
                             },
                           ),
