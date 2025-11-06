@@ -80,7 +80,7 @@ def send_push_notification(
     body: Optional[str] = None,
     data: Optional[dict] = None,
     image_url: Optional[str] = None,
-) -> bool:
+) -> dict:
     """Send a push notification via Firebase Cloud Messaging.
 
     Args:
@@ -94,7 +94,7 @@ def send_push_notification(
         image_url: Optional image URL for rich notifications.
 
     Returns:
-        True if sent successfully, False otherwise.
+        A dict containing the message ID returned by Firebase.
     """
     if not token:
         raise ValueError("FCM device token must be provided")
@@ -129,13 +129,27 @@ def send_push_notification(
 
     try:
         resp = messaging.send(msg)
-        _record_log(db, user_id=user_id, channel="fcm", message=notification_body, success=True)
-        return True
     except Exception as e:
-        _record_log(db, user_id=user_id, channel="fcm", message=notification_body, success=False)
+        _record_log(
+            db,
+            user_id=user_id,
+            channel="fcm",
+            message=notification_body,
+            success=False,
+        )
         import logging
+
         logging.error(f"Failed to send FCM notification: {e}")
-        return False
+        raise
+
+    _record_log(
+        db,
+        user_id=user_id,
+        channel="fcm",
+        message=notification_body,
+        success=True,
+    )
+    return {"message_id": resp}
 
 
 def send_apns_notification(
