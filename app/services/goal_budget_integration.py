@@ -10,7 +10,7 @@ from datetime import datetime, date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
-from app.db.models import Goal, Budget, Transaction, User
+from app.db.models import Goal, Transaction, User
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
