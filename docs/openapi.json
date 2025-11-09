@@ -24,29 +24,121 @@
     }
   ],
   "tags": [
-    {"name": "Authentication", "description": "User authentication and authorization"},
-    {"name": "Users", "description": "User profile management"},
-    {"name": "Transactions", "description": "Financial transactions and receipt processing"},
-    {"name": "Budget", "description": "Budget management and tracking"},
-    {"name": "Goals", "description": "Financial goals and progress tracking"},
-    {"name": "Dashboard", "description": "Dashboard and overview data"},
-    {"name": "Financial", "description": "Financial summaries and balance"},
-    {"name": "Analytics", "description": "Spending analytics and trends"},
-    {"name": "Insights", "description": "AI-powered financial insights"},
-    {"name": "AI", "description": "AI financial assistant"},
-    {"name": "Calendar", "description": "Financial calendar and daily budgets"},
-    {"name": "Notifications", "description": "Push notifications and preferences"},
-    {"name": "OCR", "description": "Receipt OCR processing"},
-    {"name": "IAP", "description": "In-app purchases validation"},
-    {"name": "Habits", "description": "Financial habits tracking"},
-    {"name": "Challenges", "description": "Financial challenges and gamification"},
-    {"name": "Health", "description": "System health checks"},
-    {"name": "Admin", "description": "Admin endpoints for monitoring"}
+    {
+      "name": "Authentication",
+      "description": "User authentication and authorization"
+    },
+    {
+      "name": "Users",
+      "description": "User profile management"
+    },
+    {
+      "name": "Transactions",
+      "description": "Financial transactions and receipt processing"
+    },
+    {
+      "name": "Budget",
+      "description": "Budget management and tracking"
+    },
+    {
+      "name": "Goals",
+      "description": "Financial goals and progress tracking"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard and overview data"
+    },
+    {
+      "name": "Financial",
+      "description": "Financial summaries and balance"
+    },
+    {
+      "name": "Analytics",
+      "description": "Spending analytics and trends"
+    },
+    {
+      "name": "Insights",
+      "description": "AI-powered financial insights"
+    },
+    {
+      "name": "AI",
+      "description": "AI financial assistant"
+    },
+    {
+      "name": "Calendar",
+      "description": "Financial calendar and daily budgets"
+    },
+    {
+      "name": "Notifications",
+      "description": "Push notifications and preferences"
+    },
+    {
+      "name": "OCR",
+      "description": "Receipt OCR processing"
+    },
+    {
+      "name": "IAP",
+      "description": "In-app purchases validation"
+    },
+    {
+      "name": "Habits",
+      "description": "Financial habits tracking"
+    },
+    {
+      "name": "Challenges",
+      "description": "Financial challenges and gamification"
+    },
+    {
+      "name": "Health",
+      "description": "System health checks"
+    },
+    {
+      "name": "Admin",
+      "description": "Admin endpoints for monitoring"
+    },
+    {
+      "name": "Expense",
+      "description": "Expense tracking and history"
+    },
+    {
+      "name": "Plan",
+      "description": "Daily financial plans"
+    },
+    {
+      "name": "Spend",
+      "description": "Spending checks and limits"
+    },
+    {
+      "name": "Behavior",
+      "description": "Behavioral analysis and insights"
+    },
+    {
+      "name": "Onboarding",
+      "description": "User onboarding process"
+    },
+    {
+      "name": "Referral",
+      "description": "Referral program"
+    },
+    {
+      "name": "Mood",
+      "description": "Mood tracking"
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management"
+    },
+    {
+      "name": "Style",
+      "description": "UI style preferences"
+    }
   ],
   "paths": {
     "/api/auth/register": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Register new user account",
         "description": "Create a new user account with email and password",
         "operationId": "register",
@@ -86,7 +178,9 @@
     },
     "/api/auth/login": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Login with email and password",
         "description": "Authenticate user and receive JWT token",
         "operationId": "login",
@@ -119,11 +213,17 @@
     },
     "/api/auth/refresh": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Refresh authentication token",
         "description": "Get new access token using refresh token",
         "operationId": "refresh_token",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Token refreshed successfully",
@@ -140,10 +240,16 @@
     },
     "/api/auth/logout": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Logout current session",
         "operationId": "logout",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successfully logged out"
@@ -153,10 +259,16 @@
     },
     "/api/users/me": {
       "get": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Get current user profile",
         "operationId": "get_current_user",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "User profile data",
@@ -171,10 +283,16 @@
         }
       },
       "put": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "Update current user profile",
         "operationId": "update_current_user",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -201,36 +319,57 @@
     },
     "/api/transactions/": {
       "get": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "List user transactions",
         "description": "Get paginated list of user transactions with filtering",
         "operationId": "list_transactions",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "skip",
             "in": "query",
-            "schema": {"type": "integer", "default": 0}
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
           },
           {
             "name": "limit",
             "in": "query",
-            "schema": {"type": "integer", "default": 100, "maximum": 1000}
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "maximum": 1000
+            }
           },
           {
             "name": "start_date",
             "in": "query",
-            "schema": {"type": "string", "format": "date-time"}
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           },
           {
             "name": "end_date",
             "in": "query",
-            "schema": {"type": "string", "format": "date-time"}
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           },
           {
             "name": "category",
             "in": "query",
-            "schema": {"type": "string"}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -250,11 +389,17 @@
         }
       },
       "post": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Create new transaction",
         "description": "Create a new financial transaction with budget impact assessment",
         "operationId": "create_transaction",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -281,16 +426,25 @@
     },
     "/api/transactions/{transaction_id}": {
       "get": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Get transaction by ID",
         "operationId": "get_transaction",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "transaction_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -310,16 +464,25 @@
         }
       },
       "put": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Update transaction",
         "operationId": "update_transaction",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "transaction_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -346,16 +509,25 @@
         }
       },
       "delete": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Delete transaction",
         "operationId": "delete_transaction",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "transaction_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -367,11 +539,17 @@
     },
     "/api/transactions/check-affordability": {
       "post": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Check if user can afford transaction (PREVENTIVE)",
         "description": "Real-time spending prevention - check budget before transaction",
         "operationId": "check_affordability",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -398,16 +576,25 @@
     },
     "/api/transactions/budget-status": {
       "get": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Get current budget status",
         "description": "Get budget status for all categories with remaining amounts",
         "operationId": "get_budget_status",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "date",
             "in": "query",
-            "schema": {"type": "string", "format": "date"}
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {
@@ -426,11 +613,17 @@
     },
     "/api/transactions/receipt": {
       "post": {
-        "tags": ["Transactions"],
+        "tags": [
+          "Transactions"
+        ],
         "summary": "Process receipt with OCR",
         "description": "Upload receipt image for OCR processing (async)",
         "operationId": "process_receipt",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -455,8 +648,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "job_id": {"type": "string"},
-                    "status": {"type": "string"}
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -467,10 +664,16 @@
     },
     "/api/budget/": {
       "get": {
-        "tags": ["Budget"],
+        "tags": [
+          "Budget"
+        ],
         "summary": "Get user's active budget",
         "operationId": "get_budget",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Current budget",
@@ -485,10 +688,16 @@
         }
       },
       "post": {
-        "tags": ["Budget"],
+        "tags": [
+          "Budget"
+        ],
         "summary": "Create new budget plan",
         "operationId": "create_budget",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -515,17 +724,27 @@
     },
     "/api/goals/": {
       "get": {
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "summary": "List user's goals",
         "operationId": "list_goals",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["active", "completed", "abandoned"]
+              "enum": [
+                "active",
+                "completed",
+                "abandoned"
+              ]
             }
           }
         ],
@@ -546,10 +765,16 @@
         }
       },
       "post": {
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "summary": "Create financial goal",
         "operationId": "create_goal",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -576,16 +801,25 @@
     },
     "/api/goals/{goal_id}": {
       "get": {
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "summary": "Get goal by ID",
         "operationId": "get_goal",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "goal_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -602,16 +836,25 @@
         }
       },
       "put": {
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "summary": "Update goal",
         "operationId": "update_goal",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "goal_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
@@ -638,16 +881,25 @@
         }
       },
       "delete": {
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "summary": "Delete goal",
         "operationId": "delete_goal",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "goal_id",
             "in": "path",
             "required": true,
-            "schema": {"type": "string", "format": "uuid"}
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -659,11 +911,17 @@
     },
     "/api/dashboard/overview": {
       "get": {
-        "tags": ["Dashboard"],
+        "tags": [
+          "Dashboard"
+        ],
         "summary": "Get dashboard overview",
         "description": "Comprehensive dashboard data including balance, goals, transactions, and budget status",
         "operationId": "get_dashboard_overview",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Dashboard overview data",
@@ -680,17 +938,28 @@
     },
     "/api/financial/summary": {
       "get": {
-        "tags": ["Financial"],
+        "tags": [
+          "Financial"
+        ],
         "summary": "Get financial summary",
         "operationId": "get_financial_summary",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "period",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["day", "week", "month", "year"]
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ]
             }
           }
         ],
@@ -710,27 +979,42 @@
     },
     "/api/analytics/spending": {
       "get": {
-        "tags": ["Analytics"],
+        "tags": [
+          "Analytics"
+        ],
         "summary": "Get spending analytics",
         "operationId": "get_spending_analytics",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "period",
             "in": "query",
-            "schema": {"type": "string"}
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "category",
             "in": "query",
-            "schema": {"type": "string"}
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "group_by",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["day", "week", "month", "category"]
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "category"
+              ]
             }
           }
         ],
@@ -750,11 +1034,17 @@
     },
     "/api/insights/": {
       "get": {
-        "tags": ["Insights"],
+        "tags": [
+          "Insights"
+        ],
         "summary": "Get personalized financial insights",
         "description": "AI-generated insights and recommendations",
         "operationId": "get_insights",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Financial insights",
@@ -774,10 +1064,16 @@
     },
     "/api/ai/chat": {
       "post": {
-        "tags": ["AI"],
+        "tags": [
+          "AI"
+        ],
         "summary": "Chat with AI financial assistant",
         "operationId": "ai_chat",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -804,20 +1100,32 @@
     },
     "/api/calendar/": {
       "get": {
-        "tags": ["Calendar"],
+        "tags": [
+          "Calendar"
+        ],
         "summary": "Get financial calendar",
         "operationId": "get_calendar",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "month",
             "in": "query",
-            "schema": {"type": "integer", "minimum": 1, "maximum": 12}
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
           },
           {
             "name": "year",
             "in": "query",
-            "schema": {"type": "integer"}
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -836,25 +1144,40 @@
     },
     "/api/notifications/list": {
       "get": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Get user notifications",
         "operationId": "list_notifications",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "limit",
             "in": "query",
-            "schema": {"type": "integer", "default": 50}
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
           },
           {
             "name": "offset",
             "in": "query",
-            "schema": {"type": "integer", "default": 0}
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
           },
           {
             "name": "unread_only",
             "in": "query",
-            "schema": {"type": "boolean", "default": false}
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -873,10 +1196,16 @@
     },
     "/api/notifications/register-device": {
       "post": {
-        "tags": ["Notifications"],
+        "tags": [
+          "Notifications"
+        ],
         "summary": "Register device for push notifications",
         "operationId": "register_device",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -896,10 +1225,16 @@
     },
     "/api/ocr/process": {
       "post": {
-        "tags": ["OCR"],
+        "tags": [
+          "OCR"
+        ],
         "summary": "Process receipt with OCR",
         "operationId": "process_receipt_ocr",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -932,10 +1267,16 @@
     },
     "/api/iap/validate": {
       "post": {
-        "tags": ["IAP"],
+        "tags": [
+          "IAP"
+        ],
         "summary": "Validate in-app purchase receipt",
         "operationId": "validate_iap",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -962,10 +1303,16 @@
     },
     "/api/habits/": {
       "get": {
-        "tags": ["Habits"],
+        "tags": [
+          "Habits"
+        ],
         "summary": "List user habits",
         "operationId": "list_habits",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of habits",
@@ -983,10 +1330,16 @@
         }
       },
       "post": {
-        "tags": ["Habits"],
+        "tags": [
+          "Habits"
+        ],
         "summary": "Create financial habit",
         "operationId": "create_habit",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1013,10 +1366,16 @@
     },
     "/api/challenge/": {
       "get": {
-        "tags": ["Challenges"],
+        "tags": [
+          "Challenges"
+        ],
         "summary": "List available challenges",
         "operationId": "list_challenges",
-        "security": [{"BearerAuth": []}],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of challenges",
@@ -1036,7 +1395,9 @@
     },
     "/api/health/external-services": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Check external services health",
         "operationId": "check_external_services",
         "responses": {
@@ -1055,7 +1416,9 @@
     },
     "/health": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Detailed health check",
         "operationId": "health_check",
         "responses": {
@@ -1068,6 +1431,2407 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/expense/add": {
+      "post": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Add new expense",
+        "operationId": "add_expense",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "amount",
+                  "action"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0.01
+                  },
+                  "action": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense added successfully"
+          }
+        }
+      }
+    },
+    "/api/expense/history": {
+      "post": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Get expense history",
+        "operationId": "get_expense_history",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense history (last 90 days)"
+          }
+        }
+      }
+    },
+    "/api/plan/{year}/{month}": {
+      "get": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "Get monthly plan",
+        "operationId": "get_monthly_plan",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Monthly plan data"
+          }
+        }
+      }
+    },
+    "/api/spend/check": {
+      "post": {
+        "tags": [
+          "Spend"
+        ],
+        "summary": "Check spending for category",
+        "operationId": "check_spending",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "calendar": {
+                    "type": "object"
+                  },
+                  "day": {
+                    "type": "integer"
+                  },
+                  "category": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Spending amount"
+          }
+        }
+      }
+    },
+    "/api/spend/limit": {
+      "post": {
+        "tags": [
+          "Spend"
+        ],
+        "summary": "Check category spending limit",
+        "operationId": "check_category_limit",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "calendar": {
+                    "type": "object"
+                  },
+                  "day": {
+                    "type": "integer"
+                  },
+                  "category": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category limit"
+          }
+        }
+      }
+    },
+    "/api/behavior/analysis": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get comprehensive behavioral analysis",
+        "operationId": "get_behavioral_analysis",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Behavioral analysis data"
+          }
+        }
+      }
+    },
+    "/api/behavior/patterns": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get spending pattern analysis",
+        "operationId": "get_spending_patterns",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending patterns"
+          }
+        }
+      }
+    },
+    "/api/behavior/predictions": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get spending behavior predictions",
+        "operationId": "get_behavioral_predictions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending predictions"
+          }
+        }
+      }
+    },
+    "/api/behavior/anomalies": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get spending anomalies",
+        "operationId": "get_behavioral_anomalies",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending anomalies"
+          }
+        }
+      }
+    },
+    "/api/behavior/recommendations": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get adaptive behavior recommendations",
+        "operationId": "get_behavioral_recommendations",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Personalized recommendations"
+          }
+        }
+      }
+    },
+    "/api/behavior/triggers": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get spending triggers",
+        "operationId": "get_spending_triggers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending triggers"
+          }
+        }
+      }
+    },
+    "/api/behavior/cluster": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get behavioral cluster classification",
+        "operationId": "get_behavioral_cluster",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Behavioral cluster"
+          }
+        }
+      }
+    },
+    "/api/behavior/preferences": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get behavioral preferences",
+        "operationId": "get_behavioral_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Behavioral preferences"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Update behavioral preferences",
+        "operationId": "update_behavioral_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "auto_insights": {
+                    "type": "boolean"
+                  },
+                  "anomaly_detection": {
+                    "type": "boolean"
+                  },
+                  "predictive_alerts": {
+                    "type": "boolean"
+                  },
+                  "peer_comparison": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated"
+          }
+        }
+      }
+    },
+    "/api/behavior/progress": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get behavioral improvement progress",
+        "operationId": "get_behavioral_progress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "months",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12,
+              "default": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Behavioral progress"
+          }
+        }
+      }
+    },
+    "/api/behavior/warnings": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get behavioral warnings and alerts",
+        "operationId": "get_behavioral_warnings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Behavioral warnings"
+          }
+        }
+      }
+    },
+    "/api/behavior/notification_settings": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get behavioral notification settings",
+        "operationId": "get_behavioral_notification_settings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification settings"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Update behavioral notification settings",
+        "operationId": "update_behavioral_notification_settings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "anomaly_alerts": {
+                    "type": "boolean"
+                  },
+                  "pattern_insights": {
+                    "type": "boolean"
+                  },
+                  "weekly_summary": {
+                    "type": "boolean"
+                  },
+                  "spending_warnings": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated"
+          }
+        }
+      }
+    },
+    "/api/onboarding/questions": {
+      "get": {
+        "tags": [
+          "Onboarding"
+        ],
+        "summary": "Get onboarding questions",
+        "operationId": "get_onboarding_questions",
+        "responses": {
+          "200": {
+            "description": "Onboarding questionnaire"
+          }
+        }
+      }
+    },
+    "/api/onboarding/submit": {
+      "post": {
+        "tags": [
+          "Onboarding"
+        ],
+        "summary": "Submit onboarding data",
+        "description": "Submit onboarding answers to generate budget plan and calendar",
+        "operationId": "submit_onboarding",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "income"
+                ],
+                "properties": {
+                  "income": {
+                    "type": "object",
+                    "properties": {
+                      "monthly_income": {
+                        "type": "number",
+                        "minimum": 0.01
+                      },
+                      "additional_income": {
+                        "type": "number",
+                        "default": 0
+                      }
+                    }
+                  },
+                  "fixed_expenses": {
+                    "type": "object"
+                  },
+                  "spending_habits": {
+                    "type": "object"
+                  },
+                  "goals": {
+                    "type": "object"
+                  },
+                  "region": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Onboarding completed, budget and calendar generated"
+          }
+        }
+      }
+    },
+    "/api/referral/eligibility": {
+      "post": {
+        "tags": [
+          "Referral"
+        ],
+        "summary": "Check referral eligibility",
+        "operationId": "check_referral_eligibility",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Referral eligibility status"
+          }
+        }
+      }
+    },
+    "/api/referral/claim": {
+      "post": {
+        "tags": [
+          "Referral"
+        ],
+        "summary": "Claim referral reward",
+        "operationId": "claim_referral",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Referral claimed"
+          }
+        }
+      }
+    },
+    "/api/referral/code": {
+      "get": {
+        "tags": [
+          "Referral"
+        ],
+        "summary": "Get user's referral code",
+        "operationId": "get_referral_code",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Referral code"
+          }
+        }
+      }
+    },
+    "/api/behavior/category/{category}": {
+      "get": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get category behavioral insights",
+        "operationId": "get_category_behavioral_insights",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category behavioral insights"
+          }
+        }
+      }
+    },
+    "/api/behavior/expense_suggestions": {
+      "post": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Get smart expense suggestions",
+        "operationId": "get_behavioral_expense_suggestions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense suggestions"
+          }
+        }
+      }
+    },
+    "/api/behavior/calendar": {
+      "post": {
+        "tags": [
+          "Behavior"
+        ],
+        "summary": "Generate spending behavior calendar",
+        "operationId": "generate_behavior_calendar",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "year": {
+                    "type": "integer"
+                  },
+                  "month": {
+                    "type": "integer"
+                  },
+                  "profile": {
+                    "type": "object"
+                  },
+                  "mood_log": {
+                    "type": "object"
+                  },
+                  "challenge_log": {
+                    "type": "object"
+                  },
+                  "calendar_log": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Behavior calendar"
+          }
+        }
+      }
+    },
+    "/api/mood/": {
+      "get": {
+        "tags": [
+          "Mood"
+        ],
+        "summary": "Get mood history",
+        "operationId": "get_mood_history",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mood history"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Mood"
+        ],
+        "summary": "Log mood for a date",
+        "operationId": "log_mood",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "mood"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "mood": {
+                    "type": "string",
+                    "enum": [
+                      "happy",
+                      "sad",
+                      "neutral",
+                      "stressed",
+                      "excited"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mood logged"
+          }
+        }
+      }
+    },
+    "/api/tasks/": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "List financial tasks",
+        "operationId": "list_tasks",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending tasks"
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get task status",
+        "operationId": "get_task_status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details"
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/complete": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Mark task as complete",
+        "operationId": "complete_task",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task completed"
+          }
+        }
+      }
+    },
+    "/api/style/preferences": {
+      "get": {
+        "tags": [
+          "Style"
+        ],
+        "summary": "Get user style preferences",
+        "operationId": "get_style_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UI/UX preferences"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Style"
+        ],
+        "summary": "Update style preferences",
+        "operationId": "update_style_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "theme": {
+                    "type": "string",
+                    "enum": [
+                      "light",
+                      "dark",
+                      "auto"
+                    ]
+                  },
+                  "primary_color": {
+                    "type": "string"
+                  },
+                  "font_size": {
+                    "type": "string",
+                    "enum": [
+                      "small",
+                      "medium",
+                      "large"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated"
+          }
+        }
+      }
+    },
+    "/api/notifications/{notification_id}": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get notification by ID",
+        "operationId": "get_notification_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification details"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Delete notification",
+        "operationId": "delete_notification",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Notification deleted"
+          }
+        }
+      }
+    },
+    "/api/notifications/{notification_id}/mark-read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark notification as read",
+        "operationId": "mark_notification_read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read"
+          }
+        }
+      }
+    },
+    "/api/notifications/mark-all-read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark all notifications as read",
+        "operationId": "mark_all_notifications_read",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read"
+          }
+        }
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get unread notification count",
+        "operationId": "get_unread_count",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unread count"
+          }
+        }
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get notification preferences",
+        "operationId": "get_notification_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification preferences"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Update notification preferences",
+        "operationId": "update_notification_preferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "push_enabled": {
+                    "type": "boolean"
+                  },
+                  "email_enabled": {
+                    "type": "boolean"
+                  },
+                  "budget_alerts": {
+                    "type": "boolean"
+                  },
+                  "goal_reminders": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated"
+          }
+        }
+      }
+    },
+    "/api/notifications/create": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Create notification (admin/testing)",
+        "operationId": "create_notification",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "message"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "category": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification created"
+          }
+        }
+      }
+    },
+    "/api/notifications/test": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Send test notification",
+        "operationId": "send_test_notification",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "ios",
+                      "android"
+                    ]
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test notification sent"
+          }
+        }
+      }
+    },
+    "/api/notifications/unregister-device": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Unregister device",
+        "operationId": "unregister_device",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device unregistered"
+          }
+        }
+      }
+    },
+    "/api/notifications/update-device": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Update device registration",
+        "operationId": "update_device_registration",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "old_token",
+                  "new_token"
+                ],
+                "properties": {
+                  "old_token": {
+                    "type": "string"
+                  },
+                  "new_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device updated"
+          }
+        }
+      }
+    },
+    "/api/goal/{goal_id}/contribute": {
+      "post": {
+        "tags": [
+          "Goals"
+        ],
+        "summary": "Add contribution to goal",
+        "operationId": "contribute_to_goal",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "goal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0.01
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contribution added"
+          }
+        }
+      }
+    },
+    "/api/calendar/day/{date}": {
+      "get": {
+        "tags": [
+          "Calendar"
+        ],
+        "summary": "Get calendar day details",
+        "operationId": "get_calendar_day",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily budget, spending, events"
+          }
+        }
+      }
+    },
+    "/api/calendar/event": {
+      "post": {
+        "tags": [
+          "Calendar"
+        ],
+        "summary": "Add calendar event",
+        "operationId": "add_calendar_event",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "amount",
+                  "description"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Event created"
+          }
+        }
+      }
+    },
+    "/api/ocr/categorize": {
+      "post": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Categorize receipt data",
+        "operationId": "categorize_receipt",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "merchant": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category suggestion with confidence"
+          }
+        }
+      }
+    },
+    "/api/ocr/enhance": {
+      "post": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Enhance receipt image quality",
+        "operationId": "enhance_receipt_image",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enhanced image data"
+          }
+        }
+      }
+    },
+    "/api/ocr/status/{ocr_job_id}": {
+      "get": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Get OCR job status",
+        "operationId": "get_ocr_job_status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ocr_job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status, progress, and results"
+          }
+        }
+      }
+    },
+    "/api/ocr/image/{job_id}": {
+      "get": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Get receipt image file",
+        "operationId": "get_receipt_image",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image file (JPEG)"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Delete receipt image",
+        "operationId": "delete_receipt_image",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Image deleted"
+          }
+        }
+      }
+    },
+    "/api/transactions/by-date": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Get transactions by date range",
+        "operationId": "get_transactions_by_date",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions in date range"
+          }
+        }
+      }
+    },
+    "/api/transactions/merchants/suggestions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Get merchant name autocomplete suggestions",
+        "operationId": "get_merchant_suggestions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Merchant suggestions with frequency"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt/advanced": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Advanced receipt processing with categorization",
+        "operationId": "process_receipt_advanced",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "options": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Receipt data with items, total, merchant"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt/batch": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Process multiple receipts in batch",
+        "operationId": "process_receipts_batch",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Batch job ID and status"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt/status/{job_id}": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Get receipt processing status",
+        "operationId": "get_receipt_processing_status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status, progress, and results"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt/{receipt_id}/image": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Get receipt image URL",
+        "operationId": "get_receipt_image_url",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "receipt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image URL and thumbnail URL"
+          }
+        }
+      }
+    },
+    "/api/transactions/receipt/validate": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Validate extracted receipt data",
+        "operationId": "validate_receipt_data",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "number"
+                  },
+                  "merchant": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation results with errors/warnings"
+          }
+        }
+      }
+    },
+    "/api/analytics/categories": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Get category breakdown",
+        "operationId": "get_category_breakdown",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending by category with percentages"
+          }
+        }
+      }
+    },
+    "/api/analytics/trends": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Get spending trends over time",
+        "operationId": "get_spending_trends",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Time series spending data"
+          }
+        }
+      }
+    },
+    "/api/analytics/forecast": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Get spending forecast",
+        "operationId": "get_spending_forecast",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Predicted future spending"
+          }
+        }
+      }
+    },
+    "/api/financial/balance": {
+      "get": {
+        "tags": [
+          "Financial"
+        ],
+        "summary": "Get current financial balance",
+        "operationId": "get_current_balance",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current balance and available funds"
+          }
+        }
+      }
+    },
+    "/api/financial/trends": {
+      "get": {
+        "tags": [
+          "Financial"
+        ],
+        "summary": "Get spending trends and patterns",
+        "operationId": "get_financial_trends",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trend analysis data"
+          }
+        }
+      }
+    },
+    "/api/ai/analyze": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "AI financial analysis",
+        "operationId": "ai_analyze",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "analysis_type": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI-generated analysis"
+          }
+        }
+      }
+    },
+    "/api/ai/suggestions": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Get AI spending suggestions",
+        "operationId": "get_ai_suggestions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Personalized suggestions"
+          }
+        }
+      }
+    },
+    "/api/insights/recommendations": {
+      "get": {
+        "tags": [
+          "Insights"
+        ],
+        "summary": "Get actionable recommendations",
+        "operationId": "get_insights_recommendations",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Personalized financial advice"
+          }
+        }
+      }
+    },
+    "/api/insights/dismiss/{insight_id}": {
+      "post": {
+        "tags": [
+          "Insights"
+        ],
+        "summary": "Dismiss an insight",
+        "operationId": "dismiss_insight",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Insight dismissed"
+          }
+        }
+      }
+    },
+    "/api/budget/{budget_id}": {
+      "put": {
+        "tags": [
+          "Budget"
+        ],
+        "summary": "Update budget",
+        "operationId": "update_budget",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "categories": {
+                    "type": "object"
+                  },
+                  "period": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Budget updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Budget"
+        ],
+        "summary": "Delete budget",
+        "operationId": "delete_budget",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "budget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Budget deleted"
+          }
+        }
+      }
+    },
+    "/api/budget/analysis": {
+      "get": {
+        "tags": [
+          "Budget"
+        ],
+        "summary": "Get budget analysis and recommendations",
+        "operationId": "get_budget_analysis",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Budget vs actual spending analysis"
+          }
+        }
+      }
+    },
+    "/api/challenge/{challenge_id}/join": {
+      "post": {
+        "tags": [
+          "Challenges"
+        ],
+        "summary": "Join a challenge",
+        "operationId": "join_challenge",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge enrollment confirmation"
+          }
+        }
+      }
+    },
+    "/api/challenge/{challenge_id}/progress": {
+      "get": {
+        "tags": [
+          "Challenges"
+        ],
+        "summary": "Get challenge progress",
+        "operationId": "get_challenge_progress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's progress in challenge"
+          }
+        }
+      }
+    },
+    "/api/challenge/{challenge_id}/complete": {
+      "post": {
+        "tags": [
+          "Challenges"
+        ],
+        "summary": "Mark challenge as complete",
+        "operationId": "complete_challenge",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completion confirmation with rewards"
+          }
+        }
+      }
+    },
+    "/api/habits/{habit_id}/log": {
+      "post": {
+        "tags": [
+          "Habits"
+        ],
+        "summary": "Log habit completion",
+        "operationId": "log_habit_completion",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "habit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Habit logged with streak update"
+          }
+        }
+      }
+    },
+    "/api/habits/{habit_id}/progress": {
+      "get": {
+        "tags": [
+          "Habits"
+        ],
+        "summary": "Get habit progress",
+        "operationId": "get_habit_progress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "habit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Progress statistics and streak info"
           }
         }
       }
@@ -1085,7 +3849,10 @@
     "schemas": {
       "UserRegister": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
           "email": {
             "type": "string",
@@ -1117,7 +3884,10 @@
       },
       "UserLogin": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
           "email": {
             "type": "string",
@@ -1216,7 +3986,30 @@
           },
           "category": {
             "type": "string",
-            "enum": ["food", "dining", "groceries", "transportation", "gas", "public_transport", "entertainment", "shopping", "clothing", "healthcare", "insurance", "utilities", "rent", "mortgage", "education", "childcare", "pets", "travel", "subscriptions", "gifts", "charity", "other"]
+            "enum": [
+              "food",
+              "dining",
+              "groceries",
+              "transportation",
+              "gas",
+              "public_transport",
+              "entertainment",
+              "shopping",
+              "clothing",
+              "healthcare",
+              "insurance",
+              "utilities",
+              "rent",
+              "mortgage",
+              "education",
+              "childcare",
+              "pets",
+              "travel",
+              "subscriptions",
+              "gifts",
+              "charity",
+              "other"
+            ]
           },
           "description": {
             "type": "string"
@@ -1240,7 +4033,10 @@
       },
       "TransactionCreate": {
         "type": "object",
-        "required": ["amount", "category"],
+        "required": [
+          "amount",
+          "category"
+        ],
         "properties": {
           "amount": {
             "type": "number",
@@ -1281,7 +4077,10 @@
       },
       "AffordabilityCheckRequest": {
         "type": "object",
-        "required": ["category", "amount"],
+        "required": [
+          "category",
+          "amount"
+        ],
         "properties": {
           "category": {
             "type": "string",
@@ -1332,10 +4131,18 @@
             "additionalProperties": {
               "type": "object",
               "properties": {
-                "budget": {"type": "number"},
-                "spent": {"type": "number"},
-                "remaining": {"type": "number"},
-                "percentage_used": {"type": "number"}
+                "budget": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                },
+                "remaining": {
+                  "type": "number"
+                },
+                "percentage_used": {
+                  "type": "number"
+                }
               }
             }
           }
@@ -1354,7 +4161,11 @@
           },
           "period": {
             "type": "string",
-            "enum": ["daily", "weekly", "monthly"]
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
           },
           "start_date": {
             "type": "string",
@@ -1368,7 +4179,10 @@
       },
       "BudgetCreate": {
         "type": "object",
-        "required": ["categories", "period"],
+        "required": [
+          "categories",
+          "period"
+        ],
         "properties": {
           "categories": {
             "type": "object",
@@ -1376,7 +4190,11 @@
           },
           "period": {
             "type": "string",
-            "enum": ["daily", "weekly", "monthly"]
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
           },
           "start_date": {
             "type": "string",
@@ -1413,7 +4231,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "completed", "abandoned"]
+            "enum": [
+              "active",
+              "completed",
+              "abandoned"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -1423,7 +4245,11 @@
       },
       "GoalCreate": {
         "type": "object",
-        "required": ["name", "target_amount", "deadline"],
+        "required": [
+          "name",
+          "target_amount",
+          "deadline"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -1463,7 +4289,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["active", "completed", "abandoned"]
+            "enum": [
+              "active",
+              "completed",
+              "abandoned"
+            ]
           }
         }
       },
@@ -1553,7 +4383,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["low", "medium", "high"]
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
           },
           "actionable": {
             "type": "boolean"
@@ -1562,7 +4396,9 @@
       },
       "AIChatRequest": {
         "type": "object",
-        "required": ["message"],
+        "required": [
+          "message"
+        ],
         "properties": {
           "message": {
             "type": "string"
@@ -1603,10 +4439,19 @@
             "items": {
               "type": "object",
               "properties": {
-                "date": {"type": "string", "format": "date"},
-                "budget": {"type": "number"},
-                "spent": {"type": "number"},
-                "remaining": {"type": "number"}
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "budget": {
+                  "type": "number"
+                },
+                "spent": {
+                  "type": "number"
+                },
+                "remaining": {
+                  "type": "number"
+                }
               }
             }
           }
@@ -1620,12 +4465,26 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {"type": "string", "format": "uuid"},
-                "title": {"type": "string"},
-                "message": {"type": "string"},
-                "type": {"type": "string"},
-                "read": {"type": "boolean"},
-                "created_at": {"type": "string", "format": "date-time"}
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "read": {
+                  "type": "boolean"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
               }
             }
           },
@@ -1639,7 +4498,10 @@
       },
       "DeviceRegistration": {
         "type": "object",
-        "required": ["token", "platform"],
+        "required": [
+          "token",
+          "platform"
+        ],
         "properties": {
           "token": {
             "type": "string",
@@ -1647,7 +4509,10 @@
           },
           "platform": {
             "type": "string",
-            "enum": ["ios", "android"]
+            "enum": [
+              "ios",
+              "android"
+            ]
           },
           "device_id": {
             "type": "string"
@@ -1675,8 +4540,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {"type": "string"},
-                "price": {"type": "number"}
+                "name": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                }
               }
             }
           },
@@ -1689,7 +4558,10 @@
       },
       "IAPValidationRequest": {
         "type": "object",
-        "required": ["receipt", "platform"],
+        "required": [
+          "receipt",
+          "platform"
+        ],
         "properties": {
           "receipt": {
             "type": "string",
@@ -1697,7 +4569,10 @@
           },
           "platform": {
             "type": "string",
-            "enum": ["ios", "android"]
+            "enum": [
+              "ios",
+              "android"
+            ]
           }
         }
       },
@@ -1731,7 +4606,11 @@
           },
           "frequency": {
             "type": "string",
-            "enum": ["daily", "weekly", "monthly"]
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
           },
           "streak": {
             "type": "integer"
@@ -1744,7 +4623,11 @@
       },
       "HabitCreate": {
         "type": "object",
-        "required": ["name", "goal", "frequency"],
+        "required": [
+          "name",
+          "goal",
+          "frequency"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -1754,7 +4637,11 @@
           },
           "frequency": {
             "type": "string",
-            "enum": ["daily", "weekly", "monthly"]
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
           }
         }
       },
@@ -1787,7 +4674,11 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["healthy", "degraded", "unhealthy"]
+            "enum": [
+              "healthy",
+              "degraded",
+              "unhealthy"
+            ]
           },
           "database": {
             "type": "string"
@@ -1812,8 +4703,12 @@
                   "type": "array",
                   "items": {
                     "anyOf": [
-                      {"type": "string"},
-                      {"type": "integer"}
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
                     ]
                   }
                 },
