@@ -144,13 +144,30 @@ async def register_user_standardized(
     # Hash password securely
     password_hash = await hash_password_async(registration_data.password)
     
-    # Create new user
+    # Create new user with all required fields
     new_user = User(
         email=validated_email,
         password_hash=password_hash,
         country=registration_data.country,
-        annual_income=registration_data.annual_income,
-        timezone=registration_data.timezone or "UTC"
+        annual_income=registration_data.annual_income or 0,
+        timezone=registration_data.timezone or "UTC",
+        # Explicitly set datetime fields
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        # Set default boolean fields
+        is_premium=False,
+        email_verified=False,
+        has_onboarded=False,
+        notifications_enabled=True,
+        dark_mode_enabled=False,
+        # Set token version
+        token_version=1,
+        # Set optional profile fields
+        name=registration_data.name or "",
+        monthly_income=0,
+        savings_goal=0,
+        budget_method="50/30/20 Rule",
+        currency="USD"
     )
     
     try:
@@ -540,10 +557,20 @@ async def emergency_register_legacy(request: Request):
             # Generate user ID
             user_id = str(uuid.uuid4())
             
-            # Insert user
+            # Insert user with all required fields
             session.execute(text("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
-                VALUES (:id, :email, :password_hash, :country, :annual_income, :timezone, NOW())
+                INSERT INTO users (
+                    id, email, password_hash, country, annual_income, timezone,
+                    created_at, updated_at, is_premium, email_verified, has_onboarded,
+                    notifications_enabled, dark_mode_enabled, token_version,
+                    monthly_income, savings_goal, budget_method, currency
+                )
+                VALUES (
+                    :id, :email, :password_hash, :country, :annual_income, :timezone,
+                    NOW(), NOW(), FALSE, FALSE, FALSE,
+                    TRUE, FALSE, 1,
+                    0, 0, '50/30/20 Rule', 'USD'
+                )
             """), {
                 "id": user_id,
                 "email": email,
@@ -641,8 +668,18 @@ async def register_fast_legacy(request: Request):
             user_id = str(uuid.uuid4())
             
             session.execute(text("""
-                INSERT INTO users (id, email, password_hash, country, annual_income, timezone, created_at)
-                VALUES (:id, :email, :password_hash, :country, :annual_income, :timezone, NOW())
+                INSERT INTO users (
+                    id, email, password_hash, country, annual_income, timezone,
+                    created_at, updated_at, is_premium, email_verified, has_onboarded,
+                    notifications_enabled, dark_mode_enabled, token_version,
+                    monthly_income, savings_goal, budget_method, currency
+                )
+                VALUES (
+                    :id, :email, :password_hash, :country, :annual_income, :timezone,
+                    NOW(), NOW(), FALSE, FALSE, FALSE,
+                    TRUE, FALSE, 1,
+                    0, 0, '50/30/20 Rule', 'USD'
+                )
             """), {
                 "id": user_id,
                 "email": email,
@@ -727,13 +764,30 @@ async def register_full(
         # UPDATED: Use centralized async password hashing for better performance
         password_hash = await hash_password_async(payload.password)
         
-        # Create user
+        # Create user with all required fields
         user = User(
             email=payload.email.lower(),
             password_hash=password_hash,
             country=payload.country,
             annual_income=payload.annual_income or 0,
-            timezone=payload.timezone
+            timezone=payload.timezone or "UTC",
+            # Explicitly set datetime fields
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            # Set default boolean fields
+            is_premium=False,
+            email_verified=False,
+            has_onboarded=False,
+            notifications_enabled=True,
+            dark_mode_enabled=False,
+            # Set token version
+            token_version=1,
+            # Set optional profile fields
+            name=payload.name or "",
+            monthly_income=0,
+            savings_goal=0,
+            budget_method="50/30/20 Rule",
+            currency="USD"
         )
         
         # Save user
@@ -1450,11 +1504,21 @@ async def test_registration_isolated(request: Request):
                 if existing_user:
                     raise ValueError("Email already exists")
                 
-                # Insert new user
+                # Insert new user with all required fields
                 user_id = str(uuid.uuid4())
                 session.execute(text("""
-                    INSERT INTO users (id, email, password_hash, country, created_at)
-                    VALUES (:id, :email, :password_hash, :country, NOW())
+                    INSERT INTO users (
+                        id, email, password_hash, country, annual_income, timezone,
+                        created_at, updated_at, is_premium, email_verified, has_onboarded,
+                        notifications_enabled, dark_mode_enabled, token_version,
+                        monthly_income, savings_goal, budget_method, currency
+                    )
+                    VALUES (
+                        :id, :email, :password_hash, :country, 0, 'UTC',
+                        NOW(), NOW(), FALSE, FALSE, FALSE,
+                        TRUE, FALSE, 1,
+                        0, 0, '50/30/20 Rule', 'USD'
+                    )
                 """), {
                     "id": user_id,
                     "email": email,
@@ -1937,8 +2001,18 @@ async def test_database_operations_isolated(request: Request):
                 user_id = str(uuid.uuid4())
                 with Session() as session:
                     session.execute(text("""
-                        INSERT INTO users (id, email, password_hash, country, created_at)
-                        VALUES (:id, :email, :password_hash, :country, NOW())
+                        INSERT INTO users (
+                            id, email, password_hash, country, annual_income, timezone,
+                            created_at, updated_at, is_premium, email_verified, has_onboarded,
+                            notifications_enabled, dark_mode_enabled, token_version,
+                            monthly_income, savings_goal, budget_method, currency
+                        )
+                        VALUES (
+                            :id, :email, :password_hash, :country, 0, 'UTC',
+                            NOW(), NOW(), FALSE, FALSE, FALSE,
+                            TRUE, FALSE, 1,
+                            0, 0, '50/30/20 Rule', 'USD'
+                        )
                     """), {
                         "id": user_id,
                         "email": test_email,
