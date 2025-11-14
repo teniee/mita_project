@@ -1050,5 +1050,220 @@
   "errorTipSupportContact": "Contact support if the issue persists",
   "@errorTipSupportContact": {
     "description": "Tip to contact support for persistent issues"
+  },
+
+  "installments": "Installments",
+  "@installments": {
+    "description": "Installments screen title and navigation label"
+  },
+
+  "myInstallments": "My Installments",
+  "@myInstallments": {
+    "description": "Header title for user's installments page"
+  },
+
+  "canIAfford": "Can I Afford?",
+  "@canIAfford": {
+    "description": "Call-to-action button for installment calculator"
+  },
+
+  "activeInstallments": "Active Installments",
+  "@activeInstallments": {
+    "description": "Tab showing active installment plans"
+  },
+
+  "completedInstallments": "Completed",
+  "@completedInstallments": {
+    "description": "Tab showing completed installment plans"
+  },
+
+  "overdueInstallments": "Overdue",
+  "@overdueInstallments": {
+    "description": "Tab showing overdue installment plans"
+  },
+
+  "monthlyPayment": "Monthly Payment",
+  "@monthlyPayment": {
+    "description": "Label for monthly payment amount"
+  },
+
+  "nextPaymentDate": "Next Payment Date",
+  "@nextPaymentDate": {
+    "description": "Label for next payment due date"
+  },
+
+  "paymentAmount": "Payment Amount",
+  "@paymentAmount": {
+    "description": "Label for payment amount"
+  },
+
+  "totalAmount": "Total Amount",
+  "@totalAmount": {
+    "description": "Label for total installment amount"
+  },
+
+  "interestRate": "Interest Rate",
+  "@interestRate": {
+    "description": "Label for interest rate percentage"
+  },
+
+  "totalPayments": "Total Payments",
+  "@totalPayments": {
+    "description": "Label for total number of payments"
+  },
+
+  "paymentProgress": "Payment Progress",
+  "@paymentProgress": {
+    "description": "Label for payment progress indicator"
+  },
+
+  "remainingBalance": "Remaining Balance",
+  "@remainingBalance": {
+    "description": "Label for remaining amount to be paid"
+  },
+
+  "totalPaid": "Total Paid",
+  "@totalPaid": {
+    "description": "Label for total amount paid so far"
+  },
+
+  "finalPaymentDate": "Final Payment Date",
+  "@finalPaymentDate": {
+    "description": "Label for final payment due date"
+  },
+
+  "markPaymentMade": "Mark Payment Made",
+  "@markPaymentMade": {
+    "description": "Action button to record a payment"
+  },
+
+  "cancelInstallment": "Cancel Installment",
+  "@cancelInstallment": {
+    "description": "Action button to cancel an installment plan"
+  },
+
+  "deleteInstallment": "Delete Installment",
+  "@deleteInstallment": {
+    "description": "Action button to delete an installment plan"
+  },
+
+  "viewDetails": "View Details",
+  "@viewDetails": {
+    "description": "Action button to see full installment details"
+  },
+
+  "noInstallmentsYet": "No installments yet",
+  "@noInstallmentsYet": {
+    "description": "Empty state message when no installments exist"
+  },
+
+  "startCalculator": "Start Calculator",
+  "@startCalculator": {
+    "description": "Button text to launch installment calculator"
+  },
+
+  "paymentMarkedSuccessfully": "Payment marked as made",
+  "@paymentMarkedSuccessfully": {
+    "description": "Success message when payment is recorded"
+  },
+
+  "installmentCancelledSuccessfully": "Installment cancelled",
+  "@installmentCancelledSuccessfully": {
+    "description": "Success message when installment is cancelled"
+  },
+
+  "installmentDeletedSuccessfully": "Installment deleted",
+  "@installmentDeletedSuccessfully": {
+    "description": "Success message when installment is deleted"
+  },
+
+  "confirmCancelInstallment": "Are you sure you want to cancel \"{itemName}\"?",
+  "@confirmCancelInstallment": {
+    "description": "Confirmation message for cancelling an installment",
+    "placeholders": {
+      "itemName": {
+        "type": "String",
+        "example": "Gaming Laptop"
+      }
+    }
+  },
+
+  "confirmDeleteInstallment": "Are you sure you want to permanently delete \"{itemName}\"? This action cannot be undone.",
+  "@confirmDeleteInstallment": {
+    "description": "Confirmation message for deleting an installment",
+    "placeholders": {
+      "itemName": {
+        "type": "String",
+        "example": "Gaming Laptop"
+      }
+    }
+  },
+
+  "riskLevelSafe": "Safe",
+  "@riskLevelSafe": {
+    "description": "Low risk level indicator"
+  },
+
+  "riskLevelModerate": "Moderate",
+  "@riskLevelModerate": {
+    "description": "Moderate risk level indicator"
+  },
+
+  "riskLevelHigh": "High",
+  "@riskLevelHigh": {
+    "description": "High risk level indicator"
+  },
+
+  "riskLevelCritical": "Critical",
+  "@riskLevelCritical": {
+    "description": "Critical risk level indicator"
+  },
+
+  "installmentLoad": "Load",
+  "@installmentLoad": {
+    "description": "Label for installment load/burden percentage"
+  },
+
+  "failedToUpdatePayment": "Failed to update payment: {error}",
+  "@failedToUpdatePayment": {
+    "description": "Error message when payment update fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+
+  "failedToCancelInstallment": "Failed to cancel installment: {error}",
+  "@failedToCancelInstallment": {
+    "description": "Error message when cancellation fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+
+  "failedToDeleteInstallment": "Failed to delete installment: {error}",
+  "@failedToDeleteInstallment": {
+    "description": "Error message when deletion fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+
+  "networkError": "Network error. Please check your connection.",
+  "@networkError": {
+    "description": "Error message for network connectivity issues"
+  },
+
+  "serverError": "Server error. Please try again later.",
+  "@serverError": {
+    "description": "Error message for server-side errors"
   }
 }

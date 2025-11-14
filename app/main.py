@@ -63,6 +63,7 @@ from app.api.tasks.routes import router as tasks_router
 from app.api.transactions.routes import router as transactions_router
 from app.api.users.routes import router as users_router
 from app.api.email.routes import router as email_router
+from app.api.installments.routes import router as installments_router
 from app.api.endpoints.audit import router as audit_router
 from app.api.endpoints.database_performance import router as db_performance_router
 from app.api.endpoints.cache_management import router as cache_management_router
@@ -705,6 +706,7 @@ private_routers_list = [
     (db_performance_router, "/api", ["Database Performance"]),
     (cache_management_router, "/api", ["Cache Management"]),
     (feature_flags_router, "/api", ["Feature Flags"]),
+    (installments_router, "/api", ["Installments"]),
     (external_services_health_router, "", ["Health"]),  # No /api prefix for health endpoints
 ]
 

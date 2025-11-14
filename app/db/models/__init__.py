@@ -20,6 +20,16 @@ from .challenge import Challenge, ChallengeParticipation
 from .ocr_job import OCRJob
 from .analytics_log import FeatureUsageLog, FeatureAccessLog, PaywallImpressionLog
 from .user_preference import UserPreference
+from .installment import (
+    Installment,
+    UserFinancialProfile,
+    InstallmentCalculation,
+    InstallmentAchievement,
+    InstallmentCategory,
+    AgeGroup,
+    RiskLevel,
+    InstallmentStatus
+)
 
 __all__ = [
     "Base",
@@ -50,4 +60,12 @@ __all__ = [
     "FeatureAccessLog",
     "PaywallImpressionLog",
     "UserPreference",
+    "Installment",
+    "UserFinancialProfile",
+    "InstallmentCalculation",
+    "InstallmentAchievement",
+    "InstallmentCategory",
+    "AgeGroup",
+    "RiskLevel",
+    "InstallmentStatus",
 ]
