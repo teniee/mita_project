@@ -519,11 +519,25 @@ async def performance_logging_middleware(request: Request, call_next):
             try:
                 auth_header = request.headers.get("Authorization")
                 if auth_header and auth_header.startswith("Bearer "):
-                    from app.services.auth_jwt_service import get_token_info
-                    token_info = get_token_info(auth_header.replace("Bearer ", ""))
-                    if token_info:
-                        scope.set_user({"id": token_info.get("user_id")})
-                        scope.set_tag("user_authenticated", True)
+                    raw_token = auth_header.replace("Bearer ", "").strip()
+
+                    # If token is empty or looks like garbage, consider unauthenticated
+                    if not raw_token or raw_token == ".":
+                        scope.set_tag("user_authenticated", False)
+                    else:
+                        try:
+                            from app.services.auth_jwt_service import get_token_info
+                            token_info = get_token_info(raw_token)
+                            if token_info:
+                                scope.set_user({"id": token_info.get("user_id")})
+                                scope.set_tag("user_authenticated", True)
+                            else:
+                                scope.set_tag("user_authenticated", False)
+                        except Exception:
+                            # Error decoding token - not 502, just "unauthenticated"
+                            scope.set_tag("user_authenticated", False)
+                else:
+                    scope.set_tag("user_authenticated", False)
             except Exception:
                 scope.set_tag("user_authenticated", False)
             
@@ -562,11 +576,19 @@ async def optimized_audit_middleware(request: Request, call_next):
         try:
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
-                from app.services.auth_jwt_service import get_token_info
-                token_info = get_token_info(auth_header.replace("Bearer ", ""))
-                if token_info:
-                    user_id = token_info.get("user_id")
-                    session_id = token_info.get("jti")
+                raw_token = auth_header.replace("Bearer ", "").strip()
+
+                # If token is empty or looks like garbage, skip parsing
+                if raw_token and raw_token != ".":
+                    try:
+                        from app.services.auth_jwt_service import get_token_info
+                        token_info = get_token_info(raw_token)
+                        if token_info:
+                            user_id = token_info.get("user_id")
+                            session_id = token_info.get("jti")
+                    except Exception:
+                        # Error decoding token - continue without user info
+                        pass
         except Exception:
             # Don't let token parsing errors affect the request
             pass
