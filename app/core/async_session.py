@@ -24,6 +24,37 @@ logger = logging.getLogger(__name__)
 async_engine = None
 AsyncSessionLocal = None
 
+
+def _normalize_database_url(url: str) -> str:
+    """
+    Convert any postgres URL into correct asyncpg format.
+    Always enforce asyncpg + SSL + statement cache off for PgBouncer.
+    """
+    url = url.strip()
+
+    # convert postgres:// → postgresql+asyncpg://
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+    if url.startswith("postgresql://") and "+asyncpg" not in url:
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    # enforce SSL (required by Supabase)
+    if "sslmode=" in url:
+        url = url.replace("sslmode=", "ssl=")
+
+    if "ssl=" not in url:
+        sep = "&" if "?" in url else "?"
+        url += f"{sep}ssl=require"
+
+    # disable statement cache (required for PgBouncer/Pooler)
+    if "statement_cache_size=" not in url:
+        sep = "&" if "?" in url else "?"
+        url += f"{sep}statement_cache_size=0"
+
+    return url
+
+
 def initialize_database() -> None:
     """Initialize database engine and session factory"""
     global async_engine, AsyncSessionLocal
@@ -35,42 +66,43 @@ def initialize_database() -> None:
         logger.error("DATABASE_URL is required but not set")
         raise ValueError("DATABASE_URL is required but not set")
 
-    database_url = settings.DATABASE_URL.strip()
-    logger.debug(f"Original DATABASE_URL: {database_url!r}")
-
-    # Force asyncpg driver
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
-    # Никаких правок sslmode и прочей херни – даем SQLAlchemy сделать свое дело
-    logger.info("Initializing async database engine")
+    # normalize raw URL
+    database_url = _normalize_database_url(settings.DATABASE_URL)
+    logger.info(f"Final database URL used by asyncpg: {database_url}")
 
     try:
         engine_kwargs = {
             "echo": False,
             "pool_pre_ping": True,
-            "pool_size": 20,
-            "max_overflow": 30,
+
+            # safe pool settings for Render + Supabase pooler
+            "pool_size": 5,
+            "max_overflow": 10,
             "pool_timeout": 30,
-            "pool_recycle": 3600,
+            "pool_recycle": 1800,
         }
 
+        # SQLite fallback
         if "sqlite" in database_url:
             engine_kwargs["poolclass"] = StaticPool
 
-        engine = create_async_engine(database_url, **engine_kwargs)
+        async_engine_local = create_async_engine(
+            database_url,
+            connect_args={},
+            **engine_kwargs,
+        )
+
         AsyncSessionLocal = async_sessionmaker(
-            bind=engine,
+            bind=async_engine_local,
             class_=AsyncSession,
             expire_on_commit=False,
             autoflush=False,
             autocommit=False,
         )
 
-        globals()["async_engine"] = engine
+        globals()["async_engine"] = async_engine_local
         logger.info("Database engine initialized successfully")
+
     except Exception as e:
         logger.error(f"Failed to create database engine: {type(e).__name__}: {e}")
         raise
@@ -115,7 +147,7 @@ async def get_async_db_context():
             await session.close()
 
 
-# Legacy compatibility functions (use the versions above)
+# Legacy compatibility functions
 async def get_async_db_legacy() -> AsyncGenerator[AsyncSession, None]:
     initialize_database()
 
@@ -158,27 +190,15 @@ async def init_database():
         initialize_database()
 
         if async_engine is None:
-            logger.error("Database engine not initialized")
             raise RuntimeError("Database engine not initialized")
 
         async with async_engine.begin() as conn:
             from app.db.models import (
-                User,
-                Expense,
-                Transaction,
-                Goal,
-                Habit,
-                Mood,
-                DailyPlan,
-                Subscription,
-                PushToken,
-                NotificationLog,
-                UserAnswer,
-                UserProfile,
-                AIAnalysisSnapshot,
-                BudgetAdvice,
-                AIAdviceTemplate,
-            )  # noqa
+                User, Expense, Transaction, Goal, Habit, Mood,
+                DailyPlan, Subscription, PushToken, NotificationLog,
+                UserAnswer, UserProfile, AIAnalysisSnapshot,
+                BudgetAdvice, AIAdviceTemplate
+            )
 
             await conn.run_sync(Base.metadata.create_all)
 
@@ -202,12 +222,12 @@ async def check_database_health() -> bool:
         initialize_database()
 
         if AsyncSessionLocal is None:
-            logger.error("AsyncSessionLocal is None - database not initialized")
             return False
 
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
             return True
+
     except Exception as e:
         logger.error(f"Database health check failed: {type(e).__name__}: {e}")
         return False
