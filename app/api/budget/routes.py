@@ -4,10 +4,11 @@ from decimal import Decimal
 from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, Body
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.api.dependencies import get_current_user
-from app.core.session import get_db
+from app.core.async_session import get_async_db
 
 # assumes User is defined in models
 from app.db.models.user import User
@@ -35,13 +36,13 @@ async def spent(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Return spending amounts grouped by category."""
     if not isinstance(user, User):
         user = get_current_user()  # type: ignore
-    if not isinstance(db, Session):
-        db = next(get_db())  # type: ignore
+    if not isinstance(db, AsyncSession):
+        raise TypeError("Expected AsyncSession")  # type: ignore
 
     now = datetime.utcnow()
     year = year or now.year
@@ -57,13 +58,13 @@ async def remaining(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Return the remaining budget for the month."""
     if not isinstance(user, User):
         user = get_current_user()  # type: ignore
-    if not isinstance(db, Session):
-        db = next(get_db())  # type: ignore
+    if not isinstance(db, AsyncSession):
+        raise TypeError("Expected AsyncSession")  # type: ignore
 
     now = datetime.utcnow()
     year = year or now.year
@@ -77,7 +78,7 @@ async def remaining(
 @router.get("/suggestions")
 async def get_budget_suggestions(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-powered budget suggestions based on actual spending patterns"""
     from app.db.models import Transaction, DailyPlan, User as UserModel
@@ -85,21 +86,28 @@ async def get_budget_suggestions(
     from collections import defaultdict
 
     # Get user's income
-    user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
+    result = await db.execute(select(UserModel).where(UserModel.id == user.id))
+    user_data = result.scalar_one_or_none()
     user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
 
     # Build calendar structure for last 30 days
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= thirty_days_ago
-    ).all()
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= thirty_days_ago
+        )
+    )
+    transactions = result.scalars().all()
 
     # Get planned budgets for comparison
-    daily_plans = db.query(DailyPlan).filter(
-        DailyPlan.user_id == user.id,
-        DailyPlan.date >= thirty_days_ago.date()
-    ).all()
+    result = await db.execute(
+        select(DailyPlan).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= thirty_days_ago.date()
+        )
+    )
+    daily_plans = result.scalars().all()
 
     # Build calendar dict: date -> {actual_spending: {cat: amt}, planned_budget: {cat: amt}}
     calendar = defaultdict(lambda: {"actual_spending": defaultdict(lambda: Decimal('0')), "planned_budget": {}})
@@ -174,13 +182,14 @@ async def get_budget_suggestions(
 @router.get("/mode")
 async def get_budget_mode(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get current budget mode based on user preferences and behavior"""
     from app.db.models import User as UserModel
 
     # Get user data to build settings dict
-    user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
+    result = await db.execute(select(UserModel).where(UserModel.id == user.id))
+    user_data = result.scalar_one_or_none()
 
     user_settings = {}
     if user_data:
@@ -190,7 +199,8 @@ async def get_budget_mode(
 
         # Check for aggressive savings preference (could be from user_preferences table)
         from app.db.models import UserPreferences
-        prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user.id).first()
+        result = await db.execute(select(UserPreferences).where(UserPreferences.user_id == user.id))
+        prefs = result.scalar_one_or_none()
         if prefs:
             user_settings["aggressive_savings"] = prefs.behavioral_savings_target and prefs.behavioral_savings_target > 25.0
             user_settings["has_family"] = False  # Could be added to user profile later
@@ -204,7 +214,7 @@ async def get_budget_mode(
 @router.get("/redistribution_history")
 async def get_redistribution_history(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget redistribution history from DailyPlan changes"""
     from app.db.models import DailyPlan
@@ -212,10 +222,13 @@ async def get_redistribution_history(
 
     # Get last 30 days of daily plans
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    daily_plans = db.query(DailyPlan).filter(
-        DailyPlan.user_id == user.id,
-        DailyPlan.date >= thirty_days_ago
-    ).order_by(DailyPlan.date.desc()).all()
+    result = await db.execute(
+        select(DailyPlan).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= thirty_days_ago
+        ).order_by(DailyPlan.date.desc())
+    )
+    daily_plans = result.scalars().all()
 
     # Track redistributions by analyzing plan_json changes
     history_data = []
@@ -265,7 +278,7 @@ async def get_daily_budgets(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get daily budget breakdown for the month"""
     now = datetime.utcnow()
@@ -273,11 +286,15 @@ async def get_daily_budgets(
     month = month or now.month
 
     # Query daily plans for the month
-    daily_plans = db.query(DailyPlan).filter(
-        DailyPlan.user_id == user.id,
-        DailyPlan.date >= datetime(year, month, 1),
-        DailyPlan.date < datetime(year, month + 1 if month < 12 else 1, 1) if month < 12 else datetime(year + 1, 1, 1)
-    ).order_by(DailyPlan.date).all()
+    end_date = datetime(year, month + 1 if month < 12 else 1, 1) if month < 12 else datetime(year + 1, 1, 1)
+    result = await db.execute(
+        select(DailyPlan).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= datetime(year, month, 1),
+            DailyPlan.date < end_date
+        ).order_by(DailyPlan.date)
+    )
+    daily_plans = result.scalars().all()
 
     daily_budgets = [
         {
@@ -297,7 +314,7 @@ async def get_daily_budgets(
 async def get_behavioral_budget_allocation(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget allocation based on behavioral analysis"""
     total_amount = data.get("total_amount", user.monthly_income or 0)
@@ -332,7 +349,7 @@ async def get_behavioral_budget_allocation(
 async def get_monthly_budget(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Generate monthly budget based on user income and preferences"""
     year = data.get("year", datetime.utcnow().year)
@@ -364,7 +381,7 @@ async def get_monthly_budget(
 @router.get("/adaptations")
 async def get_budget_adaptations(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget adaptation history and suggestions"""
     adaptations_data = {
@@ -378,7 +395,7 @@ async def get_budget_adaptations(
 @router.post("/auto_adapt")
 async def trigger_budget_adaptation(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Trigger automatic budget adaptation based on spending patterns"""
     try:
@@ -399,7 +416,7 @@ async def trigger_budget_adaptation(
 @router.get("/live_status")
 async def get_live_budget_status(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get real-time budget status"""
     from app.db.models import Transaction
@@ -407,17 +424,23 @@ async def get_live_budget_status(
     now = datetime.utcnow()
 
     # Get today's plan
-    today_plan = db.query(DailyPlan).filter(
-        DailyPlan.user_id == user.id,
-        DailyPlan.date == now.date()
-    ).first()
+    result = await db.execute(
+        select(DailyPlan).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date == now.date()
+        )
+    )
+    today_plan = result.scalar_one_or_none()
 
     # Calculate monthly spending from transactions
     month_start = datetime(now.year, now.month, 1)
-    monthly_transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= month_start
-    ).all()
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= month_start
+        )
+    )
+    monthly_transactions = result.scalars().all()
 
     monthly_spent = sum(t.amount for t in monthly_transactions if t.amount is not None) or Decimal('0')
     monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
@@ -441,15 +464,18 @@ async def get_live_budget_status(
 async def update_budget_automation_settings(
     settings: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Update budget automation preferences"""
     from app.db.models import UserPreference
 
     # Get or create user preference record
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(UserPreference).where(
+            UserPreference.user_id == user.id
+        )
+    )
+    user_pref = result.scalar_one_or_none()
 
     if not user_pref:
         user_pref = UserPreference(user_id=user.id)
@@ -467,7 +493,7 @@ async def update_budget_automation_settings(
     if "budget_mode" in settings:
         user_pref.budget_mode = settings["budget_mode"]
 
-    db.commit()
+    await db.commit()
 
     return success_response({"updated": True, "settings": settings})
 
@@ -475,15 +501,18 @@ async def update_budget_automation_settings(
 @router.get("/automation_settings")
 async def get_budget_automation_settings(
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget automation preferences"""
     from app.db.models import UserPreference
 
     # Query user preferences
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    result = await db.execute(
+        select(UserPreference).where(
+            UserPreference.user_id == user.id
+        )
+    )
+    user_pref = result.scalar_one_or_none()
 
     if not user_pref:
         # Return default settings if not set
@@ -509,7 +538,7 @@ async def get_budget_automation_settings(
 async def get_income_based_budget_recommendations(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget recommendations based on income level"""
     monthly_income = data.get("monthly_income", user.monthly_income or 0)

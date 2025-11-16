@@ -1,8 +1,8 @@
 from typing import Dict, Any
 from decimal import Decimal
 from fastapi import APIRouter, Depends, Body, Request
-from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, select, func, extract
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.analytics.schemas import (
     AggregateResult,
@@ -12,7 +12,7 @@ from app.api.analytics.schemas import (
     TrendOut,
 )
 from app.api.dependencies import get_current_user
-from app.core.session import get_db
+from app.core.async_session import get_async_db
 from app.db.models.user import User
 from app.services.analytics_service import (
     analyze_aggregate,
@@ -33,17 +33,17 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/monthly", response_model=MonthlyAnalyticsOut)
 async def monthly(
-    user=Depends(get_current_user), db: Session = Depends(get_db)  # noqa: B008
+    user=Depends(get_current_user), db: AsyncSession = Depends(get_async_db)  # noqa: B008
 ):
-    result = get_monthly_category_totals(user.id, db)
+    result = await get_monthly_category_totals(user.id, db)
     return success_response({"categories": result})
 
 
 @router.get("/trend", response_model=TrendOut)
 async def trend(
-    user=Depends(get_current_user), db: Session = Depends(get_db)  # noqa: B008
+    user=Depends(get_current_user), db: AsyncSession = Depends(get_async_db)  # noqa: B008
 ):
-    result = get_monthly_trend(user.id, db)
+    result = await get_monthly_trend(user.id, db)
     return success_response({"trend": result})
 
 
@@ -73,23 +73,25 @@ async def anomalies(payload: CalendarPayload):
 )
 async def get_behavioral_insights(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Get behavioral insights from analytics"""
     from app.db.models import Transaction
     from datetime import datetime, timedelta
-    from sqlalchemy import func, extract
 
     # Calculate behavioral insights from real transaction data
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
 
     # Get transactions from last 30 days
-    transactions = db.query(Transaction).filter(
-        and_(
-            Transaction.user_id == user.id,
-            Transaction.spent_at >= thirty_days_ago
+    result = await db.execute(
+        select(Transaction).filter(
+            and_(
+                Transaction.user_id == user.id,
+                Transaction.spent_at >= thirty_days_ago
+            )
         )
-    ).all()
+    )
+    transactions = result.scalars().all()
 
     if not transactions:
         return success_response({
@@ -152,7 +154,7 @@ async def get_behavioral_insights(
 async def log_feature_usage(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Log feature usage for analytics"""
     from datetime import datetime
@@ -192,7 +194,7 @@ async def log_feature_usage(
     )
 
     db.add(usage_log)
-    db.commit()
+    await db.commit()
 
     return success_response({
         "logged": True,
@@ -206,7 +208,7 @@ async def log_feature_usage(
 async def log_feature_access_attempt(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Log when user attempts to access premium features"""
     from datetime import datetime
@@ -230,7 +232,7 @@ async def log_feature_access_attempt(
     )
 
     db.add(access_log)
-    db.commit()
+    await db.commit()
 
     return success_response({
         "logged": True,
@@ -244,7 +246,7 @@ async def log_feature_access_attempt(
 async def log_paywall_impression(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Log paywall impressions for conversion tracking"""
     from datetime import datetime
@@ -278,7 +280,7 @@ async def log_paywall_impression(
     )
 
     db.add(impression_log)
-    db.commit()
+    await db.commit()
 
     return success_response({
         "logged": True,
@@ -294,26 +296,28 @@ async def log_paywall_impression(
 )
 async def get_seasonal_patterns(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Get seasonal spending patterns"""
     from app.db.models import Transaction
     from datetime import datetime
-    from sqlalchemy import extract, func
     from collections import defaultdict
 
     # Analyze historical data for seasonal trends
     # Get all transactions grouped by month
-    monthly_spending = db.query(
-        extract('month', Transaction.spent_at).label('month'),
-        extract('year', Transaction.spent_at).label('year'),
-        func.sum(Transaction.amount).label('total')
-    ).filter(
-        Transaction.user_id == user.id
-    ).group_by(
-        extract('month', Transaction.spent_at),
-        extract('year', Transaction.spent_at)
-    ).all()
+    result = await db.execute(
+        select(
+            extract('month', Transaction.spent_at).label('month'),
+            extract('year', Transaction.spent_at).label('year'),
+            func.sum(Transaction.amount).label('total')
+        ).filter(
+            Transaction.user_id == user.id
+        ).group_by(
+            extract('month', Transaction.spent_at),
+            extract('year', Transaction.spent_at)
+        )
+    )
+    monthly_spending = result.all()
 
     if not monthly_spending or len(monthly_spending) < 3:
         return success_response({

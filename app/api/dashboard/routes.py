@@ -16,11 +16,12 @@ from typing import Optional
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import extract, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import extract, func, select
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.api.dependencies import get_current_user
-from app.core.session import get_db
+from app.core.async_session import get_async_db
 from app.db.models.user import User
 from app.db.models import Transaction, DailyPlan, Goal, ChallengeParticipation, Challenge
 from app.utils.response_wrapper import success_response
@@ -33,7 +34,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("")
 async def get_dashboard(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Get comprehensive dashboard data for Main Screen
@@ -58,13 +59,14 @@ async def get_dashboard(
         # For now: monthly_income - spent_this_month
         first_day_of_month = today.replace(day=1)
 
-        total_spent_this_month = db.query(
-            func.sum(Transaction.amount)
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.spent_at >= first_day_of_month,
-            Transaction.spent_at < now
-        ).scalar() or 0.0
+        result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                Transaction.user_id == user_id,
+                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at < now
+            )
+        )
+        total_spent_this_month = result.scalar() or 0.0
 
         current_balance = monthly_income - float(total_spent_this_month)
 
@@ -72,30 +74,37 @@ async def get_dashboard(
         today_start = datetime.combine(today, datetime.min.time())
         today_end = datetime.combine(today, datetime.max.time())
 
-        today_spent = db.query(
-            func.sum(Transaction.amount)
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.spent_at >= today_start,
-            Transaction.spent_at <= today_end
-        ).scalar() or 0.0
+        result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                Transaction.user_id == user_id,
+                Transaction.spent_at >= today_start,
+                Transaction.spent_at <= today_end
+            )
+        )
+        today_spent = result.scalar() or 0.0
 
         # Get daily targets from DailyPlan for today
-        today_plans = db.query(DailyPlan).filter(
-            DailyPlan.user_id == user_id,
-            DailyPlan.date == today
-        ).all()
+        result = await db.execute(
+            select(DailyPlan).where(
+                DailyPlan.user_id == user_id,
+                DailyPlan.date == today
+            )
+        )
+        today_plans = result.scalars().all()
 
         # Get today's spending by category
         today_spending_by_category = {}
-        today_transactions = db.query(
-            Transaction.category,
-            func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.spent_at >= today_start,
-            Transaction.spent_at <= today_end
-        ).group_by(Transaction.category).all()
+        result = await db.execute(
+            select(
+                Transaction.category,
+                func.sum(Transaction.amount).label('total')
+            ).where(
+                Transaction.user_id == user_id,
+                Transaction.spent_at >= today_start,
+                Transaction.spent_at <= today_end
+            ).group_by(Transaction.category)
+        )
+        today_transactions = result.all()
 
         for cat, total in today_transactions:
             today_spending_by_category[cat or 'other'] = float(total)
@@ -167,20 +176,22 @@ async def get_dashboard(
             day_start = datetime.combine(day_date, datetime.min.time())
             day_end = datetime.combine(day_date, datetime.max.time())
 
-            day_spent = db.query(
-                func.sum(Transaction.amount)
-            ).filter(
-                Transaction.user_id == user_id,
-                Transaction.spent_at >= day_start,
-                Transaction.spent_at <= day_end
-            ).scalar() or 0.0
+            result = await db.execute(
+                select(func.sum(Transaction.amount)).where(
+                    Transaction.user_id == user_id,
+                    Transaction.spent_at >= day_start,
+                    Transaction.spent_at <= day_end
+                )
+            )
+            day_spent = result.scalar() or 0.0
 
-            day_budget = db.query(
-                func.sum(DailyPlan.daily_budget)
-            ).filter(
-                DailyPlan.user_id == user_id,
-                DailyPlan.date == day_date
-            ).scalar() or (monthly_income / 30)
+            result = await db.execute(
+                select(func.sum(DailyPlan.daily_budget)).where(
+                    DailyPlan.user_id == user_id,
+                    DailyPlan.date == day_date
+                )
+            )
+            day_budget = result.scalar() or (monthly_income / 30)
 
             # Determine status
             if float(day_spent) > float(day_budget):
@@ -198,9 +209,12 @@ async def get_dashboard(
             })
 
         # Get recent transactions (last 10)
-        recent_transactions = db.query(Transaction).filter(
-            Transaction.user_id == user_id
-        ).order_by(Transaction.spent_at.desc()).limit(10).all()
+        result = await db.execute(
+            select(Transaction).where(
+                Transaction.user_id == user_id
+            ).order_by(Transaction.spent_at.desc()).limit(10)
+        )
+        recent_transactions = result.scalars().all()
 
         transactions_data = []
         for txn in recent_transactions:
@@ -249,18 +263,24 @@ async def get_dashboard(
 
         try:
             # Get active goals ordered by priority and progress
-            active_goals = db.query(Goal).filter(
-                Goal.user_id == user_id,
-                Goal.status == 'active'
-            ).order_by(
-                Goal.priority.desc(),
-                Goal.progress.desc()
-            ).limit(5).all()  # Show top 5 goals on dashboard
+            result = await db.execute(
+                select(Goal).where(
+                    Goal.user_id == user_id,
+                    Goal.status == 'active'
+                ).order_by(
+                    Goal.priority.desc(),
+                    Goal.progress.desc()
+                ).limit(5)  # Show top 5 goals on dashboard
+            )
+            active_goals = result.scalars().all()
 
-            goals_summary['total_active'] = db.query(func.count(Goal.id)).filter(
-                Goal.user_id == user_id,
-                Goal.status == 'active'
-            ).scalar() or 0
+            result = await db.execute(
+                select(func.count(Goal.id)).where(
+                    Goal.user_id == user_id,
+                    Goal.status == 'active'
+                )
+            )
+            goals_summary['total_active'] = result.scalar() or 0
 
             for goal in active_goals:
                 progress = float(goal.progress or 0)
@@ -301,36 +321,46 @@ async def get_dashboard(
         }
 
         try:
-            from sqlalchemy.orm import joinedload
-
             current_month = today.strftime("%Y-%m")
 
             # Get active challenge participations with eager-loaded challenges
-            active_participations = db.query(ChallengeParticipation).options(
-                joinedload(ChallengeParticipation.challenge)
-            ).filter(
-                ChallengeParticipation.user_id == user_id,
-                ChallengeParticipation.status == 'active'
-            ).order_by(
-                ChallengeParticipation.progress_percentage.desc()
-            ).limit(3).all()  # Show top 3 active challenges
+            result = await db.execute(
+                select(ChallengeParticipation).options(
+                    joinedload(ChallengeParticipation.challenge)
+                ).where(
+                    ChallengeParticipation.user_id == user_id,
+                    ChallengeParticipation.status == 'active'
+                ).order_by(
+                    ChallengeParticipation.progress_percentage.desc()
+                ).limit(3)  # Show top 3 active challenges
+            )
+            active_participations = result.unique().scalars().all()
 
-            challenges_summary['active_challenges'] = db.query(func.count(ChallengeParticipation.id)).filter(
-                ChallengeParticipation.user_id == user_id,
-                ChallengeParticipation.status == 'active'
-            ).scalar() or 0
+            result = await db.execute(
+                select(func.count(ChallengeParticipation.id)).where(
+                    ChallengeParticipation.user_id == user_id,
+                    ChallengeParticipation.status == 'active'
+                )
+            )
+            challenges_summary['active_challenges'] = result.scalar() or 0
 
-            challenges_summary['completed_this_month'] = db.query(func.count(ChallengeParticipation.id)).filter(
-                ChallengeParticipation.user_id == user_id,
-                ChallengeParticipation.status == 'completed',
-                ChallengeParticipation.month == current_month
-            ).scalar() or 0
+            result = await db.execute(
+                select(func.count(ChallengeParticipation.id)).where(
+                    ChallengeParticipation.user_id == user_id,
+                    ChallengeParticipation.status == 'completed',
+                    ChallengeParticipation.month == current_month
+                )
+            )
+            challenges_summary['completed_this_month'] = result.scalar() or 0
 
             # Get max current streak
-            max_streak = db.query(func.max(ChallengeParticipation.current_streak)).filter(
-                ChallengeParticipation.user_id == user_id,
-                ChallengeParticipation.status == 'active'
-            ).scalar() or 0
+            result = await db.execute(
+                select(func.max(ChallengeParticipation.current_streak)).where(
+                    ChallengeParticipation.user_id == user_id,
+                    ChallengeParticipation.status == 'active'
+                )
+            )
+            max_streak = result.scalar() or 0
             challenges_summary['current_streak'] = max_streak
 
             for participation in active_participations:
@@ -393,7 +423,7 @@ async def get_dashboard(
 @router.get("/quick-stats")
 async def get_quick_stats(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Get quick statistics for dashboard widgets
@@ -414,27 +444,31 @@ async def get_quick_stats(
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
 
         # Monthly spending
-        monthly_spending = db.query(
-            func.sum(Transaction.amount)
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.spent_at >= first_day_of_month,
-            Transaction.spent_at < now
-        ).scalar() or 0.0
+        result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                Transaction.user_id == user_id,
+                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at < now
+            )
+        )
+        monthly_spending = result.scalar() or 0.0
 
         # Daily average
         days_in_month = today.day
         daily_average = float(monthly_spending) / days_in_month if days_in_month > 0 else 0.0
 
         # Top category
-        top_category_result = db.query(
-            Transaction.category,
-            func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user_id,
-            Transaction.spent_at >= first_day_of_month,
-            Transaction.spent_at < now
-        ).group_by(Transaction.category).order_by(func.sum(Transaction.amount).desc()).first()
+        result = await db.execute(
+            select(
+                Transaction.category,
+                func.sum(Transaction.amount).label('total')
+            ).where(
+                Transaction.user_id == user_id,
+                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at < now
+            ).group_by(Transaction.category).order_by(func.sum(Transaction.amount).desc())
+        )
+        top_category_result = result.first()
 
         top_category = {
             'name': (top_category_result[0] or 'other').title() if top_category_result else 'None',
@@ -456,7 +490,10 @@ async def get_quick_stats(
         }
 
         try:
-            all_goals = db.query(Goal).filter(Goal.user_id == user_id).all()
+            result = await db.execute(
+                select(Goal).where(Goal.user_id == user_id)
+            )
+            all_goals = result.scalars().all()
             goals_stats['total_goals'] = len(all_goals)
 
             active_goals = [g for g in all_goals if g.status == 'active']

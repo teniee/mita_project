@@ -4,29 +4,30 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" Audit Results:&#10;&#10;  - ✅ 29/43 screens use ApiService directly&#10;  - ✅ All critical data paths now go through backend APIs&#10;  - ✅ Local budget engines only used as fallback&#10;  - ✅ No commented-out API calls found&#10;  - ✅ All major widgets connected to data sources&#10;  - ✅ 66 services audited - client-side calculations appropriately separated from API calls">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |">
+      <change afterPath="$PROJECT_DIR$/app/api/auth/account_management.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/admin_endpoints.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/google_auth.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/login.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/password_reset.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/registration.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/routes_old_backup.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/security_monitoring.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/test_endpoints.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/token_management.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/api/auth/utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/core/security_notes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/tests/security/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/tests/security/test_csrf_not_required.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/ai/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/ai/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/analytics/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/analytics/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/analytics/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/analytics/services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/behavior/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/behavior/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/budget/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/budget/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/challenge/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/challenge/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/cohort/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/cohort/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/dashboard/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dashboard/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/expense/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/expense/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/goals/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/goals/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/transactions/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/audit_logging.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/audit_logging.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/simple_rate_limiter.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/simple_rate_limiter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/task_queue.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/task_queue.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/auth_jwt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/auth_jwt_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/services/notification_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/notification_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/tests/performance/test_authentication_performance.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/tests/performance/test_authentication_performance.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/tests/performance/test_security_performance_impact.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/tests/performance/test_security_performance_impact.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,14 +99,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00031" summary=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls">
-      <option name="closed" value="true" />
-      <created>1754592589074</created>
-      <option name="number" value="00031" />
-      <option name="presentableId" value="LOCAL-00031" />
-      <option name="project" value="LOCAL" />
-      <updated>1754592589074</updated>
     </task>
     <task id="LOCAL-00032" summary=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed">
       <option name="closed" value="true" />
@@ -491,7 +484,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759860305952</updated>
     </task>
-    <option name="localTasksCounter" value="80" />
+    <task id="LOCAL-00080" summary=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |">
+      <option name="closed" value="true" />
+      <created>1763291568480</created>
+      <option name="number" value="00080" />
+      <option name="presentableId" value="LOCAL-00080" />
+      <option name="project" value="LOCAL" />
+      <updated>1763291568480</updated>
+    </task>
+    <option name="localTasksCounter" value="81" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -506,7 +507,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=" ✅ Fixed infinite loading issue - The app was stuck because the LoadingService wasn't being stopped when API calls timed out&#10;&#10;  ✅ Fixed FormData serialization error - The backend had a JSON serialization issue with file uploads that has been resolved by the&#10;  DevOps specialist&#10;&#10;  ✅ Restored API connectivity - The MainScreen now makes actual API calls to the backend with proper timeout handling and fallbacks&#10;&#10;  ✅ Enhanced error handling - Added individual timeouts for each API call and graceful fallbacks to prevent hanging&#10;&#10;  ✅ Improved expense submission - The AddExpenseScreen now has proper timeout handling for API calls" />
     <MESSAGE value=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed" />
     <MESSAGE value=" The app now compiles without errors and all the requested features are working:&#10;  - ✅ Hardcoded budget details removed and replaced with user data&#10;  - ✅ User profile screen added with comprehensive information&#10;  - ✅ User settings screen added with all preferences&#10;  - ✅ Bottom navigation shadow removed&#10;  - ✅ Profile data connected to budget calculations&#10;  - ✅ Compilation error fixed" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;  3. Reflects their financial goals (saving vs debt payoff vs investing)&#10;  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
@@ -531,6 +531,7 @@
     <MESSAGE value=" 1.  Основные хардкоды убраны:&#10;  - ❌ 'name': 'MITA User' → ✅ 'name': '' (пустое поле)&#10;  - ❌ Фальшивые статусы недели ['good', 'good', 'warning', 'over'] → ✅ 'neutral' для всех дней&#10;  - ❌ Процентные расчеты _monthlyIncome * 0.85, dailyAmount * 0.4 → ✅ Реальные суммы или 0.0&#10;  - ❌ Фальшивые траты dailyBudget * 0.35 * 0.60 → ✅ 0.0 (показать реальные траты или ноль)" />
     <MESSAGE value="Verification Results:&#10;&#10;  - ✅ All major screens (challenges, goals, habits) already properly connected&#10;  - ✅ All offline/fallback services properly implemented&#10;  - ✅ No remaining mock data in production code paths" />
     <MESSAGE value=" Audit Results:&#10;&#10;  - ✅ 29/43 screens use ApiService directly&#10;  - ✅ All critical data paths now go through backend APIs&#10;  - ✅ Local budget engines only used as fallback&#10;  - ✅ No commented-out API calls found&#10;  - ✅ All major widgets connected to data sources&#10;  - ✅ 66 services audited - client-side calculations appropriately separated from API calls" />
-    <option name="LAST_COMMIT_MESSAGE" value=" Audit Results:&#10;&#10;  - ✅ 29/43 screens use ApiService directly&#10;  - ✅ All critical data paths now go through backend APIs&#10;  - ✅ Local budget engines only used as fallback&#10;  - ✅ No commented-out API calls found&#10;  - ✅ All major widgets connected to data sources&#10;  - ✅ 66 services audited - client-side calculations appropriately separated from API calls" />
+    <MESSAGE value=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |" />
+    <option name="LAST_COMMIT_MESSAGE" value=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |" />
   </component>
 </project>

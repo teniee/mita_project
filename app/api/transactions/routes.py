@@ -4,7 +4,9 @@ import logging
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi_limiter.depends import RateLimiter
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, func
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut, TxnUpdate
@@ -33,14 +35,14 @@ from app.api.transactions.services import (
 )
 
 # isort: on
-from app.core.session import get_db
+from app.core.async_session import get_async_db
 from app.utils.response_wrapper import success_response
 from app.services.task_manager import task_manager
 
 logger = logging.getLogger(__name__)
 
 current_user_dep = Depends(get_current_user)  # noqa: B008
-db_dep = Depends(get_db)  # noqa: B008
+db_dep = Depends(get_async_db)  # noqa: B008
 file_upload = File(...)  # noqa: B008
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -58,7 +60,7 @@ async def create_transaction_standardized(
     request: Request,
     txn: TxnIn,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """
     Create a new financial transaction with comprehensive validation and error handling.
@@ -147,7 +149,7 @@ async def get_transactions_standardized(
     end_date: Optional[datetime] = None,
     category: Optional[str] = None,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """
     Retrieve user transactions with filtering and pagination support.
@@ -236,7 +238,7 @@ async def get_transactions_standardized(
 async def process_receipt(
     file: UploadFile = file_upload,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """
     Extract and parse receipt data using async OCR processing.
@@ -301,11 +303,10 @@ async def get_transactions_by_date(
     start_date: str = None,
     end_date: str = None,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Get transactions filtered by date range"""
     from datetime import datetime
-    from sqlalchemy import and_
 
     # Parse dates
     start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
@@ -313,19 +314,19 @@ async def get_transactions_by_date(
 
     # Query transactions with date filter using REAL database query
     from app.db.models.transaction import Transaction
-    from sqlalchemy.orm import joinedload
 
-    query = db.query(Transaction).options(
+    query_stmt = select(Transaction).options(
         joinedload(Transaction.user),
         joinedload(Transaction.goal)
-    ).filter(Transaction.user_id == user.id)
+    ).where(Transaction.user_id == user.id)
 
     if start:
-        query = query.filter(Transaction.spent_at >= start)
+        query_stmt = query_stmt.where(Transaction.spent_at >= start)
     if end:
-        query = query.filter(Transaction.spent_at <= end)
+        query_stmt = query_stmt.where(Transaction.spent_at <= end)
 
-    txns = query.order_by(Transaction.spent_at.desc()).all()
+    result = await db.execute(query_stmt.order_by(Transaction.spent_at.desc()))
+    txns = result.unique().scalars().all()
 
     transactions = [
         {
@@ -351,26 +352,28 @@ async def get_transactions_by_date(
 async def get_merchant_suggestions(
     query: str = None,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Get merchant name suggestions based on user's history"""
     from app.db.models.transaction import Transaction
-    from sqlalchemy import func
 
     # Query user's transaction history for merchant autocomplete
-    query_filter = db.query(
+    query_stmt = select(
         Transaction.description,
         Transaction.category,
         func.count(Transaction.id).label('frequency')
-    ).filter(Transaction.user_id == user.id)
+    ).where(Transaction.user_id == user.id)
 
     if query:
-        query_filter = query_filter.filter(Transaction.description.ilike(f'%{query}%'))
+        query_stmt = query_stmt.where(Transaction.description.ilike(f'%{query}%'))
 
-    merchants = query_filter.group_by(
+    query_stmt = query_stmt.group_by(
         Transaction.description,
         Transaction.category
-    ).order_by(func.count(Transaction.id).desc()).limit(10).all()
+    ).order_by(func.count(Transaction.id).desc()).limit(10)
+
+    result = await db.execute(query_stmt)
+    merchants = result.all()
 
     suggestions = [
         {
@@ -395,19 +398,21 @@ async def get_merchant_suggestions(
 async def get_receipt_image(
     receipt_id: str,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Get receipt image URL"""
     from app.db.models import OCRJob
-    from sqlalchemy import and_
 
     # Query OCR job to get image path
-    ocr_job = db.query(OCRJob).filter(
-        and_(
-            OCRJob.job_id == receipt_id,
-            OCRJob.user_id == user.id
+    result = await db.execute(
+        select(OCRJob).where(
+            and_(
+                OCRJob.job_id == receipt_id,
+                OCRJob.user_id == user.id
+            )
         )
-    ).first()
+    )
+    ocr_job = result.scalar_one_or_none()
 
     if not ocr_job or not ocr_job.image_url:
         return success_response({
@@ -429,7 +434,7 @@ async def process_receipt_advanced(
     file: UploadFile = File(...),
     options: dict = {},
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Advanced receipt processing with OCR and categorization"""
     import tempfile
@@ -465,7 +470,7 @@ async def process_receipt_advanced(
             completed_at=datetime.utcnow()
         )
         db.add(ocr_job)
-        db.commit()
+        await db.commit()
 
         return success_response({
             "receipt_id": job_id,
@@ -501,7 +506,7 @@ async def process_receipt_advanced(
 async def process_receipts_batch(
     files: List[UploadFile] = File(...),
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Process multiple receipts in batch"""
     import tempfile
@@ -568,7 +573,7 @@ async def process_receipts_batch(
             except Exception:
                 pass
 
-    db.commit()
+    await db.commit()
 
     return success_response({
         "job_id": batch_id,
@@ -583,19 +588,21 @@ async def process_receipts_batch(
 async def get_receipt_processing_status(
     job_id: str,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Get status of receipt processing job"""
     from app.db.models import OCRJob
-    from sqlalchemy import and_
 
     # Check if it's a batch job
     if job_id.startswith("batch_"):
         # Query all jobs that match the batch
-        ocr_jobs = db.query(OCRJob).filter(
-            OCRJob.user_id == user.id,
-            OCRJob.job_id.like(f"rcpt_{job_id.split('_')[1]}_%")
-        ).all()
+        result = await db.execute(
+            select(OCRJob).where(
+                OCRJob.user_id == user.id,
+                OCRJob.job_id.like(f"rcpt_{job_id.split('_')[1]}_%")
+            )
+        )
+        ocr_jobs = result.scalars().all()
 
         if not ocr_jobs:
             return success_response({
@@ -627,12 +634,15 @@ async def get_receipt_processing_status(
         })
     else:
         # Single job query
-        ocr_job = db.query(OCRJob).filter(
-            and_(
-                OCRJob.job_id == job_id,
-                OCRJob.user_id == user.id
+        result = await db.execute(
+            select(OCRJob).where(
+                and_(
+                    OCRJob.job_id == job_id,
+                    OCRJob.user_id == user.id
+                )
             )
-        ).first()
+        )
+        ocr_job = result.scalar_one_or_none()
 
         if not ocr_job:
             return success_response({
@@ -660,7 +670,7 @@ async def get_receipt_processing_status(
 async def validate_receipt_data(
     data: dict,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Validate extracted receipt data before saving"""
     total = data.get("total", 0.0)
@@ -689,7 +699,7 @@ async def get_transaction(
     request: Request,
     transaction_id: str,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Get a specific transaction by ID"""
     from uuid import UUID
@@ -721,7 +731,7 @@ async def update_transaction_endpoint(
     transaction_id: str,
     txn_update: TxnUpdate,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Update an existing transaction"""
     from uuid import UUID
@@ -752,7 +762,7 @@ async def delete_transaction_endpoint(
     request: Request,
     transaction_id: str,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """Delete a transaction"""
     from uuid import UUID
@@ -881,7 +891,7 @@ async def check_transaction_affordability(
     request: Request,
     check_request: AffordabilityCheckRequest,
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """
     Check if user can afford transaction BEFORE creating it
@@ -975,7 +985,7 @@ async def get_budget_status(
     request: Request,
     date: Optional[str] = None,  # Format: YYYY-MM-DD
     user=current_user_dep,
-    db: Session = db_dep,
+    db: AsyncSession = db_dep,
 ):
     """
     Get current budget status for all categories

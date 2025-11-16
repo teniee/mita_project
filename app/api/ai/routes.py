@@ -1,9 +1,10 @@
 from decimal import Decimal
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.api.dependencies import get_current_user
-from app.core.session import get_db
+from app.core.async_session import get_async_db
 from app.db.models import AIAnalysisSnapshot
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.services.ai_financial_analyzer import AIFinancialAnalyzer
@@ -14,14 +15,14 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.get("/latest-snapshots")
 async def get_latest_ai_snapshots(
-    user=Depends(get_current_user), db: Session = Depends(get_db)  # noqa: B008
+    user=Depends(get_current_user), db: AsyncSession = Depends(get_async_db)  # noqa: B008
 ):
-    snapshot = (
-        db.query(AIAnalysisSnapshot)
+    result = await db.execute(
+        select(AIAnalysisSnapshot)
         .filter_by(user_id=user.id)
         .order_by(AIAnalysisSnapshot.created_at.desc())
-        .first()
     )
+    snapshot = result.scalars().first()
     if not snapshot:
         return success_response({"count": 0, "data": []})
     data = {
@@ -40,9 +41,9 @@ async def create_ai_snapshot(
     year: int,
     month: int,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
-    result = save_ai_snapshot(user.id, db, year, month)
+    result = await save_ai_snapshot(user.id, db, year, month)
     return success_response(result)
 
 
@@ -51,12 +52,12 @@ async def get_spending_patterns(
     year: int = None,
     month: int = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-analyzed spending patterns for the user"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        patterns_data = analyzer.analyze_spending_patterns()
+        patterns_data = await analyzer.analyze_spending_patterns()
         return success_response(patterns_data)
     except Exception as e:
         # Fallback to basic response if analysis fails
@@ -73,12 +74,12 @@ async def get_personalized_feedback(
     year: int = None,
     month: int = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get personalized AI feedback for the user"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        feedback_data = analyzer.generate_personalized_feedback()
+        feedback_data = await analyzer.generate_personalized_feedback()
         return success_response(feedback_data)
     except Exception as e:
         # Fallback response
@@ -93,12 +94,12 @@ async def get_personalized_feedback(
 @router.get("/weekly-insights")
 async def get_weekly_insights(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get weekly AI insights for the user"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        insights_data = analyzer.generate_weekly_insights()
+        insights_data = await analyzer.generate_weekly_insights()
         return success_response(insights_data)
     except Exception as e:
         # Fallback response
@@ -139,12 +140,12 @@ async def get_financial_profile(
 @router.get("/financial-health-score")
 async def get_financial_health_score(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-calculated financial health score"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        score_data = analyzer.calculate_financial_health_score()
+        score_data = await analyzer.calculate_financial_health_score()
         return success_response(score_data)
     except Exception as e:
         # Fallback response
@@ -160,12 +161,12 @@ async def get_financial_health_score(
 @router.get("/spending-anomalies")
 async def get_spending_anomalies(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get detected spending anomalies"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        anomalies = analyzer.detect_spending_anomalies()
+        anomalies = await analyzer.detect_spending_anomalies()
         return success_response(anomalies)
     except Exception as e:
         # Fallback response
@@ -175,12 +176,12 @@ async def get_spending_anomalies(
 @router.get("/savings-optimization")
 async def get_savings_optimization(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-powered savings optimization suggestions"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        optimization_data = analyzer.generate_savings_optimization()
+        optimization_data = await analyzer.generate_savings_optimization()
         return success_response(optimization_data)
     except Exception as e:
         # Fallback response
@@ -198,7 +199,7 @@ async def get_ai_profile(
     year: int = None,
     month: int = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI financial profile analysis (alias for /financial-profile)"""
     try:
@@ -215,10 +216,13 @@ async def get_ai_profile(
             from datetime import datetime, timedelta
 
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            transactions = db.query(Transaction).filter(
-                Transaction.user_id == user.id,
-                Transaction.spent_at >= thirty_days_ago
-            ).all()
+            result = await db.execute(
+                select(Transaction).filter(
+                    Transaction.user_id == user.id,
+                    Transaction.spent_at >= thirty_days_ago
+                )
+            )
+            transactions = result.scalars().all()
 
             if not transactions:
                 return success_response({
@@ -265,12 +269,12 @@ async def get_ai_profile(
 async def get_day_status_explanation(
     date: str = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI explanation for a specific day's spending status"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        explanation = analyzer.explain_day_status(date)
+        explanation = await analyzer.explain_day_status(date)
         return success_response(explanation)
     except Exception as e:
         # Fallback response
@@ -286,7 +290,7 @@ async def get_day_status_explanation(
 @router.get("/budget-optimization")
 async def get_budget_optimization(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-powered budget optimization suggestions"""
     try:
@@ -302,10 +306,13 @@ async def get_budget_optimization(
             from collections import defaultdict
 
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            transactions = db.query(Transaction).filter(
-                Transaction.user_id == user.id,
-                Transaction.spent_at >= thirty_days_ago
-            ).all()
+            result = await db.execute(
+                select(Transaction).filter(
+                    Transaction.user_id == user.id,
+                    Transaction.spent_at >= thirty_days_ago
+                )
+            )
+            transactions = result.scalars().all()
 
             if not transactions:
                 return success_response({
@@ -376,12 +383,12 @@ async def get_category_suggestions(
     description: str = None,
     amount: float = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-powered category suggestions for a transaction"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        suggestions = analyzer.suggest_category(description, amount)
+        suggestions = await analyzer.suggest_category(description, amount)
         return success_response(suggestions)
     except Exception as e:
         # Fallback response
@@ -397,7 +404,7 @@ async def get_category_suggestions(
 async def ai_assistant(
     query: dict,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """AI assistant for financial questions and guidance"""
     try:
@@ -420,10 +427,13 @@ async def ai_assistant(
             from datetime import datetime, timedelta
 
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            transactions = db.query(Transaction).filter(
-                Transaction.user_id == user.id,
-                Transaction.spent_at >= thirty_days_ago
-            ).all()
+            result = await db.execute(
+                select(Transaction).filter(
+                    Transaction.user_id == user.id,
+                    Transaction.spent_at >= thirty_days_ago
+                )
+            )
+            transactions = result.scalars().all()
 
             total = float(sum(t.amount for t in transactions if t.amount is not None) or Decimal('0'))
 
@@ -489,12 +499,12 @@ async def get_spending_prediction(
     category: str = None,
     days: int = 7,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI prediction of future spending"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        prediction = analyzer.predict_spending(category, days)
+        prediction = await analyzer.predict_spending(category, days)
         return success_response(prediction)
     except Exception as e:
         # Fallback response
@@ -513,7 +523,7 @@ async def get_spending_prediction(
 async def get_goal_analysis(
     goal_id: str = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI analysis of financial goals progress"""
     try:
@@ -537,7 +547,7 @@ async def get_monthly_report(
     year: int = None,
     month: int = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get comprehensive AI-generated monthly report"""
     try:
