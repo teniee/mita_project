@@ -117,7 +117,8 @@ class SecurityPerformanceTests:
         for _ in range(10):
             try:
                 operation_func()
-            except:
+            except Exception:
+                # Warmup errors are expected and can be ignored
                 pass
         
         # Measure
@@ -560,15 +561,17 @@ class SecurityPerformanceTests:
                 
                 try:
                     rate_limiter.check_rate_limit(request, 100, 60, "memory_test")
-                except:
+                except Exception:
+                    # Rate limit errors expected in stress test
                     pass
-                
+
                 # Token operations
                 token = create_access_token({"sub": f"user_{i}"})
                 try:
                     security_service.is_token_blacklisted(token)
                     security_service.track_token_usage(token, request.client.host)
-                except:
+                except Exception:
+                    # Token errors expected in stress test
                     pass
                 
                 # Check memory every 1000 operations

@@ -123,7 +123,8 @@ class AuthenticationPerformanceTests:
         for _ in range(5):
             try:
                 operation_func()
-            except:
+            except Exception:
+                # Warmup errors are expected and can be ignored
                 pass
         
         # Measure performance

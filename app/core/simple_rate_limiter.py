@@ -296,6 +296,31 @@ async def check_upload_rate_limit(request: Request):
     return True
 
 
+# Analytics endpoints rate limiting
+async def check_behavioral_insights_rate_limit(request: Request):
+    """Dependency for behavioral insights rate limiting"""
+    await rate_limiter.check_rate_limit(request, 10, 60, "analytics_behavioral_insights")  # 10 per minute
+    return True
+
+
+async def check_seasonal_patterns_rate_limit(request: Request):
+    """Dependency for seasonal patterns rate limiting"""
+    await rate_limiter.check_rate_limit(request, 5, 60, "analytics_seasonal_patterns")  # 5 per minute
+    return True
+
+
+async def check_aggregate_rate_limit(request: Request):
+    """Dependency for aggregate analytics rate limiting"""
+    await rate_limiter.check_rate_limit(request, 20, 60, "analytics_aggregate")  # 20 per minute
+    return True
+
+
+async def check_anomalies_rate_limit(request: Request):
+    """Dependency for anomalies detection rate limiting"""
+    await rate_limiter.check_rate_limit(request, 20, 60, "analytics_anomalies")  # 20 per minute
+    return True
+
+
 # ---- EMERGENCY RATE LIMITING INTEGRATION ----
 # Legacy emergency rate limiting functions - integrated into main system
 

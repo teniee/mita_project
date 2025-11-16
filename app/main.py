@@ -1,16 +1,5 @@
 # flake8: noqa
 # MITA Finance API - Production Ready
-# Fix for Python 3.10+ collections compatibility BEFORE any other imports
-import collections
-import collections.abc
-if not hasattr(collections, "MutableMapping"):
-    collections.MutableMapping = collections.abc.MutableMapping
-if not hasattr(collections, "MutableSet"):
-    collections.MutableSet = collections.abc.MutableSet
-if not hasattr(collections, "Iterable"):
-    collections.Iterable = collections.abc.Iterable
-if not hasattr(collections, "Mapping"):
-    collections.Mapping = collections.abc.Mapping
 
 import asyncio
 import json
@@ -337,11 +326,19 @@ This API uses a standardized error response format across all endpoints:
 
 ### Authentication
 
-Most endpoints require authentication via JWT tokens:
+Most endpoints require authentication via JWT tokens sent via the Authorization header:
 
 ```
 Authorization: Bearer <access_token>
 ```
+
+**Security Architecture:**
+- **Stateless JWT Authentication**: All tokens sent via Authorization header only
+- **No Cookie-Based Auth**: CSRF protection not required (no session cookies)
+- **Token Security**: Short-lived access tokens (2 hours) with refresh rotation
+- **CORS Protection**: Strict origin allowlist with credential support
+
+For security architecture details, see: `app/core/security_notes.py`
 
 ### Rate Limiting
 
@@ -477,6 +474,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---- CSRF Protection: NOT IMPLEMENTED (by design) ----
+# MITA uses stateless JWT authentication via Authorization headers only.
+# CSRF protection is not required because:
+# 1. No session cookies or cookie-based authentication
+# 2. Browsers don't automatically send Authorization headers (CSRF attack vector closed)
+# 3. All tokens sent via header, returned in response body (never in cookies)
+# See: app/core/security_notes.py and docs/adr/ADR-20251115-csrf-protection-analysis.md
 
 # Lightweight performance monitoring middleware
 

@@ -3,6 +3,7 @@ Behavioral Analysis API Router
 Connects powerful behavioral analysis services to mobile app
 """
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, Body, Query
@@ -135,8 +136,8 @@ async def get_behavioral_anomalies(
             "note": "Need at least 5 transactions to detect anomalies"
         })
 
-    # Calculate statistical anomalies
-    amounts = [float(t.amount) for t in transactions]
+    # Calculate statistical anomalies (using float for statistics)
+    amounts = [float(t.amount) for t in transactions if t.amount is not None]
     mean_amount = statistics.mean(amounts)
     stdev_amount = statistics.stdev(amounts) if len(amounts) > 1 else 0
     threshold = mean_amount + (2.5 * stdev_amount)
@@ -145,6 +146,8 @@ async def get_behavioral_anomalies(
     unusual_transactions = []
 
     for txn in transactions:
+        if txn.amount is None:
+            continue
         amount = float(txn.amount)
         if amount > threshold:
             anomalies.append({
@@ -211,11 +214,12 @@ async def get_adaptive_behavior_recommendations(
         })
 
     # Analyze spending by category
-    category_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
+    category_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
     for txn in transactions:
-        cat = txn.category or "uncategorized"
-        category_spending[cat]["amount"] += float(txn.amount)
-        category_spending[cat]["count"] += 1
+        if txn.amount is not None:
+            cat = txn.category or "uncategorized"
+            category_spending[cat]["amount"] += txn.amount
+            category_spending[cat]["count"] += 1
 
     # Generate recommendations
     recommendations = []
@@ -224,7 +228,7 @@ async def get_adaptive_behavior_recommendations(
     # Check for high-frequency categories
     for cat, data in category_spending.items():
         if data["count"] > 10:  # More than 10 transactions in 60 days
-            avg_per_txn = data["amount"] / data["count"]
+            avg_per_txn = float(data["amount"]) / data["count"]
             recommendations.append({
                 "type": "spending_pattern",
                 "category": cat,
@@ -233,11 +237,11 @@ async def get_adaptive_behavior_recommendations(
             })
 
     # Check for large one-time expenses
-    total_spent = sum(float(t.amount) for t in transactions)
-    avg_transaction = total_spent / len(transactions) if transactions else 0
+    total_spent = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+    avg_transaction = float(total_spent) / len(transactions) if transactions else 0
 
     for txn in transactions:
-        if float(txn.amount) > avg_transaction * 3:
+        if txn.amount and float(txn.amount) > avg_transaction * 3:
             recommendations.append({
                 "type": "large_expense",
                 "category": txn.category,
@@ -291,18 +295,19 @@ async def get_spending_triggers(
     ).all()
 
     # Analyze temporal patterns
-    day_of_week_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
-    hour_of_day_spending = defaultdict(lambda: {"amount": 0.0, "count": 0})
+    day_of_week_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
+    hour_of_day_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
 
     for txn in transactions:
-        day_name = txn.spent_at.strftime("%A")
-        hour = txn.spent_at.hour
+        if txn.amount is not None:
+            day_name = txn.spent_at.strftime("%A")
+            hour = txn.spent_at.hour
 
-        day_of_week_spending[day_name]["amount"] += float(txn.amount)
-        day_of_week_spending[day_name]["count"] += 1
+            day_of_week_spending[day_name]["amount"] += txn.amount
+            day_of_week_spending[day_name]["count"] += 1
 
-        hour_of_day_spending[hour]["amount"] += float(txn.amount)
-        hour_of_day_spending[hour]["count"] += 1
+            hour_of_day_spending[hour]["amount"] += txn.amount
+            hour_of_day_spending[hour]["count"] += 1
 
     # Find temporal triggers
     temporal_triggers = []
@@ -549,14 +554,15 @@ async def get_behavioral_progress(
         })
 
     # Group transactions by month
-    monthly_data = defaultdict(lambda: {"total": 0.0, "count": 0, "categories": set()})
+    monthly_data = defaultdict(lambda: {"total": Decimal('0'), "count": 0, "categories": set()})
 
     for txn in transactions:
-        month_key = txn.spent_at.strftime("%Y-%m")
-        monthly_data[month_key]["total"] += float(txn.amount)
-        monthly_data[month_key]["count"] += 1
-        if txn.category:
-            monthly_data[month_key]["categories"].add(txn.category)
+        if txn.amount is not None:
+            month_key = txn.spent_at.strftime("%Y-%m")
+            monthly_data[month_key]["total"] += txn.amount
+            monthly_data[month_key]["count"] += 1
+            if txn.category:
+                monthly_data[month_key]["categories"].add(txn.category)
 
     # Calculate trends
     trends = []
@@ -658,13 +664,13 @@ async def get_category_behavioral_insights(
             "note": f"No transactions found for category '{category}'"
         })
 
-    total_spent = sum(float(t.amount) for t in transactions)
-    avg_spending = total_spent / len(transactions)
+    total_spent = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+    avg_spending = float(total_spent) / len(transactions) if transactions else 0.0
 
     return success_response({
         "category": category,
         "average_spending": round(avg_spending, 2),
-        "total_spent": round(total_spent, 2),
+        "total_spent": round(float(total_spent), 2),
         "frequency": len(transactions),
         "patterns": [
             {
@@ -716,10 +722,10 @@ async def get_behavioral_warnings(
     suggestions = []
 
     if len(transactions) > 10:
-        # Check for overspending patterns
-        amounts = [float(t.amount) for t in transactions]
+        # Check for overspending patterns (using float for statistics)
+        amounts = [float(t.amount) for t in transactions if t.amount is not None]
         total = sum(amounts)
-        avg = statistics.mean(amounts)
+        avg = statistics.mean(amounts) if amounts else 0
 
         # High spending warning
         if total > 5000:  # Arbitrary threshold, should be based on user income
@@ -800,7 +806,7 @@ async def get_behavioral_expense_suggestions(
 
     # Suggest amount based on category history
     if suggested_cat and not amount:
-        cat_transactions = [float(t.amount) for t in past_transactions if t.category == suggested_cat]
+        cat_transactions = [float(t.amount) for t in past_transactions if t.category == suggested_cat and t.amount is not None]
         if cat_transactions:
             import statistics
             suggested_amt = statistics.median(cat_transactions)

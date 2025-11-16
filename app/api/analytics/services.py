@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -34,10 +35,12 @@ def get_monthly_category_totals(user_id: str, db: Session) -> dict:
         )
         .all()
     )
-    totals = defaultdict(float)
+    totals = defaultdict(lambda: Decimal('0'))
     for txn in txns:
-        totals[txn.category] += float(txn.amount)
-    return dict(totals)
+        if txn.amount is not None:
+            totals[txn.category] += txn.amount
+    # Convert Decimal to float for JSON serialization
+    return {k: float(v) for k, v in totals.items()}
 
 
 def get_monthly_trend(user_id: str, db: Session) -> list:
@@ -54,11 +57,13 @@ def get_monthly_trend(user_id: str, db: Session) -> list:
         )
         .all()
     )
-    trend = defaultdict(float)
+    trend = defaultdict(lambda: Decimal('0'))
     for txn in txns:
-        key = txn.timestamp.date().isoformat()
-        trend[key] += float(txn.amount)
-    return [{"date": k, "amount": round(v, 2)} for k, v in sorted(trend.items())]
+        if txn.amount is not None:
+            key = txn.timestamp.date().isoformat()
+            trend[key] += txn.amount
+    # Convert Decimal to float for JSON serialization and round
+    return [{"date": k, "amount": round(float(v), 2)} for k, v in sorted(trend.items())]
 
 
 def analyze_aggregate(calendar: list) -> dict:

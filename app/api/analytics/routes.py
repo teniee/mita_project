@@ -1,5 +1,6 @@
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, Body
+from decimal import Decimal
+from fastapi import APIRouter, Depends, Body, Request
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,12 @@ from app.services.analytics_service import (
     get_monthly_trend,
 )
 from app.utils.response_wrapper import success_response
+from app.core.simple_rate_limiter import (
+    check_behavioral_insights_rate_limit,
+    check_seasonal_patterns_rate_limit,
+    check_aggregate_rate_limit,
+    check_anomalies_rate_limit,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -40,19 +47,30 @@ async def trend(
     return success_response({"trend": result})
 
 
-@router.post("/aggregate", response_model=AggregateResult)
+@router.post(
+    "/aggregate",
+    response_model=AggregateResult,
+    dependencies=[Depends(check_aggregate_rate_limit)]
+)
 async def aggregate(payload: CalendarPayload):
     return success_response(analyze_aggregate(payload.calendar))
 
 
-@router.post("/anomalies", response_model=AnomalyResult)
+@router.post(
+    "/anomalies",
+    response_model=AnomalyResult,
+    dependencies=[Depends(check_anomalies_rate_limit)]
+)
 async def anomalies(payload: CalendarPayload):
     return success_response(analyze_anomalies(payload.calendar))
 
 
 # NEW ENDPOINTS for mobile app integration
 
-@router.get("/behavioral-insights")
+@router.get(
+    "/behavioral-insights",
+    dependencies=[Depends(check_behavioral_insights_rate_limit)]
+)
 async def get_behavioral_insights(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -85,18 +103,19 @@ async def get_behavioral_insights(
         })
 
     # Calculate insights from real data
-    total_spending = sum(float(t.amount) for t in transactions)
+    total_spending = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
     transaction_count = len(transactions)
-    avg_transaction = total_spending / transaction_count if transaction_count > 0 else 0
+    avg_transaction = total_spending / transaction_count if transaction_count > 0 else Decimal('0')
 
     # Weekend vs weekday spending
-    weekend_spending = sum(float(t.amount) for t in transactions if t.spent_at.weekday() >= 5)
+    weekend_spending = sum(t.amount for t in transactions if t.spent_at.weekday() >= 5 and t.amount is not None) or Decimal('0')
     weekday_spending = total_spending - weekend_spending
 
     # Category analysis
     category_spending = {}
     for t in transactions:
-        category_spending[t.category] = category_spending.get(t.category, 0) + float(t.amount)
+        if t.amount is not None:
+            category_spending[t.category] = category_spending.get(t.category, Decimal('0')) + t.amount
 
     top_category = max(category_spending.items(), key=lambda x: x[1])[0] if category_spending else "other"
 
@@ -112,8 +131,8 @@ async def get_behavioral_insights(
         insights.append(f"Your {top_category} spending is your largest category")
         recommendations.append("Consider meal planning to reduce food costs")
 
-    # Risk score based on spending volatility
-    amounts = [float(t.amount) for t in transactions]
+    # Risk score based on spending volatility (using float for statistical calculations)
+    amounts = [float(t.amount) for t in transactions if t.amount is not None]
     avg_amount = sum(amounts) / len(amounts) if amounts else 0
     variance = sum((x - avg_amount) ** 2 for x in amounts) / len(amounts) if amounts else 0
     risk_score = min(1.0, variance / (avg_amount ** 2) if avg_amount > 0 else 0)
@@ -152,7 +171,9 @@ async def log_feature_usage(
     if timestamp_str:
         try:
             timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-        except:
+        except (ValueError, AttributeError) as e:
+            # Invalid timestamp format, fall back to current time
+            logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
             timestamp = datetime.utcnow()
     else:
         timestamp = datetime.utcnow()
@@ -239,7 +260,9 @@ async def log_paywall_impression(
     if timestamp_str:
         try:
             timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-        except:
+        except (ValueError, AttributeError) as e:
+            # Invalid timestamp format, fall back to current time
+            logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
             timestamp = datetime.utcnow()
     else:
         timestamp = datetime.utcnow()
@@ -265,7 +288,10 @@ async def log_paywall_impression(
     })
 
 
-@router.get("/seasonal-patterns")
+@router.get(
+    "/seasonal-patterns",
+    dependencies=[Depends(check_seasonal_patterns_rate_limit)]
+)
 async def get_seasonal_patterns(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -284,7 +310,10 @@ async def get_seasonal_patterns(
         func.sum(Transaction.amount).label('total')
     ).filter(
         Transaction.user_id == user.id
-    ).group_by('month', 'year').all()
+    ).group_by(
+        extract('month', Transaction.spent_at),
+        extract('year', Transaction.spent_at)
+    ).all()
 
     if not monthly_spending or len(monthly_spending) < 3:
         return success_response({

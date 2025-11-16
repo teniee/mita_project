@@ -67,23 +67,30 @@ async def get_available_challenges(
         )
     ).all()
 
-    available_challenges = []
-    for ch in active_challenges:
-        # Check if user already joined this challenge
-        joined = db.query(ChallengeParticipation).filter(
+    # Get all user's participations for current month in ONE query
+    user_participation_ids = set(
+        db.query(ChallengeParticipation.challenge_id).filter(
             and_(
                 ChallengeParticipation.user_id == user.id,
-                ChallengeParticipation.challenge_id == ch.id,
                 ChallengeParticipation.month == current_month
             )
-        ).first()
+        ).scalars().all()
+    )
 
-        # Only include if not joined
-        if not joined:
-            # Count total participants
-            participants_count = db.query(func.count(ChallengeParticipation.id)).filter(
-                ChallengeParticipation.challenge_id == ch.id
-            ).scalar() or 0
+    # Get participant counts for all challenges in ONE query
+    participant_counts = dict(
+        db.query(
+            ChallengeParticipation.challenge_id,
+            func.count(ChallengeParticipation.id)
+        ).group_by(ChallengeParticipation.challenge_id).all()
+    )
+
+    available_challenges = []
+    for ch in active_challenges:
+        # Check if user already joined using in-memory set (no query)
+        if ch.id not in user_participation_ids:
+            # Get participant count from pre-loaded dict (no query)
+            participants_count = participant_counts.get(ch.id, 0)
 
             available_challenges.append({
                 "id": ch.id,
@@ -135,8 +142,12 @@ async def get_challenge_stats(
         )
     ).scalar() or 0
 
-    # Calculate total points earned
-    completed_participations = db.query(ChallengeParticipation).filter(
+    # Calculate total points earned using JOIN to avoid N+1
+    from sqlalchemy.orm import joinedload
+
+    completed_participations = db.query(ChallengeParticipation).options(
+        joinedload(ChallengeParticipation.challenge)
+    ).filter(
         and_(
             ChallengeParticipation.user_id == user.id,
             ChallengeParticipation.status == "completed"
@@ -145,9 +156,8 @@ async def get_challenge_stats(
 
     total_points = 0
     for cp in completed_participations:
-        challenge = db.query(Challenge).filter(Challenge.id == cp.challenge_id).first()
-        if challenge:
-            total_points += challenge.reward_points
+        if cp.challenge:
+            total_points += cp.challenge.reward_points
 
     # Count challenges completed this month
     completed_this_month = db.query(func.count(ChallengeParticipation.id)).filter(
@@ -398,9 +408,12 @@ async def get_active_challenges(
     """Get user's active challenges"""
     from datetime import datetime
     from app.db.models import ChallengeParticipation, Challenge
+    from sqlalchemy.orm import joinedload
 
-    # Query active participations
-    participations = db.query(ChallengeParticipation).filter(
+    # Query active participations with eager-loaded challenge (no N+1)
+    participations = db.query(ChallengeParticipation).options(
+        joinedload(ChallengeParticipation.challenge)
+    ).filter(
         and_(
             ChallengeParticipation.user_id == user.id,
             ChallengeParticipation.status == "active"
@@ -409,16 +422,15 @@ async def get_active_challenges(
 
     active_challenges: List[Dict[str, Any]] = []
     for p in participations:
-        challenge = db.query(Challenge).filter(Challenge.id == p.challenge_id).first()
-        if challenge:
+        if p.challenge:
             active_challenges.append({
-                "id": challenge.id,
-                "name": challenge.name,
-                "description": challenge.description,
-                "type": challenge.type,
-                "duration_days": challenge.duration_days,
-                "reward_points": challenge.reward_points,
-                "difficulty": challenge.difficulty,
+                "id": p.challenge.id,
+                "name": p.challenge.name,
+                "description": p.challenge.description,
+                "type": p.challenge.type,
+                "duration_days": p.challenge.duration_days,
+                "reward_points": p.challenge.reward_points,
+                "difficulty": p.challenge.difficulty,
                 "progress_percentage": float(p.progress_percentage),
                 "days_completed": p.days_completed,
                 "current_streak": p.current_streak,

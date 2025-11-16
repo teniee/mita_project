@@ -3,6 +3,7 @@ Notification Service - Complete notification management with rich features
 Handles creation, delivery, scheduling, and tracking of all notifications
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -18,6 +19,7 @@ from app.db.models.notification import (
     NotificationType,
 )
 from app.db.models.push_token import PushToken
+from app.db.models.user import User
 from app.services.notification_log_service import log_notification
 from app.services.push_service import send_push_notification
 
@@ -96,6 +98,105 @@ class NotificationService:
         )
         return notification
 
+    def _send_email_fallback(self, notification: Notification) -> bool:
+        """
+        Send notification via email as fallback when push fails
+
+        Args:
+            notification: Notification to send via email
+
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        try:
+            # Get user email
+            user = self.db.query(User).filter(User.id == notification.user_id).first()
+            if not user or not user.email:
+                logger.warning(
+                    f"Cannot send email fallback for notification {notification.id} - no email found"
+                )
+                return False
+
+            # Import email service here to avoid circular imports
+            from app.services.email_service import EmailService, EmailType, EmailPriority
+            from app.core.config import settings
+            from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+            from sqlalchemy.orm import sessionmaker
+
+            # Create async database session for email service
+            async def send_email_async():
+                engine = create_async_engine(settings.ASYNC_DATABASE_URL)
+                async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+                async with async_session() as session:
+                    email_service = EmailService()
+
+                    # Map notification priority to email priority
+                    email_priority = EmailPriority.NORMAL
+                    if notification.priority == NotificationPriority.HIGH.value:
+                        email_priority = EmailPriority.HIGH
+                    elif notification.priority == NotificationPriority.LOW.value:
+                        email_priority = EmailPriority.LOW
+
+                    # Determine email type based on notification category
+                    email_type = EmailType.WELCOME  # Default
+                    if notification.category == "budget":
+                        email_type = EmailType.BUDGET_ALERT
+                    elif notification.category == "security":
+                        email_type = EmailType.SECURITY_ALERT
+                    elif notification.category == "transaction":
+                        email_type = EmailType.TRANSACTION_CONFIRMATION
+
+                    # Prepare email variables
+                    variables = {
+                        "title": notification.title,
+                        "message": notification.message,
+                        "action_url": notification.action_url or "",
+                        "user_name": user.full_name or user.email,
+                    }
+
+                    # Send email
+                    result = await email_service.send_email(
+                        to_email=user.email,
+                        email_type=email_type,
+                        variables=variables,
+                        priority=email_priority,
+                        user_id=str(user.id),
+                        db=session
+                    )
+
+                    return result.success
+
+            # Run async function synchronously
+            success = asyncio.run(send_email_async())
+
+            if success:
+                notification.channel = "email"
+                notification.status = NotificationStatus.DELIVERED.value
+                notification.sent_at = datetime.utcnow()
+                notification.delivered_at = datetime.utcnow()
+                self.db.commit()
+
+                # Log successful email delivery
+                log_notification(
+                    self.db,
+                    user_id=notification.user_id,
+                    channel="email",
+                    message=f"{notification.title}: {notification.message}",
+                    success=True,
+                )
+
+                logger.info(
+                    f"Successfully delivered notification {notification.id} via email fallback"
+                )
+                return True
+            else:
+                logger.error(f"Email fallback failed for notification {notification.id}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error in email fallback for notification {notification.id}: {e}")
+            return False
+
     def _deliver_notification(self, notification: Notification) -> bool:
         """
         Deliver notification via push notification or email
@@ -167,13 +268,22 @@ class NotificationService:
                         logger.error(f"Error sending push notification: {e}")
                         continue
 
-            # TODO: Fallback to email if push fails
+            # Fallback to email if push fails
+            logger.warning(
+                f"Push notification failed for {notification.id} - attempting email fallback"
+            )
+
+            email_success = self._send_email_fallback(notification)
+            if email_success:
+                return True
+
+            # Both push and email failed
             notification.status = NotificationStatus.FAILED.value
-            notification.error_message = "No valid push tokens found"
+            notification.error_message = "Both push and email delivery failed"
             self.db.commit()
 
-            logger.warning(
-                f"Failed to deliver notification {notification.id} - No push tokens"
+            logger.error(
+                f"Failed to deliver notification {notification.id} via both push and email"
             )
             return False
 

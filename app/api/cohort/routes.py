@@ -1,3 +1,4 @@
+from decimal import Decimal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -46,17 +47,18 @@ async def cohort_insights(
         Transaction.spent_at >= thirty_days_ago
     ).all()
 
-    user_total_spending = sum(float(t.amount) for t in user_transactions)
+    user_total_spending = sum(t.amount for t in user_transactions if t.amount is not None) or Decimal('0')
 
     # Get spending by category
-    category_spending = defaultdict(float)
+    category_spending = defaultdict(lambda: Decimal('0'))
     for txn in user_transactions:
-        cat = txn.category or "other"
-        category_spending[cat] += float(txn.amount)
+        if txn.amount is not None:
+            cat = txn.category or "other"
+            category_spending[cat] += txn.amount
 
     # Determine cohort type based on spending vs income ratio
     if user_income > 0:
-        spending_ratio = user_total_spending / user_income
+        spending_ratio = float(user_total_spending) / user_income
         if spending_ratio < 0.5:
             cohort_type = "conservative_saver"
         elif spending_ratio < 0.75:
@@ -153,20 +155,21 @@ async def income_classification(
     ).all()
 
     # Calculate category distribution
-    category_totals = defaultdict(float)
-    total_spending = 0.0
+    category_totals = defaultdict(lambda: Decimal('0'))
+    total_spending = Decimal('0')
 
     for txn in transactions:
-        amount = float(txn.amount)
-        total_spending += amount
-        cat = txn.category or "other"
-        category_totals[cat] += amount
+        if txn.amount is not None:
+            amount = txn.amount
+            total_spending += amount
+            cat = txn.category or "other"
+            category_totals[cat] += amount
 
     # Calculate percentages
     category_percentages = {}
     if total_spending > 0:
         for cat, amount in category_totals.items():
-            category_percentages[cat] = round((amount / total_spending) * 100, 1)
+            category_percentages[cat] = round((float(amount) / float(total_spending)) * 100, 1)
 
     # Determine spending pattern consistency
     if len(transactions) < 10:

@@ -313,7 +313,12 @@ async def get_transactions_by_date(
 
     # Query transactions with date filter using REAL database query
     from app.db.models.transaction import Transaction
-    query = db.query(Transaction).filter(Transaction.user_id == user.id)
+    from sqlalchemy.orm import joinedload
+
+    query = db.query(Transaction).options(
+        joinedload(Transaction.user),
+        joinedload(Transaction.goal)
+    ).filter(Transaction.user_id == user.id)
 
     if start:
         query = query.filter(Transaction.spent_at >= start)
@@ -325,7 +330,7 @@ async def get_transactions_by_date(
     transactions = [
         {
             "id": txn.id,
-            "amount": float(txn.amount),
+            "amount": float(txn.amount) if txn.amount else 0.0,
             "category": txn.category,
             "description": txn.description,
             "spent_at": txn.spent_at.isoformat() if txn.spent_at else None,

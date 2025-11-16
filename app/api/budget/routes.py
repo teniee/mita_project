@@ -1,5 +1,6 @@
 import inspect
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, Body
@@ -101,20 +102,29 @@ async def get_budget_suggestions(
     ).all()
 
     # Build calendar dict: date -> {actual_spending: {cat: amt}, planned_budget: {cat: amt}}
-    calendar = defaultdict(lambda: {"actual_spending": defaultdict(float), "planned_budget": {}})
+    calendar = defaultdict(lambda: {"actual_spending": defaultdict(lambda: Decimal('0')), "planned_budget": {}})
 
     for txn in transactions:
         date_key = txn.spent_at.date().isoformat()
         category = txn.category or "other"
-        calendar[date_key]["actual_spending"][category] += float(txn.amount)
+        if txn.amount is not None:
+            calendar[date_key]["actual_spending"][category] += txn.amount
 
     for plan in daily_plans:
         date_key = plan.date.isoformat()
         if plan.plan_json and plan.plan_json.get("category_budgets"):
             calendar[date_key]["planned_budget"] = plan.plan_json.get("category_budgets")
 
+    # Convert Decimal to float for suggestion engine (expects float)
+    calendar_for_engine = {}
+    for date_key, day_data in calendar.items():
+        calendar_for_engine[date_key] = {
+            "actual_spending": {cat: float(amt) for cat, amt in day_data["actual_spending"].items()},
+            "planned_budget": day_data["planned_budget"]
+        }
+
     # Call the actual suggestion engine
-    suggestions_map = suggest_budget_adjustments(dict(calendar), user_income)
+    suggestions_map = suggest_budget_adjustments(calendar_for_engine, user_income)
 
     # Convert to structured response
     suggestions_list = []
@@ -409,9 +419,9 @@ async def get_live_budget_status(
         Transaction.spent_at >= month_start
     ).all()
 
-    monthly_spent = sum(float(t.amount) for t in monthly_transactions)
+    monthly_spent = sum(t.amount for t in monthly_transactions if t.amount is not None) or Decimal('0')
     monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
-    on_track = monthly_spent <= (monthly_budget * (now.day / 30.0)) if monthly_budget > 0 else True
+    on_track = float(monthly_spent) <= (monthly_budget * (now.day / 30.0)) if monthly_budget > 0 else True
 
     status_data = {
         "date": now.date().isoformat(),
@@ -420,7 +430,7 @@ async def get_live_budget_status(
         "remaining_today": float(today_plan.daily_budget - today_plan.spent_amount) if today_plan and today_plan.daily_budget and today_plan.spent_amount else 0.0,
         "status": today_plan.status if today_plan else "neutral",
         "monthly_budget": monthly_budget,
-        "monthly_spent": round(monthly_spent, 2),
+        "monthly_spent": round(float(monthly_spent), 2),
         "on_track": on_track
     }
 

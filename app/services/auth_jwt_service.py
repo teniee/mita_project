@@ -39,10 +39,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to validate bcrypt configuration: {e}")
 
-# EMERGENCY FIX: Disable thread pool causing deadlock
-# _thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")
-_thread_pool = None  # EMERGENCY: Disabled to prevent hanging
-
 # Token operation cache to reduce JWT decoding overhead
 _token_cache: Dict[str, Dict[str, Any]] = {}
 _cache_max_size = 200  # Reduced for Render memory constraints

@@ -637,13 +637,16 @@ class AuditLogger:
             # Try to get JSON body
             try:
                 return await request.json()
-            except:
-                # Try to get form data
+            except (ValueError, json.JSONDecodeError) as e:
+                # JSON parsing failed, try to get form data instead
+                logger.debug(f"Failed to parse JSON body: {e}")
                 try:
                     form_data = await request.form()
                     # Convert FormData to serializable dictionary
                     return self._serialize_form_data(form_data)
-                except:
+                except Exception as e:
+                    # Form data extraction failed, log and return None
+                    logger.debug(f"Failed to extract form data: {e}")
                     return None
         except Exception:
             return None
@@ -679,8 +682,13 @@ class AuditLogger:
                 if isinstance(body, bytes):
                     try:
                         return json.loads(body.decode())
-                    except:
-                        return body.decode()[:1000]  # Limit size
+                    except (ValueError, json.JSONDecodeError, UnicodeDecodeError) as e:
+                        # JSON parsing or decoding failed, return truncated raw text
+                        logger.debug(f"Failed to parse response body as JSON: {e}")
+                        try:
+                            return body.decode()[:1000]  # Limit size
+                        except UnicodeDecodeError:
+                            return str(body)[:1000]
                 return body
             return None
         except Exception:

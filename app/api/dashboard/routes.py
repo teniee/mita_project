@@ -11,6 +11,7 @@ Provides comprehensive dashboard data including:
 """
 import logging
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Optional
 from collections import defaultdict
 
@@ -205,7 +206,7 @@ async def get_dashboard(
         for txn in recent_transactions:
             transactions_data.append({
                 'id': str(txn.id),
-                'amount': float(txn.amount),
+                'amount': float(txn.amount) if txn.amount else 0.0,
                 'category': txn.category or 'other',
                 'action': txn.description or 'Transaction',
                 'date': txn.spent_at.isoformat(),
@@ -278,13 +279,13 @@ async def get_dashboard(
                     'id': str(goal.id),
                     'title': goal.title,
                     'category': goal.category or 'Other',
-                    'target_amount': float(goal.target_amount),
-                    'saved_amount': float(goal.saved_amount),
+                    'target_amount': float(goal.target_amount) if goal.target_amount else 0.0,
+                    'saved_amount': float(goal.saved_amount) if goal.saved_amount else 0.0,
                     'progress': progress,
                     'priority': goal.priority or 'medium',
                     'is_overdue': is_overdue,
                     'target_date': goal.target_date.isoformat() if goal.target_date else None,
-                    'remaining_amount': float(goal.target_amount) - float(goal.saved_amount),
+                    'remaining_amount': float(goal.target_amount or 0) - float(goal.saved_amount or 0),
                 })
 
         except Exception as e:
@@ -300,10 +301,14 @@ async def get_dashboard(
         }
 
         try:
+            from sqlalchemy.orm import joinedload
+
             current_month = today.strftime("%Y-%m")
 
-            # Get active challenge participations
-            active_participations = db.query(ChallengeParticipation).filter(
+            # Get active challenge participations with eager-loaded challenges
+            active_participations = db.query(ChallengeParticipation).options(
+                joinedload(ChallengeParticipation.challenge)
+            ).filter(
                 ChallengeParticipation.user_id == user_id,
                 ChallengeParticipation.status == 'active'
             ).order_by(
@@ -329,19 +334,16 @@ async def get_dashboard(
             challenges_summary['current_streak'] = max_streak
 
             for participation in active_participations:
-                challenge = db.query(Challenge).filter(
-                    Challenge.id == participation.challenge_id
-                ).first()
-
-                if challenge:
+                # Access pre-loaded challenge via relationship (no query)
+                if participation.challenge:
                     challenges_data.append({
-                        'id': challenge.id,
-                        'name': challenge.name,
-                        'description': challenge.description,
-                        'type': challenge.type,
-                        'difficulty': challenge.difficulty,
-                        'duration_days': challenge.duration_days,
-                        'reward_points': challenge.reward_points,
+                        'id': participation.challenge.id,
+                        'name': participation.challenge.name,
+                        'description': participation.challenge.description,
+                        'type': participation.challenge.type,
+                        'difficulty': participation.challenge.difficulty,
+                        'duration_days': participation.challenge.duration_days,
+                        'reward_points': participation.challenge.reward_points,
                         'progress_percentage': participation.progress_percentage,
                         'days_completed': participation.days_completed,
                         'current_streak': participation.current_streak,
@@ -464,8 +466,8 @@ async def get_quick_stats(
             goals_stats['completed_goals'] = len(completed_goals)
 
             if all_goals:
-                goals_stats['total_target_amount'] = sum(float(g.target_amount) for g in all_goals)
-                goals_stats['total_saved_amount'] = sum(float(g.saved_amount) for g in all_goals)
+                goals_stats['total_target_amount'] = sum(float(g.target_amount) if g.target_amount else 0.0 for g in all_goals)
+                goals_stats['total_saved_amount'] = sum(float(g.saved_amount) if g.saved_amount else 0.0 for g in all_goals)
                 goals_stats['average_progress'] = sum(float(g.progress or 0) for g in all_goals) / len(all_goals)
         except Exception as e:
             logger.error(f"Error calculating goals stats: {str(e)}", exc_info=True)

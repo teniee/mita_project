@@ -357,7 +357,9 @@ class MitaTaskQueue:
                     if job.ended_at and job.ended_at < cutoff:
                         job.delete()
                         cleaned['completed'] += 1
-                except:
+                except Exception as e:
+                    # Job may have been already deleted or connection issue
+                    logger.debug(f"Failed to clean completed job {job_id}: {e}")
                     pass
             
             # Clean failed jobs
@@ -367,7 +369,9 @@ class MitaTaskQueue:
                     if job.ended_at and job.ended_at < cutoff:
                         job.delete()
                         cleaned['failed'] += 1
-                except:
+                except Exception as e:
+                    # Job may have been already deleted or connection issue
+                    logger.debug(f"Failed to clean failed job {job_id}: {e}")
                     pass
         
         logger.info(f"Cleaned {cleaned['completed']} completed and {cleaned['failed']} failed jobs")

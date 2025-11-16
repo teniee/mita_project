@@ -1,3 +1,4 @@
+from decimal import Decimal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -230,8 +231,8 @@ async def get_ai_profile(
                 })
 
             # Calculate basic metrics
-            total_spending = sum(float(t.amount) for t in transactions)
-            avg_transaction = total_spending / len(transactions)
+            total_spending = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+            avg_transaction = float(total_spending) / len(transactions) if transactions else 0.0
 
             personality = "cautious_saver" if avg_transaction < 50 else "balanced_spender"
 
@@ -317,20 +318,21 @@ async def get_budget_optimization(
                 })
 
             # Calculate current allocation by category
-            category_spending = defaultdict(float)
-            total_spending = 0.0
+            category_spending = defaultdict(lambda: Decimal('0'))
+            total_spending = Decimal('0')
             for t in transactions:
-                amount = float(t.amount)
-                category_spending[t.category] += amount
-                total_spending += amount
+                if t.amount is not None:
+                    amount = t.amount
+                    category_spending[t.category] += amount
+                    total_spending += amount
 
-            current_allocation = {cat: amount / total_spending if total_spending > 0 else 0
+            current_allocation = {cat: float(amount) / float(total_spending) if total_spending > 0 else 0
                                   for cat, amount in category_spending.items()}
 
             # Find highest spending category for optimization
             if category_spending:
                 top_category = max(category_spending.items(), key=lambda x: x[1])
-                potential_savings = top_category[1] * 0.15  # Suggest 15% reduction
+                potential_savings = float(top_category[1]) * 0.15  # Suggest 15% reduction
 
                 return success_response({
                     "current_allocation": current_allocation,
@@ -423,7 +425,7 @@ async def ai_assistant(
                 Transaction.spent_at >= thirty_days_ago
             ).all()
 
-            total = sum(float(t.amount) for t in transactions) if transactions else 0.0
+            total = float(sum(t.amount for t in transactions if t.amount is not None) or Decimal('0'))
 
             return success_response({
                 "answer": f"In the last 30 days, you've spent ${total:.2f} across {len(transactions)} transactions.",

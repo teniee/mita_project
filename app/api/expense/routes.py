@@ -60,7 +60,7 @@ async def add_expense(
     result = {
         "id": str(transaction.id),
         "user_id": str(user.id),
-        "amount": float(transaction.amount),
+        "amount": float(transaction.amount) if transaction.amount else 0.0,
         "action": transaction.category,
         "date": transaction.spent_at.date().isoformat()
     }
@@ -94,7 +94,7 @@ async def get_history(
             {
                 "id": str(t.id),
                 "user_id": str(user.id),
-                "amount": float(t.amount),
+                "amount": float(t.amount) if t.amount else 0.0,
                 "action": t.category or "expense",
                 "date": t.spent_at.date().isoformat()
             }
