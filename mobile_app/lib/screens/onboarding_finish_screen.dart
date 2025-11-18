@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
 import '../services/logging_service.dart';
@@ -242,7 +244,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       body: Center(
         child: _loading
             ? Column(
@@ -253,7 +255,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                   Text(
                     'Setting up your MITA account...',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 16,
                       color: Colors.grey[600],
                     ),
@@ -281,17 +283,17 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                       const Text(
                         'Setup Complete!',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Welcome to MITA!',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 16,
                           color: Colors.grey[600],
                         ),
@@ -308,7 +310,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                           _error!,
                           style: const TextStyle(
                             color: Colors.red,
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 16,
                           ),
                           textAlign: TextAlign.center,
@@ -319,7 +321,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                           Text(
                             'Retry attempts: $_retryCount/$_maxRetries',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 13,
                               color: Colors.grey.shade600,
                             ),
@@ -337,7 +339,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                             child: Text(
                               _getRetryMessage(),
                               style: TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 fontSize: 13,
                                 color: Colors.orange.shade800,
                               ),
@@ -359,7 +361,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                 }
                               : null, // Disabled when rate limited
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF193C57),
+                            backgroundColor: const AppColors.textPrimary,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: Colors.grey.shade300,
                             disabledForegroundColor: Colors.grey.shade600,
@@ -383,7 +385,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                           },
                           child: const Text(
                             'Skip for now',
-                            style: TextStyle(color: Color(0xFF193C57)),
+                            style: TextStyle(color: AppColors.textPrimary),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -406,7 +408,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                             child: const Text(
                               'Back to Login',
                               style: TextStyle(
-                                color: Color(0xFFD32F2F),
+                                color: AppColors.error,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -417,10 +419,10 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                 : const Text(
                     'Welcome to MITA!',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.bold,
                       fontSize: 24,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
       ),

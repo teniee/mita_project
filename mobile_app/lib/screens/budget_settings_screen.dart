@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
@@ -44,7 +46,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Flexible Budget',
       'description': 'Adaptive budget that adjusts to your spending patterns',
       'icon': Icons.auto_fix_high,
-      'color': const Color(0xFF84FAA1),
+      'color': const AppColors.successLight,
       'features': ['Auto-adjustment', 'Smart redistribution', 'Flexible limits'],
     },
     {
@@ -52,7 +54,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Strict Budget',
       'description': 'Rigid budget control with firm spending limits',
       'icon': Icons.lock,
-      'color': const Color(0xFFFF5C5C),
+      'color': const AppColors.danger,
       'features': ['Hard limits', 'Strict alerts', 'No overspending'],
     },
     {
@@ -60,7 +62,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Behavioral Adaptive',
       'description': 'AI-powered budget that learns from your behavior',
       'icon': Icons.psychology,
-      'color': const Color(0xFF6B73FF),
+      'color': const AppColors.accent,
       'features': ['AI learning', 'Behavioral insights', 'Predictive adjustments'],
     },
     {
@@ -68,7 +70,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Goal-Oriented',
       'description': 'Budget optimized for achieving your savings goals',
       'icon': Icons.flag,
-      'color': const Color(0xFFFFD25F),
+      'color': const AppColors.secondary,
       'features': ['Goal tracking', 'Savings priority', 'Target optimization'],
     },
   ];
@@ -277,7 +279,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                               ),
                             ),
                             if (isSelected) ...[
@@ -385,7 +387,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ],
@@ -426,7 +428,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                   ],
@@ -446,7 +448,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         color: percentageUsed > 90 ? Colors.red : null,
                       ),
                     ),
@@ -467,7 +469,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         color: remaining < 0 ? Colors.red : Colors.green,
                       ),
                     ),
@@ -503,7 +505,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ],
@@ -599,7 +601,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             title: const Text(
               'Budget Settings',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -652,7 +654,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 Text(
                                   'Income-Based Recommendations',
                                   style: TextStyle(
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
                                     color: primaryColor,
@@ -674,7 +676,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                     Text(
                                       category.toUpperCase(),
                                       style: const TextStyle(
-                                        fontFamily: 'Sora',
+                                        fontFamily: AppTypography.fontHeading,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
                                       ),
@@ -685,7 +687,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                         Text(
                                           '\$${amount.toStringAsFixed(0)}',
                                           style: TextStyle(
-                                            fontFamily: 'Sora',
+                                            fontFamily: AppTypography.fontHeading,
                                             fontWeight: FontWeight.bold,
                                             color: primaryColor,
                                           ),
@@ -693,7 +695,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                         Text(
                                           '${percentage.toStringAsFixed(1)}% of income',
                                           style: TextStyle(
-                                            fontFamily: 'Manrope',
+                                            fontFamily: AppTypography.fontBody,
                                             fontSize: 11,
                                             color: Colors.grey[600],
                                           ),
@@ -726,14 +728,14 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                               children: [
                                 Icon(
                                   Icons.psychology,
-                                  color: const Color(0xFF6B73FF),
+                                  color: const AppColors.accent,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
                                   'AI Behavioral Allocation',
                                   style: TextStyle(
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
                                     color: colorScheme.onSurface,
@@ -767,7 +769,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                         Text(
                                           category.toUpperCase(),
                                           style: const TextStyle(
-                                            fontFamily: 'Sora',
+                                            fontFamily: AppTypography.fontHeading,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 13,
                                           ),
@@ -775,7 +777,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                         Text(
                                           '\$${amount.toStringAsFixed(0)}',
                                           style: const TextStyle(
-                                            fontFamily: 'Sora',
+                                            fontFamily: AppTypography.fontHeading,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
                                           ),
@@ -793,7 +795,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                               minHeight: 6,
                                               backgroundColor: Colors.grey[200],
                                               valueColor: AlwaysStoppedAnimation<Color>(
-                                                const Color(0xFF6B73FF),
+                                                const AppColors.accent,
                                               ),
                                             ),
                                           ),
@@ -864,7 +866,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                     color: Colors.white,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                   ),
                                 ),
                               ],
@@ -882,7 +884,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -907,7 +909,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                     ),
                   ),
                   const SizedBox(height: 8),

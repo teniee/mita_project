@@ -6,6 +6,7 @@ Provides smooth, polished animations and Material 3 UI components
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../theme/app_colors.dart';
 
 /// Smooth fade-in animation for list items
 class FadeInListItem extends StatefulWidget {
@@ -418,8 +419,8 @@ class ShimmerLoading extends StatefulWidget {
     super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 1500),
-    this.baseColor = const Color(0xFFE0E0E0),
-    this.highlightColor = const Color(0xFFF5F5F5),
+    this.baseColor = AppColors.border,
+    this.highlightColor = AppColors.inputBackground,
   });
 
   @override

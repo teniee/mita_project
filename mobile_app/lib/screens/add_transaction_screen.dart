@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
@@ -157,19 +159,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: Text(
           widget.transaction == null ? 'Add Transaction' : 'Edit Transaction',
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -185,9 +187,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(
                   fontSize: 32,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
@@ -272,7 +274,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today, color: Color(0xFF193C57)),
+                      const Icon(Icons.calendar_today, color: AppColors.textPrimary),
                       const SizedBox(width: 12),
                       Text(
                         DateFormat('MMM d, yyyy').format(_selectedDate),
@@ -304,7 +306,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF193C57),
+                    backgroundColor: const AppColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -315,7 +317,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           widget.transaction == null ? 'Add Transaction' : 'Update Transaction',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),

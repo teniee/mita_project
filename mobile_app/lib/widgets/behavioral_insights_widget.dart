@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/advanced_financial_engine.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Behavioral Insights Widget
 ///
@@ -162,8 +164,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF10B981),
-                  const Color(0xFF059669).withValues(alpha: 0.9),
+                  AppColors.emerald,
+                  AppColors.emeraldDark.withValues(alpha: 0.9),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -196,7 +198,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                             Text(
                               'Behavioral Insights',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                                 color: Colors.white,
@@ -205,7 +207,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                             Text(
                               'AI learning from your patterns',
                               style: TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 fontSize: 12,
                                 color: Colors.white70,
                               ),
@@ -272,10 +274,10 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   tab,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
-                    color: isSelected ? const Color(0xFF10B981) : Colors.white70,
+                    color: isSelected ? AppColors.emerald : Colors.white70,
                   ),
                 ),
               ),
@@ -316,7 +318,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         Text(
           'Your Spending Personality: $spendingPersonality',
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
             color: Colors.white,
@@ -329,7 +331,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           const Text(
             'Identified Patterns:',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 14,
               color: Colors.white,
@@ -395,7 +397,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 Text(
                   patternDescription,
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withValues(alpha: 0.9),
@@ -404,7 +406,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 Text(
                   'Detected pattern',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.6),
                   ),
@@ -430,7 +432,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           Text(
             'Pattern Confidence',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 12,
               color: Colors.white.withValues(alpha: 0.9),
@@ -446,7 +448,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     Text(
                       'Data Quality',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
                       ),
@@ -464,7 +466,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               Text(
                 '85%',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.9),
@@ -507,7 +509,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           _getPersonalityTitle(spendingPersonality),
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
             fontSize: 18,
             color: Colors.white,
@@ -520,7 +522,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           _getPersonalityDescription(spendingPersonality),
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 13,
             color: Colors.white.withValues(alpha: 0.8),
           ),
@@ -533,7 +535,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           const Text(
             'Personalized Tips:',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 14,
               color: Colors.white,
@@ -560,7 +562,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   child: Text(
                     rec.toString(),
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.8),
                     ),
@@ -584,7 +586,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         const Text(
           'Learning Progress',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
             color: Colors.white,
@@ -621,7 +623,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               Text(
                 'Recent Activity',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.9),
@@ -658,7 +660,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           Text(
             value,
             style: const TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.bold,
               fontSize: 18,
               color: Colors.white,
@@ -667,7 +669,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 11,
               color: Colors.white.withValues(alpha: 0.7),
             ),
@@ -695,7 +697,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             child: Text(
               activity,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 11,
                 color: Colors.white.withValues(alpha: 0.8),
               ),
@@ -704,7 +706,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           Text(
             _formatTimestamp(timestamp),
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 10,
               color: Colors.white.withValues(alpha: 0.5),
             ),

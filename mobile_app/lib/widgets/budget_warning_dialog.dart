@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Budget Warning Dialog Widget
 /// Shows real-time budget warnings when user tries to exceed budget
@@ -112,7 +114,7 @@ class BudgetWarningDialog extends StatelessWidget {
             Text(
               _getTitle(),
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
                 color: warningColor,
@@ -132,7 +134,7 @@ class BudgetWarningDialog extends StatelessWidget {
               child: Text(
                 impactMessage,
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 15,
                   color: warningColor.withOpacity(0.9),
                   fontWeight: FontWeight.w600,
@@ -153,7 +155,7 @@ class BudgetWarningDialog extends StatelessWidget {
                 child: Text(
                   'Suggestions:',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade700,
@@ -172,7 +174,7 @@ class BudgetWarningDialog extends StatelessWidget {
                       child: Text(
                         suggestion.toString(),
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 13,
                           color: Colors.black87,
                         ),
@@ -191,7 +193,7 @@ class BudgetWarningDialog extends StatelessWidget {
                 child: Text(
                   'Use different category:',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade700,
@@ -209,7 +211,7 @@ class BudgetWarningDialog extends StatelessWidget {
                     label: Text(
                       '$categoryName (\$${available.toStringAsFixed(0)} free)',
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -243,7 +245,7 @@ class BudgetWarningDialog extends StatelessWidget {
                     child: const Text(
                       'Cancel',
                       style: TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -259,7 +261,7 @@ class BudgetWarningDialog extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: warningLevel == 'blocked'
                           ? Colors.red
-                          : const Color(0xFF193C57),
+                          : AppColors.primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -267,7 +269,7 @@ class BudgetWarningDialog extends StatelessWidget {
                     child: Text(
                       warningLevel == 'blocked' ? 'Proceed Anyway' : 'Continue',
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -292,7 +294,7 @@ class BudgetWarningDialog extends StatelessWidget {
             Text(
               'Daily Budget',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 12,
                 color: Colors.grey.shade600,
               ),
@@ -300,7 +302,7 @@ class BudgetWarningDialog extends StatelessWidget {
             Text(
               '\$${dailyBudget.toStringAsFixed(2)}',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -326,7 +328,7 @@ class BudgetWarningDialog extends StatelessWidget {
             Text(
               '${percentageUsed.toStringAsFixed(0)}% used',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 12,
                 color: warningColor,
                 fontWeight: FontWeight.w600,
@@ -337,7 +339,7 @@ class BudgetWarningDialog extends StatelessWidget {
                   ? 'Over by \$${overage.toStringAsFixed(2)}'
                   : '\$${remaining.toStringAsFixed(2)} left',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 12,
                 color: overage > 0 ? Colors.red : Colors.green,
                 fontWeight: FontWeight.w600,

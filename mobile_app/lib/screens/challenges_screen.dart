@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
@@ -154,27 +156,27 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Challenges',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF193C57),
+          labelColor: const AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFFFFD25F),
+          indicatorColor: const AppColors.secondary,
           labelStyle: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontWeight: FontWeight.w600,
             fontSize: 12,
           ),
@@ -211,17 +213,17 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   Text(
                     'No active challenges',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Join a challenge to start earning rewards!',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       color: Colors.grey,
                     ),
                   ),
@@ -311,10 +313,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     child: Text(
                       challenge['title'] ?? '',
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -327,7 +329,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     child: Text(
                       challenge['difficulty']?.toString().toUpperCase() ?? '',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: difficultyColor,
@@ -342,7 +344,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               Text(
                 challenge['description'] ?? '',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   color: Colors.grey[600],
                 ),
@@ -357,16 +359,16 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   Text(
                     'Progress: ${progress.toInt()}/${target.toInt()}',
                     style: const TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   Text(
                     '${(progressPercentage * 100).toInt()}%',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: difficultyColor,
@@ -400,7 +402,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                             Text(
                               '${challenge['reward_points']} points',
                               style: const TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -414,7 +416,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                             Text(
                               '\$${challenge['reward_amount']} reward',
                               style: const TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -430,7 +432,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       Text(
                         daysLeft > 0 ? '$daysLeft days left' : 'Ending today',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: daysLeft <= 1 ? Colors.red : Colors.grey[600],
@@ -440,7 +442,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       Text(
                         'Ends ${DateFormat('MMM d').format(endDate)}',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 10,
                           color: Colors.grey[500],
                         ),
@@ -467,7 +469,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   child: Text(
                     'Leave Challenge',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.w600,
                       color: Colors.red[400],
                     ),
@@ -502,10 +504,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   child: Text(
                     challenge['title'] ?? '',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -518,7 +520,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   child: Text(
                     challenge['difficulty']?.toString().toUpperCase() ?? '',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: difficultyColor,
@@ -533,7 +535,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Text(
               challenge['description'] ?? '',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 color: Colors.grey[600],
               ),
@@ -588,7 +590,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       Text(
                         '${challenge['reward_points']} points',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -601,7 +603,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                       Text(
                         '\$${challenge['reward_amount']}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
@@ -622,8 +624,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               child: ElevatedButton(
                 onPressed: () => _joinChallenge(challenge['id']),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD25F),
-                  foregroundColor: const Color(0xFF193C57),
+                  backgroundColor: const AppColors.secondary,
+                  foregroundColor: const AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -632,7 +634,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 child: const Text(
                   'Join Challenge',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -648,21 +650,21 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const Color(0xFF193C57), size: 20),
+        Icon(icon, color: const AppColors.textPrimary, size: 20),
         const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 10,
             color: Colors.grey[600],
           ),
@@ -687,8 +689,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6A5ACD), Color(0xFF9370DB)],
+              gradient: LinearGradient(
+                colors: [AppColors.slatePurple, AppColors.slatePurple.withValues(alpha: 0.7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -705,7 +707,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         const Text(
                           'Current Level',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
                             fontSize: 14,
                           ),
@@ -713,7 +715,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         Text(
                           'Level $currentLevel',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             color: Colors.white,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -727,7 +729,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         const Text(
                           'Total Points',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
                             fontSize: 14,
                           ),
@@ -735,7 +737,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         Text(
                           '$totalPoints',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             color: Colors.white,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
@@ -758,7 +760,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         const Text(
                           'Progress to Next Level',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -766,7 +768,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                         Text(
                           '$pointsToNext points to go',
                           style: const TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -797,7 +799,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Active Challenges',
                 '${_gamificationStats['active_challenges'] ?? 0}',
                 Icons.emoji_events,
-                const Color(0xFFFFD25F),
+                const AppColors.secondary,
               ),
             ),
             const SizedBox(width: 12),
@@ -806,7 +808,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Current Streak',
                 '${_gamificationStats['current_streak'] ?? 0} days',
                 Icons.local_fire_department,
-                const Color(0xFFFF5722),
+                const AppColors.warningDark,
               ),
             ),
             const SizedBox(width: 12),
@@ -815,7 +817,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Completed',
                 '${_gamificationStats['completed_challenges'] ?? 0}',
                 Icons.check_circle,
-                const Color(0xFF4CAF50),
+                const AppColors.success,
               ),
             ),
           ],
@@ -837,16 +839,16 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Text(
               value,
               style: const TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 10,
                 color: Colors.grey[600],
               ),
@@ -867,10 +869,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
         const Text(
           'Badges Earned',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -887,7 +889,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     Text(
                       'No badges earned yet',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         color: Colors.grey[600],
                       ),
                     ),
@@ -944,10 +946,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Text(
               badge['name'] ?? '',
               style: const TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -955,7 +957,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Text(
               badge['rarity']?.toString().toUpperCase() ?? '',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: rarityColor,
@@ -974,10 +976,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
         const Text(
           'Leaderboard',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -994,7 +996,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   child: Text(
                     '#${entry['rank']}',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       fontSize: 12,
@@ -1004,24 +1006,24 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 title: Text(
                   entry['username'] ?? 'User',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w600,
-                    color: isCurrentUser ? const Color(0xFFFFD25F) : const Color(0xFF193C57),
+                    color: isCurrentUser ? const AppColors.secondary : const AppColors.textPrimary,
                   ),
                 ),
                 subtitle: Text(
                   'Level ${entry['level']} • ${entry['challenges_completed']} completed',
                   style: const TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 12,
                   ),
                 ),
                 trailing: Text(
                   '${entry['points']} pts',
                   style: const TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                 ),
               );
@@ -1035,11 +1037,11 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Color _getDifficultyColor(String? difficulty) {
     switch (difficulty?.toLowerCase()) {
       case 'easy':
-        return const Color(0xFF4CAF50);
+        return const AppColors.success;
       case 'medium':
-        return const Color(0xFFFF9800);
+        return const AppColors.warning;
       case 'hard':
-        return const Color(0xFFFF5722);
+        return const AppColors.warningDark;
       default:
         return Colors.grey;
     }
@@ -1050,11 +1052,11 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       case 'common':
         return Colors.grey;
       case 'rare':
-        return const Color(0xFF2196F3);
+        return AppColors.info;
       case 'epic':
-        return const Color(0xFF9C27B0);
+        return AppColors.categoryEntertainment;
       case 'legendary':
-        return const Color(0xFFFFD700);
+        return AppColors.secondary;
       default:
         return Colors.grey;
     }
@@ -1076,9 +1078,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   }
 
   Color _getRankColor(int rank) {
-    if (rank == 1) return const Color(0xFFFFD700); // Gold
-    if (rank == 2) return const Color(0xFFC0C0C0); // Silver
-    if (rank == 3) return const Color(0xFFCD7F32); // Bronze
-    return const Color(0xFF607D8B); // Default
+    if (rank == 1) return AppColors.secondary; // Gold
+    if (rank == 2) return Colors.grey.shade400; // Silver
+    if (rank == 3) return AppColors.warning; // Bronze
+    return AppColors.categoryUtilities; // Default
   }
 }

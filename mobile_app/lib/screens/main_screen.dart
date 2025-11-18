@@ -2,6 +2,8 @@
 import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'dart:async';
 import '../services/offline_first_provider.dart';
 import '../services/live_updates_service.dart';
@@ -557,28 +559,28 @@ class _MainScreenState extends State<MainScreen> {
         'limit': dailyBudget * 0.35, // Budget allocation based on income tier
         'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.restaurant,
-        'color': const Color(0xFF4CAF50),
+        'color': const AppColors.success,
       },
       {
         'category': 'Transportation',
         'limit': dailyBudget * 0.25,
         'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.directions_car,
-        'color': const Color(0xFF2196F3),
+        'color': const AppColors.info,
       },
       {
         'category': 'Entertainment',
         'limit': dailyBudget * 0.20,
         'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.movie,
-        'color': const Color(0xFF9C27B0),
+        'color': const AppColors.categoryEntertainment,
       },
       {
         'category': 'Shopping',
         'limit': dailyBudget * 0.20,
         'spent': 0.0, // Show 0 spent when no real transaction data
         'icon': Icons.shopping_bag,
-        'color': const Color(0xFFFF9800),
+        'color': const AppColors.warning,
       },
     ];
   }
@@ -809,7 +811,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildHeader() {
     final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : 'User';
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
 
     return Row(
       children: [
@@ -820,7 +822,7 @@ class _MainScreenState extends State<MainScreen> {
               Text(
                 'Hello, $tierName!',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
                   fontSize: 24,
                   color: primaryColor,
@@ -830,7 +832,7 @@ class _MainScreenState extends State<MainScreen> {
                 Text(
                   'Monthly income: \$${_monthlyIncome.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 14,
                     color: Colors.grey[600],
                   ),
@@ -849,7 +851,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         'Complete your profile for personalized insights',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 14,
                           color: Colors.orange[600],
                           decoration: TextDecoration.underline,
@@ -870,7 +872,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       'Connection issue - tap refresh to retry',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 14,
                         color: Colors.red[600],
                       ),
@@ -883,7 +885,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Text(
                     'Tap to complete your profile',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       color: Colors.blue[600],
                       decoration: TextDecoration.underline,
@@ -943,7 +945,7 @@ class _MainScreenState extends State<MainScreen> {
     final balance = dashboardData?['balance'] ?? 0;
     final spent = dashboardData?['spent'] ?? 0;
     final remaining = (balance is num && spent is num) ? balance - spent : balance;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFFFFD25F);
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.secondary;
 
     return Card(
       color: primaryColor,
@@ -969,7 +971,7 @@ class _MainScreenState extends State<MainScreen> {
                   Text(
                     'Current Balance',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: Colors.white,
@@ -982,7 +984,7 @@ class _MainScreenState extends State<MainScreen> {
               Text(
                 '\$${balance.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -998,7 +1000,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         'Today Spent',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
                         ),
@@ -1006,7 +1008,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         '\$${spent.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -1020,7 +1022,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         'Remaining',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: 0.8),
                         ),
@@ -1028,7 +1030,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         '\$${remaining.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -1048,7 +1050,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBudgetTargets() {
     final targets = dashboardData?['daily_targets'] ?? [];
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,7 +1061,7 @@ class _MainScreenState extends State<MainScreen> {
             Text(
               "Today's Budget Targets",
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: primaryColor,
@@ -1070,9 +1072,9 @@ class _MainScreenState extends State<MainScreen> {
               child: const Text(
                 'View All',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
-                  color: Color(0xFFFFD25F),
+                  color: AppColors.secondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1089,7 +1091,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: Text(
                   'No budget targets set for today',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     color: Colors.grey,
                   ),
                 ),
@@ -1107,11 +1109,11 @@ class _MainScreenState extends State<MainScreen> {
             
             Color progressColor;
             if (progress <= 0.7) {
-              progressColor = const Color(0xFF4CAF50); // Green
+              progressColor = const AppColors.success; // Green
             } else if (progress <= 0.9) {
-              progressColor = const Color(0xFFFF9800); // Orange
+              progressColor = const AppColors.warning; // Orange
             } else {
-              progressColor = const Color(0xFFFF5722); // Red
+              progressColor = const AppColors.warningDark; // Red
             }
 
             return Card(
@@ -1157,7 +1159,7 @@ class _MainScreenState extends State<MainScreen> {
                                 Text(
                                   target['category'] ?? 'Category',
                                   style: TextStyle(
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                     color: primaryColor,
@@ -1167,7 +1169,7 @@ class _MainScreenState extends State<MainScreen> {
                                 Text(
                                   '\$${spent.toStringAsFixed(0)} of \$${limit.toStringAsFixed(0)}',
                                   style: TextStyle(
-                                    fontFamily: 'Manrope',
+                                    fontFamily: AppTypography.fontBody,
                                     fontSize: 14,
                                     color: Colors.grey.shade600,
                                     fontWeight: FontWeight.w500,
@@ -1186,7 +1188,7 @@ class _MainScreenState extends State<MainScreen> {
                             child: Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontSize: 12,
                                 color: progressColor,
                                 fontWeight: FontWeight.bold,
@@ -1220,7 +1222,7 @@ class _MainScreenState extends State<MainScreen> {
                           Text(
                             remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(0)}' : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 13,
                               color: remaining > 0 ? Colors.grey[600] : Colors.red.shade600,
                               fontWeight: FontWeight.w600,
@@ -1265,10 +1267,10 @@ class _MainScreenState extends State<MainScreen> {
         const Text(
           'This Week',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -1277,9 +1279,9 @@ class _MainScreenState extends State<MainScreen> {
           children: week.map<Widget>((day) {
             Color color;
             switch (day['status']) {
-              case 'over': color = const Color(0xFFFF5C5C); break;
-              case 'warning': color = const Color(0xFFFFD25F); break;
-              default: color = const Color(0xFF84FAA1);
+              case 'over': color = const AppColors.danger; break;
+              case 'warning': color = const AppColors.secondary; break;
+              default: color = const AppColors.successLight;
             }
 
             return Container(
@@ -1423,10 +1425,10 @@ class _MainScreenState extends State<MainScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFD25F).withValues(alpha: 0.2),
+                    color: const AppColors.secondary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFFD25F),
+                      color: const AppColors.secondary,
                       width: 1,
                     ),
                   ),
@@ -1436,7 +1438,7 @@ class _MainScreenState extends State<MainScreen> {
                       Icon(
                         Icons.star,
                         size: 14,
-                        color: const Color(0xFFFFD25F),
+                        color: const AppColors.secondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1505,9 +1507,9 @@ class _MainScreenState extends State<MainScreen> {
           } else if (progress >= 80) {
             progressColor = Colors.green;
           } else if (progress >= 50) {
-            progressColor = const Color(0xFFFFD25F);
+            progressColor = const AppColors.secondary;
           } else {
-            progressColor = const Color(0xFF193C57);
+            progressColor = const AppColors.textPrimary;
           }
 
           Color priorityColor;
@@ -1713,13 +1715,13 @@ class _MainScreenState extends State<MainScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF6A5ACD).withValues(alpha: 0.1),
-                const Color(0xFF9370DB).withValues(alpha: 0.05),
+                AppColors.slatePurple.withValues(alpha: 0.1),
+                AppColors.slatePurple.withValues(alpha: 0.05),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFF6A5ACD).withValues(alpha: 0.3),
+              color: const AppColors.slatePurple.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -1728,7 +1730,7 @@ class _MainScreenState extends State<MainScreen> {
               Icon(
                 Icons.emoji_events_outlined,
                 size: 48,
-                color: const Color(0xFF6A5ACD).withValues(alpha: 0.7),
+                color: const AppColors.slatePurple.withValues(alpha: 0.7),
               ),
               const SizedBox(height: 12),
               Text(
@@ -1771,7 +1773,7 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 Icon(
                   Icons.emoji_events,
-                  color: const Color(0xFF6A5ACD),
+                  color: const AppColors.slatePurple,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -1787,13 +1789,13 @@ class _MainScreenState extends State<MainScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6A5ACD).withValues(alpha: 0.2),
+                      color: const AppColors.slatePurple.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '$activeChallenges',
                       style: textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFF6A5ACD),
+                        color: const AppColors.slatePurple,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1851,10 +1853,10 @@ class _MainScreenState extends State<MainScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF5722).withValues(alpha: 0.1),
+                    color: const AppColors.warningDark.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFF5722),
+                      color: const AppColors.warningDark,
                       width: 1,
                     ),
                   ),
@@ -1864,13 +1866,13 @@ class _MainScreenState extends State<MainScreen> {
                       Icon(
                         Icons.local_fire_department,
                         size: 14,
-                        color: const Color(0xFFFF5722),
+                        color: const AppColors.warningDark,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '$currentStreak day streak',
                         style: textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFFFF5722),
+                          color: const AppColors.warningDark,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1899,15 +1901,15 @@ class _MainScreenState extends State<MainScreen> {
           IconData difficultyIcon;
           switch (difficulty.toLowerCase()) {
             case 'easy':
-              difficultyColor = const Color(0xFF4CAF50);
+              difficultyColor = const AppColors.success;
               difficultyIcon = Icons.star_outline;
               break;
             case 'hard':
-              difficultyColor = const Color(0xFFFF5722);
+              difficultyColor = const AppColors.warningDark;
               difficultyIcon = Icons.star;
               break;
             default:
-              difficultyColor = const Color(0xFFFF9800);
+              difficultyColor = const AppColors.warning;
               difficultyIcon = Icons.star_half;
           }
 
@@ -2103,8 +2105,8 @@ class _MainScreenState extends State<MainScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF193C57),
-              const Color(0xFF193C57).withValues(alpha: 0.8),
+              const AppColors.textPrimary,
+              const AppColors.textPrimary.withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -2112,7 +2114,7 @@ class _MainScreenState extends State<MainScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF193C57).withValues(alpha: 0.3),
+              color: const AppColors.textPrimary.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -2132,7 +2134,7 @@ class _MainScreenState extends State<MainScreen> {
                 const Text(
                   'AI Insights',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: Colors.white,
@@ -2175,7 +2177,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       '${spendingAnomalies.length} anomaly detected',
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                         color: Colors.orange,
                         fontWeight: FontWeight.w500,
@@ -2209,7 +2211,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Text(
                 'Rating: $rating',
                 style: const TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   color: Colors.white,
@@ -2222,7 +2224,7 @@ class _MainScreenState extends State<MainScreen> {
         Text(
           summary.length > 100 ? '${summary.substring(0, 100)}...' : summary,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
             height: 1.4,
@@ -2250,7 +2252,7 @@ class _MainScreenState extends State<MainScreen> {
             Text(
               'Trend: ${trend.toUpperCase()}',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
                 color: _getTrendColor(trend),
@@ -2262,7 +2264,7 @@ class _MainScreenState extends State<MainScreen> {
         Text(
           insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
             height: 1.4,
@@ -2290,7 +2292,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Text(
                 'Budget Score: $grade',
                 style: const TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   color: Colors.white,
@@ -2303,7 +2305,7 @@ class _MainScreenState extends State<MainScreen> {
         Text(
           'Your personalized budget is ${score >= 80 ? 'excellent' : score >= 70 ? 'good' : 'needs improvement'} and based on your real income, goals, and spending habits.',
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 14,
             color: Colors.white.withValues(alpha: 0.9),
             height: 1.4,
@@ -2333,7 +2335,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: const Text(
                   'PROFILE INCOMPLETE',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                     color: Colors.white,
@@ -2346,7 +2348,7 @@ class _MainScreenState extends State<MainScreen> {
           Text(
             advice['text'] ?? 'Complete your profile setup to get personalized financial insights and budget recommendations.',
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 14,
               color: Colors.white.withValues(alpha: 0.9),
               height: 1.4,
@@ -2371,7 +2373,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: const Text(
                   'CONNECTION ISSUE',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                     color: Colors.white,
@@ -2384,7 +2386,7 @@ class _MainScreenState extends State<MainScreen> {
           Text(
             advice['text'] ?? 'Unable to load your data. Please check your internet connection and try refreshing.',
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 14,
               color: Colors.white.withValues(alpha: 0.9),
               height: 1.4,
@@ -2399,7 +2401,7 @@ class _MainScreenState extends State<MainScreen> {
       return Text(
         advice['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
         style: TextStyle(
-          fontFamily: 'Manrope',
+          fontFamily: AppTypography.fontBody,
           fontSize: 14,
           color: Colors.white.withValues(alpha: 0.9),
           height: 1.4,
@@ -2446,10 +2448,10 @@ class _MainScreenState extends State<MainScreen> {
             const Text(
               'Recent Transactions',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             GestureDetector(
@@ -2457,9 +2459,9 @@ class _MainScreenState extends State<MainScreen> {
               child: const Text(
                 'View All',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
-                  color: Color(0xFFFFD25F),
+                  color: AppColors.secondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2480,7 +2482,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       'No recent transactions',
                       style: TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         color: Colors.grey,
                         fontWeight: FontWeight.w500,
                       ),
@@ -2493,7 +2495,7 @@ class _MainScreenState extends State<MainScreen> {
         else
           ...transactions.map<Widget>((tx) {
             final txIcon = tx['icon'] as IconData? ?? Icons.attach_money;
-            final txColor = tx['color'] as Color? ?? const Color(0xFF193C57);
+            final txColor = tx['color'] as Color? ?? const AppColors.textPrimary;
             final amount = double.tryParse(tx['amount']?.toString() ?? '0') ?? 0.0;
             final timeAgo = _getTimeAgo(tx['date']);
             
@@ -2525,10 +2527,10 @@ class _MainScreenState extends State<MainScreen> {
                           Text(
                             tx['action'] ?? 'Transaction',
                             style: const TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -2537,7 +2539,7 @@ class _MainScreenState extends State<MainScreen> {
                               Text(
                                 tx['category'] ?? 'Other',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
                                 ),
@@ -2545,7 +2547,7 @@ class _MainScreenState extends State<MainScreen> {
                               Text(
                                 ' • $timeAgo',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   fontSize: 12,
                                   color: Colors.grey.shade500,
                                 ),
@@ -2558,10 +2560,10 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       '-\$${amount.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: Color(0xFFFF5722),
+                        color: AppColors.warningDark,
                       ),
                     ),
                   ],

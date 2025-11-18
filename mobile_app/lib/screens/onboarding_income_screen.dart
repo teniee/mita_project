@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
@@ -119,7 +121,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
               child: Text(
                 'Welcome, $tierName!',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
@@ -134,7 +136,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
             Text(
               message,
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 16,
               ),
             ),
@@ -157,7 +159,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                     child: Text(
                       'We\'ll customize your budget and recommendations based on your income level.',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 14,
                         color: primaryColor,
                       ),
@@ -183,7 +185,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
             child: const Text(
               'Continue Setup',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
@@ -205,15 +207,15 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
   Widget build(BuildContext context) {
     final primaryColor = _currentTier != null 
         ? _incomeService.getIncomeTierPrimaryColor(_currentTier!)
-        : const Color(0xFF193C57);
+        : const AppColors.textPrimary;
     
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -249,7 +251,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                             "What's your average monthly income?",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w700,
                               fontSize: 24,
                               color: primaryColor,
@@ -260,7 +262,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                             "We'll create a personalized budget plan based on your income level.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               color: Colors.black54,
                               fontSize: 14,
                             ),
@@ -325,7 +327,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 18),
                                 textStyle: const TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 18,
                                 ),
@@ -384,7 +386,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                             Text(
                                               'What You\'ll Get',
                                               style: TextStyle(
-                                                fontFamily: 'Sora',
+                                                fontFamily: AppTypography.fontHeading,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 18,
                                                 color: primaryColor,
@@ -408,7 +410,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                                   child: Text(
                                                     benefit,
                                                     style: const TextStyle(
-                                                      fontFamily: 'Manrope',
+                                                      fontFamily: AppTypography.fontBody,
                                                       fontSize: 14,
                                                     ),
                                                   ),

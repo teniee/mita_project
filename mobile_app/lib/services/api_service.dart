@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config.dart';
+import '../theme/app_colors.dart';
 import 'timeout_manager_service.dart';
 import 'income_service.dart';
 import 'message_service.dart';
@@ -680,7 +681,7 @@ class ApiService {
               return {
                 ...target,
                 'icon': iconMap[target['icon']] ?? Icons.category,
-                'color': parseColor(target['color']) ?? const Color(0xFF193C57),
+                'color': parseColor(target['color']) ?? AppColors.primary,
               };
             }).toList() ?? [];
 

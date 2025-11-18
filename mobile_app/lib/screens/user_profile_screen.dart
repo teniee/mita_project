@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -160,7 +162,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading your profile...', style: TextStyle(fontFamily: 'Manrope')),
+          Text('Loading your profile...', style: TextStyle(fontFamily: AppTypography.fontBody)),
         ],
       ),
     );
@@ -180,7 +182,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             title: Text(
               'Profile',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onPrimaryContainer,
               ),
@@ -313,7 +315,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                       style: textTheme.headlineMedium?.copyWith(
                         color: colorScheme.onPrimary,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                   ),
@@ -332,7 +334,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                               name,
                               style: textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                               ),
                             ),
                           ),
@@ -366,7 +368,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                         email,
                         style: textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.7),
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                         ),
                       ),
                       if (joinDate != null) ...[
@@ -375,7 +377,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                           'Member since ${DateFormat('MMMM yyyy').format(joinDate)}',
                           style: textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurface.withValues(alpha: 0.6),
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                           ),
                         ),
                       ],
@@ -398,7 +400,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                       'Profile Completion',
                       style: textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                     Text(
@@ -406,7 +408,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                       style: textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                   ],
@@ -435,7 +437,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           'Financial Overview',
           style: textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
           ),
         ),
         const SizedBox(height: 16),
@@ -518,7 +520,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               style: textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
               ),
             ),
             const SizedBox(height: 4),
@@ -527,7 +529,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
               ),
             ),
           ],
@@ -549,7 +551,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               'Account Details',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
               ),
             ),
             const SizedBox(height: 16),
@@ -618,14 +620,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                   label,
                   style: textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                   ),
                 ),
                 Text(
                   value,
                   style: textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ],
@@ -649,7 +651,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               'Quick Actions',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
               ),
             ),
             const SizedBox(height: 16),
@@ -738,7 +740,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                 textAlign: TextAlign.center,
                 style: textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w500,
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                 ),
               ),
             ],

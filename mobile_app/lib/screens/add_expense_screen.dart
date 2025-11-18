@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/offline_queue_service.dart';
@@ -275,7 +277,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                 Expanded(
                   child: Text(
                     'Could not verify budget. Proceeding without check.',
-                    style: TextStyle(fontFamily: 'Manrope'),
+                    style: TextStyle(fontFamily: AppTypography.fontBody),
                   ),
                 ),
               ],
@@ -301,7 +303,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
               Expanded(
                 child: Text(
                   'Please fill in all required fields',
-                  style: TextStyle(fontFamily: 'Manrope'),
+                  style: TextStyle(fontFamily: AppTypography.fontBody),
                 ),
               ),
             ],
@@ -384,7 +386,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   Expanded(
                     child: Text(
                       'Expense saved offline and will sync when online',
-                      style: TextStyle(fontFamily: 'Manrope'),
+                      style: TextStyle(fontFamily: AppTypography.fontBody),
                     ),
                   ),
                 ],
@@ -436,7 +438,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                 Expanded(
                   child: Text(
                     'Failed to add expense. Please try again.',
-                    style: TextStyle(fontFamily: 'Manrope'),
+                    style: TextStyle(fontFamily: AppTypography.fontBody),
                   ),
                 ),
               ],
@@ -484,7 +486,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       child: Text(
                         'Expense added successfully! \$${_amount?.toStringAsFixed(2)} for $_action',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -524,7 +526,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: Semantics(
           header: true,
@@ -532,15 +534,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
           child: const Text(
             'Add Expense',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF193C57),
+              color: AppColors.textPrimary,
             ),
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         leading: Semantics(
           button: true,
@@ -571,7 +573,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   labelText: 'Amount',
                   prefixIcon: Icon(Icons.attach_money),
                 ),
-                style: const TextStyle(fontFamily: 'Manrope'),
+                style: const TextStyle(fontFamily: AppTypography.fontBody),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Enter amount' : null,
                 onSaved: (value) => _amount = double.tryParse(value ?? ''),
@@ -600,7 +602,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       : const Icon(Icons.psychology, color: Colors.blue),
                   helperText: 'Describe your expense for AI suggestions',
                 ),
-                style: const TextStyle(fontFamily: 'Manrope'),
+                style: const TextStyle(fontFamily: AppTypography.fontBody),
                 onChanged: (value) {
                   _description = value;
                   if (value.length > 3) {
@@ -635,7 +637,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                           Text(
                             'AI Category Suggestions',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: Colors.blue,
@@ -675,7 +677,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                   Text(
                                     category,
                                     style: TextStyle(
-                                      fontFamily: 'Manrope',
+                                      fontFamily: AppTypography.fontBody,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: _action == category
@@ -687,7 +689,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                   Text(
                                     '${(confidence * 100).toInt()}%',
                                     style: TextStyle(
-                                      fontFamily: 'Manrope',
+                                      fontFamily: AppTypography.fontBody,
                                       fontSize: 10,
                                       color: _action == category
                                           ? Colors.white.withValues(alpha: 0.8)
@@ -705,7 +707,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                         Text(
                           _aiSuggestions.first['reason'] as String,
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 11,
                             color: Colors.blue.withValues(alpha: 0.8),
                             fontStyle: FontStyle.italic,
@@ -731,7 +733,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       children: [
                         Icon(cat['icon'] as IconData, color: cat['color'] as Color, size: 20),
                         const SizedBox(width: 8),
-                        Text(cat['name'] as String, style: const TextStyle(fontFamily: 'Manrope')),
+                        Text(cat['name'] as String, style: const TextStyle(fontFamily: AppTypography.fontBody)),
                       ],
                     ),
                   );
@@ -752,7 +754,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   items: _getSelectedCategorySubcategories().map((subcat) {
                     return DropdownMenuItem(
                       value: subcat,
-                      child: Text(subcat, style: const TextStyle(fontFamily: 'Manrope')),
+                      child: Text(subcat, style: const TextStyle(fontFamily: AppTypography.fontBody)),
                     );
                   }).toList(),
                   onChanged: (value) => setState(() => _selectedSubcategory = value),
@@ -761,10 +763,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Date', style: TextStyle(fontFamily: 'Manrope')),
+                title: const Text('Date', style: TextStyle(fontFamily: AppTypography.fontBody)),
                 subtitle: Text(
                   DateFormat.yMMMd().format(_selectedDate),
-                  style: const TextStyle(fontFamily: 'Manrope'),
+                  style: const TextStyle(fontFamily: AppTypography.fontBody),
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
@@ -782,7 +784,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE0E0E0),
+                  backgroundColor: AppColors.inputBackground,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -799,7 +801,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isSubmitting 
                             ? Colors.grey.shade300 
-                            : const Color(0xFFFFD25F),
+                            : const AppColors.secondary,
                         foregroundColor: _isSubmitting 
                             ? Colors.grey.shade600 
                             : Colors.black,
@@ -829,7 +831,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                   const Text(
                                     'Adding...',
                                     style: TextStyle(
-                                      fontFamily: 'Sora',
+                                      fontFamily: AppTypography.fontHeading,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -839,7 +841,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                             : const Text(
                                 'Save Expense',
                                 style: TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/reminder_service.dart';
 
@@ -147,10 +149,10 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             const Text(
               'How are you feeling today?',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -175,7 +177,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             Text(
               _moodData[_mood.round()]!['label'],
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: _moodData[_mood.round()]!['color'],
@@ -185,7 +187,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             Text(
               _moodData[_mood.round()]!['description'],
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 16,
                 color: Colors.grey,
               ),
@@ -238,7 +240,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               child: ElevatedButton(
                 onPressed: _hasSubmittedToday ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _hasSubmittedToday ? Colors.grey : const Color(0xFFFFD25F),
+                  backgroundColor: _hasSubmittedToday ? Colors.grey : const AppColors.secondary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -249,7 +251,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 child: Text(
                   _hasSubmittedToday ? 'Mood Saved for Today' : 'Save My Mood',
                   style: const TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -274,7 +276,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                       child: Text(
                         'Thanks for sharing! Your mood has been recorded.',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 14,
                           color: Colors.green.shade700,
                         ),
@@ -313,10 +315,10 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 const Text(
                   'Mood Tips',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -341,7 +343,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     child: Text(
                       tip,
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 14,
                         height: 1.4,
                       ),
@@ -359,19 +361,19 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Daily Mood Check-in',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -400,17 +402,17 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                       children: [
                         Icon(
                           Icons.trending_up,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                           size: 24,
                         ),
                         SizedBox(width: 8),
                         Text(
                           'Mood Trends',
                           style: TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF193C57),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -419,7 +421,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     const Text(
                       'Track your mood daily to see patterns and trends over time. This can help you identify what affects your wellbeing.',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 14,
                         color: Colors.grey,
                         height: 1.4,
@@ -472,7 +474,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
         Text(
           day,
           style: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

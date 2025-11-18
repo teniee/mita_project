@@ -2,6 +2,8 @@
 /// AI-powered personalized goal recommendations based on user behavior
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -83,19 +85,19 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Smart Recommendations',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         actions: [
           IconButton(
@@ -159,8 +161,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF193C57), Color(0xFF2B5876)],
+          gradient: LinearGradient(
+            colors: [AppColors.textPrimary, AppColors.textPrimary.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -171,10 +173,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD25F),
+                color: const AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.auto_awesome, color: Color(0xFF193C57), size: 32),
+              child: const Icon(Icons.auto_awesome, color: AppColors.textPrimary, size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -184,7 +186,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   const Text(
                     'Powered by AI',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -194,7 +196,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   Text(
                     'Personalized recommendations based on your spending patterns',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.8),
                     ),
@@ -241,17 +243,17 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                         Text(
                           rec['title'] ?? 'Goal',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF193C57),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           rec['category'] ?? 'General',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 13,
                             color: Colors.grey.shade600,
                           ),
@@ -268,7 +270,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     child: Text(
                       priority.toUpperCase(),
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: priorityColor,
@@ -281,7 +283,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 rec['description'] ?? rec['reasoning'] ?? '',
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   height: 1.5,
                   color: Colors.black87,
@@ -357,10 +359,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   child: Text(
                     opp['suggested_goal'] ?? 'Opportunity',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -370,7 +372,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               opp['reason'] ?? '',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.black87,
@@ -431,10 +433,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   child: Text(
                     adj['goal_title'] ?? 'Goal Adjustment',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -444,7 +446,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               adj['reason'] ?? 'Adjustment suggested',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.black87,
@@ -466,7 +468,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       const Text(
                         'Current',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.grey,
                         ),
@@ -475,10 +477,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       Text(
                         '\$${currentMonthly.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -489,7 +491,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       const Text(
                         'Suggested',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.grey,
                         ),
@@ -498,7 +500,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       Text(
                         '\$${suggestedMonthly.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
@@ -514,7 +516,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 '+ \$${increase.toStringAsFixed(0)}/month increase',
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.green,
@@ -545,7 +547,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 10,
                   color: Colors.grey.shade600,
                 ),
@@ -553,10 +555,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 value,
                 style: const TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -579,10 +581,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             const Text(
               'All Caught Up!',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -590,7 +592,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               'No new recommendations at this time.\nKeep tracking your spending to unlock personalized insights!',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 color: Colors.grey.shade600,
                 height: 1.5,
@@ -606,10 +608,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     return Text(
       title,
       style: const TextStyle(
-        fontFamily: 'Sora',
+        fontFamily: AppTypography.fontHeading,
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF193C57),
+        color: AppColors.textPrimary,
       ),
     );
   }
@@ -635,7 +637,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
-          color: Color(0xFFFFF9F0),
+          color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
@@ -656,10 +658,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               rec['title'] ?? 'Goal Details',
               style: const TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -696,7 +698,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 icon: const Icon(Icons.add_circle),
                 label: const Text('Create This Goal'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD25F),
+                  backgroundColor: const AppColors.secondary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -718,7 +720,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 13,
             color: Colors.grey.shade600,
           ),
@@ -727,10 +729,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
       ],

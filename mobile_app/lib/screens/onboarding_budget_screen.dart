@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../theme/income_theme.dart';
@@ -82,7 +84,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
     final categoryColors = IncomeTheme.getBudgetCategoryColors(_incomeTier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: IncomeTheme.createTierAppBar(
         tier: _incomeTier,
         title: 'Budget Setup',
@@ -124,7 +126,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                                 Text(
                                   'Budget for $tierName',
                                   style: TextStyle(
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 20,
                                     color: primaryColor,
@@ -133,7 +135,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                                 Text(
                                   'Monthly Income: \$${_monthlyIncome.toStringAsFixed(0)}',
                                   style: const TextStyle(
-                                    fontFamily: 'Manrope',
+                                    fontFamily: AppTypography.fontBody,
                                     fontSize: 16,
                                     color: Colors.black87,
                                   ),
@@ -162,7 +164,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               child: Text(
                                 'We\'ve created a personalized budget based on your income level. You can adjust these allocations to fit your needs.',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   fontSize: 14,
                                   color: primaryColor,
                                 ),
@@ -182,7 +184,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
               Text(
                 'Budget Allocations',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                   color: primaryColor,
@@ -221,7 +223,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               child: Text(
                                 category.toUpperCase(),
                                 style: const TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                 ),
@@ -230,7 +232,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                             Text(
                               '${percentage.toStringAsFixed(1)}%',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                                 color: categoryColor,
@@ -258,7 +260,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               child: Text(
                                 '\$${amount.toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                   color: categoryColor,
@@ -292,7 +294,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           Text(
                             'Total Allocated',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                               color: Colors.grey.shade700,
@@ -301,7 +303,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           Text(
                             '\$${_totalAllocated.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                             ),
@@ -315,7 +317,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           Text(
                             'Remaining',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                               color: _remainingBudget < 0 ? Colors.red.shade600 : Colors.green.shade600,
@@ -324,7 +326,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                           Text(
                             '\$${_remainingBudget.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                               color: _remainingBudget < 0 ? Colors.red.shade600 : Colors.green.shade600,
@@ -352,7 +354,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                                 child: Text(
                                   'Budget exceeds income by \$${(-_remainingBudget).toStringAsFixed(0)}',
                                   style: TextStyle(
-                                    fontFamily: 'Manrope',
+                                    fontFamily: AppTypography.fontBody,
                                     fontSize: 12,
                                     color: Colors.red.shade600,
                                   ),
@@ -386,7 +388,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                         child: Text(
                           'Reset to Recommended',
                           style: TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.w600,
                             color: primaryColor,
                           ),
@@ -408,7 +410,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                       child: const Text(
                         'Continue to Goals',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),

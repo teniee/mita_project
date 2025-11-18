@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
 import '../services/budget_adapter_service.dart';
@@ -346,7 +348,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
               child: const Text('Budget adapted based on your spending patterns!'),
             ),
             duration: const Duration(seconds: 3),
-            backgroundColor: const Color(0xFF84FAA1),
+            backgroundColor: const AppColors.successLight,
           ),
         );
       }
@@ -366,12 +368,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     switch (status.toLowerCase()) {
       case 'normal':
       case 'good':
-        return const Color(0xFF84FAA1);
+        return const AppColors.successLight;
       case 'warning':
-        return const Color(0xFFFFD25F);
+        return const AppColors.secondary;
       case 'exceeded':
       case 'over':
-        return const Color(0xFFFF5C5C);
+        return const AppColors.danger;
       default:
         return Colors.grey;
     }
@@ -441,11 +443,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              colors: percentage > 0.8 
-                ? [const Color(0xFFFF5C5C), const Color(0xFFFF8A65)]
-                : percentage > 0.6 
-                  ? [const Color(0xFFFFD25F), const Color(0xFFFFE082)]
-                  : [const Color(0xFF84FAA1), const Color(0xFFA8E6A0)],
+              colors: percentage > 0.8
+                ? [AppColors.danger, AppColors.warning]
+                : percentage > 0.6
+                  ? [AppColors.secondary, AppColors.secondary.withValues(alpha: 0.7)]
+                  : [AppColors.successLight, AppColors.success.withValues(alpha: 0.5)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -465,7 +467,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                   ),
@@ -610,8 +612,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'Sora',
-                  color: Color(0xFF193C57),
+                  fontFamily: AppTypography.fontHeading,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -635,7 +637,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         : const Icon(Icons.balance, size: 18),
                       label: Text(_isRedistributing ? 'Redistributing...' : 'Redistribute'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6B73FF),
+                        backgroundColor: const AppColors.accent,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -656,7 +658,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                       icon: const Icon(Icons.auto_fix_high, size: 18),
                       label: const Text('Auto Adapt'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF84FAA1),
+                        backgroundColor: const AppColors.successLight,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -689,15 +691,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           children: [
             const Row(
               children: [
-                Icon(Icons.lightbulb, color: Color(0xFFFFD25F)),
+                Icon(Icons.lightbulb, color: AppColors.secondary),
                 SizedBox(width: 8),
                 Text(
                   'AI Budget Suggestions',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Sora',
-                    color: Color(0xFF193C57),
+                    fontFamily: AppTypography.fontHeading,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -708,18 +710,18 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF9F0),
+                  color: const AppColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFD25F), width: 1),
+                  border: Border.all(color: const AppColors.secondary, width: 1),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.arrow_forward, size: 16, color: Color(0xFFFFD25F)),
+                    const Icon(Icons.arrow_forward, size: 16, color: AppColors.secondary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         suggestion['message'] ?? suggestion.toString(),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF193C57)),
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                       ),
                     ),
                   ],
@@ -746,15 +748,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           children: [
             const Row(
               children: [
-                Icon(Icons.history, color: Color(0xFF6B73FF)),
+                Icon(Icons.history, color: AppColors.accent),
                 SizedBox(width: 8),
                 Text(
                   'Recent Redistribution',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Sora',
-                    color: Color(0xFF193C57),
+                    fontFamily: AppTypography.fontHeading,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -765,7 +767,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F4FF),
+                  color: AppColors.infoLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -780,7 +782,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF6B73FF),
+                        color: AppColors.accent,
                       ),
                     ),
                   ],
@@ -796,7 +798,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: Semantics(
           header: true,
@@ -804,15 +806,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           child: const Text(
             'Smart Daily Budget',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF193C57),
+              color: AppColors.textPrimary,
             ),
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         actions: [
           Semantics(
@@ -914,7 +916,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                 child: Text(
                                   date,
                                   style: const TextStyle(
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -931,7 +933,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                     ),
                                     child: Text(
                                       'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
-                                      style: const TextStyle(fontFamily: 'Manrope'),
+                                      style: const TextStyle(fontFamily: AppTypography.fontBody),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
