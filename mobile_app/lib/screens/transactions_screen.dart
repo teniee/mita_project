@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 import '../services/logging_service.dart';
 import 'add_transaction_screen.dart';
 
@@ -15,44 +16,16 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  final TransactionService _transactionService = TransactionService();
-  List<TransactionModel> _transactions = [];
-  bool _isLoading = true;
-  String? _selectedCategory;
-  DateTime? _startDate;
-  DateTime? _endDate;
-
   @override
   void initState() {
     super.initState();
-    _fetchTransactions();
-  }
-
-  Future<void> _fetchTransactions() async {
-    setState(() {
-      _isLoading = true;
+    // Initialize transaction provider if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<TransactionProvider>();
+      if (provider.state == TransactionState.initial) {
+        provider.initialize();
+      }
     });
-
-    try {
-      final transactions = await _transactionService.getTransactions(
-        category: _selectedCategory,
-        startDate: _startDate,
-        endDate: _endDate,
-        limit: 100,
-      );
-      if (!mounted) return;
-      setState(() {
-        _transactions = transactions;
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading transactions: $e');
-      if (!mounted) return;
-      setState(() {
-        _transactions = [];
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _deleteTransaction(String transactionId) async {
@@ -77,14 +50,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
 
       if (confirmed == true) {
-        await _transactionService.deleteTransaction(transactionId);
+        final provider = context.read<TransactionProvider>();
+        final success = await provider.deleteTransaction(transactionId);
         if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction deleted successfully')),
-        );
-
-        _fetchTransactions();
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaction deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete transaction: ${provider.errorMessage}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -169,6 +147,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use provider for state management
+    final transactionProvider = context.watch<TransactionProvider>();
+    final transactions = transactionProvider.transactions;
+    final isLoading = transactionProvider.isLoading;
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -185,11 +168,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _transactions.isEmpty
+          : transactions.isEmpty
               ? RefreshIndicator(
-                  onRefresh: _fetchTransactions,
+                  onRefresh: () => context.read<TransactionProvider>().refresh(),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: SizedBox(
@@ -229,12 +212,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _fetchTransactions,
+                  onRefresh: () => context.read<TransactionProvider>().refresh(),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _transactions.length,
+                    itemCount: transactions.length,
                     itemBuilder: (context, index) {
-                      final transaction = _transactions[index];
+                      final transaction = transactions[index];
                       return Dismissible(
                         key: Key(transaction.id),
                         direction: DismissDirection.endToStart,
@@ -283,7 +266,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 ),
                               ),
                             );
-                            if (result == true) _fetchTransactions();
+                            if (result == true) context.read<TransactionProvider>().refresh();
                           },
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -405,7 +388,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               builder: (context) => const AddTransactionScreen(),
             ),
           );
-          if (result == true) _fetchTransactions();
+          if (result == true) context.read<TransactionProvider>().refresh();
         },
         backgroundColor: const AppColors.textPrimary,
         child: const Icon(Icons.add, color: Colors.white),

@@ -65,7 +65,10 @@ dependencies:
   url_launcher: ^6.3.2                # UPDATED: Latest URL launching
   
   # Cryptography
-  crypto: ^3.0.5                      # Cryptographic functions
+  crypto: ^3.0.5
+
+  # State Management
+  provider: ^6.1.2                      # Centralized state management
 dev_dependencies:
   flutter_test:
     sdk: flutter

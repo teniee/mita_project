@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/api_service.dart';
@@ -12,6 +13,7 @@ import '../services/logging_service.dart';
 import '../core/enhanced_error_handling.dart';
 import '../core/app_error_handler.dart';
 import '../core/error_handling.dart';
+import '../providers/budget_provider.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({super.key});
@@ -46,6 +48,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
         description: 'Smart budget tracking and financial insights',
       );
     });
+
+    // Initialize BudgetProvider for centralized state management
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final budgetProvider = context.read<BudgetProvider>();
+      if (budgetProvider.state == BudgetState.initial) {
+        budgetProvider.initialize();
+      }
+    });
+
     _initializeData();
     _subscribeToBudgetUpdates();
   }
