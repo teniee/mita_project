@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String? token; // Token from email deep link
@@ -128,11 +130,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -154,27 +156,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         const Icon(
           Icons.lock_reset,
           size: 80,
-          color: Color(0xFF6B73FF),
+          color: AppColors.accent,
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Enter Reset Token',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
-          ),
+          style: AppTypography.heading2,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Please enter the reset token sent to your email',
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 14,
-            color: Color(0xFF666666),
-          ),
+          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
@@ -223,8 +216,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ElevatedButton(
           onPressed: _isLoading ? null : _verifyToken,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6B73FF),
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.accent,
+            foregroundColor: AppColors.textLight,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -236,16 +229,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   width: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: AppColors.textLight,
                   ),
                 )
-              : const Text(
+              : Text(
                   'Verify Token',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTypography.labelLarge.copyWith(color: AppColors.textLight),
                 ),
         ),
       ],
@@ -261,27 +250,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const Icon(
             Icons.lock_open,
             size: 80,
-            color: Color(0xFF6B73FF),
+            color: AppColors.accent,
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Create New Password',
-            style: TextStyle(
-              fontFamily: 'Sora',
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF193C57),
-            ),
+            style: AppTypography.heading2,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Enter your new password below',
-            style: TextStyle(
-              fontFamily: 'Manrope',
-              fontSize: 14,
-              color: Color(0xFF666666),
-            ),
+            style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -378,8 +358,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ElevatedButton(
             onPressed: _isLoading ? null : _resetPassword,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6B73FF),
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.accent,
+              foregroundColor: AppColors.textLight,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -391,16 +371,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: AppColors.textLight,
                     ),
                   )
-                : const Text(
+                : Text(
                     'Reset Password',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTypography.labelLarge.copyWith(color: AppColors.textLight),
                   ),
           ),
         ],
@@ -415,34 +391,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.green.shade50,
+            color: AppColors.successLight,
             shape: BoxShape.circle,
           ),
-          child: Icon(
+          child: const Icon(
             Icons.check_circle,
             size: 80,
-            color: Colors.green.shade600,
+            color: AppColors.success,
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Password Reset Successful!',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
-          ),
+          style: AppTypography.heading2,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Your password has been successfully reset.\nRedirecting you to login...',
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 14,
-            color: Color(0xFF666666),
-          ),
+          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
