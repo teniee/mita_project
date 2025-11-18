@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 class AIAssistantScreen extends StatefulWidget {
   const AIAssistantScreen({super.key});
@@ -58,19 +60,15 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF6B73FF),
-        title: const Text(
+        backgroundColor: AppColors.accent,
+        title: Text(
           'AI Financial Assistant',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: AppTypography.heading3.copyWith(color: AppColors.textLight),
         ),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textLight),
       ),
       body: Column(
         children: [
@@ -109,29 +107,20 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           Icon(
             Icons.psychology,
             size: 80,
-            color: const Color(0xFF6B73FF).withValues(alpha: 0.3),
+            color: AppColors.accent.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Ask me anything about your finances!',
-            style: TextStyle(
-              fontFamily: 'Sora',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF193C57),
-            ),
+            style: AppTypography.heading4,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
               'I can help you with budgeting tips, spending insights, savings goals, and more.',
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 14,
-                color: Color(0xFF666666),
-              ),
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ),
@@ -150,11 +139,11 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF6B73FF) : Colors.white,
+          color: isUser ? AppColors.accent : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: AppColors.shadow,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -162,10 +151,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         ),
         child: Text(
           content,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 14,
-            color: isUser ? Colors.white : const Color(0xFF193C57),
+          style: AppTypography.bodyMedium.copyWith(
+            color: isUser ? AppColors.textLight : AppColors.textPrimary,
             height: 1.4,
           ),
         ),
@@ -177,10 +164,10 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.shadow,
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -193,12 +180,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               controller: _questionController,
               decoration: InputDecoration(
                 hintText: 'Ask a question...',
-                hintStyle: const TextStyle(
-                  fontFamily: 'Manrope',
-                  color: Color(0xFF999999),
-                ),
+                hintStyle: AppTypography.hint,
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: AppColors.inputBackground,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -220,13 +204,13 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _isLoading
-                    ? const Color(0xFF6B73FF).withValues(alpha: 0.5)
-                    : const Color(0xFF6B73FF),
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.accent,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.send,
-                color: Colors.white,
+                color: AppColors.textLight,
                 size: 20,
               ),
             ),
