@@ -5,29 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |">
-      <change afterPath="$PROJECT_DIR$/app/api/auth/account_management.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/admin_endpoints.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/google_auth.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/login.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/password_reset.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/registration.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/routes_old_backup.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/security_monitoring.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/test_endpoints.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/token_management.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/api/auth/utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/security_notes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/tests/security/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/tests/security/test_csrf_not_required.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/ai/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/ai/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/analytics/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/analytics/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/budget/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/budget/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/challenge/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/challenge/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/dashboard/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dashboard/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/goals/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/goals/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/transactions/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/login.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/login.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/registration.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/registration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/token_management.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/token_management.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/db/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/auth_jwt_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/services/auth_jwt_service.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,14 +84,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00032" summary=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed">
-      <option name="closed" value="true" />
-      <created>1754601257936</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1754601257936</updated>
     </task>
     <task id="LOCAL-00033" summary=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed">
       <option name="closed" value="true" />
@@ -492,7 +469,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763291568480</updated>
     </task>
-    <option name="localTasksCounter" value="81" />
+    <task id="LOCAL-00081" summary=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |">
+      <option name="closed" value="true" />
+      <created>1763335346647</created>
+      <option name="number" value="00081" />
+      <option name="presentableId" value="LOCAL-00081" />
+      <option name="project" value="LOCAL" />
+      <updated>1763335346647</updated>
+    </task>
+    <option name="localTasksCounter" value="82" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

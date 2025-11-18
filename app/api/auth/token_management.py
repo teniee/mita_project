@@ -98,7 +98,8 @@ async def refresh_token_standardized(
         user_data = {
             "sub": str(user.id),
             "is_premium": user.is_premium,
-            "country": user.country
+            "country": user.country,
+            "token_version_id": user.token_version  # Security: track token version for revocation
         }
 
         new_tokens = create_token_pair(user_data, user_role=user_role)

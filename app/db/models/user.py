@@ -21,7 +21,11 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
     timezone = Column(String, default="UTC")
     token_version = Column(Integer, default=1, nullable=False)
-    
+
+    # Account security fields
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    account_locked_until = Column(DateTime(timezone=True), nullable=True)
+
     # Password reset fields
     password_reset_token = Column(String, nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)

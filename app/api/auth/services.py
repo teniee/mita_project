@@ -47,9 +47,10 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": user.token_version  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
     
     return TokenOut(
@@ -68,14 +69,15 @@ def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
-    # Determine user role and create tokens with appropriate scopes  
+    # Determine user role and create tokens with appropriate scopes
     user_role = "premium_user" if user.is_premium else "basic_user"
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": user.token_version  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
     
     return TokenOut(

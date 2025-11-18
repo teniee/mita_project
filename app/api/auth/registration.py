@@ -134,7 +134,8 @@ async def register_user_standardized(
         user_data = {
             "sub": str(new_user.id),
             "is_premium": new_user.is_premium,
-            "country": new_user.country
+            "country": new_user.country,
+            "token_version_id": new_user.token_version  # Security: track token version for revocation
         }
 
         tokens = create_token_pair(user_data, user_role=user_role)

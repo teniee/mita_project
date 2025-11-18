@@ -121,7 +121,8 @@ class Settings(BaseSettings):
     APNS_USE_SANDBOX: bool = True
 
     # CORS - Allow configuration via environment (includes mobile app support)
-    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,*"
+    # SECURITY FIX: Removed wildcard (*) - only allow specific origins
+    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance"
     
     # Environment settings
     ENVIRONMENT: str = "development"

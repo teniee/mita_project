@@ -215,10 +215,11 @@ def _create_token(data: dict, expires_delta: timedelta, token_type: str, scopes:
     if "country" in data:
         financial_claims["country"] = data["country"]
         
-    # Security metadata
+    # Security metadata (include user's current token_version for revocation tracking)
     security_claims = {
         "token_version": "2.0",                # Token format version
         "security_level": "high",             # Security level indicator
+        "token_version_id": data.get("token_version_id", 1),  # User's token version for revocation
     }
     
     # Combine all claims
@@ -572,15 +573,58 @@ async def verify_token(
             if exp and exp < time.time():
                 logger.debug("Token has expired")
                 raise InvalidTokenError("Token expired")
-            
-            # Check blacklist using new blacklist service
+
+            # Get jti early for logging (used in token version check)
             jti = payload.get("jti")
+
+            # Check token version against user's current token version
+            user_id = payload.get("sub")
+            if user_id:
+                try:
+                    # Import here to avoid circular imports
+                    from app.core.async_session import get_async_db
+                    from app.db.models import User
+                    from sqlalchemy import select
+
+                    async for db in get_async_db():
+                        user_query = select(User).where(User.id == user_id)
+                        result = await db.execute(user_query)
+                        user = result.scalar_one_or_none()
+
+                        if user:
+                            # Token version in payload
+                            # For backwards compatibility: default to user's current version if missing
+                            token_version_id = payload.get("token_version_id", user.token_version)
+
+                            # Check if token version is outdated (only if token has explicit version)
+                            # This allows old tokens without version_id to work during migration
+                            if "token_version_id" in payload and token_version_id < user.token_version:
+                                logger.warning(f"Token version mismatch for user {user_id}: token={token_version_id}, user={user.token_version}")
+                                log_security_event("token_version_mismatch", {
+                                    "user_id": user_id,
+                                    "token_version": token_version_id,
+                                    "current_version": user.token_version,
+                                    "jti": jti[:8] + "..." if jti else "unknown"
+                                })
+                                raise InvalidTokenError("Token has been revoked")
+                        break
+                except InvalidTokenError:
+                    raise
+                except Exception as version_check_error:
+                    logger.error(f"Error checking token version: {version_check_error}")
+                    # Fail-open for version checks but log the security concern
+                    log_security_event("token_version_check_failed", {
+                        "user_id": user_id,
+                        "error": str(version_check_error)
+                    })
+
+            # Check blacklist using new blacklist service (jti already defined above)
             if jti:
                 try:
                     # Import here to avoid circular imports
                     from app.services.token_blacklist_service import get_blacklist_service
                     blacklist_service = await get_blacklist_service()
-                    
+
                     if await blacklist_service.is_token_blacklisted(jti):
                         logger.warning(f"Blacklisted token access attempt: {jti[:8]}...")
                         log_security_event("blacklisted_token_usage_attempt", {
