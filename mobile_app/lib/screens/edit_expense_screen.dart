@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/ocr_service.dart';

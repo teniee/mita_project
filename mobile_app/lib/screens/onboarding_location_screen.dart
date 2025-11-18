@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/location_service.dart';
 import '../services/onboarding_state.dart';
 import '../widgets/onboarding_progress_indicator.dart';
@@ -135,7 +137,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -163,17 +165,17 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       Icon(
                         Icons.location_on_rounded,
                         size: 64,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                       SizedBox(height: 20),
                       Text(
                         'Which US state are you in?',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w700,
                           fontSize: 28,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       SizedBox(height: 16),
@@ -181,7 +183,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         'We\'ll customize income thresholds and financial advice based on your state\'s cost of living.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.black54,
                           fontSize: 16,
                         ),
@@ -205,15 +207,15 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                     child: Row(
                       children: [
                         CircularProgressIndicator(
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                         SizedBox(width: 16),
                         Text(
                           'Detecting your location...',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 16,
-                            color: Color(0xFF193C57),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -244,7 +246,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             Text(
                               'Location Detected',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 color: Colors.green.shade600,
@@ -256,7 +258,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         Text(
                           _locationService.formatLocationForDisplay(_selectedCountry, stateCode: _selectedState),
                           style: const TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -289,7 +291,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             Text(
                               'Auto-detection failed',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 color: Colors.orange.shade600,
@@ -301,7 +303,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         const Text(
                           'Please select your location manually below.',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 14,
                           ),
                         ),
@@ -316,10 +318,10 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
               const Text(
                 'Select your state:',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -329,7 +331,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search states...',
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF193C57)),
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textPrimary),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -342,7 +344,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                    borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 ),
@@ -359,7 +361,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                 const Text(
                   'Popular States:',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: Colors.grey,
@@ -375,14 +377,14 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       label: Text(
                         state['name']!,
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const Color(0xFF193C57),
+                          color: isSelected ? Colors.white : const AppColors.textPrimary,
                         ),
                       ),
-                      backgroundColor: isSelected ? const Color(0xFF193C57) : Colors.white,
+                      backgroundColor: isSelected ? const AppColors.textPrimary : Colors.white,
                       side: BorderSide(
-                        color: isSelected ? const Color(0xFF193C57) : Colors.grey.shade300,
+                        color: isSelected ? const AppColors.textPrimary : Colors.grey.shade300,
                       ),
                       onPressed: () => _selectState(state['code']!),
                     );
@@ -392,7 +394,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                 const Text(
                   'All States:',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: Colors.grey,
@@ -413,7 +415,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         child: Text(
                           'No states found',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.grey,
                           ),
                         ),
@@ -426,7 +428,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       title: Text(
                         state['name']!,
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontWeight: _selectedState == state['code']
                               ? FontWeight.w600
                               : FontWeight.w400,
@@ -435,11 +437,11 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       trailing: _selectedState == state['code']
                           ? const Icon(
                               Icons.check_circle_rounded,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             )
                           : null,
                       selected: _selectedState == state['code'],
-                      selectedTileColor: const Color(0xFF193C57).withValues(alpha: 0.1),
+                      selectedTileColor: const AppColors.textPrimary.withValues(alpha: 0.1),
                       onTap: () => _selectState(state['code']!),
                     );
                   },
@@ -456,14 +458,14 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       ? _continueWithLocation
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF193C57),
+                    backgroundColor: const AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     textStyle: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
                     ),

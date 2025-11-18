@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/user_data_manager.dart';
@@ -680,7 +682,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                                 fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
                                 color: textColor,
                                 fontSize: constraints.maxWidth > 45 ? (isToday ? 16 : 14) : 12,
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.clip,
@@ -740,7 +742,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                               color: textColor.withValues(alpha: 0.8),
                               fontSize: constraints.maxWidth > 45 ? 8 : 7,
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -897,7 +899,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: colorScheme.onSurface,
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -928,7 +930,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                           Text(
                             'Loading your spending calendar...',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               color: Colors.grey,
                             ),
                           ),
@@ -1006,8 +1008,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF193C57),
-              const Color(0xFF193C57).withValues(alpha: 0.8),
+              const AppColors.textPrimary,
+              const AppColors.textPrimary.withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -1024,7 +1026,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   Text(
                     '${_getMonthName(currentMonth.month)} Overview',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -1039,7 +1041,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                     child: Text(
                       '$activeDays days tracked',
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
@@ -1060,7 +1062,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         const Text(
                           'Total Budget',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 14,
                             color: Colors.white70,
                           ),
@@ -1068,7 +1070,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         Text(
                           '\$${totalBudget.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -1084,7 +1086,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         const Text(
                           'Spent',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 14,
                             color: Colors.white70,
                           ),
@@ -1092,7 +1094,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         Text(
                           '\$${totalSpent.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -1108,7 +1110,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         const Text(
                           'Remaining',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 14,
                             color: Colors.white70,
                           ),
@@ -1116,7 +1118,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         Text(
                           '\$${remaining.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -1154,7 +1156,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               Text(
                 '${(spentPercentage * 100).toStringAsFixed(1)}% of monthly budget used',
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   color: Colors.white70,
                 ),
@@ -1190,7 +1192,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           child: Text(
             count.toString(),
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.bold,
               color: color,
               fontSize: 16,
@@ -1201,7 +1203,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 11,
             color: Colors.white70,
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
@@ -97,27 +99,27 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Behavioral Insights',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF193C57),
+          labelColor: const AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFFFFD25F),
+          indicatorColor: const AppColors.secondary,
           labelStyle: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontWeight: FontWeight.w600,
             fontSize: 12,
           ),
@@ -180,14 +182,14 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 '${((analysis['weekend_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your spending happens on weekends',
                 Icons.weekend,
-                const Color(0xFF9C27B0)),
+                const AppColors.categoryEntertainment),
               const SizedBox(height: 12),
               
               _buildAnalysisCard('Food Focused', 
                 '${((analysis['food_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your budget goes to food',
                 Icons.restaurant,
-                const Color(0xFF4CAF50)),
+                const AppColors.success),
               const SizedBox(height: 24),
             ],
 
@@ -233,7 +235,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF2196F3), Color(0xFF42A5F5)],
+                    colors: [AppColors.info, Color(0xFF42A5F5)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -248,7 +250,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         const Text(
                           'Predicted Spending',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white,
                             fontSize: 16,
                           ),
@@ -256,7 +258,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         Text(
                           '${((_predictions['confidence'] ?? 0.0) * 100).toInt()}% confident',
                           style: const TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -267,7 +269,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     Text(
                       '\$${(_predictions['next_month_spending'] ?? 0.0).toStringAsFixed(2)}',
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -283,7 +285,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                               const Text(
                                 'Recommended Budget',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),
@@ -291,7 +293,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                               Text(
                                 '\$${(_predictions['recommended_budget'] ?? 0.0).toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -307,7 +309,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                               const Text(
                                 'Savings Potential',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   color: Colors.white70,
                                   fontSize: 12,
                                 ),
@@ -315,7 +317,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                               Text(
                                 '+\$${(_predictions['savings_potential'] ?? 0.0).toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -354,22 +356,22 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle, size: 64, color: Color(0xFF4CAF50)),
+                  Icon(Icons.check_circle, size: 64, color: AppColors.success),
                   SizedBox(height: 16),
                   Text(
                     'No anomalies detected',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Your spending patterns look normal',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       color: Colors.grey,
                     ),
                   ),
@@ -404,7 +406,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF9C27B0), Color(0xFFBA68C8)],
+                    colors: [AppColors.categoryEntertainment, Color(0xFFBA68C8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -416,7 +418,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     const Text(
                       'Your Spending Personality',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         color: Colors.white,
                         fontSize: 16,
                       ),
@@ -425,7 +427,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     Text(
                       _insights['spending_personality'] ?? 'Analyzing...',
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -443,7 +445,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Key Traits', Icons.psychology),
               const SizedBox(height: 12),
               ...(_insights['key_traits'] as List).map((trait) =>
-                  _buildInfoTile(trait.toString(), Icons.check_circle, const Color(0xFF4CAF50))),
+                  _buildInfoTile(trait.toString(), Icons.check_circle, const AppColors.success)),
               const SizedBox(height: 24),
             ],
             
@@ -452,7 +454,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Your Strengths', Icons.star),
               const SizedBox(height: 12),
               ...(_insights['strengths'] as List).map((strength) =>
-                  _buildInfoTile(strength.toString(), Icons.star, const Color(0xFFFFD25F))),
+                  _buildInfoTile(strength.toString(), Icons.star, const AppColors.secondary)),
               const SizedBox(height: 24),
             ],
             
@@ -461,7 +463,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Areas for Improvement', Icons.trending_up),
               const SizedBox(height: 12),
               ...(_insights['improvement_areas'] as List).map((area) =>
-                  _buildInfoTile(area.toString(), Icons.trending_up, const Color(0xFFFF9800))),
+                  _buildInfoTile(area.toString(), Icons.trending_up, const AppColors.warning)),
               const SizedBox(height: 24),
             ],
             
@@ -481,15 +483,15 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF193C57), size: 24),
+        Icon(icon, color: const AppColors.textPrimary, size: 24),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -502,19 +504,19 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     
     switch (pattern) {
       case 'weekend_spender':
-        tagColor = const Color(0xFF9C27B0);
+        tagColor = const AppColors.categoryEntertainment;
         displayText = 'Weekend Spender';
         break;
       case 'food_dominated':
-        tagColor = const Color(0xFF4CAF50);
+        tagColor = const AppColors.success;
         displayText = 'Food Focused';
         break;
       case 'emotional_spending':
-        tagColor = const Color(0xFFFF5722);
+        tagColor = const AppColors.warningDark;
         displayText = 'Emotional Spender';
         break;
       default:
-        tagColor = const Color(0xFF607D8B);
+        tagColor = const AppColors.categoryUtilities;
         displayText = pattern.replaceAll('_', ' ').toUpperCase();
     }
 
@@ -528,7 +530,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
       child: Text(
         displayText,
         style: TextStyle(
-          fontFamily: 'Manrope',
+          fontFamily: AppTypography.fontBody,
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: tagColor,
@@ -563,10 +565,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   Text(
                     title,
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -575,7 +577,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         value,
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                           color: color,
@@ -586,7 +588,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         child: Text(
                           description,
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 12,
                             color: Colors.grey[600],
                           ),
@@ -611,16 +613,16 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           Icon(
             icon,
             size: 20,
-            color: color ?? const Color(0xFF193C57),
+            color: color ?? const AppColors.textPrimary,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -640,7 +642,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           children: [
             const Icon(
               Icons.lightbulb,
-              color: Color(0xFFFFD25F),
+              color: AppColors.secondary,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -648,9 +650,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               child: Text(
                 recommendation,
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -664,13 +666,13 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     Color impactColor;
     switch (risk['impact']) {
       case 'high':
-        impactColor = const Color(0xFFFF5722);
+        impactColor = const AppColors.warningDark;
         break;
       case 'medium':
-        impactColor = const Color(0xFFFF9800);
+        impactColor = const AppColors.warning;
         break;
       default:
-        impactColor = const Color(0xFF4CAF50);
+        impactColor = const AppColors.success;
     }
 
     return Card(
@@ -697,17 +699,17 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   Text(
                     risk['factor'] ?? '',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${risk['impact']?.toString().toUpperCase()} IMPACT',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: impactColor,
@@ -728,11 +730,11 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     
     Color severityColor;
     if (anomalyScore >= 0.8) {
-      severityColor = const Color(0xFFFF5722);
+      severityColor = const AppColors.warningDark;
     } else if (anomalyScore >= 0.6) {
-      severityColor = const Color(0xFFFF9800);
+      severityColor = const AppColors.warning;
     } else {
-      severityColor = const Color(0xFFFFD25F);
+      severityColor = const AppColors.secondary;
     }
 
     return Card(
@@ -750,10 +752,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 Text(
                   DateFormat('MMM d').format(date),
                   style: const TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 Container(
@@ -765,7 +767,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   child: Text(
                     '${(anomalyScore * 100).toInt()}% anomaly',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: severityColor,
@@ -779,9 +781,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             Text(
               anomaly['description'] ?? '',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             
@@ -796,7 +798,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         'Category',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
@@ -804,10 +806,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         anomaly['category'] ?? '',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -820,7 +822,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         'Amount',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
@@ -828,10 +830,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         '\$${(anomaly['amount'] ?? 0.0).toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -844,7 +846,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         'Expected',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           color: Colors.grey[600],
                         ),
@@ -852,10 +854,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         '\$${(anomaly['expected_amount'] ?? 0.0).toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -869,7 +871,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               Text(
                 'Possible causes:',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[700],
@@ -883,7 +885,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       label: Text(
                         cause.toString(),
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 10,
                         ),
                       ),
@@ -919,7 +921,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                      colors: [AppColors.success, Color(0xFF66BB6A)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -931,7 +933,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       const Text(
                         'Your Progress Score',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.white,
                           fontSize: 16,
                         ),
@@ -940,7 +942,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         '${_behavioralProgress['overall_score'] ?? 0}/100',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           color: Colors.white,
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -950,7 +952,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         _behavioralProgress['progress_message'] ?? 'Keep up the great work!',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.white,
                           fontSize: 14,
                         ),
@@ -976,7 +978,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Improvements', Icons.star),
               const SizedBox(height: 12),
               ...(_behavioralProgress['improvements'] as List).map((improvement) =>
-                  _buildInfoTile(improvement.toString(), Icons.check_circle, const Color(0xFF4CAF50))),
+                  _buildInfoTile(improvement.toString(), Icons.check_circle, const AppColors.success)),
             ],
           ],
         ),
@@ -1005,7 +1007,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF673AB7), Color(0xFF9575CD)],
+                      colors: [AppColors.categoryEducation, Color(0xFF9575CD)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1017,7 +1019,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       const Text(
                         'Your Spending Cluster',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.white,
                           fontSize: 16,
                         ),
@@ -1026,7 +1028,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         _behavioralCluster['cluster_name'] ?? 'Unknown',
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -1036,7 +1038,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       Text(
                         _behavioralCluster['description'] ?? '',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.white,
                           fontSize: 14,
                         ),
@@ -1094,10 +1096,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                color: const AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.analytics, color: Color(0xFF4CAF50), size: 24),
+              child: const Icon(Icons.analytics, color: AppColors.success, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1107,20 +1109,20 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   Text(
                     metric['name'] ?? '',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${metric['value'] ?? 0}',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: Color(0xFF4CAF50),
+                      color: AppColors.success,
                     ),
                   ),
                 ],
@@ -1163,10 +1165,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   child: Text(
                     trigger['trigger_name'] ?? '',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
@@ -1176,9 +1178,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             Text(
               trigger['description'] ?? '',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
-                color: Color(0xFF666666),
+                color: AppColors.textSecondary,
               ),
             ),
             if (trigger['frequency'] != null) ...[
@@ -1186,7 +1188,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               Text(
                 'Frequency: ${trigger['frequency']}',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   color: Colors.grey[600],
                 ),

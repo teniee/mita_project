@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -375,7 +377,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     Text(
                                       'MITA',
                                       style: TextStyle(
-                                        fontFamily: 'Sora',
+                                        fontFamily: AppTypography.fontHeading,
                                         fontWeight: FontWeight.w800,
                                         fontSize: isLargeScreen ? 48 : 42,
                                         color: theme.colorScheme.secondary,
@@ -391,7 +393,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       'Money Intelligence Task Assistant',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontFamily: 'Manrope',
+                                        fontFamily: AppTypography.fontBody,
                                         fontWeight: FontWeight.w400,
                                         fontSize: isLargeScreen ? 20 : 18,
                                         color: theme.colorScheme.onPrimary
@@ -427,7 +429,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         _statusText,
                         key: ValueKey(_statusText),
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w500,
                           fontSize: 16,
                           color: _hasError 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/iap_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -29,8 +31,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Go Premium'),
-        backgroundColor: const Color(0xFFFFF9F0),
-        foregroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.background,
+        foregroundColor: const AppColors.textPrimary,
         elevation: 0,
       ),
       body: Center(

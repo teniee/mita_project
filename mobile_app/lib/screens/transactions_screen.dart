@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
@@ -98,34 +100,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case 'food':
       case 'dining':
       case 'groceries':
-        return const Color(0xFF4CAF50);
+        return const AppColors.success;
       case 'transportation':
       case 'gas':
       case 'public_transport':
-        return const Color(0xFF2196F3);
+        return const AppColors.info;
       case 'entertainment':
-        return const Color(0xFF9C27B0);
+        return const AppColors.categoryEntertainment;
       case 'shopping':
       case 'clothing':
-        return const Color(0xFFFF9800);
+        return const AppColors.warning;
       case 'healthcare':
       case 'insurance':
-        return const Color(0xFFF44336);
+        return const AppColors.error;
       case 'utilities':
       case 'rent':
       case 'mortgage':
-        return const Color(0xFF607D8B);
+        return const AppColors.categoryUtilities;
       case 'education':
       case 'childcare':
         return const Color(0xFF3F51B5);
       case 'travel':
-        return const Color(0xFF00BCD4);
+        return const AppColors.chart7;
       case 'subscriptions':
         return const Color(0xFF8BC34A);
       case 'pets':
-        return const Color(0xFFFF5722);
+        return const AppColors.warningDark;
       default:
-        return const Color(0xFF795548);
+        return const AppColors.categoryOther;
     }
   }
 
@@ -168,19 +170,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Transactions',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
       body: _isLoading
@@ -199,16 +201,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             Icon(
                               Icons.receipt_long,
                               size: 64,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                             SizedBox(height: 16),
                             Text(
                               'No transactions yet',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF193C57),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             SizedBox(height: 8),
@@ -216,7 +218,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               'Pull down to refresh or add your first transaction',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 color: Colors.grey,
                               ),
                             ),
@@ -316,10 +318,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               transaction.description ??
                                               'Transaction',
                                           style: const TextStyle(
-                                            fontFamily: 'Sora',
+                                            fontFamily: AppTypography.fontHeading,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 16,
-                                            color: Color(0xFF193C57),
+                                            color: AppColors.textPrimary,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -328,7 +330,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                         Text(
                                           transaction.category,
                                           style: TextStyle(
-                                            fontFamily: 'Manrope',
+                                            fontFamily: AppTypography.fontBody,
                                             fontSize: 14,
                                             color: Colors.grey[600],
                                           ),
@@ -338,7 +340,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           DateFormat('MMM d, yyyy • h:mm a')
                                               .format(transaction.spentAt),
                                           style: TextStyle(
-                                            fontFamily: 'Manrope',
+                                            fontFamily: AppTypography.fontBody,
                                             fontSize: 12,
                                             color: Colors.grey[500],
                                           ),
@@ -352,10 +354,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       Text(
                                         '-\$${transaction.amount.toStringAsFixed(2)}',
                                         style: const TextStyle(
-                                          fontFamily: 'Sora',
+                                          fontFamily: AppTypography.fontHeading,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Color(0xFFFF5C5C),
+                                          color: AppColors.danger,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -375,7 +377,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               Text(
                                                 'Recurring',
                                                 style: TextStyle(
-                                                  fontFamily: 'Manrope',
+                                                  fontFamily: AppTypography.fontBody,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.blue,
@@ -405,7 +407,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           );
           if (result == true) _fetchTransactions();
         },
-        backgroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.textPrimary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

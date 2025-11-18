@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -158,11 +160,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text('Register'),
-        backgroundColor: const Color(0xFFFFF9F0),
-        foregroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.background,
+        foregroundColor: const AppColors.textPrimary,
         elevation: 0,
       ),
       body: SafeArea(
@@ -185,23 +187,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF193C57).withValues(alpha: 0.1),
+                          color: const AppColors.textPrimary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
                           Icons.account_balance_wallet_rounded,
                           size: 24,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
                       const Text(
                         'Create account',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w700,
                           fontSize: 20,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -233,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -241,15 +243,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFD25F),
-                            foregroundColor: const Color(0xFF193C57),
+                            backgroundColor: const AppColors.secondary,
+                            foregroundColor: const AppColors.textPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
                             padding: const EdgeInsets.symmetric(
                                 vertical: 16, horizontal: 24),
                             textStyle: const TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -267,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _error!,
                       style: const TextStyle(
                         color: Colors.red,
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                       ),
                     ),
                   ]

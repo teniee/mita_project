@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
@@ -54,12 +56,12 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -78,10 +80,10 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
               const Text(
                 'What are your financial goals?',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w700,
                   fontSize: 22,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -96,11 +98,11 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                       onTap: () => _toggleGoal(goal['id']),
                       child: Card(
                         elevation: isSelected ? 4 : 1,
-                        color: isSelected ? const Color(0xFFFFD25F) : Colors.white,
+                        color: isSelected ? const AppColors.secondary : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: isSelected ? const Color(0xFF193C57) : Colors.transparent,
+                            color: isSelected ? const AppColors.textPrimary : Colors.transparent,
                             width: 1.5,
                           ),
                         ),
@@ -108,21 +110,21 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                           child: Row(
                             children: [
-                              Icon(goal['icon'], color: const Color(0xFF193C57)),
+                              Icon(goal['icon'], color: const AppColors.textPrimary),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Text(
                                   goal['label'],
                                   style: const TextStyle(
-                                    fontFamily: 'Manrope',
+                                    fontFamily: AppTypography.fontBody,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
-                                    color: Color(0xFF193C57),
+                                    color: AppColors.textPrimary,
                                   ),
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check_circle, color: Color(0xFF193C57)),
+                                const Icon(Icons.check_circle, color: AppColors.textPrimary),
                             ],
                           ),
                         ),
@@ -135,10 +137,10 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
               const Text(
                 'Monthly savings goal (optional)',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -152,7 +154,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF193C57)),
+                    borderSide: const BorderSide(color: AppColors.textPrimary),
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 ),
@@ -163,14 +165,14 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                 child: ElevatedButton(
                   onPressed: selectedGoals.isNotEmpty ? _submitGoals : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF193C57),
+                    backgroundColor: const AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
                     textStyle: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -190,7 +192,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
                   ),
                 ),
               ),

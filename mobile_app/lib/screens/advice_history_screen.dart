@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -49,12 +51,12 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Advice History'),
-        backgroundColor: const Color(0xFFFFF9F0),
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        backgroundColor: const AppColors.background,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty

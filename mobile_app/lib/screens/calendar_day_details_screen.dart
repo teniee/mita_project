@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import '../services/predictive_analytics_service.dart';
@@ -334,7 +336,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                     style: textTheme.headlineLarge?.copyWith(
                       color: _getStatusColor(),
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                     ),
                   ),
                   if (isToday)
@@ -366,7 +368,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                     DateFormat('EEEE, MMMM d, yyyy').format(widget.date),
                     style: textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -499,7 +501,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           style: textTheme.titleLarge?.copyWith(
             color: color,
             fontWeight: FontWeight.bold,
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
           ),
         ),
       ],
@@ -637,7 +639,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
             'Category Breakdown',
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
             ),
           ),
           const SizedBox(height: 16),
@@ -652,7 +654,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               'Transactions',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
               ),
             ),
             const SizedBox(height: 16),
@@ -707,7 +709,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                       category['name'] as String,
                       style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                       ),
                     ),
                     Text(
@@ -880,7 +882,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                         'AI-Powered Predictions',
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                         ),
                       ),
                       Text(
@@ -945,7 +947,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   category,
                   style: textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ),
@@ -1038,7 +1040,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
             'Smart Insights',
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
             ),
           ),
           const SizedBox(height: 16),

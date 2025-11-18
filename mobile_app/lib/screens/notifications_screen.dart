@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/api_service.dart';
 import '../models/notification_model.dart';
@@ -121,7 +123,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _showFilterMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -134,10 +136,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const Text(
               'Filter Notifications',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 20),
@@ -150,7 +152,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Navigator.pop(context);
                 _loadNotifications();
               },
-              activeColor: const Color(0xFF193C57),
+              activeColor: const AppColors.textPrimary,
             ),
 
             const Divider(),
@@ -158,7 +160,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const Text(
               'Filter by Type',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -175,7 +177,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Navigator.pop(context);
                   _loadNotifications();
                 },
-                selectedColor: const Color(0xFF193C57),
+                selectedColor: const AppColors.textPrimary,
                 labelStyle: TextStyle(
                   color: (type == 'All' ? _filterType == null : _filterType == type)
                       ? Colors.white
@@ -189,7 +191,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const Text(
               'Filter by Priority',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -205,7 +207,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Navigator.pop(context);
                     _loadNotifications();
                   },
-                  selectedColor: const Color(0xFF193C57),
+                  selectedColor: const AppColors.textPrimary,
                   labelStyle: TextStyle(
                     color: (priority == 'All' ? _filterPriority == null : _filterPriority == priority)
                         ? Colors.white
@@ -259,7 +261,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -267,9 +269,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const Text(
               'Notifications',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             if (_unreadCount > 0) ...[
@@ -292,9 +294,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ],
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         actions: [
           IconButton(
@@ -312,7 +314,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadNotifications,
-        color: const Color(0xFF193C57),
+        color: const AppColors.textPrimary,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _notifications.isEmpty
@@ -329,7 +331,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Text(
                           'No notifications',
                           style: TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontSize: 18,
                             color: Colors.grey[600],
                           ),
@@ -462,12 +464,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         child: Text(
                           notification.title,
                           style: TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                             color: notification.isRead
                                 ? Colors.black87
-                                : const Color(0xFF193C57),
+                                : const AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -495,7 +497,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     notification.message,
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       color: notification.isRead ? Colors.black54 : Colors.black87,
                     ),
@@ -519,7 +521,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           Text(
                             notification.getRelativeTime(),
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
@@ -536,9 +538,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: const Text(
                             'View',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),

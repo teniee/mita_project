@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -63,19 +65,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Profile',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
       body: _isLoading
@@ -92,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Name',
                         prefixIcon: Icon(Icons.person),
                       ),
-                      style: const TextStyle(fontFamily: 'Manrope'),
+                      style: const TextStyle(fontFamily: AppTypography.fontBody),
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter name' : null,
                       onSaved: (val) => _name = val,
@@ -106,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         prefixIcon: Icon(Icons.email),
                       ),
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         color: Colors.grey,
                       ),
                     ),
@@ -116,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/notifications');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF193C57),
+                        backgroundColor: const AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -126,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text(
                         'View Notifications',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -138,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/referral');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF193C57),
+                        backgroundColor: const AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -148,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text(
                         'Referral Program',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -160,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/subscribe');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF193C57),
+                        backgroundColor: const AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -170,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text(
                         'Go Premium',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -184,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushReplacementNamed(context, '/login');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF193C57),
+                        backgroundColor: const AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -194,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text(
                         'Log Out',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -204,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ElevatedButton(
                       onPressed: _isSaving ? null : saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFD25F),
+                        backgroundColor: const AppColors.secondary,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -216,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : const Text(
                               'Save Changes',
                               style: TextStyle(
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),

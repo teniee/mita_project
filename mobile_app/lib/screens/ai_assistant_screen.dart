@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../services/api_service.dart';
+import '../services/logging_service.dart';
 
 class AIAssistantScreen extends StatefulWidget {
   const AIAssistantScreen({super.key});

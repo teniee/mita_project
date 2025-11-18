@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -179,7 +181,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         title: const Text(
           'Settings',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -209,7 +211,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading settings...', style: TextStyle(fontFamily: 'Manrope')),
+          Text('Loading settings...', style: TextStyle(fontFamily: AppTypography.fontBody)),
         ],
       ),
     );
@@ -461,7 +463,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   title,
                   style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ],
@@ -486,11 +488,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: AppTypography.fontBody),
       ),
       trailing: Switch(
         value: value,
@@ -512,11 +514,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: AppTypography.fontBody),
       ),
       trailing: DropdownButton<String>(
         value: value,
@@ -543,11 +545,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           leading: Icon(icon),
           title: Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+            style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
           ),
           subtitle: Text(
             subtitle,
-            style: const TextStyle(fontFamily: 'Manrope'),
+            style: const TextStyle(fontFamily: AppTypography.fontBody),
           ),
           trailing: Text(
             '${value.toInt()}%',
@@ -576,11 +578,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontFamily: 'Manrope'),
+        style: const TextStyle(fontFamily: AppTypography.fontBody),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
@@ -597,13 +599,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Sora'),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       trailing: Text(
         value,
         style: TextStyle(
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          fontFamily: 'Manrope',
+          fontFamily: AppTypography.fontBody,
         ),
       ),
     );
@@ -639,7 +641,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                   ),
                 ),
               ],

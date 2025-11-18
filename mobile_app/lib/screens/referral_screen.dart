@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 
 class ReferralScreen extends StatefulWidget {
@@ -36,8 +38,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Invite Friends'),
-        backgroundColor: const Color(0xFFFFF9F0),
-        foregroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.background,
+        foregroundColor: const AppColors.textPrimary,
         elevation: 0,
       ),
       body: Center(
@@ -49,7 +51,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   Text(
                     _code ?? '-',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),

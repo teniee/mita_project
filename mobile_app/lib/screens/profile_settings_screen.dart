@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../core/app_error_handler.dart';
@@ -202,7 +204,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Settings', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
+        title: const Text('Profile Settings', style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.w600)),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
@@ -404,7 +406,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w600,
-        fontFamily: 'Sora',
+        fontFamily: AppTypography.fontHeading,
         color: Theme.of(context).colorScheme.primary,
       ),
     );

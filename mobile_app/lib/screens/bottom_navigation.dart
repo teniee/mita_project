@@ -1,6 +1,8 @@
 import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'dart:async';
 import '../services/expense_state_service.dart';
 import '../services/logging_service.dart';
@@ -189,13 +191,13 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
             type: BottomNavigationBarType.fixed,
             enableFeedback: true,
             selectedLabelStyle: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 11,
               color: colorScheme.primary,
             ),
             unselectedLabelStyle: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontWeight: FontWeight.w400,
               fontSize: 10,
               color: colorScheme.onSurfaceVariant,
@@ -326,7 +328,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
             Text(
               'Refreshing ${_getScreenName(index)}...',
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
               ),
             ),
@@ -334,7 +336,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
         ),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.textPrimary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
