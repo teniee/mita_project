@@ -408,7 +408,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                             child: const Text(
                               'Back to Login',
                               style: TextStyle(
-                                color: Color(0xFFD32F2F),
+                                color: AppColors.error,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

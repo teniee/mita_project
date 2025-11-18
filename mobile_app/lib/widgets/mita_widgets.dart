@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/mita_theme.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/accessibility_service.dart';
 import '../core/error_handling.dart';
 
@@ -58,7 +60,7 @@ class MitaWidgets {
     final loadingMessage = message ?? 'Loading MITA financial data';
     
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       body: Semantics(
         label: '$loadingMessage. Please wait.',
         liveRegion: true,
@@ -74,11 +76,11 @@ class MitaWidgets {
                     height: 80,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Color(0xFF193C57),
+                      color: AppColors.primary,
                     ),
                     child: const Icon(
                       Icons.account_balance_wallet,
-                      color: Color(0xFFFFD25F),
+                      color: AppColors.secondary,
                       size: 40,
                     ),
                   ),
@@ -233,10 +235,10 @@ class MitaWidgets {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF193C57),
+                    color: AppColors.primary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -245,7 +247,7 @@ class MitaWidgets {
               Text(
                 message,
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   color: Colors.grey[600],
                   height: 1.5,
@@ -278,15 +280,15 @@ class MitaWidgets {
         child: Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w700,
             fontSize: 20,
-            color: Color(0xFF193C57),
+            color: AppColors.primary,
           ),
         ),
       ),
-      backgroundColor: const Color(0xFFFFF9F0),
-      foregroundColor: const Color(0xFF193C57),
+      backgroundColor: const AppColors.background,
+      foregroundColor: const AppColors.primary,
       elevation: elevation,
       centerTitle: centerTitle,
       leading: leading,
@@ -352,10 +354,10 @@ class MitaWidgets {
                   child: Text(
                     amount,
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w700,
                       fontSize: size * 0.12,
-                      color: const Color(0xFF193C57),
+                      color: const AppColors.primary,
                     ),
                   ),
                 ),
@@ -364,7 +366,7 @@ class MitaWidgets {
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: size * 0.08,
                       color: Colors.grey[600],
                     ),
@@ -389,7 +391,7 @@ class MitaWidgets {
     VoidCallback? onTap,
   }) {
     final accessibilityService = AccessibilityService.instance;
-    final cardColor = color ?? const Color(0xFF193C57);
+    final cardColor = color ?? const AppColors.primary;
     
     final numericValue = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
     final semanticLabel = accessibilityService.createFinancialSemanticLabel(
@@ -430,7 +432,7 @@ class MitaWidgets {
                   child: Text(
                     title,
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
@@ -454,7 +456,7 @@ class MitaWidgets {
               child: Text(
                 value,
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: cardColor,
@@ -468,7 +470,7 @@ class MitaWidgets {
                 child: Text(
                   subtitle,
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 12,
                     color: Colors.grey[500],
                   ),
@@ -527,10 +529,10 @@ class MitaWidgets {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF193C57),
+                      color: AppColors.primary,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -538,7 +540,7 @@ class MitaWidgets {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 14,
                         color: Colors.grey[600],
                       ),

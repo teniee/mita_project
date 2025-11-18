@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'enhanced_production_budget_engine.dart';
 import 'production_budget_engine.dart' as legacy;
 import 'onboarding_state.dart';
@@ -512,17 +513,17 @@ class BudgetAdapterService {
     };
 
     final categoryColors = {
-      'food': const Color(0xFF4CAF50),
-      'transportation': const Color(0xFF2196F3),
-      'entertainment': const Color(0xFF9C27B0),
-      'shopping': const Color(0xFFFF9800),
-      'utilities': const Color(0xFF607D8B),
-      'healthcare': const Color(0xFFF44336),
-      'housing': const Color(0xFF795548),
-      'education': const Color(0xFF3F51B5),
-      'debt': const Color(0xFFFF5722),
-      'savings': const Color(0xFF4CAF50),
-      'investments': const Color(0xFF00BCD4),
+      'food': AppColors.categoryFood,
+      'transportation': AppColors.categoryTransport,
+      'entertainment': AppColors.categoryEntertainment,
+      'shopping': AppColors.categoryShopping,
+      'utilities': AppColors.categoryUtilities,
+      'healthcare': AppColors.categoryHealth,
+      'housing': AppColors.categoryOther,
+      'education': AppColors.categoryEducation,
+      'debt': AppColors.warningDark,
+      'savings': AppColors.success,
+      'investments': AppColors.chart7,
     };
 
     // Convert to legacy format, focusing on main spending categories
@@ -545,7 +546,7 @@ class BudgetAdapterService {
           'limit': dailyAmount,
           'spent': actualSpent,
           'icon': categoryIcons[category] ?? Icons.category,
-          'color': categoryColors[category] ?? const Color(0xFF757575),
+          'color': categoryColors[category] ?? AppColors.grayFallback,
         });
       }
     }
@@ -804,7 +805,7 @@ class BudgetAdapterService {
         'date': now.subtract(const Duration(hours: 2)).toIso8601String(),
         'category': 'Food',
         'icon': Icons.local_cafe,
-        'color': const Color(0xFF8D6E63),
+        'color': AppColors.categoryOther,
       },
       {
         'action': 'Grocery Store',
@@ -812,7 +813,7 @@ class BudgetAdapterService {
         'date': now.subtract(const Duration(days: 1)).toIso8601String(),
         'category': 'Food',
         'icon': Icons.local_grocery_store,
-        'color': const Color(0xFF4CAF50),
+        'color': AppColors.categoryFood,
       },
       {
         'action': 'Gas Station',
@@ -820,7 +821,7 @@ class BudgetAdapterService {
         'date': now.subtract(const Duration(hours: 8)).toIso8601String(),
         'category': 'Transportation',
         'icon': Icons.local_gas_station,
-        'color': const Color(0xFF2196F3),
+        'color': AppColors.categoryTransport,
       },
       {
         'action': 'Online Purchase',
@@ -828,7 +829,7 @@ class BudgetAdapterService {
         'date': now.subtract(const Duration(days: 2)).toIso8601String(),
         'category': 'Shopping',
         'icon': Icons.shopping_cart,
-        'color': const Color(0xFFFF9800),
+        'color': AppColors.categoryShopping,
       },
       {
         'action': 'Lunch',
@@ -836,7 +837,7 @@ class BudgetAdapterService {
         'date': now.subtract(const Duration(days: 1, hours: 5)).toIso8601String(),
         'category': 'Food',
         'icon': Icons.restaurant,
-        'color': const Color(0xFF4CAF50),
+        'color': AppColors.categoryFood,
       },
     ];
   }
@@ -877,15 +878,15 @@ class BudgetAdapterService {
   /// Get color for category
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'food': return const Color(0xFF4CAF50);
-      case 'transportation': return const Color(0xFF2196F3);
-      case 'entertainment': return const Color(0xFF9C27B0);
-      case 'shopping': return const Color(0xFFFF9800);
-      case 'utilities': return const Color(0xFF607D8B);
-      case 'healthcare': return const Color(0xFFF44336);
-      case 'housing': return const Color(0xFF795548);
-      case 'education': return const Color(0xFF3F51B5);
-      default: return const Color(0xFF757575);
+      case 'food': return AppColors.categoryFood;
+      case 'transportation': return AppColors.categoryTransport;
+      case 'entertainment': return AppColors.categoryEntertainment;
+      case 'shopping': return AppColors.categoryShopping;
+      case 'utilities': return AppColors.categoryUtilities;
+      case 'healthcare': return AppColors.categoryHealth;
+      case 'housing': return AppColors.categoryOther;
+      case 'education': return AppColors.categoryEducation;
+      default: return AppColors.textSecondary;
     }
   }
 

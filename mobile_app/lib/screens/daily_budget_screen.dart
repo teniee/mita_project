@@ -443,11 +443,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              colors: percentage > 0.8 
-                ? [const AppColors.danger, const Color(0xFFFF8A65)]
-                : percentage > 0.6 
-                  ? [const AppColors.secondary, const Color(0xFFFFE082)]
-                  : [const AppColors.successLight, const Color(0xFFA8E6A0)],
+              colors: percentage > 0.8
+                ? [AppColors.danger, AppColors.warning]
+                : percentage > 0.6
+                  ? [AppColors.secondary, AppColors.secondary.withValues(alpha: 0.7)]
+                  : [AppColors.successLight, AppColors.success.withValues(alpha: 0.5)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -767,7 +767,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F4FF),
+                  color: AppColors.infoLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(

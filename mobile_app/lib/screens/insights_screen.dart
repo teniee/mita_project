@@ -1507,11 +1507,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Color _getCategoryColor(String category) {
     final colors = [
-      const AppColors.textPrimary,
-      const Color(0xFF2E5984),
-      const Color(0xFF4A7BA7),
-      const Color(0xFF6D8DD4),
-      const Color(0xFF9BB5FF),
+      AppColors.textPrimary,
+      AppColors.info,
+      AppColors.chart7,
+      AppColors.accent,
+      AppColors.categoryEntertainment,
     ];
     return colors[category.hashCode % colors.length];
   }

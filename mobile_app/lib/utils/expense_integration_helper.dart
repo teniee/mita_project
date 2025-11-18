@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/expense_state_service.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -38,20 +40,20 @@ class ExpenseIntegrationHelper {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 8),
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Failed to open expense form. Please try again.',
-                    style: TextStyle(fontFamily: 'Manrope'),
+                    style: TextStyle(fontFamily: AppTypography.fontBody),
                   ),
                 ),
               ],
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -164,18 +166,18 @@ class ExpenseIntegrationHelper {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'Budget Updated!',
                       style: TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
                     Text(
                       '\$${amount.toStringAsFixed(2)} added to $category',
-                      style: const TextStyle(
-                        fontFamily: 'Manrope',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                         color: Colors.white70,
                       ),
@@ -198,7 +200,7 @@ class ExpenseIntegrationHelper {
             ],
           ),
         ),
-        backgroundColor: Colors.green.shade600,
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
         margin: const EdgeInsets.all(16),
@@ -276,17 +278,17 @@ class ExpenseIntegrationHelper {
                   children: [
                     Text(
                       isOver ? 'Over Budget!' : 'Budget Warning',
-                      style: const TextStyle(
-                        fontFamily: 'Sora',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      isOver 
+                      isOver
                           ? 'You\'ve exceeded your monthly budget'
                           : 'You\'ve used ${spentPercentage.toStringAsFixed(0)}% of your budget',
-                      style: const TextStyle(
-                        fontFamily: 'Manrope',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                       ),
                     ),
@@ -295,7 +297,7 @@ class ExpenseIntegrationHelper {
               ),
             ],
           ),
-          backgroundColor: isOver ? Colors.red.shade600 : Colors.orange.shade600,
+          backgroundColor: isOver ? AppColors.error : AppColors.warning,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 5),
         ),

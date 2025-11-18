@@ -213,23 +213,23 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   Color _getCategoryColor(InstallmentCategory category) {
     switch (category) {
       case InstallmentCategory.electronics:
-        return const Color(0xFF5B7CFA);
+        return AppColors.info;
       case InstallmentCategory.clothing:
-        return const Color(0xFFFF922B);
+        return AppColors.warning;
       case InstallmentCategory.furniture:
-        return const Color(0xFF8B5CF6);
+        return AppColors.categoryEntertainment;
       case InstallmentCategory.travel:
-        return const AppColors.chart7;
+        return AppColors.chart7;
       case InstallmentCategory.education:
-        return const Color(0xFF3F51B5);
+        return AppColors.categoryEducation;
       case InstallmentCategory.health:
-        return const AppColors.error;
+        return AppColors.error;
       case InstallmentCategory.groceries:
-        return const AppColors.success;
+        return AppColors.success;
       case InstallmentCategory.utilities:
-        return const AppColors.categoryUtilities;
+        return AppColors.categoryUtilities;
       case InstallmentCategory.other:
-        return const AppColors.categoryOther;
+        return AppColors.categoryOther;
     }
   }
 
@@ -270,10 +270,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   }
 
   Color _getLoadIndicatorColor(double load) {
-    if (load < 0.5) return const AppColors.success; // Safe
-    if (load < 0.7) return const AppColors.secondary; // Moderate
-    if (load < 0.9) return const Color(0xFFFF922B); // High
-    return const AppColors.danger; // Critical
+    if (load < 0.5) return AppColors.success; // Safe
+    if (load < 0.7) return AppColors.secondary; // Moderate
+    if (load < 0.9) return AppColors.warning; // High
+    return AppColors.danger; // Critical
   }
 
   String _getLoadIndicatorLabel(double load) {

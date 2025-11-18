@@ -5,8 +5,6 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/ocr_service.dart';
 import '../services/logging_service.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 class EditExpenseScreen extends StatefulWidget {
   final Map<String, dynamic> expense;

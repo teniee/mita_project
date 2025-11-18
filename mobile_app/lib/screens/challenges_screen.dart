@@ -689,8 +689,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                colors: [AppColors.slatePurple, Color(0xFF9370DB)],
+              gradient: LinearGradient(
+                colors: [AppColors.slatePurple, AppColors.slatePurple.withValues(alpha: 0.7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1052,11 +1052,11 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       case 'common':
         return Colors.grey;
       case 'rare':
-        return const AppColors.info;
+        return AppColors.info;
       case 'epic':
-        return const AppColors.categoryEntertainment;
+        return AppColors.categoryEntertainment;
       case 'legendary':
-        return const Color(0xFFFFD700);
+        return AppColors.secondary;
       default:
         return Colors.grey;
     }
@@ -1078,9 +1078,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   }
 
   Color _getRankColor(int rank) {
-    if (rank == 1) return const Color(0xFFFFD700); // Gold
-    if (rank == 2) return const Color(0xFFC0C0C0); // Silver
-    if (rank == 3) return const Color(0xFFCD7F32); // Bronze
-    return const AppColors.categoryUtilities; // Default
+    if (rank == 1) return AppColors.secondary; // Gold
+    if (rank == 2) return Colors.grey.shade400; // Silver
+    if (rank == 3) return AppColors.warning; // Bronze
+    return AppColors.categoryUtilities; // Default
   }
 }

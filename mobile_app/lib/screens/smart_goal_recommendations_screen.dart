@@ -161,8 +161,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.textPrimary, Color(0xFF2B5876)],
+          gradient: LinearGradient(
+            colors: [AppColors.textPrimary, AppColors.textPrimary.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

@@ -1715,8 +1715,8 @@ class _MainScreenState extends State<MainScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const AppColors.slatePurple.withValues(alpha: 0.1),
-                const Color(0xFF9370DB).withValues(alpha: 0.05),
+                AppColors.slatePurple.withValues(alpha: 0.1),
+                AppColors.slatePurple.withValues(alpha: 0.05),
               ],
             ),
             borderRadius: BorderRadius.circular(16),

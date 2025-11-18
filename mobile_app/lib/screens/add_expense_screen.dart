@@ -784,7 +784,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE0E0E0),
+                  backgroundColor: AppColors.inputBackground,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),

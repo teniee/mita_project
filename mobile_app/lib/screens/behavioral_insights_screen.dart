@@ -234,8 +234,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.info, Color(0xFF42A5F5)],
+                  gradient: LinearGradient(
+                    colors: [AppColors.info, AppColors.infoLightVariant],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -405,8 +405,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.categoryEntertainment, Color(0xFFBA68C8)],
+                  gradient: LinearGradient(
+                    colors: [AppColors.categoryEntertainment, AppColors.entertainmentLightVariant],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -920,8 +920,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.success, Color(0xFF66BB6A)],
+                    gradient: LinearGradient(
+                      colors: [AppColors.success, AppColors.successLightVariant],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1006,8 +1006,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.categoryEducation, Color(0xFF9575CD)],
+                    gradient: LinearGradient(
+                      colors: [AppColors.categoryEducation, AppColors.educationLightVariant],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),

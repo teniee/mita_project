@@ -186,6 +186,53 @@ class AppColors {
   static const Color darkSurface = Color(0xFF1A1C18);
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // GRADIENT COLORS - For gradient effects
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Light info background
+  static const Color infoLight = Color(0xFFF0F4FF);
+
+  /// Info light variant for gradients
+  static const Color infoLightVariant = Color(0xFF42A5F5);
+
+  /// Success light variant for gradients
+  static const Color successLightVariant = Color(0xFF66BB6A);
+
+  /// Entertainment light variant for gradients
+  static const Color entertainmentLightVariant = Color(0xFFBA68C8);
+
+  /// Education light variant for gradients
+  static const Color educationLightVariant = Color(0xFF9575CD);
+
+  /// Emerald/teal green
+  static const Color emerald = Color(0xFF10B981);
+
+  /// Emerald dark
+  static const Color emeraldDark = Color(0xFF059669);
+
+  /// Deep blue
+  static const Color deepBlue = Color(0xFF1E3A8A);
+
+  /// Deep blue light
+  static const Color deepBlueLight = Color(0xFF1E40AF);
+
+  /// Indigo
+  static const Color indigo = Color(0xFF6366F1);
+
+  /// Violet
+  static const Color violet = Color(0xFF8B5CF6);
+
+  /// Gray fallback
+  static const Color grayFallback = Color(0xFF757575);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BORDER COLORS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Standard border color
+  static const Color border = Color(0xFFE0E0E0);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // HELPER METHODS
   // ═══════════════════════════════════════════════════════════════════════════
 

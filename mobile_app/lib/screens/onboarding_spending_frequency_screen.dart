@@ -224,7 +224,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.restaurant_menu,
                 value: _lifestyleFrequency,
                 onChanged: (value) => setState(() => _lifestyleFrequency = value),
-                accentColor: const Color(0xFFFF6B6B),
+                accentColor: AppColors.danger,
               ),
               const SizedBox(height: 16),
 
@@ -235,7 +235,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.shopping_bag,
                 value: _shoppingFrequency,
                 onChanged: (value) => setState(() => _shoppingFrequency = value),
-                accentColor: const Color(0xFF4ECDC4),
+                accentColor: AppColors.chart7,
               ),
               const SizedBox(height: 16),
 
@@ -246,7 +246,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.flight_takeoff,
                 value: _travelFrequency,
                 onChanged: (value) => setState(() => _travelFrequency = value),
-                accentColor: const Color(0xFFFFD93D),
+                accentColor: AppColors.secondary,
               ),
               const SizedBox(height: 32),
 

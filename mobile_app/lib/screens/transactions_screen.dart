@@ -119,11 +119,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         return const AppColors.categoryUtilities;
       case 'education':
       case 'childcare':
-        return const Color(0xFF3F51B5);
+        return const AppColors.categoryEducation;
       case 'travel':
         return const AppColors.chart7;
       case 'subscriptions':
-        return const Color(0xFF8BC34A);
+        return const AppColors.success;
       case 'pets':
         return const AppColors.warningDark;
       default:

@@ -412,7 +412,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : const Color(0xFFFFEEC0),
+          color: notification.isRead ? AppColors.surface : AppColors.secondary.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(14),
           border: notification.isHighPriority
               ? Border.all(color: _getPriorityColor(notification.priority), width: 2)
