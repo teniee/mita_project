@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
+import '../providers/budget_provider.dart';
 import '../services/budget_adapter_service.dart';
-import '../services/user_data_manager.dart';
-import '../services/live_updates_service.dart';
-import 'dart:async';
 import '../services/logging_service.dart';
 import 'calendar_day_details_screen.dart';
 
@@ -25,17 +23,10 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
   final BudgetAdapterService _budgetService = BudgetAdapterService();
-  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
-  List<dynamic> calendarData = [];
-  bool isLoading = true;
-  bool isRedistributing = false;
-  String? error;
   DateTime currentMonth = DateTime.now();
-  StreamSubscription? _budgetUpdateSubscription;
   late AnimationController _redistributionAnimationController;
-  
+
 
   @override
   void initState() {
@@ -45,356 +36,26 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
       vsync: this,
     );
 
-    _initializeData();
-    _subscribeToBudgetUpdates();
+    // Initialize data through provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
   }
 
   @override
   void dispose() {
-    _budgetUpdateSubscription?.cancel();
     _redistributionAnimationController.dispose();
     super.dispose();
   }
 
-  Map<String, dynamic>? budgetRemaining;
-  Map<String, dynamic>? monthlyBudget;
-
   Future<void> _initializeData() async {
-    await fetchCalendarData();
-    await _fetchBudgetRemaining();
-    await _fetchMonthlyBudget();
+    final budgetProvider = context.read<BudgetProvider>();
+    await budgetProvider.loadCalendarData(
+      year: currentMonth.year,
+      month: currentMonth.month,
+    );
+    await budgetProvider.loadBudgetRemaining();
   }
-
-  Future<void> _fetchBudgetRemaining() async {
-    try {
-      budgetRemaining = await _apiService.getBudgetRemaining(
-        year: currentMonth.year,
-        month: currentMonth.month,
-      );
-    } catch (e) {
-      logError('Error fetching budget remaining: $e', tag: 'CALENDAR_SCREEN');
-    }
-  }
-
-  Future<void> _fetchMonthlyBudget() async {
-    try {
-      monthlyBudget = await _apiService.getMonthlyBudget(
-        currentMonth.year,
-        currentMonth.month,
-      );
-    } catch (e) {
-      logError('Error fetching monthly budget: $e', tag: 'CALENDAR_SCREEN');
-    }
-  }
-
-
-  void _subscribeToBudgetUpdates() {
-    // Subscribe to centralized live updates instead of creating duplicate timer
-    logInfo('Subscribing to centralized budget updates', tag: 'CALENDAR_SCREEN');
-
-    _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
-      if (mounted && !isRedistributing) {
-        logDebug('Received budget update, refreshing calendar', tag: 'CALENDAR_SCREEN');
-        fetchCalendarData();
-      }
-    });
-  }
-
-  Future<void> fetchCalendarData() async {
-    setState(() {
-      isLoading = true;
-      error = null;
-    });
-
-    try {
-      // First try to get data from production budget engine
-      logInfo('Loading calendar data from production budget engine', tag: 'CALENDAR_SCREEN');
-      final productionData = await _budgetService.getCalendarData();
-
-      if (!mounted) return;
-      setState(() {
-        calendarData = productionData;
-        isLoading = false;
-      });
-
-      logInfo('Calendar data loaded from production budget engine successfully', tag: 'CALENDAR_SCREEN');
-    } catch (e) {
-      logError('Error loading production calendar data: $e', tag: 'CALENDAR_SCREEN');
-
-      try {
-        // Try behavioral calendar endpoint
-        logInfo('Attempting to load behavioral calendar', tag: 'CALENDAR_SCREEN');
-        final behavioralCalendar = await _apiService.getBehaviorCalendar(
-          year: currentMonth.year,
-          month: currentMonth.month,
-        );
-
-        if (!mounted) return;
-
-        // Convert behavioral calendar format to standard calendar format
-        final convertedData = _convertBehavioralCalendarData(behavioralCalendar);
-        setState(() {
-          calendarData = convertedData;
-          isLoading = false;
-        });
-
-        logInfo('Loaded behavioral calendar successfully', tag: 'CALENDAR_SCREEN');
-      } catch (behavioralError) {
-        logError('Error loading behavioral calendar: $behavioralError', tag: 'CALENDAR_SCREEN');
-
-        try {
-          // Fallback to standard API
-          final data = await _apiService.getCalendar();
-          if (!mounted) return;
-          setState(() {
-            calendarData = data;
-            isLoading = false;
-          });
-        } catch (apiError) {
-          logError('Error loading API calendar: $apiError', tag: 'CALENDAR_SCREEN');
-          if (!mounted) return;
-
-          // Final fallback to user-based data generation
-          final userBasedData = await _generateUserBasedCalendarData();
-          setState(() {
-            calendarData = userBasedData;
-            isLoading = false;
-            error = null; // Don't show error, just use user-based data
-          });
-
-          // Show user-friendly error message but don't break the UI
-          if (mounted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Using personalized budget calculations'),
-                  duration: Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            });
-          }
-        }
-      }
-    }
-  }
-
-  /// Convert behavioral calendar data format to standard calendar format
-  List<Map<String, dynamic>> _convertBehavioralCalendarData(Map<String, dynamic> behavioralData) {
-    if (behavioralData['calendar_days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['calendar_days']);
-    }
-
-    // If the data is already in the correct format
-    if (behavioralData['days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['days']);
-    }
-
-    // Return empty list if format is unknown
-    logWarning('Unknown behavioral calendar format', tag: 'CALENDAR_SCREEN');
-    return [];
-  }
-
-  Future<List<Map<String, dynamic>>> _generateUserBasedCalendarData() async {
-    final today = DateTime.now();
-    final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(today.year, today.month, 1);
-    final firstWeekday = firstDayOfMonth.weekday % 7; // Sunday = 0, Monday = 1, etc.
-    
-    List<Map<String, dynamic>> calendarDays = [];
-    
-    // Load user financial context from UserDataManager (includes onboarding data)
-    Map<String, dynamic> userFinancialContext = {};
-    try {
-      userFinancialContext = await UserDataManager.instance.getFinancialContext().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => <String, dynamic>{},
-      );
-      logInfo('Loaded user financial context for calendar: income=${userFinancialContext['income']}', tag: 'CALENDAR_USER_DATA');
-    } catch (e) {
-      logWarning('Failed to load user financial context for calendar: $e', tag: 'CALENDAR_USER_DATA');
-    }
-    
-    // Calculate daily budget based on user's actual financial data from onboarding
-    final incomeValue = (userFinancialContext['income'] as num?)?.toDouble();
-    if (incomeValue == null || incomeValue <= 0) {
-      throw Exception('Income data required for calendar. Please complete onboarding.');
-    }
-    final monthlyIncome = incomeValue;
-    final savingsGoal = monthlyIncome * 0.20; // Default to 20% savings rate if not specified
-    final budgetMethod = userFinancialContext['budgetMethod'] as String? ?? '50/30/20 Rule';
-    
-    final spendableIncome = monthlyIncome - savingsGoal;
-    final dailyBudget = _calculateDailyBudget(spendableIncome, budgetMethod);
-    
-    // Add empty cells for days before the first day of the month
-    for (int i = 0; i < firstWeekday; i++) {
-      calendarDays.add({
-        'day': 0,
-        'status': 'empty',
-        'limit': 0,
-        'spent': 0,
-      });
-    }
-    
-    // Try to get real spending data from API
-    Map<String, dynamic> monthlySpending = {};
-    try {
-      monthlySpending = await _apiService.getBudgetSpent(
-        year: today.year,
-        month: today.month,
-      ).timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
-    } catch (e) {
-      logWarning('Failed to load monthly spending: $e', tag: 'CALENDAR_SPENDING');
-    }
-    
-    // Generate calendar days based on user data
-    for (int day = 1; day <= daysInMonth; day++) {
-      final dayDate = DateTime(today.year, today.month, day);
-      final isToday = day == today.day;
-      final isFuture = dayDate.isAfter(today);
-      
-      // Get actual spending for this day if available
-      final dayKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-      final daySpending = monthlySpending[dayKey] as Map<String, dynamic>? ?? {};
-      
-      // Calculate daily budget with some variation based on day type
-      final dayOfWeek = dayDate.weekday;
-      final isWeekend = dayOfWeek == 6 || dayOfWeek == 7;
-      final dailyBudgetForDay = _adjustDailyBudgetForDay(dailyBudget, isWeekend, budgetMethod);
-      
-      String status;
-      double spent;
-      
-      if (daySpending.isNotEmpty && daySpending['total'] != null) {
-        // Use real spending data
-        spent = (daySpending['total'] as num).toDouble();
-      } else if (isFuture) {
-        // Future days have no spending yet
-        spent = 0.0;
-      } else if (isToday) {
-        // Today has some spending - estimate based on time of day
-        final hourOfDay = DateTime.now().hour;
-        final dayProgress = hourOfDay / 24.0;
-        spent = dailyBudgetForDay * dayProgress * 0.7; // Conservative estimate
-      } else {
-        // Past days - generate realistic spending based on patterns
-        spent = _generateRealisticSpending(dailyBudgetForDay, isWeekend, day);
-      }
-      
-      // Determine status based on spending vs budget
-      final spentRatio = dailyBudgetForDay > 0 ? spent / dailyBudgetForDay : 0.0;
-      if (spentRatio > 1.0) {
-        status = 'over';
-      } else if (spentRatio > 0.8) {
-        status = 'warning';
-      } else {
-        status = 'good';
-      }
-      
-      // Generate category breakdown based on user's budget method
-      final categoryBreakdown = _generateCategoryBreakdown(
-        dailyBudgetForDay,
-        budgetMethod,
-        daySpending,
-      );
-      
-      calendarDays.add({
-        'day': day,
-        'status': status,
-        'limit': dailyBudgetForDay.round(),
-        'spent': spent.round(),
-        'categories': categoryBreakdown,
-        'user_based': true,
-      });
-    }
-    
-    return calendarDays;
-  }
-
-  double _calculateDailyBudget(double spendableIncome, String budgetMethod) {
-    // Calculate daily budget based on the user's chosen method
-    switch (budgetMethod) {
-      case '50/30/20 Rule':
-        // 50% for needs, 30% for wants
-        return (spendableIncome * 0.8) / 30; // 80% of spendable income over 30 days
-      case '60/20/20':
-        return (spendableIncome * 0.8) / 30;
-      case 'Zero-Based':
-        return spendableIncome / 30; // All income allocated
-      case 'Envelope':
-        return (spendableIncome * 0.75) / 30; // 75% for daily expenses
-      default:
-        return (spendableIncome * 0.8) / 30;
-    }
-  }
-
-  double _adjustDailyBudgetForDay(double baseBudget, bool isWeekend, String budgetMethod) {
-    // Adjust budget based on day type and user preferences
-    if (isWeekend) {
-      return baseBudget * 1.2; // 20% more for weekends
-    } else {
-      return baseBudget * 0.9; // Slightly less for weekdays
-    }
-  }
-
-  double _generateRealisticSpending(double budget, bool isWeekend, int day) {
-    // Generate realistic spending patterns based on behavioral data
-    final baseSpending = budget * 0.7; // Average 70% of budget
-    final variation = (day % 5) * 0.05; // Some day-to-day variation
-    
-    if (isWeekend) {
-      return baseSpending * (1.1 + variation); // Higher weekend spending
-    } else {
-      return baseSpending * (0.9 + variation); // Lower weekday spending
-    }
-  }
-
-  Map<String, int> _generateCategoryBreakdown(
-    double dailyBudget,
-    String budgetMethod,
-    Map<String, dynamic> actualSpending,
-  ) {
-    // Use actual spending if available, otherwise generate based on budget method
-    if (actualSpending.isNotEmpty && actualSpending['categories'] != null) {
-      final categories = actualSpending['categories'] as Map<String, dynamic>;
-      return categories.map((key, value) => MapEntry(key, (value as num).round()));
-    }
-    
-    // Generate based on typical spending patterns for the budget method
-    switch (budgetMethod) {
-      case '50/30/20 Rule':
-        return {
-          'food': (dailyBudget * 0.35).round(),
-          'transportation': (dailyBudget * 0.20).round(),
-          'entertainment': (dailyBudget * 0.25).round(),
-          'shopping': (dailyBudget * 0.15).round(),
-          'other': (dailyBudget * 0.05).round(),
-        };
-      case 'Zero-Based':
-        return {
-          'food': (dailyBudget * 0.40).round(),
-          'transportation': (dailyBudget * 0.25).round(),
-          'entertainment': (dailyBudget * 0.15).round(),
-          'shopping': (dailyBudget * 0.15).round(),
-          'other': (dailyBudget * 0.05).round(),
-        };
-      default:
-        return {
-          'food': (dailyBudget * 0.35).round(),
-          'transportation': (dailyBudget * 0.25).round(),
-          'entertainment': (dailyBudget * 0.20).round(),
-          'shopping': (dailyBudget * 0.15).round(),
-          'other': (dailyBudget * 0.05).round(),
-        };
-    }
-  }
-
-
-
 
   String _getMonthName(int month) {
     const months = [
@@ -411,7 +72,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   Widget _buildErrorState() {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -458,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   Widget _buildEmptyState() {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -502,10 +163,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildEnhancedCalendarGrid() {
+  Widget _buildEnhancedCalendarGrid(List<dynamic> calendarData) {
     final colorScheme = Theme.of(context).colorScheme;
     final today = DateTime.now();
-    
+
     if (calendarData.isEmpty) {
       return Card(
         elevation: 2,
@@ -539,7 +200,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         ),
       );
     }
-    
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -571,15 +232,15 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   final status = day['status'] as String? ?? 'good';
                   final limit = day['limit'] as int? ?? 0;
                   final spent = day['spent'] as int? ?? 0;
-                  final isToday = dayNumber == today.day && 
-                                 currentMonth.month == today.month && 
+                  final isToday = dayNumber == today.day &&
+                                 currentMonth.month == today.month &&
                                  currentMonth.year == today.year;
-                  
+
                   // Handle empty cells (before month starts)
                   if (dayNumber == 0 || status == 'empty') {
                     return Container();
                   }
-                  
+
                   return _buildSimpleDayCell(
                     dayNumber: dayNumber,
                     limit: limit,
@@ -614,7 +275,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    
+
     return Row(
       children: weekdays.map((day) => Expanded(
         child: Center(
@@ -641,12 +302,12 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     final dayColor = _getSimpleDayColor(status, isToday);
     final textColor = _getSimpleTextColor(status, isToday);
     final spentPercentage = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: dayColor,
         borderRadius: BorderRadius.circular(12),
-        border: isToday 
+        border: isToday
           ? Border.all(color: colorScheme.primary, width: 3)
           : Border.all(color: dayColor.darken(0.1), width: 1),
         boxShadow: [
@@ -706,10 +367,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         ],
                       ),
                     ),
-                    
+
                     if (dayNumber > 0 && limit > 0 && constraints.maxHeight > 60) ...[
                       const SizedBox(height: 2),
-                      
+
                       // Enhanced progress indicator - only show if there's room
                       if (constraints.maxHeight > 70)
                         Flexible(
@@ -732,7 +393,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                             ),
                           ),
                         ),
-                      
+
                       // Status text or amount - simplified
                       if (constraints.maxHeight > 80)
                         Flexible(
@@ -769,13 +430,6 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     return 'Free';
   }
 
-
-
-
-
-
-
-
   Color _getSimpleDayColor(String status, bool isToday) {
     if (isToday) {
       switch (status.toLowerCase()) {
@@ -788,7 +442,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           return Colors.blue.shade100;
       }
     }
-    
+
     switch (status.toLowerCase()) {
       case 'over':
         return Colors.red.shade50;
@@ -813,11 +467,13 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   }
 
   void _showSimpleDayModal(int dayNumber, int limit, int spent, String status) {
+    final budgetProvider = context.read<BudgetProvider>();
+    final calendarData = budgetProvider.calendarData;
     final dayDate = DateTime(currentMonth.year, currentMonth.month, dayNumber);
-    final dayData = calendarData.isNotEmpty 
+    final dayData = calendarData.isNotEmpty
         ? calendarData.firstWhere((day) => day['day'] == dayNumber, orElse: () => null)
         : null;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -840,6 +496,12 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
+    // Use context.watch for reactive state updates
+    final budgetProvider = context.watch<BudgetProvider>();
+    final calendarData = budgetProvider.calendarData;
+    final isLoading = budgetProvider.isLoading;
+    final error = budgetProvider.errorMessage;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -881,9 +543,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Month summary card
-                if (!isLoading && calendarData.isNotEmpty) 
-                  _buildMonthSummaryCard(),
-                
+                if (!isLoading && calendarData.isNotEmpty)
+                  _buildMonthSummaryCard(calendarData),
+
                 // Status legend
                 Card(
                   elevation: 1,
@@ -943,7 +605,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 else if (calendarData.isEmpty)
                   _buildEmptyState()
                 else
-                  _buildEnhancedCalendarGrid(),
+                  _buildEnhancedCalendarGrid(calendarData),
               ],
             ),
           ),
@@ -961,9 +623,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildMonthSummaryCard() {
+  Widget _buildMonthSummaryCard(List<dynamic> calendarData) {
     if (calendarData.isEmpty) return const SizedBox.shrink();
-    
+
     // Calculate month statistics
     double totalBudget = 0;
     double totalSpent = 0;
@@ -971,17 +633,17 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     int warningDays = 0;
     int overBudgetDays = 0;
     int activeDays = 0;
-    
+
     for (var day in calendarData) {
       if (day['day'] != 0 && day['status'] != 'empty') {
         final limit = (day['limit'] as num?)?.toDouble() ?? 0.0;
         final spent = (day['spent'] as num?)?.toDouble() ?? 0.0;
         final status = day['status'] as String? ?? 'good';
-        
+
         totalBudget += limit;
         totalSpent += spent;
         activeDays++;
-        
+
         switch (status.toLowerCase()) {
           case 'good':
             onTrackDays++;
@@ -995,10 +657,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         }
       }
     }
-    
+
     final spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
     final remaining = totalBudget - totalSpent;
-    
+
     return Card(
       elevation: 3,
       margin: const EdgeInsets.only(bottom: 20),
@@ -1051,7 +713,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Budget vs Spent
               Row(
                 children: [
@@ -1129,9 +791,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Progress bar
               Container(
                 height: 8,
@@ -1150,9 +812,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
                 '${(spentPercentage * 100).toStringAsFixed(1)}% of monthly budget used',
                 style: const TextStyle(
@@ -1161,9 +823,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                   color: Colors.white70,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Day status summary
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

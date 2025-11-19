@@ -15,3 +15,4 @@ export 'behavioral_provider.dart';
 export 'habits_provider.dart';
 export 'notifications_provider.dart';
 export 'mood_provider.dart';
+export 'advice_provider.dart';

@@ -292,6 +292,69 @@ class BudgetProvider extends ChangeNotifier {
     }
   }
 
+  /// Load calendar data with fallbacks
+  Future<void> loadCalendarData({int? year, int? month}) async {
+    final now = DateTime.now();
+    final targetYear = year ?? now.year;
+    final targetMonth = month ?? now.month;
+
+    try {
+      // First try to get data from production budget engine
+      logInfo('Loading calendar data from production budget engine', tag: 'BUDGET_PROVIDER');
+      final productionData = await _budgetService.getCalendarData();
+      _calendarData = productionData;
+      logInfo('Calendar data loaded from production budget engine: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+    } catch (e) {
+      logError('Error loading production calendar data: $e', tag: 'BUDGET_PROVIDER');
+
+      try {
+        // Try behavioral calendar endpoint
+        logInfo('Attempting to load behavioral calendar', tag: 'BUDGET_PROVIDER');
+        final behavioralCalendar = await _apiService.getBehaviorCalendar(
+          year: targetYear,
+          month: targetMonth,
+        );
+
+        // Convert behavioral calendar format to standard calendar format
+        _calendarData = _convertBehavioralCalendarData(behavioralCalendar);
+        logInfo('Loaded behavioral calendar: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+        notifyListeners();
+      } catch (behavioralError) {
+        logError('Error loading behavioral calendar: $behavioralError', tag: 'BUDGET_PROVIDER');
+
+        try {
+          // Fallback to standard API
+          final data = await _apiService.getCalendar();
+          _calendarData = data;
+          logInfo('Loaded standard calendar: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+          notifyListeners();
+        } catch (apiError) {
+          logError('Error loading API calendar: $apiError', tag: 'BUDGET_PROVIDER');
+          _calendarData = [];
+          _errorMessage = 'Failed to load calendar data';
+          notifyListeners();
+        }
+      }
+    }
+  }
+
+  /// Convert behavioral calendar data format to standard calendar format
+  List<Map<String, dynamic>> _convertBehavioralCalendarData(Map<String, dynamic> behavioralData) {
+    if (behavioralData['calendar_days'] != null) {
+      return List<Map<String, dynamic>>.from(behavioralData['calendar_days']);
+    }
+
+    // If the data is already in the correct format
+    if (behavioralData['days'] != null) {
+      return List<Map<String, dynamic>>.from(behavioralData['days']);
+    }
+
+    // Return empty list if format is unknown
+    logWarning('Unknown behavioral calendar format', tag: 'BUDGET_PROVIDER');
+    return [];
+  }
+
   /// Load AI budget optimization
   Future<void> loadAIOptimization() async {
     try {
