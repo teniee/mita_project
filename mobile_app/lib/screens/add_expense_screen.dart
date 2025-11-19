@@ -11,6 +11,11 @@ import '../widgets/budget_warning_dialog.dart';
 import 'receipt_capture_screen.dart';
 import '../services/logging_service.dart';
 
+// Provider Pattern Migration Notes:
+// - context.watch<TransactionProvider>() used in build() for reactive rebuilds
+// - context.read<TransactionProvider>() used in methods for one-time access
+// - setState retained for local UI state (form fields, animations, date picker)
+
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
 
@@ -478,6 +483,44 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // Watch TransactionProvider for reactive rebuilds on state changes
+    final transactionProvider = context.watch<TransactionProvider>();
+
+    // Show provider error if present
+    if (transactionProvider.errorMessage != null && transactionProvider.errorMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      transactionProvider.errorMessage!,
+                      style: const TextStyle(fontFamily: 'Manrope'),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'DISMISS',
+                textColor: Colors.white,
+                onPressed: () {
+                  context.read<TransactionProvider>().clearError();
+                },
+              ),
+            ),
+          );
+          // Clear the error after showing
+          context.read<TransactionProvider>().clearError();
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(

@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/settings_provider.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -849,18 +850,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   void _showSignOutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Sign Out'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              await _apiService.logout();
+              Navigator.pop(dialogContext);
+              await context.read<UserProvider>().logout();
               _navigateToLogin();
             },
             child: const Text('Sign Out'),
@@ -955,10 +956,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       final response = await _apiService.deleteAccount();
       if (response.data['success'] == true) {
         logInfo('Account deleted successfully', tag: 'USER_SETTINGS');
-        
-        // Clear all local data
-        await _apiService.logout();
-        
+
+        // Clear all local data using UserProvider
+        await context.read<UserProvider>().logout();
+
         // Navigate to welcome screen
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
@@ -967,26 +968,30 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             (route) => false,
           );
         }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account deleted successfully'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account deleted successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
         throw Exception('Account deletion failed');
       }
     } catch (e) {
       logError('Failed to delete account: $e', tag: 'USER_SETTINGS');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error deleting account. Please contact support.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error deleting account. Please contact support.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
