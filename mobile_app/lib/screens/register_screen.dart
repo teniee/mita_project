@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../services/password_validation_service.dart';
 import '../services/timeout_manager_service.dart';
 import '../core/enhanced_error_handling.dart';
+import '../providers/user_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -86,13 +88,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // Save tokens from FastAPI registration
       await _api.saveTokens(accessToken, refreshToken ?? '');
-      
+
       if (!mounted) return;
-      
-      logInfo('FastAPI registration SUCCESS - proceeding to onboarding', tag: 'REGISTER');
-      
-      // For new registration, always go to onboarding
-      Navigator.pushReplacementNamed(context, '/onboarding_location');
+
+      logInfo('FastAPI registration SUCCESS - initializing user state', tag: 'REGISTER');
+
+      // Set authentication state using UserProvider
+      final userProvider = context.read<UserProvider>();
+      userProvider.setAuthenticated();
+      await userProvider.initialize();
+
+      if (!mounted) return;
+
+      // Check if user has completed onboarding (should be false for new registration)
+      final hasOnboarded = userProvider.hasCompletedOnboarding;
+
+      logInfo('Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}', tag: 'REGISTER');
+
+      // Navigate based on onboarding status
+      if (hasOnboarded) {
+        Navigator.pushReplacementNamed(context, '/main');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding_location');
+      }
       
     } catch (e) {
       logError('FastAPI registration FAILED', tag: 'REGISTER', error: e);

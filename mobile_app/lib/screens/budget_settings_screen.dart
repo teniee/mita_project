@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
+import '../providers/budget_provider.dart';
+import '../providers/user_provider.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
@@ -15,22 +17,11 @@ class BudgetSettingsScreen extends StatefulWidget {
 }
 
 class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
-  final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
-  
-  bool _isLoading = true;
-  String _currentBudgetMode = 'default';
-  Map<String, dynamic> _automationSettings = {};
-  bool _isUpdating = false;
 
   // Income-related data
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
-  Map<String, dynamic>? _budgetRecommendations;
-
-  // Budget status data
-  Map<String, dynamic>? _budgetRemaining;
-  Map<String, dynamic>? _behavioralAllocation;
 
   final List<Map<String, dynamic>> _budgetModes = [
     {
@@ -78,76 +69,51 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    // Initialize providers after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeProviders();
+    });
   }
 
-  Future<void> _loadSettings() async {
+  Future<void> _initializeProviders() async {
+    final userProvider = context.read<UserProvider>();
+    final budgetProvider = context.read<BudgetProvider>();
+
+    // Get user income from UserProvider
+    final income = userProvider.userIncome;
+
+    if (income <= 0) {
+      logError('Income data required for budget settings. Please complete onboarding.', tag: 'BUDGET_SETTINGS');
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _monthlyIncome = income;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
     });
 
-    try {
-      // Load user profile for income data
-      final profileResponse = await _apiService.getUserProfile();
-      final incomeValue = (profileResponse['data']?['income'] as num?)?.toDouble();
-      
-      if (incomeValue == null || incomeValue <= 0) {
-        throw Exception('Income data required for budget settings. Please complete onboarding.');
-      }
-      
-      _monthlyIncome = incomeValue;
-      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
-      
-      final now = DateTime.now();
-      final futures = await Future.wait([
-        _apiService.getBudgetMode(),
-        _apiService.getBudgetAutomationSettings(),
-        _apiService.getIncomeBasedBudgetRecommendations(_monthlyIncome),
-        _apiService.getBudgetRemaining(year: now.year, month: now.month),
-        _apiService.getBehavioralBudgetAllocation(_monthlyIncome, profile: {'income_tier': _incomeTier.toString()}),
-      ]);
+    // Load budget settings data
+    await budgetProvider.loadBudgetSettingsData(
+      _monthlyIncome,
+      incomeTier: _incomeTier?.toString(),
+    );
+  }
 
-      final budgetMode = futures[0] as String;
-      final automationSettings = futures[1] as Map<String, dynamic>;
-      final budgetRecommendations = futures[2] as Map<String, dynamic>;
-      final budgetRemaining = futures[3] as Map<String, dynamic>;
-      final behavioralAllocation = futures[4] as Map<String, dynamic>;
-
-      if (mounted) {
-        setState(() {
-          _currentBudgetMode = budgetMode;
-          _automationSettings = automationSettings;
-          _budgetRecommendations = budgetRecommendations;
-          _budgetRemaining = budgetRemaining;
-          _behavioralAllocation = behavioralAllocation;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      logError('Error loading budget settings: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+  Future<void> _refreshSettings() async {
+    final budgetProvider = context.read<BudgetProvider>();
+    await budgetProvider.loadBudgetSettingsData(
+      _monthlyIncome,
+      incomeTier: _incomeTier?.toString(),
+    );
   }
 
   Future<void> _updateBudgetMode(String newMode) async {
-    if (_isUpdating) return;
-    
-    setState(() {
-      _isUpdating = true;
-    });
+    final budgetProvider = context.read<BudgetProvider>();
 
-    try {
-      await _apiService.setBudgetMode(newMode);
-      
-      if (mounted) {
-        setState(() {
-          _currentBudgetMode = newMode;
-        });
-        
+    final success = await budgetProvider.setBudgetMode(newMode);
+
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -161,10 +127,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-      }
-    } catch (e) {
-      logError('Error updating budget mode: $e');
-      if (mounted) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -179,40 +142,28 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdating = false;
-        });
-      }
     }
   }
 
   Future<void> _updateAutomationSettings(Map<String, dynamic> newSettings) async {
-    try {
-      await _apiService.updateBudgetAutomationSettings(newSettings);
-      
-      if (mounted) {
-        setState(() {
-          _automationSettings = {..._automationSettings, ...newSettings};
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Automation settings updated'),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
+    final budgetProvider = context.read<BudgetProvider>();
+
+    final success = await budgetProvider.updateAutomationSettings(newSettings);
+
+    if (mounted && success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Automation settings updated'),
+            ],
           ),
-        );
-      }
-    } catch (e) {
-      logError('Error updating automation settings: $e');
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -231,22 +182,22 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     );
   }
 
-  Widget _buildBudgetModeCard(Map<String, dynamic> mode) {
-    final isSelected = mode['id'] == _currentBudgetMode;
+  Widget _buildBudgetModeCard(Map<String, dynamic> mode, String currentBudgetMode, bool isUpdating) {
+    final isSelected = mode['id'] == currentBudgetMode;
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Card(
       elevation: isSelected ? 6 : 2,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: isSelected 
+        side: isSelected
           ? BorderSide(color: mode['color'], width: 2)
           : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: _isUpdating ? null : () => _updateBudgetMode(mode['id']),
+        onTap: isUpdating ? null : () => _updateBudgetMode(mode['id']),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -313,7 +264,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       ],
                     ),
                   ),
-                  if (_isUpdating && isSelected)
+                  if (isUpdating && isSelected)
                     const SizedBox(
                       width: 20,
                       height: 20,
@@ -357,15 +308,15 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     );
   }
 
-  Widget _buildBudgetRemainingCard() {
-    if (_budgetRemaining == null) return const SizedBox.shrink();
+  Widget _buildBudgetRemainingCard(Map<String, dynamic>? budgetRemaining) {
+    if (budgetRemaining == null) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
 
-    final totalBudget = (_budgetRemaining!['total_budget'] as num?)?.toDouble() ?? 0.0;
-    final totalSpent = (_budgetRemaining!['total_spent'] as num?)?.toDouble() ?? 0.0;
-    final remaining = (_budgetRemaining!['remaining'] as num?)?.toDouble() ?? 0.0;
+    final totalBudget = (budgetRemaining['total_budget'] as num?)?.toDouble() ?? 0.0;
+    final totalSpent = (budgetRemaining['total_spent'] as num?)?.toDouble() ?? 0.0;
+    final remaining = (budgetRemaining['remaining'] as num?)?.toDouble() ?? 0.0;
     final percentageUsed = totalBudget > 0 ? (totalSpent / totalBudget * 100) : 0.0;
 
     return Card(
@@ -483,7 +434,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     );
   }
 
-  Widget _buildAutomationSettings() {
+  Widget _buildAutomationSettings(Map<String, dynamic> automationSettings) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -511,7 +462,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            
+
             // Auto Redistribution
             SwitchListTile(
               title: const Text(
@@ -522,13 +473,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Automatically redistribute budget when overspending occurs',
                 style: TextStyle(fontSize: 12),
               ),
-              value: _automationSettings['auto_redistribution'] ?? false,
+              value: automationSettings['auto_redistribution'] ?? false,
               onChanged: (bool value) {
                 _updateAutomationSettings({'auto_redistribution': value});
               },
               activeColor: colorScheme.primary,
             ),
-            
+
             // Smart Suggestions
             SwitchListTile(
               title: const Text(
@@ -539,13 +490,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Receive AI-powered budget recommendations',
                 style: TextStyle(fontSize: 12),
               ),
-              value: _automationSettings['smart_suggestions'] ?? true,
+              value: automationSettings['smart_suggestions'] ?? true,
               onChanged: (bool value) {
                 _updateAutomationSettings({'smart_suggestions': value});
               },
               activeColor: colorScheme.primary,
             ),
-            
+
             // Behavioral Learning
             SwitchListTile(
               title: const Text(
@@ -556,13 +507,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Allow AI to learn from your spending patterns',
                 style: TextStyle(fontSize: 12),
               ),
-              value: _automationSettings['behavioral_learning'] ?? true,
+              value: automationSettings['behavioral_learning'] ?? true,
               onChanged: (bool value) {
                 _updateAutomationSettings({'behavioral_learning': value});
               },
               activeColor: colorScheme.primary,
             ),
-            
+
             // Real-time Alerts
             SwitchListTile(
               title: const Text(
@@ -573,7 +524,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Get instant notifications for budget changes',
                 style: TextStyle(fontSize: 12),
               ),
-              value: _automationSettings['realtime_alerts'] ?? true,
+              value: automationSettings['realtime_alerts'] ?? true,
               onChanged: (bool value) {
                 _updateAutomationSettings({'realtime_alerts': value});
               },
@@ -589,10 +540,21 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
-    
+
+    // Watch BudgetProvider for reactive updates
+    final budgetProvider = context.watch<BudgetProvider>();
+
+    final isLoading = budgetProvider.isLoading;
+    final currentBudgetMode = budgetProvider.budgetMode;
+    final automationSettings = budgetProvider.automationSettings;
+    final budgetRecommendations = budgetProvider.budgetRecommendations;
+    final budgetRemaining = budgetProvider.budgetRemaining;
+    final behavioralAllocation = budgetProvider.behavioralAllocation;
+    final isUpdating = budgetProvider.isUpdatingMode;
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: _incomeTier != null 
+      appBar: _incomeTier != null
         ? IncomeTheme.createTierAppBar(
             tier: _incomeTier!,
             title: 'Budget Settings',
@@ -610,10 +572,10 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
             centerTitle: true,
             iconTheme: IconThemeData(color: colorScheme.onSurface),
           ),
-      body: _isLoading
+      body: isLoading
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
-            onRefresh: _loadSettings,
+            onRefresh: _refreshSettings,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
@@ -626,15 +588,15 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       monthlyIncome: _monthlyIncome,
                       showDetails: false,
                     ),
-                  
+
                   if (_incomeTier != null)
                     const SizedBox(height: 16),
 
                   // Budget Remaining Status
-                  _buildBudgetRemainingCard(),
+                  _buildBudgetRemainingCard(budgetRemaining),
 
                   // Income-based Budget Recommendations
-                  if (_budgetRecommendations != null)
+                  if (budgetRecommendations != null)
                     Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -663,11 +625,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            ...(_budgetRecommendations!['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
+                            ...(budgetRecommendations['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
                               final category = entry.key;
                               final amount = entry.value as double;
                               final percentage = _incomeService.getIncomePercentage(amount, _monthlyIncome);
-                              
+
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Row(
@@ -710,12 +672,12 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         ),
                       ),
                     ),
-                  
-                  if (_budgetRecommendations != null)
+
+                  if (budgetRecommendations != null)
                     const SizedBox(height: 16),
 
                   // Behavioral Budget Allocation (AI-powered)
-                  if (_behavioralAllocation != null && _behavioralAllocation!['allocations'] != null)
+                  if (behavioralAllocation != null && behavioralAllocation['allocations'] != null)
                     Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -752,7 +714,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ...(_behavioralAllocation!['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
+                            ...(behavioralAllocation['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
                               final category = entry.key;
                               final data = entry.value as Map<String, dynamic>;
                               final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
@@ -819,7 +781,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       ),
                     ),
 
-                  if (_behavioralAllocation != null)
+                  if (behavioralAllocation != null)
                     const SizedBox(height: 24),
 
                   // Current Mode Display
@@ -833,8 +795,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         borderRadius: BorderRadius.circular(16),
                         gradient: LinearGradient(
                           colors: [
-                            _getBudgetModeById(_currentBudgetMode)['color'],
-                            _getBudgetModeById(_currentBudgetMode)['color'].withValues(alpha: 0.8),
+                            _getBudgetModeById(currentBudgetMode)['color'],
+                            _getBudgetModeById(currentBudgetMode)['color'].withValues(alpha: 0.8),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -843,7 +805,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            _getBudgetModeById(_currentBudgetMode)['icon'],
+                            _getBudgetModeById(currentBudgetMode)['icon'],
                             color: Colors.white,
                             size: 32,
                           ),
@@ -861,7 +823,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  _getBudgetModeById(_currentBudgetMode)['name'],
+                                  _getBudgetModeById(currentBudgetMode)['name'],
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -876,7 +838,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Budget Modes Section
                   Text(
                     'Choose Your Budget Mode',
@@ -896,12 +858,12 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Budget mode cards
-                  ..._budgetModes.map((mode) => _buildBudgetModeCard(mode)),
-                  
+                  ..._budgetModes.map((mode) => _buildBudgetModeCard(mode, currentBudgetMode, isUpdating)),
+
                   const SizedBox(height: 24),
-                  
+
                   // Automation Settings
                   Text(
                     'Automation Preferences',
@@ -921,11 +883,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
-                  _buildAutomationSettings(),
-                  
+
+                  _buildAutomationSettings(automationSettings),
+
                   const SizedBox(height: 24),
-                  
+
                   // Additional Info
                   Container(
                     padding: const EdgeInsets.all(16),

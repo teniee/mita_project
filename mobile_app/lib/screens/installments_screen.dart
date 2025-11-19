@@ -2,10 +2,19 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/installment_models.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
 import '../services/localization_service.dart';
+
+// TODO: Create InstallmentsProvider to complete the migration
+// The provider should manage:
+// - InstallmentsSummary state
+// - Loading and error states
+// - Filter state (InstallmentStatus?)
+// - Methods: loadInstallments(), markPaymentMade(), cancelInstallment(), deleteInstallment()
+// - Getters: summary, isLoading, errorMessage, selectedFilter, filteredInstallments
 
 class InstallmentsScreen extends StatefulWidget {
   const InstallmentsScreen({super.key});
@@ -15,9 +24,17 @@ class InstallmentsScreen extends StatefulWidget {
 }
 
 class _InstallmentsScreenState extends State<InstallmentsScreen> {
+  // TODO: Remove these local service instances when InstallmentsProvider is created
+  // The provider will manage InstallmentService internally
   final InstallmentService _installmentService = InstallmentService();
   final LocalizationService _localizationService = LocalizationService.instance;
 
+  // TODO: Remove these local state variables when migrating to InstallmentsProvider
+  // Use context.watch<InstallmentsProvider>() for reactive state instead:
+  // - provider.summary instead of _currentSummary
+  // - provider.isLoading instead of _isLoading
+  // - provider.errorMessage instead of _errorMessage
+  // - provider.selectedFilter instead of _selectedFilter
   late Future<InstallmentsSummary> _installmentsFuture;
   InstallmentsSummary? _currentSummary;
   bool _isLoading = false;
@@ -28,10 +45,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   @override
   void initState() {
     super.initState();
+    // TODO: When InstallmentsProvider is available:
+    // final provider = context.read<InstallmentsProvider>();
+    // provider.loadInstallments();
     _loadInstallments();
   }
 
   void _loadInstallments() {
+    // TODO: Replace with provider call when InstallmentsProvider is created:
+    // context.read<InstallmentsProvider>().loadInstallments(status: _selectedFilter);
+    // Remove setState calls - provider will notify listeners automatically
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -72,6 +95,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   }
 
   Future<void> _refreshInstallments() async {
+    // TODO: Replace with provider call:
+    // await context.read<InstallmentsProvider>().refreshInstallments();
     _loadInstallments();
     await _installmentsFuture;
   }
@@ -107,6 +132,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   }
 
   Future<void> _handleMarkPaymentMade(Installment installment) async {
+    // TODO: Replace with provider call:
+    // final success = await context.read<InstallmentsProvider>().markPaymentMade(installment.id);
+    // Provider should handle snackbar messaging via errorMessage/successMessage state
     try {
       final updated = await _installmentService.markPaymentMade(installment.id);
       if (mounted) {
@@ -147,6 +175,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
+      // TODO: Replace with provider call:
+      // final success = await context.read<InstallmentsProvider>().cancelInstallment(installment.id);
       try {
         await _installmentService.cancelInstallment(installment.id);
         if (mounted) {
@@ -190,6 +220,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
+      // TODO: Replace with provider call:
+      // final success = await context.read<InstallmentsProvider>().deleteInstallment(installment.id);
       try {
         await _installmentService.deleteInstallment(installment.id);
         if (mounted) {
@@ -285,6 +317,15 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // TODO: When InstallmentsProvider is available, use context.watch for reactive state:
+    // final provider = context.watch<InstallmentsProvider>();
+    // final isLoading = provider.isLoading;
+    // final errorMessage = provider.errorMessage;
+    // final currentSummary = provider.summary;
+    // final selectedFilter = provider.selectedFilter;
+    //
+    // This will automatically rebuild the widget when provider state changes
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -695,6 +736,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               ),
               selected: isSelected,
               onSelected: (selected) {
+                // TODO: Replace with provider call:
+                // context.read<InstallmentsProvider>().setFilter(selected ? status : null);
                 setState(() {
                   _selectedFilter = selected ? status : null;
                 });

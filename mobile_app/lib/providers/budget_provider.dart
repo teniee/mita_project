@@ -36,6 +36,13 @@ class BudgetProvider extends ChangeNotifier {
   Map<String, dynamic>? _budgetAdaptations;
   List<dynamic> _calendarData = [];
 
+  // Budget settings data
+  Map<String, dynamic> _automationSettings = {};
+  Map<String, dynamic>? _budgetRecommendations;
+  Map<String, dynamic>? _budgetRemaining;
+  Map<String, dynamic>? _behavioralAllocation;
+  bool _isUpdatingMode = false;
+
   // Subscriptions
   StreamSubscription? _budgetUpdateSubscription;
 
@@ -52,6 +59,11 @@ class BudgetProvider extends ChangeNotifier {
   Map<String, dynamic>? get aiOptimization => _aiOptimization;
   Map<String, dynamic>? get budgetAdaptations => _budgetAdaptations;
   List<dynamic> get calendarData => _calendarData;
+  Map<String, dynamic> get automationSettings => _automationSettings;
+  Map<String, dynamic>? get budgetRecommendations => _budgetRecommendations;
+  Map<String, dynamic>? get budgetRemaining => _budgetRemaining;
+  Map<String, dynamic>? get behavioralAllocation => _behavioralAllocation;
+  bool get isUpdatingMode => _isUpdatingMode;
 
   // Budget status convenience getters
   double get totalBudget => (_liveBudgetStatus['total_budget'] as num?)?.toDouble() ?? 0.0;
@@ -159,6 +171,112 @@ class BudgetProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       logError('Error loading budget mode: $e', tag: 'BUDGET_PROVIDER');
+    }
+  }
+
+  /// Set budget mode
+  Future<bool> setBudgetMode(String newMode) async {
+    if (_isUpdatingMode) return false;
+
+    _isUpdatingMode = true;
+    notifyListeners();
+
+    try {
+      await _apiService.setBudgetMode(newMode);
+      _budgetMode = newMode;
+      logInfo('Budget mode set to: $newMode', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      logError('Error setting budget mode: $e', tag: 'BUDGET_PROVIDER');
+      _errorMessage = 'Failed to update budget mode';
+      return false;
+    } finally {
+      _isUpdatingMode = false;
+      notifyListeners();
+    }
+  }
+
+  /// Load automation settings
+  Future<void> loadAutomationSettings() async {
+    try {
+      final settings = await _apiService.getBudgetAutomationSettings();
+      _automationSettings = settings;
+      logDebug('Automation settings loaded', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+    } catch (e) {
+      logError('Error loading automation settings: $e', tag: 'BUDGET_PROVIDER');
+    }
+  }
+
+  /// Update automation settings
+  Future<bool> updateAutomationSettings(Map<String, dynamic> newSettings) async {
+    try {
+      await _apiService.updateBudgetAutomationSettings(newSettings);
+      _automationSettings = {..._automationSettings, ...newSettings};
+      logInfo('Automation settings updated', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      logError('Error updating automation settings: $e', tag: 'BUDGET_PROVIDER');
+      return false;
+    }
+  }
+
+  /// Load budget remaining for current month
+  Future<void> loadBudgetRemaining() async {
+    try {
+      final now = DateTime.now();
+      final remaining = await _apiService.getBudgetRemaining(year: now.year, month: now.month);
+      _budgetRemaining = remaining;
+      logDebug('Budget remaining loaded', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+    } catch (e) {
+      logError('Error loading budget remaining: $e', tag: 'BUDGET_PROVIDER');
+    }
+  }
+
+  /// Load income-based budget recommendations
+  Future<void> loadBudgetRecommendations(double monthlyIncome) async {
+    try {
+      final recommendations = await _apiService.getIncomeBasedBudgetRecommendations(monthlyIncome);
+      _budgetRecommendations = recommendations;
+      logDebug('Budget recommendations loaded', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+    } catch (e) {
+      logError('Error loading budget recommendations: $e', tag: 'BUDGET_PROVIDER');
+    }
+  }
+
+  /// Load behavioral budget allocation
+  Future<void> loadBehavioralAllocation(double monthlyIncome, {Map<String, dynamic>? profile}) async {
+    try {
+      final allocation = await _apiService.getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
+      _behavioralAllocation = allocation;
+      logDebug('Behavioral allocation loaded', tag: 'BUDGET_PROVIDER');
+      notifyListeners();
+    } catch (e) {
+      logError('Error loading behavioral allocation: $e', tag: 'BUDGET_PROVIDER');
+    }
+  }
+
+  /// Load all budget settings data (for BudgetSettingsScreen)
+  Future<void> loadBudgetSettingsData(double monthlyIncome, {String? incomeTier}) async {
+    _setLoading(true);
+    try {
+      await Future.wait([
+        loadBudgetMode(),
+        loadAutomationSettings(),
+        loadBudgetRemaining(),
+        loadBudgetRecommendations(monthlyIncome),
+        loadBehavioralAllocation(monthlyIncome, profile: incomeTier != null ? {'income_tier': incomeTier} : null),
+      ]);
+      logInfo('Budget settings data loaded successfully', tag: 'BUDGET_PROVIDER');
+    } catch (e) {
+      logError('Error loading budget settings data: $e', tag: 'BUDGET_PROVIDER');
+      _errorMessage = e.toString();
+    } finally {
+      _setLoading(false);
     }
   }
 

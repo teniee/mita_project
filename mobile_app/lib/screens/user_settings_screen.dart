@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/settings_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -14,15 +16,13 @@ class UserSettingsScreen extends StatefulWidget {
 
 class _UserSettingsScreenState extends State<UserSettingsScreen> {
   final ApiService _apiService = ApiService();
-  
+
   bool _isLoading = true;
-  bool _darkModeEnabled = false;
-  bool _notificationsEnabled = true;
-  bool _biometricEnabled = false;
+  // Settings managed by SettingsProvider: themeMode, locale, notificationsEnabled, biometricsEnabled, defaultCurrency
+
+  // Settings not in provider - managed locally
   bool _autoSyncEnabled = true;
   bool _offlineModeEnabled = true;
-  String _defaultCurrency = 'USD';
-  String _language = 'English';
   String _dateFormat = 'MM/dd/yyyy';
   double _budgetAlertThreshold = 80.0;
 
@@ -34,14 +34,59 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   // Behavioral preferences
   Map<String, dynamic> _behavioralPreferences = {};
-  
-  final List<String> _currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY'];
-  final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
+
   final List<String> _dateFormats = ['MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
+
+  // Language code to display name mapping
+  String _getLanguageDisplayName(String languageCode) {
+    switch (languageCode) {
+      case 'en':
+        return 'English';
+      case 'es':
+        return 'Spanish';
+      case 'fr':
+        return 'French';
+      case 'de':
+        return 'German';
+      case 'bg':
+        return 'Bulgarian';
+      case 'ru':
+        return 'Russian';
+      default:
+        return 'English';
+    }
+  }
+
+  String _getLanguageCode(String displayName) {
+    switch (displayName) {
+      case 'English':
+        return 'en';
+      case 'Spanish':
+        return 'es';
+      case 'French':
+        return 'fr';
+      case 'German':
+        return 'de';
+      case 'Bulgarian':
+        return 'bg';
+      case 'Russian':
+        return 'ru';
+      default:
+        return 'en';
+    }
+  }
+
+  final List<String> _languages = ['English', 'Spanish', 'French', 'German', 'Bulgarian', 'Russian'];
   
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settingsProvider = context.read<SettingsProvider>();
+      if (!settingsProvider.isInitialized) {
+        settingsProvider.initialize();
+      }
+    });
     _loadSettings();
   }
   
@@ -49,7 +94,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     try {
       setState(() => _isLoading = true);
 
-      // Load general settings and behavioral settings in parallel
+      // Load behavioral settings and other non-provider settings from API
       final results = await Future.wait([
         _apiService.getUserProfile().timeout(
           const Duration(seconds: 3),
@@ -71,15 +116,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
       if (mounted) {
         setState(() {
-          // General settings
+          // Settings not managed by provider - load from API
           if (settings.isNotEmpty) {
-            _darkModeEnabled = settings['dark_mode'] ?? false;
-            _notificationsEnabled = settings['notifications'] ?? true;
-            _biometricEnabled = settings['biometric_auth'] ?? false;
             _autoSyncEnabled = settings['auto_sync'] ?? true;
             _offlineModeEnabled = settings['offline_mode'] ?? true;
-            _defaultCurrency = settings['currency'] ?? 'USD';
-            _language = settings['language'] ?? 'English';
             _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
             _budgetAlertThreshold = (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
           }
@@ -106,14 +146,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   
   Future<void> _saveSettings() async {
     try {
+      final settingsProvider = context.read<SettingsProvider>();
+
       final settings = {
-        'dark_mode': _darkModeEnabled,
-        'notifications': _notificationsEnabled,
-        'biometric_auth': _biometricEnabled,
+        'dark_mode': settingsProvider.themeMode == ThemeMode.dark,
+        'notifications': settingsProvider.notificationsEnabled,
+        'biometric_auth': settingsProvider.biometricsEnabled,
         'auto_sync': _autoSyncEnabled,
         'offline_mode': _offlineModeEnabled,
-        'currency': _defaultCurrency,
-        'language': _language,
+        'currency': settingsProvider.defaultCurrency,
+        'language': _getLanguageDisplayName(settingsProvider.languageCode),
         'date_format': _dateFormat,
         'budget_alert_threshold': _budgetAlertThreshold,
       };
@@ -174,7 +216,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+    final settingsProvider = context.watch<SettingsProvider>();
+
+    final isLoading = _isLoading || settingsProvider.isLoading;
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -200,7 +245,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           ),
         ],
       ),
-      body: _isLoading ? _buildLoadingState() : _buildSettingsContent(colorScheme, textTheme),
+      body: isLoading ? _buildLoadingState() : _buildSettingsContent(colorScheme, textTheme, settingsProvider),
     );
   }
   
@@ -217,7 +262,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
   
-  Widget _buildSettingsContent(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildSettingsContent(ColorScheme colorScheme, TextTheme textTheme, SettingsProvider settingsProvider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -232,16 +277,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 'Dark Mode',
                 'Use dark theme throughout the app',
                 Icons.dark_mode,
-                _darkModeEnabled,
-                (value) => setState(() => _darkModeEnabled = value),
+                settingsProvider.themeMode == ThemeMode.dark,
+                (value) => settingsProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
               ),
               _buildDropdownTile(
                 'Language',
                 'Select your preferred language',
                 Icons.language,
-                _language,
+                _getLanguageDisplayName(settingsProvider.languageCode),
                 _languages,
-                (value) => setState(() => _language = value!),
+                (value) => settingsProvider.setLocale(Locale(_getLanguageCode(value!))),
               ),
               _buildDropdownTile(
                 'Date Format',
@@ -255,7 +300,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             colorScheme,
             textTheme,
           ),
-          
+
           const SizedBox(height: 24),
 
           // Notifications Settings
@@ -267,8 +312,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 'Push Notifications',
                 'Receive spending alerts and tips',
                 Icons.notifications_active,
-                _notificationsEnabled,
-                (value) => setState(() => _notificationsEnabled = value),
+                settingsProvider.notificationsEnabled,
+                (value) => settingsProvider.setNotificationsEnabled(value),
               ),
               _buildSliderTile(
                 'Budget Alert Threshold',
@@ -333,8 +378,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 'Biometric Authentication',
                 'Use fingerprint or face unlock',
                 Icons.fingerprint,
-                _biometricEnabled,
-                (value) => setState(() => _biometricEnabled = value),
+                settingsProvider.biometricsEnabled,
+                (value) => settingsProvider.setBiometricsEnabled(value),
               ),
               _buildActionTile(
                 'Change Password',
@@ -378,9 +423,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 'Default Currency',
                 'Currency used for new transactions',
                 Icons.attach_money,
-                _defaultCurrency,
-                _currencies,
-                (value) => setState(() => _defaultCurrency = value!),
+                settingsProvider.defaultCurrency,
+                settingsProvider.getAvailableCurrencies(),
+                (value) => settingsProvider.setDefaultCurrency(value!),
               ),
             ],
             colorScheme,

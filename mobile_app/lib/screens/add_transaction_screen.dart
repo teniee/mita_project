@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TransactionModel? transaction;
@@ -16,7 +17,6 @@ class AddTransactionScreen extends StatefulWidget {
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TransactionService _transactionService = TransactionService();
 
   late TextEditingController _amountController;
   late TextEditingController _descriptionController;
@@ -109,6 +109,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
 
     try {
+      final transactionProvider = context.read<TransactionProvider>();
+
       final input = TransactionInput(
         amount: double.parse(_amountController.text),
         category: _selectedCategory,
@@ -119,25 +121,35 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         spentAt: _selectedDate,
       );
 
+      TransactionModel? result;
       if (widget.transaction == null) {
         // Create new transaction
-        await _transactionService.createTransaction(input);
+        result = await transactionProvider.createTransaction(input);
       } else {
         // Update existing transaction
-        await _transactionService.updateTransaction(widget.transaction!.id, input);
+        result = await transactionProvider.updateTransaction(widget.transaction!.id, input);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.transaction == null
-              ? 'Transaction added successfully'
-              : 'Transaction updated successfully'),
-        ),
-      );
+      if (result != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.transaction == null
+                ? 'Transaction added successfully'
+                : 'Transaction updated successfully'),
+          ),
+        );
 
-      Navigator.pop(context, true);
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(transactionProvider.errorMessage ?? 'Failed to save transaction'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 

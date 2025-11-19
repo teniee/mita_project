@@ -9,3 +9,5 @@ export 'user_provider.dart';
 export 'budget_provider.dart';
 export 'transaction_provider.dart';
 export 'settings_provider.dart';
+export 'goals_provider.dart';
+export 'challenges_provider.dart';

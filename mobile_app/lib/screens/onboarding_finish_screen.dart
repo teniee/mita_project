@@ -1,11 +1,12 @@
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
 import '../services/logging_service.dart';
-import '../services/user_data_manager.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({super.key});
@@ -146,22 +147,21 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         throw Exception('Session expired. Please log in again.');
       }
 
-      // Cache onboarding data immediately for main app use
-      await UserDataManager.instance.cacheOnboardingData(onboardingData);
+      // Cache onboarding data using UserProvider for centralized state management
+      final userProvider = context.read<UserProvider>();
+      await userProvider.cacheOnboardingData(onboardingData);
       logInfo('Onboarding data cached for immediate use', tag: 'ONBOARDING_FINISH');
 
       // CRITICAL DEBUG: Verify cache was actually saved
-      final cachedCheck = UserDataManager.instance.hasCachedOnboardingData();
+      final cachedCheck = userProvider.hasCompletedOnboarding;
       logInfo('CRITICAL DEBUG: Cache verification after save: $cachedCheck', tag: 'ONBOARDING_FINISH');
 
       // Try to submit to backend with proper error handling
       try {
         await _api.submitOnboarding(onboardingData);
         logInfo('Onboarding submitted to backend successfully', tag: 'ONBOARDING_FINISH');
-        
-        // Force refresh user data from API to get latest state
-        await UserDataManager.instance.refreshUserData();
-        
+        // Note: User data refresh is already handled by UserProvider.cacheOnboardingData()
+
       } catch (e) {
         logWarning('Backend submission failed (but continuing with cached data): $e', tag: 'ONBOARDING_FINISH');
         
@@ -198,7 +198,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       if (!mounted) return;
 
       // CRITICAL DEBUG: Final verification before navigation
-      final finalCacheCheck = UserDataManager.instance.hasCachedOnboardingData();
+      final finalCacheCheck = userProvider.hasCompletedOnboarding;
       logInfo('CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck', tag: 'ONBOARDING_FINISH');
 
       // Clear temporary onboarding state only after successful completion
