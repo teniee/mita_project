@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/advanced_financial_engine.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../providers/notifications_provider.dart';
+import '../models/notification_model.dart';
 
 /// Intelligent Notifications Widget
 /// 
@@ -36,18 +37,19 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  final _apiService = ApiService();
-
-  List<Map<String, dynamic>> _notifications = [];
   bool _isExpanded = false;
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _subscribeToNotifications();
-    _loadInitialNotifications();
+    // Load notifications via provider after widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<NotificationsProvider>();
+      if (provider.state == NotificationState.initial) {
+        provider.loadNotifications();
+      }
+    });
   }
 
   void _initializeAnimations() {
@@ -80,95 +82,41 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
     _fadeController.forward();
   }
 
-  void _subscribeToNotifications() {
-    widget.financialEngine.addListener(_onNotificationsUpdated);
-  }
-
-  void _onNotificationsUpdated() {
-    if (mounted) {
-      _loadNotifications();
-    }
-  }
-
-  void _loadInitialNotifications() {
-    _loadNotifications();
-  }
-
-  Future<void> _loadNotifications() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Fetch notifications from API
-      final notificationsResponse = await _apiService.getNotifications();
-
-      // Convert to Map format expected by the widget
-      final newNotifications = notificationsResponse.map((notification) {
-        return {
-          'id': notification['id'] ?? '',
-          'type': notification['type'] ?? 'info',
-          'priority': notification['priority'] ?? 'low',
-          'title': notification['title'] ?? 'Notification',
-          'message': notification['message'] ?? '',
-          'timestamp': notification['timestamp'] ?? DateTime.now().toIso8601String(),
-          'isRead': notification['is_read'] ?? false,
-        };
-      }).toList();
-
-      if (newNotifications != _notifications) {
-        setState(() {
-          _notifications = List<Map<String, dynamic>>.from(newNotifications);
-          _isLoading = false;
-        });
-
-        // Animate new notifications
-        _slideController.forward().then((_) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted) _slideController.reset();
-          });
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      logError('Failed to load notifications: $e', tag: 'NOTIFICATIONS_WIDGET');
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   void dispose() {
-    widget.financialEngine.removeListener(_onNotificationsUpdated);
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _filteredNotifications {
-    var filtered = _notifications;
-    
+  List<Map<String, dynamic>> _getFilteredNotifications(List<NotificationModel> notifications) {
+    var filtered = notifications.map((n) => {
+      'id': n.id,
+      'type': n.type,
+      'priority': n.priority,
+      'title': n.title,
+      'message': n.message,
+      'timestamp': n.createdAt.toIso8601String(),
+      'isRead': n.isRead,
+    }).toList();
+
     if (widget.showOnlyHighPriority) {
       filtered = filtered.where((notification) {
         final priority = notification['priority'] as String? ?? 'low';
         return priority == 'high' || priority == 'critical';
       }).toList();
     }
-    
+
     return filtered.take(widget.maxNotifications).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredNotifications = _filteredNotifications;
-    
-    if (filteredNotifications.isEmpty) {
+    // Use provider for notifications state
+    final provider = context.watch<NotificationsProvider>();
+    final filteredNotifications = _getFilteredNotifications(provider.notifications);
+
+    if (filteredNotifications.isEmpty && !provider.isLoading) {
       return const SizedBox.shrink();
     }
 
