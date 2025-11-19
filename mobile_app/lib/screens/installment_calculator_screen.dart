@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/installment_models.dart';
+import '../providers/installments_provider.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
 import '../theme/app_colors.dart';
@@ -36,7 +37,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
   int _selectedPayments = 4;
   double _selectedInterestRate = 0.0;
 
-  // State management
+  // Local UI state management
   bool _isLoading = false;
   bool _hasProfile = false;
   UserFinancialProfile? _userProfile;
@@ -73,7 +74,14 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       curve: Curves.easeOutCubic,
     ));
 
-    _loadUserProfile();
+    // Initialize provider and load user profile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<InstallmentsProvider>();
+      if (provider.state == InstallmentsState.initial) {
+        provider.initialize();
+      }
+      _loadUserProfile();
+    });
   }
 
   @override
@@ -144,10 +152,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           ? _userProfile!.currentBalance
           : double.tryParse(_currentBalanceController.text);
 
-      // Fetch active installments for accurate calculation
-      final installmentsSummary = await _installmentService.getInstallments(
-        status: InstallmentStatus.active,
-      );
+      // Use provider data for active installments
+      final provider = context.read<InstallmentsProvider>();
+      final activeInstallmentsCount = provider.totalActive;
+      final activeInstallmentsMonthly = provider.totalMonthlyPayment;
 
       final input = InstallmentCalculatorInput(
         purchaseAmount: purchaseAmount,
@@ -157,8 +165,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         monthlyIncome: monthlyIncome,
         currentBalance: currentBalance,
         ageGroup: _userProfile?.ageGroup,
-        activeInstallmentsCount: installmentsSummary.totalActive,
-        activeInstallmentsMonthly: installmentsSummary.totalMonthlyPayment,
+        activeInstallmentsCount: activeInstallmentsCount,
+        activeInstallmentsMonthly: activeInstallmentsMonthly,
         creditCardDebt: _userProfile?.creditCardDebt ?? 0.0,
         otherMonthlyObligations: _userProfile?.totalMonthlyObligations ?? 0.0,
         planningMortgage: _userProfile?.planningMortgage ?? false,
@@ -272,6 +280,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
 
   @override
   Widget build(BuildContext context) {
+    // Watch provider for reactive updates
+    final provider = context.watch<InstallmentsProvider>();
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(

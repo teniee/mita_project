@@ -46,7 +46,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _chartAnimation;
 
-  bool _isLoading = true;
+  // Local UI state only
+  bool _isLoadingLocal = false;
   List<Map<String, dynamic>> _categoryBreakdown = [];
   Map<String, dynamic>? _predictions;
   String _selectedTab = 'spending'; // spending, predictions, insights
@@ -85,13 +86,25 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   void _initializeProviders() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Use context.read for one-time initialization
+      final budgetProvider = context.read<BudgetProvider>();
+
+      // Load calendar data for the specific month if not already loaded
+      if (budgetProvider.calendarData.isEmpty) {
+        budgetProvider.loadCalendarData(
+          year: widget.date.year,
+          month: widget.date.month,
+        );
+      }
+
+      // Load day-specific details
       _loadDayDetails();
     });
   }
 
   Future<void> _loadDayDetails() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() => _isLoadingLocal = true);
 
       final isPastDate = widget.date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
       final isFutureDate = widget.date.isAfter(DateTime.now());
@@ -106,7 +119,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         await _loadPredictions();
       }
 
-      // Load category breakdown
+      // Load category breakdown using BudgetProvider data when available
       await _loadCategoryBreakdown();
 
       // Start chart animation
@@ -116,7 +129,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       logError('Failed to load day details: $e', tag: 'CALENDAR_DAY_DETAILS');
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isLoadingLocal = false);
       }
     }
   }
@@ -180,7 +193,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Future<void> _loadCategoryBreakdown() async {
     try {
-      // Use existing day data if available
+      // First check widget data
       if (widget.dayData != null && widget.dayData!['categories'] != null) {
         final categories = widget.dayData!['categories'] as Map<String, dynamic>;
         final breakdown = <Map<String, dynamic>>[];
@@ -199,12 +212,46 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         setState(() {
           _categoryBreakdown = breakdown;
         });
-      } else {
-        // Generate default breakdown
-        setState(() {
-          _categoryBreakdown = _generateDefaultCategoryBreakdown();
-        });
+        return;
       }
+
+      // Try to get data from BudgetProvider's calendar data
+      final budgetProvider = context.read<BudgetProvider>();
+      final calendarData = budgetProvider.calendarData;
+
+      if (calendarData.isNotEmpty) {
+        // Find the day data for the current date
+        final dayData = calendarData.firstWhere(
+          (day) => day['day'] == widget.dayNumber,
+          orElse: () => <String, dynamic>{},
+        );
+
+        if (dayData.isNotEmpty && dayData['categories'] != null) {
+          final categories = dayData['categories'] as Map<String, dynamic>;
+          final breakdown = <Map<String, dynamic>>[];
+
+          categories.forEach((category, budgetedAmount) {
+            final spentAmount = _calculateCategorySpentAmount(category, budgetedAmount);
+            breakdown.add({
+              'name': _formatCategoryName(category),
+              'budgeted': (budgetedAmount as num).toDouble(),
+              'spent': spentAmount,
+              'color': _getCategoryColor(category),
+              'icon': _getCategoryIcon(category),
+            });
+          });
+
+          setState(() {
+            _categoryBreakdown = breakdown;
+          });
+          return;
+        }
+      }
+
+      // Fallback to default breakdown
+      setState(() {
+        _categoryBreakdown = _generateDefaultCategoryBreakdown();
+      });
     } catch (e) {
       logWarning('Failed to load category breakdown: $e', tag: 'CALENDAR_DAY_DETAILS');
       setState(() {
@@ -299,7 +346,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
                       // Content
                       Expanded(
-                        child: _buildTabContent(colorScheme, textTheme, transactionProvider),
+                        child: _buildTabContent(colorScheme, textTheme, transactionProvider, budgetProvider),
                       ),
 
                       // Action Buttons
@@ -611,9 +658,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildTabContent(ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider) {
-    // Show loading state from provider or local loading
-    if (_isLoading || transactionProvider.isLoading) {
+  Widget _buildTabContent(ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider, BudgetProvider budgetProvider) {
+    // Show loading state from providers or local loading
+    if (_isLoadingLocal || transactionProvider.isLoading || budgetProvider.isLoading) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
