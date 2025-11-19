@@ -7,6 +7,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/income_service.dart';
 import '../services/cohort_service.dart';
@@ -32,10 +33,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   bool _isAILoading = true;
   late TabController _tabController;
 
-  // Income-related data
+  // Income-related data (computed from UserProvider)
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
-  Map<String, dynamic>? _userProfile;
 
   // Traditional Analytics Data - computed from providers
   List<Map<String, dynamic>> dailyTotals = [];
@@ -67,8 +67,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
     // Initialize providers after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
       final budgetProvider = context.read<BudgetProvider>();
       final transactionProvider = context.read<TransactionProvider>();
+
+      // Initialize UserProvider if needed
+      if (userProvider.state == UserState.initial) {
+        userProvider.initialize();
+      }
 
       if (budgetProvider.state == BudgetState.initial) {
         budgetProvider.initialize();
@@ -131,9 +137,17 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Future<void> _fetchUserProfile() async {
     try {
-      _userProfile = await _apiService.getUserProfile();
-      final incomeValue = (_userProfile?['data']?['income'] as num?)?.toDouble();
-      if (incomeValue == null || incomeValue <= 0) {
+      // Use UserProvider for user profile data
+      final userProvider = context.read<UserProvider>();
+
+      // Ensure user data is loaded
+      if (userProvider.state == UserState.initial || userProvider.state == UserState.loading) {
+        await userProvider.initialize();
+      }
+
+      // Get income from UserProvider
+      final incomeValue = userProvider.userIncome;
+      if (incomeValue <= 0) {
         throw Exception('Income data required for insights. Please complete onboarding.');
       }
       _monthlyIncome = incomeValue;
@@ -320,11 +334,19 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
     final budgetProvider = context.watch<BudgetProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
 
+    // Update local income data from UserProvider for reactive updates
+    if (userProvider.userIncome > 0 && _monthlyIncome != userProvider.userIncome) {
+      _monthlyIncome = userProvider.userIncome;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+    }
+
     // Combined loading state from providers and local AI loading
     final isLoading = _isAILoading ||
+        userProvider.state == UserState.loading ||
         budgetProvider.state == BudgetState.loading ||
         transactionProvider.state == TransactionState.loading;
 
