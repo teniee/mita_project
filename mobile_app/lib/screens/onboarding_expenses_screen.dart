@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import '../services/onboarding_state.dart';
 import '../widgets/onboarding_progress_indicator.dart';
@@ -58,11 +60,11 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
   Widget _buildExpenseCard(PredefinedExpense expense) {
     return Card(
       elevation: expense.isSelected ? 3 : 1,
-      color: expense.isSelected ? const Color(0xFFFFD25F).withOpacity(0.3) : Colors.white,
+      color: expense.isSelected ? const AppColors.secondary.withOpacity(0.3) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: expense.isSelected ? const Color(0xFF193C57) : Colors.grey.shade300,
+          color: expense.isSelected ? const AppColors.textPrimary : Colors.grey.shade300,
           width: expense.isSelected ? 2 : 1,
         ),
       ),
@@ -76,12 +78,12 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF193C57).withOpacity(0.1),
+                    color: const AppColors.textPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     expense.icon,
-                    color: const Color(0xFF193C57),
+                    color: const AppColors.textPrimary,
                     size: 24,
                   ),
                 ),
@@ -91,16 +93,16 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                   child: Text(
                     expense.label,
                     style: const TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
                 Checkbox(
                   value: expense.isSelected,
-                  activeColor: const Color(0xFF193C57),
+                  activeColor: const AppColors.textPrimary,
                   onChanged: (value) {
                     setState(() {
                       expense.isSelected = value ?? false;
@@ -159,12 +161,12 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     final selectedCount = expenses.where((e) => e.isSelected).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -187,17 +189,17 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                       const Text(
                         "What are your fixed monthly expenses?",
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w700,
                           fontSize: 22,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         "Select your regular bills and enter the amounts. This helps create an accurate budget.",
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           color: Colors.grey.shade700,
                           fontSize: 14,
                         ),
@@ -207,16 +209,16 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF193C57).withOpacity(0.1),
+                            color: const AppColors.textPrimary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             '$selectedCount expense${selectedCount == 1 ? '' : 's'} selected',
                             style: const TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -233,14 +235,14 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF193C57),
+                            backgroundColor: const AppColors.textPrimary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             textStyle: const TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -262,7 +264,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                           child: const Text(
                             "Skip for now",
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               color: Colors.grey,
                             ),
                           ),

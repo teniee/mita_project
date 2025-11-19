@@ -2,9 +2,12 @@
 /// Complete UI for goal management with statistics and filtering
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/goal.dart';
-import '../services/api_service.dart';
+import '../providers/goals_provider.dart';
 import '../services/logging_service.dart';
 import 'goal_insights_screen.dart';
 import 'smart_goal_recommendations_screen.dart';
@@ -17,13 +20,6 @@ class GoalsScreen extends StatefulWidget {
 }
 
 class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
-  List<Goal> _goals = [];
-  Map<String, dynamic>? _statistics;
-  String? _selectedStatus;
-  String? _selectedCategory;
-
   late TabController _tabController;
 
   @override
@@ -31,8 +27,14 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
-    fetchGoals();
-    fetchStatistics();
+
+    // Initialize GoalsProvider for centralized state management
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final goalsProvider = context.read<GoalsProvider>();
+      if (goalsProvider.state == GoalsState.initial) {
+        goalsProvider.initialize();
+      }
+    });
   }
 
   @override
@@ -44,72 +46,24 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      setState(() {
-        switch (_tabController.index) {
-          case 0:
-            _selectedStatus = null;
-            break;
-          case 1:
-            _selectedStatus = 'active';
-            break;
-          case 2:
-            _selectedStatus = 'completed';
-            break;
-          case 3:
-            _selectedStatus = 'paused';
-            break;
-        }
-      });
-      fetchGoals();
+      final goalsProvider = context.read<GoalsProvider>();
+      String? status;
+      switch (_tabController.index) {
+        case 0:
+          status = null;
+          break;
+        case 1:
+          status = 'active';
+          break;
+        case 2:
+          status = 'completed';
+          break;
+        case 3:
+          status = 'paused';
+          break;
+      }
+      goalsProvider.setStatusFilter(status);
     }
-  }
-
-  Future<void> fetchGoals() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await _apiService.getGoals(
-        status: _selectedStatus,
-        category: _selectedCategory,
-      );
-      setState(() {
-        _goals = data.map((json) => Goal.fromJson(json)).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading goals: $e');
-      if (!mounted) return;
-      setState(() {
-        _goals = _getSampleGoals();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> fetchStatistics() async {
-    try {
-      final stats = await _apiService.getGoalStatistics();
-      setState(() => _statistics = stats);
-    } catch (e) {
-      logError('Error loading goal statistics: $e');
-    }
-  }
-
-  List<Goal> _getSampleGoals() {
-    return [
-      Goal(
-        id: '1',
-        title: 'Emergency Fund',
-        description: 'Build a 3-month emergency fund',
-        category: 'Emergency',
-        targetAmount: 5000,
-        savedAmount: 1250,
-        status: 'active',
-        progress: 25.0,
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        lastUpdated: DateTime.now(),
-        priority: 'high',
-      ),
-    ];
   }
 
   Future<void> _showGoalForm({Goal? goal}) async {
@@ -277,13 +231,21 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                 };
 
                 try {
+                  final goalsProvider = context.read<GoalsProvider>();
+                  bool success;
                   if (goal == null) {
-                    await _apiService.createGoal(data);
+                    success = await goalsProvider.createGoal(data);
                   } else {
-                    await _apiService.updateGoal(goal.id, data);
+                    success = await goalsProvider.updateGoal(goal.id, data);
                   }
                   if (!context.mounted) return;
-                  Navigator.pop(context, true);
+                  if (success) {
+                    Navigator.pop(context, true);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+                    );
+                  }
                 } catch (e) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -298,10 +260,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       ),
     );
 
-    if (result == true) {
-      fetchGoals();
-      fetchStatistics();
-    }
+    // GoalsProvider auto-refreshes on successful operations
   }
 
   Future<void> _deleteGoal(Goal goal) async {
@@ -325,16 +284,12 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     );
 
     if (confirm == true) {
-      try {
-        await _apiService.deleteGoal(goal.id);
-        fetchGoals();
-        fetchStatistics();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
-        }
+      final goalsProvider = context.read<GoalsProvider>();
+      final success = await goalsProvider.deleteGoal(goal.id);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+        );
       }
     }
   }
@@ -371,9 +326,16 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
               }
 
               try {
-                await _apiService.addSavingsToGoal(goal.id, amount);
+                final goalsProvider = context.read<GoalsProvider>();
+                final success = await goalsProvider.addSavings(goal.id, amount);
                 if (!context.mounted) return;
-                Navigator.pop(context, true);
+                if (success) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+                  );
+                }
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -387,27 +349,16 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       ),
     );
 
-    if (result == true) {
-      fetchGoals();
-      fetchStatistics();
-    }
+    // GoalsProvider auto-refreshes on successful operations
   }
 
   Future<void> _toggleGoalStatus(Goal goal) async {
-    try {
-      if (goal.status == 'active') {
-        await _apiService.pauseGoal(goal.id);
-      } else if (goal.status == 'paused') {
-        await _apiService.resumeGoal(goal.id);
-      }
-      fetchGoals();
-      fetchStatistics();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+    final goalsProvider = context.read<GoalsProvider>();
+    final success = await goalsProvider.toggleGoalStatus(goal);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+      );
     }
   }
 
@@ -421,26 +372,32 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    // Use GoalsProvider for centralized state
+    final goalsProvider = context.watch<GoalsProvider>();
+    final isLoading = goalsProvider.isLoading;
+    final goals = goalsProvider.goals;
+    final hasStatistics = goalsProvider.hasStatistics;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Goals',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF193C57),
+          labelColor: const AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFFFFD25F),
+          indicatorColor: const AppColors.secondary,
           tabs: const [
             Tab(text: 'All'),
             Tab(text: 'Active'),
@@ -462,19 +419,18 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                 ),
               );
               if (result == true) {
-                fetchGoals();
-                fetchStatistics();
+                context.read<GoalsProvider>().refresh();
               }
             },
-            backgroundColor: const Color(0xFF193C57),
+            backgroundColor: const AppColors.textPrimary,
             label: const Text('AI Suggestions', style: TextStyle(color: Colors.white)),
-            icon: const Icon(Icons.auto_awesome, color: Color(0xFFFFD25F)),
+            icon: const Icon(Icons.auto_awesome, color: AppColors.secondary),
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: "goals_fab",
             onPressed: () => _showGoalForm(),
-            backgroundColor: const Color(0xFFFFD25F),
+            backgroundColor: const AppColors.secondary,
             child: const Icon(Icons.add, color: Colors.black),
           ),
         ],
@@ -482,29 +438,28 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       body: Column(
         children: [
           // Statistics Card
-          if (_statistics != null) _buildStatisticsCard(),
+          if (hasStatistics) _buildStatisticsCard(goalsProvider),
 
           // Goals List
           Expanded(
-            child: _isLoading
+            child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _goals.isEmpty
+                : goals.isEmpty
                     ? _buildEmptyState()
-                    : _buildGoalsList(),
+                    : _buildGoalsList(goals),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatisticsCard() {
-    final stats = _statistics!;
+  Widget _buildStatisticsCard(GoalsProvider goalsProvider) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF193C57), Color(0xFF2B5876)],
+        gradient: LinearGradient(
+          colors: [AppColors.textPrimary, AppColors.textPrimary.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -522,9 +477,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem('Total', stats['total_goals'].toString(), Icons.flag),
-              _buildStatItem('Active', stats['active_goals'].toString(), Icons.play_arrow),
-              _buildStatItem('Done', stats['completed_goals'].toString(), Icons.check_circle),
+              _buildStatItem('Total', goalsProvider.totalGoals.toString(), Icons.flag),
+              _buildStatItem('Active', goalsProvider.activeGoals.toString(), Icons.play_arrow),
+              _buildStatItem('Done', goalsProvider.completedGoals.toString(), Icons.check_circle),
             ],
           ),
           const SizedBox(height: 16),
@@ -533,12 +488,12 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             children: [
               _buildStatItem(
                 'Completion',
-                '${stats['completion_rate'].toStringAsFixed(0)}%',
+                '${goalsProvider.completionRate.toStringAsFixed(0)}%',
                 Icons.pie_chart,
               ),
               _buildStatItem(
                 'Avg Progress',
-                '${stats['average_progress'].toStringAsFixed(0)}%',
+                '${goalsProvider.averageProgress.toStringAsFixed(0)}%',
                 Icons.trending_up,
               ),
             ],
@@ -551,12 +506,12 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const Color(0xFFFFD25F), size: 24),
+        Icon(icon, color: const AppColors.secondary, size: 24),
         const SizedBox(height: 4),
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -565,7 +520,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 12,
             color: Colors.white70,
           ),
@@ -595,11 +550,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildGoalsList() {
+  Widget _buildGoalsList(List<Goal> goals) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _goals.length,
-      itemBuilder: (context, index) => _buildGoalCard(_goals[index]),
+      itemCount: goals.length,
+      itemBuilder: (context, index) => _buildGoalCard(goals[index]),
     );
   }
 
@@ -618,7 +573,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             gradient: LinearGradient(
               colors: [
                 Colors.white,
-                const Color(0xFFFFF9F0).withValues(alpha: 0.3),
+                const AppColors.background.withValues(alpha: 0.3),
               ],
             ),
           ),
@@ -637,10 +592,10 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                           Text(
                             goal.title,
                             style: const TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           if (goal.description != null && goal.description!.isNotEmpty) ...[
@@ -719,7 +674,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFD25F).withValues(alpha: 0.2),
+                          color: const AppColors.secondary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -757,10 +712,10 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                     Text(
                       goal.formattedSavedAmount,
                       style: const TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
@@ -839,8 +794,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   Color _getProgressColor(double progress) {
     if (progress >= 100) return Colors.green;
-    if (progress >= 70) return const Color(0xFFFFD25F);
-    return const Color(0xFF193C57);
+    if (progress >= 70) return const AppColors.secondary;
+    return const AppColors.textPrimary;
   }
 
   Color _getPriorityColor(String priority) {

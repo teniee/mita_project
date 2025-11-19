@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
+import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingSpendingFrequencyScreen extends StatefulWidget {
@@ -82,17 +86,17 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                       Text(
                         title,
                         style: const TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w700,
                           fontSize: 18,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 13,
                           color: Colors.grey.shade600,
                         ),
@@ -114,7 +118,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 child: Text(
                   _frequencyLabels[value.round()] ?? 'Regularly',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: accentColor,
@@ -149,7 +153,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                   Text(
                     'Rarely',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 11,
                       color: Colors.grey.shade600,
                     ),
@@ -157,7 +161,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                   Text(
                     'Very Often',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 11,
                       color: Colors.grey.shade600,
                     ),
@@ -174,12 +178,12 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -198,17 +202,17 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
               const Text(
                 'How often do you spend on these?',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w700,
                   fontSize: 22,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Move the sliders to match your spending habits. This helps create a personalized budget.',
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   color: Colors.grey.shade700,
                 ),
@@ -222,7 +226,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.restaurant_menu,
                 value: _lifestyleFrequency,
                 onChanged: (value) => setState(() => _lifestyleFrequency = value),
-                accentColor: const Color(0xFFFF6B6B),
+                accentColor: AppColors.danger,
               ),
               const SizedBox(height: 16),
 
@@ -233,7 +237,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.shopping_bag,
                 value: _shoppingFrequency,
                 onChanged: (value) => setState(() => _shoppingFrequency = value),
-                accentColor: const Color(0xFF4ECDC4),
+                accentColor: AppColors.chart7,
               ),
               const SizedBox(height: 16),
 
@@ -244,7 +248,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 icon: Icons.flight_takeoff,
                 value: _travelFrequency,
                 onChanged: (value) => setState(() => _travelFrequency = value),
-                accentColor: const Color(0xFFFFD93D),
+                accentColor: AppColors.secondary,
               ),
               const SizedBox(height: 32),
 
@@ -254,14 +258,14 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 child: ElevatedButton(
                   onPressed: _submitFrequencies,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF193C57),
+                    backgroundColor: const AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
                     textStyle: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -284,7 +288,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
                   ),
                 ),
               ),

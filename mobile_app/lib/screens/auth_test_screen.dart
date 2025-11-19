@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';

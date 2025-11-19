@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/installment_models.dart';
-import '../services/installment_service.dart';
-import '../services/logging_service.dart';
+import '../providers/installments_provider.dart';
 import '../services/localization_service.dart';
 
 class InstallmentsScreen extends StatefulWidget {
@@ -13,114 +15,38 @@ class InstallmentsScreen extends StatefulWidget {
 }
 
 class _InstallmentsScreenState extends State<InstallmentsScreen> {
-  final InstallmentService _installmentService = InstallmentService();
   final LocalizationService _localizationService = LocalizationService.instance;
-
-  late Future<InstallmentsSummary> _installmentsFuture;
-  InstallmentsSummary? _currentSummary;
-  bool _isLoading = false;
-  String? _errorMessage;
-  InstallmentStatus? _selectedFilter;
   bool _showMonthlyView = true;
 
   @override
   void initState() {
     super.initState();
-    _loadInstallments();
-  }
-
-  void _loadInstallments() {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+    // Initialize provider and load installments
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<InstallmentsProvider>().loadInstallments();
     });
-
-    _installmentsFuture = _installmentService.getInstallments(status: _selectedFilter)
-        .then((summary) {
-          if (mounted) {
-            setState(() {
-              _currentSummary = summary;
-              _isLoading = false;
-            });
-          }
-          return summary;
-        })
-        .catchError((error) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = _getErrorMessage(error);
-              _isLoading = false;
-            });
-          }
-          logError('Error loading installments: $error',
-              tag: 'INSTALLMENTS_SCREEN');
-          rethrow;
-        });
-  }
-
-  String _getErrorMessage(dynamic error) {
-    if (error is InstallmentServiceException) {
-      if (error.isNetworkError) {
-        return 'Network error. Please check your connection.';
-      } else if (error.isServerError) {
-        return 'Server error. Please try again later.';
-      }
-    }
-    return 'Failed to load installments. Please try again.';
   }
 
   Future<void> _refreshInstallments() async {
-    _loadInstallments();
-    await _installmentsFuture;
-  }
-
-  List<Installment> _getFilteredInstallments() {
-    if (_currentSummary == null) return [];
-
-    switch (_selectedFilter) {
-      case InstallmentStatus.active:
-        return _currentSummary!.activeInstallments;
-      case InstallmentStatus.completed:
-        return _currentSummary!.completedInstallments;
-      case InstallmentStatus.overdue:
-        return _currentSummary!.overdueInstallments;
-      default:
-        return _currentSummary!.installments;
-    }
-  }
-
-  int _getTabCount(InstallmentStatus? status) {
-    if (_currentSummary == null) return 0;
-
-    switch (status) {
-      case InstallmentStatus.active:
-        return _currentSummary!.totalActive;
-      case InstallmentStatus.completed:
-        return _currentSummary!.totalCompleted;
-      case InstallmentStatus.overdue:
-        return _currentSummary!.overdueInstallments.length;
-      default:
-        return _currentSummary!.totalInstallments;
-    }
+    await context.read<InstallmentsProvider>().refresh();
   }
 
   Future<void> _handleMarkPaymentMade(Installment installment) async {
-    try {
-      final updated = await _installmentService.markPaymentMade(installment.id);
-      if (mounted) {
+    final provider = context.read<InstallmentsProvider>();
+    final success = await provider.markPaymentMade(installment.id);
+
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment marked as made')),
+          SnackBar(content: Text(provider.successMessage ?? 'Payment marked as made')),
         );
-        _refreshInstallments();
-      }
-    } catch (e) {
-      if (mounted) {
+        provider.clearSuccess();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update payment: $e')),
+          SnackBar(content: Text(provider.errorMessage ?? 'Failed to update payment')),
         );
+        provider.clearError();
       }
-      logError('Error marking payment as made: $e',
-          tag: 'INSTALLMENTS_SCREEN');
     }
   }
 
@@ -145,22 +71,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await _installmentService.cancelInstallment(installment.id);
-        if (mounted) {
+      final provider = context.read<InstallmentsProvider>();
+      final success = await provider.cancelInstallment(installment.id);
+
+      if (mounted) {
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Installment cancelled')),
+            SnackBar(content: Text(provider.successMessage ?? 'Installment cancelled')),
           );
-          _refreshInstallments();
-        }
-      } catch (e) {
-        if (mounted) {
+          provider.clearSuccess();
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to cancel installment: $e')),
+            SnackBar(content: Text(provider.errorMessage ?? 'Failed to cancel installment')),
           );
+          provider.clearError();
         }
-        logError('Error cancelling installment: $e',
-            tag: 'INSTALLMENTS_SCREEN');
       }
     }
   }
@@ -188,22 +113,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await _installmentService.deleteInstallment(installment.id);
-        if (mounted) {
+      final provider = context.read<InstallmentsProvider>();
+      final success = await provider.deleteInstallment(installment.id);
+
+      if (mounted) {
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Installment deleted')),
+            SnackBar(content: Text(provider.successMessage ?? 'Installment deleted')),
           );
-          _refreshInstallments();
-        }
-      } catch (e) {
-        if (mounted) {
+          provider.clearSuccess();
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete installment: $e')),
+            SnackBar(content: Text(provider.errorMessage ?? 'Failed to delete installment')),
           );
+          provider.clearError();
         }
-        logError('Error deleting installment: $e',
-            tag: 'INSTALLMENTS_SCREEN');
       }
     }
   }
@@ -211,23 +135,23 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   Color _getCategoryColor(InstallmentCategory category) {
     switch (category) {
       case InstallmentCategory.electronics:
-        return const Color(0xFF5B7CFA);
+        return AppColors.info;
       case InstallmentCategory.clothing:
-        return const Color(0xFFFF922B);
+        return AppColors.warning;
       case InstallmentCategory.furniture:
-        return const Color(0xFF8B5CF6);
+        return AppColors.categoryEntertainment;
       case InstallmentCategory.travel:
-        return const Color(0xFF00BCD4);
+        return AppColors.chart7;
       case InstallmentCategory.education:
-        return const Color(0xFF3F51B5);
+        return AppColors.categoryEducation;
       case InstallmentCategory.health:
-        return const Color(0xFFF44336);
+        return AppColors.error;
       case InstallmentCategory.groceries:
-        return const Color(0xFF4CAF50);
+        return AppColors.success;
       case InstallmentCategory.utilities:
-        return const Color(0xFF607D8B);
+        return AppColors.categoryUtilities;
       case InstallmentCategory.other:
-        return const Color(0xFF795548);
+        return AppColors.categoryOther;
     }
   }
 
@@ -257,21 +181,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   Color _getStatusColor(InstallmentStatus status) {
     switch (status) {
       case InstallmentStatus.active:
-        return const Color(0xFFFFD25F);
+        return const AppColors.secondary;
       case InstallmentStatus.completed:
-        return const Color(0xFF84FAA1);
+        return const AppColors.successLight;
       case InstallmentStatus.overdue:
-        return const Color(0xFFFF5C5C);
+        return const AppColors.danger;
       case InstallmentStatus.cancelled:
         return Colors.grey;
     }
   }
 
   Color _getLoadIndicatorColor(double load) {
-    if (load < 0.5) return const Color(0xFF4CAF50); // Safe
-    if (load < 0.7) return const Color(0xFFFFD25F); // Moderate
-    if (load < 0.9) return const Color(0xFFFF922B); // High
-    return const Color(0xFFFF5C5C); // Critical
+    if (load < 0.5) return AppColors.success; // Safe
+    if (load < 0.7) return AppColors.secondary; // Moderate
+    if (load < 0.9) return AppColors.warning; // High
+    return AppColors.danger; // Critical
   }
 
   String _getLoadIndicatorLabel(double load) {
@@ -283,30 +207,36 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive state - automatically rebuilds when provider changes
+    final provider = context.watch<InstallmentsProvider>();
+    final isLoading = provider.isLoading;
+    final errorMessage = provider.errorMessage;
+    final currentSummary = provider.summary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'My Installments',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: RefreshIndicator(
         onRefresh: _refreshInstallments,
-        color: const Color(0xFF193C57),
-        child: _isLoading && _currentSummary == null
+        color: const AppColors.textPrimary,
+        child: isLoading && currentSummary == null
             ? const Center(child: _ShimmerLoader())
-            : _errorMessage != null && _currentSummary == null
-                ? _buildErrorState()
-                : _buildMainContent(),
+            : errorMessage != null && currentSummary == null
+                ? _buildErrorState(errorMessage)
+                : _buildMainContent(provider),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -316,18 +246,18 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
         label: const Text(
           'Can I Afford?',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.textPrimary,
         foregroundColor: Colors.white,
         elevation: 4,
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String? errorMessage) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: SizedBox(
@@ -339,16 +269,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               const Icon(
                 Icons.error_outline,
                 size: 64,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage ?? 'Something went wrong',
+                errorMessage ?? 'Something went wrong',
                 style: const TextStyle(
                   fontSize: 16,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -356,7 +286,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               ElevatedButton(
                 onPressed: _refreshInstallments,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF193C57),
+                  backgroundColor: const AppColors.textPrimary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 12,
@@ -366,7 +296,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   'Retry',
                   style: TextStyle(
                     color: Colors.white,
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -378,9 +308,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildMainContent() {
-    final installments = _getFilteredInstallments();
-    final isEmpty = installments.isEmpty && _currentSummary?.totalInstallments == 0;
+  Widget _buildMainContent(InstallmentsProvider provider) {
+    final installments = provider.filteredInstallments;
+    final currentSummary = provider.summary;
+    final isEmpty = installments.isEmpty && (currentSummary?.totalInstallments ?? 0) == 0;
 
     if (isEmpty) {
       return _buildEmptyState();
@@ -390,10 +321,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       child: Column(
         children: [
           // Summary Stats Card
-          if (_currentSummary != null) _buildSummaryCard(),
+          if (currentSummary != null) _buildSummaryCard(currentSummary),
 
           // Filter Tabs
-          _buildFilterTabs(),
+          _buildFilterTabs(provider),
 
           // Installments List
           if (installments.isEmpty)
@@ -411,7 +342,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                     'No installments',
                     style: TextStyle(
                       fontSize: 16,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[600],
                     ),
@@ -447,13 +378,13 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF193C57).withOpacity(0.1),
+                  color: const AppColors.textPrimary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(60),
                 ),
                 child: const Icon(
                   Icons.credit_card,
                   size: 60,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -461,9 +392,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 'No installments yet',
                 style: TextStyle(
                   fontSize: 20,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -473,7 +404,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   'Start by using our calculator to see if you can afford an installment plan',
                   style: TextStyle(
                     fontSize: 14,
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     color: Colors.grey[600],
                   ),
                   textAlign: TextAlign.center,
@@ -488,12 +419,12 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 label: const Text(
                   'Start Calculator',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF193C57),
+                  backgroundColor: const AppColors.textPrimary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
@@ -508,8 +439,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildSummaryCard() {
-    final summary = _currentSummary!;
+  Widget _buildSummaryCard(InstallmentsSummary summary) {
     final loadColor = _getLoadIndicatorColor(summary.currentInstallmentLoad);
     final loadLabel = _getLoadIndicatorLabel(summary.currentInstallmentLoad);
 
@@ -541,9 +471,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                     '${summary.totalActive} Active',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -553,9 +483,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                     ),
                     style: const TextStyle(
                       fontSize: 18,
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -563,7 +493,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                     'Monthly Payment',
                     style: TextStyle(
                       fontSize: 12,
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       color: Colors.grey,
                     ),
                   ),
@@ -587,7 +517,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             '${(summary.currentInstallmentLoad * 100).toStringAsFixed(0)}%',
                             style: TextStyle(
                               fontSize: 18,
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               color: loadColor,
                             ),
@@ -596,7 +526,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             loadLabel,
                             style: TextStyle(
                               fontSize: 11,
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               color: loadColor,
                             ),
                           ),
@@ -615,10 +545,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD25F).withOpacity(0.1),
+                color: const AppColors.secondary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFFFFD25F),
+                  color: const AppColors.secondary,
                   width: 1,
                 ),
               ),
@@ -627,7 +557,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   const Icon(
                     Icons.calendar_today,
                     size: 16,
-                    color: Color(0xFFFFD25F),
+                    color: AppColors.secondary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -638,7 +568,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                           'Next Payment',
                           style: TextStyle(
                             fontSize: 12,
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             color: Colors.grey,
                           ),
                         ),
@@ -646,9 +576,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                           '${DateFormat.MMMMd().format(summary.nextPaymentDate!)} • ${_localizationService.formatCurrency(summary.nextPaymentAmount!)}',
                           style: const TextStyle(
                             fontSize: 14,
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF193C57),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -662,7 +592,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildFilterTabs(InstallmentsProvider provider) {
     final tabs = [
       (null, 'All'),
       (InstallmentStatus.active, 'Active'),
@@ -676,8 +606,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       child: Row(
         children: tabs.map((tab) {
           final (status, label) = tab;
-          final count = _getTabCount(status);
-          final isSelected = _selectedFilter == status;
+          final count = provider.getTabCount(status);
+          final isSelected = provider.selectedFilter == status;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -685,24 +615,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               label: Text(
                 '$label ${count > 0 ? '($count)' : ''}',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF193C57),
+                  color: isSelected ? Colors.white : const AppColors.textPrimary,
                   fontSize: 14,
                 ),
               ),
               selected: isSelected,
               onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = selected ? status : null;
-                });
-                _loadInstallments();
+                provider.setFilter(selected ? status : null);
               },
               backgroundColor: Colors.transparent,
-              selectedColor: const Color(0xFF193C57),
+              selectedColor: const AppColors.textPrimary,
               side: BorderSide(
                 color: isSelected
-                    ? const Color(0xFF193C57)
+                    ? const AppColors.textPrimary
                     : Colors.grey[300]!,
               ),
               shape: RoundedRectangleBorder(
@@ -765,9 +692,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                   installment.itemName,
                                   style: const TextStyle(
                                     fontSize: 16,
-                                    fontFamily: 'Sora',
+                                    fontFamily: AppTypography.fontHeading,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF193C57),
+                                    color: AppColors.textPrimary,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -779,7 +706,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                       installment.category.displayName,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        fontFamily: 'Manrope',
+                                        fontFamily: AppTypography.fontBody,
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -800,7 +727,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                         installment.status.displayName,
                                         style: TextStyle(
                                           fontSize: 10,
-                                          fontFamily: 'Manrope',
+                                          fontFamily: AppTypography.fontBody,
                                           fontWeight: FontWeight.w600,
                                           color: _getStatusColor(
                                             installment.status,
@@ -869,7 +796,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                               ),
                             ],
                             icon: const Icon(Icons.more_vert),
-                            color: const Color(0xFF193C57),
+                            color: const AppColors.textPrimary,
                           ),
                         ],
                       ),
@@ -897,7 +824,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             '${installment.paymentsMade}/${installment.totalPayments} payments',
                             style: TextStyle(
                               fontSize: 12,
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               color: Colors.grey[600],
                             ),
                           ),
@@ -905,9 +832,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             '${installment.progressPercentage.toStringAsFixed(0)}%',
                             style: const TextStyle(
                               fontSize: 12,
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -925,7 +852,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 'Monthly Payment',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   color: Colors.grey[600],
                                 ),
                               ),
@@ -935,9 +862,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 ),
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF193C57),
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -949,7 +876,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 'Next Payment',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   color: Colors.grey[600],
                                 ),
                               ),
@@ -958,9 +885,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                     .format(installment.nextPaymentDate),
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  fontFamily: 'Sora',
+                                  fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF193C57),
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -977,7 +904,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             'Total: ${_localizationService.formatCurrency(installment.totalAmount)}',
                             style: TextStyle(
                               fontSize: 12,
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               color: Colors.grey[600],
                             ),
                           ),
@@ -985,7 +912,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             'Paid: ${_localizationService.formatCurrency(installment.totalPaid)}',
                             style: TextStyle(
                               fontSize: 12,
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontWeight: FontWeight.w600,
                               color: Colors.grey[600],
                             ),
@@ -1013,12 +940,12 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             icon: const Icon(Icons.check, size: 18),
                             label: const Text(
                               'Mark Paid',
-                              style: TextStyle(fontFamily: 'Sora'),
+                              style: TextStyle(fontFamily: AppTypography.fontHeading),
                             ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF84FAA1),
+                              foregroundColor: const AppColors.successLight,
                               side: const BorderSide(
-                                color: Color(0xFF84FAA1),
+                                color: AppColors.successLight,
                               ),
                             ),
                           ),
@@ -1032,7 +959,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             icon: const Icon(Icons.close, size: 18),
                             label: const Text(
                               'Cancel',
-                              style: TextStyle(fontFamily: 'Sora'),
+                              style: TextStyle(fontFamily: AppTypography.fontHeading),
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.red,
@@ -1082,9 +1009,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 installment.itemName,
                 style: const TextStyle(
                   fontSize: 20,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               Container(
@@ -1100,7 +1027,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   installment.status.displayName,
                   style: TextStyle(
                     fontSize: 12,
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontWeight: FontWeight.w600,
                     color: _getStatusColor(installment.status),
                   ),
@@ -1160,9 +1087,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 'Notes',
                 style: TextStyle(
                   fontSize: 14,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1170,7 +1097,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 installment.notes!,
                 style: TextStyle(
                   fontSize: 13,
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   color: Colors.grey[700],
                 ),
               ),
@@ -1184,14 +1111,14 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF193C57),
+                backgroundColor: const AppColors.textPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: const Text(
                 'Close',
                 style: TextStyle(
                   color: Colors.white,
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1210,7 +1137,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
           label,
           style: TextStyle(
             fontSize: 13,
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             color: Colors.grey[600],
           ),
         ),
@@ -1218,9 +1145,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
           value,
           style: const TextStyle(
             fontSize: 13,
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
       ],

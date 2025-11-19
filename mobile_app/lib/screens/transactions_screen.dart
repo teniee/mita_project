@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 import '../services/logging_service.dart';
 import 'add_transaction_screen.dart';
 
@@ -13,44 +16,16 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  final TransactionService _transactionService = TransactionService();
-  List<TransactionModel> _transactions = [];
-  bool _isLoading = true;
-  String? _selectedCategory;
-  DateTime? _startDate;
-  DateTime? _endDate;
-
   @override
   void initState() {
     super.initState();
-    _fetchTransactions();
-  }
-
-  Future<void> _fetchTransactions() async {
-    setState(() {
-      _isLoading = true;
+    // Initialize transaction provider if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<TransactionProvider>();
+      if (provider.state == TransactionState.initial) {
+        provider.initialize();
+      }
     });
-
-    try {
-      final transactions = await _transactionService.getTransactions(
-        category: _selectedCategory,
-        startDate: _startDate,
-        endDate: _endDate,
-        limit: 100,
-      );
-      if (!mounted) return;
-      setState(() {
-        _transactions = transactions;
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading transactions: $e');
-      if (!mounted) return;
-      setState(() {
-        _transactions = [];
-        _isLoading = false;
-      });
-    }
   }
 
   Future<void> _deleteTransaction(String transactionId) async {
@@ -75,14 +50,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
 
       if (confirmed == true) {
-        await _transactionService.deleteTransaction(transactionId);
+        final provider = context.read<TransactionProvider>();
+        final success = await provider.deleteTransaction(transactionId);
         if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transaction deleted successfully')),
-        );
-
-        _fetchTransactions();
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaction deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete transaction: ${provider.errorMessage}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -98,34 +78,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case 'food':
       case 'dining':
       case 'groceries':
-        return const Color(0xFF4CAF50);
+        return const AppColors.success;
       case 'transportation':
       case 'gas':
       case 'public_transport':
-        return const Color(0xFF2196F3);
+        return const AppColors.info;
       case 'entertainment':
-        return const Color(0xFF9C27B0);
+        return const AppColors.categoryEntertainment;
       case 'shopping':
       case 'clothing':
-        return const Color(0xFFFF9800);
+        return const AppColors.warning;
       case 'healthcare':
       case 'insurance':
-        return const Color(0xFFF44336);
+        return const AppColors.error;
       case 'utilities':
       case 'rent':
       case 'mortgage':
-        return const Color(0xFF607D8B);
+        return const AppColors.categoryUtilities;
       case 'education':
       case 'childcare':
-        return const Color(0xFF3F51B5);
+        return const AppColors.categoryEducation;
       case 'travel':
-        return const Color(0xFF00BCD4);
+        return const AppColors.chart7;
       case 'subscriptions':
-        return const Color(0xFF8BC34A);
+        return const AppColors.success;
       case 'pets':
-        return const Color(0xFFFF5722);
+        return const AppColors.warningDark;
       default:
-        return const Color(0xFF795548);
+        return const AppColors.categoryOther;
     }
   }
 
@@ -167,27 +147,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use provider for state management
+    final transactionProvider = context.watch<TransactionProvider>();
+    final transactions = transactionProvider.transactions;
+    final isLoading = transactionProvider.isLoading;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Transactions',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _transactions.isEmpty
+          : transactions.isEmpty
               ? RefreshIndicator(
-                  onRefresh: _fetchTransactions,
+                  onRefresh: () => context.read<TransactionProvider>().refresh(),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: SizedBox(
@@ -199,16 +184,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             Icon(
                               Icons.receipt_long,
                               size: 64,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                             ),
                             SizedBox(height: 16),
                             Text(
                               'No transactions yet',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontFamily: 'Sora',
+                                fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF193C57),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             SizedBox(height: 8),
@@ -216,7 +201,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               'Pull down to refresh or add your first transaction',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 color: Colors.grey,
                               ),
                             ),
@@ -227,12 +212,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _fetchTransactions,
+                  onRefresh: () => context.read<TransactionProvider>().refresh(),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _transactions.length,
+                    itemCount: transactions.length,
                     itemBuilder: (context, index) {
-                      final transaction = _transactions[index];
+                      final transaction = transactions[index];
                       return Dismissible(
                         key: Key(transaction.id),
                         direction: DismissDirection.endToStart,
@@ -281,7 +266,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 ),
                               ),
                             );
-                            if (result == true) _fetchTransactions();
+                            if (result == true) context.read<TransactionProvider>().refresh();
                           },
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -316,10 +301,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               transaction.description ??
                                               'Transaction',
                                           style: const TextStyle(
-                                            fontFamily: 'Sora',
+                                            fontFamily: AppTypography.fontHeading,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 16,
-                                            color: Color(0xFF193C57),
+                                            color: AppColors.textPrimary,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -328,7 +313,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                         Text(
                                           transaction.category,
                                           style: TextStyle(
-                                            fontFamily: 'Manrope',
+                                            fontFamily: AppTypography.fontBody,
                                             fontSize: 14,
                                             color: Colors.grey[600],
                                           ),
@@ -338,7 +323,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           DateFormat('MMM d, yyyy • h:mm a')
                                               .format(transaction.spentAt),
                                           style: TextStyle(
-                                            fontFamily: 'Manrope',
+                                            fontFamily: AppTypography.fontBody,
                                             fontSize: 12,
                                             color: Colors.grey[500],
                                           ),
@@ -352,10 +337,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       Text(
                                         '-\$${transaction.amount.toStringAsFixed(2)}',
                                         style: const TextStyle(
-                                          fontFamily: 'Sora',
+                                          fontFamily: AppTypography.fontHeading,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Color(0xFFFF5C5C),
+                                          color: AppColors.danger,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -375,7 +360,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               Text(
                                                 'Recurring',
                                                 style: TextStyle(
-                                                  fontFamily: 'Manrope',
+                                                  fontFamily: AppTypography.fontBody,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.blue,
@@ -403,9 +388,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               builder: (context) => const AddTransactionScreen(),
             ),
           );
-          if (result == true) _fetchTransactions();
+          if (result == true) context.read<TransactionProvider>().refresh();
         },
-        backgroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.textPrimary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

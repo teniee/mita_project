@@ -2,8 +2,10 @@
 /// AI-powered personalized goal recommendations based on user behavior
 
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
+import '../providers/goals_provider.dart';
 
 class SmartGoalRecommendationsScreen extends StatefulWidget {
   const SmartGoalRecommendationsScreen({super.key});
@@ -13,58 +15,22 @@ class SmartGoalRecommendationsScreen extends StatefulWidget {
 }
 
 class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendationsScreen> {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _recommendations = [];
-  List<Map<String, dynamic>> _opportunities = [];
-  List<Map<String, dynamic>> _adjustments = [];
-
   @override
   void initState() {
     super.initState();
-    _loadAllRecommendations();
-  }
-
-  Future<void> _loadAllRecommendations() async {
-    setState(() => _isLoading = true);
-    try {
-      final recommendationsData = await _apiService.getSmartGoalRecommendations();
-      final opportunitiesData = await _apiService.detectGoalOpportunities();
-      final adjustmentsData = await _apiService.getGoalAdjustmentSuggestions();
-
-      setState(() {
-        _recommendations = List<Map<String, dynamic>>.from(
-          recommendationsData['recommendations'] ?? []
-        );
-        _opportunities = List<Map<String, dynamic>>.from(
-          opportunitiesData['opportunities'] ?? []
-        );
-        _adjustments = List<Map<String, dynamic>>.from(
-          adjustmentsData['adjustments'] ?? []
-        );
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading recommendations: $e');
-      setState(() => _isLoading = false);
-    }
+    // Load recommendations when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GoalsProvider>().loadSmartRecommendations();
+    });
   }
 
   Future<void> _createGoalFromRecommendation(Map<String, dynamic> recommendation) async {
-    final data = {
-      'title': recommendation['title'],
-      'description': recommendation['description'] ?? recommendation['reasoning'],
-      'category': recommendation['category'],
-      'target_amount': recommendation['target_amount'],
-      'saved_amount': 0,
-      'monthly_contribution': recommendation['monthly_contribution'],
-      'priority': recommendation['priority'],
-      'target_date': recommendation['suggested_deadline'],
-    };
+    final provider = context.read<GoalsProvider>();
+    final success = await provider.createGoalFromRecommendation(recommendation);
 
-    try {
-      await _apiService.createGoal(data);
-      if (!mounted) return;
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Goal "${recommendation['title']}" created successfully!'),
@@ -72,16 +38,25 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         ),
       );
       Navigator.pop(context, true);  // Return to goals screen
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: ${provider.errorMessage ?? "Failed to create goal"}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the provider for reactive updates
+    final goalsProvider = context.watch<GoalsProvider>();
+    final isLoading = goalsProvider.isLoadingRecommendations;
+    final recommendations = goalsProvider.recommendations;
+    final opportunities = goalsProvider.opportunities;
+    final adjustments = goalsProvider.adjustments;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F0),
       appBar: AppBar(
@@ -100,14 +75,14 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadAllRecommendations,
+            onPressed: () => goalsProvider.loadSmartRecommendations(),
           ),
         ],
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadAllRecommendations,
+              onRefresh: () => goalsProvider.loadSmartRecommendations(),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
@@ -119,31 +94,31 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     const SizedBox(height: 24),
 
                     // AI Recommendations
-                    if (_recommendations.isNotEmpty) ...[
-                      _buildSectionTitle('✨ AI Recommendations for You'),
+                    if (recommendations.isNotEmpty) ...[
+                      _buildSectionTitle('AI Recommendations for You'),
                       const SizedBox(height: 12),
-                      ..._recommendations.map((rec) => _buildRecommendationCard(rec)),
+                      ...recommendations.map((rec) => _buildRecommendationCard(rec)),
                       const SizedBox(height: 24),
                     ],
 
                     // Opportunities
-                    if (_opportunities.isNotEmpty) ...[
-                      _buildSectionTitle('💡 Opportunities Detected'),
+                    if (opportunities.isNotEmpty) ...[
+                      _buildSectionTitle('Opportunities Detected'),
                       const SizedBox(height: 12),
-                      ..._opportunities.map((opp) => _buildOpportunityCard(opp)),
+                      ...opportunities.map((opp) => _buildOpportunityCard(opp)),
                       const SizedBox(height: 24),
                     ],
 
                     // Adjustments
-                    if (_adjustments.isNotEmpty) ...[
-                      _buildSectionTitle('🔧 Goal Adjustments Suggested'),
+                    if (adjustments.isNotEmpty) ...[
+                      _buildSectionTitle('Goal Adjustments Suggested'),
                       const SizedBox(height: 12),
-                      ..._adjustments.map((adj) => _buildAdjustmentCard(adj)),
+                      ...adjustments.map((adj) => _buildAdjustmentCard(adj)),
                       const SizedBox(height: 24),
                     ],
 
                     // Empty state
-                    if (_recommendations.isEmpty && _opportunities.isEmpty && _adjustments.isEmpty)
+                    if (recommendations.isEmpty && opportunities.isEmpty && adjustments.isEmpty)
                       _buildEmptyState(),
                   ],
                 ),

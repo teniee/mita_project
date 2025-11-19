@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/income_service.dart';
 import '../services/api_service.dart';
+import '../theme/app_typography.dart';
 
 /// Peer spending insights widget for category breakdown
 class PeerSpendingInsightsWidget extends StatelessWidget {
@@ -53,7 +54,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                 Text(
                   'Peer Comparison: $category',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: primaryColor,
@@ -108,7 +109,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                     child: Text(
                       comparison,
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 13,
                         color: (isUserBetter ? Colors.green : Colors.orange).shade700,
                       ),
@@ -139,7 +140,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w500,
                 color: isHighlighted ? color : Colors.grey.shade700,
@@ -148,7 +149,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
             Text(
               '\$${amount.toStringAsFixed(0)} (${percentage.toStringAsFixed(1)}%)',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -286,7 +287,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       Text(
                         'Your $tierName Cohort',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                           color: primaryColor,
@@ -295,7 +296,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       Text(
                         '$cohortSize users • You\'re #$yourRank (${percentile}th percentile)',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 14,
                           color: Colors.black87,
                         ),
@@ -323,7 +324,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       Text(
                         'Performance Ranking',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w600,
                           color: primaryColor,
                         ),
@@ -331,7 +332,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       Text(
                         '${percentile}th percentile',
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: primaryColor,
@@ -352,7 +353,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                     : percentile >= 50 ? 'You\'re on track with your peers'
                     : 'Room for improvement compared to peers',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 12,
                       color: primaryColor,
                     ),
@@ -367,7 +368,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
             Text(
               'Cohort Insights',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: primaryColor,
@@ -395,7 +396,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                       child: Text(
                         insight,
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 14,
                         ),
                       ),
@@ -410,7 +411,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
               Text(
                 'Recommendations for Your Tier',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
                   color: primaryColor,
@@ -439,7 +440,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                         child: Text(
                           recommendation,
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 13,
                             color: Colors.green.shade700,
                           ),
@@ -505,7 +506,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                 Text(
                   'Spending vs Peers',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     color: primaryColor,
@@ -535,7 +536,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                         Text(
                           category.toUpperCase(),
                           style: TextStyle(
-                            fontFamily: 'Sora',
+                            fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: categoryColor,
@@ -558,7 +559,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: Text(
                             'You',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 12,
                               color: Colors.grey.shade600,
                             ),
@@ -578,7 +579,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: Text(
                             '\$${userAmount.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                               color: categoryColor,
@@ -599,7 +600,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: Text(
                             'Peers',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 12,
                               color: Colors.grey.shade600,
                             ),
@@ -619,7 +620,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: Text(
                             '\$${peerAmount.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w500,
                               fontSize: 12,
                               color: Colors.grey.shade600,

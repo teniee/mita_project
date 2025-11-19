@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'country_profiles_service.dart';
 import 'location_service.dart';
 
@@ -217,29 +218,29 @@ class IncomeService {
       // Behavioral color psychology optimized colors
       switch (tier) {
         case IncomeTier.low:
-          return const Color(0xFF4CAF50); // Green - Growth, stability, hope
+          return AppColors.success; // Green - Growth, stability, hope
         case IncomeTier.lowerMiddle:
-          return const Color(0xFF2196F3); // Blue - Trust, progress, reliability
+          return AppColors.info; // Blue - Trust, progress, reliability
         case IncomeTier.middle:
-          return const Color(0xFF9C27B0); // Purple - Sophistication, strategy
+          return AppColors.categoryEntertainment; // Purple - Sophistication, strategy
         case IncomeTier.upperMiddle:
-          return const Color(0xFFFF9800); // Gold - Achievement, value, success
+          return AppColors.warning; // Gold - Achievement, value, success
         case IncomeTier.high:
-          return const Color(0xFF1A237E); // Deep Blue - Wisdom, legacy, permanence
+          return AppColors.primary; // Deep Blue - Wisdom, legacy, permanence
       }
     } else {
       // Original colors for compatibility
       switch (tier) {
         case IncomeTier.low:
-          return const Color(0xFF4CAF50); // Green - Growth mindset
+          return AppColors.success; // Green - Growth mindset
         case IncomeTier.lowerMiddle:
-          return const Color(0xFF00BCD4); // Cyan - Rising opportunities
+          return AppColors.chart7; // Cyan - Rising opportunities
         case IncomeTier.middle:
-          return const Color(0xFF2196F3); // Blue - Professional
+          return AppColors.info; // Blue - Professional
         case IncomeTier.upperMiddle:
-          return const Color(0xFF673AB7); // Deep Purple - Established
+          return AppColors.categoryEducation; // Deep Purple - Established
         case IncomeTier.high:
-          return const Color(0xFF9C27B0); // Purple - Premium
+          return AppColors.categoryEntertainment; // Purple - Premium
       }
     }
   }
@@ -248,15 +249,15 @@ class IncomeService {
   Color getIncomeTierSecondaryColor(IncomeTier tier) {
     switch (tier) {
       case IncomeTier.low:
-        return const Color(0xFFE8F5E8); // Light green
+        return AppColors.successLight; // Light green
       case IncomeTier.lowerMiddle:
-        return const Color(0xFFE0F7FA); // Light cyan
+        return AppColors.info.withValues(alpha: 0.1); // Light cyan
       case IncomeTier.middle:
-        return const Color(0xFFE3F2FD); // Light blue
+        return AppColors.info.withValues(alpha: 0.15); // Light blue
       case IncomeTier.upperMiddle:
-        return const Color(0xFFEDE7F6); // Light deep purple
+        return AppColors.categoryEducation.withValues(alpha: 0.1); // Light deep purple
       case IncomeTier.high:
-        return const Color(0xFFF3E5F5); // Light purple
+        return AppColors.categoryEntertainment.withValues(alpha: 0.1); // Light purple
     }
   }
 

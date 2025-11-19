@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
+import '../providers/user_provider.dart';
+import '../providers/budget_provider.dart';
+import '../providers/advice_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -12,6 +18,8 @@ class AIAssistantScreen extends StatefulWidget {
 class _AIAssistantScreenState extends State<AIAssistantScreen> {
   final ApiService _apiService = ApiService();
   final TextEditingController _questionController = TextEditingController();
+
+  // Local UI state - kept with setState as these are purely local to this screen
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
@@ -19,6 +27,58 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   void dispose() {
     _questionController.dispose();
     super.dispose();
+  }
+
+  /// Build user context from providers for AI assistant
+  /// Uses context.read for one-time access since this is called from a method
+  Map<String, dynamic> _buildUserContext(BuildContext context) {
+    // Use context.read for one-time access in methods
+    final userProvider = context.read<UserProvider>();
+    final budgetProvider = context.read<BudgetProvider>();
+    final adviceProvider = context.read<AdviceProvider>();
+
+    // Build context map with user's financial information
+    final userContext = <String, dynamic>{
+      'userName': userProvider.userName,
+      'currency': userProvider.userCurrency,
+      'income': userProvider.userIncome,
+      'region': userProvider.userRegion,
+    };
+
+    // Add goals if available
+    if (userProvider.userGoals.isNotEmpty) {
+      userContext['goals'] = userProvider.userGoals;
+    }
+
+    // Add financial context if available
+    final financialContext = userProvider.financialContext;
+    if (financialContext.isNotEmpty) {
+      userContext['financialContext'] = financialContext;
+    }
+
+    // Add budget context from BudgetProvider
+    if (budgetProvider.state == BudgetState.loaded) {
+      userContext['budgetContext'] = {
+        'totalBudget': budgetProvider.totalBudget,
+        'totalSpent': budgetProvider.totalSpent,
+        'remaining': budgetProvider.remaining,
+        'spendingPercentage': budgetProvider.spendingPercentage,
+        'budgetMode': budgetProvider.budgetMode,
+        'budgetStatus': budgetProvider.getBudgetStatus(),
+      };
+
+      // Add budget suggestions if available
+      if (budgetProvider.budgetSuggestions.isNotEmpty) {
+        userContext['budgetSuggestions'] = budgetProvider.budgetSuggestions;
+      }
+    }
+
+    // Add latest advice context from AdviceProvider
+    if (adviceProvider.latestAdvice != null) {
+      userContext['latestAdvice'] = adviceProvider.latestAdvice;
+    }
+
+    return userContext;
   }
 
   Future<void> _sendQuestion() async {
@@ -33,7 +93,14 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     _questionController.clear();
 
     try {
-      final response = await _apiService.askAIAssistant(question);
+      // Get user context from provider
+      final userContext = _buildUserContext(context);
+
+      // Call API with user context for personalized responses
+      final response = await _apiService.askAIAssistant(
+        question,
+        context: userContext,
+      );
 
       if (mounted) {
         setState(() {
@@ -57,26 +124,32 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive rebuilds - when userName changes, UI updates
+    final userProvider = context.watch<UserProvider>();
+
+    // Watch BudgetProvider to show loading states or budget warnings if needed
+    final budgetProvider = context.watch<BudgetProvider>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF6B73FF),
-        title: const Text(
+        backgroundColor: AppColors.accent,
+        title: Text(
           'AI Financial Assistant',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: AppTypography.heading3.copyWith(color: AppColors.textLight),
         ),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textLight),
       ),
       body: Column(
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(
+                    userName: userProvider.userName,
+                    budgetStatus: budgetProvider.getBudgetStatus(),
+                    spendingPercentage: budgetProvider.spendingPercentage,
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
@@ -101,7 +174,20 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({
+    required String userName,
+    required String budgetStatus,
+    required double spendingPercentage,
+  }) {
+    // Determine contextual hint based on budget status
+    String contextualHint = 'I can help you with budgeting tips, spending insights, savings goals, and more.';
+
+    if (budgetStatus == 'exceeded') {
+      contextualHint = 'I notice you\'ve exceeded your budget. Ask me for tips on getting back on track!';
+    } else if (budgetStatus == 'warning') {
+      contextualHint = 'You\'re approaching your budget limit. I can help you find ways to save!';
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -109,29 +195,20 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           Icon(
             Icons.psychology,
             size: 80,
-            color: const Color(0xFF6B73FF).withValues(alpha: 0.3),
+            color: AppColors.accent.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Ask me anything about your finances!',
-            style: TextStyle(
-              fontFamily: 'Sora',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF193C57),
-            ),
+          Text(
+            'Hi $userName! Ask me anything about your finances!',
+            style: AppTypography.heading4,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'I can help you with budgeting tips, spending insights, savings goals, and more.',
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 14,
-                color: Color(0xFF666666),
-              ),
+              contextualHint,
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ),
@@ -150,11 +227,11 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF6B73FF) : Colors.white,
+          color: isUser ? AppColors.accent : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: AppColors.shadow,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -162,10 +239,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         ),
         child: Text(
           content,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 14,
-            color: isUser ? Colors.white : const Color(0xFF193C57),
+          style: AppTypography.bodyMedium.copyWith(
+            color: isUser ? AppColors.textLight : AppColors.textPrimary,
             height: 1.4,
           ),
         ),
@@ -177,10 +252,10 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.shadow,
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -193,12 +268,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               controller: _questionController,
               decoration: InputDecoration(
                 hintText: 'Ask a question...',
-                hintStyle: const TextStyle(
-                  fontFamily: 'Manrope',
-                  color: Color(0xFF999999),
-                ),
+                hintStyle: AppTypography.hint,
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: AppColors.inputBackground,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -220,13 +292,13 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _isLoading
-                    ? const Color(0xFF6B73FF).withValues(alpha: 0.5)
-                    : const Color(0xFF6B73FF),
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.accent,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.send,
-                color: Colors.white,
+                color: AppColors.textLight,
                 size: 20,
               ),
             ),

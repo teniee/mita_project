@@ -1,9 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
+import '../models/transaction_model.dart';
+import '../providers/transaction_provider.dart';
 import '../services/api_service.dart';
 import '../services/ocr_service.dart';
 import '../widgets/ocr_widgets.dart';
@@ -335,20 +340,25 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
 
   Future<void> _saveTransaction() async {
     if (_ocrResult == null) return;
-    
+
     try {
-      final transactionData = {
-        'category': _ocrResult!.category,
-        'amount': _ocrResult!.total,
-        'merchant': _ocrResult!.merchant,
-        'spent_at': _ocrResult!.date.toIso8601String(),
-        'source': 'ocr_receipt',
-        'confidence_score': _ocrResult!.overallConfidence,
-        'raw_ocr_data': _ocrResult!.toJson(),
-      };
-      
-      await _apiService.createTransaction(transactionData);
-      
+      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+
+      final input = TransactionInput(
+        amount: _ocrResult!.total,
+        category: _ocrResult!.category,
+        merchant: _ocrResult!.merchant,
+        spentAt: _ocrResult!.date,
+        confidenceScore: _ocrResult!.overallConfidence,
+        notes: 'Source: OCR Receipt',
+      );
+
+      final result = await transactionProvider.createTransaction(input);
+
+      if (result == null) {
+        throw Exception(transactionProvider.errorMessage ?? 'Failed to create transaction');
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -383,27 +393,32 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
 
   Future<void> _saveBatchTransactions() async {
     if (_batchResult == null || _batchResult!.results.isEmpty) return;
-    
+
     try {
+      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      int successCount = 0;
+
       for (final result in _batchResult!.results) {
-        final transactionData = {
-          'category': result.category,
-          'amount': result.total,
-          'merchant': result.merchant,
-          'spent_at': result.date.toIso8601String(),
-          'source': 'ocr_batch',
-          'confidence_score': result.overallConfidence,
-          'raw_ocr_data': result.toJson(),
-        };
-        
-        await _apiService.createTransaction(transactionData);
+        final input = TransactionInput(
+          amount: result.total,
+          category: result.category,
+          merchant: result.merchant,
+          spentAt: result.date,
+          confidenceScore: result.overallConfidence,
+          notes: 'Source: OCR Batch',
+        );
+
+        final transaction = await transactionProvider.createTransaction(input);
+        if (transaction != null) {
+          successCount++;
+        }
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${_batchResult!.results.length} transactions saved successfully!',
+              '$successCount transactions saved successfully!',
             ),
             backgroundColor: Theme.of(context).colorScheme.inverseSurface,
             behavior: SnackBarBehavior.floating,

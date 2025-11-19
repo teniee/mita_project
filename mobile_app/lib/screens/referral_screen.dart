@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
+import '../providers/user_provider.dart';
 
 class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
@@ -9,47 +12,39 @@ class ReferralScreen extends StatefulWidget {
 }
 
 class _ReferralScreenState extends State<ReferralScreen> {
-  final ApiService _apiService = ApiService();
-  String? _code;
-  bool _loading = true;
-
   @override
   void initState() {
     super.initState();
-    _loadCode();
-  }
-
-  Future<void> _loadCode() async {
-    try {
-      final data = await _apiService.getReferralCode();
-      setState(() {
-        _code = data;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() => _loading = false);
-    }
+    // Load referral code via provider on screen initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProvider>().loadReferralCode();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch provider for reactive updates
+    final userProvider = context.watch<UserProvider>();
+    final isLoading = userProvider.isLoadingReferral;
+    final code = userProvider.referralCode;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Invite Friends'),
-        backgroundColor: const Color(0xFFFFF9F0),
-        foregroundColor: const Color(0xFF193C57),
+        backgroundColor: const AppColors.background,
+        foregroundColor: const AppColors.textPrimary,
         elevation: 0,
       ),
       body: Center(
-        child: _loading
+        child: isLoading
             ? const CircularProgressIndicator()
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _code ?? '-',
+                    code ?? '-',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),

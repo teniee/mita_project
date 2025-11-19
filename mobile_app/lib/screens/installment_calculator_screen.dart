@@ -3,11 +3,16 @@
 /// Features risk assessment, payment breakdown, and personalized recommendations
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/installment_models.dart';
+import '../providers/installments_provider.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 class InstallmentCalculatorScreen extends StatefulWidget {
   const InstallmentCalculatorScreen({super.key});
@@ -32,7 +37,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
   int _selectedPayments = 4;
   double _selectedInterestRate = 0.0;
 
-  // State management
+  // Local UI state management
   bool _isLoading = false;
   bool _hasProfile = false;
   UserFinancialProfile? _userProfile;
@@ -69,7 +74,14 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       curve: Curves.easeOutCubic,
     ));
 
-    _loadUserProfile();
+    // Initialize provider and load user profile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<InstallmentsProvider>();
+      if (provider.state == InstallmentsState.initial) {
+        provider.initialize();
+      }
+      _loadUserProfile();
+    });
   }
 
   @override
@@ -140,10 +152,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           ? _userProfile!.currentBalance
           : double.tryParse(_currentBalanceController.text);
 
-      // Fetch active installments for accurate calculation
-      final installmentsSummary = await _installmentService.getInstallments(
-        status: InstallmentStatus.active,
-      );
+      // Use provider data for active installments
+      final provider = context.read<InstallmentsProvider>();
+      final activeInstallmentsCount = provider.totalActive;
+      final activeInstallmentsMonthly = provider.totalMonthlyPayment;
 
       final input = InstallmentCalculatorInput(
         purchaseAmount: purchaseAmount,
@@ -153,8 +165,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         monthlyIncome: monthlyIncome,
         currentBalance: currentBalance,
         ageGroup: _userProfile?.ageGroup,
-        activeInstallmentsCount: installmentsSummary.totalActive,
-        activeInstallmentsMonthly: installmentsSummary.totalMonthlyPayment,
+        activeInstallmentsCount: activeInstallmentsCount,
+        activeInstallmentsMonthly: activeInstallmentsMonthly,
         creditCardDebt: _userProfile?.creditCardDebt ?? 0.0,
         otherMonthlyObligations: _userProfile?.totalMonthlyObligations ?? 0.0,
         planningMortgage: _userProfile?.planningMortgage ?? false,
@@ -211,7 +223,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.error_outline, color: Color(0xFFF44336)),
+            const Icon(Icons.error_outline, color: AppColors.error),
             const SizedBox(width: 8),
             Text(title),
           ],
@@ -230,13 +242,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
   Color _getRiskColor(RiskLevel risk) {
     switch (risk) {
       case RiskLevel.green:
-        return const Color(0xFF388E3C); // Colors.green[700]
+        return const AppColors.successDark; // Colors.green[700]
       case RiskLevel.yellow:
-        return const Color(0xFFFFA000); // Colors.amber[700]
+        return const AppColors.warning; // Colors.amber[700]
       case RiskLevel.orange:
-        return const Color(0xFFEF6C00); // Colors.orange[800]
+        return const AppColors.warningDark; // Colors.orange[800]
       case RiskLevel.red:
-        return const Color(0xFFD32F2F); // Colors.red[700]
+        return const AppColors.errorDark; // Colors.red[700]
     }
   }
 
@@ -268,21 +280,24 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
 
   @override
   Widget build(BuildContext context) {
+    // Watch provider for reactive updates
+    final provider = context.watch<InstallmentsProvider>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Can I Afford This?',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: SingleChildScrollView(
         controller: _scrollController,
@@ -313,7 +328,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF193C57), Color(0xFF2C5F7F)],
+          colors: [AppColors.textPrimary, AppColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -331,13 +346,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           const Icon(
             Icons.calculate,
             size: 48,
-            color: Color(0xFFFFD25F),
+            color: AppColors.secondary,
           ),
           const SizedBox(height: 12),
           const Text(
             'Smart Financial Analysis',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -348,7 +363,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Text(
             'Get personalized risk assessment and recommendations\nbased on your financial situation',
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 14,
               color: Colors.white.withValues(alpha: 0.9),
               height: 1.4,
@@ -380,10 +395,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           const Text(
             'Purchase Details',
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF193C57),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 20),
@@ -396,16 +411,16 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               hintText: '0.00',
               prefixText: '\$ ',
               prefixStyle: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
               suffixIcon: Tooltip(
                 message: 'Total cost of the item you want to purchase',
                 child: Icon(Icons.info_outline, color: Colors.grey[600]),
               ),
               filled: true,
-              fillColor: const Color(0xFFFFF9F0),
+              fillColor: const AppColors.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -416,7 +431,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
               ),
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -446,7 +461,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 child: Icon(Icons.info_outline, color: Colors.grey[600]),
               ),
               filled: true,
-              fillColor: const Color(0xFFFFF9F0),
+              fillColor: const AppColors.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -457,7 +472,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
               ),
             ),
             items: InstallmentCategory.values.map((category) {
@@ -465,9 +480,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 value: category,
                 child: Row(
                   children: [
-                    Icon(_getCategoryIcon(category), size: 20, color: const Color(0xFF193C57)),
+                    Icon(_getCategoryIcon(category), size: 20, color: const AppColors.textPrimary),
                     const SizedBox(width: 8),
-                    Text(category.displayName, style: const TextStyle(fontFamily: 'Manrope')),
+                    Text(category.displayName, style: const TextStyle(fontFamily: AppTypography.fontBody)),
                   ],
                 ),
               );
@@ -489,10 +504,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   const Text(
                     'Number of Payments',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -512,9 +527,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     label: Text(
                       '$payments months',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : const Color(0xFF193C57),
+                        color: isSelected ? Colors.white : const AppColors.textPrimary,
                       ),
                     ),
                     selected: isSelected,
@@ -523,10 +538,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         _selectedPayments = payments;
                       });
                     },
-                    selectedColor: const Color(0xFF193C57),
-                    backgroundColor: const Color(0xFFFFF9F0),
+                    selectedColor: const AppColors.textPrimary,
+                    backgroundColor: const AppColors.background,
                     side: BorderSide(
-                      color: isSelected ? const Color(0xFF193C57) : Colors.grey[300]!,
+                      color: isSelected ? const AppColors.textPrimary : Colors.grey[300]!,
                       width: isSelected ? 2 : 1,
                     ),
                     elevation: isSelected ? 2 : 0,
@@ -546,10 +561,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   const Text(
                     'Interest Rate',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF193C57),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -569,9 +584,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       label: Text(
                         '${rate.toInt()}%',
                         style: TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const Color(0xFF193C57),
+                          color: isSelected ? Colors.white : const AppColors.textPrimary,
                         ),
                       ),
                       selected: isSelected,
@@ -581,10 +596,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                           _interestRateController.text = rate.toStringAsFixed(1);
                         });
                       },
-                      selectedColor: const Color(0xFFFFD25F),
-                      backgroundColor: const Color(0xFFFFF9F0),
+                      selectedColor: const AppColors.secondary,
+                      backgroundColor: const AppColors.background,
                       side: BorderSide(
-                        color: isSelected ? const Color(0xFFFFD25F) : Colors.grey[300]!,
+                        color: isSelected ? const AppColors.secondary : Colors.grey[300]!,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -599,12 +614,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   hintText: '0.0',
                   suffixText: '%',
                   suffixStyle: const TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFFFF9F0),
+                  fillColor: const AppColors.background,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -615,7 +630,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                    borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
                   ),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -642,10 +657,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             const Text(
               'Your Financial Information',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -658,16 +673,16 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 hintText: '0.00',
                 prefixText: '\$ ',
                 prefixStyle: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
                 suffixIcon: Tooltip(
                   message: 'Your total monthly income',
                   child: Icon(Icons.info_outline, color: Colors.grey[600]),
                 ),
                 filled: true,
-                fillColor: const Color(0xFFFFF9F0),
+                fillColor: const AppColors.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -678,7 +693,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                  borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
                 ),
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -696,16 +711,16 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 hintText: '0.00',
                 prefixText: '\$ ',
                 prefixStyle: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
                 suffixIcon: Tooltip(
                   message: 'Your current account balance',
                   child: Icon(Icons.info_outline, color: Colors.grey[600]),
                 ),
                 filled: true,
-                fillColor: const Color(0xFFFFF9F0),
+                fillColor: const AppColors.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -716,7 +731,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF193C57), width: 2),
+                  borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
                 ),
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -737,7 +752,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF193C57).withValues(alpha: 0.3),
+            color: const AppColors.textPrimary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -746,7 +761,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       child: ElevatedButton(
         onPressed: _isLoading ? null : _calculateInstallment,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF193C57),
+          backgroundColor: const AppColors.textPrimary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -771,7 +786,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   Text(
                     'Calculate Risk',
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -848,7 +863,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Text(
             riskMessage,
             style: TextStyle(
-              fontFamily: 'Sora',
+              fontFamily: AppTypography.fontHeading,
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: riskColor,
@@ -858,7 +873,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Text(
             result.verdict,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 16,
               color: riskColor.withValues(alpha: 0.9),
               height: 1.4,
@@ -875,7 +890,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             child: Text(
               'Risk Score: ${result.riskScore.toStringAsFixed(1)}%',
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: riskColor,
@@ -902,7 +917,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           _buildDetailRow(
             'Total Interest',
             '\$${result.totalInterest.toStringAsFixed(2)}',
-            valueColor: result.totalInterest > 0 ? const Color(0xFFF44336) : null,
+            valueColor: result.totalInterest > 0 ? const AppColors.error : null,
           ),
           const SizedBox(height: 8),
           _buildDetailRow(
@@ -928,10 +943,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         title: const Text(
           'Payment Schedule',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
         children: [
@@ -951,7 +966,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF9F0),
+                      color: const AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey[300]!),
                     ),
@@ -961,9 +976,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         Text(
                           'Payment $paymentNumber',
                           style: const TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF193C57),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         Column(
@@ -972,17 +987,17 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                             Text(
                               '\$${amount.toStringAsFixed(2)}',
                               style: const TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: AppTypography.fontBody,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: Color(0xFF193C57),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             if (interest > 0)
                               Text(
                                 'Interest: \$${interest.toStringAsFixed(2)}',
                                 style: TextStyle(
-                                  fontFamily: 'Manrope',
+                                  fontFamily: AppTypography.fontBody,
                                   fontSize: 12,
                                   color: Colors.grey[600],
                                 ),
@@ -1028,8 +1043,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               'Remaining Monthly Funds',
               '\$${result.remainingMonthlyFunds!.toStringAsFixed(2)}',
               valueColor: result.remainingMonthlyFunds! < 0
-                  ? const Color(0xFFF44336)
-                  : const Color(0xFF4CAF50),
+                  ? const AppColors.error
+                  : const AppColors.success,
             ),
           ],
           if (result.balanceAfterFirstPayment != null) ...[
@@ -1038,7 +1053,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               'Balance After First Payment',
               '\$${result.balanceAfterFirstPayment!.toStringAsFixed(2)}',
               valueColor: result.balanceAfterFirstPayment! < 0
-                  ? const Color(0xFFF44336)
+                  ? const AppColors.error
                   : null,
             ),
           ],
@@ -1079,7 +1094,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       Text(
                         factor.factor,
                         style: TextStyle(
-                          fontFamily: 'Sora',
+                          fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           color: _getSeverityColor(factor.severity),
@@ -1089,9 +1104,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       Text(
                         factor.message,
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 13,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                           height: 1.3,
                         ),
                       ),
@@ -1100,7 +1115,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         Text(
                           factor.stat!,
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: _getSeverityColor(factor.severity),
@@ -1123,14 +1138,14 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFFD25F), Color(0xFFFFC02E)],
+          colors: [AppColors.secondary, AppColors.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFD25F).withValues(alpha: 0.3),
+            color: const AppColors.secondary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1141,7 +1156,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         children: [
           const Icon(
             Icons.lightbulb,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
             size: 32,
           ),
           const SizedBox(width: 12),
@@ -1152,19 +1167,19 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 const Text(
                   'Our Recommendation',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   result.personalizedMessage,
                   style: const TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 15,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                     height: 1.5,
                   ),
                 ),
@@ -1186,16 +1201,16 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+              color: const AppColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               alternative.recommendationType.toUpperCase(),
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2196F3),
+                color: AppColors.info,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1204,9 +1219,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Text(
             alternative.description,
             style: const TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: AppTypography.fontBody,
               fontSize: 14,
-              color: Color(0xFF193C57),
+              color: AppColors.textPrimary,
               height: 1.5,
             ),
           ),
@@ -1215,19 +1230,19 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                color: const AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.savings, color: Color(0xFF4CAF50), size: 20),
+                  const Icon(Icons.savings, color: AppColors.success, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Potential Savings: \$${alternative.savingsAmount!.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF4CAF50),
+                      color: AppColors.success,
                     ),
                   ),
                 ],
@@ -1239,19 +1254,19 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                color: const AppColors.info.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.schedule, color: Color(0xFF2196F3), size: 20),
+                  const Icon(Icons.schedule, color: AppColors.info, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Time Needed: ${alternative.timeNeededDays} days',
                     style: const TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2196F3),
+                      color: AppColors.info,
                     ),
                   ),
                 ],
@@ -1275,31 +1290,31 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               child: ExpansionTile(
                 title: Row(
                   children: [
-                    const Icon(Icons.warning, color: Color(0xFFFF9800), size: 20),
+                    const Icon(Icons.warning, color: AppColors.warning, size: 20),
                     const SizedBox(width: 8),
                     const Text(
                       'Warnings',
                       style: TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF9800).withValues(alpha: 0.2),
+                        color: const AppColors.warning.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${result.warnings.length}',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFFF9800),
+                          color: AppColors.warning,
                         ),
                       ),
                     ),
@@ -1311,21 +1326,21 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                      color: const AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.warning_amber, color: Color(0xFFFF9800), size: 18),
+                        const Icon(Icons.warning_amber, color: AppColors.warning, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             warning,
                             style: const TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 13,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                               height: 1.4,
                             ),
                           ),
@@ -1344,31 +1359,31 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               child: ExpansionTile(
                 title: Row(
                   children: [
-                    const Icon(Icons.tips_and_updates, color: Color(0xFF4CAF50), size: 20),
+                    const Icon(Icons.tips_and_updates, color: AppColors.success, size: 20),
                     const SizedBox(width: 8),
                     const Text(
                       'Tips',
                       style: TextStyle(
-                        fontFamily: 'Sora',
+                        fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                        color: const AppColors.success.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${result.tips.length}',
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF4CAF50),
+                          color: AppColors.success,
                         ),
                       ),
                     ),
@@ -1379,21 +1394,21 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                      color: const AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 18),
+                        const Icon(Icons.check_circle, color: AppColors.success, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             tip,
                             style: const TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 13,
-                              color: Color(0xFF193C57),
+                              color: AppColors.textPrimary,
                               height: 1.4,
                             ),
                           ),
@@ -1412,15 +1427,15 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.show_chart, color: Color(0xFF2196F3), size: 16),
+                    const Icon(Icons.show_chart, color: AppColors.info, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         stat,
                         style: const TextStyle(
-                          fontFamily: 'Manrope',
+                          fontFamily: AppTypography.fontBody,
                           fontSize: 12,
-                          color: Color(0xFF193C57),
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -1445,7 +1460,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                  color: const AppColors.success.withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -1463,7 +1478,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: const AppColors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -1474,7 +1489,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               label: const Text(
                 'Create Installment Plan',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1497,7 +1512,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       ),
                       title: const Row(
                         children: [
-                          Icon(Icons.help, color: Color(0xFF193C57)),
+                          Icon(Icons.help, color: AppColors.textPrimary),
                           SizedBox(width: 8),
                           Text('How It Works'),
                         ],
@@ -1513,7 +1528,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                           'We use industry standards and behavioral finance principles '
                           'to provide personalized recommendations.',
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: AppTypography.fontBody,
                             height: 1.5,
                           ),
                         ),
@@ -1528,8 +1543,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF193C57),
-                  side: const BorderSide(color: Color(0xFF193C57)),
+                  foregroundColor: const AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.textPrimary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1539,7 +1554,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 label: const Text(
                   'Learn More',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1565,8 +1580,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   }
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF193C57),
-                  side: const BorderSide(color: Color(0xFF193C57)),
+                  foregroundColor: const AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.textPrimary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1576,7 +1591,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 label: const Text(
                   'Calculate Again',
                   style: TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1613,15 +1628,15 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF193C57), size: 24),
+              Icon(icon, color: const AppColors.textPrimary, size: 24),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -1645,19 +1660,19 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: isHighlight ? 16 : 14,
             fontWeight: isHighlight ? FontWeight.w600 : FontWeight.w500,
-            color: const Color(0xFF193C57),
+            color: const AppColors.textPrimary,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: isHighlight ? 20 : 16,
             fontWeight: FontWeight.bold,
-            color: valueColor ?? const Color(0xFF193C57),
+            color: valueColor ?? const AppColors.textPrimary,
           ),
         ),
       ],
@@ -1669,13 +1684,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     Color progressColor;
 
     if (percentage <= 30) {
-      progressColor = const Color(0xFF4CAF50);
+      progressColor = const AppColors.success;
     } else if (percentage <= 50) {
-      progressColor = const Color(0xFFFFD25F);
+      progressColor = const AppColors.secondary;
     } else if (percentage <= 70) {
-      progressColor = const Color(0xFFFF9800);
+      progressColor = const AppColors.warning;
     } else {
-      progressColor = const Color(0xFFF44336);
+      progressColor = const AppColors.error;
     }
 
     return Column(
@@ -1687,16 +1702,16 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             Text(
               label,
               style: const TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF193C57),
+                color: AppColors.textPrimary,
               ),
             ),
             Text(
               displayValue,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: progressColor,
@@ -1745,14 +1760,14 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     switch (severity.toLowerCase()) {
       case 'high':
       case 'critical':
-        return const Color(0xFFF44336);
+        return const AppColors.error;
       case 'medium':
       case 'moderate':
-        return const Color(0xFFFF9800);
+        return const AppColors.warning;
       case 'low':
-        return const Color(0xFFFFD25F);
+        return const AppColors.secondary;
       default:
-        return const Color(0xFF2196F3);
+        return const AppColors.info;
     }
   }
 

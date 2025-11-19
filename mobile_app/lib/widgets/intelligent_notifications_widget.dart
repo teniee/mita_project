@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/advanced_financial_engine.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// Intelligent Notifications Widget
 /// 
@@ -181,8 +183,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
               colors: [
-                const Color(0xFF1E3A8A),
-                const Color(0xFF1E40AF).withValues(alpha: 0.9),
+                AppColors.deepBlue,
+                AppColors.deepBlueLight.withValues(alpha: 0.9),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -216,7 +218,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                           const Text(
                             'Smart Insights',
                             style: TextStyle(
-                              fontFamily: 'Sora',
+                              fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                               color: Colors.white,
@@ -225,7 +227,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                           Text(
                             '${filteredNotifications.length} notification${filteredNotifications.length != 1 ? 's' : ''}',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: AppTypography.fontBody,
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.7),
                             ),
@@ -341,7 +343,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                   Text(
                     title,
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.95),
@@ -354,7 +356,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     Text(
                       message,
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
                       ),
@@ -375,7 +377,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                   Text(
                     _formatTimestamp(timestamp),
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 10,
                       color: Colors.white.withValues(alpha: 0.5),
                     ),
@@ -390,7 +392,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                     child: Text(
                       priority.toUpperCase(),
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 8,
                         color: notificationInfo.color,
                         fontWeight: FontWeight.w600,
@@ -548,7 +550,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                 Text(
                   '${notifications.length} insight${notifications.length != 1 ? 's' : ''}',
                   style: TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: highPriorityCount > 0 
@@ -567,7 +569,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                     child: Text(
                       highPriorityCount.toString(),
                       style: const TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,

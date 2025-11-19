@@ -1,9 +1,10 @@
-
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
-import '../services/ocr_service.dart';
-import '../services/logging_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/transaction_provider.dart';
+import '../models/transaction_model.dart';
 
 class EditExpenseScreen extends StatefulWidget {
   final Map<String, dynamic> expense;
@@ -16,14 +17,10 @@ class EditExpenseScreen extends StatefulWidget {
 
 class _EditExpenseScreenState extends State<EditExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
-  final OCRService _ocrService = OCRService();
 
   late double _amount;
   late String _action;
   late DateTime _selectedDate;
-  String? _receiptImageUrl;
-  bool _isLoadingReceiptImage = false;
 
   final List<String> _actions = [
     'Food', 'Transport', 'Entertainment', 'Health',
@@ -42,19 +39,26 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final updated = {
-      'amount': _amount,
-      'action': _action,
-      'date': _selectedDate.toIso8601String(),
-    };
+    final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
 
-    try {
-      await _apiService.updateExpense(widget.expense['id'], updated);
-      if (!mounted) return;
+    final input = TransactionInput(
+      amount: _amount,
+      category: _action,
+      spentAt: _selectedDate,
+    );
+
+    final result = await transactionProvider.updateTransaction(
+      widget.expense['id'],
+      input,
+    );
+
+    if (!mounted) return;
+
+    if (result != null) {
       Navigator.pop(context, true);
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update expense: \$e')),
+        SnackBar(content: Text(transactionProvider.errorMessage ?? 'Failed to update expense')),
       );
     }
   }
@@ -73,17 +77,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
 
     if (confirm == true) {
-      try {
-        await _apiService.deleteExpense(widget.expense['id']);
-        if (!mounted) return;
-        final navigator = Navigator.of(context);
-        navigator.pop(true);
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to delete: \$e')),
-          );
-        }
+      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      final success = await transactionProvider.deleteTransaction(widget.expense['id']);
+
+      if (!mounted) return;
+
+      if (success) {
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(transactionProvider.errorMessage ?? 'Failed to delete expense')),
+        );
       }
     }
   }
@@ -103,19 +107,15 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Edit Expense',
-          style: TextStyle(
-            fontFamily: 'Sora',
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
-          ),
+          style: AppTypography.heading3,
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         actions: [
           IconButton(
@@ -137,7 +137,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   labelText: 'Amount',
                   prefixIcon: Icon(Icons.attach_money),
                 ),
-                style: const TextStyle(fontFamily: 'Manrope'),
+                style: AppTypography.bodyLarge,
                 validator: (value) => value == null || value.isEmpty ? 'Enter amount' : null,
                 onSaved: (value) => _amount = double.tryParse(value ?? '') ?? 0.0,
               ),
@@ -151,7 +151,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                 items: _actions.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(cat, style: const TextStyle(fontFamily: 'Manrope')),
+                    child: Text(cat, style: AppTypography.bodyLarge),
                   );
                 }).toList(),
                 onChanged: (value) => setState(() => _action = value!),
@@ -160,9 +160,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               const SizedBox(height: 20),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Date', style: TextStyle(fontFamily: 'Manrope')),
+                title: Text('Date', style: AppTypography.bodyLargeMedium),
                 subtitle: Text(DateFormat.yMMMd().format(_selectedDate),
-                    style: const TextStyle(fontFamily: 'Manrope')),
+                    style: AppTypography.bodyMedium),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,
@@ -172,20 +172,16 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD25F),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: AppColors.textPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Save Changes',
-                  style: TextStyle(
-                    fontFamily: 'Sora',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTypography.button,
                 ),
               ),
             ],

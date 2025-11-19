@@ -2,10 +2,12 @@
 /// AI-powered insights, health analysis, and recommendations for goals
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/goal.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
+import '../providers/goals_provider.dart';
 
 class GoalInsightsScreen extends StatefulWidget {
   final Goal goal;
@@ -17,16 +19,16 @@ class GoalInsightsScreen extends StatefulWidget {
 }
 
 class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
-  Map<String, dynamic>? _healthData;
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadHealthData();
+    // Load health data via provider after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GoalsProvider>().loadGoalHealthData(widget.goal.id);
+    });
   }
 
   @override
@@ -35,42 +37,37 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     super.dispose();
   }
 
-  Future<void> _loadHealthData() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await _apiService.analyzeGoalHealth(widget.goal.id);
-      setState(() {
-        _healthData = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading goal health data: $e');
-      setState(() => _isLoading = false);
-    }
+  void _loadHealthData() {
+    context.read<GoalsProvider>().loadGoalHealthData(widget.goal.id);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the provider for reactive updates
+    final goalsProvider = context.watch<GoalsProvider>();
+    final isLoading = goalsProvider.isHealthDataLoading(widget.goal.id);
+    final healthData = goalsProvider.getGoalHealthData(widget.goal.id);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Goal Insights',
           style: TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF193C57),
+          labelColor: const AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFFFFD25F),
+          indicatorColor: const AppColors.secondary,
           tabs: const [
             Tab(text: 'Health', icon: Icon(Icons.favorite)),
             Tab(text: 'Insights', icon: Icon(Icons.lightbulb)),
@@ -78,16 +75,16 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
           ],
         ),
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _healthData == null
+          : healthData == null
               ? _buildErrorState()
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildHealthTab(),
-                    _buildInsightsTab(),
-                    _buildRecommendationsTab(),
+                    _buildHealthTab(healthData),
+                    _buildInsightsTab(healthData),
+                    _buildRecommendationsTab(healthData),
                   ],
                 ),
     );
@@ -111,10 +108,10 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildHealthTab() {
-    final healthScore = _healthData!['health_score'] ?? 0;
-    final isOnTrack = _healthData!['on_track'] ?? false;
-    final predictedDate = _healthData!['predicted_completion_date'];
+  Widget _buildHealthTab(Map<String, dynamic> healthData) {
+    final healthScore = healthData['health_score'] ?? 0;
+    final isOnTrack = healthData['on_track'] ?? false;
+    final predictedDate = healthData['predicted_completion_date'];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -148,8 +145,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildInsightsTab() {
-    final insights = _healthData!['insights'] as List? ?? [];
+  Widget _buildInsightsTab(Map<String, dynamic> healthData) {
+    final insights = healthData['insights'] as List? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -164,8 +161,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildRecommendationsTab() {
-    final recommendations = _healthData!['recommendations'] as List? ?? [];
+  Widget _buildRecommendationsTab(Map<String, dynamic> healthData) {
+    final recommendations = healthData['recommendations'] as List? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -190,7 +187,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
       scoreLabel = 'Excellent';
       scoreIcon = Icons.trending_up;
     } else if (score >= 60) {
-      scoreColor = const Color(0xFFFFD25F);
+      scoreColor = const AppColors.secondary;
       scoreLabel = 'Good';
       scoreIcon = Icons.trending_flat;
     } else if (score >= 40) {
@@ -231,7 +228,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                   Text(
                     'Health Score',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 16,
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
@@ -240,7 +237,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                   Text(
                     '$score/100',
                     style: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -250,7 +247,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                   Text(
                     scoreLabel,
                     style: const TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -279,7 +276,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                 Text(
                   isOnTrack ? 'On Track' : 'Behind Schedule',
                   style: const TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -325,12 +322,12 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
   Widget _buildOverviewRow(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF193C57), size: 20),
+        Icon(icon, color: const AppColors.textPrimary, size: 20),
         const SizedBox(width: 12),
         Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 14,
             color: Colors.grey,
           ),
@@ -339,10 +336,10 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Sora',
+            fontFamily: AppTypography.fontHeading,
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -375,7 +372,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                   Text(
                     'Predicted Completion',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: AppTypography.fontBody,
                       fontSize: 12,
                       color: isLate ? Colors.red.shade700 : Colors.green.shade700,
                     ),
@@ -384,7 +381,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                   Text(
                     DateFormat('MMM dd, yyyy').format(predicted),
                     style: TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: isLate ? Colors.red.shade800 : Colors.green.shade800,
@@ -395,7 +392,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                     Text(
                       '${predicted.difference(target).inDays} days late',
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 12,
                         color: Colors.red.shade600,
                       ),
@@ -425,7 +422,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                 Text(
                   'Current Progress',
                   style: const TextStyle(
-                    fontFamily: 'Manrope',
+                    fontFamily: AppTypography.fontBody,
                     fontSize: 14,
                     color: Colors.grey,
                   ),
@@ -433,10 +430,10 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
                 Text(
                   widget.goal.progressPercentage,
                   style: const TextStyle(
-                    fontFamily: 'Sora',
+                    fontFamily: AppTypography.fontHeading,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -480,7 +477,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Manrope',
+            fontFamily: AppTypography.fontBody,
             fontSize: 10,
             color: reached ? Colors.green : Colors.grey,
           ),
@@ -505,20 +502,20 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD25F).withValues(alpha: 0.2),
+                color: const AppColors.secondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.lightbulb, color: Color(0xFF193C57), size: 20),
+              child: const Icon(Icons.lightbulb, color: AppColors.textPrimary, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 insight,
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   height: 1.5,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -551,10 +548,10 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
               child: Text(
                 recommendation,
                 style: const TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: AppTypography.fontBody,
                   fontSize: 14,
                   height: 1.5,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -577,7 +574,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             Text(
               'No insights yet',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade600,
@@ -588,7 +585,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
               'Keep tracking your progress to unlock AI-powered insights',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 color: Colors.grey.shade500,
               ),
@@ -612,7 +609,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             Text(
               'You\'re doing great!',
               style: TextStyle(
-                fontFamily: 'Sora',
+                fontFamily: AppTypography.fontHeading,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade600,
@@ -623,7 +620,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
               'No recommendations at this time. Keep up the good work!',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: AppTypography.fontBody,
                 fontSize: 14,
                 color: Colors.grey.shade500,
               ),
@@ -638,17 +635,17 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     return Text(
       title,
       style: const TextStyle(
-        fontFamily: 'Sora',
+        fontFamily: AppTypography.fontHeading,
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF193C57),
+        color: AppColors.textPrimary,
       ),
     );
   }
 
   Color _getProgressColor(double progress) {
     if (progress >= 100) return Colors.green;
-    if (progress >= 70) return const Color(0xFFFFD25F);
-    return const Color(0xFF193C57);
+    if (progress >= 70) return const AppColors.secondary;
+    return const AppColors.textPrimary;
   }
 }

@@ -1,6 +1,9 @@
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
+import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 import '../mixins/onboarding_session_mixin.dart';
 
@@ -35,27 +38,36 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
 
   void _submitHabits() async {
     if (selectedHabits.isEmpty) return;
-    
+
     // Validate session before proceeding to final step
     final isValid = await validateSessionBeforeNavigation();
     if (!isValid) return;
-    
+
     // Save habits and optional comment
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();
     await OnboardingState.instance.save();
+
+    // Cache onboarding data using UserProvider for centralized state management
+    if (mounted) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final onboardingData = OnboardingState.instance.toMap();
+      await userProvider.cacheOnboardingData(onboardingData);
+    }
+
+    if (!mounted) return;
     Navigator.pushNamed(context, '/onboarding_finish');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF193C57)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -74,10 +86,10 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
               const Text(
                 'Which financial habits are hurting you?',
                 style: TextStyle(
-                  fontFamily: 'Sora',
+                  fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w700,
                   fontSize: 22,
-                  color: Color(0xFF193C57),
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -92,11 +104,11 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                           onTap: () => _toggleHabit(habit['id']),
                           child: Card(
                             elevation: isSelected ? 4 : 1,
-                            color: isSelected ? const Color(0xFFFFD25F) : Colors.white,
+                            color: isSelected ? const AppColors.secondary : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
-                                color: isSelected ? const Color(0xFF193C57) : Colors.transparent,
+                                color: isSelected ? const AppColors.textPrimary : Colors.transparent,
                                 width: 1.5,
                               ),
                             ),
@@ -104,21 +116,21 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                               child: Row(
                                 children: [
-                                  Icon(habit['icon'], color: const Color(0xFF193C57)),
+                                  Icon(habit['icon'], color: const AppColors.textPrimary),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
                                       habit['label'],
                                       style: const TextStyle(
-                                        fontFamily: 'Manrope',
+                                        fontFamily: AppTypography.fontBody,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 16,
-                                        color: Color(0xFF193C57),
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
                                   if (isSelected)
-                                    const Icon(Icons.check_circle, color: Color(0xFF193C57)),
+                                    const Icon(Icons.check_circle, color: AppColors.textPrimary),
                                 ],
                               ),
                             ),
@@ -130,9 +142,9 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                     const Text(
                       "Anything else?",
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: AppTypography.fontBody,
                         fontSize: 16,
-                        color: Color(0xFF193C57),
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -159,14 +171,14 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                 child: ElevatedButton(
                   onPressed: selectedHabits.isNotEmpty ? _submitHabits : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF193C57),
+                    backgroundColor: const AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
                     textStyle: const TextStyle(
-                      fontFamily: 'Sora',
+                      fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -185,11 +197,21 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
 
                     OnboardingState.instance.habits = [];
                     OnboardingState.instance.habitsComment = null;
+                    await OnboardingState.instance.save();
+
+                    // Cache onboarding data using UserProvider for centralized state management
+                    if (mounted) {
+                      final userProvider = Provider.of<UserProvider>(context, listen: false);
+                      final onboardingData = OnboardingState.instance.toMap();
+                      await userProvider.cacheOnboardingData(onboardingData);
+                    }
+
+                    if (!mounted) return;
                     Navigator.pushNamed(context, '/onboarding_finish');
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: 'Sora', color: Colors.grey),
+                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
                   ),
                 ),
               ),

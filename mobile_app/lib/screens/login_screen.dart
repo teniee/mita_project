@@ -3,10 +3,14 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../providers/user_provider.dart';
 import '../services/secure_push_token_manager.dart';
 import '../services/password_validation_service.dart';
 import '../services/accessibility_service.dart';
@@ -315,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
         if (kDebugMode) dev.log('Widget unmounted during Google login process', name: 'LoginScreen');
         return;
       }
-        
+
       // SECURITY: Initialize push tokens AFTER successful authentication
       try {
         await SecurePushTokenManager.instance.initializePostAuthentication();
@@ -328,10 +332,16 @@ class _LoginScreenState extends State<LoginScreen>
           context: {'operation': 'push_token_init_google'},
         );
       }
-        
+
+      // Set authentication state using UserProvider
+      if (kDebugMode) dev.log('Setting authentication state in UserProvider', name: 'LoginScreen');
+      final userProvider = context.read<UserProvider>();
+      userProvider.setAuthenticated();
+      await userProvider.initialize();
+
       // Check if user has completed onboarding
       if (kDebugMode) dev.log('Checking onboarding status after Google login', name: 'LoginScreen');
-      final hasOnboarded = await _api.hasCompletedOnboarding();
+      final hasOnboarded = userProvider.hasCompletedOnboarding;
       
       if (!mounted) {
         if (kDebugMode) dev.log('Widget unmounted during Google login onboarding check', name: 'LoginScreen');
@@ -539,7 +549,7 @@ class _LoginScreenState extends State<LoginScreen>
         if (kDebugMode) dev.log('Widget unmounted during login process', name: 'LoginScreen');
         return;
       }
-        
+
       // SECURITY: Initialize push tokens AFTER successful authentication
       try {
         await SecurePushTokenManager.instance.initializePostAuthentication();
@@ -553,10 +563,16 @@ class _LoginScreenState extends State<LoginScreen>
           context: {'operation': 'push_token_init'},
         );
       }
-        
+
+      // Set authentication state using UserProvider
+      if (kDebugMode) dev.log('Setting authentication state in UserProvider', name: 'LoginScreen');
+      final userProvider = context.read<UserProvider>();
+      userProvider.setAuthenticated();
+      await userProvider.initialize();
+
       // Check if user has completed onboarding
       if (kDebugMode) dev.log('Checking onboarding status', name: 'LoginScreen');
-      final hasOnboarded = await _api.hasCompletedOnboarding();
+      final hasOnboarded = userProvider.hasCompletedOnboarding;
       
       if (!mounted) {
         if (kDebugMode) dev.log('Widget unmounted during onboarding check', name: 'LoginScreen');
