@@ -723,11 +723,11 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               _animationController.reset();
               _animationController.forward();
             },
-            color: const Color(0xFFFFD25F),
+            color: AppColors.secondary,
             child: isLoading && habits.isEmpty
                 ? const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD25F)),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
                     ),
                   )
                 : errorMessage != null && habits.isEmpty

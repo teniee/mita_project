@@ -151,15 +151,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           isPremium ? Icons.star : Icons.star_border,
                           size: 48,
                           color: isPremium
-                              ? const Color(0xFFFFD700)
-                              : const Color(0xFF193C57),
+                              ? AppColors.premium
+                              : AppColors.primary,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           isPremium ? 'Premium Active' : 'Free Plan',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF193C57),
+                            color: const AppColors.primary,
                           ),
                         ),
                         if (_subscriptionInfo != null && isPremium) ...[
@@ -184,7 +184,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -200,7 +200,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ElevatedButton(
                     onPressed: _isProcessing ? null : _buyPremium,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF193C57),
+                      backgroundColor: const AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -220,7 +220,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   onPressed: _isProcessing ? null : _restorePurchases,
                   child: const Text(
                     'Restore Purchases',
-                    style: TextStyle(color: Color(0xFF193C57)),
+                    style: TextStyle(color: AppColors.primary),
                   ),
                 ),
               ],
@@ -238,7 +238,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         children: [
           const Icon(
             Icons.check_circle,
-            color: Color(0xFF4CAF50),
+            color: AppColors.success,
             size: 20,
           ),
           const SizedBox(width: 8),
