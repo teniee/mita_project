@@ -29,6 +29,12 @@ class GoalsProvider extends ChangeNotifier {
   Map<String, Map<String, dynamic>> _goalHealthData = {};
   Map<String, bool> _healthDataLoading = {};
 
+  // Smart recommendations state
+  List<Map<String, dynamic>> _recommendations = [];
+  List<Map<String, dynamic>> _opportunities = [];
+  List<Map<String, dynamic>> _adjustments = [];
+  bool _isLoadingRecommendations = false;
+
   // Getters
   GoalsState get state => _state;
   List<Goal> get goals => _goals;
@@ -51,6 +57,13 @@ class GoalsProvider extends ChangeNotifier {
   int get completedGoals => _statistics['completed_goals'] as int? ?? 0;
   double get completionRate => (_statistics['completion_rate'] as num?)?.toDouble() ?? 0.0;
   double get averageProgress => (_statistics['average_progress'] as num?)?.toDouble() ?? 0.0;
+
+  // Smart recommendations getters
+  List<Map<String, dynamic>> get recommendations => _recommendations;
+  List<Map<String, dynamic>> get opportunities => _opportunities;
+  List<Map<String, dynamic>> get adjustments => _adjustments;
+  bool get isLoadingRecommendations => _isLoadingRecommendations;
+  bool get hasRecommendations => _recommendations.isNotEmpty || _opportunities.isNotEmpty || _adjustments.isNotEmpty;
 
   /// Get health data for a specific goal
   Map<String, dynamic>? getGoalHealthData(String goalId) => _goalHealthData[goalId];
@@ -121,6 +134,61 @@ class GoalsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Failed to load goal statistics: $e', tag: 'GOALS_PROVIDER');
     }
+  }
+
+  /// Load all smart goal recommendations
+  Future<void> loadSmartRecommendations() async {
+    if (_isLoadingRecommendations) return;
+
+    try {
+      _isLoadingRecommendations = true;
+      notifyListeners();
+
+      final results = await Future.wait([
+        _apiService.getSmartGoalRecommendations(),
+        _apiService.detectGoalOpportunities(),
+        _apiService.getGoalAdjustmentSuggestions(),
+      ]);
+
+      _recommendations = List<Map<String, dynamic>>.from(
+        results[0]['recommendations'] ?? []
+      );
+      _opportunities = List<Map<String, dynamic>>.from(
+        results[1]['opportunities'] ?? []
+      );
+      _adjustments = List<Map<String, dynamic>>.from(
+        results[2]['adjustments'] ?? []
+      );
+
+      logInfo('Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments', tag: 'GOALS_PROVIDER');
+    } catch (e) {
+      logError('Failed to load smart recommendations: $e', tag: 'GOALS_PROVIDER');
+      _errorMessage = 'Failed to load recommendations';
+    } finally {
+      _isLoadingRecommendations = false;
+      notifyListeners();
+    }
+  }
+
+  /// Create goal from recommendation
+  Future<bool> createGoalFromRecommendation(Map<String, dynamic> recommendation) async {
+    final data = {
+      'title': recommendation['title'],
+      'description': recommendation['description'] ?? recommendation['reasoning'],
+      'category': recommendation['category'],
+      'target_amount': recommendation['target_amount'],
+      'saved_amount': 0,
+      'monthly_contribution': recommendation['monthly_contribution'],
+      'priority': recommendation['priority'],
+      'target_date': recommendation['suggested_deadline'],
+    };
+
+    final success = await createGoal(data);
+    if (success) {
+      // Refresh recommendations after creating goal
+      await loadSmartRecommendations();
+    }
+    return success;
   }
 
   /// Load health data for a specific goal
