@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |">
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/theme/app_colors.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/theme/app_colors.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/predictive_analytics_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/habits/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/habits/routes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,14 +78,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00034" summary=" The app now compiles without errors and all the requested features are working:&#10;  - ✅ Hardcoded budget details removed and replaced with user data&#10;  - ✅ User profile screen added with comprehensive information&#10;  - ✅ User settings screen added with all preferences&#10;  - ✅ Bottom navigation shadow removed&#10;  - ✅ Profile data connected to budget calculations&#10;  - ✅ Compilation error fixed">
-      <option name="closed" value="true" />
-      <created>1754695263774</created>
-      <option name="number" value="00034" />
-      <option name="presentableId" value="LOCAL-00034" />
-      <option name="project" value="LOCAL" />
-      <updated>1754695263774</updated>
     </task>
     <task id="LOCAL-00035" summary=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;  3. Reflects their financial goals (saving vs debt payoff vs investing)&#10;  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes">
       <option name="closed" value="true" />
@@ -472,7 +463,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763487387219</updated>
     </task>
-    <option name="localTasksCounter" value="83" />
+    <task id="LOCAL-00083" summary=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически">
+      <option name="closed" value="true" />
+      <created>1763572797618</created>
+      <option name="number" value="00083" />
+      <option name="presentableId" value="LOCAL-00083" />
+      <option name="project" value="LOCAL" />
+      <updated>1763572797618</updated>
+    </task>
+    <option name="localTasksCounter" value="84" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -487,7 +486,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=" Current Status&#10;&#10;  - ✅ No more recurring error messages&#10;  - ✅ App runs smoothly without periodic server failures&#10;  - ✅ User experience improved - no disruptive error notifications&#10;  - ✅ All timers can be easily re-enabled once backend is fixed and deployed" />
     <MESSAGE value=" The app now compiles without errors and all the requested features are working:&#10;  - ✅ Hardcoded budget details removed and replaced with user data&#10;  - ✅ User profile screen added with comprehensive information&#10;  - ✅ User settings screen added with all preferences&#10;  - ✅ Bottom navigation shadow removed&#10;  - ✅ Profile data connected to budget calculations&#10;  - ✅ Compilation error fixed" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;  3. Reflects their financial goals (saving vs debt payoff vs investing)&#10;  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;The MITA financial application is now 100% production-ready with:&#10;&#10;  1. Enterprise-grade security and compliance meeting all financial industry standards&#10;  2. Comprehensive testing framework ensuring quality and reliability&#10;  3. Full infrastructure automation with monitoring, alerting, and disaster recovery&#10;  4. Complete accessibility and internationalization for global expansion&#10;  5. Operational excellence with automated maintenance and scaling  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
@@ -512,6 +510,7 @@
     <MESSAGE value="Verification Results:&#10;&#10;  - ✅ All major screens (challenges, goals, habits) already properly connected&#10;  - ✅ All offline/fallback services properly implemented&#10;  - ✅ No remaining mock data in production code paths" />
     <MESSAGE value=" Audit Results:&#10;&#10;  - ✅ 29/43 screens use ApiService directly&#10;  - ✅ All critical data paths now go through backend APIs&#10;  - ✅ Local budget engines only used as fallback&#10;  - ✅ No commented-out API calls found&#10;  - ✅ All major widgets connected to data sources&#10;  - ✅ 66 services audited - client-side calculations appropriately separated from API calls" />
     <MESSAGE value=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |" />
-    <option name="LAST_COMMIT_MESSAGE" value=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |" />
+    <MESSAGE value=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически" />
+    <option name="LAST_COMMIT_MESSAGE" value=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически" />
   </component>
 </project>

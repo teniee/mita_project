@@ -115,13 +115,13 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       setState(() {
         _predictiveAnalytics = {
           'spending_prediction': spendingPrediction,
-          'behavior_predictions': {}, // Can be populated with getBehavioralPredictions
+          'behavior_predictions': <String, dynamic>{}, // Can be populated with getBehavioralPredictions
         };
 
         _riskAssessment = {
           'risk_score': healthScore['risk_score'] ?? 0.0,
           'risk_level': healthScore['risk_level'] ?? 'moderate',
-          'recommendations': healthScore['recommendations'] ?? [],
+          'recommendations': healthScore['recommendations'] ?? <dynamic>[],
         };
 
         _isLoading = false;
@@ -565,6 +565,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   }
 
   Widget _buildBehavioralPredictionsSection() {
+    // TODO: Use behaviorPredictions when backend provides data
+    // ignore: unused_local_variable
     final behaviorPredictions = _predictiveAnalytics!['behavior_predictions'] as Map<String, dynamic>? ?? {};
 
     return Column(
