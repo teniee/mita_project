@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
+import '../providers/mood_provider.dart';
 import '../services/reminder_service.dart';
 
 class MoodScreen extends StatefulWidget {
@@ -12,9 +13,6 @@ class MoodScreen extends StatefulWidget {
 }
 
 class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  double _mood = 3;
-  bool _hasSubmittedToday = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
@@ -91,6 +89,11 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
+
+    // Initialize the mood provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MoodProvider>().initialize();
+    });
   }
 
   @override
@@ -100,25 +103,23 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _submit() async {
-    try {
-      await _apiService.logMood(_mood.round());
-      if (!mounted) return;
-      
+    final moodProvider = context.read<MoodProvider>();
+
+    final success = await moodProvider.logMood();
+    if (!mounted) return;
+
+    if (success) {
       _animationController.forward().then((_) {
         _animationController.reverse();
       });
-      
-      setState(() {
-        _hasSubmittedToday = true;
-      });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 8),
-              Text('Mood saved! ${_moodData[_mood.round()]!['emoji']}'),
+              Text('Mood saved! ${_moodData[moodProvider.selectedMood.round()]!['emoji']}'),
             ],
           ),
           backgroundColor: Colors.green,
@@ -126,254 +127,273 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save mood: $e'),
+          content: Text('Failed to save mood: ${moodProvider.errorMessage}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
+      moodProvider.clearError();
     }
   }
 
   Widget _buildMoodSelector() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text(
-              'How are you feeling today?',
-              style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Emoji display
-            AnimatedBuilder(
-              animation: _scaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: Text(
-                    _moodData[_mood.round()]!['emoji'],
-                    style: const TextStyle(fontSize: 80),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Mood label and description
-            Text(
-              _moodData[_mood.round()]!['label'],
-              style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: _moodData[_mood.round()]!['color'],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _moodData[_mood.round()]!['description'],
-              style: const TextStyle(
-                fontFamily: AppTypography.fontBody,
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Mood slider
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: _moodData[_mood.round()]!['color'],
-                thumbColor: _moodData[_mood.round()]!['color'],
-                overlayColor: _moodData[_mood.round()]!['color'].withValues(alpha: 0.2),
-                trackHeight: 8.0,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
-              ),
-              child: Slider(
-                value: _mood,
-                min: 1,
-                max: 5,
-                divisions: 4,
-                onChanged: (value) {
-                  setState(() {
-                    _mood = value;
-                  });
-                },
-              ),
-            ),
-            
-            // Mood scale labels
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('😢', style: TextStyle(fontSize: 20)),
-                  Text('😔', style: TextStyle(fontSize: 20)),
-                  Text('😐', style: TextStyle(fontSize: 20)),
-                  Text('😊', style: TextStyle(fontSize: 20)),
-                  Text('😄', style: TextStyle(fontSize: 20)),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _hasSubmittedToday ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _hasSubmittedToday ? Colors.grey : const AppColors.secondary,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                ),
-                child: Text(
-                  _hasSubmittedToday ? 'Mood Saved for Today' : 'Save My Mood',
-                  style: const TextStyle(
-                    fontFamily: AppTypography.fontHeading,
+    return Consumer<MoodProvider>(
+      builder: (context, moodProvider, child) {
+        final mood = moodProvider.selectedMood;
+        final hasSubmittedToday = moodProvider.hasSubmittedToday;
+
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Text(
+                  'How are you feeling today?',
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    color: Color(0xFF193C57),
                   ),
                 ),
-              ),
-            ),
-            
-            if (_hasSubmittedToday) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
+                const SizedBox(height: 24),
+
+                // Emoji display
+                AnimatedBuilder(
+                  animation: _scaleAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _scaleAnimation.value,
                       child: Text(
-                        'Thanks for sharing! Your mood has been recorded.',
-                        style: TextStyle(
-                          fontFamily: AppTypography.fontBody,
-                          fontSize: 14,
-                          color: Colors.green.shade700,
-                        ),
+                        _moodData[mood.round()]!['emoji'],
+                        style: const TextStyle(fontSize: 80),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
+
+                const SizedBox(height: 16),
+
+                // Mood label and description
+                Text(
+                  _moodData[mood.round()]!['label'],
+                  style: TextStyle(
+                    fontFamily: 'Sora',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: _moodData[mood.round()]!['color'],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _moodData[mood.round()]!['description'],
+                  style: const TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Mood slider
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: _moodData[mood.round()]!['color'],
+                    thumbColor: _moodData[mood.round()]!['color'],
+                    overlayColor: _moodData[mood.round()]!['color'].withValues(alpha: 0.2),
+                    trackHeight: 8.0,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                  ),
+                  child: Slider(
+                    value: mood,
+                    min: 1,
+                    max: 5,
+                    divisions: 4,
+                    onChanged: (value) {
+                      moodProvider.setSelectedMood(value);
+                    },
+                  ),
+                ),
+
+                // Mood scale labels
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('😢', style: TextStyle(fontSize: 20)),
+                      Text('😔', style: TextStyle(fontSize: 20)),
+                      Text('😐', style: TextStyle(fontSize: 20)),
+                      Text('😊', style: TextStyle(fontSize: 20)),
+                      Text('😄', style: TextStyle(fontSize: 20)),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Submit button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: hasSubmittedToday || moodProvider.isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: hasSubmittedToday ? Colors.grey : const Color(0xFFFFD25F),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 4,
+                    ),
+                    child: moodProvider.isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            ),
+                          )
+                        : Text(
+                            hasSubmittedToday ? 'Mood Saved for Today' : 'Save My Mood',
+                            style: const TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                  ),
+                ),
+
+                if (hasSubmittedToday) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Thanks for sharing! Your mood has been recorded.',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 14,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildTipsCard() {
-    final currentMoodData = _moodData[_mood.round()]!;
-    final tips = currentMoodData['tips'] as List<String>;
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Consumer<MoodProvider>(
+      builder: (context, moodProvider, child) {
+        final currentMoodData = _moodData[moodProvider.selectedMood.round()]!;
+        final tips = currentMoodData['tips'] as List<String>;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.lightbulb_outline,
-                  color: currentMoodData['color'],
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Mood Tips',
-                  style: TextStyle(
-                    fontFamily: AppTypography.fontHeading,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
+                Row(
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline,
                       color: currentMoodData['color'],
-                      shape: BoxShape.circle,
+                      size: 24,
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      tip,
-                      style: const TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 14,
-                        height: 1.4,
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Mood Tips',
+                      style: TextStyle(
+                        fontFamily: 'Sora',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF193C57),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ...tips.map((tip) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: currentMoodData['color'],
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          tip,
+                          style: const TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
+                )),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: const Color(0xFFFFF9F0),
       appBar: AppBar(
         title: const Text(
           'Daily Mood Check-in',
           style: TextStyle(
-            fontFamily: AppTypography.fontHeading,
+            fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: Color(0xFF193C57),
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: const Color(0xFFFFF9F0),
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -384,11 +404,11 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             // Main mood selector card
             _buildMoodSelector(),
             const SizedBox(height: 20),
-            
+
             // Tips card based on selected mood
             _buildTipsCard(),
             const SizedBox(height: 20),
-            
+
             // Weekly mood tracking placeholder
             Card(
               elevation: 2,
@@ -402,17 +422,17 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                       children: [
                         Icon(
                           Icons.trending_up,
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF193C57),
                           size: 24,
                         ),
                         SizedBox(width: 8),
                         Text(
                           'Mood Trends',
                           style: TextStyle(
-                            fontFamily: AppTypography.fontHeading,
+                            fontFamily: 'Sora',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: Color(0xFF193C57),
                           ),
                         ),
                       ],
@@ -421,14 +441,14 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     const Text(
                       'Track your mood daily to see patterns and trends over time. This can help you identify what affects your wellbeing.',
                       style: TextStyle(
-                        fontFamily: AppTypography.fontBody,
+                        fontFamily: 'Manrope',
                         fontSize: 14,
                         color: Colors.grey,
                         height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Sample mood history
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -474,7 +494,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
         Text(
           day,
           style: const TextStyle(
-            fontFamily: AppTypography.fontBody,
+            fontFamily: 'Manrope',
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

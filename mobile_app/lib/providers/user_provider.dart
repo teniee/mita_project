@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../services/user_data_manager.dart';
 import '../services/logging_service.dart';
 import '../services/iap_service.dart';
+import '../services/api_service.dart';
 
 /// User state enum for tracking authentication and data loading states
 enum UserState {
@@ -17,6 +18,7 @@ enum UserState {
 class UserProvider extends ChangeNotifier {
   final UserDataManager _userDataManager = UserDataManager.instance;
   final IapService _iapService = IapService();
+  final ApiService _apiService = ApiService();
 
   // State
   UserState _state = UserState.initial;
@@ -25,6 +27,8 @@ class UserProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isLoading = false;
   bool _hasCompletedOnboarding = false;
+  String? _referralCode;
+  bool _isLoadingReferral = false;
 
   // Getters
   UserState get state => _state;
@@ -34,6 +38,8 @@ class UserProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   bool get isAuthenticated => _state == UserState.authenticated;
+  String? get referralCode => _referralCode;
+  bool get isLoadingReferral => _isLoadingReferral;
 
   // User profile convenience getters
   String get userName => _userProfile['name'] as String? ?? 'User';
@@ -175,6 +181,27 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// Load referral code from API
+  Future<void> loadReferralCode() async {
+    if (_isLoadingReferral) return;
+
+    try {
+      _isLoadingReferral = true;
+      notifyListeners();
+
+      final code = await _apiService.getReferralCode();
+      _referralCode = code;
+
+      logInfo('Referral code loaded successfully', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logError('Failed to load referral code: $e', tag: 'USER_PROVIDER');
+      _errorMessage = 'Failed to load referral code';
+    } finally {
+      _isLoadingReferral = false;
+      notifyListeners();
+    }
+  }
+
   /// Clear user data (logout)
   Future<void> logout() async {
     try {
@@ -186,6 +213,7 @@ class UserProvider extends ChangeNotifier {
       _userProfile = {};
       _financialContext = {};
       _hasCompletedOnboarding = false;
+      _referralCode = null;
       _state = UserState.unauthenticated;
 
       logInfo('User logged out successfully', tag: 'USER_PROVIDER');

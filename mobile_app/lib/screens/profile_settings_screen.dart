@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
+import '../providers/user_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/logging_service.dart';
 import '../core/app_error_handler.dart';
 import '../core/enhanced_error_handling.dart';
@@ -15,21 +17,18 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
-  
+
   // User data controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _incomeController = TextEditingController();
   final TextEditingController _savingsGoalController = TextEditingController();
-  
+
   String _selectedCurrency = 'USD';
   String _selectedRegion = 'US';
   String _budgetMethod = 'Percentage';
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  bool _isLoading = false;
   bool _isSaving = false;
+  bool _hasInitialized = false;
 
   final List<String> _currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY'];
   final List<String> _regions = ['US', 'Canada', 'UK', 'Europe', 'Australia', 'Asia'];
@@ -38,74 +37,52 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    // Schedule initialization after the first frame to access context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFromProviders();
+    });
   }
 
-  Future<void> _loadUserProfile() async {
-    setState(() => _isLoading = true);
+  void _initializeFromProviders() {
+    if (_hasInitialized) return;
 
-    try {
-      // Try to load from API with timeout
-      final profileData = await _apiService.getUserProfile().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
+    final userProvider = context.read<UserProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
+    final profile = userProvider.userProfile;
 
-      if (profileData.isNotEmpty && profileData['data'] != null) {
-        final data = profileData['data'];
-        setState(() {
-          _nameController.text = data['name'] ?? '';
-          _emailController.text = data['email'] ?? '';
-          final income = data['income'];
-          if (income != null && income > 0) {
-            _incomeController.text = income.toString();
-          } else {
-            _incomeController.text = '';
-          }
-          final savingsGoal = data['savings_goal'];
-          if (savingsGoal != null && savingsGoal > 0) {
-            _savingsGoalController.text = savingsGoal.toString();
-          } else {
-            _savingsGoalController.text = '';
-          }
-          _selectedCurrency = data['currency'] ?? 'USD';
-          _selectedRegion = data['region'] ?? 'US';
-          _budgetMethod = data['budget_method'] ?? '50/30/20 Rule';
-          _notificationsEnabled = data['notifications_enabled'] ?? true;
-          _darkModeEnabled = data['dark_mode_enabled'] ?? false;
-        });
+    setState(() {
+      _nameController.text = profile['name'] as String? ?? '';
+      _emailController.text = profile['email'] as String? ?? '';
+
+      final income = profile['income'];
+      if (income != null && (income as num) > 0) {
+        _incomeController.text = income.toString();
       } else {
-        // No user profile data found - show empty fields
-        setState(() {
-          _nameController.text = '';
-          _emailController.text = '';
-          _incomeController.text = '';
-          _savingsGoalController.text = '';
-          _selectedCurrency = 'USD';
-          _selectedRegion = 'US';
-          _budgetMethod = '50/30/20 Rule';
-          _notificationsEnabled = true;
-          _darkModeEnabled = false;
-        });
-      }
-    } catch (e) {
-      logWarning('Failed to load user profile', tag: 'PROFILE_SETTINGS', extra: {'error': e.toString()});
-
-      // Show empty fields on error
-      setState(() {
-        _nameController.text = '';
-        _emailController.text = '';
         _incomeController.text = '';
+      }
+
+      final savingsGoal = profile['savings_goal'];
+      if (savingsGoal != null && (savingsGoal as num) > 0) {
+        _savingsGoalController.text = savingsGoal.toString();
+      } else {
         _savingsGoalController.text = '';
-        _selectedCurrency = 'USD';
-        _selectedRegion = 'US';
-        _budgetMethod = '50/30/20 Rule';
-        _notificationsEnabled = true;
-        _darkModeEnabled = false;
-      });
-    } finally {
-      setState(() => _isLoading = false);
-    }
+      }
+
+      _selectedCurrency = settingsProvider.defaultCurrency;
+      _selectedRegion = profile['region'] as String? ?? 'US';
+      _budgetMethod = profile['budget_method'] as String? ?? '50/30/20 Rule';
+      _hasInitialized = true;
+    });
+  }
+
+  Future<void> _refreshProfile() async {
+    final userProvider = context.read<UserProvider>();
+    await userProvider.loadUserProfile();
+
+    setState(() {
+      _hasInitialized = false;
+    });
+    _initializeFromProviders();
   }
 
   Future<void> _saveProfile() async {
@@ -138,26 +115,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         'email': _emailController.text.trim(),
         'income': parsedIncome,
         'savings_goal': parsedSavingsGoal,
-        'currency': _selectedCurrency,
         'region': _selectedRegion,
         'budget_method': _budgetMethod,
-        'notifications_enabled': _notificationsEnabled,
-        'dark_mode_enabled': _darkModeEnabled,
       };
 
-      // Save locally first for instant feedback
-      await Future.delayed(const Duration(milliseconds: 200)); // Simulate local save
-      
-      // Try to sync with backend
-      try {
-        await _apiService.updateUserProfile(profileData).timeout(
-          const Duration(seconds: 8),
-          onTimeout: () => throw Exception('Profile update timeout'),
-        );
+      // Get providers
+      final userProvider = context.read<UserProvider>();
+      final settingsProvider = context.read<SettingsProvider>();
 
-        // Also update income separately for income-specific tracking
-        await _apiService.updateUserIncome(parsedIncome);
-        
+      // Update user profile through provider
+      final success = await userProvider.updateUserProfile(profileData);
+
+      // Update settings through SettingsProvider
+      await settingsProvider.setDefaultCurrency(_selectedCurrency);
+
+      if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -173,8 +145,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
           );
         }
-      } catch (e) {
-        // Backend failed, but we saved locally
+      } else {
+        // Profile update failed but saved locally
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -201,7 +173,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
+    // Watch providers for reactive updates
+    final userProvider = context.watch<UserProvider>();
+    final settingsProvider = context.watch<SettingsProvider>();
+    final isLoading = userProvider.isLoading && !_hasInitialized;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile Settings', style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.w600)),
@@ -220,7 +197,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
         ],
       ),
-      body: _isLoading 
+      body: isLoading
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -254,11 +231,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Personal Information
                   _buildSectionHeader('Personal Information'),
                   const SizedBox(height: 16),
-                  
+
                   _buildTextField(
                     controller: _nameController,
                     label: 'Full Name',
@@ -266,7 +243,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     validator: (value) => value?.isEmpty ?? true ? 'Please enter your name' : null,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildTextField(
                     controller: _emailController,
                     label: 'Email',
@@ -279,11 +256,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     },
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Financial Information
                   _buildSectionHeader('Financial Information'),
                   const SizedBox(height: 16),
-                  
+
                   _buildTextField(
                     controller: _incomeController,
                     label: 'Monthly Income',
@@ -297,7 +274,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildTextField(
                     controller: _savingsGoalController,
                     label: 'Monthly Savings Goal',
@@ -311,7 +288,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildDropdownField(
                     value: _selectedCurrency,
                     label: 'Currency',
@@ -320,7 +297,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     onChanged: (value) => setState(() => _selectedCurrency = value!),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildDropdownField(
                     value: _selectedRegion,
                     label: 'Region',
@@ -329,7 +306,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     onChanged: (value) => setState(() => _selectedRegion = value!),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildDropdownField(
                     value: _budgetMethod,
                     label: 'Budget Method',
@@ -338,37 +315,39 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     onChanged: (value) => setState(() => _budgetMethod = value!),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Preferences
                   _buildSectionHeader('Preferences'),
                   const SizedBox(height: 16),
-                  
+
                   _buildSwitchTile(
                     title: 'Push Notifications',
                     subtitle: 'Receive spending alerts and tips',
                     icon: Icons.notifications_outlined,
-                    value: _notificationsEnabled,
-                    onChanged: (value) => setState(() => _notificationsEnabled = value),
+                    value: settingsProvider.notificationsEnabled,
+                    onChanged: (value) => settingsProvider.setNotificationsEnabled(value),
                   ),
-                  
+
                   _buildSwitchTile(
                     title: 'Dark Mode',
                     subtitle: 'Use dark theme for the app',
                     icon: Icons.dark_mode_outlined,
-                    value: _darkModeEnabled,
-                    onChanged: (value) => setState(() => _darkModeEnabled = value),
+                    value: settingsProvider.isDarkMode,
+                    onChanged: (value) => settingsProvider.setThemeMode(
+                      value ? ThemeMode.dark : ThemeMode.light
+                    ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Action Buttons
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            // Reset to defaults
-                            _loadUserProfile();
+                            // Reset to defaults from provider
+                            _refreshProfile();
                           },
                           icon: const Icon(Icons.refresh),
                           label: const Text('Reset'),
@@ -381,7 +360,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: _isSaving ? null : _saveProfile,
-                          icon: _isSaving 
+                          icon: _isSaving
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.save),
                           label: Text(_isSaving ? 'Saving...' : 'Save Profile'),

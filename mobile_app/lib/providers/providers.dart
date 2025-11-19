@@ -13,3 +13,5 @@ export 'goals_provider.dart';
 export 'challenges_provider.dart';
 export 'behavioral_provider.dart';
 export 'habits_provider.dart';
+export 'notifications_provider.dart';
+export 'mood_provider.dart';
