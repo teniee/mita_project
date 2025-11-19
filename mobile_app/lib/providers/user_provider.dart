@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/user_data_manager.dart';
 import '../services/logging_service.dart';
+import '../services/iap_service.dart';
 
 /// User state enum for tracking authentication and data loading states
 enum UserState {
@@ -15,6 +16,7 @@ enum UserState {
 /// Manages user authentication state, profile data, and financial context
 class UserProvider extends ChangeNotifier {
   final UserDataManager _userDataManager = UserDataManager.instance;
+  final IapService _iapService = IapService();
 
   // State
   UserState _state = UserState.initial;
@@ -213,4 +215,64 @@ class UserProvider extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
+
+  // IAP Methods
+
+  /// Initialize IAP service
+  Future<void> initializeIap() async {
+    try {
+      await _iapService.initialize();
+      logInfo('IAP service initialized', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logError('Failed to initialize IAP service: $e', tag: 'USER_PROVIDER');
+      rethrow;
+    }
+  }
+
+  /// Purchase premium subscription
+  Future<void> buyPremium({String productId = 'premium'}) async {
+    try {
+      logInfo('Starting premium purchase', tag: 'USER_PROVIDER');
+      await _iapService.buyPremium(productId: productId);
+      logInfo('Premium purchase completed', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logError('Premium purchase failed: $e', tag: 'USER_PROVIDER');
+      rethrow;
+    }
+  }
+
+  /// Restore previous purchases
+  Future<void> restorePurchases() async {
+    try {
+      logInfo('Restoring purchases', tag: 'USER_PROVIDER');
+      await _iapService.restorePurchases();
+      logInfo('Purchases restored', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logError('Failed to restore purchases: $e', tag: 'USER_PROVIDER');
+      rethrow;
+    }
+  }
+
+  /// Check if user has premium subscription
+  Future<bool> isPremiumUser() async {
+    try {
+      return await _iapService.isPremiumUser();
+    } catch (e) {
+      logError('Failed to check premium status: $e', tag: 'USER_PROVIDER');
+      return false;
+    }
+  }
+
+  /// Get subscription information
+  Future<SubscriptionInfo?> getSubscriptionInfo() async {
+    try {
+      return await _iapService.getSubscriptionInfo();
+    } catch (e) {
+      logError('Failed to get subscription info: $e', tag: 'USER_PROVIDER');
+      return null;
+    }
+  }
+
+  /// Get premium status stream for reactive updates
+  Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
 }

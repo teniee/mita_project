@@ -25,6 +25,10 @@ class GoalsProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isLoading = false;
 
+  // Goal health analysis state
+  Map<String, Map<String, dynamic>> _goalHealthData = {};
+  Map<String, bool> _healthDataLoading = {};
+
   // Getters
   GoalsState get state => _state;
   List<Goal> get goals => _goals;
@@ -47,6 +51,15 @@ class GoalsProvider extends ChangeNotifier {
   int get completedGoals => _statistics['completed_goals'] as int? ?? 0;
   double get completionRate => (_statistics['completion_rate'] as num?)?.toDouble() ?? 0.0;
   double get averageProgress => (_statistics['average_progress'] as num?)?.toDouble() ?? 0.0;
+
+  /// Get health data for a specific goal
+  Map<String, dynamic>? getGoalHealthData(String goalId) => _goalHealthData[goalId];
+
+  /// Check if health data is loading for a specific goal
+  bool isHealthDataLoading(String goalId) => _healthDataLoading[goalId] ?? false;
+
+  /// Check if health data exists for a specific goal
+  bool hasHealthData(String goalId) => _goalHealthData.containsKey(goalId);
 
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
@@ -108,6 +121,33 @@ class GoalsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Failed to load goal statistics: $e', tag: 'GOALS_PROVIDER');
     }
+  }
+
+  /// Load health data for a specific goal
+  Future<void> loadGoalHealthData(String goalId) async {
+    if (_healthDataLoading[goalId] == true) return;
+
+    try {
+      _healthDataLoading[goalId] = true;
+      notifyListeners();
+
+      final data = await _apiService.analyzeGoalHealth(goalId);
+      _goalHealthData[goalId] = data;
+      logInfo('Goal health data loaded for $goalId', tag: 'GOALS_PROVIDER');
+    } catch (e) {
+      logError('Failed to load goal health data: $e', tag: 'GOALS_PROVIDER');
+      _errorMessage = 'Failed to load goal health data';
+    } finally {
+      _healthDataLoading[goalId] = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clear health data for a specific goal
+  void clearGoalHealthData(String goalId) {
+    _goalHealthData.remove(goalId);
+    _healthDataLoading.remove(goalId);
+    notifyListeners();
   }
 
   /// Set status filter

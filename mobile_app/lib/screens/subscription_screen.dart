@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/iap_service.dart';
+import '../providers/user_provider.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -11,18 +13,21 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  final IapService _iapService = IapService();
   bool _processing = false;
 
   Future<void> _buy() async {
     setState(() => _processing = true);
     try {
-      await _iapService.buyPremium();
+      await context.read<UserProvider>().buyPremium();
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      setState(() => _processing = false);
+      if (mounted) {
+        setState(() => _processing = false);
+      }
     }
   }
 

@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
+import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 import '../mixins/onboarding_session_mixin.dart';
 
@@ -37,15 +38,24 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
 
   void _submitHabits() async {
     if (selectedHabits.isEmpty) return;
-    
+
     // Validate session before proceeding to final step
     final isValid = await validateSessionBeforeNavigation();
     if (!isValid) return;
-    
+
     // Save habits and optional comment
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();
     await OnboardingState.instance.save();
+
+    // Cache onboarding data using UserProvider for centralized state management
+    if (mounted) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final onboardingData = OnboardingState.instance.toMap();
+      await userProvider.cacheOnboardingData(onboardingData);
+    }
+
+    if (!mounted) return;
     Navigator.pushNamed(context, '/onboarding_finish');
   }
 
@@ -187,6 +197,16 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
 
                     OnboardingState.instance.habits = [];
                     OnboardingState.instance.habitsComment = null;
+                    await OnboardingState.instance.save();
+
+                    // Cache onboarding data using UserProvider for centralized state management
+                    if (mounted) {
+                      final userProvider = Provider.of<UserProvider>(context, listen: false);
+                      final onboardingData = OnboardingState.instance.toMap();
+                      await userProvider.cacheOnboardingData(onboardingData);
+                    }
+
+                    if (!mounted) return;
                     Navigator.pushNamed(context, '/onboarding_finish');
                   },
                   child: const Text(

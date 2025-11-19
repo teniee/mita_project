@@ -187,6 +187,8 @@ void main() async {
       ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ChangeNotifierProvider(create: (_) => GoalsProvider()),
       ChangeNotifierProvider(create: (_) => ChallengesProvider()),
+      ChangeNotifierProvider(create: (_) => HabitsProvider()),
+      ChangeNotifierProvider(create: (_) => BehavioralProvider()),
     ],
     child: const MITAApp(),
   );

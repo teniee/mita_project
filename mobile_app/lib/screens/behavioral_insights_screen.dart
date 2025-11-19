@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/behavioral_provider.dart';
 
 class BehavioralInsightsScreen extends StatefulWidget {
   const BehavioralInsightsScreen({super.key});
@@ -13,31 +14,20 @@ class BehavioralInsightsScreen extends StatefulWidget {
 
 class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
   late TabController _tabController;
-  
-  bool _isLoading = true;
-  Map<String, dynamic> _patterns = {};
-  Map<String, dynamic> _predictions = {};
-  List<dynamic> _anomalies = [];
-  Map<String, dynamic> _insights = {};
-  Map<String, dynamic> _behavioralPredictions = {};
-  Map<String, dynamic> _adaptiveRecommendations = {};
-  Map<String, dynamic> _behavioralCluster = {};
-  Map<String, dynamic> _behavioralProgress = {};
-  Map<String, dynamic> _behavioralAnomalies = {};
-  Map<String, dynamic> _spendingTriggers = {};
-  Map<String, dynamic> _behavioralWarnings = {};
-  Map<String, dynamic> _behavioralPreferences = {};
-  Map<String, dynamic> _behavioralCalendar = {};
-  List<Map<String, dynamic>> _behavioralExpenseSuggestions = [];
-  Map<String, dynamic> _behavioralNotificationSettings = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
-    _loadBehavioralData();
+
+    // Initialize provider after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<BehavioralProvider>();
+      if (provider.state == BehavioralState.initial) {
+        provider.initialize();
+      }
+    });
   }
 
   @override
@@ -46,58 +36,12 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     super.dispose();
   }
 
-  Future<void> _loadBehavioralData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final results = await Future.wait([
-        _apiService.getSpendingPatterns(),
-        _apiService.getBehaviorPredictions(),
-        _apiService.getBehaviorAnomalies(),
-        _apiService.getBehaviorInsights(),
-        _apiService.getBehavioralPredictions(),
-        _apiService.getAdaptiveBehaviorRecommendations(),
-        _apiService.getBehavioralCluster(),
-        _apiService.getBehavioralProgress(months: 6),
-        _apiService.getBehavioralAnomalies(),
-        _apiService.getSpendingTriggers(),
-        _apiService.getBehavioralWarnings(),
-        _apiService.getBehavioralPreferences(),
-        _apiService.getBehaviorCalendar(),
-        _apiService.getBehavioralExpenseSuggestions(categoryPreferences: {}),
-        _apiService.getBehavioralNotificationSettings(),
-      ]);
-
-      if (!mounted) return;
-      setState(() {
-        _patterns = Map<String, dynamic>.from(results[0] as Map);
-        _predictions = Map<String, dynamic>.from(results[1] as Map);
-        _anomalies = List<dynamic>.from(results[2] as List);
-        _insights = Map<String, dynamic>.from(results[3] as Map);
-        _behavioralPredictions = Map<String, dynamic>.from(results[4] as Map);
-        _adaptiveRecommendations = Map<String, dynamic>.from(results[5] as Map);
-        _behavioralCluster = Map<String, dynamic>.from(results[6] as Map);
-        _behavioralProgress = Map<String, dynamic>.from(results[7] as Map);
-        _behavioralAnomalies = Map<String, dynamic>.from(results[8] as Map);
-        _spendingTriggers = Map<String, dynamic>.from(results[9] as Map);
-        _behavioralWarnings = Map<String, dynamic>.from(results[10] as Map);
-        _behavioralPreferences = Map<String, dynamic>.from(results[11] as Map);
-        _behavioralCalendar = Map<String, dynamic>.from(results[12] as Map);
-        _behavioralExpenseSuggestions = List<Map<String, dynamic>>.from(results[13] as List? ?? []);
-        _behavioralNotificationSettings = Map<String, dynamic>.from(results[14] as Map);
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load behavioral data: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final behavioralProvider = context.watch<BehavioralProvider>();
+    final isLoading = behavioralProvider.isLoading ||
+                      behavioralProvider.state == BehavioralState.loading;
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -133,28 +77,28 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           ],
         ),
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildPatternsTab(),
-                _buildPredictionsTab(),
-                _buildAnomaliesTab(),
-                _buildInsightsTab(),
-                _buildProgressTab(),
-                _buildClusterTab(),
+                _buildPatternsTab(behavioralProvider),
+                _buildPredictionsTab(behavioralProvider),
+                _buildAnomaliesTab(behavioralProvider),
+                _buildInsightsTab(behavioralProvider),
+                _buildProgressTab(behavioralProvider),
+                _buildClusterTab(behavioralProvider),
               ],
             ),
     );
   }
 
-  Widget _buildPatternsTab() {
-    final patterns = _patterns['patterns'] as List<dynamic>? ?? [];
-    final analysis = _patterns['analysis'] as Map<String, dynamic>? ?? {};
+  Widget _buildPatternsTab(BehavioralProvider provider) {
+    final patterns = provider.patterns['patterns'] as List<dynamic>? ?? [];
+    final analysis = provider.patterns['analysis'] as Map<String, dynamic>? ?? {};
 
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
+      onRefresh: () => provider.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -163,7 +107,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           children: [
             _buildSectionHeader('Your Spending Patterns', Icons.psychology),
             const SizedBox(height: 16),
-            
+
             // Pattern Tags
             if (patterns.isNotEmpty) ...[
               Wrap(
@@ -178,14 +122,14 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
             // Analysis Details
             if (analysis.isNotEmpty) ...[
-              _buildAnalysisCard('Weekend Spending', 
+              _buildAnalysisCard('Weekend Spending',
                 '${((analysis['weekend_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your spending happens on weekends',
                 Icons.weekend,
                 const AppColors.categoryEntertainment),
               const SizedBox(height: 12),
-              
-              _buildAnalysisCard('Food Focused', 
+
+              _buildAnalysisCard('Food Focused',
                 '${((analysis['food_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your budget goes to food',
                 Icons.restaurant,
@@ -215,9 +159,11 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildPredictionsTab() {
+  Widget _buildPredictionsTab(BehavioralProvider provider) {
+    final predictions = provider.predictions;
+
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
+      onRefresh: () => provider.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -226,7 +172,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           children: [
             _buildSectionHeader('Next Month Prediction', Icons.trending_up),
             const SizedBox(height: 16),
-            
+
             // Prediction Card
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -256,7 +202,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                           ),
                         ),
                         Text(
-                          '${((_predictions['confidence'] ?? 0.0) * 100).toInt()}% confident',
+                          '${((predictions['confidence'] ?? 0.0) * 100).toInt()}% confident',
                           style: const TextStyle(
                             fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
@@ -267,7 +213,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$${(_predictions['next_month_spending'] ?? 0.0).toStringAsFixed(2)}',
+                      '\$${(predictions['next_month_spending'] ?? 0.0).toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
@@ -291,7 +237,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                                 ),
                               ),
                               Text(
-                                '\$${(_predictions['recommended_budget'] ?? 0.0).toStringAsFixed(2)}',
+                                '\$${(predictions['recommended_budget'] ?? 0.0).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
@@ -315,7 +261,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                                 ),
                               ),
                               Text(
-                                '+\$${(_predictions['savings_potential'] ?? 0.0).toStringAsFixed(2)}',
+                                '+\$${(predictions['savings_potential'] ?? 0.0).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
@@ -332,14 +278,14 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Risk Factors
-            if (_predictions['risk_factors'] != null) ...[
+            if (predictions['risk_factors'] != null) ...[
               _buildSectionHeader('Risk Factors', Icons.warning),
               const SizedBox(height: 12),
-              ...(_predictions['risk_factors'] as List).map((risk) =>
+              ...(predictions['risk_factors'] as List).map((risk) =>
                   _buildRiskFactorTile(risk)),
             ],
           ],
@@ -348,10 +294,12 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildAnomaliesTab() {
+  Widget _buildAnomaliesTab(BehavioralProvider provider) {
+    final anomalies = provider.anomalies;
+
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
-      child: _anomalies.isEmpty
+      onRefresh: () => provider.refresh(),
+      child: anomalies.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -380,18 +328,20 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _anomalies.length,
+              itemCount: anomalies.length,
               itemBuilder: (context, index) {
-                final anomaly = _anomalies[index];
+                final anomaly = anomalies[index];
                 return _buildAnomalyCard(anomaly);
               },
             ),
     );
   }
 
-  Widget _buildInsightsTab() {
+  Widget _buildInsightsTab(BehavioralProvider provider) {
+    final insights = provider.insights;
+
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
+      onRefresh: () => provider.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -425,7 +375,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _insights['spending_personality'] ?? 'Analyzing...',
+                      insights['spending_personality'] ?? 'Analyzing...',
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
@@ -437,41 +387,41 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Key Traits
-            if (_insights['key_traits'] != null) ...[
+            if (insights['key_traits'] != null) ...[
               _buildSectionHeader('Key Traits', Icons.psychology),
               const SizedBox(height: 12),
-              ...(_insights['key_traits'] as List).map((trait) =>
+              ...(insights['key_traits'] as List).map((trait) =>
                   _buildInfoTile(trait.toString(), Icons.check_circle, const AppColors.success)),
               const SizedBox(height: 24),
             ],
-            
+
             // Strengths
-            if (_insights['strengths'] != null) ...[
+            if (insights['strengths'] != null) ...[
               _buildSectionHeader('Your Strengths', Icons.star),
               const SizedBox(height: 12),
-              ...(_insights['strengths'] as List).map((strength) =>
+              ...(insights['strengths'] as List).map((strength) =>
                   _buildInfoTile(strength.toString(), Icons.star, const AppColors.secondary)),
               const SizedBox(height: 24),
             ],
-            
+
             // Improvement Areas
-            if (_insights['improvement_areas'] != null) ...[
+            if (insights['improvement_areas'] != null) ...[
               _buildSectionHeader('Areas for Improvement', Icons.trending_up),
               const SizedBox(height: 12),
-              ...(_insights['improvement_areas'] as List).map((area) =>
+              ...(insights['improvement_areas'] as List).map((area) =>
                   _buildInfoTile(area.toString(), Icons.trending_up, const AppColors.warning)),
               const SizedBox(height: 24),
             ],
-            
+
             // Strategies
-            if (_insights['recommended_strategies'] != null) ...[
+            if (insights['recommended_strategies'] != null) ...[
               _buildSectionHeader('Recommended Strategies', Icons.lightbulb),
               const SizedBox(height: 12),
-              ...(_insights['recommended_strategies'] as List).map((strategy) =>
+              ...(insights['recommended_strategies'] as List).map((strategy) =>
                   _buildRecommendationTile(strategy.toString())),
             ],
           ],
@@ -501,7 +451,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   Widget _buildPatternTag(String pattern) {
     Color tagColor;
     String displayText;
-    
+
     switch (pattern) {
       case 'weekend_spender':
         tagColor = const AppColors.categoryEntertainment;
@@ -539,7 +489,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildAnalysisCard(String title, String value, String description, 
+  Widget _buildAnalysisCard(String title, String value, String description,
       IconData icon, Color color) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -727,7 +677,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   Widget _buildAnomalyCard(Map<String, dynamic> anomaly) {
     final date = DateTime.parse(anomaly['date']);
     final anomalyScore = (anomaly['anomaly_score'] ?? 0.0) as double;
-    
+
     Color severityColor;
     if (anomalyScore >= 0.8) {
       severityColor = const AppColors.warningDark;
@@ -777,7 +727,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               ],
             ),
             const SizedBox(height: 8),
-            
+
             Text(
               anomaly['description'] ?? '',
               style: const TextStyle(
@@ -786,9 +736,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 color: AppColors.textPrimary,
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             Row(
               children: [
                 Expanded(
@@ -865,7 +815,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 ),
               ],
             ),
-            
+
             if (anomaly['possible_causes'] != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -900,9 +850,11 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildProgressTab() {
+  Widget _buildProgressTab(BehavioralProvider provider) {
+    final behavioralProgress = provider.behavioralProgress;
+
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
+      onRefresh: () => provider.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -913,7 +865,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             const SizedBox(height: 16),
 
             // Progress overview card
-            if (_behavioralProgress.isNotEmpty) ...[
+            if (behavioralProgress.isNotEmpty) ...[
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 3,
@@ -940,7 +892,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${_behavioralProgress['overall_score'] ?? 0}/100',
+                        '${behavioralProgress['overall_score'] ?? 0}/100',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           color: Colors.white,
@@ -950,7 +902,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _behavioralProgress['progress_message'] ?? 'Keep up the great work!',
+                        behavioralProgress['progress_message'] ?? 'Keep up the great work!',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -965,19 +917,19 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             ],
 
             // Progress metrics
-            if (_behavioralProgress['metrics'] != null) ...[
+            if (behavioralProgress['metrics'] != null) ...[
               _buildSectionHeader('Monthly Metrics', Icons.assessment),
               const SizedBox(height: 12),
-              ...(_behavioralProgress['metrics'] as List).map((metric) =>
+              ...(behavioralProgress['metrics'] as List).map((metric) =>
                   _buildMetricCard(metric)),
               const SizedBox(height: 24),
             ],
 
             // Improvements
-            if (_behavioralProgress['improvements'] != null) ...[
+            if (behavioralProgress['improvements'] != null) ...[
               _buildSectionHeader('Improvements', Icons.star),
               const SizedBox(height: 12),
-              ...(_behavioralProgress['improvements'] as List).map((improvement) =>
+              ...(behavioralProgress['improvements'] as List).map((improvement) =>
                   _buildInfoTile(improvement.toString(), Icons.check_circle, const AppColors.success)),
             ],
           ],
@@ -986,9 +938,13 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildClusterTab() {
+  Widget _buildClusterTab(BehavioralProvider provider) {
+    final behavioralCluster = provider.behavioralCluster;
+    final adaptiveRecommendations = provider.adaptiveRecommendations;
+    final spendingTriggers = provider.spendingTriggers;
+
     return RefreshIndicator(
-      onRefresh: _loadBehavioralData,
+      onRefresh: () => provider.refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -999,7 +955,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             const SizedBox(height: 16),
 
             // Cluster info card
-            if (_behavioralCluster.isNotEmpty) ...[
+            if (behavioralCluster.isNotEmpty) ...[
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 3,
@@ -1026,7 +982,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _behavioralCluster['cluster_name'] ?? 'Unknown',
+                        behavioralCluster['cluster_name'] ?? 'Unknown',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           color: Colors.white,
@@ -1036,7 +992,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _behavioralCluster['description'] ?? '',
+                        behavioralCluster['description'] ?? '',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -1051,30 +1007,30 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             ],
 
             // Cluster characteristics
-            if (_behavioralCluster['characteristics'] != null) ...[
+            if (behavioralCluster['characteristics'] != null) ...[
               _buildSectionHeader('Cluster Characteristics', Icons.psychology),
               const SizedBox(height: 12),
-              ...(_behavioralCluster['characteristics'] as List).map((char) =>
+              ...(behavioralCluster['characteristics'] as List).map((char) =>
                   _buildInfoTile(char.toString(), Icons.check_circle)),
               const SizedBox(height: 24),
             ],
 
             // Adaptive recommendations
-            if (_adaptiveRecommendations.isNotEmpty) ...[
+            if (adaptiveRecommendations.isNotEmpty) ...[
               _buildSectionHeader('Personalized Recommendations', Icons.lightbulb),
               const SizedBox(height: 12),
-              if (_adaptiveRecommendations['recommendations'] != null)
-                ...(_adaptiveRecommendations['recommendations'] as List).map((rec) =>
+              if (adaptiveRecommendations['recommendations'] != null)
+                ...(adaptiveRecommendations['recommendations'] as List).map((rec) =>
                     _buildRecommendationTile(rec.toString())),
               const SizedBox(height: 24),
             ],
 
             // Spending triggers
-            if (_spendingTriggers.isNotEmpty) ...[
+            if (spendingTriggers.isNotEmpty) ...[
               _buildSectionHeader('Your Spending Triggers', Icons.warning_amber),
               const SizedBox(height: 12),
-              if (_spendingTriggers['triggers'] != null)
-                ...(_spendingTriggers['triggers'] as List).map((trigger) =>
+              if (spendingTriggers['triggers'] != null)
+                ...(spendingTriggers['triggers'] as List).map((trigger) =>
                     _buildTriggerCard(trigger)),
             ],
           ],

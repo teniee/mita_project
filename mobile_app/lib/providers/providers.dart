@@ -11,3 +11,5 @@ export 'transaction_provider.dart';
 export 'settings_provider.dart';
 export 'goals_provider.dart';
 export 'challenges_provider.dart';
+export 'behavioral_provider.dart';
+export 'habits_provider.dart';

@@ -408,17 +408,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ),
     );
   }
-<<<<<<< HEAD
-  
-  Widget _buildTabContent() {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
-    
-=======
 
   Widget _buildTabContent(BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
 
->>>>>>> be801b6 (feat: Complete Flutter state management migration to Provider pattern)
     return Column(
       children: [
         // Income tier header
@@ -1524,13 +1517,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
     final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
-<<<<<<< HEAD
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
-    
-=======
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
 
->>>>>>> be801b6 (feat: Complete Flutter state management migration to Provider pattern)
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
