@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
-import '../services/transaction_service.dart';
+import '../providers/transaction_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TransactionModel? transaction;
@@ -16,7 +17,6 @@ class AddTransactionScreen extends StatefulWidget {
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TransactionService _transactionService = TransactionService();
 
   late TextEditingController _amountController;
   late TextEditingController _descriptionController;
@@ -26,7 +26,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
   bool _isRecurring = false;
-  bool _isSubmitting = false;
 
   final List<String> _categories = [
     'food',
@@ -104,40 +103,48 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    final transactionProvider = context.read<TransactionProvider>();
+
+    final input = TransactionInput(
+      amount: double.parse(_amountController.text),
+      category: _selectedCategory,
+      description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
+      merchant: _merchantController.text.isEmpty ? null : _merchantController.text,
+      location: _locationController.text.isEmpty ? null : _locationController.text,
+      isRecurring: _isRecurring,
+      spentAt: _selectedDate,
+    );
 
     try {
-      final input = TransactionInput(
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory,
-        description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
-        merchant: _merchantController.text.isEmpty ? null : _merchantController.text,
-        location: _locationController.text.isEmpty ? null : _locationController.text,
-        isRecurring: _isRecurring,
-        spentAt: _selectedDate,
-      );
-
+      TransactionModel? result;
       if (widget.transaction == null) {
         // Create new transaction
-        await _transactionService.createTransaction(input);
+        result = await transactionProvider.createTransaction(input);
       } else {
         // Update existing transaction
-        await _transactionService.updateTransaction(widget.transaction!.id, input);
+        result = await transactionProvider.updateTransaction(widget.transaction!.id, input);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.transaction == null
-              ? 'Transaction added successfully'
-              : 'Transaction updated successfully'),
-        ),
-      );
+      if (result != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.transaction == null
+                ? 'Transaction added successfully'
+                : 'Transaction updated successfully'),
+          ),
+        );
 
-      Navigator.pop(context, true);
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(transactionProvider.errorMessage ?? 'Failed to save transaction'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -147,17 +154,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch provider for reactive rebuilds on state changes
+    final provider = context.watch<TransactionProvider>();
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -304,14 +308,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitForm,
+                  onPressed: provider.isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const AppColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: _isSubmitting
+                  child: provider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
                           widget.transaction == null ? 'Add Transaction' : 'Update Transaction',

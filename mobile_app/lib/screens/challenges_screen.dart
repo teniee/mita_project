@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/challenges_provider.dart';
 
 class ChallengesScreen extends StatefulWidget {
   const ChallengesScreen({super.key});
@@ -13,21 +14,20 @@ class ChallengesScreen extends StatefulWidget {
 
 class _ChallengesScreenState extends State<ChallengesScreen>
     with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
   late TabController _tabController;
-  
-  bool _isLoading = true;
-  List<dynamic> _activeChallenges = [];
-  List<dynamic> _availableChallenges = [];
-  Map<String, dynamic> _gamificationStats = {};
-  List<dynamic> _leaderboard = [];
-  Map<String, Map<String, dynamic>> _challengeProgress = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadChallengeData();
+
+    // Initialize ChallengesProvider for centralized state management
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final challengesProvider = context.read<ChallengesProvider>();
+      if (challengesProvider.state == ChallengesState.initial) {
+        challengesProvider.initialize();
+      }
+    });
   }
 
   @override
@@ -36,83 +36,19 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     super.dispose();
   }
 
-  Future<void> _loadChallengeData() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final results = await Future.wait([
-        _apiService.getChallenges(),
-        _apiService.getAvailableChallenges(),
-        _apiService.getGameificationStats(),
-        _apiService.getLeaderboard(),
-      ]);
-
-      if (!mounted) return;
-      setState(() {
-        _activeChallenges = results[0] as List<dynamic>;
-        _availableChallenges = results[1] as List<dynamic>;
-        _gamificationStats = results[2] as Map<String, dynamic>;
-        _leaderboard = results[3] as List<dynamic>;
-        _isLoading = false;
-      });
-
-      // Load progress for each active challenge
-      for (final challenge in _activeChallenges) {
-        final challengeId = challenge['id']?.toString();
-        if (challengeId != null) {
-          _loadChallengeProgress(challengeId);
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load challenges: $e')),
-      );
-    }
-  }
-
   Future<void> _joinChallenge(String challengeId) async {
-    try {
-      await _apiService.joinChallenge(challengeId);
-      if (!mounted) return;
+    final challengesProvider = context.read<ChallengesProvider>();
+    final success = await challengesProvider.joinChallenge(challengeId);
+
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Successfully joined challenge!')),
       );
-      _loadChallengeData(); // Refresh data
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to join challenge: $e')),
-      );
-    }
-  }
-
-  Future<void> _loadChallengeProgress(String challengeId) async {
-    try {
-      final progress = await _apiService.getChallengeProgress(challengeId);
-      if (mounted) {
-        setState(() {
-          _challengeProgress[challengeId] = progress;
-        });
-      }
-    } catch (e) {
-      // Silently fail - progress not critical for display
-    }
-  }
-
-  Future<void> _updateChallengeProgress(String challengeId, Map<String, dynamic> progressData) async {
-    try {
-      await _apiService.updateChallengeProgress(challengeId, progressData);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Progress updated successfully')),
-      );
-      _loadChallengeProgress(challengeId); // Refresh progress
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update progress: $e')),
+        SnackBar(content: Text('Failed to join challenge: ${challengesProvider.errorMessage}')),
       );
     }
   }
@@ -137,17 +73,18 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     );
 
     if (confirmed == true) {
-      try {
-        await _apiService.leaveChallenge(challengeId);
-        if (!mounted) return;
+      final challengesProvider = context.read<ChallengesProvider>();
+      final success = await challengesProvider.leaveChallenge(challengeId);
+
+      if (!mounted) return;
+
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Successfully left challenge')),
         );
-        _loadChallengeData(); // Refresh data
-      } catch (e) {
-        if (!mounted) return;
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to leave challenge: $e')),
+          SnackBar(content: Text('Failed to leave challenge: ${challengesProvider.errorMessage}')),
         );
       }
     }
@@ -155,6 +92,10 @@ class _ChallengesScreenState extends State<ChallengesScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive state updates
+    final challengesProvider = context.watch<ChallengesProvider>();
+    final isLoading = challengesProvider.isLoading || challengesProvider.state == ChallengesState.loading;
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -187,23 +128,25 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ],
         ),
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildActiveChallengesTab(),
-                _buildAvailableChallengesTab(),
-                _buildStatsTab(),
+                _buildActiveChallengesTab(challengesProvider),
+                _buildAvailableChallengesTab(challengesProvider),
+                _buildStatsTab(challengesProvider),
               ],
             ),
     );
   }
 
-  Widget _buildActiveChallengesTab() {
+  Widget _buildActiveChallengesTab(ChallengesProvider challengesProvider) {
+    final activeChallenges = challengesProvider.activeChallenges;
+
     return RefreshIndicator(
-      onRefresh: _loadChallengeData,
-      child: _activeChallenges.isEmpty
+      onRefresh: () => challengesProvider.refresh(),
+      child: activeChallenges.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -232,42 +175,44 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _activeChallenges.length,
+              itemCount: activeChallenges.length,
               itemBuilder: (context, index) {
-                final challenge = _activeChallenges[index];
+                final challenge = activeChallenges[index];
                 return _buildActiveChallengeCard(challenge);
               },
             ),
     );
   }
 
-  Widget _buildAvailableChallengesTab() {
+  Widget _buildAvailableChallengesTab(ChallengesProvider challengesProvider) {
+    final availableChallenges = challengesProvider.availableChallenges;
+
     return RefreshIndicator(
-      onRefresh: _loadChallengeData,
+      onRefresh: () => challengesProvider.refresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _availableChallenges.length,
+        itemCount: availableChallenges.length,
         itemBuilder: (context, index) {
-          final challenge = _availableChallenges[index];
+          final challenge = availableChallenges[index];
           return _buildAvailableChallengeCard(challenge);
         },
       ),
     );
   }
 
-  Widget _buildStatsTab() {
+  Widget _buildStatsTab(ChallengesProvider challengesProvider) {
     return RefreshIndicator(
-      onRefresh: _loadChallengeData,
+      onRefresh: () => challengesProvider.refresh(),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatsHeader(),
+            _buildStatsHeader(challengesProvider),
             const SizedBox(height: 24),
-            _buildBadgesSection(),
+            _buildBadgesSection(challengesProvider),
             const SizedBox(height: 24),
-            _buildLeaderboardSection(),
+            _buildLeaderboardSection(challengesProvider),
           ],
         ),
       ),
@@ -278,12 +223,12 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     final progress = (challenge['current_progress'] ?? 0).toDouble();
     final target = (challenge['target_value'] ?? 1).toDouble();
     final progressPercentage = target > 0 ? (progress / target).clamp(0.0, 1.0) : 0.0;
-    
+
     final endDate = DateTime.parse(challenge['end_date']);
     final daysLeft = endDate.difference(DateTime.now()).inDays;
-    
+
     Color difficultyColor = _getDifficultyColor(challenge['difficulty']);
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -338,9 +283,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Text(
                 challenge['description'] ?? '',
                 style: TextStyle(
@@ -349,9 +294,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   color: Colors.grey[600],
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Progress
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -376,18 +321,18 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               LinearProgressIndicator(
                 value: progressPercentage,
                 backgroundColor: Colors.grey[200],
                 valueColor: AlwaysStoppedAnimation<Color>(difficultyColor),
                 minHeight: 6,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Rewards and time
               Row(
                 children: [
@@ -451,9 +396,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Action button
               SizedBox(
                 width: double.infinity,
@@ -486,7 +431,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget _buildAvailableChallengeCard(Map<String, dynamic> challenge) {
     Color difficultyColor = _getDifficultyColor(challenge['difficulty']);
     final successRate = (challenge['success_rate'] ?? 0.0) * 100;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -529,9 +474,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             Text(
               challenge['description'] ?? '',
               style: TextStyle(
@@ -540,9 +485,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 color: Colors.grey[600],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Stats
             Row(
               children: [
@@ -569,9 +514,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Rewards
             Container(
               padding: const EdgeInsets.all(12),
@@ -614,9 +559,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Join button
             SizedBox(
               width: double.infinity,
@@ -673,13 +618,14 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     );
   }
 
-  Widget _buildStatsHeader() {
-    final currentLevel = _gamificationStats['current_level'] ?? 1;
-    final totalPoints = _gamificationStats['total_points'] ?? 0;
-    final nextLevelPoints = _gamificationStats['next_level_points'] ?? 100;
-    final pointsToNext = _gamificationStats['points_to_next_level'] ?? 100;
+  Widget _buildStatsHeader(ChallengesProvider challengesProvider) {
+    final currentLevel = challengesProvider.currentLevel;
+    final totalPoints = challengesProvider.totalPoints;
+    final nextLevelPoints = challengesProvider.nextLevelPoints;
+    final pointsToNext = challengesProvider.pointsToNextLevel;
     final levelProgress = nextLevelPoints > 0 ? (totalPoints / nextLevelPoints).clamp(0.0, 1.0) : 0.0;
-    
+    final gamificationStats = challengesProvider.gamificationStats;
+
     return Column(
       children: [
         // Level card
@@ -747,9 +693,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Progress to next level
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -788,16 +734,16 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             ),
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Quick stats
         Row(
           children: [
             Expanded(
               child: _buildQuickStat(
                 'Active Challenges',
-                '${_gamificationStats['active_challenges'] ?? 0}',
+                '${gamificationStats['active_challenges'] ?? 0}',
                 Icons.emoji_events,
                 const AppColors.secondary,
               ),
@@ -806,7 +752,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Expanded(
               child: _buildQuickStat(
                 'Current Streak',
-                '${_gamificationStats['current_streak'] ?? 0} days',
+                '${gamificationStats['current_streak'] ?? 0} days',
                 Icons.local_fire_department,
                 const AppColors.warningDark,
               ),
@@ -815,7 +761,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Expanded(
               child: _buildQuickStat(
                 'Completed',
-                '${_gamificationStats['completed_challenges'] ?? 0}',
+                '${gamificationStats['completed_challenges'] ?? 0}',
                 Icons.check_circle,
                 const AppColors.success,
               ),
@@ -860,9 +806,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     );
   }
 
-  Widget _buildBadgesSection() {
-    final badges = _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
-    
+  Widget _buildBadgesSection(ChallengesProvider challengesProvider) {
+    final badges = challengesProvider.badgesEarned;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -876,7 +822,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ),
         ),
         const SizedBox(height: 12),
-        
+
         if (badges.isEmpty)
           Card(
             child: Padding(
@@ -921,7 +867,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget _buildBadgeCard(Map<String, dynamic> badge) {
     Color rarityColor = _getRarityColor(badge['rarity']);
     IconData badgeIcon = _getBadgeIcon(badge['icon']);
-    
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
@@ -969,7 +915,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     );
   }
 
-  Widget _buildLeaderboardSection() {
+  Widget _buildLeaderboardSection(ChallengesProvider challengesProvider) {
+    final leaderboard = challengesProvider.leaderboard;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -983,12 +931,12 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ),
         ),
         const SizedBox(height: 12),
-        
+
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,
           child: Column(
-            children: _leaderboard.take(5).map<Widget>((entry) {
+            children: leaderboard.take(5).map<Widget>((entry) {
               final isCurrentUser = entry['is_current_user'] == true;
               return ListTile(
                 leading: CircleAvatar(

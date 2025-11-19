@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/installment_models.dart';
-import '../services/installment_service.dart';
-import '../services/logging_service.dart';
+import '../providers/installments_provider.dart';
 import '../services/localization_service.dart';
 
 class InstallmentsScreen extends StatefulWidget {
@@ -15,114 +15,38 @@ class InstallmentsScreen extends StatefulWidget {
 }
 
 class _InstallmentsScreenState extends State<InstallmentsScreen> {
-  final InstallmentService _installmentService = InstallmentService();
   final LocalizationService _localizationService = LocalizationService.instance;
-
-  late Future<InstallmentsSummary> _installmentsFuture;
-  InstallmentsSummary? _currentSummary;
-  bool _isLoading = false;
-  String? _errorMessage;
-  InstallmentStatus? _selectedFilter;
   bool _showMonthlyView = true;
 
   @override
   void initState() {
     super.initState();
-    _loadInstallments();
-  }
-
-  void _loadInstallments() {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+    // Initialize provider and load installments
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<InstallmentsProvider>().loadInstallments();
     });
-
-    _installmentsFuture = _installmentService.getInstallments(status: _selectedFilter)
-        .then((summary) {
-          if (mounted) {
-            setState(() {
-              _currentSummary = summary;
-              _isLoading = false;
-            });
-          }
-          return summary;
-        })
-        .catchError((error) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = _getErrorMessage(error);
-              _isLoading = false;
-            });
-          }
-          logError('Error loading installments: $error',
-              tag: 'INSTALLMENTS_SCREEN');
-          rethrow;
-        });
-  }
-
-  String _getErrorMessage(dynamic error) {
-    if (error is InstallmentServiceException) {
-      if (error.isNetworkError) {
-        return 'Network error. Please check your connection.';
-      } else if (error.isServerError) {
-        return 'Server error. Please try again later.';
-      }
-    }
-    return 'Failed to load installments. Please try again.';
   }
 
   Future<void> _refreshInstallments() async {
-    _loadInstallments();
-    await _installmentsFuture;
-  }
-
-  List<Installment> _getFilteredInstallments() {
-    if (_currentSummary == null) return [];
-
-    switch (_selectedFilter) {
-      case InstallmentStatus.active:
-        return _currentSummary!.activeInstallments;
-      case InstallmentStatus.completed:
-        return _currentSummary!.completedInstallments;
-      case InstallmentStatus.overdue:
-        return _currentSummary!.overdueInstallments;
-      default:
-        return _currentSummary!.installments;
-    }
-  }
-
-  int _getTabCount(InstallmentStatus? status) {
-    if (_currentSummary == null) return 0;
-
-    switch (status) {
-      case InstallmentStatus.active:
-        return _currentSummary!.totalActive;
-      case InstallmentStatus.completed:
-        return _currentSummary!.totalCompleted;
-      case InstallmentStatus.overdue:
-        return _currentSummary!.overdueInstallments.length;
-      default:
-        return _currentSummary!.totalInstallments;
-    }
+    await context.read<InstallmentsProvider>().refresh();
   }
 
   Future<void> _handleMarkPaymentMade(Installment installment) async {
-    try {
-      final updated = await _installmentService.markPaymentMade(installment.id);
-      if (mounted) {
+    final provider = context.read<InstallmentsProvider>();
+    final success = await provider.markPaymentMade(installment.id);
+
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment marked as made')),
+          SnackBar(content: Text(provider.successMessage ?? 'Payment marked as made')),
         );
-        _refreshInstallments();
-      }
-    } catch (e) {
-      if (mounted) {
+        provider.clearSuccess();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update payment: $e')),
+          SnackBar(content: Text(provider.errorMessage ?? 'Failed to update payment')),
         );
+        provider.clearError();
       }
-      logError('Error marking payment as made: $e',
-          tag: 'INSTALLMENTS_SCREEN');
     }
   }
 
@@ -147,22 +71,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await _installmentService.cancelInstallment(installment.id);
-        if (mounted) {
+      final provider = context.read<InstallmentsProvider>();
+      final success = await provider.cancelInstallment(installment.id);
+
+      if (mounted) {
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Installment cancelled')),
+            SnackBar(content: Text(provider.successMessage ?? 'Installment cancelled')),
           );
-          _refreshInstallments();
-        }
-      } catch (e) {
-        if (mounted) {
+          provider.clearSuccess();
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to cancel installment: $e')),
+            SnackBar(content: Text(provider.errorMessage ?? 'Failed to cancel installment')),
           );
+          provider.clearError();
         }
-        logError('Error cancelling installment: $e',
-            tag: 'INSTALLMENTS_SCREEN');
       }
     }
   }
@@ -190,22 +113,21 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await _installmentService.deleteInstallment(installment.id);
-        if (mounted) {
+      final provider = context.read<InstallmentsProvider>();
+      final success = await provider.deleteInstallment(installment.id);
+
+      if (mounted) {
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Installment deleted')),
+            SnackBar(content: Text(provider.successMessage ?? 'Installment deleted')),
           );
-          _refreshInstallments();
-        }
-      } catch (e) {
-        if (mounted) {
+          provider.clearSuccess();
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete installment: $e')),
+            SnackBar(content: Text(provider.errorMessage ?? 'Failed to delete installment')),
           );
+          provider.clearError();
         }
-        logError('Error deleting installment: $e',
-            tag: 'INSTALLMENTS_SCREEN');
       }
     }
   }
@@ -285,6 +207,12 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive state - automatically rebuilds when provider changes
+    final provider = context.watch<InstallmentsProvider>();
+    final isLoading = provider.isLoading;
+    final errorMessage = provider.errorMessage;
+    final currentSummary = provider.summary;
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -304,11 +232,11 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       body: RefreshIndicator(
         onRefresh: _refreshInstallments,
         color: const AppColors.textPrimary,
-        child: _isLoading && _currentSummary == null
+        child: isLoading && currentSummary == null
             ? const Center(child: _ShimmerLoader())
-            : _errorMessage != null && _currentSummary == null
-                ? _buildErrorState()
-                : _buildMainContent(),
+            : errorMessage != null && currentSummary == null
+                ? _buildErrorState(errorMessage)
+                : _buildMainContent(provider),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -329,7 +257,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String? errorMessage) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: SizedBox(
@@ -345,7 +273,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage ?? 'Something went wrong',
+                errorMessage ?? 'Something went wrong',
                 style: const TextStyle(
                   fontSize: 16,
                   fontFamily: AppTypography.fontHeading,
@@ -380,9 +308,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildMainContent() {
-    final installments = _getFilteredInstallments();
-    final isEmpty = installments.isEmpty && _currentSummary?.totalInstallments == 0;
+  Widget _buildMainContent(InstallmentsProvider provider) {
+    final installments = provider.filteredInstallments;
+    final currentSummary = provider.summary;
+    final isEmpty = installments.isEmpty && (currentSummary?.totalInstallments ?? 0) == 0;
 
     if (isEmpty) {
       return _buildEmptyState();
@@ -392,10 +321,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       child: Column(
         children: [
           // Summary Stats Card
-          if (_currentSummary != null) _buildSummaryCard(),
+          if (currentSummary != null) _buildSummaryCard(currentSummary),
 
           // Filter Tabs
-          _buildFilterTabs(),
+          _buildFilterTabs(provider),
 
           // Installments List
           if (installments.isEmpty)
@@ -510,8 +439,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildSummaryCard() {
-    final summary = _currentSummary!;
+  Widget _buildSummaryCard(InstallmentsSummary summary) {
     final loadColor = _getLoadIndicatorColor(summary.currentInstallmentLoad);
     final loadLabel = _getLoadIndicatorLabel(summary.currentInstallmentLoad);
 
@@ -664,7 +592,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     );
   }
 
-  Widget _buildFilterTabs() {
+  Widget _buildFilterTabs(InstallmentsProvider provider) {
     final tabs = [
       (null, 'All'),
       (InstallmentStatus.active, 'Active'),
@@ -678,8 +606,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       child: Row(
         children: tabs.map((tab) {
           final (status, label) = tab;
-          final count = _getTabCount(status);
-          final isSelected = _selectedFilter == status;
+          final count = provider.getTabCount(status);
+          final isSelected = provider.selectedFilter == status;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -695,10 +623,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               ),
               selected: isSelected,
               onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = selected ? status : null;
-                });
-                _loadInstallments();
+                provider.setFilter(selected ? status : null);
               },
               backgroundColor: Colors.transparent,
               selectedColor: const AppColors.textPrimary,

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../providers/user_provider.dart';
+import '../providers/budget_provider.dart';
+import '../providers/advice_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -14,6 +18,8 @@ class AIAssistantScreen extends StatefulWidget {
 class _AIAssistantScreenState extends State<AIAssistantScreen> {
   final ApiService _apiService = ApiService();
   final TextEditingController _questionController = TextEditingController();
+
+  // Local UI state - kept with setState as these are purely local to this screen
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
@@ -21,6 +27,58 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   void dispose() {
     _questionController.dispose();
     super.dispose();
+  }
+
+  /// Build user context from providers for AI assistant
+  /// Uses context.read for one-time access since this is called from a method
+  Map<String, dynamic> _buildUserContext(BuildContext context) {
+    // Use context.read for one-time access in methods
+    final userProvider = context.read<UserProvider>();
+    final budgetProvider = context.read<BudgetProvider>();
+    final adviceProvider = context.read<AdviceProvider>();
+
+    // Build context map with user's financial information
+    final userContext = <String, dynamic>{
+      'userName': userProvider.userName,
+      'currency': userProvider.userCurrency,
+      'income': userProvider.userIncome,
+      'region': userProvider.userRegion,
+    };
+
+    // Add goals if available
+    if (userProvider.userGoals.isNotEmpty) {
+      userContext['goals'] = userProvider.userGoals;
+    }
+
+    // Add financial context if available
+    final financialContext = userProvider.financialContext;
+    if (financialContext.isNotEmpty) {
+      userContext['financialContext'] = financialContext;
+    }
+
+    // Add budget context from BudgetProvider
+    if (budgetProvider.state == BudgetState.loaded) {
+      userContext['budgetContext'] = {
+        'totalBudget': budgetProvider.totalBudget,
+        'totalSpent': budgetProvider.totalSpent,
+        'remaining': budgetProvider.remaining,
+        'spendingPercentage': budgetProvider.spendingPercentage,
+        'budgetMode': budgetProvider.budgetMode,
+        'budgetStatus': budgetProvider.getBudgetStatus(),
+      };
+
+      // Add budget suggestions if available
+      if (budgetProvider.budgetSuggestions.isNotEmpty) {
+        userContext['budgetSuggestions'] = budgetProvider.budgetSuggestions;
+      }
+    }
+
+    // Add latest advice context from AdviceProvider
+    if (adviceProvider.latestAdvice != null) {
+      userContext['latestAdvice'] = adviceProvider.latestAdvice;
+    }
+
+    return userContext;
   }
 
   Future<void> _sendQuestion() async {
@@ -35,7 +93,14 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     _questionController.clear();
 
     try {
-      final response = await _apiService.askAIAssistant(question);
+      // Get user context from provider
+      final userContext = _buildUserContext(context);
+
+      // Call API with user context for personalized responses
+      final response = await _apiService.askAIAssistant(
+        question,
+        context: userContext,
+      );
 
       if (mounted) {
         setState(() {
@@ -59,6 +124,12 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive rebuilds - when userName changes, UI updates
+    final userProvider = context.watch<UserProvider>();
+
+    // Watch BudgetProvider to show loading states or budget warnings if needed
+    final budgetProvider = context.watch<BudgetProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -74,7 +145,11 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(
+                    userName: userProvider.userName,
+                    budgetStatus: budgetProvider.getBudgetStatus(),
+                    spendingPercentage: budgetProvider.spendingPercentage,
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
@@ -99,7 +174,20 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({
+    required String userName,
+    required String budgetStatus,
+    required double spendingPercentage,
+  }) {
+    // Determine contextual hint based on budget status
+    String contextualHint = 'I can help you with budgeting tips, spending insights, savings goals, and more.';
+
+    if (budgetStatus == 'exceeded') {
+      contextualHint = 'I notice you\'ve exceeded your budget. Ask me for tips on getting back on track!';
+    } else if (budgetStatus == 'warning') {
+      contextualHint = 'You\'re approaching your budget limit. I can help you find ways to save!';
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -111,7 +199,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Ask me anything about your finances!',
+            'Hi $userName! Ask me anything about your finances!',
             style: AppTypography.heading4,
             textAlign: TextAlign.center,
           ),
@@ -119,7 +207,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'I can help you with budgeting tips, spending insights, savings goals, and more.',
+              contextualHint,
               style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),

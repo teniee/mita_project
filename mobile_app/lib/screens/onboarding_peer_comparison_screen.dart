@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
 import '../services/api_service.dart';
+import '../providers/user_provider.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
 

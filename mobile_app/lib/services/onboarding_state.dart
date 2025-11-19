@@ -124,4 +124,20 @@ class OnboardingState {
 
     await clear();
   }
+
+  /// Convert onboarding state to a Map for caching with UserProvider
+  Map<String, dynamic> toMap() {
+    return {
+      'countryCode': countryCode,
+      'stateCode': stateCode,
+      'income': income,
+      'incomeTier': incomeTier?.name,
+      'expenses': expenses,
+      'goals': goals,
+      'savingsGoalAmount': savingsGoalAmount,
+      'habits': habits,
+      'habitsComment': habitsComment,
+      'spendingFrequencies': spendingFrequencies,
+    };
+  }
 }

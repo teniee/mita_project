@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
+import '../providers/user_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,59 +12,63 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ApiService _apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
 
-  String? _email;
-  String? _name;
-  bool _isLoading = true;
+  // Local UI state only - not managed by provider
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    fetchProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      _nameController.text = userProvider.userName;
+
+      // Load profile if not already loaded
+      if (userProvider.state == UserState.initial) {
+        userProvider.initialize();
+      } else if (userProvider.userProfile.isEmpty) {
+        userProvider.loadUserProfile();
+      }
+
+      // Load referral code for quick access
+      userProvider.loadReferralCode();
+    });
   }
 
-  Future<void> fetchProfile() async {
-    try {
-      final data = await _apiService.getUserProfile();
-      setState(() {
-        _email = data['email'];
-        _name = data['name'];
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
-    }
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
     setState(() => _isSaving = true);
 
-    try {
-      await _apiService.updateUserProfile({'name': _name});
+    final userProvider = context.read<UserProvider>();
+    final success = await userProvider.updateUserProfile({'name': _nameController.text});
+
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully')),
       );
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile: $e')),
+        SnackBar(content: Text('Error updating profile: ${userProvider.errorMessage ?? 'Unknown error'}')),
       );
-    } finally {
-      setState(() => _isSaving = false);
     }
+
+    setState(() => _isSaving = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -80,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
       ),
-      body: _isLoading
+      body: userProvider.isLoading && userProvider.userProfile.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(20),
@@ -89,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     TextFormField(
-                      initialValue: _name,
+                      controller: _nameController,
                       decoration: const InputDecoration(
                         labelText: 'Name',
                         prefixIcon: Icon(Icons.person),
@@ -97,11 +102,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: const TextStyle(fontFamily: AppTypography.fontBody),
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter name' : null,
-                      onSaved: (val) => _name = val,
                     ),
                     const SizedBox(height: 20),
                     TextFormField(
-                      initialValue: _email,
+                      initialValue: userProvider.userEmail,
                       readOnly: true,
                       decoration: const InputDecoration(
                         labelText: 'Email',
@@ -181,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () async {
-                        await _apiService.logout();
+                        await userProvider.logout();
                         if (!mounted) return;
                         Navigator.pushReplacementNamed(context, '/login');
                       },

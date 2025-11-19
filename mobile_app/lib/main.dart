@@ -7,7 +7,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:provider/provider.dart';
 import 'dart:ui';
+
+import 'providers/providers.dart';
 
 import 'firebase_options.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -175,6 +178,25 @@ void main() async {
     return true;
   };
 
+  // Create the app with providers
+  final app = MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => UserProvider()),
+      ChangeNotifierProvider(create: (_) => BudgetProvider()),
+      ChangeNotifierProvider(create: (_) => TransactionProvider()),
+      ChangeNotifierProvider(create: (_) => SettingsProvider()),
+      ChangeNotifierProvider(create: (_) => GoalsProvider()),
+      ChangeNotifierProvider(create: (_) => ChallengesProvider()),
+      ChangeNotifierProvider(create: (_) => HabitsProvider()),
+      ChangeNotifierProvider(create: (_) => BehavioralProvider()),
+      ChangeNotifierProvider(create: (_) => MoodProvider()),
+      ChangeNotifierProvider(create: (_) => NotificationsProvider()),
+      ChangeNotifierProvider(create: (_) => AdviceProvider()),
+      ChangeNotifierProvider(create: (_) => InstallmentsProvider()),
+    ],
+    child: const MITAApp(),
+  );
+
   // Run the app with comprehensive error monitoring
   if (sentryDsn.isNotEmpty) {
     // Use Sentry's runApp wrapper for additional error capture
@@ -186,18 +208,48 @@ void main() async {
         options.release = sentryRelease;
         // Minimal configuration as our service handles the comprehensive setup
       },
-      appRunner: () => runApp(const MITAApp()),
+      appRunner: () => runApp(app),
     );
   } else {
-    runApp(const MITAApp());
+    runApp(app);
   }
 }
 
-class MITAApp extends StatelessWidget {
+class MITAApp extends StatefulWidget {
   const MITAApp({super.key});
 
   @override
+  State<MITAApp> createState() => _MITAAppState();
+}
+
+class _MITAAppState extends State<MITAApp> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeProviders();
+  }
+
+  Future<void> _initializeProviders() async {
+    // Initialize providers after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final settingsProvider = context.read<SettingsProvider>();
+      final userProvider = context.read<UserProvider>();
+
+      // Initialize settings first (for theme, locale, etc.)
+      await settingsProvider.initialize();
+
+      // Initialize user provider
+      await userProvider.initialize();
+
+      logInfo('All providers initialized', tag: 'MAIN');
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Get settings provider for theme mode
+    final settingsProvider = context.watch<SettingsProvider>();
+
     final app = MaterialApp(
       navigatorKey: navigatorKey,
       scaffoldMessengerKey: MessageService.instance.messengerKey,
@@ -205,7 +257,7 @@ class MITAApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: MitaTheme.lightTheme,
       darkTheme: MitaTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: settingsProvider.themeMode,
       
       // Localization configuration
       localizationsDelegates: const [

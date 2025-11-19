@@ -4,10 +4,13 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../providers/budget_provider.dart';
+import '../providers/transaction_provider.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/income_service.dart';
 import '../services/cohort_service.dart';
-import '../services/budget_adapter_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/peer_comparison_widgets.dart';
 import '../theme/income_theme.dart';
@@ -22,25 +25,22 @@ class InsightsScreen extends StatefulWidget {
 }
 
 class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStateMixin {
+  // Keep services not covered by providers
   final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
   final CohortService _cohortService = CohortService();
-  final BudgetAdapterService _budgetService = BudgetAdapterService();
-  
-  bool _isLoading = true;
+
+  bool _isAILoading = true;
   late TabController _tabController;
-  
-  // Income-related data
+
+  // Income-related data (computed from UserProvider)
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
-  Map<String, dynamic>? _userProfile;
-  
-  // Traditional Analytics Data
-  double totalSpending = 0;
-  Map<String, double> categoryTotals = {};
+
+  // Traditional Analytics Data - computed from providers
   List<Map<String, dynamic>> dailyTotals = [];
-  
-  // AI Insights Data
+
+  // AI Insights Data (not covered by providers)
   Map<String, dynamic>? aiSnapshot;
   Map<String, dynamic>? aiProfile;
   Map<String, dynamic>? spendingPatterns;
@@ -63,8 +63,36 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this); // Added peer insights tab
-    fetchInsights();
+    _tabController = TabController(length: 4, vsync: this);
+
+    // Initialize providers after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      final budgetProvider = context.read<BudgetProvider>();
+      final transactionProvider = context.read<TransactionProvider>();
+
+      // Initialize UserProvider if needed
+      if (userProvider.state == UserState.initial) {
+        userProvider.initialize();
+      }
+
+      if (budgetProvider.state == BudgetState.initial) {
+        budgetProvider.initialize();
+      }
+      if (transactionProvider.state == TransactionState.initial) {
+        transactionProvider.initialize();
+      }
+
+      // Load monthly transactions for analytics
+      final now = DateTime.now();
+      transactionProvider.loadMonthlyTransactions(
+        year: now.year,
+        month: now.month,
+      );
+
+      // Fetch AI insights and income-based data
+      fetchAIInsights();
+    });
   }
 
   @override
@@ -73,18 +101,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     super.dispose();
   }
 
-  Future<void> fetchInsights() async {
+  Future<void> fetchAIInsights() async {
     try {
       // First, get user profile for income data
       await _fetchUserProfile();
-      
-      // Fetch traditional analytics
-      await _fetchTraditionalAnalytics();
-      
-      // Fetch enhanced budget insights and AI insights in parallel
+
+      // Fetch AI insights in parallel
       await Future.wait([
-        _fetchEnhancedBudgetInsights(), // NEW: Enhanced budget intelligence
-        _createAndFetchAISnapshot(), // Create fresh AI snapshot
+        _createAndFetchAISnapshot(),
         _fetchAIProfile(),
         _fetchSpendingPatterns(),
         _fetchPersonalizedFeedback(),
@@ -92,19 +116,18 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         _fetchSpendingAnomalies(),
         _fetchSavingsOptimization(),
         _fetchWeeklyInsights(),
-        _fetchAIMonthlyReport(), // NEW: AI monthly report
-        _fetchAIBudgetOptimization(), // NEW: AI budget optimization
-        _fetchAIGoalAnalysis(), // NEW: AI goal analysis
-        // Income-based insights
+        _fetchAIMonthlyReport(),
+        _fetchAIBudgetOptimization(),
+        _fetchAIGoalAnalysis(),
         _fetchIncomeBasedInsights(),
       ]);
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isAILoading = false);
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isAILoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading insights: $e')),
         );
@@ -114,9 +137,17 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Future<void> _fetchUserProfile() async {
     try {
-      _userProfile = await _apiService.getUserProfile();
-      final incomeValue = (_userProfile?['data']?['income'] as num?)?.toDouble();
-      if (incomeValue == null || incomeValue <= 0) {
+      // Use UserProvider for user profile data
+      final userProvider = context.read<UserProvider>();
+
+      // Ensure user data is loaded
+      if (userProvider.state == UserState.initial || userProvider.state == UserState.loading) {
+        await userProvider.initialize();
+      }
+
+      // Get income from UserProvider
+      final incomeValue = userProvider.userIncome;
+      if (incomeValue <= 0) {
         throw Exception('Income data required for insights. Please complete onboarding.');
       }
       _monthlyIncome = incomeValue;
@@ -138,77 +169,51 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ]);
 
       _peerComparison = futures[0] as Map<String, dynamic>;
-      // Note: futures[1] was _cohortInsights but it was unused, so removed
       _incomeBasedTips = List<String>.from(futures[2] as List);
       _incomeClassification = futures[3] as Map<String, dynamic>;
       _incomeBasedGoals = List<Map<String, dynamic>>.from(futures[4] as List? ?? []);
 
-      // Generate budget optimization insights
+      // Generate budget optimization insights using provider data
+      final transactionProvider = context.read<TransactionProvider>();
+      final categoryTotals = transactionProvider.spendingByCategory;
       if (categoryTotals.isNotEmpty) {
         _budgetOptimization = _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
       }
     } catch (e) {
       logError('Error fetching income-based insights: $e');
-      // Fallback to default recommendations
       _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.middle);
     }
   }
 
-  Future<void> _fetchTraditionalAnalytics() async {
-    try {
-      final analytics = await _apiService.getMonthlyAnalytics();
-      final expenses = await _apiService.getExpenses();
-      final now = DateTime.now();
-      final monthExpenses = expenses.where((e) {
-        final date = DateTime.parse(e['date']);
-        return date.month == now.month && date.year == now.year;
-      });
+  void _computeDailyTotals(List<dynamic> transactions) {
+    final now = DateTime.now();
+    final Map<String, double> daily = {};
 
-      double sum = 0;
-      final Map<String, double> catSums =
-          Map<String, double>.from(analytics['categories'] as Map);
-      final Map<String, double> daily = {};
-
-      for (final e in monthExpenses) {
-        sum += e['amount'];
-        final day = DateFormat('yyyy-MM-dd').format(DateTime.parse(e['date']));
-        daily[day] = (daily[day] ?? 0) + e['amount'];
+    for (final e in transactions) {
+      final date = e.spentAt;
+      if (date.month == now.month && date.year == now.year) {
+        final day = DateFormat('yyyy-MM-dd').format(date);
+        daily[day] = (daily[day] ?? 0) + e.amount;
       }
-
-      totalSpending = sum;
-      categoryTotals = catSums;
-      dailyTotals = daily.entries
-          .map((e) => {'date': e.key, 'amount': e.value})
-          .toList()
-        ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
-    } catch (e) {
-      // Use sample data when API fails
-      _generateSampleAnalyticsData();
     }
+
+    dailyTotals = daily.entries
+        .map((e) => {'date': e.key, 'amount': e.value})
+        .toList()
+      ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
   }
 
   void _generateSampleAnalyticsData() {
-    final now = DateTime.now();
     final dailyBudget = _monthlyIncome / 30;
-    
-    // Generate sample category spending
-    categoryTotals = {
-      'Food & Dining': dailyBudget * 15 * 0.4,      // 15 days spending
-      'Transportation': dailyBudget * 12 * 0.25,    // 12 days spending  
-      'Entertainment': dailyBudget * 8 * 0.2,       // 8 days spending
-      'Shopping': dailyBudget * 6 * 0.15,           // 6 days spending
-      'Healthcare': dailyBudget * 3 * 0.1,          // 3 days spending
-    };
-    
-    totalSpending = categoryTotals.values.reduce((a, b) => a + b);
-    
+    final now = DateTime.now();
+
     // Generate sample daily spending for past 2 weeks
     dailyTotals = List.generate(14, (index) {
       final date = now.subtract(Duration(days: 13 - index));
       final isWeekend = date.weekday == 6 || date.weekday == 7;
       final spendingMultiplier = isWeekend ? 1.3 : 0.8;
       final amount = (dailyBudget * spendingMultiplier * (0.7 + (index % 3) * 0.2));
-      
+
       return {
         'date': DateFormat('yyyy-MM-dd').format(date),
         'amount': amount,
@@ -216,17 +221,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     });
   }
 
-  /// Create a fresh AI snapshot and fetch it (replaces old _fetchAISnapshot)
+  /// Create a fresh AI snapshot and fetch it
   Future<void> _createAndFetchAISnapshot() async {
     try {
       final now = DateTime.now();
-      // First, create a fresh AI snapshot for the current month
       await _apiService.createAISnapshot(year: now.year, month: now.month);
-      // Then fetch the latest snapshot
       aiSnapshot = await _apiService.getLatestAISnapshot();
     } catch (e) {
       logError('Error creating/fetching AI snapshot: $e');
-      // Provide sample AI snapshot data
       aiSnapshot = {
         'rating': 'B+',
         'risk': 'moderate',
@@ -316,53 +318,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     }
   }
 
-  /// Fetch enhanced budget intelligence data from our enhanced budget system
-  Future<void> _fetchEnhancedBudgetInsights() async {
-    try {
-      logInfo('Fetching enhanced budget intelligence insights', tag: 'INSIGHTS_SCREEN');
-      
-      // Get enhanced budget insights through our enhanced system
-      final enhancedInsights = await _budgetService.getBudgetInsights();
-      
-      if (enhancedInsights.isNotEmpty && mounted) {
-        setState(() {
-          // Use enhanced financial health score if available
-          if (enhancedInsights['confidence'] != null) {
-            financialHealthScore = {
-              'score': (enhancedInsights['confidence'] * 100).round(),
-              'grade': _getGradeFromConfidence(enhancedInsights['confidence']),
-              'improvements': enhancedInsights['intelligent_insights']?.map((insight) => 
-                insight['message'] ?? insight.toString()).toList() ?? [],
-            };
-          }
-          
-          // Use enhanced recommendations as personalized feedback
-          if (enhancedInsights['intelligent_insights'] != null) {
-            personalizedFeedback = {
-              'feedback': 'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
-              'tips': enhancedInsights['intelligent_insights']
-                  .map((insight) => insight['message'] ?? insight.toString()).toList(),
-            };
-          }
-          
-          // Convert category insights to spending patterns
-          if (enhancedInsights['category_insights'] != null) {
-            final categoryInsights = enhancedInsights['category_insights'] as List;
-            spendingPatterns = {
-              'patterns': categoryInsights.map((insight) => 
-                insight['message'] ?? 'Smart category optimization detected').toList(),
-            };
-          }
-        });
-      }
-      
-      logInfo('Enhanced budget intelligence insights loaded successfully', tag: 'INSIGHTS_SCREEN');
-    } catch (e) {
-      logError('Error fetching enhanced budget insights: $e', tag: 'INSIGHTS_SCREEN');
-      // Continue with fallback data - don't break the insights flow
-    }
-  }
-
   /// Convert enhanced confidence to letter grade
   String _getGradeFromConfidence(double confidence) {
     if (confidence >= 0.9) return 'A+';
@@ -379,10 +334,60 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    
+    final userProvider = context.watch<UserProvider>();
+    final budgetProvider = context.watch<BudgetProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
+
+    // Update local income data from UserProvider for reactive updates
+    if (userProvider.userIncome > 0 && _monthlyIncome != userProvider.userIncome) {
+      _monthlyIncome = userProvider.userIncome;
+      _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
+    }
+
+    // Combined loading state from providers and local AI loading
+    final isLoading = _isAILoading ||
+        userProvider.state == UserState.loading ||
+        budgetProvider.state == BudgetState.loading ||
+        transactionProvider.state == TransactionState.loading;
+
+    // Compute daily totals from transaction provider data
+    if (transactionProvider.transactions.isNotEmpty) {
+      _computeDailyTotals(transactionProvider.transactions);
+    } else if (_monthlyIncome > 0 && dailyTotals.isEmpty) {
+      _generateSampleAnalyticsData();
+    }
+
+    // Use enhanced budget insights from provider if available
+    if (budgetProvider.budgetSuggestions.isNotEmpty &&
+        budgetProvider.budgetSuggestions['confidence'] != null) {
+      final confidence = budgetProvider.budgetSuggestions['confidence'];
+      financialHealthScore ??= {
+        'score': (confidence * 100).round(),
+        'grade': _getGradeFromConfidence(confidence),
+        'improvements': budgetProvider.budgetSuggestions['intelligent_insights']?.map((insight) =>
+          insight['message'] ?? insight.toString()).toList() ?? [],
+      };
+
+      if (budgetProvider.budgetSuggestions['intelligent_insights'] != null) {
+        personalizedFeedback ??= {
+          'feedback': 'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
+          'tips': budgetProvider.budgetSuggestions['intelligent_insights']
+              .map((insight) => insight['message'] ?? insight.toString()).toList(),
+        };
+      }
+
+      if (budgetProvider.budgetSuggestions['category_insights'] != null) {
+        final categoryInsights = budgetProvider.budgetSuggestions['category_insights'] as List;
+        spendingPatterns ??= {
+          'patterns': categoryInsights.map((insight) =>
+            insight['message'] ?? 'Smart category optimization detected').toList(),
+        };
+      }
+    }
+
     return Scaffold(
       backgroundColor: const AppColors.background,
-      appBar: _incomeTier != null 
+      appBar: _incomeTier != null
         ? IncomeTheme.createTierAppBar(
             tier: _incomeTier!,
             title: 'Financial Insights',
@@ -401,13 +406,13 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             iconTheme: const IconThemeData(color: AppColors.textPrimary),
             centerTitle: true,
           ),
-      body: _isLoading ? _buildLoadingState() : _buildTabContent(),
+      body: isLoading ? _buildLoadingState() : _buildTabContent(budgetProvider, transactionProvider),
     );
   }
-  
+
   Widget _buildLoadingState() {
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -425,10 +430,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ),
     );
   }
-  
-  Widget _buildTabContent() {
+
+  Widget _buildTabContent(BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
-    
+
     return Column(
       children: [
         // Income tier header
@@ -441,7 +446,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               showDetails: false,
             ),
           ),
-        
+
         // Tab bar
         TabBar(
           controller: _tabController,
@@ -456,15 +461,15 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             Tab(text: 'Recommendations'),
           ],
         ),
-        
+
         // Tab content
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
               _buildAIOverviewTab(),
-              _buildAnalyticsTab(),
-              _buildPeerInsightsTab(),
+              _buildAnalyticsTab(transactionProvider),
+              _buildPeerInsightsTab(transactionProvider),
               _buildRecommendationsTab(),
             ],
           ),
@@ -472,8 +477,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ],
     );
   }
-  
-  Widget _buildPeerInsightsTab() {
+
+  Widget _buildPeerInsightsTab(TransactionProvider transactionProvider) {
+    final categoryTotals = transactionProvider.spendingByCategory;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -485,15 +492,15 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               comparisonData: _peerComparison!,
               monthlyIncome: _monthlyIncome,
             ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Cohort insights
           if (_incomeTier != null)
             CohortInsightsWidget(monthlyIncome: _monthlyIncome),
-          
+
           const SizedBox(height: 20),
-          
+
           // Spending trends comparison
           if (categoryTotals.isNotEmpty)
             SpendingTrendsComparisonWidget(
@@ -501,9 +508,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               monthlyIncome: _monthlyIncome,
               peerData: _peerComparison,
             ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Income-based tips
           if (_incomeBasedTips.isNotEmpty)
             Card(
@@ -589,7 +596,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           _buildAISnapshotCard(),
           const SizedBox(height: 20),
 
-          // AI Monthly Report (NEW)
+          // AI Monthly Report
           _buildAIMonthlyReportCard(),
           const SizedBox(height: 20),
 
@@ -608,7 +615,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildAnalyticsTab() {
+  Widget _buildAnalyticsTab(TransactionProvider transactionProvider) {
+    final totalSpending = transactionProvider.totalSpending;
+    final categoryTotals = transactionProvider.spendingByCategory;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -624,7 +634,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
           ),
           const SizedBox(height: 20),
-          
+
           if (categoryTotals.isNotEmpty) ...[
             const Text(
               'Spending by Category',
@@ -671,9 +681,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               ),
             ),
           ],
-          
+
           const SizedBox(height: 30),
-          
+
           if (dailyTotals.isNotEmpty) ...[
             const Text(
               'Daily Spending Trend',
@@ -714,7 +724,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           if (index < 0 || index >= dailyTotals.length) return Container();
                           final label = DateFormat('MM/dd').format(DateTime.parse(dailyTotals[index]['date']));
                           return Text(
-                            label, 
+                            label,
                             style: const TextStyle(
                               fontSize: 10,
                               fontFamily: AppTypography.fontBody,
@@ -767,25 +777,25 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           // Income-based budget optimization
           if (_budgetOptimization != null)
             _buildBudgetOptimizationCard(),
-          
+
           if (_budgetOptimization != null)
             const SizedBox(height: 20),
-          
+
           // Cohort-based habit recommendations
           if (_incomeTier != null)
             _buildCohortHabitRecommendationsCard(),
-          
+
           if (_incomeTier != null)
             const SizedBox(height: 20),
-          
+
           // Personalized Feedback
           _buildPersonalizedFeedbackCard(),
           const SizedBox(height: 20),
-          
+
           // Savings Optimization
           _buildSavingsOptimizationCard(),
           const SizedBox(height: 20),
-          
+
           // Income-level specific goal suggestions
           if (_incomeTier != null)
             _buildIncomeGoalSuggestionsCard(),
@@ -796,11 +806,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildFinancialHealthCard() {
     if (financialHealthScore == null) return Container();
-    
+
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B+';
     final improvements = List<String>.from(financialHealthScore!['improvements'] ?? []);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -916,11 +926,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildAISnapshotCard() {
     if (aiSnapshot == null) return Container();
-    
+
     final rating = aiSnapshot!['rating'] ?? 'B';
     final risk = aiSnapshot!['risk'] ?? 'moderate';
     final summary = aiSnapshot!['summary'] ?? 'No summary available';
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -988,11 +998,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildSpendingPatternsCard() {
     if (spendingPatterns == null) return Container();
-    
+
     final patterns = List<String>.from(spendingPatterns!['patterns'] ?? []);
-    
+
     if (patterns.isEmpty) return Container();
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1063,10 +1073,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildWeeklyInsightsCard() {
     if (weeklyInsights == null) return Container();
-    
+
     final insights = weeklyInsights!['insights'] ?? 'No insights available this week.';
     final trend = weeklyInsights!['trend'] ?? 'stable';
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1128,7 +1138,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildAnomaliesCard() {
     if (spendingAnomalies.isEmpty) return Container();
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1203,10 +1213,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildPersonalizedFeedbackCard() {
     if (personalizedFeedback == null) return Container();
-    
+
     final feedback = personalizedFeedback!['feedback'] ?? 'No feedback available';
     final tips = List<String>.from(personalizedFeedback!['tips'] ?? []);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1308,10 +1318,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
   Widget _buildSavingsOptimizationCard() {
     if (savingsOptimization == null) return Container();
-    
+
     final potentialSavings = savingsOptimization!['potential_savings'] ?? 0.0;
     final suggestions = List<String>.from(savingsOptimization!['suggestions'] ?? []);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1436,7 +1446,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Widget _buildTrendIndicator(String trend) {
     IconData icon;
     Color color;
-    
+
     switch (trend.toLowerCase()) {
       case 'improving':
         icon = Icons.trending_up;
@@ -1450,7 +1460,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         icon = Icons.trending_flat;
         color = Colors.orange;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -1523,14 +1533,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         .map((word) => word.capitalize())
         .join(' ');
   }
-  
+
   Widget _buildBudgetOptimizationCard() {
     if (_budgetOptimization == null) return Container();
-    
+
     final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
     final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1590,7 +1600,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 16),
-          
+
           if (suggestions.isNotEmpty) ...[
             Text(
               'Optimization Suggestions:',
@@ -1637,12 +1647,12 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ),
     );
   }
-  
+
   Widget _buildCohortHabitRecommendationsCard() {
     final habits = _cohortService.getCohortHabitRecommendations(_monthlyIncome);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
     final tierName = _incomeService.getIncomeTierName(_incomeTier!);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1701,7 +1711,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 20),
-          
+
           ...habits.map((habit) =>
             Container(
               margin: const EdgeInsets.only(bottom: 16),
@@ -1809,14 +1819,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ),
     );
   }
-  
+
   Widget _buildIncomeGoalSuggestionsCard() {
     final goalSuggestions = _cohortService.getCohortGoalSuggestions(_monthlyIncome);
     if (goalSuggestions.isEmpty) return Container();
-    
+
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
     final tierName = _incomeService.getIncomeTierName(_incomeTier!);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1875,7 +1885,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 20),
-          
+
           ...goalSuggestions.take(3).map((goal) =>
             Container(
               margin: const EdgeInsets.only(bottom: 16),
@@ -1982,14 +1992,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       ),
     );
   }
-  
+
   Color _getScoreColor(int score) {
     if (score >= 80) return Colors.green;
     if (score >= 60) return Colors.orange;
     return Colors.red;
   }
 
-  /// NEW: Build AI Monthly Report Card
+  /// Build AI Monthly Report Card
   Widget _buildAIMonthlyReportCard() {
     if (aiMonthlyReport == null) return Container();
 
@@ -2131,5 +2141,3 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     );
   }
 }
-
-

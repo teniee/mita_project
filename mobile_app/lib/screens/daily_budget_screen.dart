@@ -1,17 +1,15 @@
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
-import '../services/budget_adapter_service.dart';
-import '../services/live_updates_service.dart';
 import 'package:intl/intl.dart';
-import 'dart:async';
 import '../services/logging_service.dart';
 import '../core/enhanced_error_handling.dart';
 import '../core/app_error_handler.dart';
 import '../core/error_handling.dart';
+import '../providers/budget_provider.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({super.key});
@@ -22,20 +20,7 @@ class DailyBudgetScreen extends StatefulWidget {
 
 class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     with RobustErrorHandlingMixin {
-  final ApiService _apiService = ApiService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
-  final BudgetAdapterService _budgetService = BudgetAdapterService();
-  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
-  bool _isLoading = true;
-  bool _isRedistributing = false;
-  List<dynamic> _budgets = [];
-  Map<String, dynamic> _liveBudgetStatus = {};
-  Map<String, dynamic> _budgetSuggestions = {};
-  List<dynamic> _redistributionHistory = [];
-  String _budgetMode = 'default';
-  StreamSubscription? _budgetUpdateSubscription;
-  Map<String, dynamic>? _aiOptimization; // NEW: AI budget optimization
-  Map<String, dynamic>? _budgetAdaptations; // NEW: Real-time budget adaptations
 
   @override
   void initState() {
@@ -46,195 +31,19 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
         description: 'Smart budget tracking and financial insights',
       );
     });
-    _initializeData();
-    _subscribeToBudgetUpdates();
-  }
 
-  @override
-  void dispose() {
-    _budgetUpdateSubscription?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _initializeData() async {
-    await fetchBudgets();
-    await _fetchLiveBudgetStatus();
-    await _fetchBudgetSuggestions();
-    await _fetchBudgetMode();
-    await _fetchRedistributionHistory();
-    await _fetchAIBudgetOptimization(); // NEW: Fetch AI optimization
-    await _fetchBudgetAdaptations(); // NEW: Fetch budget adaptations
-  }
-
-  void _subscribeToBudgetUpdates() {
-    // Subscribe to centralized live updates instead of creating duplicate timer
-    logInfo('Subscribing to centralized budget updates', tag: 'DAILY_BUDGET_SCREEN');
-
-    _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
-      if (mounted) {
-        logDebug('Received budget update, refreshing status', tag: 'DAILY_BUDGET_SCREEN');
-        _fetchLiveBudgetStatus();
+    // Initialize BudgetProvider for centralized state management
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final budgetProvider = context.read<BudgetProvider>();
+      if (budgetProvider.state == BudgetState.initial) {
+        budgetProvider.initialize();
       }
     });
   }
 
-  Future<void> fetchBudgets() async {
-    await executeRobustly<List<dynamic>>(
-      () async {
-        final data = await _apiService.getDailyBudgets().executeSafely(
-          operationName: 'Fetch Daily Budgets',
-          maxRetries: 2,
-          category: ErrorCategory.network,
-          fallbackValue: [],
-        );
-        
-        if (mounted) {
-          setState(() {
-            _budgets = data ?? [];
-            _isLoading = false;
-          });
-        }
-        
-        logInfo('Daily budgets loaded successfully: ${_budgets.length} items', tag: 'DAILY_BUDGET');
-        return _budgets;
-      },
-      operationName: 'Daily Budget Data Loading',
-      showLoadingState: true,
-      onError: () {
-        if (mounted) {
-          setState(() {
-            _budgets = [];
-            _isLoading = false;
-          });
-          
-          // Show error snackbar with retry option
-          context.showErrorSnack(
-            'Failed to load budget data',
-            onRetry: fetchBudgets,
-          );
-        }
-      },
-    );
-  }
-
-  Future<void> _fetchLiveBudgetStatus() async {
-    try {
-      final status = await _apiService.getLiveBudgetStatus();
-      if (mounted) {
-        setState(() {
-          _liveBudgetStatus = status;
-        });
-      }
-    } catch (e) {
-      logError('Error loading live budget status: $e');
-    }
-  }
-
-  Future<void> _fetchBudgetSuggestions() async {
-    try {
-      // Use enhanced budget suggestions instead of legacy API
-      final enhancedSuggestions = await _budgetService.getEnhancedBudgetSuggestions();
-      if (mounted) {
-        setState(() {
-          _budgetSuggestions = enhancedSuggestions;
-        });
-      }
-      logInfo('Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions', tag: 'DAILY_BUDGET');
-    } catch (e) {
-      logError('Error loading enhanced budget suggestions: $e', tag: 'DAILY_BUDGET');
-      // Fallback to legacy API if enhanced fails
-      try {
-        final legacySuggestions = await _apiService.getBudgetSuggestions();
-        if (mounted) {
-          setState(() {
-            _budgetSuggestions = legacySuggestions;
-          });
-        }
-      } catch (fallbackError) {
-        logError('Fallback budget suggestions also failed: $fallbackError');
-      }
-    }
-  }
-
-  Future<void> _fetchBudgetMode() async {
-    try {
-      final mode = await _apiService.getBudgetMode();
-      if (mounted) {
-        setState(() {
-          _budgetMode = mode;
-        });
-      }
-    } catch (e) {
-      logError('Error loading budget mode: $e');
-    }
-  }
-
-  Future<void> _fetchRedistributionHistory() async {
-    try {
-      final history = await _apiService.getBudgetRedistributionHistory();
-      if (mounted) {
-        setState(() {
-          _redistributionHistory = history;
-        });
-      }
-    } catch (e) {
-      logError('Error loading redistribution history: $e');
-    }
-  }
-
-  /// NEW: Fetch AI budget optimization suggestions
-  Future<void> _fetchAIBudgetOptimization() async {
-    try {
-      // Get calendar data to provide context for AI optimization
-      final calendarData = await _apiService.getCalendar();
-
-      // Convert to map format expected by AI
-      Map<String, dynamic> calendarDict = {};
-      for (var day in calendarData) {
-        final dayNum = day['day'].toString();
-        calendarDict[dayNum] = {
-          'spent': (day['spent'] ?? 0).toDouble(),
-          'limit': (day['limit'] ?? 0).toDouble(),
-        };
-      }
-
-      // Get user income
-      final profile = await _apiService.getUserProfile();
-      final income = (profile['data']?['income'] as num?)?.toDouble();
-
-      // Fetch AI optimization
-      final optimization = await _apiService.getAIBudgetOptimization(
-        calendar: calendarDict,
-        income: income,
-      );
-
-      if (mounted) {
-        setState(() {
-          _aiOptimization = optimization;
-        });
-      }
-      logInfo('AI budget optimization loaded successfully', tag: 'DAILY_BUDGET');
-    } catch (e) {
-      logError('Error loading AI budget optimization: $e', tag: 'DAILY_BUDGET');
-    }
-  }
-
-  Future<void> _fetchBudgetAdaptations() async {
-    try {
-      final adaptations = await _apiService.getBudgetAdaptations();
-      if (mounted) {
-        setState(() {
-          _budgetAdaptations = adaptations;
-        });
-      }
-      logInfo('Budget adaptations loaded successfully', tag: 'DAILY_BUDGET');
-    } catch (e) {
-      logError('Error loading budget adaptations: $e', tag: 'DAILY_BUDGET');
-    }
-  }
-
   Future<void> _triggerBudgetRedistribution() async {
-    if (_isRedistributing) return;
+    final budgetProvider = context.read<BudgetProvider>();
+    if (budgetProvider.isRedistributing) return;
 
     _accessibilityService.announceToScreenReader(
       'Starting budget redistribution',
@@ -242,104 +51,53 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
       isImportant: true,
     );
 
-    await executeRobustly<void>(
-      () async {
-        setState(() {
-          _isRedistributing = true;
-        });
+    final success = await budgetProvider.redistributeBudget();
 
-        // Get current calendar data for redistribution with enhanced error handling
-        final calendarData = await _apiService.getCalendar().executeSafely(
-          operationName: 'Get Calendar Data for Redistribution',
-          maxRetries: 2,
-          category: ErrorCategory.network,
-          fallbackValue: [],
+    if (mounted) {
+      if (success) {
+        _accessibilityService.announceToScreenReader(
+          'Budget successfully redistributed. Budget amounts have been updated.',
+          financialContext: 'Budget Management',
+          isImportant: true,
         );
-        
-        if (calendarData == null || calendarData.isEmpty) {
-          throw ValidationException('No calendar data available for redistribution');
-        }
-        
-        // Convert to the format expected by redistribution algorithm
-        Map<String, Map<String, dynamic>> calendarDict = {};
-        for (var day in calendarData) {
-          final dayNum = day['day'].toString();
-          calendarDict[dayNum] = {
-            'total': (day['spent'] ?? 0).toDouble(),
-            'limit': (day['limit'] ?? 0).toDouble(),
-          };
-        }
 
-        // Trigger redistribution with enhanced error handling
-        await _apiService.redistributeCalendarBudget(calendarDict).executeSafely(
-          operationName: 'Budget Redistribution',
-          maxRetries: 1, // Only retry once for financial operations
-          category: ErrorCategory.system,
+        context.showSuccessSnack('Budget successfully redistributed!');
+      } else {
+        _accessibilityService.announceToScreenReader(
+          'Failed to redistribute budget. Please try again.',
+          financialContext: 'Budget Management Error',
+          isImportant: true,
         );
-        
-        // Refresh all data after redistribution
-        await _initializeData();
-        
-        if (mounted) {
-          _accessibilityService.announceToScreenReader(
-            'Budget successfully redistributed. Budget amounts have been updated.',
-            financialContext: 'Budget Management',
-            isImportant: true,
-          );
-          
-          context.showSuccessSnack(
-            'Budget successfully redistributed!'
-          );
-        }
-      },
-      operationName: 'Budget Redistribution Process',
-      showLoadingState: false, // We handle loading state manually
-      onSuccess: () {
-        logInfo('Budget redistribution completed successfully', tag: 'BUDGET_REDISTRIBUTION');
-      },
-      onError: () {
-        if (mounted) {
-          _accessibilityService.announceToScreenReader(
-            'Failed to redistribute budget. Please try again.',
-            financialContext: 'Budget Management Error',
-            isImportant: true,
-          );
-          
-          showEnhancedErrorDialog(
-            'Budget Redistribution Failed',
-            errorMessage ?? 'Unable to redistribute your budget at this time. This could be due to network issues or temporary server problems.',
-            onRetry: _triggerBudgetRedistribution,
-            canRetry: true,
-          );
-        }
-      },
-    ).whenComplete(() {
-      if (mounted) {
-        setState(() {
-          _isRedistributing = false;
-        });
+
+        showEnhancedErrorDialog(
+          'Budget Redistribution Failed',
+          budgetProvider.errorMessage ?? 'Unable to redistribute your budget at this time.',
+          onRetry: _triggerBudgetRedistribution,
+          canRetry: true,
+        );
       }
-    });
+    }
   }
 
   Future<void> _triggerAutoBudgetAdaptation() async {
-    try {
-      _accessibilityService.announceToScreenReader(
-        'Starting automatic budget adaptation',
-        financialContext: 'Budget Management',
-        isImportant: true,
-      );
-      
-      await _apiService.triggerBudgetAdaptation();
-      await _initializeData();
-      
-      if (mounted) {
+    final budgetProvider = context.read<BudgetProvider>();
+
+    _accessibilityService.announceToScreenReader(
+      'Starting automatic budget adaptation',
+      financialContext: 'Budget Management',
+      isImportant: true,
+    );
+
+    final success = await budgetProvider.triggerAutoAdaptation();
+
+    if (mounted) {
+      if (success) {
         _accessibilityService.announceToScreenReader(
           'Budget adapted based on your spending patterns. Budget amounts have been updated.',
           financialContext: 'Budget Management',
           isImportant: true,
         );
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Semantics(
@@ -351,10 +109,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
             backgroundColor: const AppColors.successLight,
           ),
         );
-      }
-    } catch (e) {
-      logError('Error during auto adaptation: $e');
-      if (mounted) {
+      } else {
         _accessibilityService.announceToScreenReader(
           'Failed to adapt budget automatically. Please try again.',
           financialContext: 'Budget Management Error',
@@ -410,11 +165,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
   }
 
 
-  Widget _buildLiveBudgetCard() {
-    if (_liveBudgetStatus.isEmpty) return const SizedBox.shrink();
-    
-    final totalBudget = _liveBudgetStatus['total_budget']?.toDouble() ?? 0.0;
-    final totalSpent = _liveBudgetStatus['total_spent']?.toDouble() ?? 0.0;
+  Widget _buildLiveBudgetCard(BudgetProvider budgetProvider) {
+    final liveBudgetStatus = budgetProvider.liveBudgetStatus;
+    if (liveBudgetStatus.isEmpty) return const SizedBox.shrink();
+
+    final totalBudget = liveBudgetStatus['total_budget']?.toDouble() ?? 0.0;
+    final totalSpent = liveBudgetStatus['total_spent']?.toDouble() ?? 0.0;
     final remaining = totalBudget - totalSpent;
     final percentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
     
@@ -472,7 +228,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                     ),
                   ),
                   Semantics(
-                    label: 'Budget Mode: ${_getBudgetModeDisplayName(_budgetMode)}',
+                    label: 'Budget Mode: ${_getBudgetModeDisplayName(budgetProvider.budgetMode)}',
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -480,7 +236,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        _getBudgetModeDisplayName(_budgetMode),
+                        _getBudgetModeDisplayName(budgetProvider.budgetMode),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w500,
@@ -595,7 +351,9 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BudgetProvider budgetProvider) {
+    final isRedistributing = budgetProvider.isRedistributing;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -623,19 +381,19 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 Expanded(
                   child: Semantics(
                     label: _accessibilityService.createButtonSemanticLabel(
-                      action: _isRedistributing ? 'Redistributing budget' : 'Redistribute Budget',
-                      context: _isRedistributing 
+                      action: isRedistributing ? 'Redistributing budget' : 'Redistribute Budget',
+                      context: isRedistributing
                         ? 'Budget redistribution in progress, please wait'
                         : 'Reallocate budget between days based on spending patterns',
-                      isDisabled: _isRedistributing,
+                      isDisabled: isRedistributing,
                     ),
                     button: true,
                     child: ElevatedButton.icon(
-                      onPressed: _isRedistributing ? null : _triggerBudgetRedistribution,
-                      icon: _isRedistributing 
+                      onPressed: isRedistributing ? null : _triggerBudgetRedistribution,
+                      icon: isRedistributing
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.balance, size: 18),
-                      label: Text(_isRedistributing ? 'Redistributing...' : 'Redistribute'),
+                      label: Text(isRedistributing ? 'Redistributing...' : 'Redistribute'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const AppColors.accent,
                         foregroundColor: Colors.white,
@@ -674,10 +432,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     );
   }
 
-  Widget _buildSuggestionsCard() {
-    if (_budgetSuggestions.isEmpty) return const SizedBox.shrink();
+  Widget _buildSuggestionsCard(BudgetProvider budgetProvider) {
+    final budgetSuggestions = budgetProvider.budgetSuggestions;
+    if (budgetSuggestions.isEmpty) return const SizedBox.shrink();
 
-    final suggestions = _budgetSuggestions['suggestions'] as List<dynamic>? ?? [];
+    final suggestions = budgetSuggestions['suggestions'] as List<dynamic>? ?? [];
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Card(
@@ -734,8 +493,9 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     );
   }
 
-  Widget _buildRedistributionHistory() {
-    if (_redistributionHistory.isEmpty) return const SizedBox.shrink();
+  Widget _buildRedistributionHistory(BudgetProvider budgetProvider) {
+    final redistributionHistory = budgetProvider.redistributionHistory;
+    if (redistributionHistory.isEmpty) return const SizedBox.shrink();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -762,7 +522,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
               ],
             ),
             const SizedBox(height: 12),
-            ..._redistributionHistory.take(3).map<Widget>((transfer) =>
+            ...redistributionHistory.take(3).map<Widget>((transfer) =>
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
@@ -797,6 +557,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Use BudgetProvider for centralized state
+    final budgetProvider = context.watch<BudgetProvider>();
+    final isLoading = budgetProvider.isLoading;
+    final budgets = budgetProvider.dailyBudgets;
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -836,26 +601,26 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
           ),
         ],
       ),
-      body: _isLoading
+      body: isLoading
           ? Semantics(
               label: 'Loading budget data. Please wait.',
               liveRegion: true,
               child: const Center(child: CircularProgressIndicator()),
             )
           : RefreshIndicator(
-              onRefresh: _initializeData,
+              onRefresh: () => context.read<BudgetProvider>().loadAllBudgetData(),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-                    _buildLiveBudgetCard(),
-                    _buildActionButtons(),
-                    _buildSuggestionsCard(),
-                    _buildRedistributionHistory(),
-                    
+                    _buildLiveBudgetCard(budgetProvider),
+                    _buildActionButtons(budgetProvider),
+                    _buildSuggestionsCard(budgetProvider),
+                    _buildRedistributionHistory(budgetProvider),
+
                     // Original budget list
-                    if (_budgets.isEmpty)
+                    if (budgets.isEmpty)
                       Semantics(
                         label: 'No budget data available. Your intelligent budget tracking will appear here when data is loaded.',
                         child: Card(
@@ -887,7 +652,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         ),
                       )
                     else
-                      ...(_budgets.map<Widget>((budget) {
+                      ...(budgets.map<Widget>((budget) {
                         final date = DateFormat('MMMM d, yyyy').format(DateTime.parse(budget['date']));
                         final status = budget['status'] ?? 'unknown';
                         final spent = (budget['spent'] ?? 0).toDouble();

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/advice_provider.dart';
 
 class AdviceHistoryScreen extends StatefulWidget {
   const AdviceHistoryScreen({super.key});
@@ -13,41 +13,22 @@ class AdviceHistoryScreen extends StatefulWidget {
 }
 
 class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
-  final ApiService _apiService = ApiService();
-  bool _loading = true;
-  List<dynamic> _items = [];
-  Map<String, dynamic>? _latestAdvice;
-
   @override
   void initState() {
     super.initState();
-    fetchHistory();
-  }
-
-  Future<void> fetchHistory() async {
-    try {
-      final results = await Future.wait([
-        _apiService.getAdviceHistory(),
-        _apiService.getLatestAdvice(),
-      ]);
-      setState(() {
-        _items = results[0] as List;
-        _latestAdvice = results[1] as Map<String, dynamic>?;
-        _loading = false;
-      });
-    } catch (e) {
-      logError('Error loading advice history: $e');
-      if (!mounted) return;
-      setState(() {
-        // Set data to empty instead of showing error
-        _items = [];
-        _loading = false;
-      });
-    }
+    // Initialize the advice provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AdviceProvider>().initialize();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Use context.watch for reactive state updates
+    final adviceProvider = context.watch<AdviceProvider>();
+    final isLoading = adviceProvider.isLoading || adviceProvider.state == AdviceState.initial;
+    final items = adviceProvider.adviceHistory;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Advice History'),
@@ -57,9 +38,9 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
         elevation: 0,
       ),
       backgroundColor: const AppColors.background,
-      body: _loading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
+          : items.isEmpty
               ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -83,9 +64,9 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
                   ),
                 )
               : ListView.builder(
-                  itemCount: _items.length,
+                  itemCount: items.length,
                   itemBuilder: (_, i) {
-                    final item = _items[i] as Map<String, dynamic>;
+                    final item = items[i] as Map<String, dynamic>;
                     final date = DateFormat.yMMMd().format(DateTime.parse(item['date'] as String));
                     return ListTile(
                       title: Text(item['text'] as String),

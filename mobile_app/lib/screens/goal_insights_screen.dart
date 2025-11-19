@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/goal.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
+import '../providers/goals_provider.dart';
 
 class GoalInsightsScreen extends StatefulWidget {
   final Goal goal;
@@ -19,16 +19,16 @@ class GoalInsightsScreen extends StatefulWidget {
 }
 
 class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
-  Map<String, dynamic>? _healthData;
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadHealthData();
+    // Load health data via provider after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GoalsProvider>().loadGoalHealthData(widget.goal.id);
+    });
   }
 
   @override
@@ -37,22 +37,17 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     super.dispose();
   }
 
-  Future<void> _loadHealthData() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await _apiService.analyzeGoalHealth(widget.goal.id);
-      setState(() {
-        _healthData = data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading goal health data: $e');
-      setState(() => _isLoading = false);
-    }
+  void _loadHealthData() {
+    context.read<GoalsProvider>().loadGoalHealthData(widget.goal.id);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the provider for reactive updates
+    final goalsProvider = context.watch<GoalsProvider>();
+    final isLoading = goalsProvider.isHealthDataLoading(widget.goal.id);
+    final healthData = goalsProvider.getGoalHealthData(widget.goal.id);
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(
@@ -80,16 +75,16 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
           ],
         ),
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _healthData == null
+          : healthData == null
               ? _buildErrorState()
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildHealthTab(),
-                    _buildInsightsTab(),
-                    _buildRecommendationsTab(),
+                    _buildHealthTab(healthData),
+                    _buildInsightsTab(healthData),
+                    _buildRecommendationsTab(healthData),
                   ],
                 ),
     );
@@ -113,10 +108,10 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildHealthTab() {
-    final healthScore = _healthData!['health_score'] ?? 0;
-    final isOnTrack = _healthData!['on_track'] ?? false;
-    final predictedDate = _healthData!['predicted_completion_date'];
+  Widget _buildHealthTab(Map<String, dynamic> healthData) {
+    final healthScore = healthData['health_score'] ?? 0;
+    final isOnTrack = healthData['on_track'] ?? false;
+    final predictedDate = healthData['predicted_completion_date'];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -150,8 +145,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildInsightsTab() {
-    final insights = _healthData!['insights'] as List? ?? [];
+  Widget _buildInsightsTab(Map<String, dynamic> healthData) {
+    final insights = healthData['insights'] as List? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -166,8 +161,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     );
   }
 
-  Widget _buildRecommendationsTab() {
-    final recommendations = _healthData!['recommendations'] as List? ?? [];
+  Widget _buildRecommendationsTab(Map<String, dynamic> healthData) {
+    final recommendations = healthData['recommendations'] as List? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),

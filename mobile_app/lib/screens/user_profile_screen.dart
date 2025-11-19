@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../services/logging_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -13,24 +14,25 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> with TickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  
   late AnimationController _slideController;
   late Animation<double> _slideAnimation;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
-  bool _isLoading = true;
-  Map<String, dynamic> _userProfile = {};
-  Map<String, dynamic> _financialStats = {};
-  
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _loadUserProfile();
+
+    // Initialize provider after frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      if (userProvider.state == UserState.initial) {
+        userProvider.initialize();
+      }
+    });
   }
-  
+
   void _initializeAnimations() {
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -40,121 +42,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<double>(begin: 50.0, end: 0.0)
         .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
-    
+
     _slideController.forward();
     _fadeController.forward();
   }
-  
-  Future<void> _loadUserProfile() async {
-    try {
-      setState(() => _isLoading = true);
-      
-      // Load user profile data
-      final profileData = await _apiService.getUserProfile().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
-      
-      // Generate financial stats
-      final stats = await _generateFinancialStats();
-      
-      if (mounted) {
-        setState(() {
-          _userProfile = profileData.isNotEmpty ? profileData : _getDefaultProfile();
-          _financialStats = stats;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      logError('Failed to load user profile: $e', tag: 'USER_PROFILE');
-      if (mounted) {
-        setState(() {
-          _userProfile = _getDefaultProfile();
-          _financialStats = _getDefaultStats();
-          _isLoading = false;
-        });
-      }
-    }
-  }
-  
-  Map<String, dynamic> _getDefaultProfile() {
-    return {
-      'name': 'Guest User',
-      'email': 'user@mita.finance',
-      'member_since': DateTime.now().toIso8601String(),
-      'profile_completion': 0,
-      'verified_email': false,
-      'income': 0.0,
-      'budget_method': '50/30/20 Rule',
-      'currency': 'USD',
-      'region': 'US',
-    };
-  }
 
-  
-  Map<String, dynamic> _getDefaultStats() {
-    return {
-      'total_expenses': 2450.0,
-      'monthly_savings': 520.0,
-      'budget_adherence': 87,
-      'active_goals': 3,
-      'transaction_count': 156,
-      'categories_used': 8,
-      'best_saving_month': 'October 2024',
-      'spending_trend': 'decreasing',
-    };
-  }
-  
-  Future<Map<String, dynamic>> _generateFinancialStats() async {
-    try {
-      // Try to get real stats from API
-      final monthlyAnalytics = await _apiService.getMonthlyAnalytics().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => <String, dynamic>{},
-      ).catchError((e) => <String, dynamic>{});
-      
-      if (monthlyAnalytics.isNotEmpty) {
-        return {
-          'total_expenses': monthlyAnalytics['total_spent'] ?? 2450.0,
-          'monthly_savings': monthlyAnalytics['savings'] ?? 520.0,
-          'budget_adherence': monthlyAnalytics['budget_adherence'] ?? 87,
-          'active_goals': monthlyAnalytics['goals_count'] ?? 3,
-          'transaction_count': monthlyAnalytics['transaction_count'] ?? 156,
-          'categories_used': monthlyAnalytics['categories_count'] ?? 8,
-          'best_saving_month': monthlyAnalytics['best_month'] ?? 'October 2024',
-          'spending_trend': monthlyAnalytics['trend'] ?? 'decreasing',
-        };
-      }
-      
-      return _getDefaultStats();
-    } catch (e) {
-      return _getDefaultStats();
-    }
-  }
-  
   @override
   void dispose() {
     _slideController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    
+    final userProvider = context.watch<UserProvider>();
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      body: _isLoading ? _buildLoadingState() : _buildProfileContent(colorScheme, textTheme),
+      body: userProvider.isLoading ? _buildLoadingState() : _buildProfileContent(colorScheme, textTheme, userProvider),
     );
   }
-  
+
   Widget _buildLoadingState() {
     return const Center(
       child: Column(
@@ -167,8 +83,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildProfileContent(ColorScheme colorScheme, TextTheme textTheme) {
+
+  Widget _buildProfileContent(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     return CustomScrollView(
       slivers: [
         // App Bar
@@ -208,7 +124,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             ),
           ],
         ),
-        
+
         // Profile Content
         SliverToBoxAdapter(
           child: FadeTransition(
@@ -226,19 +142,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                 child: Column(
                   children: [
                     // Profile Header Card
-                    _buildProfileHeader(colorScheme, textTheme),
+                    _buildProfileHeader(colorScheme, textTheme, userProvider),
                     const SizedBox(height: 24),
-                    
+
                     // Financial Overview Cards
-                    _buildFinancialOverview(colorScheme, textTheme),
+                    _buildFinancialOverview(colorScheme, textTheme, userProvider),
                     const SizedBox(height: 24),
-                    
+
                     // Account Details
-                    _buildAccountDetails(colorScheme, textTheme),
+                    _buildAccountDetails(colorScheme, textTheme, userProvider),
                     const SizedBox(height: 24),
-                    
+
                     // Quick Actions
-                    _buildQuickActions(colorScheme, textTheme),
+                    _buildQuickActions(colorScheme, textTheme, userProvider),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -249,14 +165,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ],
     );
   }
-  
-  Widget _buildProfileHeader(ColorScheme colorScheme, TextTheme textTheme) {
-    final name = _userProfile['name'] as String? ?? 'MITA User';
-    final email = _userProfile['email'] as String? ?? 'user@mita.finance';
-    final memberSince = _userProfile['member_since'] as String?;
-    final completion = _userProfile['profile_completion'] as int? ?? 85;
-    final verified = _userProfile['verified_email'] as bool? ?? false;
-    
+
+  Widget _buildProfileHeader(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    final name = userProvider.userName;
+    final email = userProvider.userEmail.isNotEmpty ? userProvider.userEmail : 'user@mita.finance';
+    final memberSince = userProvider.userProfile['member_since'] as String?;
+    final completion = userProvider.userProfile['profile_completion'] as int? ?? 85;
+    final verified = userProvider.userProfile['verified_email'] as bool? ?? false;
+
     DateTime? joinDate;
     if (memberSince != null) {
       try {
@@ -265,7 +181,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         joinDate = DateTime.now().subtract(const Duration(days: 30));
       }
     }
-    
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -321,7 +237,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                   ),
                 ),
                 const SizedBox(width: 20),
-                
+
                 // User Info
                 Expanded(
                   child: Column(
@@ -386,9 +302,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Profile Completion
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,8 +344,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildFinancialOverview(ColorScheme colorScheme, TextTheme textTheme) {
+
+  Widget _buildFinancialOverview(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    final financialContext = userProvider.financialContext;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -441,7 +359,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Financial Stats Grid
         GridView.count(
           shrinkWrap: true,
@@ -453,8 +371,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           children: [
             _buildStatCard(
               'Monthly Income',
-              _userProfile['income'] != null 
-                ? '\$${(_userProfile['income'] as num).toStringAsFixed(0)}'
+              userProvider.userIncome > 0
+                ? '\$${userProvider.userIncome.toStringAsFixed(0)}'
                 : 'Complete onboarding',
               Icons.trending_up,
               Colors.green,
@@ -463,7 +381,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             ),
             _buildStatCard(
               'Monthly Expenses',
-              '\$${(_financialStats['total_expenses'] as num? ?? 2450).toStringAsFixed(0)}',
+              '\$${(financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num? ?? 2450).toStringAsFixed(0)}',
               Icons.receipt_long,
               Colors.orange,
               colorScheme,
@@ -471,7 +389,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             ),
             _buildStatCard(
               'Monthly Savings',
-              '\$${(_financialStats['monthly_savings'] as num? ?? 520).toStringAsFixed(0)}',
+              '\$${(financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num? ?? 520).toStringAsFixed(0)}',
               Icons.savings,
               Colors.blue,
               colorScheme,
@@ -479,7 +397,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             ),
             _buildStatCard(
               'Budget Adherence',
-              '${_financialStats['budget_adherence'] ?? 87}%',
+              '${financialContext['budget_adherence'] ?? 87}%',
               Icons.check_circle,
               Colors.purple,
               colorScheme,
@@ -490,8 +408,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ],
     );
   }
-  
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, 
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color,
       ColorScheme colorScheme, TextTheme textTheme) {
     return Card(
       elevation: 1,
@@ -537,8 +455,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildAccountDetails(ColorScheme colorScheme, TextTheme textTheme) {
+
+  Widget _buildAccountDetails(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    final financialContext = userProvider.financialContext;
+
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -555,38 +475,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-            
+
             _buildDetailRow(
               'Budget Method',
-              _userProfile['budget_method'] as String? ?? '50/30/20 Rule',
+              userProvider.userProfile['budget_method'] as String? ?? '50/30/20 Rule',
               Icons.pie_chart,
               colorScheme,
               textTheme,
             ),
             _buildDetailRow(
               'Currency',
-              _userProfile['currency'] as String? ?? 'USD',
+              userProvider.userCurrency,
               Icons.attach_money,
               colorScheme,
               textTheme,
             ),
             _buildDetailRow(
               'Region',
-              _userProfile['region'] as String? ?? 'US',
+              userProvider.userRegion.isNotEmpty ? userProvider.userRegion : 'US',
               Icons.location_on,
               colorScheme,
               textTheme,
             ),
             _buildDetailRow(
               'Active Goals',
-              '${_financialStats['active_goals'] ?? 3}',
+              '${financialContext['active_goals'] ?? financialContext['goals_count'] ?? userProvider.userGoals.length}',
               Icons.flag,
               colorScheme,
               textTheme,
             ),
             _buildDetailRow(
               'Transactions',
-              '${_financialStats['transaction_count'] ?? 156} this month',
+              '${financialContext['transaction_count'] ?? 156} this month',
               Icons.receipt,
               colorScheme,
               textTheme,
@@ -596,8 +516,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildDetailRow(String label, String value, IconData icon, 
+
+  Widget _buildDetailRow(String label, String value, IconData icon,
       ColorScheme colorScheme, TextTheme textTheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -637,8 +557,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildQuickActions(ColorScheme colorScheme, TextTheme textTheme) {
+
+  Widget _buildQuickActions(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -655,7 +575,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-            
+
             Row(
               children: [
                 Expanded(
@@ -682,7 +602,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ],
             ),
             const SizedBox(height: 12),
-            
+
             Row(
               children: [
                 Expanded(
@@ -713,8 +633,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
-  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap, 
+
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap,
       Color color, ColorScheme colorScheme, TextTheme textTheme) {
     return Material(
       color: color.withValues(alpha: 0.05),
@@ -749,7 +669,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
+
   void _showExportDialog() {
     showDialog(
       context: context,
@@ -774,7 +694,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       ),
     );
   }
-  
+
   void _showHelpDialog() {
     showDialog(
       context: context,

@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
-import 'dart:async';
-import '../services/offline_queue_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/transaction_provider.dart';
+import '../models/transaction_model.dart';
 import '../services/api_service.dart';
-import '../services/expense_state_service.dart';
 import '../services/accessibility_service.dart';
 import '../widgets/budget_warning_dialog.dart';
 import 'receipt_capture_screen.dart';
 import '../services/logging_service.dart';
+
+// Provider Pattern Migration Notes:
+// - context.watch<TransactionProvider>() used in build() for reactive rebuilds
+// - context.read<TransactionProvider>() used in methods for one-time access
+// - setState retained for local UI state (form fields, animations, date picker)
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -22,9 +27,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
-  final OfflineQueueService _queue = OfflineQueueService.instance;
   final ApiService _apiService = ApiService();
-  final ExpenseStateService _expenseStateService = ExpenseStateService();
   final AccessibilityService _accessibilityService = AccessibilityService.instance;
   
   // Focus nodes for proper navigation
@@ -328,106 +331,61 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       return;
     }
     setState(() => _isSubmitting = true);
-    
+
     // Start submit animation
     _submitAnimationController.forward();
 
-    final selectedCategory = _categories.firstWhere(
-      (cat) => cat['name'] == _action,
-      orElse: () => _categories.last,
+    // Create transaction input for the provider
+    final transactionInput = TransactionInput(
+      amount: _amount!,
+      category: _action!,
+      description: _description,
+      spentAt: _selectedDate,
+      notes: _selectedSubcategory != null ? 'Subcategory: $_selectedSubcategory' : null,
     );
 
-    final data = {
-      'amount': _amount,
-      'category': _action,
-      'subcategory': _selectedSubcategory ?? 'General',
-      'description': _description,
-      'date': _selectedDate.toIso8601String(),
-      'color': selectedCategory['color']?.value?.toString(),
-      'icon': selectedCategory['icon']?.codePoint?.toString(),
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'offline_created': true, // Mark as created offline-first
-    };
-
-    // Store previous calendar state for potential rollback
-    final previousCalendarData = List<dynamic>.from(_expenseStateService.calendarData);
-    
     try {
-      // 1. Add expense optimistically to state service
-      _expenseStateService.addExpenseOptimistically(data);
-      
-      // 2. Show immediate success feedback with animation
-      await _showSuccessFeedback();
-      
-      // 3. Queue the expense for API submission
-      await _queue.queueExpense(data);
-      
-      // 4. Try to submit to API immediately if online
-      try {
-        await _apiService.createExpense(data).timeout(
-          const Duration(seconds: 8),
-          onTimeout: () => throw TimeoutException('API submission timeout', const Duration(seconds: 8))
-        );
-        logInfo('Expense submitted to API successfully', tag: 'ADD_EXPENSE');
-      } catch (apiError) {
-        // API submission failed, but expense is queued for offline sync
-        logWarning('API submission failed, expense queued for offline sync', tag: 'ADD_EXPENSE', extra: {
-          'error': apiError.toString(),
-        });
-        
-        // Show offline mode notification
+      // Use TransactionProvider for centralized state management
+      final transactionProvider = context.read<TransactionProvider>();
+      final transaction = await transactionProvider.createTransaction(transactionInput);
+
+      if (transaction != null) {
+        // Show success feedback with animation
+        await _showSuccessFeedback();
+
+        logInfo('Expense submitted via TransactionProvider successfully', tag: 'ADD_EXPENSE');
+
+        // Navigate back with success result
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.cloud_off, color: Colors.white),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Expense saved offline and will sync when online',
-                      style: TextStyle(fontFamily: AppTypography.fontBody),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.blue,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
+          final navigator = Navigator.of(context);
+          // Wait a bit for animations to complete
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            navigator.pop({
+              'success': true,
+              'transaction_id': transaction.id,
+              'amount': _amount,
+              'category': _action,
+            });
+          }
         }
+      } else {
+        // Transaction creation failed
+        throw Exception('Failed to create transaction');
       }
-      
-      // 5. Navigate back with success result
-      if (mounted) {
-        final navigator = Navigator.of(context);
-        // Wait a bit for animations to complete
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          navigator.pop({
-            'success': true,
-            'expense_data': data,
-            'amount': _amount,
-            'category': _action,
-          });
-        }
-      }
-      
+
     } catch (e, stackTrace) {
-      // Rollback optimistic changes
-      _expenseStateService.rollbackOptimisticChanges(previousCalendarData);
-      
       logError('Failed to submit expense', tag: 'ADD_EXPENSE', error: e, extra: {
         'stackTrace': stackTrace.toString(),
-        'expenseData': data,
+        'amount': _amount,
+        'category': _action,
       });
-      
+
       if (mounted) {
         // Reset animations
         _submitAnimationController.reset();
         _successAnimationController.reset();
-        
+
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -525,6 +483,44 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // Watch TransactionProvider for reactive rebuilds on state changes
+    final transactionProvider = context.watch<TransactionProvider>();
+
+    // Show provider error if present
+    if (transactionProvider.errorMessage != null && transactionProvider.errorMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      transactionProvider.errorMessage!,
+                      style: const TextStyle(fontFamily: 'Manrope'),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: 'DISMISS',
+                textColor: Colors.white,
+                onPressed: () {
+                  context.read<TransactionProvider>().clearError();
+                },
+              ),
+            ),
+          );
+          // Clear the error after showing
+          context.read<TransactionProvider>().clearError();
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: const AppColors.background,
       appBar: AppBar(

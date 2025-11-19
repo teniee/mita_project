@@ -2,10 +2,10 @@
 /// AI-powered personalized goal recommendations based on user behavior
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import '../services/api_service.dart';
-import '../services/logging_service.dart';
+import '../providers/goals_provider.dart';
 
 class SmartGoalRecommendationsScreen extends StatefulWidget {
   const SmartGoalRecommendationsScreen({super.key});
@@ -15,58 +15,22 @@ class SmartGoalRecommendationsScreen extends StatefulWidget {
 }
 
 class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendationsScreen> {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _recommendations = [];
-  List<Map<String, dynamic>> _opportunities = [];
-  List<Map<String, dynamic>> _adjustments = [];
-
   @override
   void initState() {
     super.initState();
-    _loadAllRecommendations();
-  }
-
-  Future<void> _loadAllRecommendations() async {
-    setState(() => _isLoading = true);
-    try {
-      final recommendationsData = await _apiService.getSmartGoalRecommendations();
-      final opportunitiesData = await _apiService.detectGoalOpportunities();
-      final adjustmentsData = await _apiService.getGoalAdjustmentSuggestions();
-
-      setState(() {
-        _recommendations = List<Map<String, dynamic>>.from(
-          recommendationsData['recommendations'] ?? []
-        );
-        _opportunities = List<Map<String, dynamic>>.from(
-          opportunitiesData['opportunities'] ?? []
-        );
-        _adjustments = List<Map<String, dynamic>>.from(
-          adjustmentsData['adjustments'] ?? []
-        );
-        _isLoading = false;
-      });
-    } catch (e) {
-      logError('Error loading recommendations: $e');
-      setState(() => _isLoading = false);
-    }
+    // Load recommendations when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GoalsProvider>().loadSmartRecommendations();
+    });
   }
 
   Future<void> _createGoalFromRecommendation(Map<String, dynamic> recommendation) async {
-    final data = {
-      'title': recommendation['title'],
-      'description': recommendation['description'] ?? recommendation['reasoning'],
-      'category': recommendation['category'],
-      'target_amount': recommendation['target_amount'],
-      'saved_amount': 0,
-      'monthly_contribution': recommendation['monthly_contribution'],
-      'priority': recommendation['priority'],
-      'target_date': recommendation['suggested_deadline'],
-    };
+    final provider = context.read<GoalsProvider>();
+    final success = await provider.createGoalFromRecommendation(recommendation);
 
-    try {
-      await _apiService.createGoal(data);
-      if (!mounted) return;
+    if (!mounted) return;
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Goal "${recommendation['title']}" created successfully!'),
@@ -74,42 +38,51 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         ),
       );
       Navigator.pop(context, true);  // Return to goals screen
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: ${provider.errorMessage ?? "Failed to create goal"}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the provider for reactive updates
+    final goalsProvider = context.watch<GoalsProvider>();
+    final isLoading = goalsProvider.isLoadingRecommendations;
+    final recommendations = goalsProvider.recommendations;
+    final opportunities = goalsProvider.opportunities;
+    final adjustments = goalsProvider.adjustments;
+
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: const Color(0xFFFFF9F0),
       appBar: AppBar(
         title: const Text(
           'Smart Recommendations',
           style: TextStyle(
-            fontFamily: AppTypography.fontHeading,
+            fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: Color(0xFF193C57),
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: const Color(0xFFFFF9F0),
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadAllRecommendations,
+            onPressed: () => goalsProvider.loadSmartRecommendations(),
           ),
         ],
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadAllRecommendations,
+              onRefresh: () => goalsProvider.loadSmartRecommendations(),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
@@ -121,31 +94,31 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     const SizedBox(height: 24),
 
                     // AI Recommendations
-                    if (_recommendations.isNotEmpty) ...[
-                      _buildSectionTitle('✨ AI Recommendations for You'),
+                    if (recommendations.isNotEmpty) ...[
+                      _buildSectionTitle('AI Recommendations for You'),
                       const SizedBox(height: 12),
-                      ..._recommendations.map((rec) => _buildRecommendationCard(rec)),
+                      ...recommendations.map((rec) => _buildRecommendationCard(rec)),
                       const SizedBox(height: 24),
                     ],
 
                     // Opportunities
-                    if (_opportunities.isNotEmpty) ...[
-                      _buildSectionTitle('💡 Opportunities Detected'),
+                    if (opportunities.isNotEmpty) ...[
+                      _buildSectionTitle('Opportunities Detected'),
                       const SizedBox(height: 12),
-                      ..._opportunities.map((opp) => _buildOpportunityCard(opp)),
+                      ...opportunities.map((opp) => _buildOpportunityCard(opp)),
                       const SizedBox(height: 24),
                     ],
 
                     // Adjustments
-                    if (_adjustments.isNotEmpty) ...[
-                      _buildSectionTitle('🔧 Goal Adjustments Suggested'),
+                    if (adjustments.isNotEmpty) ...[
+                      _buildSectionTitle('Goal Adjustments Suggested'),
                       const SizedBox(height: 12),
-                      ..._adjustments.map((adj) => _buildAdjustmentCard(adj)),
+                      ...adjustments.map((adj) => _buildAdjustmentCard(adj)),
                       const SizedBox(height: 24),
                     ],
 
                     // Empty state
-                    if (_recommendations.isEmpty && _opportunities.isEmpty && _adjustments.isEmpty)
+                    if (recommendations.isEmpty && opportunities.isEmpty && adjustments.isEmpty)
                       _buildEmptyState(),
                   ],
                 ),
@@ -161,8 +134,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.textPrimary, AppColors.textPrimary.withValues(alpha: 0.7)],
+          gradient: const LinearGradient(
+            colors: [Color(0xFF193C57), Color(0xFF2B5876)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -173,10 +146,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const AppColors.secondary,
+                color: const Color(0xFFFFD25F),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.auto_awesome, color: AppColors.textPrimary, size: 32),
+              child: const Icon(Icons.auto_awesome, color: Color(0xFF193C57), size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -186,7 +159,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   const Text(
                     'Powered by AI',
                     style: TextStyle(
-                      fontFamily: AppTypography.fontHeading,
+                      fontFamily: 'Sora',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -196,7 +169,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   Text(
                     'Personalized recommendations based on your spending patterns',
                     style: TextStyle(
-                      fontFamily: AppTypography.fontBody,
+                      fontFamily: 'Manrope',
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.8),
                     ),
@@ -243,17 +216,17 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                         Text(
                           rec['title'] ?? 'Goal',
                           style: const TextStyle(
-                            fontFamily: AppTypography.fontHeading,
+                            fontFamily: 'Sora',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: Color(0xFF193C57),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           rec['category'] ?? 'General',
                           style: TextStyle(
-                            fontFamily: AppTypography.fontBody,
+                            fontFamily: 'Manrope',
                             fontSize: 13,
                             color: Colors.grey.shade600,
                           ),
@@ -270,7 +243,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     child: Text(
                       priority.toUpperCase(),
                       style: TextStyle(
-                        fontFamily: AppTypography.fontBody,
+                        fontFamily: 'Manrope',
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: priorityColor,
@@ -283,7 +256,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 rec['description'] ?? rec['reasoning'] ?? '',
                 style: const TextStyle(
-                  fontFamily: AppTypography.fontBody,
+                  fontFamily: 'Manrope',
                   fontSize: 14,
                   height: 1.5,
                   color: Colors.black87,
@@ -359,10 +332,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   child: Text(
                     opp['suggested_goal'] ?? 'Opportunity',
                     style: const TextStyle(
-                      fontFamily: AppTypography.fontHeading,
+                      fontFamily: 'Sora',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: Color(0xFF193C57),
                     ),
                   ),
                 ),
@@ -372,7 +345,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               opp['reason'] ?? '',
               style: const TextStyle(
-                fontFamily: AppTypography.fontBody,
+                fontFamily: 'Manrope',
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.black87,
@@ -433,10 +406,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   child: Text(
                     adj['goal_title'] ?? 'Goal Adjustment',
                     style: const TextStyle(
-                      fontFamily: AppTypography.fontHeading,
+                      fontFamily: 'Sora',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: Color(0xFF193C57),
                     ),
                   ),
                 ),
@@ -446,7 +419,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               adj['reason'] ?? 'Adjustment suggested',
               style: const TextStyle(
-                fontFamily: AppTypography.fontBody,
+                fontFamily: 'Manrope',
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.black87,
@@ -468,7 +441,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       const Text(
                         'Current',
                         style: TextStyle(
-                          fontFamily: AppTypography.fontBody,
+                          fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey,
                         ),
@@ -477,10 +450,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       Text(
                         '\$${currentMonthly.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          fontFamily: AppTypography.fontHeading,
+                          fontFamily: 'Sora',
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF193C57),
                         ),
                       ),
                     ],
@@ -491,7 +464,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       const Text(
                         'Suggested',
                         style: TextStyle(
-                          fontFamily: AppTypography.fontBody,
+                          fontFamily: 'Manrope',
                           fontSize: 12,
                           color: Colors.grey,
                         ),
@@ -500,7 +473,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       Text(
                         '\$${suggestedMonthly.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          fontFamily: AppTypography.fontHeading,
+                          fontFamily: 'Sora',
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
@@ -516,7 +489,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 '+ \$${increase.toStringAsFixed(0)}/month increase',
                 style: const TextStyle(
-                  fontFamily: AppTypography.fontBody,
+                  fontFamily: 'Manrope',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.green,
@@ -547,7 +520,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: AppTypography.fontBody,
+                  fontFamily: 'Manrope',
                   fontSize: 10,
                   color: Colors.grey.shade600,
                 ),
@@ -555,10 +528,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               Text(
                 value,
                 style: const TextStyle(
-                  fontFamily: AppTypography.fontHeading,
+                  fontFamily: 'Sora',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: Color(0xFF193C57),
                 ),
               ),
             ],
@@ -581,10 +554,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             const Text(
               'All Caught Up!',
               style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
+                fontFamily: 'Sora',
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: Color(0xFF193C57),
               ),
             ),
             const SizedBox(height: 8),
@@ -592,7 +565,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               'No new recommendations at this time.\nKeep tracking your spending to unlock personalized insights!',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: AppTypography.fontBody,
+                fontFamily: 'Manrope',
                 fontSize: 14,
                 color: Colors.grey.shade600,
                 height: 1.5,
@@ -608,10 +581,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     return Text(
       title,
       style: const TextStyle(
-        fontFamily: AppTypography.fontHeading,
+        fontFamily: 'Sora',
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
+        color: Color(0xFF193C57),
       ),
     );
   }
@@ -637,7 +610,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
-          color: AppColors.background,
+          color: Color(0xFFFFF9F0),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
@@ -658,10 +631,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Text(
               rec['title'] ?? 'Goal Details',
               style: const TextStyle(
-                fontFamily: AppTypography.fontHeading,
+                fontFamily: 'Sora',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: Color(0xFF193C57),
               ),
             ),
             const SizedBox(height: 16),
@@ -698,7 +671,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 icon: const Icon(Icons.add_circle),
                 label: const Text('Create This Goal'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const AppColors.secondary,
+                  backgroundColor: const Color(0xFFFFD25F),
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -720,7 +693,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         Text(
           label,
           style: TextStyle(
-            fontFamily: AppTypography.fontBody,
+            fontFamily: 'Manrope',
             fontSize: 13,
             color: Colors.grey.shade600,
           ),
@@ -729,10 +702,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         Text(
           value,
           style: const TextStyle(
-            fontFamily: AppTypography.fontHeading,
+            fontFamily: 'Sora',
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: Color(0xFF193C57),
           ),
         ),
       ],
