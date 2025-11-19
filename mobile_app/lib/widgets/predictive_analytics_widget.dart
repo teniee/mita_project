@@ -183,12 +183,12 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: AppColors.surfaceLight20,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.trending_up,
-                      color: Colors.white,
+                      color: AppColors.textLight,
                       size: 24,
                     ),
                   ),
@@ -203,7 +203,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                             fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            color: Colors.white,
+                            color: AppColors.textLight,
                           ),
                         ),
                         Text(
@@ -211,7 +211,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                           style: TextStyle(
                             fontFamily: AppTypography.fontBody,
                             fontSize: 12,
-                            color: Colors.white70,
+                            color: AppColors.textLightMuted,
                           ),
                         ),
                       ],
@@ -251,7 +251,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: AppColors.surfaceLight20,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -269,7 +269,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
+                color: isSelected ? AppColors.textLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -278,7 +278,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? AppColors.indigo : Colors.white70,
+                  color: isSelected ? AppColors.indigo : AppColors.textLightMuted,
                 ),
               ),
             ),
@@ -311,7 +311,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                         fontFamily: AppTypography.fontHeading,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
-                        color: Colors.white,
+                        color: AppColors.textLight,
                       ),
                     ),
                     const Spacer(),
@@ -336,7 +336,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                       fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: Colors.white,
+                      color: AppColors.textLight,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -345,21 +345,21 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           '• ',
                           style: TextStyle(
                             fontFamily: AppTypography.fontBody,
                             fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: AppColors.textLightSubtle,
                           ),
                         ),
                         Expanded(
                           child: Text(
                             rec.toString(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontFamily: AppTypography.fontBody,
                               fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: AppColors.textLightSubtle,
                             ),
                           ),
                         ),
@@ -376,23 +376,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   }
 
   Widget _buildRiskLevelIndicator(String riskLevel) {
-    Color riskColor;
-    IconData riskIcon;
-    
-    switch (riskLevel.toLowerCase()) {
-      case 'high':
-        riskColor = Colors.red.shade300;
-        riskIcon = Icons.warning;
-        break;
-      case 'moderate':
-        riskColor = Colors.yellow.shade300;
-        riskIcon = Icons.info;
-        break;
-      case 'low':
-      default:
-        riskColor = Colors.green.shade300;
-        riskIcon = Icons.check_circle;
-    }
+    final riskColor = AppColors.getRiskColor(riskLevel);
+    final riskIcon = AppColors.getRiskIcon(riskLevel);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -435,12 +420,12 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
           Container(
             width: 120,
             height: 120,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.1),
+              color: AppColors.surfaceLight10,
             ),
           ),
-          
+
           // Risk Arc
           AnimatedBuilder(
             animation: _riskAnimation,
@@ -454,7 +439,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
               );
             },
           ),
-          
+
           // Score Text
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -465,15 +450,15 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
-                  color: Colors.white,
+                  color: AppColors.textLight,
                 ),
               ),
-              Text(
+              const Text(
                 'Risk Score',
                 style: TextStyle(
                   fontFamily: AppTypography.fontBody,
                   fontSize: 10,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: AppColors.textLightMuted,
                 ),
               ),
             ],
@@ -500,17 +485,17 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 fontFamily: AppTypography.fontHeading,
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
-                color: Colors.white,
+                color: AppColors.textLight,
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Prediction Chart
             Container(
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: AppColors.surfaceLight10,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -535,12 +520,12 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Predicted Spending',
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppColors.textLightMuted,
                         ),
                       ),
                       Text(
@@ -549,7 +534,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                           fontFamily: AppTypography.fontHeading,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Colors.white,
+                          color: AppColors.textLight,
                         ),
                       ),
                     ],
@@ -558,16 +543,16 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: AppColors.surfaceLight20,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${(confidence * 100).toStringAsFixed(0)}% confident',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppColors.textLightSubtle,
                     ),
                   ),
                 ),
@@ -581,7 +566,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
 
   Widget _buildBehavioralPredictionsSection() {
     final behaviorPredictions = _predictiveAnalytics!['behavior_predictions'] as Map<String, dynamic>? ?? {};
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -591,34 +576,34 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
             fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Colors.white,
+            color: AppColors.textLight,
           ),
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // Behavioral predictions would go here
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppColors.surfaceLight10,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
+          child: const Row(
             children: [
               Icon(
                 Icons.psychology,
-                color: Colors.white.withValues(alpha: 0.7),
+                color: AppColors.textLightMuted,
                 size: 16,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Behavioral patterns suggest continued mindful spending',
                   style: TextStyle(
                     fontFamily: AppTypography.fontBody,
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.textLightSubtle,
                   ),
                 ),
               ),
@@ -644,13 +629,13 @@ class RiskGaugePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 10;
-    
+
     // Background Arc
     final backgroundPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.2)
+      ..color = AppColors.surfaceLight20
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8;
-    
+
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi,
@@ -658,29 +643,18 @@ class RiskGaugePainter extends CustomPainter {
       false,
       backgroundPaint,
     );
-    
+
     // Risk Arc
-    Color arcColor;
-    switch (riskLevel.toLowerCase()) {
-      case 'high':
-        arcColor = Colors.red.shade300;
-        break;
-      case 'moderate':
-        arcColor = Colors.yellow.shade300;
-        break;
-      case 'low':
-      default:
-        arcColor = Colors.green.shade300;
-    }
-    
+    final arcColor = AppColors.getRiskColor(riskLevel);
+
     final riskPaint = Paint()
       ..color = arcColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
-    
+
     final sweepAngle = (riskScore / 100) * math.pi;
-    
+
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi,
@@ -709,23 +683,23 @@ class SpendingChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.8)
+      ..color = AppColors.textLightSubtle
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    
+
     final fillPaint = Paint()
       ..shader = LinearGradient(
         colors: [
-          Colors.white.withValues(alpha: 0.3),
-          Colors.white.withValues(alpha: 0.1),
+          AppColors.textLight.withValues(alpha: 0.3),
+          AppColors.textLight.withValues(alpha: 0.1),
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    
+
     final path = Path();
     final fillPath = Path();
-    
+
     // Generate sample data points
     final points = <Offset>[];
     for (int i = 0; i <= timeFrame; i++) {
@@ -735,21 +709,21 @@ class SpendingChartPainter extends CustomPainter {
       final y = baseY - variationY;
       points.add(Offset(x, y * animationProgress + size.height * (1 - animationProgress)));
     }
-    
+
     // Draw the path
     if (points.isNotEmpty) {
       path.moveTo(points.first.dx, points.first.dy);
       fillPath.moveTo(points.first.dx, size.height);
       fillPath.lineTo(points.first.dx, points.first.dy);
-      
+
       for (int i = 1; i < points.length; i++) {
         path.lineTo(points[i].dx, points[i].dy);
         fillPath.lineTo(points[i].dx, points[i].dy);
       }
-      
+
       fillPath.lineTo(points.last.dx, size.height);
       fillPath.close();
-      
+
       canvas.drawPath(fillPath, fillPaint);
       canvas.drawPath(path, paint);
     }

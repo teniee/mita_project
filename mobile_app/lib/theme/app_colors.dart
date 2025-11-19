@@ -226,6 +226,35 @@ class AppColors {
   static const Color grayFallback = Color(0xFF757575);
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // RISK LEVEL COLORS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// High risk - Light red (equivalent to Colors.red.shade300)
+  static const Color riskHigh = Color(0xFFE57373);
+
+  /// Moderate risk - Light yellow (equivalent to Colors.yellow.shade300)
+  static const Color riskModerate = Color(0xFFFFF176);
+
+  /// Low risk - Light green (equivalent to Colors.green.shade300)
+  static const Color riskLow = Color(0xFF81C784);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TRANSPARENCY VARIANTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// White with 70% opacity (equivalent to Colors.white70)
+  static const Color textLightMuted = Color(0xB3FFFFFF);
+
+  /// White with 80% opacity
+  static const Color textLightSubtle = Color(0xCCFFFFFF);
+
+  /// White with 20% opacity - for backgrounds on dark surfaces
+  static const Color surfaceLight20 = Color(0x33FFFFFF);
+
+  /// White with 10% opacity - for subtle backgrounds
+  static const Color surfaceLight10 = Color(0x1AFFFFFF);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // BORDER COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -289,5 +318,34 @@ class AppColors {
   /// Create a color with opacity
   static Color withOpacity(Color color, double opacity) {
     return color.withValues(alpha: opacity);
+  }
+
+  /// Get risk level color based on risk level string
+  /// - 'high': riskHigh (red)
+  /// - 'moderate': riskModerate (yellow)
+  /// - 'low': riskLow (green)
+  static Color getRiskColor(String riskLevel) {
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        return riskHigh;
+      case 'moderate':
+        return riskModerate;
+      case 'low':
+      default:
+        return riskLow;
+    }
+  }
+
+  /// Get risk icon based on risk level string
+  static IconData getRiskIcon(String riskLevel) {
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        return Icons.warning;
+      case 'moderate':
+        return Icons.info;
+      case 'low':
+      default:
+        return Icons.check_circle;
+    }
   }
 }
