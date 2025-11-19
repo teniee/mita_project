@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../services/user_data_manager.dart';
-import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 /// User state enum for tracking authentication and data loading states
@@ -16,7 +15,6 @@ enum UserState {
 /// Manages user authentication state, profile data, and financial context
 class UserProvider extends ChangeNotifier {
   final UserDataManager _userDataManager = UserDataManager.instance;
-  final ApiService _apiService = ApiService();
 
   // State
   UserState _state = UserState.initial;
