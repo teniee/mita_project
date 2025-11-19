@@ -16,3 +16,4 @@ export 'habits_provider.dart';
 export 'notifications_provider.dart';
 export 'mood_provider.dart';
 export 'advice_provider.dart';
+export 'installments_provider.dart';

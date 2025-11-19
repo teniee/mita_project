@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../providers/providers.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -23,6 +25,32 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     super.dispose();
   }
 
+  /// Build user context from providers for AI assistant
+  Map<String, dynamic> _buildUserContext(BuildContext context) {
+    final userProvider = context.read<UserProvider>();
+
+    // Build context map with user's financial information
+    final userContext = <String, dynamic>{
+      'userName': userProvider.userName,
+      'currency': userProvider.userCurrency,
+      'income': userProvider.userIncome,
+      'region': userProvider.userRegion,
+    };
+
+    // Add goals if available
+    if (userProvider.userGoals.isNotEmpty) {
+      userContext['goals'] = userProvider.userGoals;
+    }
+
+    // Add financial context if available
+    final financialContext = userProvider.financialContext;
+    if (financialContext.isNotEmpty) {
+      userContext['financialContext'] = financialContext;
+    }
+
+    return userContext;
+  }
+
   Future<void> _sendQuestion() async {
     final question = _questionController.text.trim();
     if (question.isEmpty) return;
@@ -35,7 +63,14 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     _questionController.clear();
 
     try {
-      final response = await _apiService.askAIAssistant(question);
+      // Get user context from provider
+      final userContext = _buildUserContext(context);
+
+      // Call API with user context for personalized responses
+      final response = await _apiService.askAIAssistant(
+        question,
+        context: userContext,
+      );
 
       if (mounted) {
         setState(() {
@@ -59,6 +94,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Access user provider for personalized greeting
+    final userProvider = context.watch<UserProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -74,7 +112,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(userProvider.userName)
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
@@ -99,7 +137,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String userName) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -111,7 +149,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Ask me anything about your finances!',
+            'Hi $userName! Ask me anything about your finances!',
             style: AppTypography.heading4,
             textAlign: TextAlign.center,
           ),
