@@ -31,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -48,7 +48,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   fontFamily: 'Sora',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF193C57),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -60,7 +60,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Navigator.pop(context);
                   provider.setShowUnreadOnly(value);
                 },
-                activeColor: const Color(0xFF193C57),
+                activeColor: AppColors.primary,
               ),
 
               const Divider(),
@@ -84,7 +84,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Navigator.pop(context);
                     provider.setFilterType(type == 'All' ? null : type);
                   },
-                  selectedColor: const Color(0xFF193C57),
+                  selectedColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color: (type == 'All' ? provider.filterType == null : provider.filterType == type)
                         ? Colors.white
@@ -113,7 +113,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Navigator.pop(context);
                       provider.setFilterPriority(priority == 'All' ? null : priority);
                     },
-                    selectedColor: const Color(0xFF193C57),
+                    selectedColor: AppColors.primary,
                     labelStyle: TextStyle(
                       color: (priority == 'All' ? provider.filterPriority == null : provider.filterPriority == priority)
                           ? Colors.white
@@ -174,7 +174,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isLoading = provider.isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -184,7 +184,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               style: TextStyle(
                 fontFamily: 'Sora',
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.primary,
               ),
             ),
             if (unreadCount > 0) ...[
@@ -207,9 +207,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ],
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.primary),
         centerTitle: true,
         actions: [
           IconButton(
@@ -237,7 +237,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: provider.refresh,
-        color: const Color(0xFF193C57),
+        color: AppColors.primary,
         child: _buildBody(provider, notifications, isLoading),
       ),
     );
@@ -380,7 +380,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : const Color(0xFFFFEEC0),
+          color: notification.isRead ? Colors.white : AppColors.notificationUnread,
           borderRadius: BorderRadius.circular(14),
           border: notification.isHighPriority
               ? Border.all(color: _getPriorityColor(notification.priority), width: 2)
@@ -437,7 +437,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             fontSize: 16,
                             color: notification.isRead
                                 ? Colors.black87
-                                : const Color(0xFF193C57),
+                                : AppColors.primary,
                           ),
                         ),
                       ),
@@ -508,7 +508,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             style: TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF193C57),
+                              color: AppColors.primary,
                             ),
                           ),
                         ),

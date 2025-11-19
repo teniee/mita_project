@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.base import UserOwnedResponseSchema
+
 
 # Existing schemas
 class TokenIn(BaseModel):
@@ -34,10 +36,9 @@ class NotificationCreate(BaseModel):
     expires_at: Optional[datetime] = None
 
 
-class NotificationResponse(BaseModel):
+class NotificationResponse(UserOwnedResponseSchema):
     """Schema for notification response"""
-    id: UUID
-    user_id: UUID
+    # id, user_id, created_at, updated_at inherited from UserOwnedResponseSchema
     title: str
     message: str
     type: str
@@ -53,14 +54,10 @@ class NotificationResponse(BaseModel):
     sent_at: Optional[datetime] = None
     delivered_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    updated_at: datetime  # Override to make non-optional
     expires_at: Optional[datetime] = None
     category: Optional[str] = None
     group_key: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class NotificationListResponse(BaseModel):

@@ -159,7 +159,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     fontFamily: 'Sora',
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF193C57),
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -245,7 +245,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                   child: ElevatedButton(
                     onPressed: hasSubmittedToday || moodProvider.isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: hasSubmittedToday ? Colors.grey : const Color(0xFFFFD25F),
+                      backgroundColor: hasSubmittedToday ? Colors.grey : AppColors.secondary,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -336,7 +336,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                         fontFamily: 'Sora',
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF193C57),
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -381,19 +381,19 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Daily Mood Check-in',
           style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.primary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.primary),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -422,7 +422,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                       children: [
                         Icon(
                           Icons.trending_up,
-                          color: Color(0xFF193C57),
+                          color: AppColors.primary,
                           size: 24,
                         ),
                         SizedBox(width: 8),
@@ -432,7 +432,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                             fontFamily: 'Sora',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF193C57),
+                            color: AppColors.primary,
                           ),
                         ),
                       ],

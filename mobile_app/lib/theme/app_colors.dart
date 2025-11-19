@@ -23,6 +23,9 @@ class AppColors {
   /// Primary brand color - Deep navy blue (most used: 316 times)
   static const Color primary = Color(0xFF193C57);
 
+  /// Primary light variant - For gradients
+  static const Color primaryLight = Color(0xFF2B5876);
+
   /// Secondary brand color - Warm yellow/gold
   static const Color secondary = Color(0xFFFFD25F);
 
@@ -269,6 +272,9 @@ class AppColors {
 
   /// Standard border color
   static const Color border = Color(0xFFE0E0E0);
+
+  /// Unread notification background
+  static const Color notificationUnread = Color(0xFFFFEEC0);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HELPER METHODS

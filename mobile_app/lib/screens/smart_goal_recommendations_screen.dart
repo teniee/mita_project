@@ -58,19 +58,19 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     final adjustments = goalsProvider.adjustments;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF9F0),
+      backgroundColor: const AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Smart Recommendations',
           style: TextStyle(
             fontFamily: 'Sora',
             fontWeight: FontWeight.bold,
-            color: Color(0xFF193C57),
+            color: AppColors.primary,
           ),
         ),
-        backgroundColor: const Color(0xFFFFF9F0),
+        backgroundColor: const AppColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF193C57)),
+        iconTheme: const IconThemeData(color: AppColors.primary),
         centerTitle: true,
         actions: [
           IconButton(
@@ -135,7 +135,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF193C57), Color(0xFF2B5876)],
+            colors: [AppColors.primary, AppColors.primaryLight],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -146,10 +146,10 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD25F),
+                color: const AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.auto_awesome, color: Color(0xFF193C57), size: 32),
+              child: const Icon(Icons.auto_awesome, color: AppColors.primary, size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -219,7 +219,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                             fontFamily: 'Sora',
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF193C57),
+                            color: AppColors.primary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -335,7 +335,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       fontFamily: 'Sora',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -409,7 +409,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       fontFamily: 'Sora',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF193C57),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -453,7 +453,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                           fontFamily: 'Sora',
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF193C57),
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -531,7 +531,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   fontFamily: 'Sora',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF193C57),
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -557,7 +557,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 fontFamily: 'Sora',
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 8),
@@ -584,7 +584,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
         fontFamily: 'Sora',
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF193C57),
+        color: AppColors.primary,
       ),
     );
   }
@@ -610,7 +610,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
-          color: Color(0xFFFFF9F0),
+          color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
@@ -634,7 +634,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 fontFamily: 'Sora',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF193C57),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -671,7 +671,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 icon: const Icon(Icons.add_circle),
                 label: const Text('Create This Goal'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD25F),
+                  backgroundColor: const AppColors.secondary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -705,7 +705,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             fontFamily: 'Sora',
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF193C57),
+            color: AppColors.primary,
           ),
         ),
       ],
