@@ -254,6 +254,15 @@ class AppColors {
   /// White with 10% opacity - for subtle backgrounds
   static const Color surfaceLight10 = Color(0x1AFFFFFF);
 
+  /// White with 50% opacity
+  static const Color surfaceLight50 = Color(0x80FFFFFF);
+
+  /// White with 60% opacity
+  static const Color textLightDimmed = Color(0x99FFFFFF);
+
+  /// White with 90% opacity
+  static const Color textLightBright = Color(0xE6FFFFFF);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // BORDER COLORS
   // ═══════════════════════════════════════════════════════════════════════════

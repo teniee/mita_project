@@ -17,6 +17,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, condecimal
 
 from app.core.validators import InputSanitizer, FinancialConstants
+from app.schemas.base import UserOwnedDecimalResponseSchema, DecimalResponseSchema
 from app.db.models.installment import (
     InstallmentCategory,
     AgeGroup,
@@ -292,10 +293,8 @@ class InstallmentUpdate(BaseModel):
         return InputSanitizer.sanitize_string(v, max_length=1000)
 
 
-class InstallmentOut(BaseModel):
+class InstallmentOut(UserOwnedDecimalResponseSchema):
     """Output schema for installment"""
-    id: UUID
-    user_id: UUID
     item_name: str
     category: InstallmentCategory
     total_amount: Decimal
@@ -309,20 +308,12 @@ class InstallmentOut(BaseModel):
     final_payment_date: datetime
     status: InstallmentStatus
     notes: Optional[str]
-    created_at: datetime
-    updated_at: datetime
 
     # Calculated fields
     progress_percentage: Optional[float] = None
     remaining_payments: Optional[int] = None
     total_paid: Optional[Decimal] = None
     remaining_balance: Optional[Decimal] = None
-
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            Decimal: lambda v: str(v)
-        }
 
 
 class InstallmentsSummary(BaseModel):

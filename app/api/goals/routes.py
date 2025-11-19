@@ -9,11 +9,12 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, validator
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_, func, select
 
 from app.api.dependencies import get_current_user, require_premium_user
-from app.core.async_session import get_async_db
+from app.core.session import get_db
+from app.api.base_crud import CRUDHelper
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
 from app.services.notification_integration import get_notification_integration
@@ -303,13 +304,7 @@ def get_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Get a specific goal by ID"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
     return success_response(goal_to_dict(goal))
 
 
@@ -321,12 +316,7 @@ def update_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Update an existing goal"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     # Update fields if provided
     if data.title is not None:
@@ -364,16 +354,7 @@ def delete_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Delete a goal"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-
-    db.delete(goal)
-    db.commit()
-
+    CRUDHelper.delete_user_resource(db, Goal, goal_id, user.id, "Goal not found")
     return success_response({"status": "deleted", "id": str(goal_id)})
 
 
@@ -389,12 +370,7 @@ def add_savings_to_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Add savings to a goal and update progress"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     # Store old progress to check for milestones
     old_progress = float(goal.progress)
@@ -447,12 +423,7 @@ def mark_goal_completed(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Mark a goal as completed"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     goal.status = 'completed'
     goal.progress = 100
@@ -490,12 +461,7 @@ def pause_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Pause an active goal"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     goal.status = 'paused'
     goal.last_updated = datetime.utcnow()
@@ -513,12 +479,7 @@ def resume_goal(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Resume a paused goal"""
-    goal = db.query(Goal).filter(
-        and_(Goal.id == goal_id, Goal.user_id == user.id)
-    ).first()
-
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
+    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     if goal.status != 'paused':
         raise HTTPException(status_code=400, detail="Only paused goals can be resumed")

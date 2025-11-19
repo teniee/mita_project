@@ -118,7 +118,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           'spending_patterns': spendingPatterns,
         };
 
-        _userProfile = userProfile['data'] ?? {};
+        _userProfile = (userProfile['data'] as Map<String, dynamic>?) ?? {};
         _isLoading = false;
       });
 
@@ -181,12 +181,12 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: AppColors.surfaceLight20,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
                           Icons.psychology,
-                          color: Colors.white,
+                          color: AppColors.textLight,
                           size: 24,
                         ),
                       ),
@@ -201,7 +201,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                                 fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
-                                color: Colors.white,
+                                color: AppColors.textLight,
                               ),
                             ),
                             Text(
@@ -209,7 +209,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                               style: TextStyle(
                                 fontFamily: AppTypography.fontBody,
                                 fontSize: 12,
-                                color: Colors.white70,
+                                color: AppColors.textLightMuted,
                               ),
                             ),
                           ],
@@ -248,7 +248,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: AppColors.surfaceLight20,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -267,7 +267,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.transparent,
+                  color: isSelected ? AppColors.textLight : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -277,7 +277,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
-                    color: isSelected ? AppColors.emerald : Colors.white70,
+                    color: isSelected ? AppColors.emerald : AppColors.textLightMuted,
                   ),
                 ),
               ),
@@ -321,7 +321,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Colors.white,
+            color: AppColors.textLight,
           ),
         ),
         
@@ -334,7 +334,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: Colors.white,
+              color: AppColors.textLight,
             ),
           ),
           const SizedBox(height: 8),
@@ -379,14 +379,14 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: AppColors.surfaceLight10,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Icon(
             patternIcon,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: AppColors.textLightSubtle,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -400,7 +400,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     fontFamily: AppTypography.fontBody,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: AppColors.textLightBright,
                   ),
                 ),
                 Text(
@@ -408,7 +408,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   style: TextStyle(
                     fontFamily: AppTypography.fontBody,
                     fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppColors.textLightDimmed,
                   ),
                 ),
               ],
@@ -423,7 +423,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: AppColors.surfaceLight10,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -435,7 +435,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppColors.textLightBright,
             ),
           ),
           const SizedBox(height: 8),
@@ -450,14 +450,14 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppColors.textLightMuted,
                       ),
                     ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
                       value: 0.85,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      backgroundColor: AppColors.surfaceLight20,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.textLight),
                     ),
                   ],
                 ),
@@ -469,7 +469,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppColors.textLightBright,
                 ),
               ),
             ],
@@ -493,11 +493,11 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.2),
+              color: AppColors.surfaceLight20,
             ),
             child: Icon(
               _getPersonalityIcon(spendingPersonality),
-              color: Colors.white,
+              color: AppColors.textLight,
               size: 40,
             ),
           ),
@@ -512,7 +512,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.bold,
             fontSize: 18,
-            color: Colors.white,
+            color: AppColors.textLight,
           ),
         ),
         
@@ -524,7 +524,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           style: TextStyle(
             fontFamily: AppTypography.fontBody,
             fontSize: 13,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: AppColors.textLightSubtle,
           ),
         ),
         
@@ -538,7 +538,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: Colors.white,
+              color: AppColors.textLight,
             ),
           ),
           const SizedBox(height: 8),
@@ -546,7 +546,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: AppColors.surfaceLight10,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -555,7 +555,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                 Text(
                   '💡 ',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.textLightSubtle,
                   ),
                 ),
                 Expanded(
@@ -564,7 +564,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     style: TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: AppColors.textLightSubtle,
                     ),
                   ),
                 ),
@@ -589,7 +589,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             fontFamily: AppTypography.fontHeading,
             fontWeight: FontWeight.w600,
             fontSize: 16,
-            color: Colors.white,
+            color: AppColors.textLight,
           ),
         ),
         
@@ -614,7 +614,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppColors.surfaceLight10,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -626,7 +626,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                   fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppColors.textLightBright,
                 ),
               ),
               const SizedBox(height: 8),
@@ -646,14 +646,14 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: AppColors.surfaceLight10,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
           Icon(
             icon,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: AppColors.textLightSubtle,
             size: 24,
           ),
           const SizedBox(height: 8),
@@ -663,7 +663,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               fontFamily: AppTypography.fontHeading,
               fontWeight: FontWeight.bold,
               fontSize: 18,
-              color: Colors.white,
+              color: AppColors.textLight,
             ),
           ),
           Text(
@@ -671,7 +671,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             style: TextStyle(
               fontFamily: AppTypography.fontBody,
               fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: AppColors.textLightMuted,
             ),
           ),
         ],
@@ -689,7 +689,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.6),
+              color: AppColors.textLightDimmed,
             ),
           ),
           const SizedBox(width: 8),
@@ -699,7 +699,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               style: TextStyle(
                 fontFamily: AppTypography.fontBody,
                 fontSize: 11,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: AppColors.textLightSubtle,
               ),
             ),
           ),
@@ -708,7 +708,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             style: TextStyle(
               fontFamily: AppTypography.fontBody,
               fontSize: 10,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppColors.surfaceLight50,
             ),
           ),
         ],
