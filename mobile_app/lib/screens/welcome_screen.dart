@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -11,6 +12,15 @@ import '../l10n/generated/app_localizations.dart';
 
 /// Welcome screen with splash animation and auto-navigation
 /// Provides a professional first impression with smooth Material 3 animations
+///
+/// State Management:
+/// - Uses SettingsProvider for app settings initialization (theme, locale)
+/// - Uses UserProvider for authentication state and user data
+/// - Local setState is used only for transient UI state (animations, status text)
+///
+/// Provider Usage:
+/// - context.read<T>() for one-time access in initialization methods
+/// - No context.watch<T>() needed as this screen navigates away after initialization
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -18,22 +28,26 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> 
+class _WelcomeScreenState extends State<WelcomeScreen>
     with TickerProviderStateMixin {
-  
-  // Animation controllers for smooth transitions
+
+  // Animation controllers for smooth transitions (local UI state)
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _progressController;
-  
-  // Animations for coordinated entrance
+
+  // Animations for coordinated entrance (local UI state)
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
   late Animation<Offset> _textSlide;
   late Animation<double> _textOpacity;
   late Animation<double> _progressValue;
-  
+
+  // Services
   final ApiService _api = ApiService();
+
+  // Local UI state - kept as setState since these are transient splash screen states
+  // that don't need to persist or be shared across the app
   String _statusText = 'Initializing...'; // Will be updated with localized text in initState
   bool _hasError = false;
 
@@ -148,11 +162,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Future<void> _checkAuthenticationStatus() async {
     final l10n = AppLocalizations.of(context);
+    // Use context.read for one-time access in methods (not reactive rebuilds)
     final userProvider = context.read<UserProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
 
     try {
       setState(() => _statusText = l10n.initializingMita);
       await Future.delayed(const Duration(milliseconds: 500));
+
+      // Initialize SettingsProvider first for theme/locale preferences
+      if (!settingsProvider.isInitialized) {
+        await settingsProvider.initialize();
+        logInfo('SettingsProvider initialized successfully', tag: 'WELCOME_SCREEN');
+      }
 
       setState(() => _statusText = l10n.checkingAuthentication);
       await Future.delayed(const Duration(milliseconds: 300));

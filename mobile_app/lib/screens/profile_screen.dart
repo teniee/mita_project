@@ -15,13 +15,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
 
+  // Local UI state only - not managed by provider
   bool _isSaving = false;
-  bool _initialized = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final userProvider = context.read<UserProvider>();
       _nameController.text = userProvider.userName;
 
@@ -31,8 +31,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else if (userProvider.userProfile.isEmpty) {
         userProvider.loadUserProfile();
       }
-      _initialized = true;
-    }
+
+      // Load referral code for quick access
+      userProvider.loadReferralCode();
+    });
   }
 
   @override
