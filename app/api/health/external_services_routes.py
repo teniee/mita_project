@@ -21,6 +21,16 @@ router = APIRouter(prefix="/health", tags=["Health Check"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/")
+async def health_check():
+    """Simple health check endpoint for load balancers and monitoring"""
+    return {
+        "status": "healthy",
+        "service": "MITA Finance API",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @router.get("/external-services")
 async def check_external_services():
     """Check health of all external services"""
