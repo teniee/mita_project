@@ -47,10 +47,10 @@ def _normalize_database_url(url: str) -> str:
         sep = "&" if "?" in url else "?"
         url += f"{sep}ssl=require"
 
-    # disable statement cache (required for PgBouncer/Pooler)
-    if "statement_cache_size=" not in url:
-        sep = "&" if "?" in url else "?"
-        url += f"{sep}statement_cache_size=0"
+    # Remove statement_cache_size from URL if present (will be set in connect_args)
+    if "statement_cache_size=" in url:
+        import re
+        url = re.sub(r'[&?]statement_cache_size=\d+', '', url)
 
     return url
 
@@ -86,9 +86,14 @@ def initialize_database() -> None:
         if "sqlite" in database_url:
             engine_kwargs["poolclass"] = StaticPool
 
+        # Prepare connection arguments with correct types for asyncpg
+        connect_args = {
+            "statement_cache_size": 0,  # Disable for PgBouncer (must be int, not str)
+        }
+
         async_engine_local = create_async_engine(
             database_url,
-            connect_args={},
+            connect_args=connect_args,
             **engine_kwargs,
         )
 
