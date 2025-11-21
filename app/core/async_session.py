@@ -80,6 +80,9 @@ def initialize_database() -> None:
             "max_overflow": 10,
             "pool_timeout": 30,
             "pool_recycle": 1800,
+
+            # CRITICAL: Disable server-side prepared statements for PgBouncer transaction mode
+            "pool_use_lifo": True,  # Use LIFO for better connection reuse
         }
 
         # SQLite fallback
@@ -87,8 +90,13 @@ def initialize_database() -> None:
             engine_kwargs["poolclass"] = StaticPool
 
         # Prepare connection arguments with correct types for asyncpg
+        # CRITICAL for PgBouncer transaction mode
         connect_args = {
-            "statement_cache_size": 0,  # Disable for PgBouncer (must be int, not str)
+            "statement_cache_size": 0,  # Disable client-side statement cache
+            "prepared_statement_cache_size": 0,  # Disable prepared statements completely
+            "server_settings": {
+                "jit": "off",  # Disable JIT compilation for better compatibility
+            },
         }
 
         async_engine_local = create_async_engine(
