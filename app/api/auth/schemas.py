@@ -124,16 +124,13 @@ class RegisterIn(BaseModel):
     @field_validator('country')
     @classmethod
     def validate_country(cls, v):
-        # RESTORED: Optimized input validation
-        # return InputSanitizer.sanitize_country_code(v)
-        # Basic country validation without external dependencies
+        # International support - allow any valid country code
         if not v:
             return "US"
         v = v.upper().strip()
         if len(v) != 2:
-            raise ValueError("Country code must be 2 characters")
-        if v != "US":
-            raise ValueError("Service currently only available in US")
+            raise ValueError("Country code must be 2 characters (ISO 3166-1 alpha-2)")
+        # Allow all country codes for international support
         return v
     
     @field_validator('state')
@@ -141,14 +138,14 @@ class RegisterIn(BaseModel):
     def validate_state(cls, v, info):
         if v is None:
             return v
-        
-        # RESTORED: Optimized input validation
-        # country = info.data.get('country', 'US') if info.data else 'US'
-        # return InputSanitizer.sanitize_state_code(v, country)
-        # Basic state validation without external dependencies
-        v = v.upper().strip()
-        if len(v) != 2:
-            raise ValueError("State code must be 2 characters")
+
+        # International support - allow state names and codes
+        v = v.strip()
+        if len(v) == 0:
+            return v
+        # Allow up to 50 characters for international state/province names
+        if len(v) > 50:
+            raise ValueError("State/province name too long")
         return v
     
     @field_validator('zip_code')
@@ -156,14 +153,15 @@ class RegisterIn(BaseModel):
     def validate_zip_code(cls, v, info):
         if v is None:
             return v
-        
-        # RESTORED: Optimized input validation
-        # country = info.data.get('country', 'US') if info.data else 'US'
-        # return InputSanitizer.sanitize_zip_code(v, country)
-        # Basic ZIP validation without external dependencies
+
+        # International support - allow various postal code formats
         v = v.strip()
-        if not v.replace('-', '').isdigit() or len(v) < 5:
-            raise ValueError('Invalid ZIP code format')
+        if len(v) == 0:
+            return v
+        # Allow alphanumeric postal codes (UK: SW1A 1AA, Canada: K1A 0B1, etc.)
+        # Minimum 3 characters (some countries have short codes)
+        if len(v) < 3 or len(v) > 12:
+            raise ValueError('Postal code must be between 3 and 12 characters')
         return v
     
     @field_validator('phone')
@@ -171,14 +169,18 @@ class RegisterIn(BaseModel):
     def validate_phone(cls, v, info):
         if v is None:
             return v
-        
-        # RESTORED: Optimized input validation
-        # country = info.data.get('country', 'US') if info.data else 'US'
-        # return InputSanitizer.sanitize_phone_number(v, country)
-        # Basic phone validation without external dependencies
-        v = v.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
-        if not v.isdigit() or len(v) < 10:
-            raise ValueError('Invalid phone number format')
+
+        # International support - allow various phone formats with country codes
+        # Remove common formatting characters
+        v = v.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '').replace('+', '')
+
+        # After cleanup, should be digits only, minimum 7 (some countries), maximum 15 (E.164 standard)
+        if not v.isdigit():
+            raise ValueError('Phone number must contain only digits (after removing formatting)')
+
+        if len(v) < 7 or len(v) > 15:
+            raise ValueError('Phone number must be between 7 and 15 digits')
+
         return v
     
     @field_validator('annual_income')

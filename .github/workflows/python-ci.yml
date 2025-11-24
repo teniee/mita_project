@@ -116,13 +116,15 @@ jobs:
       - name: Tests with coverage
         run: |
           export PYTHONPATH=.
-          pytest --cov=app --cov-report=xml --cov-report=term --cov-fail-under=65
+          pytest --cov=app --cov-report=xml --cov-report=html --cov-report=term --cov-fail-under=70
 
-      - name: Upload coverage artifact
+      - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: coverage.xml
+          path: |
+            coverage.xml
+            htmlcov/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

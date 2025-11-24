@@ -20,6 +20,9 @@ macos/Flutter/ephemeral/
 *.pyc
 __pycache__/
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # === Docker / Secrets ===
 secrets/
