@@ -65,6 +65,8 @@ class CRUDHelper:
         """
         Get a user-owned resource by ID or raise 404.
 
+        Automatically filters out soft-deleted records for financial compliance.
+
         Args:
             db: Database session
             model: SQLAlchemy model class (must have user_id field)
@@ -78,10 +80,16 @@ class CRUDHelper:
         Raises:
             HTTPException: 404 if not found or not owned by user
         """
-        resource = db.query(model).filter(
+        query = db.query(model).filter(
             model.id == resource_id,
             model.user_id == user_id
-        ).first()
+        )
+
+        # Filter out soft-deleted records if model supports soft delete
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
+
+        resource = query.first()
         if not resource:
             raise HTTPException(status_code=404, detail=detail)
         return resource
@@ -98,8 +106,10 @@ class CRUDHelper:
         """
         Get all resources owned by a user with pagination.
 
+        Automatically filters out soft-deleted records for financial compliance.
+
         Args:
-            db: Database session
+            db: Session
             model: SQLAlchemy model class
             user_id: UUID of the owner
             skip: Number of records to skip
@@ -107,9 +117,13 @@ class CRUDHelper:
             order_by: Optional column to order by
 
         Returns:
-            List of resources
+            List of non-deleted resources
         """
         query = db.query(model).filter(model.user_id == user_id)
+
+        # Filter out soft-deleted records if model supports soft delete
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
 
         if order_by is not None:
             query = query.order_by(order_by)
@@ -196,7 +210,10 @@ class CRUDHelper:
     @staticmethod
     def delete_resource(db: Session, resource: T) -> bool:
         """
-        Delete a resource.
+        Delete a resource (soft delete if supported, hard delete otherwise).
+
+        Automatically uses soft delete for financial data models (Transaction, Goal, Installment)
+        that have deleted_at field for compliance and audit trail purposes.
 
         Args:
             db: Database session
@@ -205,8 +222,16 @@ class CRUDHelper:
         Returns:
             True if deleted successfully
         """
-        db.delete(resource)
-        db.commit()
+        # Check if model supports soft delete (has deleted_at field)
+        if hasattr(resource, 'deleted_at'):
+            # Soft delete for compliance (financial data must be recoverable)
+            from datetime import datetime
+            resource.deleted_at = datetime.utcnow()
+            db.commit()
+        else:
+            # Hard delete for non-financial data
+            db.delete(resource)
+            db.commit()
         return True
 
     @staticmethod
@@ -219,6 +244,8 @@ class CRUDHelper:
     ) -> bool:
         """
         Delete a user-owned resource by ID or raise 404.
+
+        Uses soft delete for financial models (Transaction, Goal, Installment) automatically.
 
         Args:
             db: Database session
@@ -236,9 +263,8 @@ class CRUDHelper:
         resource = CRUDHelper.get_user_resource_or_404(
             db, model, resource_id, user_id, detail
         )
-        db.delete(resource)
-        db.commit()
-        return True
+        # Use centralized delete logic (handles soft delete automatically)
+        return CRUDHelper.delete_resource(db, resource)
 
     @staticmethod
     def count_user_resources(

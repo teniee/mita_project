@@ -41,6 +41,7 @@ class Goal(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True, default=None)  # Soft delete support
 
     # Priority for UI ordering
     priority = Column(String(10), nullable=True, default='medium')  # high, medium, low

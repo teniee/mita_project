@@ -138,7 +138,11 @@ def list_user_transactions(
     end_date: Optional[datetime] = None,
     category: Optional[str] = None,
 ):
-    query = db.query(Transaction).filter(Transaction.user_id == user.id)
+    # Filter out soft-deleted transactions for compliance
+    query = db.query(Transaction).filter(
+        Transaction.user_id == user.id,
+        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
+    )
     if category:
         query = query.filter(Transaction.category == category)
     if start_date:
@@ -156,10 +160,11 @@ def list_user_transactions(
 
 
 def get_transaction_by_id(user: User, transaction_id: UUID, db: Session) -> Optional[Transaction]:
-    """Get a specific transaction by ID for the user"""
+    """Get a specific transaction by ID for the user (excludes deleted)"""
     txn = db.query(Transaction).filter(
         Transaction.id == transaction_id,
-        Transaction.user_id == user.id
+        Transaction.user_id == user.id,
+        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
     ).first()
 
     if txn:
@@ -169,10 +174,11 @@ def get_transaction_by_id(user: User, transaction_id: UUID, db: Session) -> Opti
 
 
 def update_transaction(user: User, transaction_id: UUID, data, db: Session) -> Optional[Transaction]:
-    """Update an existing transaction"""
+    """Update an existing transaction (excludes deleted)"""
     txn = db.query(Transaction).filter(
         Transaction.id == transaction_id,
-        Transaction.user_id == user.id
+        Transaction.user_id == user.id,
+        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
     ).first()
 
     if not txn:
@@ -230,16 +236,25 @@ def update_transaction(user: User, transaction_id: UUID, data, db: Session) -> O
 
 
 def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
-    """Delete a transaction"""
+    """
+    Delete a transaction (soft delete for compliance).
+
+    Financial transactions are soft-deleted (marked with deleted_at timestamp)
+    to maintain audit trail and comply with financial regulations.
+    """
+    from datetime import datetime
+
     txn = db.query(Transaction).filter(
         Transaction.id == transaction_id,
-        Transaction.user_id == user.id
+        Transaction.user_id == user.id,
+        Transaction.deleted_at.is_(None)  # Only get non-deleted transactions
     ).first()
 
     if not txn:
         return False
 
-    db.delete(txn)
+    # Soft delete - set deleted_at timestamp
+    txn.deleted_at = datetime.utcnow()
     db.commit()
 
     return True

@@ -273,8 +273,13 @@ async def get_all_installments(
     - Risk assessment of current installment load
     """
     try:
-        # Build query
-        query = select(Installment).where(Installment.user_id == user.id)
+        # Build query - filter out deleted installments
+        query = select(Installment).where(
+            and_(
+                Installment.user_id == user.id,
+                Installment.deleted_at.is_(None)  # Only non-deleted installments
+            )
+        )
 
         if status_filter:
             query = query.where(Installment.status == status_filter)
@@ -391,7 +396,8 @@ async def get_installment(
         select(Installment).where(
             and_(
                 Installment.id == installment_id,
-                Installment.user_id == user.id
+                Installment.user_id == user.id,
+                Installment.deleted_at.is_(None)  # Only non-deleted installments
             )
         )
     )
@@ -439,7 +445,8 @@ async def update_installment(
             select(Installment).where(
                 and_(
                     Installment.id == installment_id,
-                    Installment.user_id == user.id
+                    Installment.user_id == user.id,
+                    Installment.deleted_at.is_(None)  # Only non-deleted installments
                 )
             )
         )
@@ -506,17 +513,18 @@ async def delete_installment(
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Delete installment
+    Delete installment (soft delete for compliance)
 
-    Permanently removes an installment from tracking.
-    Use status update to CANCELLED instead if you want to keep history.
+    Marks installment as deleted while preserving financial history.
+    This maintains audit trail for regulatory compliance.
     """
     try:
         result = await db.execute(
             select(Installment).where(
                 and_(
                     Installment.id == installment_id,
-                    Installment.user_id == user.id
+                    Installment.user_id == user.id,
+                    Installment.deleted_at.is_(None)  # Only get non-deleted installments
                 )
             )
         )
@@ -528,10 +536,12 @@ async def delete_installment(
                 detail="Installment not found"
             )
 
-        await db.delete(installment)
+        # Soft delete - set deleted_at timestamp
+        from datetime import datetime
+        installment.deleted_at = datetime.utcnow()
         await db.commit()
 
-        logger.info(f"Deleted installment {installment_id} for user {user.id}")
+        logger.info(f"Soft-deleted installment {installment_id} for user {user.id}")
 
         return None
 

@@ -45,6 +45,7 @@ class Transaction(Base):
     spent_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, default=None, index=True)  # Soft delete support
 
     # Relationships
     user = relationship("User", back_populates="transactions")

@@ -103,6 +103,23 @@ if [[ -n "$DATABASE_URL" ]]; then
 fi
 
 echo ""
+echo "🗃️  Running database migrations..."
+echo "Command: alembic upgrade head"
+echo ""
+
+# Run database migrations before starting the app
+# This ensures the database schema is always up to date
+alembic upgrade head
+
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Database migration failed"
+    echo "Please check your database connection and migration files"
+    exit 1
+fi
+
+echo "✅ Database migrations completed successfully"
+echo ""
+
 echo "🔄 Starting application..."
 echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --access-log --loop uvloop"
 echo ""
