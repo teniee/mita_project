@@ -103,43 +103,6 @@ if [[ -n "$DATABASE_URL" ]]; then
 fi
 
 echo ""
-echo "🗃️  Running database migrations..."
-echo "Command: alembic upgrade head"
-echo ""
-
-# Check if we should skip migrations (temporary bypass)
-if [[ "${SKIP_MIGRATIONS}" == "true" ]]; then
-    echo "⚠️  SKIPPING MIGRATIONS (SKIP_MIGRATIONS=true)"
-    echo "⚠️  WARNING: Database schema may be out of date!"
-    echo ""
-else
-    # Run database migrations before starting the app
-    # This ensures the database schema is always up to date
-    alembic upgrade head
-
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "❌ ERROR: Database migration failed"
-        echo ""
-        echo "Possible causes:"
-        echo "  1. DATABASE_URL contains incorrect credentials"
-        echo "  2. Database password has special characters that need URL encoding"
-        echo "  3. Database server is unreachable"
-        echo "  4. Migration files have syntax errors"
-        echo ""
-        echo "Quick fix (TEMPORARY):"
-        echo "  Add environment variable: SKIP_MIGRATIONS=true"
-        echo "  Then run migrations manually using Railway CLI or Supabase dashboard"
-        echo ""
-        echo "Current DATABASE_URL format: ${DATABASE_URL%%@*}@***"
-        echo ""
-        exit 1
-    fi
-
-    echo "✅ Database migrations completed successfully"
-    echo ""
-fi
-
 echo "🔄 Starting application..."
 echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --access-log --loop uvloop"
 echo ""
