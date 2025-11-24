@@ -32,20 +32,44 @@ if not url:
         "No database URL found. Set DATABASE_URL environment variable or "
         "configure sqlalchemy.url in alembic.ini"
     )
-sync_url = make_url(url)
-if sync_url.drivername.endswith("+asyncpg"):
-    sync_url = sync_url.set(drivername="postgresql+psycopg2")
 
-# Remove Supabase-specific query parameters that psycopg2 doesn't support
-# psycopg2 uses sslmode instead of ssl, and doesn't support prepared_statement_cache_size
-if sync_url.query:
-    filtered_query = {}
-    for k, v in sync_url.query.items():
-        if k == 'ssl' and v == 'require':
-            filtered_query['sslmode'] = 'require'  # Convert to psycopg2 format
-        elif k not in ['prepared_statement_cache_size', 'ssl']:
-            filtered_query[k] = v
-    sync_url = sync_url.set(query=filtered_query)
+# Debug: Log URL structure (without password)
+print(f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***@{url.split('@')[1] if '@' in url else 'no-host'}")
+
+try:
+    sync_url = make_url(url)
+
+    # Convert asyncpg to psycopg2 driver
+    if sync_url.drivername.endswith("+asyncpg"):
+        sync_url = sync_url.set(drivername="postgresql+psycopg2")
+        print(f"[Alembic] Converted driver: asyncpg -> psycopg2")
+
+    # Remove Supabase-specific query parameters that psycopg2 doesn't support
+    # psycopg2 uses sslmode instead of ssl, and doesn't support prepared_statement_cache_size
+    if sync_url.query:
+        filtered_query = {}
+        for k, v in sync_url.query.items():
+            if k == 'ssl' and v == 'require':
+                filtered_query['sslmode'] = 'require'  # Convert to psycopg2 format
+            elif k not in ['prepared_statement_cache_size', 'ssl', 'statement_cache_size', 'server_settings']:
+                filtered_query[k] = v
+        sync_url = sync_url.set(query=filtered_query)
+        print(f"[Alembic] Filtered query params: {list(filtered_query.keys())}")
+
+    # Ensure password is properly URL-encoded
+    if sync_url.password:
+        from urllib.parse import quote_plus
+        # Re-encode password to ensure special characters are handled
+        encoded_password = quote_plus(sync_url.password)
+        if encoded_password != sync_url.password:
+            sync_url = sync_url.set(password=encoded_password)
+            print(f"[Alembic] Password re-encoded for URL safety")
+
+    print(f"[Alembic] Final connection: {sync_url.host}:{sync_url.port} database={sync_url.database}")
+
+except Exception as e:
+    print(f"[Alembic ERROR] Failed to parse DATABASE_URL: {e}")
+    raise
 
 
 def run_migrations_offline():
