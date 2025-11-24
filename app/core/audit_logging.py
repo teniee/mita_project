@@ -51,6 +51,15 @@ class AuditDatabasePool:
                 audit_db_url = settings.ASYNC_DATABASE_URL
 
                 # Configure engine for audit operations (separate from main app pool)
+                connect_args_pg = {
+                    "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                    "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                    "server_settings": {
+                        "jit": "off",
+                        "application_name": "audit_logger"
+                    }
+                }
+
                 self._engine = create_async_engine(
                     audit_db_url,
                     pool_size=2,  # Small dedicated pool for audit operations
@@ -62,7 +71,7 @@ class AuditDatabasePool:
                     future=True,
                     poolclass=StaticPool if "sqlite" in audit_db_url else None,
                     # Isolate audit connections from main application
-                    connect_args={"application_name": "audit_logger"} if "postgresql" in audit_db_url else {}
+                    connect_args=connect_args_pg if "postgresql" in audit_db_url else {}
                 )
                 
                 self._session_factory = async_sessionmaker(

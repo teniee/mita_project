@@ -31,7 +31,18 @@ engine = create_async_engine(
     url.render_as_string(hide_password=False),
     future=True,
     echo=False,
-    connect_args={"statement_cache_size": 0},  # Required for Supabase pooler (pgbouncer)
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,
+    connect_args={
+        "statement_cache_size": 0,  # Disable client-side statement cache
+        "prepared_statement_cache_size": 0,  # CRITICAL: Disable prepared statements for PgBouncer
+        "server_settings": {
+            "jit": "off",  # Disable JIT compilation for better compatibility
+        },
+    },
 )
 
 async_session = async_sessionmaker(

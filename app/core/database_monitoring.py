@@ -400,12 +400,13 @@ class OptimizedDatabaseEngine:
                 
                 # Connection settings
                 connect_args={
+                    "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                    "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
                     "server_settings": {
                         "jit": "off",  # Disable JIT for consistent performance
                         "application_name": "mita_finance_app"
                     },
                     "command_timeout": 60,
-                    "prepared_statement_cache_size": 100
                 }
             )
             
@@ -429,7 +430,10 @@ class OptimizedDatabaseEngine:
                     pool_recycle=3600,
                     pool_pre_ping=True,
                     connect_args={
+                        "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                        "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
                         "server_settings": {
+                            "jit": "off",
                             "default_transaction_read_only": "on",
                             "application_name": "mita_finance_readonly"
                         }

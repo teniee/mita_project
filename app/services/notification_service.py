@@ -125,7 +125,14 @@ class NotificationService:
 
             # Create async database session for email service
             async def send_email_async():
-                engine = create_async_engine(settings.ASYNC_DATABASE_URL)
+                engine = create_async_engine(
+                    settings.ASYNC_DATABASE_URL,
+                    connect_args={
+                        "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                        "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                        "server_settings": {"jit": "off"}
+                    }
+                )
                 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
                 async with async_session() as session:
                     email_service = EmailService()

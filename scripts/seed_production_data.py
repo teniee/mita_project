@@ -44,7 +44,12 @@ class ProductionDataSeeder:
             self.database_url,
             echo=False,
             pool_pre_ping=True,
-            pool_recycle=3600
+            pool_recycle=3600,
+            connect_args={
+                "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
+                "server_settings": {"jit": "off"}
+            }
         )
         
         # Create session factory
