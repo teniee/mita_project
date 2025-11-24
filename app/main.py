@@ -465,7 +465,11 @@ app.add_middleware(ResponseValidationMiddleware, validate_success_responses=sett
 app.add_middleware(RequestContextMiddleware)
 
 # Security and CORS middlewares
-app.add_middleware(HTTPSRedirectMiddleware)
+# HTTPSRedirectMiddleware disabled for Railway/Render deployment
+# Railway/Render terminate SSL at proxy level and forward HTTP to container
+# Enabling this causes infinite redirect loops in production
+# HTTPS is enforced at the platform level, not application level
+# app.add_middleware(HTTPSRedirectMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

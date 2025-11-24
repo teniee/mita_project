@@ -20,11 +20,13 @@ def main():
     
     # Start uvicorn with production settings
     cmd = [
-        'uvicorn', 
+        'uvicorn',
         'app.main:app',
         '--host', '0.0.0.0',
         '--port', port,
-        '--workers', '1'
+        '--workers', '1',
+        '--proxy-headers',  # Trust X-Forwarded-* headers from Railway/Render proxy
+        '--forwarded-allow-ips', '*'  # Allow all proxy IPs (Railway/Render internal network)
     ]
     
     print(f"Executing: {' '.join(cmd)}")
