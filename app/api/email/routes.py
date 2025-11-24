@@ -68,7 +68,10 @@ async def check_email_service_health(
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Email service health check failed: {e}")
         raise HTTPException(
@@ -91,7 +94,10 @@ async def get_email_queue_status(
             message="Email queue status retrieved",
             data=queue_status
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Failed to get queue status: {e}")
         raise HTTPException(
@@ -157,7 +163,7 @@ async def send_email_direct(
     
     try:
         email_service = await get_email_service()
-        
+
         # Send email directly
         result = await email_service.send_email(
             to_email=to_email,
@@ -167,7 +173,7 @@ async def send_email_direct(
             user_id=str(current_user.id),
             db=db
         )
-        
+
         # Log admin email send
         await log_security_event_async(
             event_type="admin_direct_email_send",
@@ -180,7 +186,7 @@ async def send_email_direct(
                 "message_id": result.message_id
             }
         )
-        
+
         return StandardizedResponse.success(
             message="Email sent directly",
             data={
@@ -191,7 +197,10 @@ async def send_email_direct(
                 "sent_at": result.sent_at.isoformat() if result.sent_at else None
             }
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, validation errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Direct email send failed: {e}")
         raise HTTPException(
@@ -243,7 +252,10 @@ async def queue_email_for_processing(
                 "estimated_send_time": delay_seconds
             }
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Email queuing failed: {e}")
         raise HTTPException(
@@ -290,7 +302,10 @@ async def test_email_template(
                 "variables_used": list(variables.keys())
             }
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Template test failed: {e}")
         raise HTTPException(
@@ -329,7 +344,10 @@ async def list_email_templates(
                 "total_templates": len(templates)
             }
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Failed to list templates: {e}")
         raise HTTPException(
@@ -365,7 +383,10 @@ async def start_email_queue_worker(
             message="Email queue worker started",
             data={"status": "started", "timestamp": datetime.now(timezone.utc).isoformat()}
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Failed to start queue worker: {e}")
         raise HTTPException(
@@ -401,7 +422,10 @@ async def stop_email_queue_worker(
             message="Email queue worker stopped",
             data={"status": "stopped", "timestamp": datetime.now(timezone.utc).isoformat()}
         )
-        
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Failed to stop queue worker: {e}")
         raise HTTPException(

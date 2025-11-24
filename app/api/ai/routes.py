@@ -1,5 +1,11 @@
+"""
+AI API Routes - AI-powered financial analysis and assistance endpoints
+Production-ready FastAPI routes with proper validation and error handling
+"""
+
+import logging
 from decimal import Decimal
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,6 +15,9 @@ from app.db.models import AIAnalysisSnapshot
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.services.ai_financial_analyzer import AIFinancialAnalyzer
 from app.utils.response_wrapper import success_response
+from app.api.ai.schemas import AIAssistantRequest, AIAssistantResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -207,6 +216,9 @@ async def get_ai_profile(
         from app.services.core.engine.ai_personal_finance_profiler import analyze_financial_profile
         profile_data = analyze_financial_profile(user_id=str(user.id), db=db)
         return success_response(profile_data)
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except ImportError:
         # Service not available, use AIFinancialAnalyzer
         try:
@@ -225,6 +237,7 @@ async def get_ai_profile(
             transactions = result.scalars().all()
 
             if not transactions:
+                # This is an expected state, not an error - return success with new user profile
                 return success_response({
                     "spending_personality": "new_user",
                     "risk_tolerance": "moderate",
@@ -253,16 +266,23 @@ async def get_ai_profile(
                     "Continue building spending history for detailed insights"
                 ]
             })
+        except HTTPException:
+            # Re-raise HTTP exceptions from nested try block
+            raise
         except Exception as e:
-            # Final fallback
-            return success_response({
-                "spending_personality": "cautious_saver",
-                "risk_tolerance": "moderate",
-                "financial_goals_alignment": 0.78,
-                "budgeting_style": "structured",
-                "key_strengths": ["Good expense tracking"],
-                "improvement_areas": ["Emergency fund building"]
-            })
+            # Log and raise 500 for unexpected database/system errors
+            logger.error(f"AI profile error for user {user.id}: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate AI profile"
+            )
+    except Exception as e:
+        # Log and raise 500 for unexpected errors in main try block
+        logger.error(f"AI profile error for user {user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate AI profile"
+        )
 
 
 @router.get("/day-status-explanation")
@@ -402,14 +422,14 @@ async def get_category_suggestions(
 
 @router.post("/assistant")
 async def ai_assistant(
-    query: dict,
+    request: AIAssistantRequest,
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """AI assistant for financial questions and guidance"""
     try:
-        question = query.get("question", "")
-        context = query.get("context", {})
+        question = request.question
+        context = request.context
 
         # Use AIFinancialAnalyzer service
         analyzer = AIFinancialAnalyzer(db, user.id)
@@ -481,17 +501,16 @@ async def ai_assistant(
                 ]
             })
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, validation errors, etc.) without modification
+        raise
     except Exception as e:
-        # Fallback response
-        return success_response({
-            "answer": "I'm here to help with your financial questions. Please provide more transaction data for personalized insights.",
-            "confidence": 0.0,
-            "related_insights": [],
-            "follow_up_questions": [
-                "Would you like to see your spending patterns?",
-                "Should I analyze your budget allocation?"
-            ]
-        })
+        # Log unexpected errors and raise 500
+        logger.error(f"AI assistant error for user {user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process AI assistant request"
+        )
 
 
 @router.get("/spending-prediction")

@@ -93,6 +93,9 @@ async def process_receipt_ocr(
             "processed_at": datetime.utcnow().isoformat()
         })
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"OCR processing failed: {e}", exc_info=True)
         raise HTTPException(
@@ -143,6 +146,9 @@ async def categorize_receipt_data(
             "amount": amount
         })
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Categorization failed: {e}", exc_info=True)
         raise HTTPException(
@@ -202,6 +208,9 @@ async def enhance_receipt_image(
             "size": len(enhanced_content)
         })
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Image enhancement failed: {e}")
         raise HTTPException(
@@ -272,6 +281,9 @@ async def get_ocr_job_status(
             "error": ocr_job.error_message if ocr_job.status == "failed" else None
         })
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Status check failed: {e}")
         return success_response({
