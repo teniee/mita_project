@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import (
@@ -251,8 +252,8 @@ class ErrorResponse:
             if error.retry_after:
                 response["error"]["retry_after"] = error.retry_after
                 
-        elif isinstance(error, ValidationError):
-            # Handle Pydantic validation errors
+        elif isinstance(error, (ValidationError, RequestValidationError)):
+            # Handle Pydantic validation errors and FastAPI request validation errors
             validation_errors = []
             if hasattr(error, 'errors') and callable(error.errors):
                 for err in error.errors():
@@ -262,12 +263,12 @@ class ErrorResponse:
                         "type": err.get("type", "value_error"),
                         "input": err.get("input")
                     })
-            
+
             response = {
                 "success": False,
                 "error": {
                     "code": ErrorCode.VALIDATION_INVALID_FORMAT,
-                    "message": "Validation failed",
+                    "message": "Request validation failed",
                     "error_id": error_id,
                     "timestamp": timestamp.isoformat() + "Z",
                     "details": {
@@ -409,7 +410,7 @@ class StandardizedErrorHandler:
             status_code = error.status_code
         elif isinstance(error, HTTPException):
             status_code = error.status_code
-        elif isinstance(error, ValidationError):
+        elif isinstance(error, (ValidationError, RequestValidationError)):
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         else:
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

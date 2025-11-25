@@ -4,11 +4,13 @@ Production-ready email service administration and monitoring
 """
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, EmailStr, Field, validator
 
 from app.core.async_session import get_async_db
 from app.api.dependencies import get_current_user
@@ -19,6 +21,56 @@ from app.utils.response_wrapper import StandardizedResponse
 from app.core.audit_logging import log_security_event_async
 
 logger = logging.getLogger(__name__)
+
+# Email validation regex
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+class SendEmailRequest(BaseModel):
+    """Request model for sending emails with validation"""
+    to_email: str = Field(..., min_length=5, max_length=255, description="Recipient email address")
+    email_type: EmailType = Field(..., description="Type of email template to use")
+    variables: Dict[str, Any] = Field(default_factory=dict, description="Template variables")
+    priority: EmailPriority = Field(default=EmailPriority.NORMAL, description="Email priority")
+
+    @validator('to_email')
+    def validate_email_format(cls, v):
+        """Validate email format"""
+        if not v or not v.strip():
+            raise ValueError("Email address cannot be empty")
+
+        email = v.strip().lower()
+        if not EMAIL_REGEX.match(email):
+            raise ValueError("Invalid email address format")
+
+        return email
+
+    @validator('variables')
+    def validate_variables(cls, v):
+        """Validate variables is a dict"""
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError("Variables must be a dictionary")
+        return v
+
+
+class QueueEmailRequest(BaseModel):
+    """Request model for queueing emails"""
+    to_email: str = Field(..., min_length=5, max_length=255)
+    email_type: EmailType
+    variables: Dict[str, Any] = Field(default_factory=dict)
+    priority: EmailPriority = Field(default=EmailPriority.NORMAL)
+    delay_seconds: int = Field(default=0, ge=0, le=86400)
+
+    @validator('to_email')
+    def validate_email_format(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Email address cannot be empty")
+        email = v.strip().lower()
+        if not EMAIL_REGEX.match(email):
+            raise ValueError("Invalid email address format")
+        return email
 
 router = APIRouter(
     prefix="/email",
@@ -141,18 +193,21 @@ async def get_email_job_status(
 @router.post("/send", summary="Send email directly (admin only)")
 async def send_email_direct(
     request: Request,
-    to_email: str,
-    email_type: EmailType,
-    variables: Dict[str, Any],
-    priority: EmailPriority = EmailPriority.NORMAL,
+    email_request: SendEmailRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     Send email directly without queuing (for admin testing and urgent emails)
-    
+
     Note: This bypasses the queue system and should only be used for testing
     or critical urgent emails that cannot wait for queue processing.
+
+    Request body validation:
+    - to_email: Valid email format (5-255 characters)
+    - email_type: Valid EmailType enum value
+    - variables: Dictionary of template variables (optional, defaults to {})
+    - priority: Email priority (optional, defaults to NORMAL)
     """
     # Check if user has admin privileges (you may want to implement proper admin role checking)
     if not getattr(current_user, 'is_admin', False):
@@ -160,16 +215,16 @@ async def send_email_direct(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required for direct email sending"
         )
-    
+
     try:
         email_service = await get_email_service()
 
         # Send email directly
         result = await email_service.send_email(
-            to_email=to_email,
-            email_type=email_type,
-            variables=variables,
-            priority=priority,
+            to_email=email_request.to_email,
+            email_type=email_request.email_type,
+            variables=email_request.variables,
+            priority=email_request.priority,
             user_id=str(current_user.id),
             db=db
         )
@@ -180,8 +235,8 @@ async def send_email_direct(
             user_id=str(current_user.id),
             request=request,
             details={
-                "email_type": email_type.value,
-                "to_email": to_email,
+                "email_type": email_request.email_type.value,
+                "to_email": email_request.to_email,
                 "success": result.success,
                 "message_id": result.message_id
             }
@@ -212,35 +267,40 @@ async def send_email_direct(
 @router.post("/queue", summary="Queue email for processing")
 async def queue_email_for_processing(
     request: Request,
-    to_email: str,
-    email_type: EmailType,
-    variables: Dict[str, Any],
-    priority: EmailPriority = EmailPriority.NORMAL,
-    delay_seconds: int = 0,
+    email_request: QueueEmailRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Queue email for background processing"""
+    """
+    Queue email for background processing
+
+    Request body validation:
+    - to_email: Valid email format (5-255 characters)
+    - email_type: Valid EmailType enum value
+    - variables: Dictionary of template variables (optional, defaults to {})
+    - priority: Email priority (optional, defaults to NORMAL)
+    - delay_seconds: Delay before sending (0-86400 seconds, defaults to 0)
+    """
     try:
         job_id = await queue_email(
-            to_email=to_email,
-            email_type=email_type,
-            variables=variables,
-            priority=priority,
+            to_email=email_request.to_email,
+            email_type=email_request.email_type,
+            variables=email_request.variables,
+            priority=email_request.priority,
             user_id=str(current_user.id),
-            delay_seconds=delay_seconds
+            delay_seconds=email_request.delay_seconds
         )
-        
+
         # Log email queuing
         await log_security_event_async(
             event_type="email_queued",
             user_id=str(current_user.id),
             request=request,
             details={
-                "email_type": email_type.value,
-                "to_email": to_email,
+                "email_type": email_request.email_type.value,
+                "to_email": email_request.to_email,
                 "job_id": job_id,
-                "priority": priority.value,
-                "delay_seconds": delay_seconds
+                "priority": email_request.priority.value,
+                "delay_seconds": email_request.delay_seconds
             }
         )
         
@@ -249,7 +309,7 @@ async def queue_email_for_processing(
             data={
                 "job_id": job_id,
                 "status": "queued",
-                "estimated_send_time": delay_seconds
+                "estimated_send_time": email_request.delay_seconds
             }
         )
 

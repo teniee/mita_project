@@ -35,7 +35,7 @@ async def latest_insight(
                 "date": "2025-01-29"
             }
             return success_response(basic_advice)
-        
+
         # Premium user - get actual advice from database
         advice = (
             db.query(BudgetAdvice)
@@ -43,14 +43,17 @@ async def latest_insight(
             .order_by(BudgetAdvice.date.desc())
             .first()
         )
-        
+
         if advice:
             data = AdviceOut.model_validate(advice).model_dump(mode="json")
             return success_response(data)
         else:
             # No advice available yet
             return success_response(None)
-            
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Error fetching insights for user {user.id}: {e}")
         # Return fallback response instead of 500 error
@@ -84,7 +87,7 @@ async def insight_history(
                 "date": "2025-01-29"
             }
             return success_response([upgrade_prompt])
-        
+
         # Premium user - get actual history from database
         items = (
             db.query(BudgetAdvice)
@@ -92,14 +95,17 @@ async def insight_history(
             .order_by(BudgetAdvice.date.desc())
             .all()
         )
-        
+
         if items:
             data = [AdviceOut.model_validate(it).model_dump(mode="json") for it in items]
             return success_response(data)
         else:
             # No history available yet
             return success_response([])
-            
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Error fetching insight history for user {user.id}: {e}")
         # Return empty array instead of 500 error

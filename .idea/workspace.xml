@@ -6,13 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/routes_old_backup.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/base_crud.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/base_crud.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/installments/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/installments/routes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/transactions/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/transactions/services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/goal.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/goal.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/installment.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/installment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/db/models/transaction.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/db/models/transaction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/dependencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/dependencies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/email/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/email/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/insights/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/insights/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/ocr/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/ocr/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/onboarding/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/onboarding/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/onboarding/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/onboarding/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/enhanced_error_handlers.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/enhanced_error_handlers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/standardized_error_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/standardized_error_handler.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

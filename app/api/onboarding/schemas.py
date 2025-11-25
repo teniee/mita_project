@@ -34,21 +34,48 @@ class OnboardingSubmitRequest(BaseModel):
     fixed_expenses: Dict[str, float] = Field(..., description="Fixed expenses by category")
     spending_habits: Optional[SpendingHabits] = Field(None, description="Spending habits (optional)")
     goals: Optional[GoalsData] = Field(None, description="Financial goals (optional)")
-    region: Optional[str] = Field(None, description="User's region (optional)")
+    region: Optional[str] = Field(None, max_length=100, description="User's region (optional)")
 
     @field_validator('fixed_expenses')
     @classmethod
     def validate_fixed_expenses(cls, v: Dict[str, float]) -> Dict[str, float]:
-        """Validate that fixed expenses are non-negative"""
+        """Validate that fixed expenses are non-negative and reasonable"""
         if not isinstance(v, dict):
             raise ValueError("fixed_expenses must be an object")
 
-        for category, amount in v.items():
-            if not isinstance(amount, (int, float)):
-                raise ValueError(f"Expense amount for {category} must be a number")
-            if amount < 0:
-                raise ValueError(f"Expense amount for {category} cannot be negative")
+        if not v:
+            # Allow empty dict - user might not have fixed expenses
+            return v
 
+        for category, amount in v.items():
+            # Validate category name
+            if not category or not category.strip():
+                raise ValueError("Expense category cannot be empty")
+
+            if len(category) > 100:
+                raise ValueError(f"Category name '{category}' too long (max 100 characters)")
+
+            # Validate amount
+            if not isinstance(amount, (int, float)):
+                raise ValueError(f"Expense amount for '{category}' must be a number")
+
+            if amount < 0:
+                raise ValueError(f"Expense amount for '{category}' cannot be negative")
+
+            # Reasonable upper limit to prevent abuse
+            if amount > 1_000_000:
+                raise ValueError(f"Expense amount for '{category}' exceeds reasonable limit")
+
+        return v
+
+    @field_validator('region')
+    @classmethod
+    def validate_region(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize region field"""
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
         return v
 
 

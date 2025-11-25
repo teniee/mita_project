@@ -8,12 +8,22 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 from app.api.dependencies import get_current_user
+from app.api.ocr.schemas import (
+    CategorizeReceiptRequest,
+    CategorizeReceiptResponse,
+    ProcessReceiptResponse,
+    OCRJobStatusResponse,
+    DeleteReceiptResponse,
+    EnhanceImageResponse,
+    OCRResultData,
+)
 from app.core.session import get_db
 from app.db.models.user import User
 from app.utils.response_wrapper import success_response
@@ -26,6 +36,55 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ocr", tags=["ocr"])
 
 
+# File validation constants
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/heic", "image/webp"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def validate_image_file(file: UploadFile) -> None:
+    """
+    Validate uploaded image file.
+
+    Args:
+        file: Uploaded file to validate
+
+    Raises:
+        HTTPException: If file is invalid (wrong type, too large, empty)
+    """
+    # Check if file is provided
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "No file provided",
+                "code": "MISSING_FILE"
+            }
+        )
+
+    # Check if filename is provided
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "File has no name",
+                "code": "INVALID_FILE"
+            }
+        )
+
+    # Check content type
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": f"Invalid file type. Allowed types: {', '.join(ALLOWED_IMAGE_TYPES)}",
+                "code": "INVALID_FILE_TYPE",
+                "received_type": file.content_type
+            }
+        )
+
+    # Note: File size will be checked after reading content
+
+
 @router.post("/process")
 async def process_receipt_ocr(
     file: UploadFile = File(...),
@@ -34,10 +93,37 @@ async def process_receipt_ocr(
 ):
     """
     Process receipt image with OCR and extract structured data.
+
+    Validates file type and size before processing. Returns 400 for invalid files.
     """
+    # Validate file before processing
+    validate_image_file(file)
+
+    # Read file content and validate size
+    content = await file.read()
+
+    if not content or len(content) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "File is empty",
+                "code": "EMPTY_FILE"
+            }
+        )
+
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB",
+                "code": "FILE_TOO_LARGE",
+                "file_size": len(content),
+                "max_size": MAX_FILE_SIZE
+            }
+        )
+
     # Save uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
-        content = await file.read()
         temp.write(content)
         temp_path = temp.name
 
@@ -113,18 +199,31 @@ async def process_receipt_ocr(
 
 @router.post("/categorize")
 async def categorize_receipt_data(
-    data: Dict[str, Any],
+    request: CategorizeReceiptRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Categorize receipt based on merchant name and extracted data.
+
+    Validates input data and returns 422 for invalid requests.
     """
     try:
-        merchant = data.get("merchant", data.get("store", ""))
-        amount = data.get("amount", data.get("total", 0.0))
-        items = data.get("items", [])
-        hint = data.get("category_hint", data.get("category", ""))
+        # Extract validated data using helper methods
+        merchant = request.get_merchant()
+        amount = request.get_amount()
+        items = request.items or []
+        hint = request.get_category_hint()
+
+        # Validate we have at least some data to categorize
+        if not merchant and not items and not hint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "At least one of merchant, items, or category_hint must be provided",
+                    "code": "INSUFFICIENT_DATA"
+                }
+            )
 
         # Use enhanced categorization service
         categorization_service = ReceiptCategorizationService()
@@ -149,6 +248,16 @@ async def categorize_receipt_data(
     except HTTPException:
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
+    except ValidationError as e:
+        logger.warning(f"Validation error in categorization: {e.errors()}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "Invalid receipt data",
+                "validation_errors": e.errors(),
+                "code": "VALIDATION_ERROR"
+            }
+        )
     except Exception as e:
         logger.error(f"Categorization failed: {e}", exc_info=True)
         raise HTTPException(
@@ -165,10 +274,37 @@ async def enhance_receipt_image(
 ):
     """
     Enhance receipt image quality for better OCR results.
+
+    Validates file type and size before processing. Returns 400 for invalid files.
     """
+    # Validate file before processing
+    validate_image_file(file)
+
+    # Read file content and validate size
+    content = await file.read()
+
+    if not content or len(content) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "File is empty",
+                "code": "EMPTY_FILE"
+            }
+        )
+
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": f"File too large. Maximum size is {MAX_FILE_SIZE / 1024 / 1024}MB",
+                "code": "FILE_TOO_LARGE",
+                "file_size": len(content),
+                "max_size": MAX_FILE_SIZE
+            }
+        )
+
     # Save uploaded file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp:
-        content = await file.read()
         temp.write(content)
         temp_path = temp.name
 

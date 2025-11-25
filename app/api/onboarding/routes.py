@@ -33,14 +33,14 @@ async def get_questions():
 
 @router.post("/submit")
 async def submit_onboarding(
-    answers: dict,
+    request: OnboardingSubmitRequest,
     db: Session = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
 ):
     """
     Submit onboarding data and generate user's budget plan and calendar.
 
-    Expected data format:
+    Request body (OnboardingSubmitRequest):
     {
         "income": {"monthly_income": float, "additional_income": float},
         "fixed_expenses": {"category": float, ...},
@@ -52,29 +52,19 @@ async def submit_onboarding(
     Raises:
         HTTPException 400: Invalid request data
         HTTPException 401: Unauthorized (from get_current_user dependency)
+        HTTPException 422: Validation error
         HTTPException 500: Internal server error
     """
     # NOTE: get_current_user dependency handles auth and will raise 401 if unauthorized
-    # We don't need to catch those exceptions here - they will bubble up correctly
+    # FastAPI automatically validates request using Pydantic and raises 422 if invalid
     logger.info(f"Onboarding submission started for user {current_user.id}")
 
-    # Validate request using Pydantic schema
-    try:
-        validated_data = OnboardingSubmitRequest(**answers)
-    except ValidationError as e:
-        logger.warning(f"Validation error for user {current_user.id}: {e.errors()}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "Invalid onboarding data",
-                "validation_errors": e.errors(),
-                "code": "VALIDATION_ERROR"
-            }
-        )
+    # Extract validated data (FastAPI has already validated via Pydantic)
+    monthly_income = request.income.monthly_income
+    fixed_expenses = request.fixed_expenses
 
-    # Extract validated data
-    monthly_income = validated_data.income.monthly_income
-    fixed_expenses = validated_data.fixed_expenses
+    # Convert request to dict for backward compatibility with existing services
+    answers = request.model_dump()
 
     logger.debug(f"Validated data for user {current_user.id}: monthly_income={monthly_income}")
 
@@ -84,6 +74,9 @@ async def submit_onboarding(
         db.add(current_user)
         db.flush()
         logger.debug(f"Updated monthly_income for user {current_user.id}")
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Database error updating user income for {current_user.id}: {e}")
         db.rollback()
@@ -99,6 +92,9 @@ async def submit_onboarding(
     try:
         budget_plan = generate_budget_from_answers(answers)
         logger.debug(f"Generated budget plan for user {current_user.id}")
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except ValueError as e:
         logger.warning(f"Budget generation validation error for user {current_user.id}: {e}")
         db.rollback()
@@ -133,6 +129,9 @@ async def submit_onboarding(
         calendar_data = build_calendar(calendar_config)
         save_calendar_for_user(db, current_user.id, calendar_data)
         logger.debug(f"Built and saved calendar for user {current_user.id}: {len(calendar_data)} days")
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except ValueError as e:
         logger.warning(f"Calendar build validation error for user {current_user.id}: {e}")
         db.rollback()
@@ -162,6 +161,9 @@ async def submit_onboarding(
         # Commit all changes including income, calendar, and onboarding flag
         db.commit()
         logger.info(f"Onboarding completed successfully for user {current_user.id}")
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, etc.) without modification
+        raise
     except Exception as e:
         logger.error(f"Database commit error for user {current_user.id}: {e}")
         db.rollback()
