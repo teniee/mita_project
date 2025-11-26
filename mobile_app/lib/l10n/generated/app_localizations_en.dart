@@ -246,8 +246,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get error => 'Error';
 
   @override
-  String get networkError =>
-      'Network connection error. Please check your internet connection.';
+  String get networkError => 'Network error. Please check your connection.';
 
   @override
   String get serverError => 'Server error. Please try again later.';
@@ -657,4 +656,119 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorTipSupportContact => 'Contact support if the issue persists';
+
+  @override
+  String get installments => 'Installments';
+
+  @override
+  String get myInstallments => 'My Installments';
+
+  @override
+  String get canIAfford => 'Can I Afford?';
+
+  @override
+  String get activeInstallments => 'Active Installments';
+
+  @override
+  String get completedInstallments => 'Completed';
+
+  @override
+  String get overdueInstallments => 'Overdue';
+
+  @override
+  String get monthlyPayment => 'Monthly Payment';
+
+  @override
+  String get nextPaymentDate => 'Next Payment Date';
+
+  @override
+  String get paymentAmount => 'Payment Amount';
+
+  @override
+  String get totalAmount => 'Total Amount';
+
+  @override
+  String get interestRate => 'Interest Rate';
+
+  @override
+  String get totalPayments => 'Total Payments';
+
+  @override
+  String get paymentProgress => 'Payment Progress';
+
+  @override
+  String get remainingBalance => 'Remaining Balance';
+
+  @override
+  String get totalPaid => 'Total Paid';
+
+  @override
+  String get finalPaymentDate => 'Final Payment Date';
+
+  @override
+  String get markPaymentMade => 'Mark Payment Made';
+
+  @override
+  String get cancelInstallment => 'Cancel Installment';
+
+  @override
+  String get deleteInstallment => 'Delete Installment';
+
+  @override
+  String get viewDetails => 'View Details';
+
+  @override
+  String get noInstallmentsYet => 'No installments yet';
+
+  @override
+  String get startCalculator => 'Start Calculator';
+
+  @override
+  String get paymentMarkedSuccessfully => 'Payment marked as made';
+
+  @override
+  String get installmentCancelledSuccessfully => 'Installment cancelled';
+
+  @override
+  String get installmentDeletedSuccessfully => 'Installment deleted';
+
+  @override
+  String confirmCancelInstallment(String itemName) {
+    return 'Are you sure you want to cancel \"$itemName\"?';
+  }
+
+  @override
+  String confirmDeleteInstallment(String itemName) {
+    return 'Are you sure you want to permanently delete \"$itemName\"? This action cannot be undone.';
+  }
+
+  @override
+  String get riskLevelSafe => 'Safe';
+
+  @override
+  String get riskLevelModerate => 'Moderate';
+
+  @override
+  String get riskLevelHigh => 'High';
+
+  @override
+  String get riskLevelCritical => 'Critical';
+
+  @override
+  String get installmentLoad => 'Load';
+
+  @override
+  String failedToUpdatePayment(String error) {
+    return 'Failed to update payment: $error';
+  }
+
+  @override
+  String failedToCancelInstallment(String error) {
+    return 'Failed to cancel installment: $error';
+  }
+
+  @override
+  String failedToDeleteInstallment(String error) {
+    return 'Failed to delete installment: $error';
+  }
 }

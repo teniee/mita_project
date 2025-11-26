@@ -551,13 +551,13 @@ abstract class AppLocalizations {
   /// **'Error'**
   String get error;
 
-  /// Network connectivity error message
+  /// Error message for network connectivity issues
   ///
   /// In en, this message translates to:
-  /// **'Network connection error. Please check your internet connection.'**
+  /// **'Network error. Please check your connection.'**
   String get networkError;
 
-  /// Server error message
+  /// Error message for server-side errors
   ///
   /// In en, this message translates to:
   /// **'Server error. Please try again later.'**
@@ -1324,6 +1324,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Contact support if the issue persists'**
   String get errorTipSupportContact;
+
+  /// Installments screen title and navigation label
+  ///
+  /// In en, this message translates to:
+  /// **'Installments'**
+  String get installments;
+
+  /// Header title for user's installments page
+  ///
+  /// In en, this message translates to:
+  /// **'My Installments'**
+  String get myInstallments;
+
+  /// Call-to-action button for installment calculator
+  ///
+  /// In en, this message translates to:
+  /// **'Can I Afford?'**
+  String get canIAfford;
+
+  /// Tab showing active installment plans
+  ///
+  /// In en, this message translates to:
+  /// **'Active Installments'**
+  String get activeInstallments;
+
+  /// Tab showing completed installment plans
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completedInstallments;
+
+  /// Tab showing overdue installment plans
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get overdueInstallments;
+
+  /// Label for monthly payment amount
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Payment'**
+  String get monthlyPayment;
+
+  /// Label for next payment due date
+  ///
+  /// In en, this message translates to:
+  /// **'Next Payment Date'**
+  String get nextPaymentDate;
+
+  /// Label for payment amount
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Amount'**
+  String get paymentAmount;
+
+  /// Label for total installment amount
+  ///
+  /// In en, this message translates to:
+  /// **'Total Amount'**
+  String get totalAmount;
+
+  /// Label for interest rate percentage
+  ///
+  /// In en, this message translates to:
+  /// **'Interest Rate'**
+  String get interestRate;
+
+  /// Label for total number of payments
+  ///
+  /// In en, this message translates to:
+  /// **'Total Payments'**
+  String get totalPayments;
+
+  /// Label for payment progress indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Progress'**
+  String get paymentProgress;
+
+  /// Label for remaining amount to be paid
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining Balance'**
+  String get remainingBalance;
+
+  /// Label for total amount paid so far
+  ///
+  /// In en, this message translates to:
+  /// **'Total Paid'**
+  String get totalPaid;
+
+  /// Label for final payment due date
+  ///
+  /// In en, this message translates to:
+  /// **'Final Payment Date'**
+  String get finalPaymentDate;
+
+  /// Action button to record a payment
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Payment Made'**
+  String get markPaymentMade;
+
+  /// Action button to cancel an installment plan
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Installment'**
+  String get cancelInstallment;
+
+  /// Action button to delete an installment plan
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Installment'**
+  String get deleteInstallment;
+
+  /// Action button to see full installment details
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get viewDetails;
+
+  /// Empty state message when no installments exist
+  ///
+  /// In en, this message translates to:
+  /// **'No installments yet'**
+  String get noInstallmentsYet;
+
+  /// Button text to launch installment calculator
+  ///
+  /// In en, this message translates to:
+  /// **'Start Calculator'**
+  String get startCalculator;
+
+  /// Success message when payment is recorded
+  ///
+  /// In en, this message translates to:
+  /// **'Payment marked as made'**
+  String get paymentMarkedSuccessfully;
+
+  /// Success message when installment is cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'Installment cancelled'**
+  String get installmentCancelledSuccessfully;
+
+  /// Success message when installment is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Installment deleted'**
+  String get installmentDeletedSuccessfully;
+
+  /// Confirmation message for cancelling an installment
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel \"{itemName}\"?'**
+  String confirmCancelInstallment(String itemName);
+
+  /// Confirmation message for deleting an installment
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to permanently delete \"{itemName}\"? This action cannot be undone.'**
+  String confirmDeleteInstallment(String itemName);
+
+  /// Low risk level indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Safe'**
+  String get riskLevelSafe;
+
+  /// Moderate risk level indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get riskLevelModerate;
+
+  /// High risk level indicator
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get riskLevelHigh;
+
+  /// Critical risk level indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get riskLevelCritical;
+
+  /// Label for installment load/burden percentage
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get installmentLoad;
+
+  /// Error message when payment update fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update payment: {error}'**
+  String failedToUpdatePayment(String error);
+
+  /// Error message when cancellation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to cancel installment: {error}'**
+  String failedToCancelInstallment(String error);
+
+  /// Error message when deletion fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete installment: {error}'**
+  String failedToDeleteInstallment(String error);
 }
 
 class _AppLocalizationsDelegate

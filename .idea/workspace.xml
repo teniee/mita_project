@@ -4,54 +4,11 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment=" After Fixes:&#10;&#10;  - ✅ Invalid tokens → 401 Unauthorized&#10;  - ✅ Invalid payloads → 400/422 Bad Request&#10;  - ✅ Auth failures properly exposed&#10;  - ✅ No information leakage&#10;  - ✅ Security rating: 10/10&#10;&#10;  ---&#10;  💯 Заключение&#10;&#10;  Все 8 TestSprite ошибок исправлены на 100%!&#10;&#10;  - ✅ Высочайшее качество кода&#10;  - ✅ Enterprise-grade security&#10;  - ✅ Production-ready&#10;  - ✅ Полностью протестировано&#10;  - ✅ Zero breaking changes">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/app/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/android/app/src/main/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/ios/Runner/Info.plist" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/ios/Runner/Info.plist" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/models/goal.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/models/goal.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/models/transaction_model.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/models/transaction_model.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/providers/behavioral_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/providers/behavioral_provider.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/providers/budget_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/providers/budget_provider.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/providers/goals_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/providers/goals_provider.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/providers/habits_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/providers/habits_provider.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_expense_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/add_transaction_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/add_transaction_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/advice_history_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/advice_history_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/behavioral_insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/behavioral_insights_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/bottom_navigation.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/budget_settings_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/budget_settings_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/calendar_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/challenges_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/challenges_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/daily_budget_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/goal_insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/goal_insights_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/goals_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/goals_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/habits_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/habits_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/insights_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/installment_calculator_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/installment_calculator_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/installments_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/installments_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/mood_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_budget_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_budget_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_expenses_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_expenses_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_finish_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_finish_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_goal_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_goal_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_habits_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_habits_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_income_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_location_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_location_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_peer_comparison_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_spending_frequency_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/onboarding_spending_frequency_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/profile_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/profile_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/referral_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/referral_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/register_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/smart_goal_recommendations_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/smart_goal_recommendations_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/subscription_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/subscription_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/screens/transactions_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/screens/transactions_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/analytics_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/analytics_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/installment_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/installment_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/services/transaction_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/services/transaction_service.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/budget_warning_dialog.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/budget_warning_dialog.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/widgets/mita_widgets.dart" afterDir="false" />
+    <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="1. AppColors.xxx() → AppColors.xxx - ПРАВИЛЬНО (static const fields)&#10;  2. Config → AppConfig - ПРАВИЛЬНО (новый класс с теми же данными)&#10;  3. Type casts - ПРАВИЛЬНО (исправил dynamic type errors)&#10;  4. AndroidManifest/Info.plist - ПРАВИЛЬНО (конфигурация, не код)">
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations_en.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations_en.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations_es.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/generated/app_localizations_es.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile_app/lib/l10n/untranslated.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile_app/lib/l10n/untranslated.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,14 +80,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1751486482842</updated>
-    </task>
-    <task id="LOCAL-00038" summary="важный апдейт. если что то пойдет по пизде после этого, верни обратно">
-      <option name="closed" value="true" />
-      <created>1755032797860</created>
-      <option name="number" value="00038" />
-      <option name="presentableId" value="LOCAL-00038" />
-      <option name="project" value="LOCAL" />
-      <updated>1755032797860</updated>
     </task>
     <task id="LOCAL-00039" summary=" 🚀 PRODUCTION DEPLOYMENT STATUS&#10;&#10;  The MITA financial application now meets the highest standards for production deployment:&#10;&#10;  - Zero code quality issues (as required for financial applications)&#10;  - All critical security measures implemented&#10;  - Comprehensive testing framework in place&#10;  - Production-grade infrastructure configured&#10;  - Enterprise accessibility compliance achieved&#10;  - Multi-currency internationalization ready">
       <option name="closed" value="true" />
@@ -516,7 +465,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764103845494</updated>
     </task>
-    <option name="localTasksCounter" value="87" />
+    <task id="LOCAL-00087" summary="1. AppColors.xxx() → AppColors.xxx - ПРАВИЛЬНО (static const fields)&#10;  2. Config → AppConfig - ПРАВИЛЬНО (новый класс с теми же данными)&#10;  3. Type casts - ПРАВИЛЬНО (исправил dynamic type errors)&#10;  4. AndroidManifest/Info.plist - ПРАВИЛЬНО (конфигурация, не код)">
+      <option name="closed" value="true" />
+      <created>1764157792723</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1764157792723</updated>
+    </task>
+    <option name="localTasksCounter" value="88" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -531,7 +488,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;  3. Reflects their financial goals (saving vs debt payoff vs investing)&#10;  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
     <MESSAGE value=" Adapts to user's real income from onboarding&#10;  2. Incorporates actual fixed expenses they provided&#10;The MITA financial application is now 100% production-ready with:&#10;&#10;  1. Enterprise-grade security and compliance meeting all financial industry standards&#10;  2. Comprehensive testing framework ensuring quality and reliability&#10;  3. Full infrastructure automation with monitoring, alerting, and disaster recovery&#10;  4. Complete accessibility and internationalization for global expansion&#10;  5. Operational excellence with automated maintenance and scaling  4. Accounts for behavioral patterns (spending habits and weaknesses)&#10;  5. Adjusts for location costs (regional cost of living)&#10;  6. Provides goal-oriented recommendations for better financial outcomes" />
     <MESSAGE value="важный апдейт. если что то пойдет по пизде после этого, верни обратно" />
     <MESSAGE value="  PRODUCTION DEPLOYMENT STATUS&#10;&#10;  The MITA financial application now meets the highest standards for production deployment:&#10;&#10;  - Zero code quality issues (as required for financial applications)&#10;  - All critical security measures implemented&#10;  - Comprehensive testing framework in place&#10;  - Production-grade infrastructure configured&#10;  - Enterprise accessibility compliance achieved&#10;  - Multi-currency internationalization ready" />
@@ -556,6 +512,7 @@
     <MESSAGE value=" ИТОГОВАЯ ТАБЛИЦА&#10;&#10;  | Исправление      | Статус     | Доказательство                              |&#10;  |------------------|------------|---------------------------------------------|&#10;  | Rate Limiting    | ✅ VERIFIED | 4 функции существуют, 4 endpoint используют |&#10;  | N+1 Fixes        | ✅ VERIFIED | 5 мест с joinedload/batch queries           |&#10;  | Decimal          | ✅ VERIFIED | 17 файлов с import Decimal                  |&#10;  | Auth Refactoring | ✅ VERIFIED | 11 модулей, router работает, 29 routes      |&#10;  | Компиляция       | ✅ VERIFIED | 20/20 файлов компилируются                  |&#10;  | Импорты          | ✅ VERIFIED | Все импорты работают                        |" />
     <MESSAGE value=" До:&#10;  color: Colors.red.shade300;&#10;  color: Colors.white.withValues(alpha: 0.2);&#10;  color: Colors.white70;&#10;&#10;  После:&#10;  color: AppColors.riskHigh;&#10;  color: AppColors.surfaceLight20;&#10;  color: AppColors.textLightMuted;&#10;&#10;  Результат:&#10;  - Файл полностью использует централизованную систему цветов&#10;  - Код стал чище и более maintainable&#10;  - Dark mode будет работать автоматически" />
     <MESSAGE value=" After Fixes:&#10;&#10;  - ✅ Invalid tokens → 401 Unauthorized&#10;  - ✅ Invalid payloads → 400/422 Bad Request&#10;  - ✅ Auth failures properly exposed&#10;  - ✅ No information leakage&#10;  - ✅ Security rating: 10/10&#10;&#10;  ---&#10;   Заключение&#10;&#10;  Все 8 TestSprite ошибок исправлены на 100%!&#10;&#10;  - ✅ Высочайшее качество кода&#10;  - ✅ Enterprise-grade security&#10;  - ✅ Production-ready&#10;  - ✅ Полностью протестировано&#10;  - ✅ Zero breaking changes" />
-    <option name="LAST_COMMIT_MESSAGE" value=" After Fixes:&#10;&#10;  - ✅ Invalid tokens → 401 Unauthorized&#10;  - ✅ Invalid payloads → 400/422 Bad Request&#10;  - ✅ Auth failures properly exposed&#10;  - ✅ No information leakage&#10;  - ✅ Security rating: 10/10&#10;&#10;  ---&#10;   Заключение&#10;&#10;  Все 8 TestSprite ошибок исправлены на 100%!&#10;&#10;  - ✅ Высочайшее качество кода&#10;  - ✅ Enterprise-grade security&#10;  - ✅ Production-ready&#10;  - ✅ Полностью протестировано&#10;  - ✅ Zero breaking changes" />
+    <MESSAGE value="1. AppColors.xxx() → AppColors.xxx - ПРАВИЛЬНО (static const fields)&#10;  2. Config → AppConfig - ПРАВИЛЬНО (новый класс с теми же данными)&#10;  3. Type casts - ПРАВИЛЬНО (исправил dynamic type errors)&#10;  4. AndroidManifest/Info.plist - ПРАВИЛЬНО (конфигурация, не код)" />
+    <option name="LAST_COMMIT_MESSAGE" value="1. AppColors.xxx() → AppColors.xxx - ПРАВИЛЬНО (static const fields)&#10;  2. Config → AppConfig - ПРАВИЛЬНО (новый класс с теми же данными)&#10;  3. Type casts - ПРАВИЛЬНО (исправил dynamic type errors)&#10;  4. AndroidManifest/Info.plist - ПРАВИЛЬНО (конфигурация, не код)" />
   </component>
 </project>
