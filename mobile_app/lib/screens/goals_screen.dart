@@ -379,7 +379,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     final hasStatistics = goalsProvider.hasStatistics;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Goals',
@@ -389,15 +389,15 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const AppColors.textPrimary,
+          labelColor: AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const AppColors.secondary,
+          indicatorColor: AppColors.secondary,
           tabs: const [
             Tab(text: 'All'),
             Tab(text: 'Active'),
@@ -422,7 +422,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                 context.read<GoalsProvider>().refresh();
               }
             },
-            backgroundColor: const AppColors.textPrimary,
+            backgroundColor: AppColors.textPrimary,
             label: const Text('AI Suggestions', style: TextStyle(color: Colors.white)),
             icon: const Icon(Icons.auto_awesome, color: AppColors.secondary),
           ),
@@ -430,7 +430,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           FloatingActionButton(
             heroTag: "goals_fab",
             onPressed: () => _showGoalForm(),
-            backgroundColor: const AppColors.secondary,
+            backgroundColor: AppColors.secondary,
             child: const Icon(Icons.add, color: Colors.black),
           ),
         ],
@@ -506,7 +506,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const AppColors.secondary, size: 24),
+        Icon(icon, color: AppColors.secondary, size: 24),
         const SizedBox(height: 4),
         Text(
           value,
@@ -573,7 +573,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             gradient: LinearGradient(
               colors: [
                 Colors.white,
-                const AppColors.background.withValues(alpha: 0.3),
+                AppColors.background.withValues(alpha: 0.3),
               ],
             ),
           ),
@@ -674,7 +674,7 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const AppColors.secondary.withValues(alpha: 0.2),
+                          color: AppColors.secondary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -794,8 +794,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   Color _getProgressColor(double progress) {
     if (progress >= 100) return Colors.green;
-    if (progress >= 70) return const AppColors.secondary;
-    return const AppColors.textPrimary;
+    if (progress >= 70) return AppColors.secondary;
+    return AppColors.textPrimary;
   }
 
   Color _getPriorityColor(String priority) {

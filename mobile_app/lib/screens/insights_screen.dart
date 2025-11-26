@@ -386,7 +386,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     }
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: _incomeTier != null
         ? IncomeTheme.createTierAppBar(
             tier: _incomeTier!,
@@ -401,7 +401,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                 color: AppColors.textPrimary,
               ),
             ),
-            backgroundColor: const AppColors.background,
+            backgroundColor: AppColors.background,
             elevation: 0,
             iconTheme: const IconThemeData(color: AppColors.textPrimary),
             centerTitle: true,
@@ -411,7 +411,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   Widget _buildLoadingState() {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
 
     return Center(
       child: Column(
@@ -432,7 +432,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   Widget _buildTabContent(BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
 
     return Column(
       children: [
@@ -537,7 +537,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary,
+                            color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -750,7 +750,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                           gradient: LinearGradient(
                             colors: [
                               AppColors.textPrimary.withValues(alpha: 0.7),
-                              const AppColors.textPrimary
+                              AppColors.textPrimary
                             ],
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
@@ -816,7 +816,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const AppColors.textPrimary,
+            AppColors.textPrimary,
             AppColors.textPrimary.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
@@ -1539,7 +1539,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
     final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const AppColors.textPrimary;
+    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2012,14 +2012,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const AppColors.accent.withValues(alpha: 0.1),
-            const AppColors.accent.withValues(alpha: 0.05),
+            AppColors.accent.withValues(alpha: 0.1),
+            AppColors.accent.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const AppColors.accent.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2029,7 +2029,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const AppColors.accent.withValues(alpha: 0.2),
+                  color: AppColors.accent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(

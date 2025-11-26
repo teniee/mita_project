@@ -178,9 +178,9 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
@@ -258,7 +258,7 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 child: ElevatedButton(
                   onPressed: _submitFrequencies,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const AppColors.textPrimary,
+                    backgroundColor: AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

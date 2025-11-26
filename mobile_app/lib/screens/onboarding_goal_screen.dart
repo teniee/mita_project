@@ -56,9 +56,9 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
@@ -98,11 +98,11 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                       onTap: () => _toggleGoal(goal['id']),
                       child: Card(
                         elevation: isSelected ? 4 : 1,
-                        color: isSelected ? const AppColors.secondary : Colors.white,
+                        color: isSelected ? AppColors.secondary : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: isSelected ? const AppColors.textPrimary : Colors.transparent,
+                            color: isSelected ? AppColors.textPrimary : Colors.transparent,
                             width: 1.5,
                           ),
                         ),
@@ -110,7 +110,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                           child: Row(
                             children: [
-                              Icon(goal['icon'], color: const AppColors.textPrimary),
+                              Icon(goal['icon'], color: AppColors.textPrimary),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Text(
@@ -165,7 +165,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                 child: ElevatedButton(
                   onPressed: selectedGoals.isNotEmpty ? _submitGoals : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const AppColors.textPrimary,
+                    backgroundColor: AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

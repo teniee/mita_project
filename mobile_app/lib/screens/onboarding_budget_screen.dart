@@ -86,7 +86,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
     final categoryColors = IncomeTheme.getBudgetCategoryColors(_incomeTier);
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: IncomeTheme.createTierAppBar(
         tier: _incomeTier,
         title: 'Budget Setup',

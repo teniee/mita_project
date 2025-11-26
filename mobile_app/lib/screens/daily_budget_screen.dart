@@ -106,7 +106,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
               child: const Text('Budget adapted based on your spending patterns!'),
             ),
             duration: const Duration(seconds: 3),
-            backgroundColor: const AppColors.successLight,
+            backgroundColor: AppColors.successLight,
           ),
         );
       } else {
@@ -123,12 +123,12 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     switch (status.toLowerCase()) {
       case 'normal':
       case 'good':
-        return const AppColors.successLight;
+        return AppColors.successLight;
       case 'warning':
-        return const AppColors.secondary;
+        return AppColors.secondary;
       case 'exceeded':
       case 'over':
-        return const AppColors.danger;
+        return AppColors.danger;
       default:
         return Colors.grey;
     }
@@ -395,7 +395,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         : const Icon(Icons.balance, size: 18),
                       label: Text(isRedistributing ? 'Redistributing...' : 'Redistribute'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.accent,
+                        backgroundColor: AppColors.accent,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -416,7 +416,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                       icon: const Icon(Icons.auto_fix_high, size: 18),
                       label: const Text('Auto Adapt'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.successLight,
+                        backgroundColor: AppColors.successLight,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -469,9 +469,9 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const AppColors.background,
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const AppColors.secondary, width: 1),
+                  border: Border.all(color: AppColors.secondary, width: 1),
                 ),
                 child: Row(
                   children: [
@@ -563,7 +563,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     final budgets = budgetProvider.dailyBudgets;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Semantics(
           header: true,
@@ -577,7 +577,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
             ),
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,

@@ -336,7 +336,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
         ),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.textPrimary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),

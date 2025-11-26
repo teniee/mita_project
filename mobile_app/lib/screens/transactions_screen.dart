@@ -78,34 +78,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       case 'food':
       case 'dining':
       case 'groceries':
-        return const AppColors.success;
+        return AppColors.success;
       case 'transportation':
       case 'gas':
       case 'public_transport':
-        return const AppColors.info;
+        return AppColors.info;
       case 'entertainment':
-        return const AppColors.categoryEntertainment;
+        return AppColors.categoryEntertainment;
       case 'shopping':
       case 'clothing':
-        return const AppColors.warning;
+        return AppColors.warning;
       case 'healthcare':
       case 'insurance':
-        return const AppColors.error;
+        return AppColors.error;
       case 'utilities':
       case 'rent':
       case 'mortgage':
-        return const AppColors.categoryUtilities;
+        return AppColors.categoryUtilities;
       case 'education':
       case 'childcare':
-        return const AppColors.categoryEducation;
+        return AppColors.categoryEducation;
       case 'travel':
-        return const AppColors.chart7;
+        return AppColors.chart7;
       case 'subscriptions':
-        return const AppColors.success;
+        return AppColors.success;
       case 'pets':
-        return const AppColors.warningDark;
+        return AppColors.warningDark;
       default:
-        return const AppColors.categoryOther;
+        return AppColors.categoryOther;
     }
   }
 
@@ -153,7 +153,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final isLoading = transactionProvider.isLoading;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Transactions',
@@ -163,7 +163,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
@@ -390,7 +390,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           );
           if (result == true) context.read<TransactionProvider>().refresh();
         },
-        backgroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.textPrimary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

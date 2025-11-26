@@ -139,7 +139,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -381,12 +381,12 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const AppColors.textPrimary,
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
                         ),
                       ),
-                      backgroundColor: isSelected ? const AppColors.textPrimary : Colors.white,
+                      backgroundColor: isSelected ? AppColors.textPrimary : Colors.white,
                       side: BorderSide(
-                        color: isSelected ? const AppColors.textPrimary : Colors.grey.shade300,
+                        color: isSelected ? AppColors.textPrimary : Colors.grey.shade300,
                       ),
                       onPressed: () => _selectState(state['code']!),
                     );
@@ -443,7 +443,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             )
                           : null,
                       selected: _selectedState == state['code'],
-                      selectedTileColor: const AppColors.textPrimary.withValues(alpha: 0.1),
+                      selectedTileColor: AppColors.textPrimary.withValues(alpha: 0.1),
                       onTap: () => _selectState(state['code']!),
                     );
                   },
@@ -460,7 +460,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       ? _continueWithLocation
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const AppColors.textPrimary,
+                    backgroundColor: AppColors.textPrimary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),

@@ -31,8 +31,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Invite Friends'),
-        backgroundColor: const AppColors.background,
-        foregroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
       body: Center(

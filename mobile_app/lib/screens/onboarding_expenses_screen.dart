@@ -60,11 +60,11 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
   Widget _buildExpenseCard(PredefinedExpense expense) {
     return Card(
       elevation: expense.isSelected ? 3 : 1,
-      color: expense.isSelected ? const AppColors.secondary.withOpacity(0.3) : Colors.white,
+      color: expense.isSelected ? AppColors.secondary.withOpacity(0.3) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: expense.isSelected ? const AppColors.textPrimary : Colors.grey.shade300,
+          color: expense.isSelected ? AppColors.textPrimary : Colors.grey.shade300,
           width: expense.isSelected ? 2 : 1,
         ),
       ),
@@ -78,12 +78,12 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const AppColors.textPrimary.withOpacity(0.1),
+                    color: AppColors.textPrimary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     expense.icon,
-                    color: const AppColors.textPrimary,
+                    color: AppColors.textPrimary,
                     size: 24,
                   ),
                 ),
@@ -102,7 +102,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                 ),
                 Checkbox(
                   value: expense.isSelected,
-                  activeColor: const AppColors.textPrimary,
+                  activeColor: AppColors.textPrimary,
                   onChanged: (value) {
                     setState(() {
                       expense.isSelected = value ?? false;
@@ -161,9 +161,9 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     final selectedCount = expenses.where((e) => e.isSelected).length;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
@@ -209,7 +209,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const AppColors.textPrimary.withOpacity(0.1),
+                            color: AppColors.textPrimary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -235,7 +235,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const AppColors.textPrimary,
+                            backgroundColor: AppColors.textPrimary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),

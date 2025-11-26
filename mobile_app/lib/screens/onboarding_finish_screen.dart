@@ -244,7 +244,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       body: Center(
         child: _loading
             ? Column(
@@ -361,7 +361,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                 }
                               : null, // Disabled when rate limited
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const AppColors.textPrimary,
+                            backgroundColor: AppColors.textPrimary,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: Colors.grey.shade300,
                             disabledForegroundColor: Colors.grey.shade600,

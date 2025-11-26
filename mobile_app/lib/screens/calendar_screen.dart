@@ -670,8 +670,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
-              const AppColors.textPrimary,
-              const AppColors.textPrimary.withValues(alpha: 0.8),
+              AppColors.textPrimary,
+              AppColors.textPrimary.withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

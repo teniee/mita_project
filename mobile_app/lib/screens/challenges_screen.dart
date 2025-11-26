@@ -97,7 +97,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     final isLoading = challengesProvider.isLoading || challengesProvider.state == ChallengesState.loading;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Challenges',
@@ -107,15 +107,15 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const AppColors.textPrimary,
+          labelColor: AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const AppColors.secondary,
+          indicatorColor: AppColors.secondary,
           labelStyle: const TextStyle(
             fontFamily: AppTypography.fontBody,
             fontWeight: FontWeight.w600,
@@ -569,8 +569,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               child: ElevatedButton(
                 onPressed: () => _joinChallenge(challenge['id']),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const AppColors.secondary,
-                  foregroundColor: const AppColors.textPrimary,
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -595,7 +595,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: const AppColors.textPrimary, size: 20),
+        Icon(icon, color: AppColors.textPrimary, size: 20),
         const SizedBox(height: 4),
         Text(
           value,
@@ -745,7 +745,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Active Challenges',
                 '${gamificationStats['active_challenges'] ?? 0}',
                 Icons.emoji_events,
-                const AppColors.secondary,
+                AppColors.secondary,
               ),
             ),
             const SizedBox(width: 12),
@@ -754,7 +754,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Current Streak',
                 '${gamificationStats['current_streak'] ?? 0} days',
                 Icons.local_fire_department,
-                const AppColors.warningDark,
+                AppColors.warningDark,
               ),
             ),
             const SizedBox(width: 12),
@@ -763,7 +763,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 'Completed',
                 '${gamificationStats['completed_challenges'] ?? 0}',
                 Icons.check_circle,
-                const AppColors.success,
+                AppColors.success,
               ),
             ),
           ],
@@ -956,7 +956,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   style: TextStyle(
                     fontFamily: AppTypography.fontHeading,
                     fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w600,
-                    color: isCurrentUser ? const AppColors.secondary : const AppColors.textPrimary,
+                    color: isCurrentUser ? AppColors.secondary : AppColors.textPrimary,
                   ),
                 ),
                 subtitle: Text(
@@ -985,11 +985,11 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Color _getDifficultyColor(String? difficulty) {
     switch (difficulty?.toLowerCase()) {
       case 'easy':
-        return const AppColors.success;
+        return AppColors.success;
       case 'medium':
-        return const AppColors.warning;
+        return AppColors.warning;
       case 'hard':
-        return const AppColors.warningDark;
+        return AppColors.warningDark;
       default:
         return Colors.grey;
     }

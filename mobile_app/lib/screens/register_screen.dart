@@ -178,11 +178,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Register'),
-        backgroundColor: const AppColors.background,
-        foregroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
       body: SafeArea(
@@ -205,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const AppColors.textPrimary.withValues(alpha: 0.1),
+                          color: AppColors.textPrimary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
@@ -261,8 +261,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const AppColors.secondary,
-                            foregroundColor: const AppColors.textPrimary,
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: AppColors.textPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),

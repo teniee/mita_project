@@ -381,7 +381,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Daily Mood Check-in',
@@ -391,7 +391,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             color: AppColors.primary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primary),
         centerTitle: true,

@@ -342,12 +342,12 @@ class BudgetProvider extends ChangeNotifier {
   /// Convert behavioral calendar data format to standard calendar format
   List<Map<String, dynamic>> _convertBehavioralCalendarData(Map<String, dynamic> behavioralData) {
     if (behavioralData['calendar_days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['calendar_days']);
+      return List<Map<String, dynamic>>.from(behavioralData['calendar_days'] as Iterable);
     }
 
     // If the data is already in the correct format
     if (behavioralData['days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['days']);
+      return List<Map<String, dynamic>>.from(behavioralData['days'] as Iterable);
     }
 
     // Return empty list if format is unknown

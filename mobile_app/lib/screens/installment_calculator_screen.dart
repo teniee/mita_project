@@ -242,13 +242,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
   Color _getRiskColor(RiskLevel risk) {
     switch (risk) {
       case RiskLevel.green:
-        return const AppColors.successDark; // Colors.green[700]
+        return AppColors.successDark; // Colors.green[700]
       case RiskLevel.yellow:
-        return const AppColors.warning; // Colors.amber[700]
+        return AppColors.warning; // Colors.amber[700]
       case RiskLevel.orange:
-        return const AppColors.warningDark; // Colors.orange[800]
+        return AppColors.warningDark; // Colors.orange[800]
       case RiskLevel.red:
-        return const AppColors.errorDark; // Colors.red[700]
+        return AppColors.errorDark; // Colors.red[700]
     }
   }
 
@@ -284,7 +284,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     final provider = context.watch<InstallmentsProvider>();
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Can I Afford This?',
@@ -294,7 +294,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
@@ -420,7 +420,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 child: Icon(Icons.info_outline, color: Colors.grey[600]),
               ),
               filled: true,
-              fillColor: const AppColors.background,
+              fillColor: AppColors.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -461,7 +461,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 child: Icon(Icons.info_outline, color: Colors.grey[600]),
               ),
               filled: true,
-              fillColor: const AppColors.background,
+              fillColor: AppColors.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -480,7 +480,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 value: category,
                 child: Row(
                   children: [
-                    Icon(_getCategoryIcon(category), size: 20, color: const AppColors.textPrimary),
+                    Icon(_getCategoryIcon(category), size: 20, color: AppColors.textPrimary),
                     const SizedBox(width: 8),
                     Text(category.displayName, style: const TextStyle(fontFamily: AppTypography.fontBody)),
                   ],
@@ -529,7 +529,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : const AppColors.textPrimary,
+                        color: isSelected ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                     selected: isSelected,
@@ -538,10 +538,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         _selectedPayments = payments;
                       });
                     },
-                    selectedColor: const AppColors.textPrimary,
-                    backgroundColor: const AppColors.background,
+                    selectedColor: AppColors.textPrimary,
+                    backgroundColor: AppColors.background,
                     side: BorderSide(
-                      color: isSelected ? const AppColors.textPrimary : Colors.grey[300]!,
+                      color: isSelected ? AppColors.textPrimary : Colors.grey[300]!,
                       width: isSelected ? 2 : 1,
                     ),
                     elevation: isSelected ? 2 : 0,
@@ -586,7 +586,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const AppColors.textPrimary,
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
                         ),
                       ),
                       selected: isSelected,
@@ -596,10 +596,10 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                           _interestRateController.text = rate.toStringAsFixed(1);
                         });
                       },
-                      selectedColor: const AppColors.secondary,
-                      backgroundColor: const AppColors.background,
+                      selectedColor: AppColors.secondary,
+                      backgroundColor: AppColors.background,
                       side: BorderSide(
-                        color: isSelected ? const AppColors.secondary : Colors.grey[300]!,
+                        color: isSelected ? AppColors.secondary : Colors.grey[300]!,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -619,7 +619,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     color: AppColors.textPrimary,
                   ),
                   filled: true,
-                  fillColor: const AppColors.background,
+                  fillColor: AppColors.background,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -682,7 +682,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   child: Icon(Icons.info_outline, color: Colors.grey[600]),
                 ),
                 filled: true,
-                fillColor: const AppColors.background,
+                fillColor: AppColors.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -720,7 +720,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   child: Icon(Icons.info_outline, color: Colors.grey[600]),
                 ),
                 filled: true,
-                fillColor: const AppColors.background,
+                fillColor: AppColors.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -752,7 +752,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const AppColors.textPrimary.withValues(alpha: 0.3),
+            color: AppColors.textPrimary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -761,7 +761,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
       child: ElevatedButton(
         onPressed: _isLoading ? null : _calculateInstallment,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const AppColors.textPrimary,
+          backgroundColor: AppColors.textPrimary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -917,7 +917,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           _buildDetailRow(
             'Total Interest',
             '\$${result.totalInterest.toStringAsFixed(2)}',
-            valueColor: result.totalInterest > 0 ? const AppColors.error : null,
+            valueColor: result.totalInterest > 0 ? AppColors.error : null,
           ),
           const SizedBox(height: 8),
           _buildDetailRow(
@@ -966,7 +966,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const AppColors.background,
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.grey[300]!),
                     ),
@@ -993,7 +993,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                                 color: AppColors.textPrimary,
                               ),
                             ),
-                            if (interest > 0)
+                            if ((interest > 0) == true)
                               Text(
                                 'Interest: \$${interest.toStringAsFixed(2)}',
                                 style: TextStyle(
@@ -1043,8 +1043,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               'Remaining Monthly Funds',
               '\$${result.remainingMonthlyFunds!.toStringAsFixed(2)}',
               valueColor: result.remainingMonthlyFunds! < 0
-                  ? const AppColors.error
-                  : const AppColors.success,
+                  ? AppColors.error
+                  : AppColors.success,
             ),
           ],
           if (result.balanceAfterFirstPayment != null) ...[
@@ -1053,7 +1053,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               'Balance After First Payment',
               '\$${result.balanceAfterFirstPayment!.toStringAsFixed(2)}',
               valueColor: result.balanceAfterFirstPayment! < 0
-                  ? const AppColors.error
+                  ? AppColors.error
                   : null,
             ),
           ],
@@ -1145,7 +1145,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const AppColors.secondary.withValues(alpha: 0.3),
+            color: AppColors.secondary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1201,7 +1201,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const AppColors.info.withValues(alpha: 0.1),
+              color: AppColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -1230,7 +1230,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const AppColors.success.withValues(alpha: 0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1254,7 +1254,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const AppColors.info.withValues(alpha: 0.1),
+                color: AppColors.info.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1305,7 +1305,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const AppColors.warning.withValues(alpha: 0.2),
+                        color: AppColors.warning.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1326,7 +1326,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const AppColors.warning.withValues(alpha: 0.1),
+                      color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -1374,7 +1374,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const AppColors.success.withValues(alpha: 0.2),
+                        color: AppColors.success.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1394,7 +1394,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const AppColors.success.withValues(alpha: 0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -1460,7 +1460,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const AppColors.success.withValues(alpha: 0.3),
+                  color: AppColors.success.withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -1478,7 +1478,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const AppColors.success,
+                backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -1543,7 +1543,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const AppColors.textPrimary,
+                  foregroundColor: AppColors.textPrimary,
                   side: const BorderSide(color: AppColors.textPrimary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -1580,7 +1580,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   }
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const AppColors.textPrimary,
+                  foregroundColor: AppColors.textPrimary,
                   side: const BorderSide(color: AppColors.textPrimary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -1628,7 +1628,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         children: [
           Row(
             children: [
-              Icon(icon, color: const AppColors.textPrimary, size: 24),
+              Icon(icon, color: AppColors.textPrimary, size: 24),
               const SizedBox(width: 8),
               Text(
                 title,
@@ -1663,7 +1663,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             fontFamily: AppTypography.fontBody,
             fontSize: isHighlight ? 16 : 14,
             fontWeight: isHighlight ? FontWeight.w600 : FontWeight.w500,
-            color: const AppColors.textPrimary,
+            color: AppColors.textPrimary,
           ),
         ),
         Text(
@@ -1672,7 +1672,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             fontFamily: AppTypography.fontBody,
             fontSize: isHighlight ? 20 : 16,
             fontWeight: FontWeight.bold,
-            color: valueColor ?? const AppColors.textPrimary,
+            color: valueColor ?? AppColors.textPrimary,
           ),
         ),
       ],
@@ -1684,13 +1684,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     Color progressColor;
 
     if (percentage <= 30) {
-      progressColor = const AppColors.success;
+      progressColor = AppColors.success;
     } else if (percentage <= 50) {
-      progressColor = const AppColors.secondary;
+      progressColor = AppColors.secondary;
     } else if (percentage <= 70) {
-      progressColor = const AppColors.warning;
+      progressColor = AppColors.warning;
     } else {
-      progressColor = const AppColors.error;
+      progressColor = AppColors.error;
     }
 
     return Column(
@@ -1760,14 +1760,14 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     switch (severity.toLowerCase()) {
       case 'high':
       case 'critical':
-        return const AppColors.error;
+        return AppColors.error;
       case 'medium':
       case 'moderate':
-        return const AppColors.warning;
+        return AppColors.warning;
       case 'low':
-        return const AppColors.secondary;
+        return AppColors.secondary;
       default:
-        return const AppColors.info;
+        return AppColors.info;
     }
   }
 

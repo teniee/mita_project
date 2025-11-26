@@ -163,7 +163,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final provider = context.watch<TransactionProvider>();
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           widget.transaction == null ? 'Add Transaction' : 'Edit Transaction',
@@ -173,7 +173,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
@@ -310,7 +310,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 child: ElevatedButton(
                   onPressed: provider.isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const AppColors.textPrimary,
+                    backgroundColor: AppColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

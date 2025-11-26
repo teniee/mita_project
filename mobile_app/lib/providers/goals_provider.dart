@@ -111,7 +111,7 @@ class GoalsProvider extends ChangeNotifier {
         category: _selectedCategory,
       );
 
-      _goals = data.map((json) => Goal.fromJson(json)).toList();
+      _goals = data.map((json) => Goal.fromJson(json as Map<String, dynamic>)).toList();
       logInfo('Loaded ${_goals.length} goals', tag: 'GOALS_PROVIDER');
       notifyListeners();
     } catch (e) {
@@ -151,13 +151,13 @@ class GoalsProvider extends ChangeNotifier {
       ]);
 
       _recommendations = List<Map<String, dynamic>>.from(
-        results[0]['recommendations'] ?? []
+        results[0]['recommendations'] as Iterable? ?? []
       );
       _opportunities = List<Map<String, dynamic>>.from(
-        results[1]['opportunities'] ?? []
+        results[1]['opportunities'] as Iterable? ?? []
       );
       _adjustments = List<Map<String, dynamic>>.from(
-        results[2]['adjustments'] ?? []
+        results[2]['adjustments'] as Iterable? ?? []
       );
 
       logInfo('Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments', tag: 'GOALS_PROVIDER');

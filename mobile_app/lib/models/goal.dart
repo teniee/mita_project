@@ -49,12 +49,12 @@ class Goal {
       status: json['status'] as String? ?? 'active',
       progress: _parseDouble(json['progress'] ?? 0),
       targetDate: json['target_date'] != null
-          ? DateTime.parse(json['target_date'])
-          : (json['deadline'] != null ? DateTime.parse(json['deadline']) : null),
-      createdAt: DateTime.parse(json['created_at']),
-      lastUpdated: DateTime.parse(json['last_updated']),
+          ? DateTime.parse(json['target_date'] as String)
+          : (json['deadline'] != null ? DateTime.parse(json['deadline'] as String) : null),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      lastUpdated: DateTime.parse(json['last_updated'] as String),
       completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'])
+          ? DateTime.parse(json['completed_at'] as String)
           : null,
       priority: json['priority'] as String? ?? 'medium',
     );

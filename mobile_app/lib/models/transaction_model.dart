@@ -41,7 +41,7 @@ class TransactionModel {
       id: json['id'] as String,
       category: json['category'] as String,
       amount: (json['amount'] is String)
-          ? double.parse(json['amount'])
+          ? double.parse(json['amount'] as String)
           : (json['amount'] as num).toDouble(),
       currency: json['currency'] as String? ?? 'USD',
       description: json['description'] as String?,

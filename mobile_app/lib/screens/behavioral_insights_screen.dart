@@ -43,7 +43,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       behavioralProvider.state == BehavioralState.loading;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Behavioral Insights',
@@ -53,15 +53,15 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const AppColors.textPrimary,
+          labelColor: AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const AppColors.secondary,
+          indicatorColor: AppColors.secondary,
           labelStyle: const TextStyle(
             fontFamily: AppTypography.fontBody,
             fontWeight: FontWeight.w600,
@@ -126,14 +126,14 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 '${((analysis['weekend_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your spending happens on weekends',
                 Icons.weekend,
-                const AppColors.categoryEntertainment),
+                AppColors.categoryEntertainment),
               const SizedBox(height: 12),
 
               _buildAnalysisCard('Food Focused',
                 '${((analysis['food_spending_ratio'] ?? 0.0) * 100).toInt()}%',
                 'of your budget goes to food',
                 Icons.restaurant,
-                const AppColors.success),
+                AppColors.success),
               const SizedBox(height: 24),
             ],
 
@@ -395,7 +395,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Key Traits', Icons.psychology),
               const SizedBox(height: 12),
               ...(insights['key_traits'] as List).map((trait) =>
-                  _buildInfoTile(trait.toString(), Icons.check_circle, const AppColors.success)),
+                  _buildInfoTile(trait.toString(), Icons.check_circle, AppColors.success)),
               const SizedBox(height: 24),
             ],
 
@@ -404,7 +404,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Your Strengths', Icons.star),
               const SizedBox(height: 12),
               ...(insights['strengths'] as List).map((strength) =>
-                  _buildInfoTile(strength.toString(), Icons.star, const AppColors.secondary)),
+                  _buildInfoTile(strength.toString(), Icons.star, AppColors.secondary)),
               const SizedBox(height: 24),
             ],
 
@@ -413,7 +413,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Areas for Improvement', Icons.trending_up),
               const SizedBox(height: 12),
               ...(insights['improvement_areas'] as List).map((area) =>
-                  _buildInfoTile(area.toString(), Icons.trending_up, const AppColors.warning)),
+                  _buildInfoTile(area.toString(), Icons.trending_up, AppColors.warning)),
               const SizedBox(height: 24),
             ],
 
@@ -433,7 +433,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const AppColors.textPrimary, size: 24),
+        Icon(icon, color: AppColors.textPrimary, size: 24),
         const SizedBox(width: 8),
         Text(
           title,
@@ -454,19 +454,19 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
     switch (pattern) {
       case 'weekend_spender':
-        tagColor = const AppColors.categoryEntertainment;
+        tagColor = AppColors.categoryEntertainment;
         displayText = 'Weekend Spender';
         break;
       case 'food_dominated':
-        tagColor = const AppColors.success;
+        tagColor = AppColors.success;
         displayText = 'Food Focused';
         break;
       case 'emotional_spending':
-        tagColor = const AppColors.warningDark;
+        tagColor = AppColors.warningDark;
         displayText = 'Emotional Spender';
         break;
       default:
-        tagColor = const AppColors.categoryUtilities;
+        tagColor = AppColors.categoryUtilities;
         displayText = pattern.replaceAll('_', ' ').toUpperCase();
     }
 
@@ -563,7 +563,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           Icon(
             icon,
             size: 20,
-            color: color ?? const AppColors.textPrimary,
+            color: color ?? AppColors.textPrimary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -616,13 +616,13 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     Color impactColor;
     switch (risk['impact']) {
       case 'high':
-        impactColor = const AppColors.warningDark;
+        impactColor = AppColors.warningDark;
         break;
       case 'medium':
-        impactColor = const AppColors.warning;
+        impactColor = AppColors.warning;
         break;
       default:
-        impactColor = const AppColors.success;
+        impactColor = AppColors.success;
     }
 
     return Card(
@@ -680,11 +680,11 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
     Color severityColor;
     if (anomalyScore >= 0.8) {
-      severityColor = const AppColors.warningDark;
+      severityColor = AppColors.warningDark;
     } else if (anomalyScore >= 0.6) {
-      severityColor = const AppColors.warning;
+      severityColor = AppColors.warning;
     } else {
-      severityColor = const AppColors.secondary;
+      severityColor = AppColors.secondary;
     }
 
     return Card(
@@ -930,7 +930,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Improvements', Icons.star),
               const SizedBox(height: 12),
               ...(behavioralProgress['improvements'] as List).map((improvement) =>
-                  _buildInfoTile(improvement.toString(), Icons.check_circle, const AppColors.success)),
+                  _buildInfoTile(improvement.toString(), Icons.check_circle, AppColors.success)),
             ],
           ],
         ),
@@ -1052,7 +1052,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const AppColors.success.withValues(alpha: 0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.analytics, color: AppColors.success, size: 24),

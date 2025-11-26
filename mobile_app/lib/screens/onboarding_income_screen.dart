@@ -209,12 +209,12 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
   Widget build(BuildContext context) {
     final primaryColor = _currentTier != null 
         ? _incomeService.getIncomeTierPrimaryColor(_currentTier!)
-        : const AppColors.textPrimary;
+        : AppColors.textPrimary;
     
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),

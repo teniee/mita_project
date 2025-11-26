@@ -28,17 +28,17 @@ class Habit {
 
   factory Habit.fromJson(Map<String, dynamic> json) {
     return Habit(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      targetFrequency: json['target_frequency'] ?? 'daily',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      id: json['id'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      targetFrequency: json['target_frequency'] as String? ?? 'daily',
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
       completedDates: (json['completed_dates'] as List<dynamic>? ?? [])
           .map((date) => DateTime.tryParse(date.toString()) ?? DateTime.now())
           .toList(),
-      currentStreak: json['current_streak'] ?? 0,
-      longestStreak: json['longest_streak'] ?? 0,
-      completionRate: (json['completion_rate'] ?? 0.0).toDouble(),
+      currentStreak: json['current_streak'] as int? ?? 0,
+      longestStreak: json['longest_streak'] as int? ?? 0,
+      completionRate: (json['completion_rate'] as num? ?? 0.0).toDouble(),
     );
   }
 
@@ -122,7 +122,7 @@ class HabitsProvider extends ChangeNotifier {
       _errorMessage = null;
 
       final data = await _apiService.getHabits();
-      _habits = data.map((json) => Habit.fromJson(json)).toList();
+      _habits = data.map((json) => Habit.fromJson(json as Map<String, dynamic>)).toList();
 
       logInfo('Loaded ${_habits.length} habits', tag: 'HABITS_PROVIDER');
 

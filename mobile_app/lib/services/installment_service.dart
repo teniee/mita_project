@@ -41,7 +41,7 @@ class InstallmentService {
       final errorData = json.decode(response.body);
       if (errorData is Map) {
         // RFC7807 Problem Details
-        errorMessage = errorData['detail'] ?? errorData['message'] ?? errorData['title'] ?? 'Unknown error';
+        errorMessage = (errorData['detail'] ?? errorData['message'] ?? errorData['title'] ?? 'Unknown error') as String;
 
         // Log structured error
         logError('Installment API Error: $operation',
@@ -145,7 +145,7 @@ class InstallmentService {
       }, 'calculateInstallmentRisk');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return InstallmentCalculatorOutput.fromJson(data);
       } else {
         _handleHttpError(response, 'calculateInstallmentRisk');
@@ -179,7 +179,7 @@ class InstallmentService {
       }, 'createFinancialProfile');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return UserFinancialProfile.fromJson(data);
       } else {
         _handleHttpError(response, 'createFinancialProfile');
@@ -210,7 +210,7 @@ class InstallmentService {
       }, 'getFinancialProfile');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return UserFinancialProfile.fromJson(data);
       } else if (response.statusCode == 404) {
         // Profile doesn't exist yet, return null
@@ -252,7 +252,7 @@ class InstallmentService {
       }, 'createInstallment');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return Installment.fromJson(data);
       } else {
         _handleHttpError(response, 'createInstallment');
@@ -291,7 +291,7 @@ class InstallmentService {
       }, 'getInstallments');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return InstallmentsSummary.fromJson(data);
       } else {
         _handleHttpError(response, 'getInstallments');
@@ -325,7 +325,7 @@ class InstallmentService {
       }, 'getInstallment');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return Installment.fromJson(data);
       } else if (response.statusCode == 404) {
         throw InstallmentServiceException('Installment not found', 404);
@@ -368,7 +368,7 @@ class InstallmentService {
       }, 'updateInstallment');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return Installment.fromJson(data);
       } else if (response.statusCode == 404) {
         throw InstallmentServiceException('Installment not found', 404);
@@ -472,7 +472,7 @@ class InstallmentService {
       }, 'getAchievements');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
         return InstallmentAchievement.fromJson(data);
       } else {
         _handleHttpError(response, 'getAchievements');

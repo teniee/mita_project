@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config.dart';
+import '../config_clean.dart';
 import '../models/transaction_model.dart';
-import 'auth_service.dart';
+import 'api_service.dart';
 import 'logging_service.dart';
 
 /// Transaction Service
 /// Handles all transaction-related API calls
 class TransactionService {
-  final AuthService _authService = AuthService();
+  final ApiService _apiService = ApiService();
 
   /// Get all transactions with optional filters
   Future<List<TransactionModel>> getTransactions({
@@ -19,7 +19,7 @@ class TransactionService {
     String? category,
   }) async {
     try {
-      final token = await _authService.getToken();
+      final token = await _apiService.getToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
@@ -40,7 +40,7 @@ class TransactionService {
         queryParams['category'] = category;
       }
 
-      final uri = Uri.parse('${Config.apiUrl}/transactions')
+      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(
@@ -58,14 +58,14 @@ class TransactionService {
         List<dynamic> transactionList;
         if (data is Map && data.containsKey('data')) {
           if (data['data'] is List) {
-            transactionList = data['data'];
+            transactionList = data['data'] as List<dynamic>;
           } else if (data['data'] is Map && data['data']['transactions'] != null) {
-            transactionList = data['data']['transactions'];
+            transactionList = data['data']['transactions'] as List<dynamic>;
           } else {
             transactionList = [];
           }
         } else if (data is List) {
-          transactionList = data;
+          transactionList = data as List<dynamic>;
         } else {
           transactionList = [];
         }
@@ -87,13 +87,13 @@ class TransactionService {
   /// Get a single transaction by ID
   Future<TransactionModel> getTransaction(String transactionId) async {
     try {
-      final token = await _authService.getToken();
+      final token = await _apiService.getToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
 
       final response = await http.get(
-        Uri.parse('${Config.apiUrl}/transactions/$transactionId'),
+        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ class TransactionService {
             ? data['data']
             : data;
 
-        return TransactionModel.fromJson(transactionData);
+        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw Exception('Transaction not found');
       } else if (response.statusCode == 401) {
@@ -125,13 +125,13 @@ class TransactionService {
   /// Create a new transaction
   Future<TransactionModel> createTransaction(TransactionInput input) async {
     try {
-      final token = await _authService.getToken();
+      final token = await _apiService.getToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
 
       final response = await http.post(
-        Uri.parse('${Config.apiUrl}/transactions'),
+        Uri.parse('${AppConfig.fullApiUrl}/transactions'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ class TransactionService {
             ? data['data']
             : data;
 
-        return TransactionModel.fromJson(transactionData);
+        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - please log in again');
       } else if (response.statusCode == 400) {
@@ -168,13 +168,13 @@ class TransactionService {
     TransactionInput input,
   ) async {
     try {
-      final token = await _authService.getToken();
+      final token = await _apiService.getToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
 
       final response = await http.put(
-        Uri.parse('${Config.apiUrl}/transactions/$transactionId'),
+        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -190,7 +190,7 @@ class TransactionService {
             ? data['data']
             : data;
 
-        return TransactionModel.fromJson(transactionData);
+        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw Exception('Transaction not found');
       } else if (response.statusCode == 401) {
@@ -210,13 +210,13 @@ class TransactionService {
   /// Delete a transaction
   Future<bool> deleteTransaction(String transactionId) async {
     try {
-      final token = await _authService.getToken();
+      final token = await _apiService.getToken();
       if (token == null) {
         throw Exception('Not authenticated');
       }
 
       final response = await http.delete(
-        Uri.parse('${Config.apiUrl}/transactions/$transactionId'),
+        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

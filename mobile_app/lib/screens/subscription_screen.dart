@@ -119,8 +119,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Go Premium'),
-        backgroundColor: const AppColors.background,
-        foregroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
       body: StreamBuilder<bool>(
@@ -159,7 +159,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           isPremium ? 'Premium Active' : 'Free Plan',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: const AppColors.primary,
+                            color: AppColors.primary,
                           ),
                         ),
                         if (_subscriptionInfo != null && isPremium) ...[
@@ -200,7 +200,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ElevatedButton(
                     onPressed: _isProcessing ? null : _buyPremium,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const AppColors.primary,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

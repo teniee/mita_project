@@ -49,7 +49,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
     final healthData = goalsProvider.getGoalHealthData(widget.goal.id);
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Goal Insights',
@@ -59,15 +59,15 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const AppColors.textPrimary,
+          labelColor: AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: const AppColors.secondary,
+          indicatorColor: AppColors.secondary,
           tabs: const [
             Tab(text: 'Health', icon: Icon(Icons.favorite)),
             Tab(text: 'Insights', icon: Icon(Icons.lightbulb)),
@@ -109,9 +109,9 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
   }
 
   Widget _buildHealthTab(Map<String, dynamic> healthData) {
-    final healthScore = healthData['health_score'] ?? 0;
-    final isOnTrack = healthData['on_track'] ?? false;
-    final predictedDate = healthData['predicted_completion_date'];
+    final healthScore = (healthData['health_score'] ?? 0) as int;
+    final isOnTrack = (healthData['on_track'] ?? false) as bool;
+    final predictedDate = healthData['predicted_completion_date'] as String?;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -187,7 +187,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
       scoreLabel = 'Excellent';
       scoreIcon = Icons.trending_up;
     } else if (score >= 60) {
-      scoreColor = const AppColors.secondary;
+      scoreColor = AppColors.secondary;
       scoreLabel = 'Good';
       scoreIcon = Icons.trending_flat;
     } else if (score >= 40) {
@@ -322,7 +322,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
   Widget _buildOverviewRow(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: const AppColors.textPrimary, size: 20),
+        Icon(icon, color: AppColors.textPrimary, size: 20),
         const SizedBox(width: 12),
         Text(
           label,
@@ -502,7 +502,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const AppColors.secondary.withValues(alpha: 0.2),
+                color: AppColors.secondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.lightbulb, color: AppColors.textPrimary, size: 20),
@@ -645,7 +645,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
 
   Color _getProgressColor(double progress) {
     if (progress >= 100) return Colors.green;
-    if (progress >= 70) return const AppColors.secondary;
-    return const AppColors.textPrimary;
+    if (progress >= 70) return AppColors.secondary;
+    return AppColors.textPrimary;
   }
 }

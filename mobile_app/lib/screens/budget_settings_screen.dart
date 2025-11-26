@@ -37,7 +37,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Flexible Budget',
       'description': 'Adaptive budget that adjusts to your spending patterns',
       'icon': Icons.auto_fix_high,
-      'color': const AppColors.successLight,
+      'color': AppColors.successLight,
       'features': ['Auto-adjustment', 'Smart redistribution', 'Flexible limits'],
     },
     {
@@ -45,7 +45,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Strict Budget',
       'description': 'Rigid budget control with firm spending limits',
       'icon': Icons.lock,
-      'color': const AppColors.danger,
+      'color': AppColors.danger,
       'features': ['Hard limits', 'Strict alerts', 'No overspending'],
     },
     {
@@ -53,7 +53,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Behavioral Adaptive',
       'description': 'AI-powered budget that learns from your behavior',
       'icon': Icons.psychology,
-      'color': const AppColors.accent,
+      'color': AppColors.accent,
       'features': ['AI learning', 'Behavioral insights', 'Predictive adjustments'],
     },
     {
@@ -61,7 +61,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'name': 'Goal-Oriented',
       'description': 'Budget optimized for achieving your savings goals',
       'icon': Icons.flag,
-      'color': const AppColors.secondary,
+      'color': AppColors.secondary,
       'features': ['Goal tracking', 'Savings priority', 'Target optimization'],
     },
   ];
@@ -690,7 +690,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                               children: [
                                 Icon(
                                   Icons.psychology,
-                                  color: const AppColors.accent,
+                                  color: AppColors.accent,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
@@ -757,7 +757,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                               minHeight: 6,
                                               backgroundColor: Colors.grey[200],
                                               valueColor: AlwaysStoppedAnimation<Color>(
-                                                const AppColors.accent,
+                                                AppColors.accent,
                                               ),
                                             ),
                                           ),

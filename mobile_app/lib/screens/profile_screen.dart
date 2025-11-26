@@ -70,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userProvider = context.watch<UserProvider>();
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Profile',
@@ -80,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
@@ -122,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/notifications');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.textPrimary,
+                        backgroundColor: AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -144,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/referral');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.textPrimary,
+                        backgroundColor: AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -166,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushNamed(context, '/subscribe');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.textPrimary,
+                        backgroundColor: AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -190,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Navigator.pushReplacementNamed(context, '/login');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.textPrimary,
+                        backgroundColor: AppColors.textPrimary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -210,7 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ElevatedButton(
                       onPressed: _isSaving ? null : saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const AppColors.secondary,
+                        backgroundColor: AppColors.secondary,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

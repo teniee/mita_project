@@ -522,7 +522,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     }
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Semantics(
           header: true,
@@ -536,7 +536,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
             ),
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
@@ -797,7 +797,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isSubmitting 
                             ? Colors.grey.shade300 
-                            : const AppColors.secondary,
+                            : AppColors.secondary,
                         foregroundColor: _isSubmitting 
                             ? Colors.grey.shade600 
                             : Colors.black,

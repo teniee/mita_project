@@ -205,8 +205,8 @@ class BudgetWarningDialog extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: alternativeCategories.take(3).map((alt) {
-                  final categoryName = alt['category'] ?? '';
-                  final available = alt['available'] ?? 0.0;
+                  final categoryName = (alt['category'] ?? '') as String;
+                  final available = (alt['available'] ?? 0.0) as double;
                   return ActionChip(
                     label: Text(
                       '$categoryName (\$${available.toStringAsFixed(0)} free)',
@@ -364,16 +364,16 @@ Future<bool?> showBudgetWarningDialog({
     barrierDismissible: false,
     builder: (BuildContext context) {
       return BudgetWarningDialog(
-        warningLevel: affordabilityCheck['warning_level'] ?? 'caution',
-        category: affordabilityCheck['category'] ?? '',
-        amount: (affordabilityCheck['amount'] ?? 0.0).toDouble(),
-        dailyBudget: (affordabilityCheck['daily_budget'] ?? 0.0).toDouble(),
-        remaining: (affordabilityCheck['remaining_budget'] ?? 0.0).toDouble(),
-        overage: (affordabilityCheck['overage'] ?? 0.0).toDouble(),
-        percentageUsed: (affordabilityCheck['percentage_used'] ?? 0.0).toDouble(),
-        impactMessage: affordabilityCheck['impact_message'] ?? '',
-        alternativeCategories: affordabilityCheck['alternative_categories'] ?? [],
-        suggestions: affordabilityCheck['suggestions'] ?? [],
+        warningLevel: (affordabilityCheck['warning_level'] ?? 'caution') as String,
+        category: (affordabilityCheck['category'] ?? '') as String,
+        amount: ((affordabilityCheck['amount'] ?? 0.0) as num).toDouble(),
+        dailyBudget: ((affordabilityCheck['daily_budget'] ?? 0.0) as num).toDouble(),
+        remaining: ((affordabilityCheck['remaining_budget'] ?? 0.0) as num).toDouble(),
+        overage: ((affordabilityCheck['overage'] ?? 0.0) as num).toDouble(),
+        percentageUsed: ((affordabilityCheck['percentage_used'] ?? 0.0) as num).toDouble(),
+        impactMessage: (affordabilityCheck['impact_message'] ?? '') as String,
+        alternativeCategories: (affordabilityCheck['alternative_categories'] ?? []) as List<dynamic>,
+        suggestions: (affordabilityCheck['suggestions'] ?? []) as List<dynamic>,
         onProceed: onProceed,
         onUseAlternative: onUseAlternative,
       );

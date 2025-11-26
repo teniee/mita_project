@@ -260,7 +260,8 @@ class AnalyticsService extends ChangeNotifier {
   /// Generate unique session ID
   Future<String> _generateSessionId() async {
     try {
-      final deviceId = await SecureDeviceService.getDeviceId();
+      final secureDeviceService = SecureDeviceService();
+      final deviceId = await secureDeviceService.getSecureDeviceId();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       return '${deviceId}_$timestamp';
     } catch (e) {

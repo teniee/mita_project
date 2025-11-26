@@ -32,12 +32,12 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Advice History'),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         centerTitle: true,
         elevation: 0,
       ),
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : items.isEmpty

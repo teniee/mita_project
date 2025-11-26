@@ -181,11 +181,11 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   Color _getStatusColor(InstallmentStatus status) {
     switch (status) {
       case InstallmentStatus.active:
-        return const AppColors.secondary;
+        return AppColors.secondary;
       case InstallmentStatus.completed:
-        return const AppColors.successLight;
+        return AppColors.successLight;
       case InstallmentStatus.overdue:
-        return const AppColors.danger;
+        return AppColors.danger;
       case InstallmentStatus.cancelled:
         return Colors.grey;
     }
@@ -214,7 +214,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     final currentSummary = provider.summary;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'My Installments',
@@ -224,14 +224,14 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             color: AppColors.textPrimary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: RefreshIndicator(
         onRefresh: _refreshInstallments,
-        color: const AppColors.textPrimary,
+        color: AppColors.textPrimary,
         child: isLoading && currentSummary == null
             ? const Center(child: _ShimmerLoader())
             : errorMessage != null && currentSummary == null
@@ -250,7 +250,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const AppColors.textPrimary,
+        backgroundColor: AppColors.textPrimary,
         foregroundColor: Colors.white,
         elevation: 4,
       ),
@@ -286,7 +286,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               ElevatedButton(
                 onPressed: _refreshInstallments,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const AppColors.textPrimary,
+                  backgroundColor: AppColors.textPrimary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 12,
@@ -378,7 +378,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: const AppColors.textPrimary.withOpacity(0.1),
+                  color: AppColors.textPrimary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(60),
                 ),
                 child: const Icon(
@@ -424,7 +424,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const AppColors.textPrimary,
+                  backgroundColor: AppColors.textPrimary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
@@ -545,10 +545,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const AppColors.secondary.withOpacity(0.1),
+                color: AppColors.secondary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const AppColors.secondary,
+                  color: AppColors.secondary,
                   width: 1,
                 ),
               ),
@@ -617,7 +617,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 style: TextStyle(
                   fontFamily: AppTypography.fontHeading,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const AppColors.textPrimary,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
                   fontSize: 14,
                 ),
               ),
@@ -626,10 +626,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 provider.setFilter(selected ? status : null);
               },
               backgroundColor: Colors.transparent,
-              selectedColor: const AppColors.textPrimary,
+              selectedColor: AppColors.textPrimary,
               side: BorderSide(
                 color: isSelected
-                    ? const AppColors.textPrimary
+                    ? AppColors.textPrimary
                     : Colors.grey[300]!,
               ),
               shape: RoundedRectangleBorder(
@@ -796,7 +796,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                               ),
                             ],
                             icon: const Icon(Icons.more_vert),
-                            color: const AppColors.textPrimary,
+                            color: AppColors.textPrimary,
                           ),
                         ],
                       ),
@@ -943,7 +943,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                               style: TextStyle(fontFamily: AppTypography.fontHeading),
                             ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const AppColors.successLight,
+                              foregroundColor: AppColors.successLight,
                               side: const BorderSide(
                                 color: AppColors.successLight,
                               ),
@@ -1111,7 +1111,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const AppColors.textPrimary,
+                backgroundColor: AppColors.textPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: const Text(

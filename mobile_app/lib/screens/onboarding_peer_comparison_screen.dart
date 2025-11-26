@@ -110,7 +110,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -132,7 +132,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
     }
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: IncomeTheme.createTierAppBar(
         tier: _incomeTier,
         title: 'Your Peer Group',

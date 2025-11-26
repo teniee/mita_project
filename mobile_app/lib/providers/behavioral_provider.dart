@@ -88,7 +88,7 @@ class BehavioralProvider extends ChangeNotifier {
         _apiService.getBehavioralWarnings(),
         _apiService.getBehavioralPreferences(),
         _apiService.getBehaviorCalendar(),
-        _apiService.getBehavioralExpenseSuggestions(categoryPreferences: {}),
+        _apiService.getBehavioralExpenseSuggestions(),
         _apiService.getBehavioralNotificationSettings(),
       ]);
 
@@ -230,11 +230,19 @@ class BehavioralProvider extends ChangeNotifier {
   }
 
   /// Load behavioral expense suggestions
-  Future<void> loadBehavioralExpenseSuggestions({Map<String, dynamic>? categoryPreferences}) async {
+  Future<void> loadBehavioralExpenseSuggestions({
+    String? category,
+    double? amount,
+    String? description,
+    String? date,
+  }) async {
     try {
       _setLoading(true);
       final result = await _apiService.getBehavioralExpenseSuggestions(
-        categoryPreferences: categoryPreferences ?? {},
+        category: category,
+        amount: amount,
+        description: description,
+        date: date,
       );
       _behavioralExpenseSuggestions = List<Map<String, dynamic>>.from(result as List? ?? []);
       logInfo('Behavioral expense suggestions loaded', tag: 'BEHAVIORAL_PROVIDER');

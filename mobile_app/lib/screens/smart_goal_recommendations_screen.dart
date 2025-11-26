@@ -58,7 +58,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     final adjustments = goalsProvider.adjustments;
 
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Smart Recommendations',
@@ -68,7 +68,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             color: AppColors.primary,
           ),
         ),
-        backgroundColor: const AppColors.background,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primary),
         centerTitle: true,
@@ -146,7 +146,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const AppColors.secondary,
+                color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.auto_awesome, color: AppColors.primary, size: 32),
@@ -184,7 +184,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
   }
 
   Widget _buildRecommendationCard(Map<String, dynamic> rec) {
-    final priority = rec['priority'] ?? 'medium';
+    final priority = (rec['priority'] ?? 'medium') as String;
     final priorityColor = _getPriorityColor(priority);
 
     return Card(
@@ -214,7 +214,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          rec['title'] ?? 'Goal',
+                          (rec['title'] ?? 'Goal') as String,
                           style: const TextStyle(
                             fontFamily: 'Sora',
                             fontSize: 18,
@@ -224,7 +224,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          rec['category'] ?? 'General',
+                          (rec['category'] ?? 'General') as String,
                           style: TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 13,
@@ -241,7 +241,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      priority.toUpperCase(),
+                      (priority as String).toUpperCase(),
                       style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,
@@ -254,7 +254,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
               ),
               const SizedBox(height: 16),
               Text(
-                rec['description'] ?? rec['reasoning'] ?? '',
+                (rec['description'] ?? rec['reasoning'] ?? '') as String,
                 style: const TextStyle(
                   fontFamily: 'Manrope',
                   fontSize: 14,
@@ -330,7 +330,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    opp['suggested_goal'] ?? 'Opportunity',
+                    (opp['suggested_goal'] ?? 'Opportunity') as String,
                     style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 16,
@@ -343,7 +343,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             ),
             const SizedBox(height: 12),
             Text(
-              opp['reason'] ?? '',
+              (opp['reason'] ?? '') as String,
               style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
@@ -367,7 +367,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   Icons.trending_up,
                 ),
                 if (opp['category'] != null)
-                  _buildInfoChip('Category', opp['category'], Icons.category),
+                  _buildInfoChip('Category', (opp['category'] ?? '') as String, Icons.category),
               ],
             ),
           ],
@@ -404,7 +404,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    adj['goal_title'] ?? 'Goal Adjustment',
+                    (adj['goal_title'] ?? 'Goal Adjustment') as String,
                     style: const TextStyle(
                       fontFamily: 'Sora',
                       fontSize: 16,
@@ -417,7 +417,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             ),
             const SizedBox(height: 12),
             Text(
-              adj['reason'] ?? 'Adjustment suggested',
+              (adj['reason'] ?? 'Adjustment suggested') as String,
               style: const TextStyle(
                 fontFamily: 'Manrope',
                 fontSize: 14,
@@ -484,7 +484,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 ],
               ),
             ),
-            if (increase > 0) ...[
+            if ((increase > 0) == true) ...[
               const SizedBox(height: 8),
               Text(
                 '+ \$${increase.toStringAsFixed(0)}/month increase',
@@ -629,7 +629,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
             ),
             const SizedBox(height: 24),
             Text(
-              rec['title'] ?? 'Goal Details',
+              (rec['title'] as String?) ?? 'Goal Details',
               style: const TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 24,
@@ -643,18 +643,18 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailRow('Description', rec['description'] ?? rec['reasoning'] ?? 'No description'),
+                    _buildDetailRow('Description', (rec['description'] ?? rec['reasoning'] ?? 'No description') as String),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Category', rec['category'] ?? 'General'),
+                    _buildDetailRow('Category', (rec['category'] ?? 'General') as String),
                     const SizedBox(height: 16),
                     _buildDetailRow('Target Amount', '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
                     _buildDetailRow('Monthly Contribution', '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Priority', rec['priority'] ?? 'medium'),
+                    _buildDetailRow('Priority', (rec['priority'] ?? 'medium') as String),
                     if (rec['suggested_deadline'] != null) ...[
                       const SizedBox(height: 16),
-                      _buildDetailRow('Suggested Deadline', rec['suggested_deadline']),
+                      _buildDetailRow('Suggested Deadline', (rec['suggested_deadline'] ?? '') as String),
                     ],
                   ],
                 ),
@@ -671,7 +671,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 icon: const Icon(Icons.add_circle),
                 label: const Text('Create This Goal'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const AppColors.secondary,
+                  backgroundColor: AppColors.secondary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

@@ -60,7 +60,7 @@ class MitaWidgets {
     final loadingMessage = message ?? 'Loading MITA financial data';
     
     return Scaffold(
-      backgroundColor: const AppColors.background,
+      backgroundColor: AppColors.background,
       body: Semantics(
         label: '$loadingMessage. Please wait.',
         liveRegion: true,
@@ -287,8 +287,8 @@ class MitaWidgets {
           ),
         ),
       ),
-      backgroundColor: const AppColors.background,
-      foregroundColor: const AppColors.primary,
+      backgroundColor: AppColors.background,
+      foregroundColor: AppColors.primary,
       elevation: elevation,
       centerTitle: centerTitle,
       leading: leading,
@@ -357,7 +357,7 @@ class MitaWidgets {
                       fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w700,
                       fontSize: size * 0.12,
-                      color: const AppColors.primary,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -391,7 +391,7 @@ class MitaWidgets {
     VoidCallback? onTap,
   }) {
     final accessibilityService = AccessibilityService.instance;
-    final cardColor = color ?? const AppColors.primary;
+    final cardColor = color ?? AppColors.primary;
     
     final numericValue = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
     final semanticLabel = accessibilityService.createFinancialSemanticLabel(
