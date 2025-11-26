@@ -143,3 +143,68 @@ class MonthlyReportRequest(BaseModel):
 
     year: Optional[int] = Field(None, ge=2020, le=2030, description="Report year")
     month: Optional[int] = Field(None, ge=1, le=12, description="Report month")
+
+
+class AIFinancialAdviceRequest(BaseModel):
+    """Request schema for AI financial advice endpoint"""
+
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Financial question or topic for advice"
+    )
+    user_context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="User's financial context (income, expenses, goals, etc.)"
+    )
+    advice_type: Optional[str] = Field(
+        default="general",
+        max_length=50,
+        description="Type of advice requested (budgeting, saving, investing, etc.)"
+    )
+
+    @field_validator('question')
+    @classmethod
+    def validate_question(cls, v: str) -> str:
+        """Sanitize and validate question"""
+        if not v or not v.strip():
+            raise ValueError("Question cannot be empty")
+
+        sanitized = InputSanitizer.sanitize_string(v.strip(), max_length=1000)
+        if not sanitized:
+            raise ValueError("Question contains only invalid characters")
+
+        return sanitized
+
+    @field_validator('user_context')
+    @classmethod
+    def validate_user_context(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Validate user context dictionary"""
+        if v is None:
+            return None
+
+        if not isinstance(v, dict):
+            raise ValueError("User context must be a dictionary")
+
+        return v
+
+    @field_validator('advice_type')
+    @classmethod
+    def validate_advice_type(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitize advice type"""
+        if v is None:
+            return "general"
+
+        sanitized = InputSanitizer.sanitize_string(v.strip(), max_length=50)
+        return sanitized if sanitized else "general"
+
+
+class AIFinancialAdviceResponse(BaseModel):
+    """Response schema for AI financial advice"""
+
+    advice: str = Field(..., description="AI-generated financial advice")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
+    recommendations: List[str] = Field(default_factory=list, description="Specific recommendations")
+    next_steps: List[str] = Field(default_factory=list, description="Suggested next steps")
+    resources: List[str] = Field(default_factory=list, description="Related resources or tools")

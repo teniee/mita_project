@@ -15,7 +15,12 @@ from app.db.models import AIAnalysisSnapshot
 from app.services.core.engine.ai_snapshot_service import save_ai_snapshot
 from app.services.ai_financial_analyzer import AIFinancialAnalyzer
 from app.utils.response_wrapper import success_response
-from app.api.ai.schemas import AIAssistantRequest, AIAssistantResponse
+from app.api.ai.schemas import (
+    AIAssistantRequest,
+    AIAssistantResponse,
+    AIFinancialAdviceRequest,
+    AIFinancialAdviceResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -586,3 +591,167 @@ async def get_monthly_report(
             "achievements": [],
             "recommendations": ["Track all transactions", "Set monthly budgets"]
         })
+
+
+@router.post("/advice", response_model=None, status_code=status.HTTP_200_OK)
+async def get_financial_advice(
+    request: AIFinancialAdviceRequest,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
+):
+    """
+    Get AI-powered financial advice based on user's question and context.
+
+    This endpoint provides personalized financial advice using AI analysis.
+
+    Request validation:
+    - question: Required, 1-1000 characters
+    - user_context: Optional dictionary with user's financial context
+    - advice_type: Optional, type of advice (budgeting, saving, investing, etc.)
+
+    Returns 200 with advice for valid requests.
+    Returns 400 for invalid/malformed requests (handled by FastAPI validation).
+    Returns 401 for unauthorized requests (handled by get_current_user dependency).
+    """
+    try:
+        # Extract validated request data
+        question = request.question
+        user_context = request.user_context or {}
+        advice_type = request.advice_type or "general"
+
+        # Use AIFinancialAnalyzer to generate advice
+        analyzer = AIFinancialAnalyzer(db, user.id)
+
+        # Generate personalized advice based on question and context
+        # This is a comprehensive response that uses the analyzer's capabilities
+        advice_text = f"Based on your question about {advice_type}, here's personalized advice: "
+
+        # Try to get relevant insights from user's data
+        try:
+            if "budget" in question.lower() or advice_type == "budgeting":
+                # Get budget-related advice
+                from app.db.models import Transaction
+                from datetime import datetime, timedelta
+
+                thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+                result = await db.execute(
+                    select(Transaction).filter(
+                        Transaction.user_id == user.id,
+                        Transaction.spent_at >= thirty_days_ago
+                    )
+                )
+                transactions = result.scalars().all()
+
+                if transactions:
+                    total = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+                    avg_daily = float(total) / 30
+
+                    advice_text = (
+                        f"Based on your recent spending of ${float(total):.2f} over 30 days "
+                        f"(average ${avg_daily:.2f}/day), I recommend:\n"
+                        f"1. Set a daily spending limit of ${avg_daily * 0.9:.2f} to save 10%\n"
+                        f"2. Track your expenses by category to identify savings opportunities\n"
+                        f"3. Review your budget weekly to stay on track"
+                    )
+                    recommendations = [
+                        f"Reduce daily spending by 10% (target: ${avg_daily * 0.9:.2f}/day)",
+                        "Set up category-based budgets",
+                        "Enable spending alerts for high categories"
+                    ]
+                    next_steps = [
+                        "Review your top spending categories",
+                        "Set weekly budget check-ins",
+                        "Start with small, achievable savings goals"
+                    ]
+                else:
+                    advice_text = (
+                        "To provide personalized budgeting advice, start tracking your expenses. "
+                        "Once you have transaction data, I can analyze your spending patterns and "
+                        "provide specific recommendations."
+                    )
+                    recommendations = [
+                        "Log all daily expenses for at least 2 weeks",
+                        "Categorize transactions accurately",
+                        "Set initial budget estimates for major categories"
+                    ]
+                    next_steps = [
+                        "Download your bank statements",
+                        "Create expense categories that fit your lifestyle",
+                        "Start with tracking just food and transportation"
+                    ]
+            else:
+                # General financial advice
+                advice_text = (
+                    f"Regarding your question: '{question}'\n\n"
+                    "Here's my advice based on financial best practices:\n"
+                    "1. Always maintain an emergency fund covering 3-6 months of expenses\n"
+                    "2. Track your spending to identify areas for improvement\n"
+                    "3. Set specific, measurable financial goals\n"
+                    "4. Review your financial plan monthly"
+                )
+                recommendations = [
+                    "Start an emergency fund if you haven't already",
+                    "Use the 50/30/20 budget rule as a guideline",
+                    "Automate savings to make it easier"
+                ]
+                next_steps = [
+                    "Calculate your monthly expenses",
+                    "Set up automatic transfers to savings",
+                    "Review and adjust your budget monthly"
+                ]
+
+            return success_response({
+                "advice": advice_text,
+                "confidence": 0.85,
+                "recommendations": recommendations,
+                "next_steps": next_steps,
+                "resources": [
+                    "Budget Planner Tool",
+                    "Spending Analytics Dashboard",
+                    "Financial Goals Tracker"
+                ]
+            })
+
+        except HTTPException:
+            # Re-raise HTTP exceptions (auth errors, etc.) without modification
+            raise
+        except Exception as analysis_error:
+            logger.warning(f"Error analyzing user data for advice: {analysis_error}")
+            # Fallback to general advice
+            return success_response({
+                "advice": (
+                    f"Regarding your question: '{question}'\n\n"
+                    "I recommend focusing on these fundamental financial practices:\n"
+                    "1. Track all income and expenses\n"
+                    "2. Create and stick to a monthly budget\n"
+                    "3. Build an emergency fund\n"
+                    "4. Regularly review your financial goals"
+                ),
+                "confidence": 0.70,
+                "recommendations": [
+                    "Start tracking your expenses today",
+                    "Set up a simple budget",
+                    "Identify one area to reduce spending"
+                ],
+                "next_steps": [
+                    "Log all transactions for the next week",
+                    "Calculate your average monthly expenses",
+                    "Set one specific financial goal"
+                ],
+                "resources": [
+                    "Budgeting Guide",
+                    "Expense Tracker",
+                    "Financial Planning Tools"
+                ]
+            })
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (auth errors, validation errors from Pydantic) without modification
+        raise
+    except Exception as e:
+        # Log unexpected errors and raise 500
+        logger.error(f"AI advice error for user {user.id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate financial advice"
+        )

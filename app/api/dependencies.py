@@ -59,12 +59,14 @@ async def _get_user_from_cache_or_db(user_id: str, db: AsyncSession) -> User:
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), 
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get current authenticated user from JWT token with enhanced scope validation.
     Enhanced with better error handling, logging, and scope information.
+
+    SECURITY: All authentication failures return 401, never 500.
     """
     try:
         # Validate token format
@@ -82,14 +84,27 @@ async def get_current_user(
                 detail="Invalid token format",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        
+
         # Verify and decode token with comprehensive validation
-        payload = await verify_token(token, token_type="access_token")
-        if not payload:
-            logger.warning("Token verification failed")
+        # Wrap in try-except to catch ANY exception from verify_token
+        try:
+            payload = await verify_token(token, token_type="access_token")
+        except (
+            InvalidTokenError,
+            ExpiredSignatureError,
+            DecodeError,
+            InvalidSignatureError,
+            InvalidAudienceError,
+            InvalidIssuerError,
+            MissingRequiredClaimError,
+            PyJWTError
+        ) as jwt_error:
+            # JWT errors should always return 401
+            logger.warning(f"JWT validation error during verify_token: {jwt_error}")
             try:
                 log_security_event("authentication_failure", {
-                    "reason": "invalid_token",
+                    "reason": "jwt_verify_error",
+                    "error_type": type(jwt_error).__name__,
                     "details": "Token verification failed"
                 })
             except Exception as log_err:
@@ -99,7 +114,39 @@ async def get_current_user(
                 detail="Invalid or expired token",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        
+        except Exception as verify_error:
+            # ANY other error from verify_token should also return 401 (not 500)
+            # This handles database errors, network errors, etc. during token verification
+            logger.warning(f"Token verification system error: {verify_error}")
+            try:
+                log_security_event("authentication_failure", {
+                    "reason": "verify_system_error",
+                    "error_type": type(verify_error).__name__,
+                    "details": "Token verification encountered system error"
+                })
+            except Exception as log_err:
+                logger.error(f"Failed to log security event: {log_err}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+
+        if not payload:
+            logger.warning("Token verification failed - returned None")
+            try:
+                log_security_event("authentication_failure", {
+                    "reason": "invalid_token",
+                    "details": "Token verification returned None"
+                })
+            except Exception as log_err:
+                logger.error(f"Failed to log security event: {log_err}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+
         user_id = payload.get("sub")
         if not user_id:
             logger.warning("Token missing user ID (sub claim)")
@@ -115,11 +162,13 @@ async def get_current_user(
                 detail="Invalid token payload",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        
+
         # Query user from cache or database
         try:
             user = await _get_user_from_cache_or_db(user_id, db)
         except Exception as db_error:
+            # Database errors during user lookup are system errors (500)
+            logger.error(f"Database error during user lookup: {db_error}")
             try:
                 log_security_event("database_error", {
                     "operation": "user_lookup",
@@ -132,7 +181,7 @@ async def get_current_user(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database error"
             )
-        
+
         if not user:
             logger.warning(f"User {user_id} not found in database")
             try:
@@ -148,7 +197,7 @@ async def get_current_user(
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-        
+
         # Add token payload to user object for scope checking
         user._token_payload = payload
         user._token_scopes = payload.get("scope", "").split()
@@ -165,9 +214,9 @@ async def get_current_user(
             logger.error(f"Failed to log security event: {log_err}")
 
         return user
-        
+
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
+        # Re-raise HTTP exceptions as-is (401, 500, etc.)
         raise
     except (
         InvalidTokenError,
@@ -185,7 +234,7 @@ async def get_current_user(
             log_security_event("authentication_failure", {
                 "reason": "jwt_error",
                 "error_type": type(jwt_error).__name__,
-                "details": "JWT validation failed"  # Generic message to prevent information leakage
+                "details": "JWT validation failed"
             })
         except Exception as log_err:
             logger.error(f"Failed to log security event: {log_err}")
@@ -195,12 +244,13 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
     except Exception as e:
-        # Only truly unexpected non-JWT errors should return 500
-        logger.error(f"Unexpected error in get_current_user: {e}")
+        # Only truly unexpected non-JWT, non-HTTP errors should return 500
+        logger.error(f"Unexpected error in get_current_user: {e}", exc_info=True)
         try:
             log_security_event("system_error", {
                 "operation": "get_current_user",
-                "error": str(e)
+                "error": str(e),
+                "error_type": type(e).__name__
             })
         except Exception as log_err:
             logger.error(f"Failed to log security event: {log_err}")
