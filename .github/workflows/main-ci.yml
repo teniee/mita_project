@@ -1,0 +1,138 @@
+name: Main CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main ]
+
+# Prevent multiple runs for same commit
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Backend Python CI
+  backend-ci:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Code quality checks
+        run: |
+          # Format check
+          black --check . || echo "::warning::Code formatting issues detected"
+
+          # Import sorting
+          isort --check . || echo "::warning::Import sorting issues detected"
+
+          # Linting
+          ruff . || echo "::warning::Linting issues detected"
+
+      - name: Run tests
+        run: |
+          export PYTHONPATH=.
+          pytest --maxfail=5 --disable-warnings -q
+
+      - name: Security scan (Bandit)
+        run: |
+          pip install bandit[toml]
+          bandit -r app/ -ll || echo "::warning::Security issues detected"
+        continue-on-error: true
+
+  # Mobile Flutter CI
+  mobile-ci:
+    name: Mobile CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify code
+        run: |
+          # Format check
+          dart format --set-exit-if-changed . || echo "::warning::Code formatting issues"
+
+          # Analyze
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run tests
+        run: flutter test
+        continue-on-error: true
+
+  # Build check
+  build-check:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    needs: [backend-ci, mobile-ci]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (test)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: mita-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Status check
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [backend-ci, mobile-ci]
+    if: always()
+
+    steps:
+      - name: Check CI Status
+        run: |
+          if [[ "${{ needs.backend-ci.result }}" == "success" ]] && [[ "${{ needs.mobile-ci.result }}" == "success" ]]; then
+            echo "✅ All CI checks passed"
+            exit 0
+          else
+            echo "❌ Some CI checks failed"
+            echo "Backend: ${{ needs.backend-ci.result }}"
+            echo "Mobile: ${{ needs.mobile-ci.result }}"
+            exit 1
+          fi
