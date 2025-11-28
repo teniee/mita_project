@@ -1,5 +1,10 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '12.0'
+# MITA Finance - iOS Platform Configuration
+# Minimum iOS 13.0 required for:
+# - Firebase Cloud Messaging
+# - Modern biometric authentication (Face ID/Touch ID)
+# - SwiftUI compatibility (future features)
+# - App Clips support (future features)
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -39,5 +44,23 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # Apple-grade build settings for production
+    target.build_configurations.each do |config|
+      # Set minimum deployment target to iOS 13.0
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+
+      # Enable bitcode for App Store optimization (if needed)
+      # config.build_settings['ENABLE_BITCODE'] = 'YES'
+
+      # Exclude arm64 simulator architecture (M1 Mac compatibility)
+      config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
+
+      # Code signing settings for production
+      config.build_settings['CODE_SIGN_IDENTITY'] = 'iPhone Developer'
+
+      # Disable module verifier for faster builds
+      config.build_settings['VALIDATE_WORKSPACE'] = 'YES'
+    end
   end
 end

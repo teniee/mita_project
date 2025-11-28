@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MITA Finance - iOS Entitlements
+  Production-grade capabilities configuration
+-->
+<plist version="1.0">
+<dict>
+	<!-- Push Notifications (APNs) -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Change to 'production' for App Store builds -->
+
+	<!-- iCloud & CloudKit (for backup sync - future feature) -->
+	<!-- <key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.yakovlev.mita</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+		<string>CloudDocuments</string>
+	</array> -->
+
+	<!-- In-App Purchase -->
+	<!-- No entitlement needed - handled by StoreKit automatically -->
+
+	<!-- Keychain Sharing (for secure data across app extensions) -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.yakovlev.mita</string>
+	</array>
+
+	<!-- App Groups (for sharing data with extensions) -->
+	<!-- <key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.yakovlev.mita</string>
+	</array> -->
+
+	<!-- Associated Domains (for Universal Links & App Clips) -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:mita.finance</string>
+		<string>applinks:www.mita.finance</string>
+		<!-- Add webcredentials for Password AutoFill -->
+		<string>webcredentials:mita.finance</string>
+	</array>
+
+	<!-- Sign in with Apple (future feature) -->
+	<!-- <key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array> -->
+
+	<!-- Network Extensions (for VPN/filtering - if needed) -->
+	<!-- Not needed for MITA currently -->
+
+	<!-- Data Protection (encryption at rest) -->
+	<!-- Automatically enabled by default for new projects -->
+</dict>
+</plist>

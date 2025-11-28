@@ -53,5 +53,72 @@
 	<string>MITA needs permission to save receipts and documents to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>MITA uses your location to categorize expenses and provide location-based insights.</string>
+
+	<!-- Biometric Authentication (Face ID / Touch ID) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>MITA uses Face ID to securely authenticate and protect your financial data.</string>
+
+	<!-- Push Notifications & Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>processing</string>
+	</array>
+
+	<!-- iOS 14.5+ App Tracking Transparency (Required for Analytics) -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>MITA uses analytics to improve your experience and provide personalized financial insights. Your data is never sold to third parties.</string>
+
+	<!-- Contacts Access (if needed for expense splitting features) -->
+	<key>NSContactsUsageDescription</key>
+	<string>MITA can access your contacts to help you split expenses with friends and family.</string>
+
+	<!-- Calendar Access (for bill reminders and financial events) -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>MITA can add bill reminders and financial events to your calendar.</string>
+
+	<!-- Notifications Permission -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MITA needs local network access for secure communication with your devices.</string>
+
+	<!-- App Transport Security (ATS) Configuration -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow secure connections only (HTTPS) -->
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<!-- Exception domains for specific APIs if needed -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>mita.finance</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Prevents screenshot & screen recording in sensitive screens -->
+	<key>UIApplicationSupportsMultipleScenes</key>
+	<false/>
+
+	<!-- iTunes File Sharing disabled for security -->
+	<key>UIFileSharingEnabled</key>
+	<false/>
+
+	<!-- Supports document opening (for receipts, etc.) -->
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+
+	<!-- Status bar style -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
 </dict>
 </plist>

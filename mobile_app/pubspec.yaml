@@ -67,6 +67,9 @@ dependencies:
   # Cryptography
   crypto: ^3.0.5
 
+  # Biometric Authentication (Face ID / Touch ID / Fingerprint)
+  local_auth: ^2.3.0                    # Apple-grade biometric authentication
+
   # State Management
   provider: ^6.1.2                      # Centralized state management
 dev_dependencies:
