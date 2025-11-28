@@ -11,6 +11,10 @@
 [![Tests](https://img.shields.io/badge/Tests-84_suites-blue.svg)](#testing--quality-assurance)
 [![Security](https://img.shields.io/badge/Security-Enterprise_Grade-success.svg)](#enterprise-security)
 
+[![Main CI](https://github.com/teniee/mita_project/actions/workflows/main-ci.yml/badge.svg)](https://github.com/teniee/mita_project/actions/workflows/main-ci.yml)
+[![Security Scanning](https://github.com/teniee/mita_project/actions/workflows/security.yml/badge.svg)](https://github.com/teniee/mita_project/actions/workflows/security.yml)
+[![Production Deployment](https://github.com/teniee/mita_project/actions/workflows/deploy-production.yml/badge.svg)](https://github.com/teniee/mita_project/actions/workflows/deploy-production.yml)
+
 ---
 
 ## What Makes MITA Different?

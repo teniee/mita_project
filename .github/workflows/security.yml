@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
           cache: 'pip'
 
       - name: Install dependencies
@@ -67,7 +67,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Run Bandit
         run: |
@@ -85,6 +85,7 @@ jobs:
   docker-scan:
     name: Docker Security Scan
     runs-on: ubuntu-latest
+    # Skip on scheduled runs to save time, run on push/manual
     if: github.event_name != 'schedule'
 
     steps:
@@ -121,6 +122,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Code Security: ${{ needs.code-security.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Docker Scan: ${{ needs.docker-scan.result }}" >> $GITHUB_STEP_SUMMARY
+
+          # Docker scan may be skipped on scheduled runs
+          if [ "${{ needs.docker-scan.result }}" == "skipped" ]; then
+            echo "- Docker Scan: skipped (scheduled run)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Docker Scan: ${{ needs.docker-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Review security reports in artifacts" >> $GITHUB_STEP_SUMMARY

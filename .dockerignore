@@ -1,0 +1,77 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+*.txt
+!requirements.txt
+!requirements-dev.txt
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Mobile app (not needed for backend Docker image)
+mobile_app/
+
+# Infrastructure
+infrastructure/
+terraform/
+.terraform/
+
+# Testing
+tests/
+app/tests/
+*.test
+coverage/
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# Environment files (use build args instead)
+.env
+.env.*
+!.env.example
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS-specific
+Thumbs.db
