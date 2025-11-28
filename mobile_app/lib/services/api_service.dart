@@ -18,6 +18,7 @@ import 'secure_device_service.dart';
 import 'secure_push_token_manager.dart';
 import 'secure_token_storage.dart';
 import 'app_version_service.dart';
+import 'certificate_pinning_service.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -31,10 +32,14 @@ class ApiService {
       receiveTimeout: const Duration(seconds: 90), // Increased for slow backend
       sendTimeout: const Duration(seconds: 30), // Increased for slow backend
     );
-    
+
     _dio.options.baseUrl = _baseUrl;
     _dio.options.contentType = 'application/json';
-    
+
+    // SECURITY: Apply certificate pinning to prevent MITM attacks
+    _dio = CertificatePinningService().configureDioWithPinning(_dio);
+    logInfo('Certificate pinning configured for API service', tag: 'API_SECURITY');
+
     // Initialize secure storage asynchronously
     _initializeSecureStorage();
 

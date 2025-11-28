@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
@@ -27,6 +28,8 @@ import 'services/logging_service.dart';
 import 'services/localization_service.dart';
 import 'services/app_version_service.dart';
 import 'services/sentry_service.dart';
+import 'services/ios_security_service.dart';
+// Note: biometric_auth_service.dart available for future login flow integration
 import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
@@ -76,16 +79,45 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize logging service first
+
+  // Initialize logging service first (with PII masking enabled)
   LoggingService.instance.initialize(
     enableConsoleLogging: true,
+    enablePIIMasking: true, // GDPR compliance
     minimumLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
   );
-  
+
+  // SECURITY: iOS Jailbreak & Tampering Detection
+  if (Platform.isIOS) {
+    try {
+      final securityService = IOSSecurityService();
+      final isSecure = await securityService.performSecurityCheck();
+
+      if (!isSecure && !kDebugMode) {
+        // Get security recommendations
+        final recommendations = await securityService.getSecurityRecommendations();
+        logWarning(
+          'iOS Security check failed: ${recommendations.join(", ")}',
+          tag: 'MAIN_SECURITY',
+        );
+        // In production, consider blocking app launch or showing warning dialog
+        // For now, we just log the issue
+      } else {
+        logInfo('iOS Security check passed', tag: 'MAIN_SECURITY');
+      }
+
+      // Log comprehensive security info for monitoring
+      final securityInfo = await securityService.getComprehensiveSecurityInfo();
+      logDebug('iOS Security Info: $securityInfo', tag: 'MAIN_SECURITY');
+    } catch (e) {
+      logError('iOS Security check error: $e', tag: 'MAIN_SECURITY', error: e);
+      // Don't block app launch on security check errors
+    }
+  }
+
   // Initialize comprehensive error handling
   await AppErrorHandler.initialize();
-  
+
   // Initialize app version service
   await AppVersionService.instance.initialize();
   

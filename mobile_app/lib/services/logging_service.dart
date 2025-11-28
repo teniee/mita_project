@@ -30,25 +30,167 @@ class LoggingService {
   // Configuration
   bool _enableConsoleLogging = kDebugMode;
   bool _enableFileLogging = false;
+  bool _enablePIIMasking = true; // GDPR compliance - mask PII by default
   LogLevel _minimumLevel = kDebugMode ? LogLevel.debug : LogLevel.info;
-  
+
   // Log storage for debugging
   final List<LogEntry> _logHistory = [];
   final int _maxHistorySize = 1000;
+
+  // PII Detection Patterns (GDPR Compliance)
+  static final RegExp _emailPattern = RegExp(
+    r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+  );
+  static final RegExp _phonePattern = RegExp(
+    r'\b\+?[1-9]\d{1,14}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+  );
+  static final RegExp _creditCardPattern = RegExp(
+    r'\b(?:\d{4}[-\s]?){3}\d{4}\b',
+  );
+  static final RegExp _ssnPattern = RegExp(
+    r'\b\d{3}-\d{2}-\d{4}\b',
+  );
+  static final RegExp _ibanPattern = RegExp(
+    r'\b[A-Z]{2}\d{2}[A-Z0-9]{1,30}\b',
+  );
+  // JWT tokens, API keys, Bearer tokens
+  static final RegExp _tokenPattern = RegExp(
+    r'\b(eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*|[A-Za-z0-9_-]{32,})\b',
+  );
+  // Password fields in JSON
+  static final RegExp _passwordFieldPattern = RegExp(
+    r'("password"|"passwd"|"pwd"|"secret")\s*:\s*"[^"]*"',
+    caseSensitive: false,
+  );
 
   /// Initialize logging service with configuration
   void initialize({
     bool enableConsoleLogging = true,
     bool enableFileLogging = false,
+    bool enablePIIMasking = true,
     LogLevel minimumLevel = LogLevel.info,
   }) {
     _enableConsoleLogging = enableConsoleLogging && kDebugMode;
     _enableFileLogging = enableFileLogging;
+    _enablePIIMasking = enablePIIMasking;
     _minimumLevel = minimumLevel;
 
     if (kDebugMode) {
-      log('Logging service initialized', level: LogLevel.info);
+      log('Logging service initialized (PII Masking: $enablePIIMasking)', level: LogLevel.info);
     }
+  }
+
+  /// Mask PII (Personally Identifiable Information) in strings
+  /// GDPR Compliance - prevents sensitive data from being logged
+  String _maskPII(String text) {
+    if (!_enablePIIMasking || kDebugMode) {
+      return text; // In debug mode, show full data for easier debugging
+    }
+
+    String masked = text;
+
+    // Mask email addresses (show first 2 chars + domain)
+    masked = masked.replaceAllMapped(_emailPattern, (match) {
+      final email = match.group(0)!;
+      final parts = email.split('@');
+      if (parts.length == 2 && parts[0].length > 2) {
+        return '${parts[0].substring(0, 2)}***@${parts[1]}';
+      }
+      return '***@${parts.length > 1 ? parts[1] : '***'}';
+    });
+
+    // Mask phone numbers (show last 4 digits)
+    masked = masked.replaceAllMapped(_phonePattern, (match) {
+      final phone = match.group(0)!.replaceAll(RegExp(r'[-\s.]'), '');
+      if (phone.length > 4) {
+        return '***${phone.substring(phone.length - 4)}';
+      }
+      return '***';
+    });
+
+    // Mask credit card numbers (show last 4 digits)
+    masked = masked.replaceAllMapped(_creditCardPattern, (match) {
+      final card = match.group(0)!.replaceAll(RegExp(r'[-\s]'), '');
+      if (card.length >= 4) {
+        return '****-****-****-${card.substring(card.length - 4)}';
+      }
+      return '****-****-****-****';
+    });
+
+    // Mask SSN
+    masked = masked.replaceAll(_ssnPattern, '***-**-****');
+
+    // Mask IBAN (show first 4 chars)
+    masked = masked.replaceAllMapped(_ibanPattern, (match) {
+      final iban = match.group(0)!;
+      if (iban.length > 4) {
+        return '${iban.substring(0, 4)}***';
+      }
+      return '****';
+    });
+
+    // Mask JWT tokens and API keys
+    masked = masked.replaceAllMapped(_tokenPattern, (match) {
+      final token = match.group(0)!;
+      if (token.length > 8) {
+        return '${token.substring(0, 8)}***';
+      }
+      return '***';
+    });
+
+    // Mask password fields in JSON
+    masked = masked.replaceAllMapped(_passwordFieldPattern, (match) {
+      final fieldName = match.group(1)!;
+      return '$fieldName: "***"';
+    });
+
+    return masked;
+  }
+
+  /// Mask PII in Map data structures
+  Map<String, dynamic>? _maskPIIInMap(Map<String, dynamic>? data) {
+    if (data == null || !_enablePIIMasking || kDebugMode) {
+      return data;
+    }
+
+    final masked = <String, dynamic>{};
+
+    for (final entry in data.entries) {
+      final key = entry.key.toLowerCase();
+      final value = entry.value;
+
+      // Sensitive field names that should always be masked
+      if (_isSensitiveField(key)) {
+        masked[entry.key] = '***';
+      } else if (value is String) {
+        masked[entry.key] = _maskPII(value);
+      } else if (value is Map<String, dynamic>) {
+        masked[entry.key] = _maskPIIInMap(value);
+      } else if (value is List) {
+        masked[entry.key] = value.map((item) {
+          if (item is String) return _maskPII(item);
+          if (item is Map<String, dynamic>) return _maskPIIInMap(item);
+          return item;
+        }).toList();
+      } else {
+        masked[entry.key] = value;
+      }
+    }
+
+    return masked;
+  }
+
+  /// Check if field name indicates sensitive data
+  bool _isSensitiveField(String fieldName) {
+    final sensitive = [
+      'password', 'passwd', 'pwd', 'secret', 'token', 'api_key', 'apikey',
+      'auth', 'authorization', 'bearer', 'credential', 'private_key',
+      'access_token', 'refresh_token', 'session_token', 'jwt',
+      'credit_card', 'creditcard', 'cvv', 'cvc', 'pin', 'ssn',
+      'social_security', 'tax_id', 'passport', 'license', 'iban',
+    ];
+
+    return sensitive.any((s) => fieldName.contains(s));
   }
 
   /// Log a debug message
@@ -83,7 +225,7 @@ class LoggingService {
 
   /// Internal logging implementation
   void _log(
-    LogLevel level, 
+    LogLevel level,
     String message, {
     String? tag,
     Map<String, dynamic>? extra,
@@ -93,13 +235,18 @@ class LoggingService {
     // Check if we should log this level
     if (!_shouldLog(level)) return;
 
+    // Apply PII masking (GDPR Compliance)
+    final maskedMessage = _maskPII(message);
+    final maskedExtra = _maskPIIInMap(extra);
+    final maskedError = error != null ? _maskPII(error.toString()) : null;
+
     final entry = LogEntry(
       level: level,
-      message: message,
+      message: maskedMessage,
       tag: tag,
       timestamp: DateTime.now(),
-      extra: extra,
-      error: error,
+      extra: maskedExtra,
+      error: maskedError,
       stackTrace: stackTrace,
     );
 

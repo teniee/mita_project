@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'logging_service.dart';
 
 /// Apple-Grade Security Service for iOS
@@ -9,6 +10,9 @@ class IOSSecurityService {
   static final IOSSecurityService _instance = IOSSecurityService._internal();
   factory IOSSecurityService() => _instance;
   IOSSecurityService._internal();
+
+  /// Platform channel for native iOS security checks
+  static const _platform = MethodChannel('com.mita.finance/security');
 
   /// Check if device is jailbroken
   /// Returns true if jailbreak is detected
@@ -101,10 +105,20 @@ class IOSSecurityService {
   }
 
   /// Check if fork() is available (sandbox escape detection)
+  /// Uses native iOS platform channel for accurate detection
   Future<bool> _canFork() async {
-    // Note: This requires platform channel implementation in Swift
-    // For now, return false as it needs native code
-    return false;
+    if (!Platform.isIOS) return false;
+
+    try {
+      final result = await _platform.invokeMethod<bool>('canFork');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      logError('Fork detection failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      return false;
+    } catch (e) {
+      logError('Fork detection error: $e', tag: 'IOS_SECURITY');
+      return false;
+    }
   }
 
   /// Check if app is running on simulator
@@ -117,23 +131,41 @@ class IOSSecurityService {
   }
 
   /// Validate app integrity (check if app has been tampered)
+  /// Uses code signing validation via native platform channel
   Future<bool> isAppTampered() async {
     if (!Platform.isIOS) return false;
     if (kDebugMode) return false; // Allow debug builds
 
-    // TODO: Implement code signing validation via platform channel
-    // This requires Swift/Objective-C code to check bundle signature
-
-    return false;
+    try {
+      final result = await _platform.invokeMethod<bool>('isAppTampered');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      logError('Code signing check failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      // If check fails, assume not tampered to avoid false positives
+      return false;
+    } catch (e) {
+      logError('Code signing check error: $e', tag: 'IOS_SECURITY');
+      return false;
+    }
   }
 
   /// Check if debugger is attached
-  bool isDebuggerAttached() {
+  /// Uses sysctl to detect P_TRACED flag via native platform channel
+  Future<bool> isDebuggerAttached() async {
+    if (!Platform.isIOS) return false;
     // In debug mode, debugger is expected
     if (kDebugMode) return true;
 
-    // TODO: Implement via platform channel (ptrace detection)
-    return false;
+    try {
+      final result = await _platform.invokeMethod<bool>('isDebuggerAttached');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      logError('Debugger detection failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      return false;
+    } catch (e) {
+      logError('Debugger detection error: $e', tag: 'IOS_SECURITY');
+      return false;
+    }
   }
 
   /// Comprehensive security check
@@ -168,6 +200,40 @@ class IOSSecurityService {
     }
   }
 
+  /// Get comprehensive security info (more efficient than individual calls)
+  /// Returns all security checks in one platform channel call
+  Future<Map<String, dynamic>> getComprehensiveSecurityInfo() async {
+    if (!Platform.isIOS) {
+      return {
+        'canFork': false,
+        'isAppTampered': false,
+        'isDebuggerAttached': false,
+        'isSimulator': false,
+        'buildConfiguration': kDebugMode ? 'debug' : 'release',
+        'timestamp': DateTime.now().millisecondsSinceEpoch / 1000,
+      };
+    }
+
+    try {
+      final result = await _platform.invokeMethod<Map<dynamic, dynamic>>('getSecurityInfo');
+      if (result == null) {
+        logWarning('Security info returned null', tag: 'IOS_SECURITY');
+        return {};
+      }
+
+      // Convert Map<dynamic, dynamic> to Map<String, dynamic>
+      final info = Map<String, dynamic>.from(result);
+      logInfo('Security info retrieved: $info', tag: 'IOS_SECURITY');
+      return info;
+    } on PlatformException catch (e) {
+      logError('Failed to get security info: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      return {};
+    } catch (e) {
+      logError('Security info error: $e', tag: 'IOS_SECURITY');
+      return {};
+    }
+  }
+
   /// Get security recommendations based on device state
   Future<List<String>> getSecurityRecommendations() async {
     final recommendations = <String>[];
@@ -184,7 +250,7 @@ class IOSSecurityService {
       );
     }
 
-    if (isDebuggerAttached() && !kDebugMode) {
+    if (await isDebuggerAttached() && !kDebugMode) {
       recommendations.add(
         'A debugger is attached to this app. This may indicate a security risk.',
       );

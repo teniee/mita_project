@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:crypto/crypto.dart';
 import 'logging_service.dart';
 
 /// Apple-Grade Certificate Pinning Service
@@ -102,11 +103,23 @@ class CertificatePinningService {
   }
 
   /// Get SHA-256 fingerprint of certificate
+  /// FIXED: X509Certificate doesn't have sha256 property
+  /// Using DER bytes and crypto package to calculate SHA-256
   String _getCertificateFingerprint(X509Certificate cert) {
     try {
-      // Convert certificate DER to SHA-256 fingerprint
-      final sha256 = cert.sha256.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(':');
-      return sha256.toUpperCase();
+      // Get certificate DER-encoded bytes
+      final certDer = cert.der;
+
+      // Compute SHA-256 hash
+      final digest = sha256.convert(certDer);
+
+      // Format as fingerprint (uppercase hex with colons)
+      final fingerprint = digest.bytes
+          .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+          .join(':')
+          .toUpperCase();
+
+      return fingerprint;
     } catch (e) {
       logError('Failed to get certificate fingerprint: $e', tag: 'CERT_PINNING');
       return '';
@@ -155,7 +168,17 @@ class CertificatePinningService {
   }
 
   /// Get certificate information for debugging
+  /// ENHANCED: Added caching to reduce network overhead
+  final Map<String, _CachedCertInfo> _certCache = {};
+
   Future<Map<String, dynamic>> getCertificateInfo(String host) async {
+    // Check cache first
+    final cached = _certCache[host];
+    if (cached != null && !cached.isExpired) {
+      logInfo('Using cached certificate info for $host', tag: 'CERT_PINNING');
+      return cached.info;
+    }
+
     try {
       final socket = await SecureSocket.connect(
         host,
@@ -181,6 +204,13 @@ class CertificatePinningService {
 
       await socket.close();
 
+      // Cache for 24 hours
+      _certCache[host] = _CachedCertInfo(
+        info: info,
+        fetchedAt: DateTime.now(),
+        ttl: const Duration(hours: 24),
+      );
+
       logInfo(
         'Certificate info for $host: ${info['daysUntilExpiry']} days until expiry',
         tag: 'CERT_PINNING',
@@ -194,14 +224,14 @@ class CertificatePinningService {
   }
 
   /// Check if certificate is about to expire (< 30 days)
-  Future<bool> isCertificateExpiringsoon(String host) async {
+  Future<bool> isCertificateExpiringSoon(String host) async {
     final info = await getCertificateInfo(host);
     if (info.containsKey('error')) {
       return false;
     }
 
-    final daysUntilExpiry = info['daysUntilExpiry'] as int;
-    if (daysUntilExpiry < 30) {
+    final daysUntilExpiry = info['daysUntilExpiry'] as int?;
+    if (daysUntilExpiry != null && daysUntilExpiry < 30) {
       logWarning(
         'Certificate for $host expires in $daysUntilExpiry days',
         tag: 'CERT_PINNING',
@@ -213,10 +243,19 @@ class CertificatePinningService {
   }
 }
 
-/// Extension to easily add certificate pinning to ApiService
-extension DioSecurityExtension on Dio {
-  /// Add certificate pinning to Dio instance
-  void enableCertificatePinning() {
-    CertificatePinningService().configureDioWithPinning(this);
-  }
+/// Internal cache class for certificate information
+class _CachedCertInfo {
+  final Map<String, dynamic> info;
+  final DateTime fetchedAt;
+  final Duration ttl;
+
+  _CachedCertInfo({
+    required this.info,
+    required this.fetchedAt,
+    required this.ttl,
+  });
+
+  bool get isExpired => DateTime.now().difference(fetchedAt) > ttl;
 }
+
+/// REMOVED MISLEADING EXTENSION - Use CertificatePinningService().configureDioWithPinning(dio) directly
