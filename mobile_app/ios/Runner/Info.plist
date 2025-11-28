@@ -89,6 +89,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<!-- Exception domains for specific APIs if needed -->
+		<!-- Minimum TLS version for all connections -->
+		<key>NSMinimumTLSVersion</key>
+		<string>TLSv1.3</string>
+		<!-- Require forward secrecy -->
+		<key>NSRequiresCertificateTransparency</key>
+		<false/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>mita.finance</key>
@@ -98,7 +104,7 @@
 				<key>NSExceptionRequiresForwardSecrecy</key>
 				<true/>
 				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.2</string>
+				<string>TLSv1.3</string>
 			</dict>
 		</dict>
 	</dict>

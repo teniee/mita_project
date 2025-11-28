@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +15,12 @@ class BiometricAuthService {
   final LocalAuthentication _auth = LocalAuthentication();
   static const String _biometricEnabledKey = 'biometric_auth_enabled';
   static const String _biometricTypeKey = 'biometric_type';
+
+  // Rate limiting (brute-force protection)
+  static const String _failedAttemptsKey = 'biometric_failed_attempts';
+  static const String _lockoutUntilKey = 'biometric_lockout_until';
+  static const int _maxFailedAttempts = 5;
+  static const Duration _lockoutDuration = Duration(minutes: 5);
 
   /// Check if device supports biometric authentication
   Future<bool> isDeviceSupported() async {
@@ -125,8 +130,98 @@ class BiometricAuthService {
     }
   }
 
+  /// Check if biometric authentication is currently locked out
+  Future<bool> isLockedOut() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lockoutUntilMs = prefs.getInt(_lockoutUntilKey);
+
+      if (lockoutUntilMs == null) return false;
+
+      final lockoutUntil = DateTime.fromMillisecondsSinceEpoch(lockoutUntilMs);
+      final isLocked = DateTime.now().isBefore(lockoutUntil);
+
+      if (!isLocked) {
+        // Lockout expired, reset counters
+        await _resetFailedAttempts();
+      }
+
+      return isLocked;
+    } catch (e) {
+      logError('Failed to check lockout status: $e', tag: 'BIOMETRIC_AUTH');
+      return false;
+    }
+  }
+
+  /// Get remaining lockout time
+  Future<Duration?> getLockoutTimeRemaining() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lockoutUntilMs = prefs.getInt(_lockoutUntilKey);
+
+      if (lockoutUntilMs == null) return null;
+
+      final lockoutUntil = DateTime.fromMillisecondsSinceEpoch(lockoutUntilMs);
+      final now = DateTime.now();
+
+      if (now.isBefore(lockoutUntil)) {
+        return lockoutUntil.difference(now);
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Increment failed attempts counter
+  Future<void> _incrementFailedAttempts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentAttempts = prefs.getInt(_failedAttemptsKey) ?? 0;
+      final newAttempts = currentAttempts + 1;
+
+      await prefs.setInt(_failedAttemptsKey, newAttempts);
+
+      if (newAttempts >= _maxFailedAttempts) {
+        // Lock out user
+        final lockoutUntil = DateTime.now().add(_lockoutDuration);
+        await prefs.setInt(_lockoutUntilKey, lockoutUntil.millisecondsSinceEpoch);
+
+        logWarning(
+          'Biometric authentication locked out after $newAttempts failed attempts',
+          tag: 'BIOMETRIC_AUTH',
+        );
+      }
+    } catch (e) {
+      logError('Failed to increment failed attempts: $e', tag: 'BIOMETRIC_AUTH');
+    }
+  }
+
+  /// Reset failed attempts counter
+  Future<void> _resetFailedAttempts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_failedAttemptsKey);
+      await prefs.remove(_lockoutUntilKey);
+    } catch (e) {
+      logError('Failed to reset failed attempts: $e', tag: 'BIOMETRIC_AUTH');
+    }
+  }
+
+  /// Get current failed attempts count
+  Future<int> getFailedAttemptsCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_failedAttemptsKey) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   /// Authenticate user with biometric
   /// Returns true if authentication successful, false otherwise
+  /// Includes rate limiting (5 failed attempts = 5 minute lockout)
   Future<bool> authenticate({
     required String reason,
     bool requireConfirmation = false,
@@ -134,6 +229,17 @@ class BiometricAuthService {
     bool stickyAuth = true,
   }) async {
     try {
+      // SECURITY: Check if locked out due to too many failed attempts
+      if (await isLockedOut()) {
+        final remainingTime = await getLockoutTimeRemaining();
+        final minutes = remainingTime?.inMinutes ?? 0;
+        logWarning(
+          'Biometric authentication blocked - locked out for $minutes more minutes',
+          tag: 'BIOMETRIC_AUTH',
+        );
+        return false;
+      }
+
       // Check if device supports biometric
       if (!await isDeviceSupported()) {
         logWarning('Device does not support biometric authentication', tag: 'BIOMETRIC_AUTH');
@@ -151,9 +257,17 @@ class BiometricAuthService {
       );
 
       if (authenticated) {
+        // Reset failed attempts on successful authentication
+        await _resetFailedAttempts();
         logInfo('Biometric authentication successful', tag: 'BIOMETRIC_AUTH');
       } else {
-        logWarning('Biometric authentication failed', tag: 'BIOMETRIC_AUTH');
+        // Increment failed attempts counter
+        await _incrementFailedAttempts();
+        final attempts = await getFailedAttemptsCount();
+        logWarning(
+          'Biometric authentication failed (attempt $attempts/$_maxFailedAttempts)',
+          tag: 'BIOMETRIC_AUTH',
+        );
       }
 
       return authenticated;
