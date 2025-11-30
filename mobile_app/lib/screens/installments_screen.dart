@@ -628,9 +628,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
               backgroundColor: Colors.transparent,
               selectedColor: AppColors.textPrimary,
               side: BorderSide(
-                color: isSelected
-                    ? AppColors.textPrimary
-                    : Colors.grey[300]!,
+                color: isSelected ? AppColors.textPrimary : Colors.grey[300]!,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -717,11 +715,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color:
-                                            _getStatusColor(installment.status)
-                                                .withOpacity(0.2),
-                                        borderRadius:
-                                            BorderRadius.circular(6),
+                                        color: _getStatusColor(installment.status).withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         installment.status.displayName,
@@ -759,8 +754,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 PopupMenuItem(
                                   child: const Row(
                                     children: [
-                                      Icon(Icons.check_circle_outline,
-                                          size: 18),
+                                      Icon(Icons.check_circle_outline, size: 18),
                                       SizedBox(width: 8),
                                       Text('Mark Payment Made'),
                                     ],
@@ -881,8 +875,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 ),
                               ),
                               Text(
-                                DateFormat.MMMMd()
-                                    .format(installment.nextPaymentDate),
+                                DateFormat.MMMMd().format(installment.nextPaymentDate),
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontFamily: AppTypography.fontHeading,
@@ -1080,28 +1073,27 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             _localizationService.formatCurrency(installment.remainingBalance),
           ),
 
-          if (installment.notes != null && installment.notes!.isNotEmpty)
-            ...[
-              const SizedBox(height: 24),
-              const Text(
-                'Notes',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+          if (installment.notes != null && installment.notes!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Notes',
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: AppTypography.fontHeading,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
-              const SizedBox(height: 8),
-              Text(
-                installment.notes!,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: AppTypography.fontBody,
-                  color: Colors.grey[700],
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              installment.notes!,
+              style: TextStyle(
+                fontSize: 13,
+                fontFamily: AppTypography.fontBody,
+                color: Colors.grey[700],
               ),
-            ],
+            ),
+          ],
 
           const SizedBox(height: 24),
 
@@ -1163,8 +1155,7 @@ class _ShimmerLoader extends StatefulWidget {
   State<_ShimmerLoader> createState() => _ShimmerLoaderState();
 }
 
-class _ShimmerLoaderState extends State<_ShimmerLoader>
-    with SingleTickerProviderStateMixin {
+class _ShimmerLoaderState extends State<_ShimmerLoader> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 

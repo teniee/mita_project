@@ -375,9 +375,8 @@ class BiometricAuthService {
     }
 
     final biometricType = await getBiometricTypeName();
-    final reason = Platform.isIOS
-        ? 'Authenticate to access MITA'
-        : 'Use $biometricType to access MITA';
+    final reason =
+        Platform.isIOS ? 'Authenticate to access MITA' : 'Use $biometricType to access MITA';
 
     return await authenticate(
       reason: reason,
@@ -398,9 +397,8 @@ class BiometricAuthService {
     }
 
     final biometricType = await getBiometricTypeName();
-    final reason = Platform.isIOS
-        ? 'Authenticate to $operationName'
-        : 'Use $biometricType to $operationName';
+    final reason =
+        Platform.isIOS ? 'Authenticate to $operationName' : 'Use $biometricType to $operationName';
 
     return await authenticate(
       reason: reason,

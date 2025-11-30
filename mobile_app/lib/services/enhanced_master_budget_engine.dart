@@ -79,9 +79,11 @@ class EnhancedMasterBudgetEngine {
 
     // Step 4: Advanced Habit Recognition and Correction
     final habitAnalysis = await _habitService.analyzeSpendingHabits(transactionHistory);
-    final behavioralCorrections = await _habitService.generateBehavioralCorrections(habitAnalysis.detectedHabits);
+    final behavioralCorrections =
+        await _habitService.generateBehavioralCorrections(habitAnalysis.detectedHabits);
     calculationSteps['habitAnalysis'] = _mapHabitAnalysisToMap(habitAnalysis);
-    calculationSteps['behavioralCorrections'] = _mapBehavioralCorrectionsToMap(behavioralCorrections);
+    calculationSteps['behavioralCorrections'] =
+        _mapBehavioralCorrectionsToMap(behavioralCorrections);
 
     // Step 5: Category Intelligence Optimization
     final lifeEvents = await _categoryService.detectLifeEvents(transactionHistory);
@@ -148,7 +150,8 @@ class EnhancedMasterBudgetEngine {
       final userDemo = UserDemographicProfile(
         userId: userId,
         incomeTier: incomeClassification.primaryTier,
-        interests: (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+        interests:
+            (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
         spendingPersonality: userProfile['spendingPersonality'] as Map<String, dynamic>? ?? {},
       );
 
@@ -169,7 +172,8 @@ class EnhancedMasterBudgetEngine {
     final explanationContext = ExplanationContext(
       userId: userId,
       userLevel: userProfile['experienceLevel']?.toString() ?? 'intermediate',
-      userInterests: (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      userInterests:
+          (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       preferVisualExplanations: userProfile['preferVisualExplanations'] as bool? ?? false,
       preferDetailedMath: userProfile['preferDetailedMath'] as bool? ?? false,
       communicationStyle: userProfile['communicationStyle']?.toString() ?? 'simple',
@@ -301,7 +305,7 @@ class EnhancedMasterBudgetEngine {
     Map<String, dynamic> categoryOptimization,
   ) {
     final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    
+
     // Base percentage for flexible spending based on income tier
     double flexibleSpendingRatio;
     switch (incomeClassification.primaryTier) {
@@ -326,7 +330,7 @@ class EnhancedMasterBudgetEngine {
     if (incomeClassification.isInTransition && incomeClassification.secondaryTier != null) {
       final secondaryRatio = _getFlexibleSpendingRatio(incomeClassification.secondaryTier!);
       flexibleSpendingRatio = (flexibleSpendingRatio * incomeClassification.primaryWeight) +
-                             (secondaryRatio * incomeClassification.secondaryWeight);
+          (secondaryRatio * incomeClassification.secondaryWeight);
     }
 
     final monthlyFlexibleBudget = monthlyIncome * flexibleSpendingRatio;
@@ -354,26 +358,28 @@ class EnhancedMasterBudgetEngine {
 
   double _applyBehavioralCorrections(double baseBudget, List<BehavioralCorrection> corrections) {
     double adjustedBudget = baseBudget;
-    
+
     for (final correction in corrections) {
       adjustedBudget *= correction.budgetMultiplier;
     }
-    
+
     return adjustedBudget;
   }
 
   double _calculateOverallConfidence(Map<String, dynamic> calculationSteps, int dataPoints) {
     double confidence = 0.5; // Base confidence
-    
+
     // Higher confidence with more data
-    if (dataPoints >= 100) confidence += 0.3;
-    else if (dataPoints >= 50) confidence += 0.2;
+    if (dataPoints >= 100)
+      confidence += 0.3;
+    else if (dataPoints >= 50)
+      confidence += 0.2;
     else if (dataPoints >= 20) confidence += 0.1;
-    
+
     // Higher confidence with more services used
     final servicesUsed = calculationSteps.length;
     confidence += (servicesUsed * 0.05).clamp(0.0, 0.2);
-    
+
     return confidence.clamp(0.0, 1.0);
   }
 
@@ -383,10 +389,10 @@ class EnhancedMasterBudgetEngine {
     List<LifeEventDetection> lifeEvents,
   ) {
     double riskScore = 0.0;
-    
+
     // Add risk from bad habits
     riskScore += habitAnalysis.overallHabitScore * 0.4;
-    
+
     // Add risk from high spending velocity
     if (velocityAdjustment != null) {
       if (velocityAdjustment.allocationStrategy.contains('emergency') ||
@@ -394,31 +400,29 @@ class EnhancedMasterBudgetEngine {
         riskScore += 0.3;
       }
     }
-    
+
     // Add risk from life events
     for (final event in lifeEvents) {
       riskScore += event.confidence * 0.1;
     }
-    
+
     return riskScore.clamp(0.0, 1.0);
   }
 
   double _calculateMonthlySpending(List<Map<String, dynamic>> transactions) {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
-    
-    return transactions
-        .where((t) {
-          final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
-          return date.isAfter(monthStart);
-        })
-        .fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
+    return transactions.where((t) {
+      final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+      return date.isAfter(monthStart);
+    }).fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
   }
 
   double _calculateSavingsRate(Map<String, dynamic> userProfile) {
     final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
     final monthlySavings = (userProfile['monthlySavings'] as num?)?.toDouble() ?? 0.0;
-    
+
     return monthlyIncome > 0 ? monthlySavings / monthlyIncome : 0.0;
   }
 
@@ -430,28 +434,28 @@ class EnhancedMasterBudgetEngine {
     List<LifeEventDetection> lifeEvents,
   ) {
     final insights = <String>[];
-    
+
     // Income tier insight
     final tierName = _getTierDisplayName(incomeClassification.primaryTier);
     insights.add('Your income places you in the $tierName category');
-    
+
     // Habit insights
     if (habitAnalysis.detectedHabits.isNotEmpty) {
       final topHabit = habitAnalysis.detectedHabits.first;
       insights.add('Primary spending pattern detected: ${topHabit.habitName}');
     }
-    
+
     // Social insights
     if (socialInsights.isNotEmpty) {
       insights.add(socialInsights.first.comparisonText);
     }
-    
+
     // Life event insights
     if (lifeEvents.isNotEmpty) {
       final recentEvent = lifeEvents.first;
       insights.add('Recent life event detected: ${recentEvent.eventType}');
     }
-    
+
     return insights.take(5).toList();
   }
 
@@ -462,25 +466,25 @@ class EnhancedMasterBudgetEngine {
     List<SocialComparisonInsight> socialInsights,
   ) {
     final recommendations = <String>[];
-    
+
     // Habit-based recommendations
     recommendations.addAll(habitAnalysis.recommendations.take(2));
-    
+
     // Velocity-based recommendations
     if (velocityAdjustment != null) {
       recommendations.addAll(velocityAdjustment.recommendations.take(2));
     }
-    
+
     // Life event recommendations
     for (final event in lifeEvents.take(1)) {
       recommendations.addAll(event.recommendedAdjustments.take(1));
     }
-    
+
     // Social comparison recommendations
     for (final insight in socialInsights.take(1)) {
       recommendations.add(insight.recommendation);
     }
-    
+
     return recommendations.take(6).toList();
   }
 
@@ -491,7 +495,7 @@ class EnhancedMasterBudgetEngine {
   ) {
     // Default category allocations based on income tier
     Map<String, double> allocations;
-    
+
     switch (incomeTier) {
       case IncomeTier.low:
         allocations = {
@@ -520,10 +524,9 @@ class EnhancedMasterBudgetEngine {
           'other': 0.15,
         };
     }
-    
+
     // Convert percentages to actual amounts
-    return allocations.map((category, percentage) => 
-        MapEntry(category, dailyBudget * percentage));
+    return allocations.map((category, percentage) => MapEntry(category, dailyBudget * percentage));
   }
 
   double _calculateOverallHealthScore(
@@ -532,16 +535,16 @@ class EnhancedMasterBudgetEngine {
     List<Map<String, dynamic>> transactionHistory,
   ) {
     double healthScore = 0.5; // Base score
-    
+
     // Higher score for higher confidence
     healthScore += currentBudget.confidence * 0.3;
-    
+
     // Lower score for higher risk
     healthScore -= currentBudget.riskScore * 0.2;
-    
+
     // Higher score for more stable predictions
     healthScore += predictiveAnalysis.overallConfidence * 0.2;
-    
+
     return healthScore.clamp(0.0, 1.0);
   }
 
@@ -551,21 +554,22 @@ class EnhancedMasterBudgetEngine {
     List<Map<String, dynamic>> transactionHistory,
   ) {
     final insights = <String>[];
-    
+
     // Budget insights
     if (currentBudget.confidence > 0.8) {
-      insights.add('High confidence in budget calculation - your spending patterns are predictable');
+      insights
+          .add('High confidence in budget calculation - your spending patterns are predictable');
     }
-    
+
     if (currentBudget.riskScore > 0.6) {
       insights.add('Elevated spending risk detected - consider implementing protective measures');
     }
-    
+
     // Predictive insights
     if (predictiveAnalysis.riskWarnings.isNotEmpty) {
       insights.addAll(predictiveAnalysis.riskWarnings.take(2));
     }
-    
+
     return insights.take(5).toList();
   }
 
@@ -587,23 +591,24 @@ class EnhancedMasterBudgetEngine {
 
   double _assessDataQuality(List<Map<String, dynamic>> transactions) {
     if (transactions.isEmpty) return 0.0;
-    
+
     double quality = 0.5; // Base quality
-    
+
     // More transactions = higher quality
-    if (transactions.length >= 100) quality += 0.3;
-    else if (transactions.length >= 50) quality += 0.2;
+    if (transactions.length >= 100)
+      quality += 0.3;
+    else if (transactions.length >= 50)
+      quality += 0.2;
     else if (transactions.length >= 20) quality += 0.1;
-    
+
     // Check data completeness
-    final completeTransactions = transactions.where((t) => 
-        t['amount'] != null && 
-        t['date'] != null && 
-        t['category'] != null).length;
-    
+    final completeTransactions = transactions
+        .where((t) => t['amount'] != null && t['date'] != null && t['category'] != null)
+        .length;
+
     final completenessRatio = completeTransactions / transactions.length;
     quality += completenessRatio * 0.2;
-    
+
     return quality.clamp(0.0, 1.0);
   }
 
@@ -681,13 +686,15 @@ class EnhancedMasterBudgetEngine {
   Map<String, dynamic> _mapLifeEventsToMap(List<LifeEventDetection> events) {
     return {
       'eventCount': events.length,
-      'events': events.map((e) => {
-        'eventType': e.eventType,
-        'confidence': e.confidence,
-        'detectedAt': e.detectedAt.toIso8601String(),
-        'indicators': e.indicators,
-        'categoryImpacts': e.categoryImpacts,
-      }).toList(),
+      'events': events
+          .map((e) => {
+                'eventType': e.eventType,
+                'confidence': e.confidence,
+                'detectedAt': e.detectedAt.toIso8601String(),
+                'indicators': e.indicators,
+                'categoryImpacts': e.categoryImpacts,
+              })
+          .toList(),
     };
   }
 }

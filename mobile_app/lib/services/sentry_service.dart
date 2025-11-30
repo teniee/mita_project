@@ -51,7 +51,7 @@ class SentryFinancialService {
   String? _userEmail; // Reserved for future user tracking
   String? _subscriptionTier; // Reserved for future tier-based monitoring
   String? _deviceInfo;
-  
+
   /// Initialize comprehensive Sentry monitoring for financial application
   Future<void> initialize({
     required String dsn,
@@ -70,47 +70,47 @@ class SentryFinancialService {
     try {
       // Get device and app information
       await _collectDeviceInfo();
-      
+
       await SentryFlutter.init(
         (options) {
           options.dsn = dsn;
           options.environment = environment;
           options.release = release ?? 'mita-mobile@1.0.0';
-          
+
           // Performance monitoring configuration
           options.tracesSampleRate = tracesSampleRate ?? _getTracesSampleRate(environment);
           options.enableAutoPerformanceTracing = enablePerformanceMonitoring;
           options.enableUserInteractionTracing = enableUserInteractionTracing;
           options.enableAutoSessionTracking = true;
-          
+
           // Error sampling
           options.sampleRate = sampleRate ?? 1.0; // Capture all errors
-          
+
           // Security and compliance for financial services
           options.sendDefaultPii = false; // Don't send PII data
           options.attachStacktrace = true;
           options.maxBreadcrumbs = 100;
-          
+
           // Debug configuration
           options.debug = environment == 'development' && kDebugMode;
-          
+
           // Custom configuration for mobile
           options.enableWindowMetricBreadcrumbs = true;
           options.enableNativeCrashHandling = enableCrashReporting;
           options.enableAutoNativeBreadcrumbs = true;
-          
-          
+
           // Configure screenshot attachment (disabled for financial compliance)
           options.attachScreenshot = false; // Disabled for financial privacy
-          
+
           // Set before send callbacks
           options.beforeSend = _filterSensitiveData;
-          options.beforeSendTransaction = (transaction) => _filterSensitiveTransactions(transaction, Hint());
+          options.beforeSendTransaction =
+              (transaction) => _filterSensitiveTransactions(transaction, Hint());
         },
       );
 
       _isInitialized = true;
-      
+
       // Configure initial scope after initialization
       await Sentry.configureScope((scope) {
         scope.setTag('application_type', 'financial_services');
@@ -118,11 +118,11 @@ class SentryFinancialService {
         scope.setTag('platform', Platform.operatingSystem);
         scope.setTag('environment', environment);
         scope.setTag('component', 'mobile_app');
-        
+
         if (_deviceInfo != null) {
           scope.setTag('device_info', _deviceInfo!);
         }
-        
+
         // Set application context
         scope.setContexts('application', {
           'name': 'MITA Finance Mobile',
@@ -132,7 +132,7 @@ class SentryFinancialService {
           'platform': Platform.operatingSystem,
         });
       });
-      
+
       // Add initial breadcrumb
       Sentry.addBreadcrumb(Breadcrumb(
         message: 'Sentry financial monitoring initialized',
@@ -144,9 +144,9 @@ class SentryFinancialService {
           'compliance_enabled': true,
         },
       ));
-      
-      if (kDebugMode) dev.log('Sentry financial monitoring initialized for $environment', name: 'SentryService');
-      
+
+      if (kDebugMode)
+        dev.log('Sentry financial monitoring initialized for $environment', name: 'SentryService');
     } catch (e, stackTrace) {
       if (kDebugMode) dev.log('Failed to initialize Sentry: $e', name: 'SentryService', error: e);
       if (kDebugMode) {
@@ -173,19 +173,19 @@ class SentryFinancialService {
     try {
       final deviceInfo = DeviceInfoPlugin();
       final packageInfo = await PackageInfo.fromPlatform();
-      
+
       String deviceDetails = '';
-      
+
       if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
         deviceDetails = '${iosInfo.name} ${iosInfo.systemVersion}';
       } else if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        deviceDetails = '${androidInfo.brand} ${androidInfo.model} API${androidInfo.version.sdkInt}';
+        deviceDetails =
+            '${androidInfo.brand} ${androidInfo.model} API${androidInfo.version.sdkInt}';
       }
-      
+
       _deviceInfo = '${packageInfo.appName} v${packageInfo.version} on $deviceDetails';
-      
     } catch (e) {
       _deviceInfo = 'Unknown device';
     }
@@ -195,11 +195,26 @@ class SentryFinancialService {
   SentryEvent? _filterSensitiveData(SentryEvent event, Hint hint) {
     // List of sensitive keys to redact
     const sensitiveKeys = {
-      'password', 'token', 'secret', 'key', 'authorization',
-      'card_number', 'cvv', 'pin', 'ssn', 'tax_id',
-      'account_number', 'routing_number', 'sort_code',
-      'iban', 'swift', 'bank_account', 'credit_card',
-      'debit_card', 'payment_method', 'financial_data'
+      'password',
+      'token',
+      'secret',
+      'key',
+      'authorization',
+      'card_number',
+      'cvv',
+      'pin',
+      'ssn',
+      'tax_id',
+      'account_number',
+      'routing_number',
+      'sort_code',
+      'iban',
+      'swift',
+      'bank_account',
+      'credit_card',
+      'debit_card',
+      'payment_method',
+      'financial_data'
     };
 
     /// Recursively sanitize data structures
@@ -277,7 +292,8 @@ class SentryFinancialService {
     Map<String, String>? tags,
   }) async {
     if (!_isInitialized) {
-      if (kDebugMode) dev.log('Sentry not initialized - error not captured: $exception', name: 'SentryService');
+      if (kDebugMode)
+        dev.log('Sentry not initialized - error not captured: $exception', name: 'SentryService');
       return const SentryId.empty();
     }
 
@@ -289,7 +305,7 @@ class SentryFinancialService {
         scope.setTag('error_category', category.value);
         scope.setTag('severity', severity.value);
         scope.setTag('financial_error', 'true');
-        
+
         // Set user context
         if (userId != null) {
           scope.setUser(SentryUser(id: userId));
@@ -454,7 +470,7 @@ class SentryFinancialService {
     final results = await Connectivity().checkConnectivity();
     final connectivity = results.isNotEmpty ? results.first : ConnectivityResult.none;
     final connectivityName = connectivity.name;
-    
+
     return captureFinancialError(
       exception,
       category: FinancialErrorCategory.networkError,

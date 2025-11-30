@@ -3,6 +3,7 @@
 /// Supports multiple log levels and proper production handling
 ///
 library;
+
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:convert';
@@ -12,10 +13,10 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Log levels for different types of messages
 enum LogLevel {
-  debug,    // Detailed debug information
-  info,     // General information
-  warning,  // Warning messages
-  error,    // Error messages
+  debug, // Detailed debug information
+  info, // General information
+  warning, // Warning messages
+  error, // Error messages
   critical, // Critical system failures
 }
 
@@ -183,11 +184,33 @@ class LoggingService {
   /// Check if field name indicates sensitive data
   bool _isSensitiveField(String fieldName) {
     final sensitive = [
-      'password', 'passwd', 'pwd', 'secret', 'token', 'api_key', 'apikey',
-      'auth', 'authorization', 'bearer', 'credential', 'private_key',
-      'access_token', 'refresh_token', 'session_token', 'jwt',
-      'credit_card', 'creditcard', 'cvv', 'cvc', 'pin', 'ssn',
-      'social_security', 'tax_id', 'passport', 'license', 'iban',
+      'password',
+      'passwd',
+      'pwd',
+      'secret',
+      'token',
+      'api_key',
+      'apikey',
+      'auth',
+      'authorization',
+      'bearer',
+      'credential',
+      'private_key',
+      'access_token',
+      'refresh_token',
+      'session_token',
+      'jwt',
+      'credit_card',
+      'creditcard',
+      'cvv',
+      'cvc',
+      'pin',
+      'ssn',
+      'social_security',
+      'tax_id',
+      'passport',
+      'license',
+      'iban',
     ];
 
     return sensitive.any((s) => fieldName.contains(s));
@@ -209,17 +232,20 @@ class LoggingService {
   }
 
   /// Log an error message
-  void error(String message, {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
+  void error(String message,
+      {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
     _log(LogLevel.error, message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
   }
 
   /// Log a critical error
-  void critical(String message, {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
+  void critical(String message,
+      {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
     _log(LogLevel.critical, message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
   }
 
   /// Generic log method
-  void log(String message, {LogLevel level = LogLevel.info, String? tag, Map<String, dynamic>? extra}) {
+  void log(String message,
+      {LogLevel level = LogLevel.info, String? tag, Map<String, dynamic>? extra}) {
     _log(level, message, tag: tag, extra: extra);
   }
 
@@ -277,7 +303,7 @@ class LoggingService {
   /// Add entry to history
   void _addToHistory(LogEntry entry) {
     _logHistory.add(entry);
-    
+
     // Keep history size manageable
     if (_logHistory.length > _maxHistorySize) {
       _logHistory.removeAt(0);
@@ -289,9 +315,9 @@ class LoggingService {
     final levelIcon = _getLevelIcon(entry.level);
     final tag = entry.tag != null ? '[${entry.tag}] ' : '';
     final timestamp = entry.timestamp.toIso8601String().substring(11, 23); // HH:MM:SS.mmm
-    
+
     String logMessage = '$levelIcon $timestamp $tag${entry.message}';
-    
+
     // Add extra data if present
     if (entry.extra != null && entry.extra!.isNotEmpty) {
       logMessage += '\n  Extra: ${entry.extra}';
@@ -317,7 +343,7 @@ class LoggingService {
     try {
       // Only log WARNING and above to file to avoid excessive file growth
       if (entry.level.index < LogLevel.warning.index) return;
-      
+
       _writeLogToFile(entry);
     } catch (e) {
       // Fallback to developer log if file logging fails
@@ -334,15 +360,16 @@ class LoggingService {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final logFile = File('${directory.path}/mita_logs.txt');
-      
+
       // Check file size and rotate if needed (max 5MB)
       if (await logFile.exists()) {
         final fileSize = await logFile.length();
-        if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        if (fileSize > 5 * 1024 * 1024) {
+          // 5MB limit
           await _rotateLogFile(logFile);
         }
       }
-      
+
       // Format log entry for file
       final timestamp = DateTime.now().toIso8601String();
       final logLine = jsonEncode({
@@ -354,10 +381,9 @@ class LoggingService {
         'error': entry.error?.toString(),
         'stackTrace': entry.stackTrace?.toString(),
       });
-      
+
       // Append to log file
       await logFile.writeAsString('$logLine\n', mode: FileMode.append);
-      
     } catch (e) {
       developer.log(
         'Error writing to log file: $e',
@@ -372,15 +398,15 @@ class LoggingService {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final backupFile = File('${directory.path}/mita_logs_old.txt');
-      
+
       // Remove old backup if exists
       if (await backupFile.exists()) {
         await backupFile.delete();
       }
-      
+
       // Move current to backup
       await currentFile.rename(backupFile.path);
-      
+
       developer.log(
         'Log file rotated due to size limit',
         name: 'LOGGING_SERVICE',
@@ -400,10 +426,10 @@ class LoggingService {
     try {
       // Only report ERROR and CRITICAL level logs to avoid spam
       if (entry.level.index < LogLevel.error.index) return;
-      
+
       // Don't report to Crashlytics in debug mode
       if (kDebugMode) return;
-      
+
       _sendToCrashlytics(entry);
     } catch (e) {
       developer.log(
@@ -418,21 +444,22 @@ class LoggingService {
   Future<void> _sendToCrashlytics(LogEntry entry) async {
     try {
       final crashlytics = FirebaseCrashlytics.instance;
-      
+
       // Set user context for correlation
       if (entry.extra != null && entry.extra!['user_id'] != null) {
         await crashlytics.setUserIdentifier(entry.extra!['user_id'].toString());
       }
-      
+
       // Add custom keys for context
       await crashlytics.setCustomKey('log_tag', entry.tag ?? 'UNKNOWN');
       await crashlytics.setCustomKey('log_level', entry.level.name.toUpperCase());
       await crashlytics.setCustomKey('timestamp', DateTime.now().toIso8601String());
-      
+
       // Add extra context data
       if (entry.extra != null) {
         for (final key in entry.extra!.keys) {
-          if (key != 'user_id') { // user_id already set above
+          if (key != 'user_id') {
+            // user_id already set above
             final value = entry.extra![key];
             if (value != null) {
               await crashlytics.setCustomKey('extra_$key', value.toString());
@@ -440,7 +467,7 @@ class LoggingService {
           }
         }
       }
-      
+
       // Report the error
       if (entry.error != null) {
         // Report with exception and stack trace
@@ -453,7 +480,7 @@ class LoggingService {
       } else {
         // Report as a non-fatal message
         await crashlytics.log('${entry.tag ?? 'UNKNOWN'}: ${entry.message}');
-        
+
         // For CRITICAL level without exception, create a custom error
         if (entry.level == LogLevel.critical) {
           await crashlytics.recordError(
@@ -464,7 +491,6 @@ class LoggingService {
           );
         }
       }
-      
     } catch (e) {
       developer.log(
         'Error sending to Crashlytics: $e',
@@ -494,11 +520,11 @@ class LoggingService {
   int _getDeveloperLogLevel(LogLevel level) {
     switch (level) {
       case LogLevel.debug:
-        return 500;  // Fine
+        return 500; // Fine
       case LogLevel.info:
-        return 800;  // Info
+        return 800; // Info
       case LogLevel.warning:
-        return 900;  // Warning
+        return 900; // Warning
       case LogLevel.error:
         return 1000; // Severe
       case LogLevel.critical:
@@ -569,10 +595,14 @@ void logWarning(String message, {String? tag, Map<String, dynamic>? extra}) {
   LoggingService.instance.warning(message, tag: tag, extra: extra);
 }
 
-void logError(String message, {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-  LoggingService.instance.error(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+void logError(String message,
+    {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
+  LoggingService.instance
+      .error(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
 }
 
-void logCritical(String message, {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-  LoggingService.instance.critical(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+void logCritical(String message,
+    {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
+  LoggingService.instance
+      .critical(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
 }

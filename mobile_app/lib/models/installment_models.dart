@@ -198,27 +198,20 @@ class UserFinancialProfile {
     return UserFinancialProfile(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      monthlyIncome: json['monthly_income'] != null
-          ? (json['monthly_income'] as num).toDouble()
-          : null,
-      currentBalance: json['current_balance'] != null
-          ? (json['current_balance'] as num).toDouble()
-          : null,
-      ageGroup: json['age_group'] != null
-          ? AgeGroup.fromJson(json['age_group'] as String)
-          : null,
-      creditCardDebt: json['credit_card_debt'] != null
-          ? (json['credit_card_debt'] as num).toDouble()
-          : null,
+      monthlyIncome:
+          json['monthly_income'] != null ? (json['monthly_income'] as num).toDouble() : null,
+      currentBalance:
+          json['current_balance'] != null ? (json['current_balance'] as num).toDouble() : null,
+      ageGroup: json['age_group'] != null ? AgeGroup.fromJson(json['age_group'] as String) : null,
+      creditCardDebt:
+          json['credit_card_debt'] != null ? (json['credit_card_debt'] as num).toDouble() : null,
       creditCardPayment: json['credit_card_payment'] != null
           ? (json['credit_card_payment'] as num).toDouble()
           : null,
       otherLoansPayment: json['other_loans_payment'] != null
           ? (json['other_loans_payment'] as num).toDouble()
           : null,
-      rentPayment: json['rent_payment'] != null
-          ? (json['rent_payment'] as num).toDouble()
-          : null,
+      rentPayment: json['rent_payment'] != null ? (json['rent_payment'] as num).toDouble() : null,
       subscriptionsPayment: json['subscriptions_payment'] != null
           ? (json['subscriptions_payment'] as num).toDouble()
           : null,
@@ -284,9 +277,7 @@ class UserFinancialProfile {
 
   /// Check if profile has sufficient data for calculations
   bool get hasCompleteProfile {
-    return monthlyIncome != null &&
-        currentBalance != null &&
-        ageGroup != null;
+    return monthlyIncome != null && currentBalance != null && ageGroup != null;
   }
 
   @override
@@ -345,8 +336,7 @@ class RiskFactor {
           stat == other.stat;
 
   @override
-  int get hashCode =>
-      factor.hashCode ^ severity.hashCode ^ message.hashCode ^ stat.hashCode;
+  int get hashCode => factor.hashCode ^ severity.hashCode ^ message.hashCode ^ stat.hashCode;
 }
 
 /// Alternative recommendation for an installment purchase
@@ -371,9 +361,8 @@ class AlternativeRecommendation {
       recommendationType: json['recommendation_type'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      savingsAmount: json['savings_amount'] != null
-          ? (json['savings_amount'] as num).toDouble()
-          : null,
+      savingsAmount:
+          json['savings_amount'] != null ? (json['savings_amount'] as num).toDouble() : null,
       timeNeededDays: json['time_needed_days'] as int?,
     );
   }
@@ -470,13 +459,10 @@ class InstallmentCalculatorInput {
       monthlyIncome: monthlyIncome ?? this.monthlyIncome,
       currentBalance: currentBalance ?? this.currentBalance,
       ageGroup: ageGroup ?? this.ageGroup,
-      activeInstallmentsCount:
-          activeInstallmentsCount ?? this.activeInstallmentsCount,
-      activeInstallmentsMonthly:
-          activeInstallmentsMonthly ?? this.activeInstallmentsMonthly,
+      activeInstallmentsCount: activeInstallmentsCount ?? this.activeInstallmentsCount,
+      activeInstallmentsMonthly: activeInstallmentsMonthly ?? this.activeInstallmentsMonthly,
       creditCardDebt: creditCardDebt ?? this.creditCardDebt,
-      otherMonthlyObligations:
-          otherMonthlyObligations ?? this.otherMonthlyObligations,
+      otherMonthlyObligations: otherMonthlyObligations ?? this.otherMonthlyObligations,
       planningMortgage: planningMortgage ?? this.planningMortgage,
     );
   }
@@ -543,9 +529,7 @@ class InstallmentCalculatorOutput {
       paymentSchedule: (json['payment_schedule'] as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
-      dtiRatio: json['dti_ratio'] != null
-          ? (json['dti_ratio'] as num).toDouble()
-          : null,
+      dtiRatio: json['dti_ratio'] != null ? (json['dti_ratio'] as num).toDouble() : null,
       paymentToIncomeRatio: json['payment_to_income_ratio'] != null
           ? (json['payment_to_income_ratio'] as num).toDouble()
           : null,
@@ -563,11 +547,9 @@ class InstallmentCalculatorOutput {
           ? AlternativeRecommendation.fromJson(
               json['alternative_recommendation'] as Map<String, dynamic>)
           : null,
-      warnings:
-          (json['warnings'] as List).map((e) => e as String).toList(),
+      warnings: (json['warnings'] as List).map((e) => e as String).toList(),
       tips: (json['tips'] as List).map((e) => e as String).toList(),
-      statistics:
-          (json['statistics'] as List).map((e) => e as String).toList(),
+      statistics: (json['statistics'] as List).map((e) => e as String).toList(),
       potentialLateFee: json['potential_late_fee'] != null
           ? (json['potential_late_fee'] as num).toDouble()
           : null,
@@ -579,15 +561,13 @@ class InstallmentCalculatorOutput {
   }
 
   /// Check if the recommendation is to proceed with the installment
-  bool get shouldProceed =>
-      riskLevel == RiskLevel.green || riskLevel == RiskLevel.yellow;
+  bool get shouldProceed => riskLevel == RiskLevel.green || riskLevel == RiskLevel.yellow;
 
   /// Check if there are critical warnings
   bool get hasCriticalWarnings => riskLevel == RiskLevel.red;
 
   /// Check if there are high risk factors
-  bool get hasHighRisk =>
-      riskLevel == RiskLevel.orange || riskLevel == RiskLevel.red;
+  bool get hasHighRisk => riskLevel == RiskLevel.orange || riskLevel == RiskLevel.red;
 
   @override
   bool operator ==(Object other) =>
@@ -810,8 +790,7 @@ class InstallmentsSummary {
       installments: (json['installments'] as List)
           .map((e) => Installment.fromJson(e as Map<String, dynamic>))
           .toList(),
-      currentInstallmentLoad:
-          (json['current_installment_load'] as num).toDouble(),
+      currentInstallmentLoad: (json['current_installment_load'] as num).toDouble(),
       loadMessage: json['load_message'] as String,
     );
   }

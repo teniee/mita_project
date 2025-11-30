@@ -28,7 +28,8 @@ class ApiService {
   ApiService._internal() {
     // Create timeout-aware Dio instance with extended timeouts for slow backend
     _dio = TimeoutManagerService().createTimeoutAwareDio(
-      connectTimeout: const Duration(seconds: 30), // Increased for slow backend (up to 90s response)
+      connectTimeout:
+          const Duration(seconds: 30), // Increased for slow backend (up to 90s response)
       receiveTimeout: const Duration(seconds: 90), // Increased for slow backend
       sendTimeout: const Duration(seconds: 30), // Increased for slow backend
     );
@@ -48,17 +49,14 @@ class ApiService {
         onRequest: (options, handler) async {
           // Note: We don't start loading here as it's handled by TimeoutManagerService
           // This prevents double-counting and ensures proper timeout handling
-          
+
           // Structured logging
-          logDebug('API Request: ${options.method} ${options.uri}', 
-            tag: 'API',
-            extra: {
-              'method': options.method,
-              'url': options.uri.toString(),
-              'headers': options.headers,
-              'hasData': options.data != null,
-            }
-          );
+          logDebug('API Request: ${options.method} ${options.uri}', tag: 'API', extra: {
+            'method': options.method,
+            'url': options.uri.toString(),
+            'headers': options.headers,
+            'hasData': options.data != null,
+          });
 
           final token = await getToken();
           if (token != null) {
@@ -68,24 +66,24 @@ class ApiService {
         },
         onResponse: (response, handler) {
           // Note: Loading is stopped by TimeoutManagerService automatically
-          
+
           // Structured logging
           logDebug('API Response: ${response.statusCode} ${response.requestOptions.uri}',
-            tag: 'API',
-            extra: {
-              'statusCode': response.statusCode,
-              'url': response.requestOptions.uri.toString(),
-              'hasData': response.data != null,
-            }
-          );
-          
+              tag: 'API',
+              extra: {
+                'statusCode': response.statusCode,
+                'url': response.requestOptions.uri.toString(),
+                'hasData': response.data != null,
+              });
+
           handler.next(response);
         },
         onError: (DioException e, handler) async {
           // Note: Loading is stopped by TimeoutManagerService automatically
 
           // Structured error logging
-          logError('API Error: ${e.response?.statusCode} ${e.requestOptions.uri}',
+          logError(
+            'API Error: ${e.response?.statusCode} ${e.requestOptions.uri}',
             tag: 'API',
             extra: {
               'statusCode': e.response?.statusCode,
@@ -114,7 +112,9 @@ class ApiService {
 
               // Показываем диалог только если это критический endpoint
               final path = e.requestOptions.path ?? '';
-              if (path.contains('/auth/') || path.contains('/login') || path.contains('/register')) {
+              if (path.contains('/auth/') ||
+                  path.contains('/login') ||
+                  path.contains('/register')) {
                 MessageService.instance.showError('Session expired. Please log in.');
               }
             }
@@ -151,7 +151,7 @@ class ApiService {
 
   // Legacy storage for backward compatibility during transition
   final _storage = const FlutterSecureStorage();
-  
+
   // Secure token storage for production-grade security
   SecureTokenStorage? _secureStorage;
 
@@ -165,19 +165,19 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   String get baseUrl => _dio.options.baseUrl;
-  
+
   /// Initialize secure storage asynchronously
   Future<void> _initializeSecureStorage() async {
     try {
       _secureStorage = await SecureTokenStorage.getInstance();
       logInfo('Secure token storage initialized', tag: 'API_SECURITY');
     } catch (e) {
-      logError('Failed to initialize secure storage, falling back to basic storage: $e', 
-        tag: 'API_SECURITY', error: e);
+      logError('Failed to initialize secure storage, falling back to basic storage: $e',
+          tag: 'API_SECURITY', error: e);
       // Continue with legacy storage as fallback
     }
   }
-  
+
   /// Get secure storage instance, initializing if needed
   Future<SecureTokenStorage?> _getSecureStorage() async {
     if (_secureStorage == null) {
@@ -193,14 +193,14 @@ class ApiService {
       try {
         return await secureStorage.getAccessToken();
       } catch (e) {
-        logWarning('Failed to get token from secure storage, falling back: $e', 
-          tag: 'API_SECURITY');
+        logWarning('Failed to get token from secure storage, falling back: $e',
+            tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
     return await _storage.read(key: 'access_token');
   }
-  
+
   /// Get refresh token using secure storage when available
   Future<String?> getRefreshToken() async {
     final secureStorage = await _getSecureStorage();
@@ -208,8 +208,8 @@ class ApiService {
       try {
         return await secureStorage.getRefreshToken();
       } catch (e) {
-        logWarning('Failed to get refresh token from secure storage, falling back: $e', 
-          tag: 'API_SECURITY');
+        logWarning('Failed to get refresh token from secure storage, falling back: $e',
+            tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
@@ -219,12 +219,12 @@ class ApiService {
   /// Save tokens using secure storage with enhanced security
   Future<void> saveTokens(String access, String refresh) async {
     final secureStorage = await _getSecureStorage();
-    
+
     if (secureStorage != null) {
       try {
         // Use secure storage for production-grade security
         await secureStorage.storeTokens(access, refresh);
-        
+
         // Extract and save user ID from access token
         try {
           final userId = _extractUserIdFromToken(access);
@@ -234,26 +234,25 @@ class ApiService {
         } catch (e) {
           logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
         }
-        
+
         logInfo('Tokens saved securely', tag: 'API_SECURITY');
-        
+
         // Clean up any legacy tokens
         await _storage.delete(key: 'access_token');
         await _storage.delete(key: 'refresh_token');
-        
+
         return;
       } catch (e) {
-        logError('Failed to save tokens securely, falling back to legacy storage: $e', 
-          tag: 'API_SECURITY', error: e);
+        logError('Failed to save tokens securely, falling back to legacy storage: $e',
+            tag: 'API_SECURITY', error: e);
       }
     }
-    
+
     // Fallback to legacy storage
-    logWarning('Using legacy token storage - consider upgrading security', 
-      tag: 'API_SECURITY');
+    logWarning('Using legacy token storage - consider upgrading security', tag: 'API_SECURITY');
     await _storage.write(key: 'access_token', value: access);
     await _storage.write(key: 'refresh_token', value: refresh);
-    
+
     // Extract and save user ID from access token
     try {
       final userId = _extractUserIdFromToken(access);
@@ -270,18 +269,18 @@ class ApiService {
       // JWT tokens have format: header.payload.signature
       final parts = token.split('.');
       if (parts.length != 3) return null;
-      
+
       // Decode the payload (second part)
       String payload = parts[1];
       // Add padding if needed for base64 decoding
       while (payload.length % 4 != 0) {
         payload += '=';
       }
-      
+
       final decodedBytes = base64Url.decode(payload);
       final decodedPayload = utf8.decode(decodedBytes);
       final Map<String, dynamic> payloadData = json.decode(decodedPayload);
-      
+
       return payloadData['sub'] as String?;
     } catch (e) {
       logError('Error decoding JWT token', tag: 'AUTH', error: e);
@@ -299,14 +298,13 @@ class ApiService {
         await _storage.delete(key: 'user_id');
         return;
       } catch (e) {
-        logWarning('Failed to save user ID securely, using fallback: $e', 
-          tag: 'API_SECURITY');
+        logWarning('Failed to save user ID securely, using fallback: $e', tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
     await _storage.write(key: 'user_id', value: id);
   }
-  
+
   /// Get user ID using secure storage when available
   Future<String?> getUserId() async {
     final secureStorage = await _getSecureStorage();
@@ -315,8 +313,8 @@ class ApiService {
         final userId = await secureStorage.getUserId();
         if (userId != null) return userId;
       } catch (e) {
-        logWarning('Failed to get user ID from secure storage, using fallback: $e', 
-          tag: 'API_SECURITY');
+        logWarning('Failed to get user ID from secure storage, using fallback: $e',
+            tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
@@ -326,7 +324,7 @@ class ApiService {
   /// Clear tokens using secure storage with proper cleanup
   Future<void> clearTokens() async {
     final secureStorage = await _getSecureStorage();
-    
+
     if (secureStorage != null) {
       try {
         await secureStorage.clearAllUserData();
@@ -335,7 +333,7 @@ class ApiService {
         logError('Failed to clear tokens securely: $e', tag: 'API_SECURITY', error: e);
       }
     }
-    
+
     // Always clear legacy storage as well for complete cleanup
     try {
       await _storage.delete(key: 'access_token');
@@ -372,7 +370,8 @@ class ApiService {
       final newRefresh = data['refresh_token'] as String?;
 
       if (newAccess == null || newRefresh == null) {
-        logError('Refresh response missing tokens: access=$newAccess, refresh=$newRefresh', tag: 'TOKEN_REFRESH');
+        logError('Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
+            tag: 'TOKEN_REFRESH');
         throw Exception('Missing tokens in refresh response');
       }
 
@@ -385,8 +384,7 @@ class ApiService {
           logInfo('✅ Tokens refreshed and stored securely', tag: 'TOKEN_REFRESH');
           return true;
         } catch (e) {
-          logError('Failed to store refreshed tokens securely: $e',
-            tag: 'TOKEN_REFRESH', error: e);
+          logError('Failed to store refreshed tokens securely: $e', tag: 'TOKEN_REFRESH', error: e);
           // Continue with fallback below
         }
       }
@@ -416,20 +414,20 @@ class ApiService {
 
   Future<Response> register(String email, String password) async {
     return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async => await _dio.post('/auth/register',
-          data: {'email': email, 'password': password}),
+      operation: () async =>
+          await _dio.post('/auth/register', data: {'email': email, 'password': password}),
       operationName: 'User Registration',
     );
   }
 
   // Proper FastAPI registration using standard POST endpoint
-  Future<Response> registerWithDetails(String email, String password, {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
+  Future<Response> registerWithDetails(String email, String password,
+      {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('Starting FastAPI registration for ${email.substring(0, 3)}***',
-            tag: 'AUTH');
-          
+          logDebug('Starting FastAPI registration for ${email.substring(0, 3)}***', tag: 'AUTH');
+
           final response = await _dio.post(
             '/auth/register',
             data: {
@@ -440,14 +438,13 @@ class ApiService {
               'timezone': timezone,
             },
           );
-          
-          logInfo('FastAPI registration SUCCESS for ${email.substring(0, 3)}***',
-            tag: 'AUTH');
-          
+
+          logInfo('FastAPI registration SUCCESS for ${email.substring(0, 3)}***', tag: 'AUTH');
+
           return response;
         } catch (e) {
-          logError('FastAPI registration FAILED for ${email.substring(0, 3)}***', 
-            tag: 'AUTH', error: e);
+          logError('FastAPI registration FAILED for ${email.substring(0, 3)}***',
+              tag: 'AUTH', error: e);
           rethrow;
         }
       },
@@ -460,9 +457,8 @@ class ApiService {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('Starting FastAPI login for ${email.substring(0, 3)}***',
-            tag: 'AUTH');
-          
+          logDebug('Starting FastAPI login for ${email.substring(0, 3)}***', tag: 'AUTH');
+
           final response = await _dio.post(
             '/auth/login',
             data: {
@@ -470,14 +466,12 @@ class ApiService {
               'password': password,
             },
           );
-          
-          logInfo('FastAPI login SUCCESS for ${email.substring(0, 3)}***',
-            tag: 'AUTH');
-          
+
+          logInfo('FastAPI login SUCCESS for ${email.substring(0, 3)}***', tag: 'AUTH');
+
           return response;
         } catch (e) {
-          logError('FastAPI login FAILED for ${email.substring(0, 3)}***', 
-            tag: 'AUTH', error: e);
+          logError('FastAPI login FAILED for ${email.substring(0, 3)}***', tag: 'AUTH', error: e);
           rethrow;
         }
       },
@@ -487,8 +481,8 @@ class ApiService {
 
   Future<Response> login(String email, String password) async {
     return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async => await _dio.post('/auth/login',
-          data: {'email': email, 'password': password}),
+      operation: () async =>
+          await _dio.post('/auth/login', data: {'email': email, 'password': password}),
       operationName: 'User Login',
     );
   }
@@ -516,7 +510,7 @@ class ApiService {
     if (refreshed) {
       final newAccessToken = await getToken();
       final newRefreshToken = await getRefreshToken();
-      
+
       if (newAccessToken != null && newRefreshToken != null) {
         return {
           'access_token': newAccessToken,
@@ -538,7 +532,7 @@ class ApiService {
     if (options?.headers != null) {
       headers.addAll(options!.headers!.cast<String, String>());
     }
-    
+
     return await _dio.post(
       path,
       data: data,
@@ -547,13 +541,14 @@ class ApiService {
   }
 
   /// Generic GET method for API calls
-  Future<Response> get(String path, {Map<String, dynamic>? queryParameters, Options? options}) async {
+  Future<Response> get(String path,
+      {Map<String, dynamic>? queryParameters, Options? options}) async {
     final token = await getToken();
     final headers = {'Authorization': 'Bearer $token'};
     if (options?.headers != null) {
       headers.addAll(options!.headers!.cast<String, String>());
     }
-    
+
     return await _dio.get(
       path,
       queryParameters: queryParameters,
@@ -568,7 +563,7 @@ class ApiService {
     if (options?.headers != null) {
       headers.addAll(options!.headers!.cast<String, String>());
     }
-    
+
     return await _dio.put(
       path,
       data: data,
@@ -583,7 +578,7 @@ class ApiService {
     if (options?.headers != null) {
       headers.addAll(options!.headers!.cast<String, String>());
     }
-    
+
     return await _dio.delete(
       path,
       data: data,
@@ -610,7 +605,9 @@ class ApiService {
           return userData['has_onboarded'] == true;
         }
         // Fallback: check if user has income set (legacy approach for backward compatibility)
-        if (userData.containsKey('income') && userData['income'] != null && userData['income'] > 0) {
+        if (userData.containsKey('income') &&
+            userData['income'] != null &&
+            userData['income'] > 0) {
           return true;
         }
       }
@@ -659,36 +656,37 @@ class ApiService {
 
             // Transform icons and colors from strings to proper Flutter objects
             final targets = (data['daily_targets'] as List?)?.map((target) {
-              if (target is! Map<String, dynamic>) return target;
+                  if (target is! Map<String, dynamic>) return target;
 
-              // Map icon names to Flutter Icons
-              final iconMap = {
-                'restaurant': Icons.restaurant,
-                'directions_car': Icons.directions_car,
-                'movie': Icons.movie,
-                'shopping_bag': Icons.shopping_bag,
-                'local_hospital': Icons.local_hospital,
-                'power': Icons.power,
-                'category': Icons.category,
-                'attach_money': Icons.attach_money,
-              };
+                  // Map icon names to Flutter Icons
+                  final iconMap = {
+                    'restaurant': Icons.restaurant,
+                    'directions_car': Icons.directions_car,
+                    'movie': Icons.movie,
+                    'shopping_bag': Icons.shopping_bag,
+                    'local_hospital': Icons.local_hospital,
+                    'power': Icons.power,
+                    'category': Icons.category,
+                    'attach_money': Icons.attach_money,
+                  };
 
-              // Parse color hex string to Color object
-              Color? parseColor(String? colorStr) {
-                if (colorStr == null) return null;
-                final hex = colorStr.replaceAll('#', '');
-                if (hex.length == 6) {
-                  return Color(int.parse('FF$hex', radix: 16));
-                }
-                return null;
-              }
+                  // Parse color hex string to Color object
+                  Color? parseColor(String? colorStr) {
+                    if (colorStr == null) return null;
+                    final hex = colorStr.replaceAll('#', '');
+                    if (hex.length == 6) {
+                      return Color(int.parse('FF$hex', radix: 16));
+                    }
+                    return null;
+                  }
 
-              return {
-                ...target,
-                'icon': iconMap[target['icon']] ?? Icons.category,
-                'color': parseColor(target['color']) ?? AppColors.primary,
-              };
-            }).toList() ?? [];
+                  return {
+                    ...target,
+                    'icon': iconMap[target['icon']] ?? Icons.category,
+                    'color': parseColor(target['color']) ?? AppColors.primary,
+                  };
+                }).toList() ??
+                [];
 
             // Transform to the format expected by Main Screen
             return {
@@ -723,13 +721,13 @@ class ApiService {
             throw Exception('Income data required for dashboard. Please complete onboarding.');
           }
         }
-        
+
         // Prepare shell configuration with user's actual income
         final shellConfig = {
           'savings_target': actualIncome * 0.2, // 20% savings target
           'income': actualIncome,
           'fixed': {
-            'rent': actualIncome * 0.3,     // 30% for housing
+            'rent': actualIncome * 0.3, // 30% for housing
             'utilities': actualIncome * 0.05, // 5% for utilities
             'insurance': actualIncome * 0.04, // 4% for insurance
           },
@@ -743,16 +741,16 @@ class ApiService {
           'year': DateTime.now().year,
           'month': DateTime.now().month,
         };
-        
+
         Map<String, dynamic> calendarData = {};
-        
+
         try {
           final response = await _dio.post(
             '/calendar/shell',
             data: shellConfig,
             options: Options(headers: {'Authorization': 'Bearer $token'}),
           );
-          
+
           calendarData = response.data['data']['calendar'] ?? {};
         } catch (e) {
           logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'DASHBOARD');
@@ -771,7 +769,7 @@ class ApiService {
             'savings': shellConfig['savings_target'] ?? 0,
           };
         }
-        
+
         // Transform for dashboard display
         Map<String, dynamic> dashboardData = {
           'calendar': calendarData,
@@ -780,22 +778,23 @@ class ApiService {
           'monthly_budget': 0.0,
           'monthly_spent': 0.0,
         };
-        
+
         if (calendarData.containsKey('flexible')) {
           final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
-          final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
-          
+          final totalDaily = flexible.values
+              .fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
+
           dashboardData['today_budget'] = totalDaily;
           dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
           dashboardData['today_spent'] = totalDaily * 0.7; // Simulated spending
           dashboardData['monthly_spent'] = totalDaily * DateTime.now().day * 0.7;
         }
-        
+
         return dashboardData;
       },
-      fallbackValue: userIncome != null 
-        ? _getDefaultDashboardFallback(userIncome)
-        : throw Exception('Income data required for dashboard. Please complete onboarding.'),
+      fallbackValue: userIncome != null
+          ? _getDefaultDashboardFallback(userIncome)
+          : throw Exception('Income data required for dashboard. Please complete onboarding.'),
       timeout: const Duration(seconds: 8),
       operationName: 'Dashboard Data',
     );
@@ -853,9 +852,9 @@ class ApiService {
         return null;
       }
 
-      logInfo('Successfully retrieved ${(calendarData as List).length} saved calendar days', tag: 'CALENDAR_SAVED');
+      logInfo('Successfully retrieved ${(calendarData as List).length} saved calendar days',
+          tag: 'CALENDAR_SAVED');
       return calendarData as List<dynamic>;
-
     } catch (e) {
       logWarning('Failed to retrieve saved calendar: $e', tag: 'CALENDAR_SAVED');
       return null;
@@ -870,7 +869,7 @@ class ApiService {
         // Get user profile to retrieve actual income and location if not provided
         double actualIncome = userIncome ?? 0.0;
         String? userLocation;
-        
+
         if (actualIncome == 0.0) {
           try {
             final profile = await _timeoutManager.executeQuick(
@@ -888,7 +887,7 @@ class ApiService {
             throw Exception('Income data required for calendar. Please complete onboarding.');
           }
         }
-        
+
         // Try to get cached calendar data first
         final cacheKey = 'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
         try {
@@ -900,14 +899,14 @@ class ApiService {
         } catch (e) {
           logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
         }
-        
+
         // Prepare shell configuration with user's actual income and location-appropriate allocations
         final shellConfig = {
           'savings_target': actualIncome * 0.2, // 20% savings target
           'income': actualIncome,
           'location': userLocation,
           'fixed': {
-            'rent': actualIncome * 0.3,     // 30% for housing
+            'rent': actualIncome * 0.3, // 30% for housing
             'utilities': actualIncome * 0.05, // 5% for utilities
             'insurance': actualIncome * 0.04, // 4% for insurance
           },
@@ -921,7 +920,7 @@ class ApiService {
           'year': DateTime.now().year,
           'month': DateTime.now().month,
         };
-        
+
         // Try to get data from backend
         try {
           final response = await _dio.post(
@@ -933,18 +932,18 @@ class ApiService {
               receiveTimeout: const Duration(seconds: 8),
             ),
           );
-          
+
           final calendarData = response.data['data']['calendar'] ?? {};
           final calendarDays = _transformCalendarData(calendarData, actualIncome);
-          
+
           // Cache the successful response
           await _cacheCalendarData(cacheKey, calendarDays);
-          
+
           logDebug('Successfully fetched calendar data from backend', tag: 'CALENDAR');
           return calendarDays;
         } catch (e) {
           logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'CALENDAR');
-          
+
           // Use intelligent fallback service
           try {
             final fallbackService = CalendarFallbackService();
@@ -954,28 +953,28 @@ class ApiService {
               year: DateTime.now().year,
               month: DateTime.now().month,
             );
-            
+
             // Cache the fallback data with shorter expiry
             await _cacheCalendarData(cacheKey, fallbackData, const Duration(minutes: 30));
-            
+
             logInfo('Using intelligent fallback calendar data', tag: 'CALENDAR', extra: {
               'income': actualIncome,
               'location': userLocation,
               'days_generated': fallbackData.length,
             });
-            
+
             return fallbackData;
           } catch (fallbackError) {
             logError('Fallback calendar generation failed', tag: 'CALENDAR', error: fallbackError);
-            
+
             // Last resort: basic fallback
             return _generateBasicFallbackCalendar(actualIncome);
           }
         }
       },
       fallbackValue: userIncome != null
-        ? _generateBasicFallbackCalendar(userIncome)
-        : throw Exception('Income data required for calendar. Please complete onboarding.'),
+          ? _generateBasicFallbackCalendar(userIncome)
+          : throw Exception('Income data required for calendar. Please complete onboarding.'),
       timeout: const Duration(seconds: 10),
       operationName: 'Calendar Data',
     );
@@ -984,7 +983,8 @@ class ApiService {
   /// Generate calendar fallback data
 
   /// Cache calendar data for faster access
-  Future<void> _cacheCalendarData(String cacheKey, List<dynamic> calendarData, [Duration? expiry]) async {
+  Future<void> _cacheCalendarData(String cacheKey, List<dynamic> calendarData,
+      [Duration? expiry]) async {
     try {
       final offlineService = AdvancedOfflineService();
       await offlineService.cacheResponse(
@@ -1003,7 +1003,7 @@ class ApiService {
     try {
       final offlineService = AdvancedOfflineService();
       final cachedEntry = await offlineService.getCachedResponse(cacheKey);
-      
+
       if (cachedEntry != null) {
         final List<dynamic> cachedData = jsonDecode(cachedEntry.data);
         return cachedData;
@@ -1017,21 +1017,22 @@ class ApiService {
   /// Transform backend calendar data to standard format
   List<dynamic> _transformCalendarData(Map<String, dynamic> calendarData, double actualIncome) {
     List<dynamic> calendarDays = [];
-    
+
     if (calendarData.containsKey('flexible')) {
       // Transform flexible budget format to daily calendar
       final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
-      final totalDaily = flexible.values.fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
-      
+      final totalDaily = flexible.values
+          .fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
+
       // Generate days for current month
       final now = DateTime.now();
       final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-      
+
       for (int day = 1; day <= daysInMonth; day++) {
         final currentDate = DateTime(now.year, now.month, day);
         final isToday = day == now.day;
         final isPastDay = currentDate.isBefore(now);
-        
+
         // Calculate realistic spending for past days
         int spent = 0;
         if (isPastDay) {
@@ -1039,10 +1040,10 @@ class ApiService {
         } else if (isToday) {
           spent = _calculateTodaySpending(totalDaily.round());
         }
-        
+
         // Determine status based on spending
         String status = _calculateDayStatus(spent, totalDaily.round());
-        
+
         calendarDays.add({
           'day': day,
           'limit': totalDaily.round(),
@@ -1069,7 +1070,7 @@ class ApiService {
         }
       });
     }
-    
+
     return calendarDays;
   }
 
@@ -1077,20 +1078,20 @@ class ApiService {
   int _calculateRealisticSpentAmount(int dailyLimit, int day, int dayOfWeek) {
     // Use day as seed for consistent randomness
     final random = Random(day);
-    
+
     // Base spending ratio (most people spend 70-90% of budget)
     double spendingRatio = 0.7 + (random.nextDouble() * 0.2);
-    
+
     // Weekend effect
     if (dayOfWeek >= 6) {
       spendingRatio += 0.1; // 10% more on weekends
     }
-    
+
     // Occasional overspending (5% chance)
     if (random.nextDouble() < 0.05) {
       spendingRatio = 1.1 + (random.nextDouble() * 0.3); // 110-140%
     }
-    
+
     return (dailyLimit * spendingRatio).round();
   }
 
@@ -1098,26 +1099,26 @@ class ApiService {
   int _calculateTodaySpending(int dailyLimit) {
     final now = DateTime.now();
     final hourOfDay = now.hour;
-    
+
     // Progress through the day (assuming most spending by 9 PM)
     double dayProgress = (hourOfDay / 21.0).clamp(0.0, 1.0);
-    
+
     // Random factor for realism
     final random = Random();
     double spendingRatio = dayProgress * (0.5 + (random.nextDouble() * 0.4));
-    
+
     return (dailyLimit * spendingRatio).round();
   }
 
   /// Calculate day status based on spending vs limit
   String _calculateDayStatus(int spent, int limit) {
     if (spent == 0) return 'good';
-    
+
     final ratio = spent / limit;
-    
-    if (ratio > 1.1) return 'over';      // >110%
-    if (ratio > 0.85) return 'warning';  // 85-110%
-    return 'good';                       // <85%
+
+    if (ratio > 1.1) return 'over'; // >110%
+    if (ratio > 0.85) return 'warning'; // 85-110%
+    return 'good'; // <85%
   }
 
   /// Generate category breakdown from flexible budget
@@ -1125,12 +1126,13 @@ class ApiService {
     final breakdown = <String, int>{};
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day; // Days in current month
-    
+
     flexible.forEach((category, monthlyAmount) {
-      final dailyAmount = ((monthlyAmount as num) / daysInMonth).round(); // Use actual days in month
+      final dailyAmount =
+          ((monthlyAmount as num) / daysInMonth).round(); // Use actual days in month
       breakdown[category] = dailyAmount;
     });
-    
+
     return breakdown;
   }
 
@@ -1139,23 +1141,23 @@ class ApiService {
     final today = DateTime.now();
     final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
     final List<dynamic> calendarDays = [];
-    
+
     // Calculate basic daily budget
     final monthlyFlexible = income * 0.30; // 30% for flexible spending
     final dailyBudget = (monthlyFlexible / daysInMonth).round();
-    
+
     for (int day = 1; day <= daysInMonth; day++) {
       final currentDate = DateTime(today.year, today.month, day);
       final isToday = day == today.day;
       final isPastDay = currentDate.isBefore(today);
-      
+
       int spent = 0;
       if (isPastDay) {
         spent = (dailyBudget * 0.75).round(); // Assume 75% spending
       } else if (isToday) {
         spent = (dailyBudget * 0.5).round(); // Assume 50% spent so far today
       }
-      
+
       calendarDays.add({
         'day': day,
         'limit': dailyBudget,
@@ -1171,7 +1173,7 @@ class ApiService {
         'is_weekend': currentDate.weekday >= 6,
       });
     }
-    
+
     return calendarDays;
   }
 
@@ -1489,7 +1491,8 @@ class ApiService {
         logInfo('Notification marked as read', tag: 'API_NOTIFICATIONS');
         return true;
       } else {
-        logError('Failed to mark notification as read: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to mark notification as read: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return false;
       }
     } catch (e) {
@@ -1515,7 +1518,8 @@ class ApiService {
         logInfo('All notifications marked as read', tag: 'API_NOTIFICATIONS');
         return true;
       } else {
-        logError('Failed to mark all notifications as read: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to mark all notifications as read: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return false;
       }
     } catch (e) {
@@ -1758,7 +1762,7 @@ class ApiService {
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
     if (month != null) queryParams['month'] = month;
-    
+
     final response = await _dio.get(
       '/budget/spent',
       queryParameters: queryParams,
@@ -1772,7 +1776,7 @@ class ApiService {
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
     if (month != null) queryParams['month'] = month;
-    
+
     final response = await _dio.get(
       '/budget/remaining',
       queryParameters: queryParams,
@@ -1786,7 +1790,8 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   /// Redistribute budget across calendar days using the backend algorithm
-  Future<Map<String, dynamic>> redistributeCalendarBudget(Map<String, dynamic> calendar, {String strategy = 'balance'}) async {
+  Future<Map<String, dynamic>> redistributeCalendarBudget(Map<String, dynamic> calendar,
+      {String strategy = 'balance'}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/calendar/redistribute',
@@ -1805,7 +1810,7 @@ class ApiService {
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
     if (month != null) queryParams['month'] = month;
-    
+
     final response = await _dio.get(
       '/budget/suggestions',
       queryParameters: queryParams,
@@ -1815,7 +1820,8 @@ class ApiService {
   }
 
   /// Get behaviorally-adapted category budget allocations
-  Future<Map<String, dynamic>> getBehavioralBudgetAllocation(double totalAmount, {Map<String, dynamic>? profile}) async {
+  Future<Map<String, dynamic>> getBehavioralBudgetAllocation(double totalAmount,
+      {Map<String, dynamic>? profile}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/budget/behavioral_allocation',
@@ -1849,7 +1855,8 @@ class ApiService {
   }
 
   /// Get monthly budget engine results with AI optimization
-  Future<Map<String, dynamic>> getMonthlyBudget(int year, int month, {Map<String, dynamic>? userAnswers}) async {
+  Future<Map<String, dynamic>> getMonthlyBudget(int year, int month,
+      {Map<String, dynamic>? userAnswers}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/budget/monthly',
@@ -1889,7 +1896,7 @@ class ApiService {
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
     if (month != null) queryParams['month'] = month;
-    
+
     final response = await _dio.get(
       '/budget/redistribution_history',
       queryParameters: queryParams,
@@ -1937,7 +1944,7 @@ class ApiService {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(receiptFile.path),
     });
-    
+
     final response = await _dio.post(
       '/transactions/receipt',
       data: formData,
@@ -1956,10 +1963,9 @@ class ApiService {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(receiptFile.path),
       'use_premium': usePremiumOCR.toString(),
-      if (processingOptions != null) 
-        'options': jsonEncode(processingOptions),
+      if (processingOptions != null) 'options': jsonEncode(processingOptions),
     });
-    
+
     final response = await _dio.post(
       '/transactions/receipt/advanced',
       data: formData,
@@ -1978,7 +1984,7 @@ class ApiService {
       'files': receiptFiles.map((file) async => await MultipartFile.fromFile(file.path)).toList(),
       'use_premium': usePremiumOCR.toString(),
     });
-    
+
     final response = await _dio.post(
       '/transactions/receipt/batch',
       data: formData,
@@ -2176,7 +2182,8 @@ class ApiService {
   }
 
   /// Get AI explanation for day status with personalized recommendations
-  Future<String> getAIDayStatusExplanation(String status, {List<String>? recommendations, String? date}) async {
+  Future<String> getAIDayStatusExplanation(String status,
+      {List<String>? recommendations, String? date}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/ai/day-status-explanation',
@@ -2221,7 +2228,8 @@ class ApiService {
   }
 
   /// Get AI-powered budget optimization suggestions
-  Future<Map<String, dynamic>> getAIBudgetOptimization({Map<String, dynamic>? calendar, double? income}) async {
+  Future<Map<String, dynamic>> getAIBudgetOptimization(
+      {Map<String, dynamic>? calendar, double? income}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/ai/budget-optimization',
@@ -2235,7 +2243,8 @@ class ApiService {
   }
 
   /// Get AI category suggestions for transaction categorization
-  Future<List<Map<String, dynamic>>> getAICategorySuggestions(String transactionDescription, {double? amount}) async {
+  Future<List<Map<String, dynamic>>> getAICategorySuggestions(String transactionDescription,
+      {double? amount}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/ai/category-suggestions',
@@ -2259,7 +2268,8 @@ class ApiService {
       },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data['data']['answer'] as String? ?? 'I\'m unable to provide a response right now.';
+    return response.data['data']['answer'] as String? ??
+        'I\'m unable to provide a response right now.';
   }
 
   /// Get AI-powered anomaly detection in spending patterns
@@ -2498,7 +2508,8 @@ class ApiService {
   }
 
   /// Get behavioral insights for specific categories
-  Future<Map<String, dynamic>> getCategoryBehavioralInsights(String category, {int? year, int? month}) async {
+  Future<Map<String, dynamic>> getCategoryBehavioralInsights(String category,
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2511,7 +2522,6 @@ class ApiService {
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
-
 
   /// Get behavioral warnings for calendar days
   Future<Map<String, dynamic>> getBehavioralWarnings({int? year, int? month}) async {
@@ -2590,7 +2600,7 @@ class ApiService {
     final token = await getToken();
     final currentYear = year ?? DateTime.now().year;
     final currentMonth = month ?? DateTime.now().month;
-    
+
     final response = await _dio.post(
       '/behavior/calendar',
       data: {
@@ -2606,10 +2616,9 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-
   Future<Map<String, dynamic>> getBehaviorPredictions() async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/behavior/predictions',
@@ -2634,7 +2643,7 @@ class ApiService {
     int? days = 30,
   }) async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/behavior/anomalies',
@@ -2651,7 +2660,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getBehaviorInsights() async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/behavior/insights',
@@ -2678,7 +2687,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> processReceiptOCR(File receiptImage) async {
     final token = await getToken();
-    
+
     try {
       final formData = FormData.fromMap({
         'receipt': await MultipartFile.fromFile(
@@ -2701,13 +2710,14 @@ class ApiService {
     } catch (e) {
       // Return error when OCR service is unavailable
       logError('OCR service unavailable: $e', tag: 'OCR');
-      throw Exception('Receipt processing service is currently unavailable. Please try again later.');
+      throw Exception(
+          'Receipt processing service is currently unavailable. Please try again later.');
     }
   }
 
   Future<Map<String, dynamic>> getOCRStatus(String ocrJobId) async {
     final token = await getToken();
-    
+
     final response = await _dio.get(
       '/ocr/status/$ocrJobId',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -2717,7 +2727,7 @@ class ApiService {
 
   Future<List<String>> getCategorySuggestions(String description, double amount) async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.post(
         '/ocr/categorize',
@@ -2737,7 +2747,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> enhanceReceiptData(Map<String, dynamic> ocrData) async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.post(
         '/ocr/enhance',
@@ -2802,7 +2812,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getChallengeProgress(String challengeId) async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/challenge/$challengeId/progress',
@@ -2824,7 +2834,7 @@ class ApiService {
 
   Future<void> joinChallenge(String challengeId) async {
     final token = await getToken();
-    
+
     await _dio.post(
       '/challenge/$challengeId/join',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -2842,7 +2852,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getGameificationStats() async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/challenge/stats',
@@ -2872,7 +2882,7 @@ class ApiService {
 
   Future<List<dynamic>> getAvailableChallenges() async {
     final token = await getToken();
-    
+
     try {
       final response = await _dio.get(
         '/challenge/available',
@@ -2928,9 +2938,10 @@ class ApiService {
     }
   }
 
-  Future<void> updateChallengeProgress(String challengeId, Map<String, dynamic> progressData) async {
+  Future<void> updateChallengeProgress(
+      String challengeId, Map<String, dynamic> progressData) async {
     final token = await getToken();
-    
+
     await _dio.patch(
       '/challenge/$challengeId/progress',
       data: progressData,
@@ -3010,7 +3021,7 @@ class ApiService {
       final incomeService = IncomeService();
       final tier = incomeService.classifyIncome(income);
       final tierString = incomeService.getTierString(tier);
-      
+
       return {
         'monthly_income': income,
         'tier': tierString,
@@ -3061,9 +3072,13 @@ class ApiService {
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       // Return income-appropriate defaults
-      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
+      final tier = monthlyIncome < 3000
+          ? 'low'
+          : monthlyIncome <= 7000
+              ? 'mid'
+              : 'high';
       late Map<String, double> weights;
-      
+
       switch (tier) {
         case 'low':
           weights = {
@@ -3099,12 +3114,12 @@ class ApiService {
           };
           break;
       }
-      
+
       final allocations = <String, double>{};
       weights.forEach((category, weight) {
         allocations[category] = (monthlyIncome * weight).roundToDouble();
       });
-      
+
       return {
         'monthly_income': monthlyIncome,
         'tier': tier,
@@ -3156,8 +3171,12 @@ class ApiService {
       return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
     } catch (e) {
       // Return income-appropriate goal suggestions
-      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
-      
+      final tier = monthlyIncome < 3000
+          ? 'low'
+          : monthlyIncome <= 7000
+              ? 'mid'
+              : 'high';
+
       switch (tier) {
         case 'low':
           return [
@@ -3234,8 +3253,12 @@ class ApiService {
       return List<String>.from(response.data['data'] ?? []);
     } catch (e) {
       // Return income-appropriate tips
-      final tier = monthlyIncome < 3000 ? 'low' : monthlyIncome <= 7000 ? 'mid' : 'high';
-      
+      final tier = monthlyIncome < 3000
+          ? 'low'
+          : monthlyIncome <= 7000
+              ? 'mid'
+              : 'high';
+
       switch (tier) {
         case 'low':
           return [
@@ -3282,21 +3305,23 @@ class ApiService {
   Future<List<Map<String, dynamic>>> getTransactionsByDate(String date) async {
     try {
       logInfo('Fetching transactions for date: $date', tag: 'API_TRANSACTIONS');
-      
+
       final response = await _dio.get('/transactions/by-date', queryParameters: {
         'date': date,
       });
 
       if (response.statusCode == 200 && response.data is List) {
         final transactions = List<Map<String, dynamic>>.from(response.data);
-        logInfo('Successfully fetched ${transactions.length} transactions for $date', tag: 'API_TRANSACTIONS');
+        logInfo('Successfully fetched ${transactions.length} transactions for $date',
+            tag: 'API_TRANSACTIONS');
         return transactions;
       } else {
         logWarning('Unexpected response format for transactions by date', tag: 'API_TRANSACTIONS');
         return <Map<String, dynamic>>[];
       }
     } catch (e) {
-      logError('Failed to fetch transactions for date $date: $e', tag: 'API_TRANSACTIONS', error: e);
+      logError('Failed to fetch transactions for date $date: $e',
+          tag: 'API_TRANSACTIONS', error: e);
       return <Map<String, dynamic>>[];
     }
   }
@@ -3305,7 +3330,7 @@ class ApiService {
   Future<Map<String, dynamic>> getSeasonalSpendingPatterns() async {
     try {
       logInfo('Fetching seasonal spending patterns', tag: 'API_SEASONAL');
-      
+
       final response = await _dio.get('/analytics/seasonal-patterns');
 
       if (response.statusCode == 200 && response.data is Map) {
@@ -3321,7 +3346,6 @@ class ApiService {
       return <String, dynamic>{};
     }
   }
-
 
   /// Get behavioral insights for spending patterns
   Future<Map<String, dynamic>> getBehavioralInsights() async {
@@ -3343,7 +3367,6 @@ class ApiService {
       return <String, dynamic>{};
     }
   }
-
 
   // ---------------------------------------------------------------------------
   // Analytics Logging
@@ -3371,7 +3394,7 @@ class ApiService {
           'metadata': metadata ?? {},
           'session_id': sessionId,
           'platform': platform ?? Platform.operatingSystem,
-          'app_version': appVersion ?? await AppVersionService.getVersion(),
+          'app_version': appVersion ?? AppVersionService.instance.appVersion,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -3451,7 +3474,8 @@ class ApiService {
         logDebug('Paywall impression logged successfully', tag: 'API_ANALYTICS');
         return true;
       } else {
-        logWarning('Failed to log paywall impression: ${response.statusCode}', tag: 'API_ANALYTICS');
+        logWarning('Failed to log paywall impression: ${response.statusCode}',
+            tag: 'API_ANALYTICS');
         return false;
       }
     } catch (e) {
@@ -3461,7 +3485,6 @@ class ApiService {
     }
   }
 
-
   // ---------------------------------------------------------------------------
   // Password reset functionality
   // ---------------------------------------------------------------------------
@@ -3470,7 +3493,7 @@ class ApiService {
   Future<bool> sendPasswordResetEmail(String email) async {
     try {
       logInfo('Sending password reset email', tag: 'API_PASSWORD_RESET');
-      
+
       final response = await _dio.post(
         '/auth/forgot-password',
         data: {
@@ -3488,7 +3511,8 @@ class ApiService {
         // Return true to avoid revealing which emails exist in the system
         return true;
       } else {
-        logError('Failed to send password reset email: ${response.statusCode}', tag: 'API_PASSWORD_RESET');
+        logError('Failed to send password reset email: ${response.statusCode}',
+            tag: 'API_PASSWORD_RESET');
         return false;
       }
     } catch (e) {
@@ -3501,7 +3525,7 @@ class ApiService {
   Future<bool> verifyPasswordResetToken(String token) async {
     try {
       logInfo('Verifying password reset token', tag: 'API_PASSWORD_RESET');
-      
+
       final response = await _dio.get(
         '/auth/verify-reset-token',
         queryParameters: {
@@ -3526,7 +3550,7 @@ class ApiService {
   Future<bool> resetPasswordWithToken(String token, String newPassword) async {
     try {
       logInfo('Resetting password with token', tag: 'API_PASSWORD_RESET');
-      
+
       final response = await _dio.post(
         '/auth/reset-password',
         data: {
@@ -3556,13 +3580,13 @@ class ApiService {
   Future<bool> registerPushToken(String pushToken) async {
     try {
       logInfo('Registering push token', tag: 'API_PUSH_TOKEN');
-      
+
       final token = await getToken();
       if (token == null) {
         logWarning('No auth token available for push token registration', tag: 'API_PUSH_TOKEN');
         return false;
       }
-      
+
       final response = await _dio.post(
         '/notifications/register-device',
         data: {
@@ -3591,13 +3615,13 @@ class ApiService {
   Future<bool> updatePushToken(String oldToken, String newToken) async {
     try {
       logInfo('Updating push token', tag: 'API_PUSH_TOKEN');
-      
+
       final token = await getToken();
       if (token == null) {
         logWarning('No auth token available for push token update', tag: 'API_PUSH_TOKEN');
         return false;
       }
-      
+
       final response = await _dio.patch(
         '/notifications/update-device',
         data: {
@@ -3625,13 +3649,13 @@ class ApiService {
   Future<bool> unregisterPushToken(String pushToken) async {
     try {
       logInfo('Unregistering push token', tag: 'API_PUSH_TOKEN');
-      
+
       final token = await getToken();
       if (token == null) {
         logDebug('No auth token available for push token unregistration', tag: 'API_PUSH_TOKEN');
         return true; // Consider success if user already logged out
       }
-      
+
       final response = await _dio.delete(
         '/notifications/unregister-device',
         data: {
@@ -3644,7 +3668,8 @@ class ApiService {
         logInfo('Push token unregistered successfully', tag: 'API_PUSH_TOKEN');
         return true;
       } else {
-        logWarning('Failed to unregister push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        logWarning('Failed to unregister push token: ${response.statusCode}',
+            tag: 'API_PUSH_TOKEN');
         return false;
       }
     } catch (e) {
@@ -3654,25 +3679,26 @@ class ApiService {
   }
 
   /// Get cryptographically secure device ID for push notification tracking
-  /// 
+  ///
   /// SECURITY: Now uses SecureDeviceService for enterprise-grade device fingerprinting
   Future<String> _getDeviceId() async {
     try {
       // Use secure device service instead of weak timestamp-based ID
       final secureDeviceService = SecureDeviceService.getInstance();
       final deviceId = await secureDeviceService.getSecureDeviceId();
-      
-      logDebug('Retrieved secure device ID: ${deviceId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');
+
+      logDebug('Retrieved secure device ID: ${deviceId.substring(0, 12)}...',
+          tag: 'API_PUSH_TOKEN');
       return deviceId;
-      
     } catch (e) {
       logError('Failed to get secure device ID: $e', tag: 'API_PUSH_TOKEN');
       // Fallback to secure random generation instead of predictable timestamp
       final secureRandom = Random.secure();
       final randomBytes = List.generate(16, (i) => secureRandom.nextInt(256));
       final fallbackId = 'mita_fallback_${base64Encode(randomBytes).substring(0, 16)}';
-      
-      logWarning('Using fallback device ID: ${fallbackId.substring(0, 12)}...', tag: 'API_PUSH_TOKEN');
+
+      logWarning('Using fallback device ID: ${fallbackId.substring(0, 12)}...',
+          tag: 'API_PUSH_TOKEN');
       return fallbackId;
     }
   }
@@ -3690,12 +3716,12 @@ class ApiService {
       }
 
       logInfo('Getting premium status for user: $userId', tag: 'API_PREMIUM');
-      
+
       final response = await _dio.get(
         '/users/$userId/premium-status',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       logError('Failed to get premium status: $e', tag: 'API_PREMIUM');
@@ -3712,12 +3738,12 @@ class ApiService {
       }
 
       logInfo('Getting premium features for user: $userId', tag: 'API_PREMIUM');
-      
+
       final response = await _dio.get(
         '/users/$userId/premium-features',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       logError('Failed to get premium features: $e', tag: 'API_PREMIUM');
@@ -3772,7 +3798,7 @@ class ApiService {
         '/analytics/feature-usage/$userId/$feature',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       logError('Failed to get feature usage stats: $e', tag: 'API_PREMIUM');
@@ -3853,7 +3879,7 @@ class ApiService {
       }
 
       logInfo('Updating subscription status: $subscriptionId -> $status', tag: 'API_PREMIUM');
-      
+
       await _dio.put(
         '/subscriptions/$subscriptionId/status',
         data: {
@@ -3865,7 +3891,7 @@ class ApiService {
         },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       logInfo('Subscription status updated successfully', tag: 'API_PREMIUM');
     } catch (e) {
       logError('Failed to update subscription status: $e', tag: 'API_PREMIUM');
@@ -3885,7 +3911,7 @@ class ApiService {
         '/users/$userId/subscription-history',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      
+
       return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
     } catch (e) {
       logError('Failed to get subscription history: $e', tag: 'API_PREMIUM');
@@ -3900,25 +3926,24 @@ class ApiService {
   Future<void> logout() async {
     try {
       logInfo('Performing secure logout with push token cleanup', tag: 'API_LOGOUT');
-      
+
       // SECURITY: Clean up push tokens before clearing auth tokens
       await SecurePushTokenManager.instance.cleanupOnLogout();
-      
+
       // Clear authentication tokens
       await clearTokens();
-      
+
       logInfo('Secure logout completed successfully', tag: 'API_LOGOUT');
-      
     } catch (e, stackTrace) {
       logError('Error during logout: $e', tag: 'API_LOGOUT', stackTrace: stackTrace);
-      
+
       // Still clear tokens even if push token cleanup fails
       try {
         await clearTokens();
       } catch (e2) {
         logError('Failed to clear tokens during error recovery: $e2', tag: 'API_LOGOUT');
       }
-      
+
       rethrow;
     }
   }
@@ -3934,7 +3959,7 @@ class ApiService {
   }) async {
     try {
       logInfo('Initiating password change request', tag: 'API_PASSWORD');
-      
+
       final response = await _dio.post(
         '/auth/change-password',
         data: {
@@ -3960,7 +3985,7 @@ class ApiService {
   Future<Response> deleteAccount() async {
     try {
       logInfo('Initiating account deletion request', tag: 'API_ACCOUNT');
-      
+
       final response = await _dio.delete(
         '/auth/delete-account',
         data: {

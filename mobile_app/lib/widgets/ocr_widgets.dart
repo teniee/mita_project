@@ -20,7 +20,7 @@ class ConfidenceIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     Color getColor() {
       switch (confidence) {
         case OCRConfidence.high:
@@ -44,7 +44,7 @@ class ConfidenceIndicator extends StatelessWidget {
     }
 
     final color = getColor();
-    
+
     if (!showLabel) {
       return Icon(
         getIcon(),
@@ -104,7 +104,7 @@ class OCRProcessingIndicator extends StatelessWidget {
 
     String getMessage() {
       if (customMessage != null) return customMessage!;
-      
+
       switch (status) {
         case OCRProcessingStatus.idle:
           return 'Ready to scan';
@@ -258,9 +258,7 @@ class _OCRDataFieldState extends State<OCRDataField> {
           decoration: InputDecoration(
             labelText: widget.label,
             helperText: widget.helperText,
-            prefixIcon: widget.prefixIcon != null 
-                ? Icon(widget.prefixIcon) 
-                : null,
+            prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
             suffixIcon: ConfidenceIndicator(
               confidence: widget.confidence,
               label: widget.confidence.name,
@@ -286,9 +284,8 @@ class _OCRDataFieldState extends State<OCRDataField> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: widget.suggestions!
-                  .where((suggestion) => suggestion
-                      .toLowerCase()
-                      .contains(_controller.text.toLowerCase()))
+                  .where((suggestion) =>
+                      suggestion.toLowerCase().contains(_controller.text.toLowerCase()))
                   .take(5)
                   .map((suggestion) => InkWell(
                         onTap: () {
@@ -385,10 +382,10 @@ class ReceiptScanOverlay extends StatelessWidget {
                   : null,
             ),
           ),
-          
+
           // Corner guides
           if (!isScanning) ..._buildCornerGuides(context),
-          
+
           // Guidance text
           Positioned(
             bottom: 120.0,
@@ -436,7 +433,7 @@ class ReceiptScanOverlay extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Action buttons
           if (onRetake != null)
             Positioned(
@@ -476,10 +473,10 @@ class ReceiptScanOverlay extends StatelessWidget {
     final frameHeight = size.height * 0.6;
     final centerX = size.width / 2;
     final centerY = size.height / 2;
-    
+
     const guideLength = 30.0;
     const guideWidth = 3.0;
-    
+
     return [
       // Top-left corner
       Positioned(

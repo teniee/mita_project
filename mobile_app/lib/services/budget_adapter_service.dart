@@ -18,7 +18,7 @@ class BudgetAdapterService {
   final EnhancedProductionBudgetEngine _budgetEngine = EnhancedProductionBudgetEngine();
   final IncomeService _incomeService = IncomeService();
   final ApiService _apiService = ApiService();
-  
+
   // Cache for performance
   EnhancedDailyBudgetCalculation? _cachedDailyBudget;
   legacy.CategoryBudgetAllocation? _cachedCategoryBudget;
@@ -34,7 +34,6 @@ class BudgetAdapterService {
 
       logInfo('Successfully fetched dashboard data from API', tag: 'BUDGET_ADAPTER');
       return dashboardData;
-
     } catch (e) {
       logError('Error fetching dashboard data from API: $e', tag: 'BUDGET_ADAPTER', error: e);
 
@@ -53,7 +52,8 @@ class BudgetAdapterService {
           'transactions': await _getRecentTransactions(),
         };
       } catch (fallbackError) {
-        logError('Fallback calculation also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        logError('Fallback calculation also failed: $fallbackError',
+            tag: 'BUDGET_ADAPTER', error: fallbackError);
         return _getFallbackDashboardData();
       }
     }
@@ -73,7 +73,8 @@ class BudgetAdapterService {
       );
 
       if (savedCalendar != null && savedCalendar.isNotEmpty) {
-        logInfo('Using saved calendar data from onboarding (${savedCalendar.length} days)', tag: 'BUDGET_ADAPTER');
+        logInfo('Using saved calendar data from onboarding (${savedCalendar.length} days)',
+            tag: 'BUDGET_ADAPTER');
 
         // Convert saved calendar to expected format
         final calendarList = savedCalendar.map((item) {
@@ -104,7 +105,6 @@ class BudgetAdapterService {
 
       logInfo('Successfully fetched calendar data from API', tag: 'BUDGET_ADAPTER');
       return calendarList;
-
     } catch (e) {
       logError('Error fetching calendar data from API: $e', tag: 'BUDGET_ADAPTER', error: e);
 
@@ -138,7 +138,8 @@ class BudgetAdapterService {
 
         return calendarDays;
       } catch (fallbackError) {
-        logError('Fallback calendar calculation also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        logError('Fallback calendar calculation also failed: $fallbackError',
+            tag: 'BUDGET_ADAPTER', error: fallbackError);
         return _getFallbackCalendarData();
       }
     }
@@ -162,7 +163,6 @@ class BudgetAdapterService {
 
       logInfo('Successfully fetched budget insights from API', tag: 'BUDGET_ADAPTER');
       return budgetRecommendations;
-
     } catch (e) {
       logError('Error fetching budget insights from API: $e', tag: 'BUDGET_ADAPTER', error: e);
 
@@ -176,22 +176,27 @@ class BudgetAdapterService {
         return {
           'confidence': dailyBudget.confidence,
           'methodology': dailyBudget.methodology,
-          'category_insights': categoryBudget.insights.map((insight) => {
-            'category': insight.category,
-            'message': insight.message,
-            'type': insight.type.toString(),
-            'priority': insight.priority.toString(),
-          }).toList(),
-          'intelligent_insights': dailyBudget.intelligentInsights.map((insight) => {
-            'message': insight,
-            'type': 'optimization',
-            'priority': 'medium',
-          }).toList(),
+          'category_insights': categoryBudget.insights
+              .map((insight) => {
+                    'category': insight.category,
+                    'message': insight.message,
+                    'type': insight.type.toString(),
+                    'priority': insight.priority.toString(),
+                  })
+              .toList(),
+          'intelligent_insights': dailyBudget.intelligentInsights
+              .map((insight) => {
+                    'message': insight,
+                    'type': 'optimization',
+                    'priority': 'medium',
+                  })
+              .toList(),
           'risk_assessment': dailyBudget.riskAssessment,
           'enhanced_features': dailyBudget.advancedMetrics,
         };
       } catch (fallbackError) {
-        logError('Fallback budget insights also failed: $fallbackError', tag: 'BUDGET_ADAPTER', error: fallbackError);
+        logError('Fallback budget insights also failed: $fallbackError',
+            tag: 'BUDGET_ADAPTER', error: fallbackError);
         return {'insights': <Map<String, dynamic>>[], 'confidence': 0.5};
       }
     }
@@ -204,24 +209,25 @@ class BudgetAdapterService {
   }) async {
     try {
       final onboardingData = await _getOnboardingData();
-      
+
       // Use enhanced intelligence to generate dynamic adjustments
       final enhancedBudget = await _getDailyBudget(onboardingData);
-      
+
       return {
-        'rules': enhancedBudget.enhancedResult.recommendations.map((recommendation) => {
-          'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'description': recommendation,
-          'condition': 'spending_pattern_detected',
-          'action': 'adjust_budget',
-          'priority': 'medium',
-          'frequency': 'daily',
-        }).toList(),
+        'rules': enhancedBudget.enhancedResult.recommendations
+            .map((recommendation) => {
+                  'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                  'description': recommendation,
+                  'condition': 'spending_pattern_detected',
+                  'action': 'adjust_budget',
+                  'priority': 'medium',
+                  'frequency': 'daily',
+                })
+            .toList(),
         'adaptation_frequency': 'daily',
         'confidence_level': enhancedBudget.confidence,
         'last_updated': DateTime.now().toIso8601String(),
       };
-      
     } catch (e) {
       logError('Error generating dynamic adjustments: $e', tag: 'BUDGET_ADAPTER', error: e);
       return {'rules': <Map<String, dynamic>>[], 'confidence_level': 0.5};
@@ -234,16 +240,16 @@ class BudgetAdapterService {
       final onboardingData = await _getOnboardingData();
       final dailyBudget = await _getDailyBudget(onboardingData);
       final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
-      
+
       // Apply date-specific adjustments using enhanced engine
       final adjustedBudget = await _budgetEngine.calculateDailyBudget(
         onboardingData: onboardingData,
         targetDate: date,
       );
-      
+
       // Get spending data for the date
       final spentData = await _getSpendingForDate(date);
-      
+
       return {
         'date': date.toIso8601String(),
         'total_budget': adjustedBudget.totalDailyBudget,
@@ -255,7 +261,6 @@ class BudgetAdapterService {
         'methodology': adjustedBudget.methodology,
         'confidence': adjustedBudget.confidence,
       };
-      
     } catch (e) {
       logError('Error generating day details: $e', tag: 'BUDGET_ADAPTER', error: e);
       return _getFallbackDayData(date);
@@ -265,14 +270,15 @@ class BudgetAdapterService {
   /// Get enhanced budget suggestions with intelligent nudges
   Future<Map<String, dynamic>> getEnhancedBudgetSuggestions() async {
     try {
-      logInfo('Generating enhanced budget suggestions with intelligent nudges', tag: 'BUDGET_ADAPTER');
-      
+      logInfo('Generating enhanced budget suggestions with intelligent nudges',
+          tag: 'BUDGET_ADAPTER');
+
       final onboardingData = await _getOnboardingData();
       final dailyBudget = await _getDailyBudget(onboardingData);
-      
+
       // Extract enhanced suggestions from our budget intelligence
       final suggestions = <Map<String, dynamic>>[];
-      
+
       // Add intelligent insights as suggestions
       for (final insight in dailyBudget.intelligentInsights) {
         suggestions.add({
@@ -283,7 +289,7 @@ class BudgetAdapterService {
           'source': 'enhanced_budget_engine',
         });
       }
-      
+
       // Add contextual nudge if available
       if (dailyBudget.contextualNudge != null) {
         final nudge = dailyBudget.contextualNudge!;
@@ -296,16 +302,17 @@ class BudgetAdapterService {
           'nudge_type': nudge.nudgeType.toString(),
         });
       }
-      
+
       // Add enhanced category optimization recommendations
       for (final entry in dailyBudget.categoryBreakdown.entries) {
         final category = entry.key;
         final amount = entry.value;
-        
+
         if (amount > 0) {
           suggestions.add({
             'id': 'category_${category}_${DateTime.now().millisecondsSinceEpoch}',
-            'message': 'Optimized ${category.replaceAll('_', ' ').split(' ').map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1)).join(' ')} allocation: \$${amount.toStringAsFixed(2)} based on your spending patterns and goals',
+            'message':
+                'Optimized ${category.replaceAll('_', ' ').split(' ').map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1)).join(' ')} allocation: \$${amount.toStringAsFixed(2)} based on your spending patterns and goals',
             'type': 'category_optimization',
             'priority': 'medium',
             'source': 'category_intelligence_engine',
@@ -314,19 +321,20 @@ class BudgetAdapterService {
           });
         }
       }
-      
+
       // Add risk assessment warnings if needed
       if (dailyBudget.riskAssessment > 0.7) {
         suggestions.add({
           'id': 'risk_warning_${DateTime.now().millisecondsSinceEpoch}',
-          'message': 'High financial risk detected. Consider reviewing your spending patterns and budget allocation.',
+          'message':
+              'High financial risk detected. Consider reviewing your spending patterns and budget allocation.',
           'type': 'risk_warning',
           'priority': 'high',
           'source': 'risk_assessment_engine',
           'risk_score': dailyBudget.riskAssessment,
         });
       }
-      
+
       return {
         'suggestions': suggestions,
         'total_count': suggestions.length,
@@ -335,7 +343,6 @@ class BudgetAdapterService {
         'methodology': dailyBudget.methodology,
         'last_updated': DateTime.now().toIso8601String(),
       };
-      
     } catch (e) {
       logError('Error generating enhanced budget suggestions: $e', tag: 'BUDGET_ADAPTER', error: e);
       return {
@@ -360,22 +367,21 @@ class BudgetAdapterService {
         logInfo('Using onboarding state data', tag: 'BUDGET_ADAPTER');
         return onboarding;
       }
-      
+
       // Fallback to API
       final userProfile = await _apiService.getUserProfile().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => <String, dynamic>{},
-      );
-      
+            const Duration(seconds: 3),
+            onTimeout: () => <String, dynamic>{},
+          );
+
       if (userProfile.isNotEmpty) {
         logInfo('Using API user profile data', tag: 'BUDGET_ADAPTER');
         return _createOnboardingFromProfile(userProfile);
       }
-      
+
       // Final fallback to defaults
       logWarning('Using default onboarding data', tag: 'BUDGET_ADAPTER');
       return _createDefaultOnboardingData();
-      
     } catch (e) {
       logError('Error getting onboarding data: $e', tag: 'BUDGET_ADAPTER', error: e);
       return _createDefaultOnboardingData();
@@ -385,19 +391,20 @@ class BudgetAdapterService {
   /// Create OnboardingState from user profile data
   OnboardingState _createOnboardingFromProfile(Map<String, dynamic> profile) {
     final onboarding = OnboardingState.instance;
-    
+
     final incomeValue = (profile['income'] as num?)?.toDouble();
     if (incomeValue == null || incomeValue <= 0) {
       throw ArgumentError('Profile must contain valid income data');
     }
     onboarding.income = incomeValue;
     onboarding.incomeTier = _incomeService.classifyIncome(onboarding.income!);
-    
+
     // Extract location data
-    onboarding.region = profile['region'] as String?;
-    onboarding.countryCode = profile['countryCode'] as String? ?? profile['country'] as String?;
+    onboarding.countryCode = profile['countryCode'] as String? ??
+        profile['country'] as String? ??
+        profile['region'] as String?;
     onboarding.stateCode = profile['stateCode'] as String? ?? profile['state'] as String?;
-    
+
     // Extract goals
     final goalsData = profile['goals'];
     if (goalsData is List) {
@@ -405,7 +412,7 @@ class BudgetAdapterService {
     } else if (goalsData is String) {
       onboarding.goals = [goalsData];
     }
-    
+
     // Extract habits
     final habitsData = profile['habits'];
     if (habitsData is List) {
@@ -413,79 +420,81 @@ class BudgetAdapterService {
     } else if (habitsData is String) {
       onboarding.habits = [habitsData];
     }
-    
+
     // Extract expenses
     final expensesData = profile['expenses'];
     if (expensesData is List) {
       onboarding.expenses = expensesData.cast<Map<String, dynamic>>();
     }
-    
+
     return onboarding;
   }
 
   /// Create default onboarding data when no real data is available
   OnboardingState _createDefaultOnboardingData() {
-    throw Exception('Default onboarding should not be used. Please complete onboarding to provide income data.');
+    throw Exception(
+        'Default onboarding should not be used. Please complete onboarding to provide income data.');
   }
 
   /// Get cached or calculate daily budget
   Future<EnhancedDailyBudgetCalculation> _getDailyBudget(OnboardingState onboardingData) async {
     final now = DateTime.now();
-    
+
     // Check cache validity (1 hour)
-    if (_cachedDailyBudget != null && 
-        _lastCacheUpdate != null && 
+    if (_cachedDailyBudget != null &&
+        _lastCacheUpdate != null &&
         now.difference(_lastCacheUpdate!).inMinutes < 60) {
       return _cachedDailyBudget!;
     }
-    
+
     // Calculate new daily budget using enhanced engine
     _cachedDailyBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
     _lastCacheUpdate = now;
-    
+
     return _cachedDailyBudget!;
   }
 
   /// Get cached or calculate category budget
   Future<legacy.CategoryBudgetAllocation> _getCategoryBudget(
-    OnboardingState onboardingData,
-    EnhancedDailyBudgetCalculation dailyBudget
-  ) async {
+      OnboardingState onboardingData, EnhancedDailyBudgetCalculation dailyBudget) async {
     final now = DateTime.now();
-    
+
     // Check cache validity (1 hour)
-    if (_cachedCategoryBudget != null && 
-        _lastCacheUpdate != null && 
+    if (_cachedCategoryBudget != null &&
+        _lastCacheUpdate != null &&
         now.difference(_lastCacheUpdate!).inMinutes < 60) {
       return _cachedCategoryBudget!;
     }
-    
+
     // Calculate new category budget using enhanced allocations
     _cachedCategoryBudget = _createCategoryBudgetFromEnhanced(dailyBudget);
-    
+
     return _cachedCategoryBudget!;
   }
 
   /// Create CategoryBudgetAllocation from enhanced budget data
-  legacy.CategoryBudgetAllocation _createCategoryBudgetFromEnhanced(EnhancedDailyBudgetCalculation enhancedBudget) {
+  legacy.CategoryBudgetAllocation _createCategoryBudgetFromEnhanced(
+      EnhancedDailyBudgetCalculation enhancedBudget) {
     // Convert enhanced category allocations to legacy format
     final categoryAllocations = enhancedBudget.categoryBreakdown;
     final monthlyAllocations = <String, double>{};
-    
+
     // Convert daily to monthly allocations
     for (final entry in categoryAllocations.entries) {
       monthlyAllocations[entry.key] = entry.value * 30;
     }
-    
+
     // Create insights from enhanced insights
-    final insights = enhancedBudget.intelligentInsights.map((insight) => legacy.CategoryInsight(
-      category: 'general',
-      message: insight,
-      type: legacy.InsightType.information,
-      priority: legacy.InsightPriority.medium,
-      actionable: true,
-    )).toList();
-    
+    final insights = enhancedBudget.intelligentInsights
+        .map((insight) => legacy.CategoryInsight(
+              category: 'general',
+              message: insight,
+              type: legacy.InsightType.information,
+              priority: legacy.InsightPriority.medium,
+              actionable: true,
+            ))
+        .toList();
+
     return legacy.CategoryBudgetAllocation(
       dailyAllocations: categoryAllocations,
       monthlyAllocations: monthlyAllocations,
@@ -496,7 +505,8 @@ class BudgetAdapterService {
   }
 
   /// Convert category budget to legacy daily targets format
-  Future<List<Map<String, dynamic>>> _convertToLegacyDailyTargets(legacy.CategoryBudgetAllocation categoryBudget) async {
+  Future<List<Map<String, dynamic>>> _convertToLegacyDailyTargets(
+      legacy.CategoryBudgetAllocation categoryBudget) async {
     final targets = <Map<String, dynamic>>[];
     final categoryIcons = {
       'food': Icons.restaurant,
@@ -537,7 +547,8 @@ class BudgetAdapterService {
       final category = entry.key;
       final dailyAmount = entry.value;
 
-      if (mainCategories.contains(category) || dailyAmount > 10.0) { // Include if major category or significant amount
+      if (mainCategories.contains(category) || dailyAmount > 10.0) {
+        // Include if major category or significant amount
         // Use actual spending data instead of hardcoded estimation
         final actualSpent = todaySpending[category] ?? 0.0;
 
@@ -562,51 +573,51 @@ class BudgetAdapterService {
   Future<List<Map<String, dynamic>>> _generateWeekData(OnboardingState onboardingData) async {
     final today = DateTime.now();
     final weekDays = <Map<String, dynamic>>[];
-    
+
     for (int i = 0; i < 7; i++) {
-      final date = today.subtract(Duration(days: today.weekday - 1 - i)); // Get week starting Monday
-      final dayBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
+      final date =
+          today.subtract(Duration(days: today.weekday - 1 - i)); // Get week starting Monday
+      final dayBudget = await _budgetEngine.calculateDailyBudget(
+          onboardingData: onboardingData, targetDate: date);
       final spent = await _estimateSpentForDate(date, dayBudget.totalDailyBudget);
-      
+
       String status = 'good';
       final spentRatio = dayBudget.totalDailyBudget > 0 ? spent / dayBudget.totalDailyBudget : 0.0;
-      
+
       if (spentRatio > 1.0) {
         status = 'over';
       } else if (spentRatio > 0.8) {
         status = 'warning';
       }
-      
+
       weekDays.add({
         'day': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
         'status': status,
       });
     }
-    
+
     return weekDays;
   }
 
   /// Generate data for a specific calendar day
   Future<Map<String, dynamic>> _generateDayData(
-    OnboardingState onboardingData,
-    DateTime dayDate,
-    bool isToday
-  ) async {
+      OnboardingState onboardingData, DateTime dayDate, bool isToday) async {
     final dailyBudget = await _budgetEngine.calculateDailyBudget(
       onboardingData: onboardingData,
       targetDate: dayDate,
     );
-    
+
     final spent = await _estimateSpentForDate(dayDate, dailyBudget.totalDailyBudget);
-    final spentRatio = dailyBudget.totalDailyBudget > 0 ? spent / dailyBudget.totalDailyBudget : 0.0;
-    
+    final spentRatio =
+        dailyBudget.totalDailyBudget > 0 ? spent / dailyBudget.totalDailyBudget : 0.0;
+
     String status = 'good';
     if (spentRatio > 1.0) {
       status = 'over';
     } else if (spentRatio > 0.8) {
       status = 'warning';
     }
-    
+
     return {
       'day': dayDate.day,
       'status': status,
@@ -619,11 +630,8 @@ class BudgetAdapterService {
   }
 
   /// Generate category breakdown for a specific day
-  Future<Map<String, int>> _generateDayCategoryBreakdown(
-    OnboardingState onboardingData,
-    DateTime date,
-    EnhancedDailyBudgetCalculation dailyBudget
-  ) async {
+  Future<Map<String, int>> _generateDayCategoryBreakdown(OnboardingState onboardingData,
+      DateTime date, EnhancedDailyBudgetCalculation dailyBudget) async {
     final categoryBudget = await _getCategoryBudget(onboardingData, dailyBudget);
     final breakdown = <String, int>{};
 
@@ -645,14 +653,14 @@ class BudgetAdapterService {
       // Try to get actual balance from API
       // Note: getBalance method doesn't exist, using fallback calculation
       final balanceData = <String, dynamic>{}; // Use fallback calculation instead
-      
+
       if (balanceData.isNotEmpty && balanceData['balance'] != null) {
         return (balanceData['balance'] as num).toDouble();
       }
     } catch (e) {
       logWarning('Failed to get actual balance: $e', tag: 'BUDGET_ADAPTER');
     }
-    
+
     // Fallback: Calculate estimated balance based on income and typical spending
     if (onboardingData.income == null || onboardingData.income! <= 0) {
       throw ArgumentError('Income data required for balance calculation');
@@ -660,13 +668,14 @@ class BudgetAdapterService {
     final monthlyIncome = onboardingData.income!;
     final today = DateTime.now();
     final daysIntoMonth = today.day;
-    
+
     // Estimate monthly spending based on budget
     final dailyBudget = await _getDailyBudget(onboardingData);
-    
+
     // Estimate current spending
-    final estimatedCurrentSpending = dailyBudget.totalDailyBudget * daysIntoMonth * 0.85; // 85% of budget spent
-    
+    final estimatedCurrentSpending =
+        dailyBudget.totalDailyBudget * daysIntoMonth * 0.85; // 85% of budget spent
+
     // Calculate balance
     return monthlyIncome - estimatedCurrentSpending;
   }
@@ -677,21 +686,21 @@ class BudgetAdapterService {
       // Try to get actual spending from API
       // Note: getDailySpending method doesn't exist, using fallback
       final spendingData = <String, dynamic>{}; // Use fallback calculation instead
-      
+
       if (spendingData.isNotEmpty && spendingData['total'] != null) {
         return (spendingData['total'] as num).toDouble();
       }
     } catch (e) {
       logWarning('Failed to get actual spending: $e', tag: 'BUDGET_ADAPTER');
     }
-    
+
     // Fallback: Estimate based on time of day and typical patterns
     final hourOfDay = DateTime.now().hour;
     final dayProgress = hourOfDay / 24.0;
-    
+
     final onboardingData = await _getOnboardingData();
     final dailyBudget = await _getDailyBudget(onboardingData);
-    
+
     // Estimate spending based on time progression and behavior
     return dailyBudget.totalDailyBudget * dayProgress * 0.7; // Conservative estimate
   }
@@ -699,35 +708,35 @@ class BudgetAdapterService {
   /// Estimate spending for a specific date
   Future<double> _estimateSpentForDate(DateTime date, double dailyBudget) async {
     final today = DateTime.now();
-    
+
     if (date.isAfter(today)) {
       return 0.0; // Future dates have no spending
     }
-    
+
     if (date.year == today.year && date.month == today.month && date.day == today.day) {
       return await _calculateTodaySpent();
     }
-    
+
     // For past dates, generate realistic estimates based on patterns
     final isWeekend = date.weekday >= 6;
     final dayOfMonth = date.day;
-    
+
     double baseSpending = dailyBudget * 0.7; // Base 70% utilization
-    
+
     // Weekend adjustment
     if (isWeekend) {
       baseSpending *= 1.15;
     }
-    
+
     // Month progression adjustment
     if (dayOfMonth > 20) {
       baseSpending *= 0.85; // People spend less near month-end
     }
-    
+
     // Add some randomness for realism
     final random = math.Random(date.day + date.month * 31);
     baseSpending *= (0.8 + (random.nextDouble() * 0.4)); // ±20% variation
-    
+
     return baseSpending;
   }
 
@@ -735,11 +744,12 @@ class BudgetAdapterService {
   Future<Map<String, double>> _getSpendingForDate(DateTime date) async {
     try {
       // Try to get actual spending from API using real transaction data
-      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       final transactions = await _apiService.getTransactionsByDate(dateStr).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => <Map<String, dynamic>>[],
-      );
+            const Duration(seconds: 5),
+            onTimeout: () => <Map<String, dynamic>>[],
+          );
 
       if (transactions.isNotEmpty) {
         // Aggregate spending by category from real transactions
@@ -751,19 +761,24 @@ class BudgetAdapterService {
 
           // Normalize category names to match our system
           final normalizedCategory = _normalizeCategoryName(category);
-          categorySpending[normalizedCategory] = (categorySpending[normalizedCategory] ?? 0.0) + amount;
+          categorySpending[normalizedCategory] =
+              (categorySpending[normalizedCategory] ?? 0.0) + amount;
         }
 
-        logInfo('Retrieved actual spending data for $dateStr: ${categorySpending.length} categories', tag: 'BUDGET_ADAPTER');
+        logInfo(
+            'Retrieved actual spending data for $dateStr: ${categorySpending.length} categories',
+            tag: 'BUDGET_ADAPTER');
         return categorySpending;
       }
     } catch (e) {
-      logWarning('Failed to get actual category spending for ${date.toIso8601String()}: $e', tag: 'BUDGET_ADAPTER');
+      logWarning('Failed to get actual category spending for ${date.toIso8601String()}: $e',
+          tag: 'BUDGET_ADAPTER');
     }
 
     // Return empty spending data instead of fake estimates
     // This ensures users see authentic data or proper empty states
-    logInfo('No transaction data available for ${date.toIso8601String()}, returning empty spending', tag: 'BUDGET_ADAPTER');
+    logInfo('No transaction data available for ${date.toIso8601String()}, returning empty spending',
+        tag: 'BUDGET_ADAPTER');
     return <String, double>{};
   }
 
@@ -773,24 +788,26 @@ class BudgetAdapterService {
       // Try to get actual transactions from API
       // Note: getRecentTransactions method doesn't exist, using getExpenses instead
       final transactions = await _apiService.getExpenses().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => [],
-      );
-      
+            const Duration(seconds: 3),
+            onTimeout: () => [],
+          );
+
       if (transactions.isNotEmpty) {
-        return transactions.map<Map<String, dynamic>>((tx) => {
-          'action': tx['description'] ?? tx['merchant'] ?? 'Transaction',
-          'amount': tx['amount']?.toString() ?? '0.00',
-          'date': tx['date'] ?? tx['created_at'] ?? DateTime.now().toIso8601String(),
-          'category': tx['category'] ?? 'Other',
-          'icon': _getCategoryIcon((tx['category'] ?? 'other').toString()),
-          'color': _getCategoryColor((tx['category'] ?? 'other').toString()),
-        }).toList();
+        return transactions
+            .map<Map<String, dynamic>>((tx) => {
+                  'action': tx['description'] ?? tx['merchant'] ?? 'Transaction',
+                  'amount': tx['amount']?.toString() ?? '0.00',
+                  'date': tx['date'] ?? tx['created_at'] ?? DateTime.now().toIso8601String(),
+                  'category': tx['category'] ?? 'Other',
+                  'icon': _getCategoryIcon((tx['category'] ?? 'other').toString()),
+                  'color': _getCategoryColor((tx['category'] ?? 'other').toString()),
+                })
+            .toList();
       }
     } catch (e) {
       logWarning('Failed to get actual transactions: $e', tag: 'BUDGET_ADAPTER');
     }
-    
+
     // Fallback: Generate realistic sample transactions
     return _generateSampleTransactions();
   }
@@ -845,48 +862,78 @@ class BudgetAdapterService {
   /// Format category names for display
   String _formatCategoryName(String category) {
     switch (category.toLowerCase()) {
-      case 'food': return 'Food & Dining';
-      case 'transportation': return 'Transportation';
-      case 'entertainment': return 'Entertainment';
-      case 'shopping': return 'Shopping';
-      case 'utilities': return 'Utilities';
-      case 'healthcare': return 'Healthcare';
-      case 'housing': return 'Housing';
-      case 'education': return 'Education';
-      case 'debt': return 'Debt Payments';
-      case 'savings': return 'Savings';
-      case 'investments': return 'Investments';
-      default: return category.substring(0, 1).toUpperCase() + category.substring(1);
+      case 'food':
+        return 'Food & Dining';
+      case 'transportation':
+        return 'Transportation';
+      case 'entertainment':
+        return 'Entertainment';
+      case 'shopping':
+        return 'Shopping';
+      case 'utilities':
+        return 'Utilities';
+      case 'healthcare':
+        return 'Healthcare';
+      case 'housing':
+        return 'Housing';
+      case 'education':
+        return 'Education';
+      case 'debt':
+        return 'Debt Payments';
+      case 'savings':
+        return 'Savings';
+      case 'investments':
+        return 'Investments';
+      default:
+        return category.substring(0, 1).toUpperCase() + category.substring(1);
     }
   }
 
   /// Get icon for category
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
-      case 'food': return Icons.restaurant;
-      case 'transportation': return Icons.directions_car;
-      case 'entertainment': return Icons.movie;
-      case 'shopping': return Icons.shopping_bag;
-      case 'utilities': return Icons.bolt;
-      case 'healthcare': return Icons.local_hospital;
-      case 'housing': return Icons.home;
-      case 'education': return Icons.school;
-      default: return Icons.attach_money;
+      case 'food':
+        return Icons.restaurant;
+      case 'transportation':
+        return Icons.directions_car;
+      case 'entertainment':
+        return Icons.movie;
+      case 'shopping':
+        return Icons.shopping_bag;
+      case 'utilities':
+        return Icons.bolt;
+      case 'healthcare':
+        return Icons.local_hospital;
+      case 'housing':
+        return Icons.home;
+      case 'education':
+        return Icons.school;
+      default:
+        return Icons.attach_money;
     }
   }
 
   /// Get color for category
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'food': return AppColors.categoryFood;
-      case 'transportation': return AppColors.categoryTransport;
-      case 'entertainment': return AppColors.categoryEntertainment;
-      case 'shopping': return AppColors.categoryShopping;
-      case 'utilities': return AppColors.categoryUtilities;
-      case 'healthcare': return AppColors.categoryHealth;
-      case 'housing': return AppColors.categoryOther;
-      case 'education': return AppColors.categoryEducation;
-      default: return AppColors.textSecondary;
+      case 'food':
+        return AppColors.categoryFood;
+      case 'transportation':
+        return AppColors.categoryTransport;
+      case 'entertainment':
+        return AppColors.categoryEntertainment;
+      case 'shopping':
+        return AppColors.categoryShopping;
+      case 'utilities':
+        return AppColors.categoryUtilities;
+      case 'healthcare':
+        return AppColors.categoryHealth;
+      case 'housing':
+        return AppColors.categoryOther;
+      case 'education':
+        return AppColors.categoryEducation;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
@@ -960,57 +1007,59 @@ class BudgetAdapterService {
   }
 
   /// Generate category breakdown with spending data
-  Map<String, dynamic> _generateCategoryBreakdown(
-    legacy.CategoryBudgetAllocation categoryBudget,
-    Map<String, double> spentData,
-    EnhancedDailyBudgetCalculation dailyBudget
-  ) {
+  Map<String, dynamic> _generateCategoryBreakdown(legacy.CategoryBudgetAllocation categoryBudget,
+      Map<String, double> spentData, EnhancedDailyBudgetCalculation dailyBudget) {
     final breakdown = <String, dynamic>{};
-    
+
     categoryBudget.dailyAllocations.forEach((category, budgetAmount) {
       final spent = spentData[category] ?? 0.0;
       final percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0.0;
-      
+
       breakdown[category] = {
         'budgeted': budgetAmount.round(),
         'spent': spent.round(),
         'percentage': percentage.round(),
-        'status': percentage > 100 ? 'over' : percentage > 80 ? 'warning' : 'good',
+        'status': percentage > 100
+            ? 'over'
+            : percentage > 80
+                ? 'warning'
+                : 'good',
         'icon': _getCategoryIcon(category),
         'color': _getCategoryColor(category),
         'display_name': _formatCategoryName(category),
       };
     });
-    
+
     return breakdown;
   }
 
   /// Generate insights for a specific day
   Future<List<Map<String, dynamic>>> _generateDayInsights(
-    OnboardingState onboardingData,
-    DateTime date,
-    Map<String, double> spentData
-  ) async {
+      OnboardingState onboardingData, DateTime date, Map<String, double> spentData) async {
     final insights = <Map<String, dynamic>>[];
     final totalSpent = spentData.values.fold(0.0, (sum, amount) => sum + amount);
-    final dailyBudget = await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
-    
+    final dailyBudget =
+        await _budgetEngine.calculateDailyBudget(onboardingData: onboardingData, targetDate: date);
+
     // Spending level insight
-    final spentRatio = dailyBudget.totalDailyBudget > 0 ? totalSpent / dailyBudget.totalDailyBudget : 0.0;
+    final spentRatio =
+        dailyBudget.totalDailyBudget > 0 ? totalSpent / dailyBudget.totalDailyBudget : 0.0;
     if (spentRatio > 1.0) {
       insights.add({
         'type': 'warning',
-        'message': 'You exceeded your daily budget by \$${(totalSpent - dailyBudget.totalDailyBudget).toStringAsFixed(0)}',
+        'message':
+            'You exceeded your daily budget by \$${(totalSpent - dailyBudget.totalDailyBudget).toStringAsFixed(0)}',
         'priority': 'high',
       });
     } else if (spentRatio < 0.5) {
       insights.add({
         'type': 'opportunity',
-        'message': 'Great restraint! You have \$${(dailyBudget.totalDailyBudget - totalSpent).toStringAsFixed(0)} left to save or reallocate',
+        'message':
+            'Great restraint! You have \$${(dailyBudget.totalDailyBudget - totalSpent).toStringAsFixed(0)} left to save or reallocate',
         'priority': 'medium',
       });
     }
-    
+
     // Goal-specific insights
     if (onboardingData.goals.contains('save_more') && spentRatio < 0.8) {
       insights.add({
@@ -1019,7 +1068,7 @@ class BudgetAdapterService {
         'priority': 'medium',
       });
     }
-    
+
     return insights;
   }
 
@@ -1044,9 +1093,9 @@ class BudgetAdapterService {
     final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
     final firstDayOfMonth = DateTime(today.year, today.month, 1);
     final firstWeekday = firstDayOfMonth.weekday % 7;
-    
+
     List<Map<String, dynamic>> calendarDays = [];
-    
+
     // Add empty cells
     for (int i = 0; i < firstWeekday; i++) {
       calendarDays.add({
@@ -1056,23 +1105,26 @@ class BudgetAdapterService {
         'spent': 0,
       });
     }
-    
+
     // Generate fallback calendar days
     for (int day = 1; day <= daysInMonth; day++) {
       final dayDate = DateTime(today.year, today.month, day);
       final isToday = day == today.day;
       final isPast = dayDate.isBefore(today);
-      
+
       const dailyBudget = 100.0; // Fallback budget
-      final spent = isPast ? (dailyBudget * 0.7) : 
-                   isToday ? (dailyBudget * 0.4) : 0.0;
-      
+      final spent = isPast
+          ? (dailyBudget * 0.7)
+          : isToday
+              ? (dailyBudget * 0.4)
+              : 0.0;
+
       final spentRatio = dailyBudget > 0 ? spent / dailyBudget : 0.0;
       String status = 'good';
       if (spentRatio > 1.0) {
         status = 'over';
       } else if (spentRatio > 0.8) status = 'warning';
-      
+
       calendarDays.add({
         'day': day,
         'status': status,
@@ -1086,7 +1138,7 @@ class BudgetAdapterService {
         }
       });
     }
-    
+
     return calendarDays;
   }
 

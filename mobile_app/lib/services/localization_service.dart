@@ -6,9 +6,9 @@ import 'package:intl/intl.dart';
 /// Handles currency, number, date formatting with locale-aware behavior
 class LocalizationService {
   static LocalizationService? _instance;
-  
+
   LocalizationService._internal();
-  
+
   static LocalizationService get instance {
     _instance ??= LocalizationService._internal();
     return _instance!;
@@ -16,7 +16,7 @@ class LocalizationService {
 
   /// Current locale being used by the app
   Locale _currentLocale = const Locale('en', 'US');
-  
+
   /// Currency codes and symbols by locale
   static const Map<String, Map<String, String>> _currencyData = {
     'en_US': {'code': 'USD', 'symbol': r'$', 'name': 'US Dollar'},
@@ -50,12 +50,13 @@ class LocalizationService {
   String get currencyName => currentCurrencyData['name']!;
 
   /// Format currency amount with proper locale-specific formatting
-  /// 
+  ///
   /// Examples:
   /// - US: formatCurrency(1234.56) → "$1,234.56"
   /// - ES: formatCurrency(1234.56) → "1.234,56 €"
   /// - MX: formatCurrency(1234.56) → "$1,234.56"
-  String formatCurrency(double amount, {
+  String formatCurrency(
+    double amount, {
     bool showSymbol = true,
     int decimalDigits = 2,
     bool compact = false,
@@ -66,11 +67,11 @@ class LocalizationService {
         symbol: showSymbol ? currencySymbol : '',
         decimalDigits: decimalDigits,
       );
-      
+
       if (compact && amount.abs() >= 1000) {
         return _formatCompactCurrency(amount, showSymbol: showSymbol);
       }
-      
+
       return formatter.format(amount);
     } catch (e) {
       // Fallback to basic formatting if locale is not supported
@@ -83,7 +84,7 @@ class LocalizationService {
     final absAmount = amount.abs();
     final symbol = showSymbol ? currencySymbol : '';
     final sign = amount < 0 ? '-' : '';
-    
+
     if (absAmount >= 1000000000) {
       return '$sign$symbol${(absAmount / 1000000000).toStringAsFixed(1)}B';
     } else if (absAmount >= 1000000) {
@@ -100,14 +101,14 @@ class LocalizationService {
     final symbol = showSymbol ? currencySymbol : '';
     final absAmount = amount.abs();
     final sign = amount < 0 ? '-' : '';
-    
+
     // Use US-style formatting as fallback
     final formatter = NumberFormat('#,##0.${'0' * decimalDigits}');
     return '$sign$symbol${formatter.format(absAmount)}';
   }
 
   /// Format number with proper locale-specific thousands separators
-  /// 
+  ///
   /// Examples:
   /// - US: formatNumber(1234.56) → "1,234.56"
   /// - ES: formatNumber(1234.56) → "1.234,56"
@@ -123,7 +124,7 @@ class LocalizationService {
   }
 
   /// Format percentage with locale-specific formatting
-  /// 
+  ///
   /// Examples:
   /// - US: formatPercentage(0.1256) → "12.56%"
   /// - ES: formatPercentage(0.1256) → "12,56 %"
@@ -143,7 +144,7 @@ class LocalizationService {
   }
 
   /// Format date with locale-specific formatting
-  /// 
+  ///
   /// Examples:
   /// - US: formatDate(date) → "12/31/2024"
   /// - ES: formatDate(date) → "31/12/2024"
@@ -173,9 +174,9 @@ class LocalizationService {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dateOnly = DateTime(date.year, date.month, date.day);
-    
+
     final difference = today.difference(dateOnly).inDays;
-    
+
     switch (difference) {
       case 0:
         return todayLabel;
@@ -217,8 +218,8 @@ class LocalizationService {
   ui.TextDirection get textDirection {
     // Add RTL language codes as needed
     const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
-    return rtlLanguages.contains(_currentLocale.languageCode) 
-        ? ui.TextDirection.rtl 
+    return rtlLanguages.contains(_currentLocale.languageCode)
+        ? ui.TextDirection.rtl
         : ui.TextDirection.ltr;
   }
 
@@ -227,17 +228,14 @@ class LocalizationService {
   double? parseCurrency(String currencyString) {
     try {
       // Remove currency symbols and spaces
-      String cleanString = currencyString
-          .replaceAll(currencySymbol, '')
-          .replaceAll(' ', '')
-          .trim();
-      
+      String cleanString = currencyString.replaceAll(currencySymbol, '').replaceAll(' ', '').trim();
+
       // Handle different decimal separators
       if (_currentLocale.toString().startsWith('es')) {
         // European format: 1.234,56
         cleanString = cleanString.replaceAll('.', '').replaceAll(',', '.');
       }
-      
+
       return double.tryParse(cleanString);
     } catch (e) {
       return null;
@@ -257,18 +255,18 @@ class LocalizationService {
   /// Format budget progress percentage with visual context
   String formatBudgetProgress(double spent, double budget) {
     if (budget <= 0) return '0%';
-    
+
     final percentage = spent / budget;
     return formatPercentage(percentage);
   }
 
   /// Format budget status message with amount
-  String formatBudgetStatus(double spent, double budget, 
-      String overBudgetText, String underBudgetText, String onTrackText) {
+  String formatBudgetStatus(double spent, double budget, String overBudgetText,
+      String underBudgetText, String onTrackText) {
     if (budget <= 0) return formatCurrency(spent);
-    
+
     final percentage = spent / budget;
-    
+
     if (percentage > 1.1) {
       final excess = spent - budget;
       return '$overBudgetText ${formatCurrency(excess)}';
@@ -283,7 +281,7 @@ class LocalizationService {
   String formatLargeNumber(double number) {
     final absNumber = number.abs();
     final sign = number < 0 ? '-' : '';
-    
+
     if (absNumber >= 1000000000) {
       return '$sign${(absNumber / 1000000000).toStringAsFixed(1)}B';
     } else if (absNumber >= 1000000) {

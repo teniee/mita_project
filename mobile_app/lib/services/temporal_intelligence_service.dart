@@ -33,7 +33,7 @@ class TemporalIntelligenceService {
 
     // Calculate multipliers based on average spending patterns
     final baselineSpending = _calculateBaseline(transactionHistory);
-    
+
     return TemporalSpendingPattern(
       dayOfWeekMultipliers: _calculateMultipliers(dayOfWeekSpending, baselineSpending),
       dayOfMonthMultipliers: _calculateMultipliers(dayOfMonthSpending, baselineSpending),
@@ -151,33 +151,39 @@ class TemporalIntelligenceService {
         .where((entry) => entry.value > 1.2)
         .map((entry) => _getDayName(entry.key))
         .toList();
-    
+
     if (highSpendingDays.isNotEmpty) {
-      insights.add('You tend to spend ${((patterns.dayOfWeekMultipliers.values.reduce(max) - 1) * 100).round()}% more on ${highSpendingDays.join(', ')}');
+      insights.add(
+          'You tend to spend ${((patterns.dayOfWeekMultipliers.values.reduce(max) - 1) * 100).round()}% more on ${highSpendingDays.join(', ')}');
     }
 
     // Weekend spending patterns
     if (patterns.weekendEffect > 1.15) {
-      insights.add('Weekend spending is ${((patterns.weekendEffect - 1) * 100).round()}% higher than weekdays');
+      insights.add(
+          'Weekend spending is ${((patterns.weekendEffect - 1) * 100).round()}% higher than weekdays');
     }
 
     // Month-end patterns
     if (patterns.monthEndEffect < 0.9) {
-      insights.add('You typically reduce spending by ${((1 - patterns.monthEndEffect) * 100).round()}% at month-end');
+      insights.add(
+          'You typically reduce spending by ${((1 - patterns.monthEndEffect) * 100).round()}% at month-end');
     }
 
     // Seasonal patterns
     final currentSeason = _getSeason(targetDate);
     final seasonalMultiplier = patterns.seasonalMultipliers[currentSeason] ?? 1.0;
     if (seasonalMultiplier > 1.1) {
-      insights.add('$currentSeason season typically increases spending by ${((seasonalMultiplier - 1) * 100).round()}%');
+      insights.add(
+          '$currentSeason season typically increases spending by ${((seasonalMultiplier - 1) * 100).round()}%');
     }
 
     // Confidence assessment
     if (patterns.confidenceScore > 0.8) {
-      insights.add('High confidence predictions based on ${patterns.confidenceScore > 0.9 ? 'extensive' : 'good'} historical data');
+      insights.add(
+          'High confidence predictions based on ${patterns.confidenceScore > 0.9 ? 'extensive' : 'good'} historical data');
     } else if (patterns.confidenceScore < 0.6) {
-      insights.add('Predictions have moderate confidence - more spending history will improve accuracy');
+      insights.add(
+          'Predictions have moderate confidence - more spending history will improve accuracy');
     }
 
     return insights.take(3).toList(); // Return top 3 insights
@@ -187,8 +193,9 @@ class TemporalIntelligenceService {
 
   double _calculateBaseline(List<Map<String, dynamic>> transactions) {
     if (transactions.isEmpty) return 0.0;
-    
-    final totalSpending = transactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
+    final totalSpending =
+        transactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
     return totalSpending / transactions.length;
   }
 
@@ -197,36 +204,38 @@ class TemporalIntelligenceService {
     double baseline,
   ) {
     final multipliers = <int, double>{};
-    
+
     for (final entry in spendingByPeriod.entries) {
-      final periodAverage = entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
+      final periodAverage =
+          entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
       multipliers[entry.key] = baseline > 0 ? periodAverage / baseline : 1.0;
     }
-    
+
     return multipliers;
   }
 
   Map<String, double> _detectHolidayPatterns(List<Map<String, dynamic>> transactions) {
     final holidaySpending = <String, List<double>>{};
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
       final holidayKey = _getHolidayKey(date);
-      
+
       if (holidayKey != null) {
         holidaySpending.putIfAbsent(holidayKey, () => []).add(amount);
       }
     }
-    
+
     final baseline = _calculateBaseline(transactions);
     final holidayMultipliers = <String, double>{};
-    
+
     for (final entry in holidaySpending.entries) {
-      final holidayAverage = entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
+      final holidayAverage =
+          entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
       holidayMultipliers[entry.key] = baseline > 0 ? holidayAverage / baseline : 1.0;
     }
-    
+
     return holidayMultipliers;
   }
 
@@ -237,92 +246,93 @@ class TemporalIntelligenceService {
       'fall': [],
       'winter': [],
     };
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
       final season = _getSeason(date);
-      
+
       seasonalSpending[season]!.add(amount);
     }
-    
+
     final baseline = _calculateBaseline(transactions);
     final seasonalMultipliers = <String, double>{};
-    
+
     for (final entry in seasonalSpending.entries) {
-      final seasonalAverage = entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
+      final seasonalAverage =
+          entry.value.isEmpty ? 0.0 : entry.value.reduce((a, b) => a + b) / entry.value.length;
       seasonalMultipliers[entry.key] = baseline > 0 ? seasonalAverage / baseline : 1.0;
     }
-    
+
     return seasonalMultipliers;
   }
 
   double _calculatePaydayEffect(List<Map<String, dynamic>> transactions) {
     final paydaySpending = <double>[];
     final regularSpending = <double>[];
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       if (_isNearPayday(date)) {
         paydaySpending.add(amount);
       } else {
         regularSpending.add(amount);
       }
     }
-    
+
     if (paydaySpending.isEmpty || regularSpending.isEmpty) return 1.0;
-    
+
     final paydayAverage = paydaySpending.reduce((a, b) => a + b) / paydaySpending.length;
     final regularAverage = regularSpending.reduce((a, b) => a + b) / regularSpending.length;
-    
+
     return regularAverage > 0 ? paydayAverage / regularAverage : 1.0;
   }
 
   double _calculateWeekendEffect(List<Map<String, dynamic>> transactions) {
     final weekendSpending = <double>[];
     final weekdaySpending = <double>[];
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       if (date.weekday >= 6) {
         weekendSpending.add(amount);
       } else {
         weekdaySpending.add(amount);
       }
     }
-    
+
     if (weekendSpending.isEmpty || weekdaySpending.isEmpty) return 1.0;
-    
+
     final weekendAverage = weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
     final weekdayAverage = weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
-    
+
     return weekdayAverage > 0 ? weekendAverage / weekdayAverage : 1.0;
   }
 
   double _calculateMonthEndEffect(List<Map<String, dynamic>> transactions) {
     final monthEndSpending = <double>[];
     final regularSpending = <double>[];
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       if (date.day > 25) {
         monthEndSpending.add(amount);
       } else {
         regularSpending.add(amount);
       }
     }
-    
+
     if (monthEndSpending.isEmpty || regularSpending.isEmpty) return 1.0;
-    
+
     final monthEndAverage = monthEndSpending.reduce((a, b) => a + b) / monthEndSpending.length;
     final regularAverage = regularSpending.reduce((a, b) => a + b) / regularSpending.length;
-    
+
     return regularAverage > 0 ? monthEndAverage / regularAverage : 1.0;
   }
 
@@ -336,14 +346,22 @@ class TemporalIntelligenceService {
 
   String _getDayName(int weekday) {
     switch (weekday) {
-      case 1: return 'Monday';
-      case 2: return 'Tuesday';
-      case 3: return 'Wednesday';
-      case 4: return 'Thursday';
-      case 5: return 'Friday';
-      case 6: return 'Saturday';
-      case 7: return 'Sunday';
-      default: return 'Unknown';
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      case 7:
+        return 'Sunday';
+      default:
+        return 'Unknown';
     }
   }
 

@@ -12,17 +12,16 @@ class ForgotPasswordScreen extends StatefulWidget {
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
-    with TickerProviderStateMixin {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with TickerProviderStateMixin {
   final ApiService _api = ApiService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
-  
+
   bool _isLoading = false;
   bool _isEmailSent = false;
   String? _errorMessage;
-  
+
   late AnimationController _animationController;
   late AnimationController _successAnimationController;
   late Animation<double> _fadeAnimation;
@@ -32,17 +31,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _successAnimationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -50,7 +49,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       parent: _animationController,
       curve: Curves.easeOut,
     ));
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.0, 0.3),
       end: Offset.zero,
@@ -58,7 +57,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       parent: _animationController,
       curve: Curves.easeOutBack,
     ));
-    
+
     _successScaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -66,7 +65,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       parent: _successAnimationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _animationController.forward();
   }
 
@@ -78,7 +77,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     _emailFocusNode.dispose();
     super.dispose();
   }
-
 
   Future<void> _sendResetEmail() async {
     if (!_formKey.currentState!.validate()) {
@@ -92,9 +90,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
     try {
       logInfo('Sending password reset email', tag: 'FORGOT_PASSWORD');
-      
+
       final success = await _api.sendPasswordResetEmail(_emailController.text);
-      
+
       if (success) {
         setState(() {
           _isEmailSent = true;
@@ -127,21 +125,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           Text(
             'Reset Password',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'Enter your email address and we\'ll send you a link to reset your password.',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
-          
           TextFormField(
             controller: _emailController,
             focusNode: _emailFocusNode,
@@ -188,7 +185,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               return null;
             },
           ),
-          
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -218,9 +214,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
             ),
           ],
-          
           const SizedBox(height: 24),
-          
           FilledButton(
             onPressed: _isLoading ? null : _sendResetEmail,
             style: FilledButton.styleFrom(
@@ -246,9 +240,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                     ),
                   ),
           ),
-          
           const SizedBox(height: 16),
-          
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
@@ -284,39 +276,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
             ),
           ),
           const SizedBox(height: 24),
-          
           Text(
             'Email Sent!',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
             textAlign: TextAlign.center,
           ),
-          
           const SizedBox(height: 8),
-          
           Text(
             'We\'ve sent a password reset link to:',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
             textAlign: TextAlign.center,
           ),
-          
           const SizedBox(height: 8),
-          
           Text(
             _emailController.text,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
             textAlign: TextAlign.center,
           ),
-          
           const SizedBox(height: 32),
-          
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -334,16 +319,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 Text(
                   'Check your email and click the reset link to create a new password. The link will expire in 24 hours.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                  ),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          
           const SizedBox(height: 24),
-          
           Row(
             children: [
               Expanded(
@@ -394,9 +377,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 child: SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
-                    child: _isEmailSent
-                        ? _buildSuccessView()
-                        : _buildResetForm(),
+                    child: _isEmailSent ? _buildSuccessView() : _buildResetForm(),
                   ),
                 ),
               ),

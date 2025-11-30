@@ -70,7 +70,8 @@ Future<void> _initFirebase() async {
 
   // SECURITY: Push token registration moved to post-authentication flow
   // Tokens are now only registered after successful user login via SecurePushTokenManager
-  logInfo('Firebase initialized - push token registration deferred to post-authentication', tag: 'MAIN');
+  logInfo('Firebase initialized - push token registration deferred to post-authentication',
+      tag: 'MAIN');
 
   await PushNotificationService.initialize(navigatorKey);
 }
@@ -120,12 +121,12 @@ void main() async {
 
   // Initialize app version service
   await AppVersionService.instance.initialize();
-  
+
   // Initialize comprehensive Sentry monitoring for financial application
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
   const environment = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
   const sentryRelease = String.fromEnvironment('SENTRY_RELEASE', defaultValue: 'mita-mobile@1.0.0');
-  
+
   if (sentryDsn.isNotEmpty) {
     await sentryService.initialize(
       dsn: sentryDsn,
@@ -137,16 +138,17 @@ void main() async {
       tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
     );
   } else {
-    if (kDebugMode) dev.log('Sentry DSN not configured - advanced error monitoring disabled', name: 'MitaApp');
+    if (kDebugMode)
+      dev.log('Sentry DSN not configured - advanced error monitoring disabled', name: 'MitaApp');
   }
-  
+
   await _initFirebase();
 
   // Enhanced error handling that integrates with all monitoring systems
   FlutterError.onError = (FlutterErrorDetails details) {
     // Send to Firebase Crashlytics
     FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-    
+
     // Send to our custom error handler
     AppErrorHandler.reportError(
       details.exception,
@@ -158,7 +160,7 @@ void main() async {
         'context': details.context?.toString(),
       },
     );
-    
+
     // Send to enhanced Sentry service
     sentryService.captureFinancialError(
       details.exception,
@@ -176,11 +178,11 @@ void main() async {
       },
     );
   };
-  
+
   PlatformDispatcher.instance.onError = (error, stack) {
     // Send to Firebase Crashlytics
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    
+
     // Send to our custom error handler
     AppErrorHandler.reportError(
       error,
@@ -189,7 +191,7 @@ void main() async {
       category: ErrorCategory.system,
       context: {'source': 'platform_dispatcher'},
     );
-    
+
     // Send to enhanced Sentry service
     sentryService.captureFinancialError(
       error,
@@ -206,7 +208,7 @@ void main() async {
         'fatal': 'true',
       },
     );
-    
+
     return true;
   };
 
@@ -291,7 +293,7 @@ class _MITAAppState extends State<MITAApp> {
       theme: MitaTheme.lightTheme,
       darkTheme: MitaTheme.darkTheme,
       themeMode: settingsProvider.themeMode,
-      
+
       // Localization configuration
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -300,14 +302,14 @@ class _MITAAppState extends State<MITAApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      
+
       // Locale resolution for unsupported locales
       localeResolutionCallback: (locale, supportedLocales) {
         // Initialize localization service with resolved locale
         if (locale != null) {
           LocalizationService.instance.setLocale(locale);
         }
-        
+
         // If the device locale is supported, use it
         if (locale != null) {
           for (final supportedLocale in supportedLocales) {
@@ -316,11 +318,11 @@ class _MITAAppState extends State<MITAApp> {
             }
           }
         }
-        
+
         // Default to English if device locale is not supported
         return const Locale('en');
       },
-      
+
       initialRoute: '/',
       onGenerateRoute: (settings) {
         logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}', tag: 'NAVIGATION');
@@ -328,125 +330,125 @@ class _MITAAppState extends State<MITAApp> {
       },
       routes: {
         '/': (context) => const AppErrorBoundary(
-          screenName: 'Welcome',
-          child: WelcomeScreen(),
-        ),
+              screenName: 'Welcome',
+              child: WelcomeScreen(),
+            ),
         '/login': (context) => const AppErrorBoundary(
-          screenName: 'Login',
-          child: LoginScreen(),
-        ),
+              screenName: 'Login',
+              child: LoginScreen(),
+            ),
         '/register': (context) => const AppErrorBoundary(
-          screenName: 'Register', 
-          child: RegisterScreen(),
-        ),
+              screenName: 'Register',
+              child: RegisterScreen(),
+            ),
         '/forgot-password': (context) => const AppErrorBoundary(
-          screenName: 'ForgotPassword',
-          child: ForgotPasswordScreen(),
-        ),
+              screenName: 'ForgotPassword',
+              child: ForgotPasswordScreen(),
+            ),
         '/reset-password': (context) => const AppErrorBoundary(
-          screenName: 'ResetPassword',
-          child: ResetPasswordScreen(),
-        ),
+              screenName: 'ResetPassword',
+              child: ResetPasswordScreen(),
+            ),
         '/ai-assistant': (context) => const AppErrorBoundary(
-          screenName: 'AIAssistant',
-          child: AIAssistantScreen(),
-        ),
+              screenName: 'AIAssistant',
+              child: AIAssistantScreen(),
+            ),
         '/main': (context) => const AppErrorBoundary(
-          screenName: 'Main',
-          child: BottomNavigation(),
-        ),
+              screenName: 'Main',
+              child: BottomNavigation(),
+            ),
         '/onboarding_location': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingLocation',
-          child: OnboardingLocationScreen(),
-        ),
+              screenName: 'OnboardingLocation',
+              child: OnboardingLocationScreen(),
+            ),
         '/onboarding_income': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingIncome',
-          child: OnboardingIncomeScreen(),
-        ),
+              screenName: 'OnboardingIncome',
+              child: OnboardingIncomeScreen(),
+            ),
         '/onboarding_expenses': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingExpenses', 
-          child: OnboardingExpensesScreen(),
-        ),
+              screenName: 'OnboardingExpenses',
+              child: OnboardingExpensesScreen(),
+            ),
         '/onboarding_goal': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingGoal',
-          child: OnboardingGoalScreen(),
-        ),
+              screenName: 'OnboardingGoal',
+              child: OnboardingGoalScreen(),
+            ),
         '/onboarding_spending_frequency': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingSpendingFrequency',
-          child: OnboardingSpendingFrequencyScreen(),
-        ),
+              screenName: 'OnboardingSpendingFrequency',
+              child: OnboardingSpendingFrequencyScreen(),
+            ),
         '/onboarding_habits': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingHabits',
-          child: OnboardingHabitsScreen(),
-        ),
+              screenName: 'OnboardingHabits',
+              child: OnboardingHabitsScreen(),
+            ),
         '/onboarding_finish': (context) => const AppErrorBoundary(
-          screenName: 'OnboardingFinish',
-          child: OnboardingFinishScreen(),
-        ),
+              screenName: 'OnboardingFinish',
+              child: OnboardingFinishScreen(),
+            ),
         '/referral': (context) => const AppErrorBoundary(
-          screenName: 'Referral',
-          child: ReferralScreen(),
-        ),
+              screenName: 'Referral',
+              child: ReferralScreen(),
+            ),
         '/mood': (context) => const AppErrorBoundary(
-          screenName: 'Mood',
-          child: MoodScreen(),
-        ),
+              screenName: 'Mood',
+              child: MoodScreen(),
+            ),
         '/subscribe': (context) => const AppErrorBoundary(
-          screenName: 'Subscription',
-          child: SubscriptionScreen(),
-        ),
+              screenName: 'Subscription',
+              child: SubscriptionScreen(),
+            ),
         '/notifications': (context) => const AppErrorBoundary(
-          screenName: 'Notifications',
-          child: NotificationsScreen(),
-        ),
+              screenName: 'Notifications',
+              child: NotificationsScreen(),
+            ),
         '/daily_budget': (context) => const AppErrorBoundary(
-          screenName: 'DailyBudget',  
-          child: DailyBudgetScreen(),
-        ),
+              screenName: 'DailyBudget',
+              child: DailyBudgetScreen(),
+            ),
         '/add_expense': (context) => const AppErrorBoundary(
-          screenName: 'AddExpense',
-          child: AddExpenseScreen(),
-        ),
+              screenName: 'AddExpense',
+              child: AddExpenseScreen(),
+            ),
         '/insights': (context) => const AppErrorBoundary(
-          screenName: 'Insights',
-          child: InsightsScreen(),
-        ),
+              screenName: 'Insights',
+              child: InsightsScreen(),
+            ),
         '/budget_settings': (context) => const AppErrorBoundary(
-          screenName: 'BudgetSettings',
-          child: BudgetSettingsScreen(),
-        ),
+              screenName: 'BudgetSettings',
+              child: BudgetSettingsScreen(),
+            ),
         '/profile': (context) => const AppErrorBoundary(
-          screenName: 'UserProfile',
-          child: UserProfileScreen(),
-        ),
+              screenName: 'UserProfile',
+              child: UserProfileScreen(),
+            ),
         '/settings': (context) => const AppErrorBoundary(
-          screenName: 'UserSettings',
-          child: UserSettingsScreen(),
-        ),
+              screenName: 'UserSettings',
+              child: UserSettingsScreen(),
+            ),
         '/transactions': (context) => const AppErrorBoundary(
-          screenName: 'Transactions',
-          child: TransactionsScreen(),
-        ),
+              screenName: 'Transactions',
+              child: TransactionsScreen(),
+            ),
         '/auth-test': (context) => const AppErrorBoundary(
-          screenName: 'AuthTest',
-          child: AuthTestScreen(),
-        ),
+              screenName: 'AuthTest',
+              child: AuthTestScreen(),
+            ),
         '/goals': (context) => const AppErrorBoundary(
-          screenName: 'Goals',
-          child: GoalsScreen(),
-        ),
+              screenName: 'Goals',
+              child: GoalsScreen(),
+            ),
         '/challenges': (context) => const AppErrorBoundary(
-          screenName: 'Challenges',
-          child: ChallengesScreen(),
-        ),
+              screenName: 'Challenges',
+              child: ChallengesScreen(),
+            ),
         '/installment-calculator': (context) => const AppErrorBoundary(
-          screenName: 'InstallmentCalculator',
-          child: InstallmentCalculatorScreen(),
-        ),
+              screenName: 'InstallmentCalculator',
+              child: InstallmentCalculatorScreen(),
+            ),
         '/installments': (context) => const AppErrorBoundary(
-          screenName: 'Installments',
-          child: InstallmentsScreen(),
-        ),
+              screenName: 'Installments',
+              child: InstallmentsScreen(),
+            ),
       },
     );
 
@@ -458,7 +460,7 @@ class _MITAAppState extends State<MITAApp> {
           valueListenable: LoadingService.instance.notifier,
           builder: (context, loadingCount, child) {
             final shouldShowLoading = loadingCount > 0 && !forceHidden;
-            
+
             return Directionality(
               textDirection: TextDirection.ltr,
               child: Stack(
@@ -525,12 +527,12 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -538,9 +540,9 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
       parent: _controller,
       curve: Curves.easeInOut,
     ));
-    
+
     _controller.forward();
-    
+
     // Update status periodically
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -562,7 +564,7 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Center(
@@ -592,9 +594,9 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
                   strokeWidth: 3,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Loading message
               Text(
                 _getLoadingMessage(),
@@ -604,7 +606,7 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               if (_status.globalLoadingDuration != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -614,7 +616,7 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
                   ),
                 ),
               ],
-              
+
               // Emergency dismiss button after 10 seconds
               if (_status.globalLoadingDuration != null &&
                   _status.globalLoadingDuration!.inSeconds >= 10) ...[
@@ -646,14 +648,14 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
       final operation = _status.operations.first;
       return operation.description;
     }
-    
+
     return 'Loading...';
   }
 
   String _getDurationText() {
     final duration = _status.globalLoadingDuration;
     if (duration == null) return '';
-    
+
     final seconds = duration.inSeconds;
     if (seconds < 60) {
       return '${seconds}s';

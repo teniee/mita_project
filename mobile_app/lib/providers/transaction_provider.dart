@@ -121,7 +121,8 @@ class TransactionProvider extends ChangeNotifier {
       _transactions = transactions;
       _calculateTotalSpending();
       _state = TransactionState.loaded;
-      logInfo('Recent transactions loaded: ${_transactions.length} items', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Recent transactions loaded: ${_transactions.length} items',
+          tag: 'TRANSACTION_PROVIDER');
     } catch (e) {
       logError('Error loading recent transactions: $e', tag: 'TRANSACTION_PROVIDER');
       _errorMessage = e.toString();
@@ -223,7 +224,8 @@ class TransactionProvider extends ChangeNotifier {
       );
       _spendingByCategory = categoryTotals;
 
-      logInfo('Spending by category loaded: ${_spendingByCategory.length} categories', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Spending by category loaded: ${_spendingByCategory.length} categories',
+          tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
     } catch (e) {
       logError('Error loading spending by category: $e', tag: 'TRANSACTION_PROVIDER');

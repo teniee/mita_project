@@ -30,7 +30,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   late Animation<double> _tabSwitchAnimation;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  
+
   // Keep screen instances to maintain state
   late final List<Widget> _screens = [
     const MainScreen(),
@@ -40,7 +40,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
     const HabitsScreen(),
     const MoodScreen(),
   ];
-  
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +49,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
     _subscribeToExpenseUpdates();
     if (kDebugMode) dev.log('BottomNavigation initState completed', name: 'BottomNavigation');
   }
-  
+
   void _initializeAnimations() {
     _navigationAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -62,7 +62,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       parent: _navigationAnimationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _tabSwitchController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -74,7 +74,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       parent: _tabSwitchController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -87,7 +87,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       curve: Curves.easeInOut,
     ));
   }
-  
+
   void _subscribeToExpenseUpdates() {
     // Listen for expense additions to provide navigation feedback
     _expenseAddedSubscription = _expenseStateService.expenseAdded.listen(
@@ -96,14 +96,15 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
         _navigationAnimationController.forward().then((_) {
           _navigationAnimationController.reverse();
         });
-        
+
         // Pulse the current tab if it's relevant to the update
-        if (_currentIndex == 0 || _currentIndex == 1) { // Main or Calendar
+        if (_currentIndex == 0 || _currentIndex == 1) {
+          // Main or Calendar
           _pulseController.forward().then((_) {
             _pulseController.reverse();
           });
         }
-        
+
         logDebug('Navigation received expense update', tag: 'BOTTOM_NAV', extra: {
           'currentIndex': _currentIndex,
           'expenseAmount': expenseData['amount'],
@@ -111,7 +112,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       },
     );
   }
-  
+
   @override
   void dispose() {
     _expenseAddedSubscription?.cancel();
@@ -151,7 +152,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -182,74 +183,77 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
               return Transform.translate(
                 offset: Offset(0, _navigationAnimation.value * 2),
                 child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onNavigationTap,
-            selectedItemColor: colorScheme.primary,
-            unselectedItemColor: colorScheme.onSurfaceVariant,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
-            enableFeedback: true,
-            selectedLabelStyle: TextStyle(
-              fontFamily: AppTypography.fontHeading,
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-              color: colorScheme.primary,
-            ),
-            unselectedLabelStyle: TextStyle(
-              fontFamily: AppTypography.fontBody,
-              fontWeight: FontWeight.w400,
-              fontSize: 10,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            selectedIconTheme: IconThemeData(
-              color: colorScheme.primary,
-              size: 24,
-            ),
-            unselectedIconTheme: IconThemeData(
-              color: colorScheme.onSurfaceVariant,
-              size: 22,
-            ),
-            items: _items.map((item) {
-              final index = _items.indexOf(item);
-              final isSelected = _currentIndex == index;
-              
-              return BottomNavigationBarItem(
-                icon: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    final scale = isSelected && (_currentIndex == 0 || _currentIndex == 1)
-                      ? _pulseAnimation.value
-                      : 1.0;
-                    
-                    return AnimatedBuilder(
-                      animation: _tabSwitchAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: scale * (1.0 + (_tabSwitchAnimation.value * 0.1)),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: isSelected ? BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: colorScheme.primaryContainer.withValues(alpha: 0.1),
-                            ) : null,
-                            child: Icon(
-                              (item.icon as Icon).icon,
-                              size: isSelected ? 26 : 22,
-                              color: isSelected 
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        );
-                      },
+                  currentIndex: _currentIndex,
+                  onTap: _onNavigationTap,
+                  selectedItemColor: colorScheme.primary,
+                  unselectedItemColor: colorScheme.onSurfaceVariant,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  type: BottomNavigationBarType.fixed,
+                  enableFeedback: true,
+                  selectedLabelStyle: TextStyle(
+                    fontFamily: AppTypography.fontHeading,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: colorScheme.primary,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontFamily: AppTypography.fontBody,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 10,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIconTheme: IconThemeData(
+                    color: colorScheme.primary,
+                    size: 24,
+                  ),
+                  unselectedIconTheme: IconThemeData(
+                    color: colorScheme.onSurfaceVariant,
+                    size: 22,
+                  ),
+                  items: _items.map((item) {
+                    final index = _items.indexOf(item);
+                    final isSelected = _currentIndex == index;
+
+                    return BottomNavigationBarItem(
+                      icon: AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          final scale = isSelected && (_currentIndex == 0 || _currentIndex == 1)
+                              ? _pulseAnimation.value
+                              : 1.0;
+
+                          return AnimatedBuilder(
+                            animation: _tabSwitchAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: scale * (1.0 + (_tabSwitchAnimation.value * 0.1)),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: isSelected
+                                      ? BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          color:
+                                              colorScheme.primaryContainer.withValues(alpha: 0.1),
+                                        )
+                                      : null,
+                                  child: Icon(
+                                    (item.icon as Icon).icon,
+                                    size: isSelected ? 26 : 22,
+                                    color: isSelected
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      label: item.label,
+                      tooltip: item.label,
                     );
-                  },
-                ),
-                label: item.label,
-                tooltip: item.label,
-              );
-            }).toList(),
+                  }).toList(),
                 ),
               );
             },
@@ -258,7 +262,7 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       ),
     );
   }
-  
+
   void _onNavigationTap(int index) {
     if (index == _currentIndex) {
       // Double tap on current tab - refresh if it's calendar or main screen
@@ -267,50 +271,57 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       }
       return;
     }
-    
+
     // Animate tab switch
     _tabSwitchController.forward().then((_) {
       _tabSwitchController.reverse();
     });
-    
+
     setState(() {
       _currentIndex = index;
     });
-    
+
     // Log navigation for analytics
     logDebug('Navigation tab changed', tag: 'BOTTOM_NAV', extra: {
       'previousIndex': _currentIndex,
       'newIndex': index,
       'screenName': _getScreenName(index),
     });
-    
+
     // If navigating to calendar screen, ensure it has the latest data
     if (index == 1) {
       _ensureCalendarDataFreshness();
     }
   }
-  
+
   String _getScreenName(int index) {
     switch (index) {
-      case 0: return 'Main';
-      case 1: return 'Calendar';
-      case 2: return 'Goals';
-      case 3: return 'Insights';
-      case 4: return 'Habits';
-      case 5: return 'Mood';
-      default: return 'Unknown';
+      case 0:
+        return 'Main';
+      case 1:
+        return 'Calendar';
+      case 2:
+        return 'Goals';
+      case 3:
+        return 'Insights';
+      case 4:
+        return 'Habits';
+      case 5:
+        return 'Mood';
+      default:
+        return 'Unknown';
     }
   }
-  
+
   void _handleScreenRefresh(int index) {
     logDebug('Double tap refresh requested', tag: 'BOTTOM_NAV', extra: {
       'screenIndex': index,
       'screenName': _getScreenName(index),
     });
-    
+
     // Trigger refresh on expense state service
     _expenseStateService.refreshCalendarData();
-    
+
     // Show feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -343,16 +354,17 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
       ),
     );
   }
-  
+
   void _ensureCalendarDataFreshness() {
     // Check if calendar data is stale (older than 20 seconds)
     final timeSinceUpdate = DateTime.now().difference(_expenseStateService.lastUpdated);
-    
-    if (timeSinceUpdate.inSeconds > 20) { // Reduced for fast backend
+
+    if (timeSinceUpdate.inSeconds > 20) {
+      // Reduced for fast backend
       logDebug('Calendar data is stale, triggering refresh', tag: 'BOTTOM_NAV', extra: {
         'timeSinceUpdate': timeSinceUpdate.inSeconds,
       });
-      
+
       // Trigger a gentle refresh
       Timer(const Duration(milliseconds: 500), () {
         _expenseStateService.refreshCalendarData();

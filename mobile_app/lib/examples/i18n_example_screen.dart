@@ -32,7 +32,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      
+
       body: SingleChildScrollView(
         padding: textDir.getDirectionalPadding(
           start: 16.0,
@@ -49,9 +49,9 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
               style: theme.textTheme.headlineMedium,
               textAlign: textDir.getTextAlign(),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Currency formatting examples
             Card(
               child: Padding(
@@ -64,7 +64,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Using FinancialFormatters for proper locale formatting
                     Text(
                       FinancialFormatters.formatCurrency(context, _sampleBudget),
@@ -73,9 +73,9 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Spent amount
                     textDir.createDirectionalRow(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -85,17 +85,17 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                           FinancialFormatters.formatCurrency(context, _sampleSpent),
                           style: TextStyle(
                             color: FinancialFormatters.getAmountColor(
-                              context, 
-                              _sampleSpent, 
+                              context,
+                              _sampleSpent,
                               isExpense: true,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Remaining amount using extension method
                     textDir.createDirectionalRow(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -114,9 +114,9 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Budget status with localized messaging
             Card(
               child: Padding(
@@ -129,20 +129,20 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    
+
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: FinancialFormatters.getBudgetStatusColor(
-                          context, 
-                          _sampleSpent, 
+                          context,
+                          _sampleSpent,
                           _sampleBudget,
                         ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: FinancialFormatters.getBudgetStatusColor(
-                            context, 
-                            _sampleSpent, 
+                            context,
+                            _sampleSpent,
                             _sampleBudget,
                           ),
                           width: 1,
@@ -150,42 +150,42 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       ),
                       child: Text(
                         FinancialFormatters.formatBudgetStatus(
-                          context, 
-                          _sampleSpent, 
+                          context,
+                          _sampleSpent,
                           _sampleBudget,
                         ),
                         style: TextStyle(
                           color: FinancialFormatters.getBudgetStatusColor(
-                            context, 
-                            _sampleSpent, 
+                            context,
+                            _sampleSpent,
                             _sampleBudget,
                           ),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Progress indicator
                     LinearProgressIndicator(
                       value: (_sampleSpent / _sampleBudget).clamp(0.0, 1.0),
                       backgroundColor: theme.colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         FinancialFormatters.getBudgetStatusColor(
-                          context, 
-                          _sampleSpent, 
+                          context,
+                          _sampleSpent,
                           _sampleBudget,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     Text(
                       FinancialFormatters.formatBudgetProgress(
-                        context, 
-                        _sampleSpent, 
+                        context,
+                        _sampleSpent,
                         _sampleBudget,
                       ),
                       style: theme.textTheme.bodySmall,
@@ -194,9 +194,9 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Category selection with localized names
             Card(
               child: Padding(
@@ -209,12 +209,11 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
-                    
                     Wrap(
                       spacing: 8.0,
                       children: [
                         'food',
-                        'transportation', 
+                        'transportation',
                         'entertainment',
                         'shopping',
                         'utilities',
@@ -239,9 +238,9 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Date formatting examples
             Card(
               child: Padding(
@@ -254,18 +253,19 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
-                    
                     _buildDateExample(context, l10n.today, DateTime.now()),
-                    _buildDateExample(context, l10n.yesterday, DateTime.now().subtract(const Duration(days: 1))),
-                    _buildDateExample(context, 'Last Week', DateTime.now().subtract(const Duration(days: 7))),
+                    _buildDateExample(
+                        context, l10n.yesterday, DateTime.now().subtract(const Duration(days: 1))),
+                    _buildDateExample(
+                        context, 'Last Week', DateTime.now().subtract(const Duration(days: 7))),
                     _buildDateExample(context, 'Last Month', DateTime(2024, 11, 15)),
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Action buttons with proper RTL support
             textDir.createDirectionalRow(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -291,7 +291,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
   Widget _buildDateExample(BuildContext context, String label, DateTime date) {
     final theme = Theme.of(context);
     final textDir = TextDirectionService.instance;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: textDir.createDirectionalRow(
@@ -314,7 +314,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
 
   void _showLocalizedDialog(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -343,7 +343,7 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
 
   void _showLocalizedSnackBar(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${l10n.expenseAdded} ${context.formatMoney(50.0)}'),

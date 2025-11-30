@@ -72,7 +72,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'food':
@@ -237,7 +236,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             builder: (BuildContext context) {
                               return AlertDialog(
                                 title: const Text('Confirm Delete'),
-                                content: const Text('Are you sure you want to delete this transaction?'),
+                                content:
+                                    const Text('Are you sure you want to delete this transaction?'),
                                 actions: <Widget>[
                                   TextButton(
                                     onPressed: () => Navigator.of(context).pop(false),

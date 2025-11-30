@@ -5,11 +5,11 @@ import 'location_service.dart';
 
 /// Income classification enum - matches backend 5-level system
 enum IncomeTier {
-  low,           // < $3,000
-  lowerMiddle,   // $3,000 - $4,500  
-  middle,        // $4,500 - $7,000
-  upperMiddle,   // $7,000 - $12,000
-  high,          // > $12,000
+  low, // < $3,000
+  lowerMiddle, // $3,000 - $4,500
+  middle, // $4,500 - $7,000
+  upperMiddle, // $7,000 - $12,000
+  high, // > $12,000
 }
 
 /// Income classification service for MITA
@@ -26,9 +26,9 @@ class IncomeService {
 
   /// Income band thresholds (monthly income) - matches backend 5-level system
   /// UPDATED: Economically justified thresholds based on US Census data
-  static const double lowThreshold = 3000.0;        // $36K annually
-  static const double lowerMiddleThreshold = 4800.0; // $57.6K annually  
-  static const double middleThreshold = 7200.0;      // $86.4K annually
+  static const double lowThreshold = 3000.0; // $36K annually
+  static const double lowerMiddleThreshold = 4800.0; // $57.6K annually
+  static const double middleThreshold = 7200.0; // $86.4K annually
   static const double upperMiddleThreshold = 12000.0; // $144K annually
 
   /// Classify income into 5 tiers (legacy method - uses default US thresholds)
@@ -51,12 +51,13 @@ class IncomeService {
     final location = await _locationService.getUserLocation();
     final countryCode = location['country'] ?? 'US';
     final stateCode = location['state'];
-    
+
     return classifyIncomeForLocation(monthlyIncome, countryCode, stateCode: stateCode);
   }
 
   /// Classify income for specific location
-  IncomeTier classifyIncomeForLocation(double monthlyIncome, String countryCode, {String? stateCode}) {
+  IncomeTier classifyIncomeForLocation(double monthlyIncome, String countryCode,
+      {String? stateCode}) {
     final thresholds = _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
     final annualIncome = monthlyIncome * 12;
 
@@ -160,7 +161,7 @@ class IncomeService {
     final location = await _locationService.getUserLocation();
     final countryCode = location['country'] ?? 'US';
     final stateCode = location['state'];
-    
+
     return getIncomeRangeStringForLocation(tier, countryCode, stateCode: stateCode);
   }
 
@@ -168,12 +169,12 @@ class IncomeService {
   String getIncomeRangeStringForLocation(IncomeTier tier, String countryCode, {String? stateCode}) {
     final thresholds = _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
     final currency = _countryService.getCurrency(countryCode);
-    
+
     final lowMonthly = (thresholds['low']! / 12).round();
     final lowerMiddleMonthly = (thresholds['lower_middle']! / 12).round();
     final middleMonthly = (thresholds['middle']! / 12).round();
     final upperMiddleMonthly = (thresholds['upper_middle']! / 12).round();
-    
+
     switch (tier) {
       case IncomeTier.low:
         return 'Under ${_formatCurrency(lowMonthly.toDouble(), currency)}/month';
@@ -190,10 +191,9 @@ class IncomeService {
 
   /// Format currency for display
   String _formatCurrency(double amount, String currency) {
-    final formattedAmount = amount >= 1000 
-        ? '${(amount / 1000).toStringAsFixed(0)}K'
-        : amount.toStringAsFixed(0);
-    
+    final formattedAmount =
+        amount >= 1000 ? '${(amount / 1000).toStringAsFixed(0)}K' : amount.toStringAsFixed(0);
+
     switch (currency) {
       case 'USD':
         return '\$$formattedAmount';
@@ -297,63 +297,64 @@ class IncomeService {
     switch (tier) {
       case IncomeTier.low:
         return {
-          'housing': 0.40,      // Higher for essential housing
-          'food': 0.15,         // Budget-conscious food spending
+          'housing': 0.40, // Higher for essential housing
+          'food': 0.15, // Budget-conscious food spending
           'transportation': 0.15,
           'utilities': 0.10,
           'healthcare': 0.08,
           'entertainment': 0.05, // Lower entertainment budget
-          'savings': 0.07,       // Conservative savings goal
+          'savings': 0.07, // Conservative savings goal
         };
       case IncomeTier.lowerMiddle:
         return {
-          'housing': 0.38,      // Slightly lower housing costs
+          'housing': 0.38, // Slightly lower housing costs
           'food': 0.14,
           'transportation': 0.15,
           'utilities': 0.09,
           'healthcare': 0.07,
           'entertainment': 0.06,
-          'savings': 0.11,       // Building emergency fund
+          'savings': 0.11, // Building emergency fund
         };
       case IncomeTier.middle:
         return {
-          'housing': 0.35,      // Balanced housing costs
+          'housing': 0.35, // Balanced housing costs
           'food': 0.12,
           'transportation': 0.15,
           'utilities': 0.08,
           'healthcare': 0.06,
           'entertainment': 0.08,
-          'savings': 0.16,       // Moderate savings goal
+          'savings': 0.16, // Moderate savings goal
         };
       case IncomeTier.upperMiddle:
         return {
-          'housing': 0.32,      // Lower housing percentage
+          'housing': 0.32, // Lower housing percentage
           'food': 0.11,
           'transportation': 0.13,
           'utilities': 0.06,
           'healthcare': 0.05,
           'entertainment': 0.09,
-          'savings': 0.24,       // Higher savings rate
+          'savings': 0.24, // Higher savings rate
         };
       case IncomeTier.high:
         return {
-          'housing': 0.30,      // Lower percentage for housing
+          'housing': 0.30, // Lower percentage for housing
           'food': 0.10,
           'transportation': 0.12,
           'utilities': 0.05,
           'healthcare': 0.05,
           'entertainment': 0.10,
-          'savings': 0.28,       // Aggressive savings goal
+          'savings': 0.28, // Aggressive savings goal
         };
     }
   }
 
   /// Get peer comparison message
-  String getPeerComparisonMessage(IncomeTier tier, String category, double userSpending, double peerAverage) {
+  String getPeerComparisonMessage(
+      IncomeTier tier, String category, double userSpending, double peerAverage) {
     final tierName = getIncomeTierName(tier);
     final difference = ((userSpending - peerAverage) / peerAverage * 100).abs();
     final isHigher = userSpending > peerAverage;
-    
+
     if (difference < 10) {
       return 'Your $category spending is similar to other ${tierName}s';
     } else if (isHigher) {
@@ -559,11 +560,11 @@ class IncomeService {
   Map<String, dynamic> getBudgetTemplate(IncomeTier tier, double monthlyIncome) {
     final weights = getDefaultBudgetWeights(tier);
     final template = <String, dynamic>{};
-    
+
     weights.forEach((category, weight) {
       template[category] = (monthlyIncome * weight).round().toDouble();
     });
-    
+
     return {
       'monthly_income': monthlyIncome,
       'income_tier': tier.toString(),
@@ -595,7 +596,7 @@ class IncomeService {
     final percentage = getIncomePercentage(amount, monthlyIncome);
     final weights = getDefaultBudgetWeights(tier);
     final recommendedAmount = monthlyIncome * (weights[category.toLowerCase()] ?? 0.1);
-    
+
     return {
       'amount': amount,
       'category': category,
@@ -658,7 +659,15 @@ class IncomeService {
           'risk_tolerance': 'moderate',
           'planning_horizon': 'quarterly_to_yearly',
           'primary_stressors': ['investment_paralysis', 'lifestyle_comparison'],
-          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun'],
+          'mental_accounting_buckets': [
+            'fixed',
+            'variable',
+            'emergency',
+            'short_term',
+            'long_term',
+            'tax_advantaged',
+            'fun'
+          ],
           'nudge_responsiveness': {
             'opportunity_cost': 0.8,
             'status_enhancement': 0.6,
@@ -675,7 +684,17 @@ class IncomeService {
           'risk_tolerance': 'moderate_high',
           'planning_horizon': 'yearly_to_multi_year',
           'primary_stressors': ['optimization_paralysis', 'tax_efficiency'],
-          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun', 'business', 'real_estate'],
+          'mental_accounting_buckets': [
+            'fixed',
+            'variable',
+            'emergency',
+            'short_term',
+            'long_term',
+            'tax_advantaged',
+            'fun',
+            'business',
+            'real_estate'
+          ],
           'nudge_responsiveness': {
             'tax_efficiency': 0.9,
             'legacy_framing': 0.7,
@@ -692,7 +711,20 @@ class IncomeService {
           'risk_tolerance': 'high',
           'planning_horizon': 'multi_year_to_generational',
           'primary_stressors': ['wealth_preservation', 'complex_tax_scenarios'],
-          'mental_accounting_buckets': ['fixed', 'variable', 'emergency', 'short_term', 'long_term', 'tax_advantaged', 'fun', 'business', 'real_estate', 'trust', 'charity', 'education'],
+          'mental_accounting_buckets': [
+            'fixed',
+            'variable',
+            'emergency',
+            'short_term',
+            'long_term',
+            'tax_advantaged',
+            'fun',
+            'business',
+            'real_estate',
+            'trust',
+            'charity',
+            'education'
+          ],
           'nudge_responsiveness': {
             'impact_framing': 0.9,
             'legacy_protection': 0.8,
@@ -706,16 +738,18 @@ class IncomeService {
   }
 
   /// Get tier-specific behavioral nudges
-  List<Map<String, dynamic>> getTierSpecificNudges(IncomeTier tier, Map<String, double>? currentSpending, double monthlyIncome) {
+  List<Map<String, dynamic>> getTierSpecificNudges(
+      IncomeTier tier, Map<String, double>? currentSpending, double monthlyIncome) {
     final patterns = getBehavioralSpendingPatterns(tier);
     final nudges = <Map<String, dynamic>>[];
-    
+
     switch (tier) {
       case IncomeTier.low:
         nudges.addAll([
           {
             'type': 'loss_framing',
-            'message': 'Protect your \$${_calculateWeeklyProgress(currentSpending, monthlyIncome).toStringAsFixed(0)} weekly progress',
+            'message':
+                'Protect your \$${_calculateWeeklyProgress(currentSpending, monthlyIncome).toStringAsFixed(0)} weekly progress',
             'effectiveness': patterns['nudge_responsiveness']['loss_framing'],
             'frequency': 'daily',
           },
@@ -737,13 +771,15 @@ class IncomeService {
         nudges.addAll([
           {
             'type': 'progress_framing',
-            'message': 'You\'re ${_calculateEmergencyFundProgress(currentSpending, monthlyIncome).toStringAsFixed(0)}% to your \$1,000 safety net',
+            'message':
+                'You\'re ${_calculateEmergencyFundProgress(currentSpending, monthlyIncome).toStringAsFixed(0)}% to your \$1,000 safety net',
             'effectiveness': patterns['nudge_responsiveness']['progress_tracking'],
             'frequency': 'weekly',
           },
           {
             'type': 'peer_comparison',
-            'message': 'Others at your level save \$${_calculatePeerAverageSavings(tier, monthlyIncome).toStringAsFixed(0)}/month on average',
+            'message':
+                'Others at your level save \$${_calculatePeerAverageSavings(tier, monthlyIncome).toStringAsFixed(0)}/month on average',
             'effectiveness': patterns['nudge_responsiveness']['peer_comparison'],
             'frequency': 'monthly',
           },
@@ -759,7 +795,8 @@ class IncomeService {
           },
           {
             'type': 'status_enhancement',
-            'message': 'Smart strategists max their 401k match - don\'t leave free money on the table',
+            'message':
+                'Smart strategists max their 401k match - don\'t leave free money on the table',
             'effectiveness': patterns['nudge_responsiveness']['status_enhancement'],
             'frequency': 'quarterly',
           },
@@ -769,7 +806,8 @@ class IncomeService {
         nudges.addAll([
           {
             'type': 'tax_efficiency',
-            'message': 'Save \$${_calculateTaxSavingsOpportunity(monthlyIncome).toStringAsFixed(0)} annually with this tax strategy',
+            'message':
+                'Save \$${_calculateTaxSavingsOpportunity(monthlyIncome).toStringAsFixed(0)} annually with this tax strategy',
             'effectiveness': patterns['nudge_responsiveness']['tax_efficiency'],
             'frequency': 'quarterly',
           },
@@ -798,14 +836,14 @@ class IncomeService {
         ]);
         break;
     }
-    
+
     return nudges;
   }
 
   /// Check if user is near tier boundary for transition management
   bool isNearTierBoundary(double monthlyIncome, IncomeTier currentTier) {
     final annualIncome = monthlyIncome * 12;
-    
+
     switch (currentTier) {
       case IncomeTier.low:
         const nextThreshold = 3000 * 12; // $36K annual
@@ -827,10 +865,10 @@ class IncomeService {
   /// Get next tier information for motivation
   Map<String, dynamic>? getNextTierInfo(IncomeTier currentTier, double monthlyIncome) {
     if (currentTier == IncomeTier.high) return null;
-    
+
     final nextTier = IncomeTier.values[currentTier.index + 1];
     final nextTierName = getIncomeTierName(nextTier);
-    
+
     double nextThreshold;
     switch (currentTier) {
       case IncomeTier.low:
@@ -848,17 +886,18 @@ class IncomeService {
       case IncomeTier.high:
         return null;
     }
-    
+
     final amountNeeded = nextThreshold - monthlyIncome;
     final percentageComplete = (monthlyIncome / nextThreshold * 100).clamp(0.0, 100.0);
-    
+
     return {
       'next_tier': nextTier,
       'next_tier_name': nextTierName,
       'amount_needed': amountNeeded,
       'percentage_complete': percentageComplete,
       'monthly_threshold': nextThreshold,
-      'motivation_message': 'You\'re ${percentageComplete.toStringAsFixed(1)}% of the way to becoming a $nextTierName!',
+      'motivation_message':
+          'You\'re ${percentageComplete.toStringAsFixed(1)}% of the way to becoming a $nextTierName!',
     };
   }
 
@@ -887,7 +926,7 @@ class IncomeService {
     final annualIncome = monthlyIncome * 12;
     return annualIncome * 0.03; // Assume 3% tax savings opportunity
   }
-  
+
   /// Get tier as string for API compatibility
   String getTierString(IncomeTier tier) {
     switch (tier) {
@@ -903,12 +942,12 @@ class IncomeService {
         return 'high';
     }
   }
-  
+
   /// Get tier display name for UI
   String getTierDisplayName(IncomeTier tier) {
     return getIncomeTierName(tier);
   }
-  
+
   /// Get tier income range for display
   String getTierRange(IncomeTier tier) {
     return getIncomeRangeString(tier);

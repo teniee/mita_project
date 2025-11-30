@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
@@ -74,7 +73,10 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       // Transform expenses from array to dict format expected by backend
       final Map<String, double> fixedExpenses = {};
       for (var expense in state.expenses) {
-        final category = (expense['category'] as String).toLowerCase().replaceAll(' ', '_').replaceAll('/', '_or_');
+        final category = (expense['category'] as String)
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll('/', '_or_');
         final amount = double.tryParse(expense['amount'].toString()) ?? 0.0;
         fixedExpenses[category] = amount;
       }
@@ -102,15 +104,16 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       };
 
       // Use REAL spending frequencies from user input (not hardcoded!)
-      final spendingHabits = state.spendingFrequencies ?? {
-        // Fallback to defaults only if user didn't provide input
-        "dining_out_per_month": state.habits.contains("Impulse purchases") ? 15 : 8,
-        "entertainment_per_month": 4,
-        "clothing_per_month": 2,
-        "travel_per_year": 2,
-        "coffee_per_week": 5,
-        "transport_per_month": 20,
-      };
+      final spendingHabits = state.spendingFrequencies ??
+          {
+            // Fallback to defaults only if user didn't provide input
+            "dining_out_per_month": state.habits.contains("Impulse purchases") ? 15 : 8,
+            "entertainment_per_month": 4,
+            "clothing_per_month": 2,
+            "travel_per_year": 2,
+            "coffee_per_week": 5,
+            "transport_per_month": 20,
+          };
 
       // Format data to match backend expectations
       final onboardingData = {
@@ -138,7 +141,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // Validate that we have essential data
       if (state.income == null || state.countryCode == null) {
-        throw Exception('Missing essential onboarding data. Please go back and complete all steps.');
+        throw Exception(
+            'Missing essential onboarding data. Please go back and complete all steps.');
       }
 
       // Check if user is still authenticated before proceeding
@@ -154,17 +158,18 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // CRITICAL DEBUG: Verify cache was actually saved
       final cachedCheck = userProvider.hasCompletedOnboarding;
-      logInfo('CRITICAL DEBUG: Cache verification after save: $cachedCheck', tag: 'ONBOARDING_FINISH');
+      logInfo('CRITICAL DEBUG: Cache verification after save: $cachedCheck',
+          tag: 'ONBOARDING_FINISH');
 
       // Try to submit to backend with proper error handling
       try {
         await _api.submitOnboarding(onboardingData);
         logInfo('Onboarding submitted to backend successfully', tag: 'ONBOARDING_FINISH');
         // Note: User data refresh is already handled by UserProvider.cacheOnboardingData()
-
       } catch (e) {
-        logWarning('Backend submission failed (but continuing with cached data): $e', tag: 'ONBOARDING_FINISH');
-        
+        logWarning('Backend submission failed (but continuing with cached data): $e',
+            tag: 'ONBOARDING_FINISH');
+
         // Check if it's an authentication error
         if (e.toString().contains('401') || e.toString().toLowerCase().contains('unauthorized')) {
           // Try to refresh token and retry once
@@ -177,7 +182,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
               throw Exception('Session expired. Please log in again.');
             }
           } catch (refreshError) {
-            logError('Token refresh failed during onboarding: $refreshError', tag: 'ONBOARDING_FINISH');
+            logError('Token refresh failed during onboarding: $refreshError',
+                tag: 'ONBOARDING_FINISH');
             throw Exception('Session expired. Please log in again.');
           }
         }
@@ -185,7 +191,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       }
 
       if (!mounted) return;
-      
+
       // Show success message briefly before navigating
       setState(() {
         _loading = false;
@@ -194,12 +200,13 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // Brief success display
       await Future.delayed(const Duration(milliseconds: 1500));
-      
+
       if (!mounted) return;
 
       // CRITICAL DEBUG: Final verification before navigation
       final finalCacheCheck = userProvider.hasCompletedOnboarding;
-      logInfo('CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck', tag: 'ONBOARDING_FINISH');
+      logInfo('CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck',
+          tag: 'ONBOARDING_FINISH');
 
       // Clear temporary onboarding state only after successful completion
       OnboardingState.instance.reset();
@@ -214,12 +221,11 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
           (route) => false, // Remove all previous routes
         );
       }
-      
     } catch (e) {
       logError('Critical error in onboarding: $e', tag: 'ONBOARDING_FINISH');
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _loading = false;
         _error = _getErrorMessage(e);
@@ -229,7 +235,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
   String _getErrorMessage(dynamic error) {
     final errorMsg = error.toString();
-    
+
     if (errorMsg.contains('Session expired') || errorMsg.contains('log in again')) {
       return "Your session has expired. Please log in again to continue.";
     } else if (errorMsg.contains('Missing essential')) {
@@ -300,131 +306,131 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                       ),
                     ],
                   )
-            : _error != null
-                ? Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _error!,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontFamily: AppTypography.fontBody,
-                            fontSize: 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        // Retry count indicator
-                        if (_retryCount > 0)
-                          Text(
-                            'Retry attempts: $_retryCount/$_maxRetries',
-                            style: TextStyle(
-                              fontFamily: AppTypography.fontBody,
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        // Rate limit message
-                        if (!_canRetry() && _getRetryMessage().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange.shade200),
-                            ),
-                            child: Text(
-                              _getRetryMessage(),
-                              style: TextStyle(
+                : _error != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: Colors.red,
                                 fontFamily: AppTypography.fontBody,
-                                fontSize: 13,
-                                color: Colors.orange.shade800,
+                                fontSize: 16,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _canRetry()
-                              ? () {
-                                  setState(() {
-                                    _loading = true;
-                                    _error = null;
-                                    _retryCount++;
-                                    _lastRetryTime = DateTime.now();
-                                  });
-                                  _submitOnboardingData();
-                                }
-                              : null, // Disabled when rate limited
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.textPrimary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey.shade300,
-                            disabledForegroundColor: Colors.grey.shade600,
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                            const SizedBox(height: 12),
+                            // Retry count indicator
+                            if (_retryCount > 0)
+                              Text(
+                                'Retry attempts: $_retryCount/$_maxRetries',
+                                style: TextStyle(
+                                  fontFamily: AppTypography.fontBody,
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            // Rate limit message
+                            if (!_canRetry() && _getRetryMessage().isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.orange.shade200),
+                                ),
+                                child: Text(
+                                  _getRetryMessage(),
+                                  style: TextStyle(
+                                    fontFamily: AppTypography.fontBody,
+                                    fontSize: 13,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _canRetry()
+                                  ? () {
+                                      setState(() {
+                                        _loading = true;
+                                        _error = null;
+                                        _retryCount++;
+                                        _lastRetryTime = DateTime.now();
+                                      });
+                                      _submitOnboardingData();
+                                    }
+                                  : null, // Disabled when rate limited
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.textPrimary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                disabledForegroundColor: Colors.grey.shade600,
+                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              child: Text(_canRetry() ? 'Retry' : 'Retry Disabled'),
                             ),
-                          ),
-                          child: Text(_canRetry() ? 'Retry' : 'Retry Disabled'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            // Clear the error state and navigate
-                            OnboardingState.instance.reset();
-                            Navigator.pushNamedAndRemoveUntil(
-                              context, 
-                              '/main', 
-                              (route) => false,
-                            );
-                          },
-                          child: const Text(
-                            'Skip for now',
-                            style: TextStyle(color: AppColors.textPrimary),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Add logout option for session expired errors
-                        if (_error?.contains('session has expired') == true ||
-                            _error?.contains('log in again') == true)
-                          TextButton(
-                            onPressed: () async {
-                              // Clear all user data and return to login
-                              await _api.clearTokens();
-                              OnboardingState.instance.reset();
-                              if (mounted) {
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: () {
+                                // Clear the error state and navigate
+                                OnboardingState.instance.reset();
                                 Navigator.pushNamedAndRemoveUntil(
-                                  context, 
-                                  '/login', 
+                                  context,
+                                  '/main',
                                   (route) => false,
                                 );
-                              }
-                            },
-                            child: const Text(
-                              'Back to Login',
-                              style: TextStyle(
-                                color: AppColors.error,
-                                fontWeight: FontWeight.w600,
+                              },
+                              child: const Text(
+                                'Skip for now',
+                                style: TextStyle(color: AppColors.textPrimary),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  )
-                : const Text(
-                    'Welcome to MITA!',
-                    style: TextStyle(
-                      fontFamily: AppTypography.fontHeading,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                            const SizedBox(height: 12),
+                            // Add logout option for session expired errors
+                            if (_error?.contains('session has expired') == true ||
+                                _error?.contains('log in again') == true)
+                              TextButton(
+                                onPressed: () async {
+                                  // Clear all user data and return to login
+                                  await _api.clearTokens();
+                                  OnboardingState.instance.reset();
+                                  if (mounted) {
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      '/login',
+                                      (route) => false,
+                                    );
+                                  }
+                                },
+                                child: const Text(
+                                  'Back to Login',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    : const Text(
+                        'Welcome to MITA!',
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontHeading,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
       ),
     );
   }

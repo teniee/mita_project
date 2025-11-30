@@ -1,7 +1,8 @@
 /// Advanced Performance Service for MITA Flutter App
 /// Provides performance monitoring, memory management, and optimization
-/// 
+///
 library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -168,28 +169,28 @@ class PerformanceService {
   bool _isMonitoring = false;
   Timer? _monitoringTimer;
   Timer? _memoryTimer;
-  
+
   // Metrics storage
   final List<PerformanceMetric> _metrics = [];
   final List<FrameMetrics> _frameMetrics = [];
   final List<MemoryInfo> _memorySnapshots = [];
   final List<NetworkMetrics> _networkMetrics = [];
   final Map<String, CacheMetrics> _cacheMetrics = {};
-  
+
   // Frame timing
   final List<Duration> _frameTimes = [];
   int _droppedFrames = 0;
   int _totalFrames = 0;
-  
+
   // Memory monitoring
   int _memoryWarningCount = 0;
-  
+
   // Performance thresholds
   static const double TARGET_FPS = 60.0;
   static const double SLOW_FRAME_THRESHOLD = 16.67; // ms for 60fps
   static const double MEMORY_WARNING_THRESHOLD = 80.0; // percent
   static const int MAX_METRICS_HISTORY = 1000;
-  
+
   // Configuration
   bool enableFrameMonitoring = true;
   bool enableMemoryMonitoring = true;
@@ -199,13 +200,13 @@ class PerformanceService {
   /// Initialize performance monitoring
   Future<void> initialize() async {
     if (_isMonitoring) return;
-    
+
     await _setupFrameCallback();
     await _startMemoryMonitoring();
     _startPeriodicMonitoring();
-    
+
     _isMonitoring = true;
-    
+
     logInfo('Performance monitoring initialized', tag: 'PERFORMANCE');
   }
 
@@ -214,14 +215,14 @@ class PerformanceService {
     _monitoringTimer?.cancel();
     _memoryTimer?.cancel();
     _isMonitoring = false;
-    
+
     logInfo('Performance monitoring stopped', tag: 'PERFORMANCE');
   }
 
   /// Set up frame timing callback
   Future<void> _setupFrameCallback() async {
     if (!enableFrameMonitoring) return;
-    
+
     SchedulerBinding.instance.addPersistentFrameCallback((duration) {
       _recordFrameTiming(duration);
     });
@@ -230,26 +231,27 @@ class PerformanceService {
   /// Record frame timing information
   void _recordFrameTiming(Duration frameDuration) {
     if (!enableFrameMonitoring) return;
-    
+
     _totalFrames++;
     final frameTimeMs = frameDuration.inMicroseconds / 1000.0;
-    
+
     _frameTimes.add(frameDuration);
-    
+
     // Keep only recent frame times
-    if (_frameTimes.length > 300) { // ~5 seconds at 60fps
+    if (_frameTimes.length > 300) {
+      // ~5 seconds at 60fps
       _frameTimes.removeAt(0);
     }
-    
+
     // Check for dropped frames
     if (frameTimeMs > SLOW_FRAME_THRESHOLD) {
       _droppedFrames++;
-      
+
       if (frameTimeMs > SLOW_FRAME_THRESHOLD * 2) {
         logWarning('Slow frame detected: ${frameTimeMs.toStringAsFixed(2)}ms', tag: 'PERFORMANCE');
       }
     }
-    
+
     // Generate frame metrics every 5 seconds
     if (_totalFrames % 300 == 0) {
       _generateFrameMetrics();
@@ -259,12 +261,12 @@ class PerformanceService {
   /// Generate frame performance metrics
   void _generateFrameMetrics() {
     if (_frameTimes.isEmpty) return;
-    
+
     final frameTimes = _frameTimes.map((d) => d.inMicroseconds / 1000.0).toList();
     final averageFrameTime = frameTimes.reduce((a, b) => a + b) / frameTimes.length;
     final worstFrame = frameTimes.reduce((a, b) => a > b ? a : b);
     final averageFPS = 1000.0 / averageFrameTime;
-    
+
     final metrics = FrameMetrics(
       averageFPS: averageFPS,
       worstFrame: worstFrame,
@@ -272,14 +274,14 @@ class PerformanceService {
       droppedFrames: _droppedFrames,
       totalFrames: _totalFrames,
     );
-    
+
     _frameMetrics.add(metrics);
-    
+
     // Keep only recent metrics
     if (_frameMetrics.length > 50) {
       _frameMetrics.removeAt(0);
     }
-    
+
     // Reset counters
     _droppedFrames = 0;
   }
@@ -304,10 +306,10 @@ class PerformanceService {
     try {
       // Get Dart heap information
       final dartHeapInfo = await _getDartHeapInfo();
-      
+
       // Get system memory info (platform-specific)
       final systemMemory = await _getSystemMemoryInfo();
-      
+
       final memoryInfo = MemoryInfo(
         totalMemoryMB: systemMemory['total'] ?? 0,
         usedMemoryMB: systemMemory['used'] ?? 0,
@@ -316,23 +318,23 @@ class PerformanceService {
         dartHeapSizeMB: dartHeapInfo['size'] ?? 0,
         dartHeapUsedMB: dartHeapInfo['used'] ?? 0,
       );
-      
+
       _memorySnapshots.add(memoryInfo);
-      
+
       // Keep only recent snapshots
       if (_memorySnapshots.length > 100) {
         _memorySnapshots.removeAt(0);
       }
-      
+
       // Check for memory warnings
       if (memoryInfo.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
         _memoryWarningCount++;
-        logWarning('High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%', tag: 'PERFORMANCE');
-        
+        logWarning('High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%',
+            tag: 'PERFORMANCE');
+
         // Suggest garbage collection
         _suggestGarbageCollection();
       }
-      
     } catch (e) {
       logError('Error collecting memory info: $e', tag: 'PERFORMANCE');
     }
@@ -364,7 +366,7 @@ class PerformanceService {
     } catch (e) {
       logError('Error getting system memory info: $e', tag: 'PERFORMANCE');
     }
-    
+
     return {
       'total': 0,
       'used': 0,
@@ -379,8 +381,8 @@ class PerformanceService {
     // For now, return mock data
     return {
       'total': 4096, // 4GB
-      'used': 2048,  // 2GB
-      'free': 2048,  // 2GB
+      'used': 2048, // 2GB
+      'free': 2048, // 2GB
       'percent': 50.0,
     };
   }
@@ -391,8 +393,8 @@ class PerformanceService {
     // For now, return mock data
     return {
       'total': 6144, // 6GB
-      'used': 2048,  // 2GB
-      'free': 4096,  // 4GB
+      'used': 2048, // 2GB
+      'free': 4096, // 4GB
       'percent': 33.3,
     };
   }
@@ -415,7 +417,7 @@ class PerformanceService {
   /// Collect general performance metrics
   void _collectPerformanceMetrics() {
     final now = DateTime.now();
-    
+
     // Add app lifecycle metrics
     _addMetric(PerformanceMetric(
       name: 'app_lifecycle_state',
@@ -423,14 +425,14 @@ class PerformanceService {
       timestamp: now,
       tags: {'state': SchedulerBinding.instance.lifecycleState.toString()},
     ));
-    
+
     // Add memory warning count
     _addMetric(PerformanceMetric(
       name: 'memory_warnings',
       value: _memoryWarningCount.toDouble(),
       timestamp: now,
     ));
-    
+
     // Add cache performance if available
     _updateCacheMetrics();
   }
@@ -438,7 +440,7 @@ class PerformanceService {
   /// Add a performance metric
   void _addMetric(PerformanceMetric metric) {
     _metrics.add(metric);
-    
+
     // Keep only recent metrics
     if (_metrics.length > MAX_METRICS_HISTORY) {
       _metrics.removeAt(0);
@@ -455,7 +457,7 @@ class PerformanceService {
     int responseSizeBytes = 0,
   }) {
     if (!enableNetworkMonitoring) return;
-    
+
     final metrics = NetworkMetrics(
       endpoint: endpoint,
       method: method,
@@ -466,17 +468,18 @@ class PerformanceService {
       timestamp: DateTime.now(),
       isSuccess: statusCode >= 200 && statusCode < 300,
     );
-    
+
     _networkMetrics.add(metrics);
-    
+
     // Keep only recent metrics
     if (_networkMetrics.length > 500) {
       _networkMetrics.removeAt(0);
     }
-    
+
     // Log slow requests
     if (responseTimeMs > 2000) {
-      logWarning('Slow network request: $method $endpoint - ${responseTimeMs}ms', tag: 'PERFORMANCE');
+      logWarning('Slow network request: $method $endpoint - ${responseTimeMs}ms',
+          tag: 'PERFORMANCE');
     }
   }
 
@@ -489,7 +492,7 @@ class PerformanceService {
   }) {
     final totalRequests = hits + misses;
     final hitRate = totalRequests > 0 ? (hits / totalRequests) * 100 : 0.0;
-    
+
     _cacheMetrics[cacheName] = CacheMetrics(
       cacheName: cacheName,
       hits: hits,
@@ -505,14 +508,14 @@ class PerformanceService {
   void _updateCacheMetrics() {
     // This would integrate with your caching systems
     // For now, we'll simulate some cache metrics
-    
+
     recordCacheMetrics(
       cacheName: 'image_cache',
       hits: 85,
       misses: 15,
       cacheSizeBytes: 1024 * 1024 * 50, // 50MB
     );
-    
+
     recordCacheMetrics(
       cacheName: 'api_cache',
       hits: 120,
@@ -541,11 +544,11 @@ class PerformanceService {
         'slowRequests': 0,
       };
     }
-    
+
     final successfulRequests = _networkMetrics.where((m) => m.isSuccess).length;
     final totalResponseTime = _networkMetrics.fold<int>(0, (sum, m) => sum + m.responseTimeMs);
     final slowRequests = _networkMetrics.where((m) => m.responseTimeMs > 2000).length;
-    
+
     return {
       'totalRequests': _networkMetrics.length,
       'averageResponseTime': totalResponseTime / _networkMetrics.length,
@@ -565,7 +568,7 @@ class PerformanceService {
     final currentMemory = getCurrentMemoryInfo();
     final networkSummary = getNetworkPerformanceSummary();
     final cacheSummary = getCachePerformanceSummary();
-    
+
     return {
       'timestamp': DateTime.now().toIso8601String(),
       'frame_performance': currentFrame?.toMap(),
@@ -580,81 +583,85 @@ class PerformanceService {
   /// Generate performance recommendations
   List<String> _generateRecommendations() {
     final recommendations = <String>[];
-    
+
     // Frame performance recommendations
     final currentFrame = getCurrentFrameMetrics();
     if (currentFrame != null) {
       if (currentFrame.averageFPS < TARGET_FPS * 0.8) {
-        recommendations.add('Low FPS detected (${currentFrame.averageFPS.toStringAsFixed(1)}). Consider optimizing animations and reducing widget rebuilds.');
+        recommendations.add(
+            'Low FPS detected (${currentFrame.averageFPS.toStringAsFixed(1)}). Consider optimizing animations and reducing widget rebuilds.');
       }
-      
+
       if (currentFrame.droppedFrames > 10) {
-        recommendations.add('${currentFrame.droppedFrames} dropped frames detected. Check for expensive operations on the main thread.');
+        recommendations.add(
+            '${currentFrame.droppedFrames} dropped frames detected. Check for expensive operations on the main thread.');
       }
     }
-    
+
     // Memory recommendations
     final currentMemory = getCurrentMemoryInfo();
     if (currentMemory != null && currentMemory.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
-      recommendations.add('High memory usage (${currentMemory.memoryUsagePercent.toStringAsFixed(1)}%). Consider optimizing image caching and disposing unused resources.');
+      recommendations.add(
+          'High memory usage (${currentMemory.memoryUsagePercent.toStringAsFixed(1)}%). Consider optimizing image caching and disposing unused resources.');
     }
-    
+
     // Network recommendations
     final networkSummary = getNetworkPerformanceSummary();
     if (networkSummary['averageResponseTime'] > 1000) {
-      recommendations.add('Slow network requests detected (${networkSummary['averageResponseTime'].toStringAsFixed(0)}ms avg). Consider implementing request optimization and caching.');
+      recommendations.add(
+          'Slow network requests detected (${networkSummary['averageResponseTime'].toStringAsFixed(0)}ms avg). Consider implementing request optimization and caching.');
     }
-    
+
     // Cache recommendations
     final cacheSummary = getCachePerformanceSummary();
     for (final entry in cacheSummary.entries) {
       if (entry.value.hitRate < 70) {
-        recommendations.add('Low cache hit rate for ${entry.key} (${entry.value.hitRate.toStringAsFixed(1)}%). Review cache strategy.');
+        recommendations.add(
+            'Low cache hit rate for ${entry.key} (${entry.value.hitRate.toStringAsFixed(1)}%). Review cache strategy.');
       }
     }
-    
+
     if (recommendations.isEmpty) {
       recommendations.add('Performance is optimal!');
     }
-    
+
     return recommendations;
   }
 
   /// Calculate overall performance health score (0-100)
   double _calculateHealthScore() {
     double score = 100.0;
-    
+
     // Frame performance impact (40% of score)
     final currentFrame = getCurrentFrameMetrics();
     if (currentFrame != null) {
       final fpsScore = (currentFrame.averageFPS / TARGET_FPS).clamp(0.0, 1.0);
       score -= (1.0 - fpsScore) * 40;
     }
-    
+
     // Memory impact (30% of score)
     final currentMemory = getCurrentMemoryInfo();
     if (currentMemory != null) {
       final memoryScore = (100 - currentMemory.memoryUsagePercent) / 100;
       score -= (1.0 - memoryScore) * 30;
     }
-    
+
     // Network performance impact (20% of score)
     final networkSummary = getNetworkPerformanceSummary();
     if (networkSummary['totalRequests'] > 0) {
       final networkScore = (networkSummary['successRate'] / 100.0).clamp(0.0, 1.0);
       score -= (1.0 - networkScore) * 20;
     }
-    
+
     // Cache performance impact (10% of score)
     final cacheSummary = getCachePerformanceSummary();
     if (cacheSummary.isNotEmpty) {
-      final avgHitRate = cacheSummary.values
-          .map((c) => c.hitRate)
-          .reduce((a, b) => a + b) / cacheSummary.length;
+      final avgHitRate =
+          cacheSummary.values.map((c) => c.hitRate).reduce((a, b) => a + b) / cacheSummary.length;
       final cacheScore = (avgHitRate / 100.0).clamp(0.0, 1.0);
       score -= (1.0 - cacheScore) * 10;
     }
-    
+
     return score.clamp(0.0, 100.0);
   }
 
@@ -674,7 +681,7 @@ class PerformanceService {
     _memoryWarningCount = 0;
     _droppedFrames = 0;
     _totalFrames = 0;
-    
+
     logInfo('Performance history cleared', tag: 'PERFORMANCE');
   }
 }

@@ -63,7 +63,8 @@ class GoalsProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get opportunities => _opportunities;
   List<Map<String, dynamic>> get adjustments => _adjustments;
   bool get isLoadingRecommendations => _isLoadingRecommendations;
-  bool get hasRecommendations => _recommendations.isNotEmpty || _opportunities.isNotEmpty || _adjustments.isNotEmpty;
+  bool get hasRecommendations =>
+      _recommendations.isNotEmpty || _opportunities.isNotEmpty || _adjustments.isNotEmpty;
 
   /// Get health data for a specific goal
   Map<String, dynamic>? getGoalHealthData(String goalId) => _goalHealthData[goalId];
@@ -150,17 +151,15 @@ class GoalsProvider extends ChangeNotifier {
         _apiService.getGoalAdjustmentSuggestions(),
       ]);
 
-      _recommendations = List<Map<String, dynamic>>.from(
-        results[0]['recommendations'] as Iterable? ?? []
-      );
-      _opportunities = List<Map<String, dynamic>>.from(
-        results[1]['opportunities'] as Iterable? ?? []
-      );
-      _adjustments = List<Map<String, dynamic>>.from(
-        results[2]['adjustments'] as Iterable? ?? []
-      );
+      _recommendations =
+          List<Map<String, dynamic>>.from(results[0]['recommendations'] as Iterable? ?? []);
+      _opportunities =
+          List<Map<String, dynamic>>.from(results[1]['opportunities'] as Iterable? ?? []);
+      _adjustments = List<Map<String, dynamic>>.from(results[2]['adjustments'] as Iterable? ?? []);
 
-      logInfo('Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments', tag: 'GOALS_PROVIDER');
+      logInfo(
+          'Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments',
+          tag: 'GOALS_PROVIDER');
     } catch (e) {
       logError('Failed to load smart recommendations: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = 'Failed to load recommendations';

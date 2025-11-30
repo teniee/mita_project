@@ -13,7 +13,7 @@ import 'app_version_service.dart';
 ///
 /// Provides enterprise-grade push notification token management with:
 /// - Post-authentication registration only
-/// - Secure token lifecycle management  
+/// - Secure token lifecycle management
 /// - FCM token refresh handling
 /// - Automatic cleanup on logout
 /// - Exponential backoff retry logic
@@ -25,7 +25,7 @@ class SecurePushTokenManager {
   static const String _lastRefreshTimeKey = 'mita_token_last_refresh';
   static const String _registrationAttemptsKey = 'mita_token_registration_attempts';
   static const String _registrationStatusKey = 'mita_token_registration_status';
-  
+
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
@@ -41,7 +41,7 @@ class SecurePushTokenManager {
   static SecurePushTokenManager? _instance;
   final ApiService _apiService;
   final SecureDeviceService _deviceService;
-  
+
   StreamSubscription<String>? _tokenRefreshSubscription;
   String? _currentToken;
   bool _isRegistered = false;
@@ -64,39 +64,41 @@ class SecurePushTokenManager {
   }
 
   /// Initialize push token management after user authentication
-  /// 
+  ///
   /// This method should ONLY be called after successful user login
   /// to ensure proper security boundaries.
   Future<void> initializePostAuthentication() async {
     try {
-      logInfo('Initializing secure push token manager post-authentication', tag: 'PUSH_TOKEN_SECURITY');
-      
+      logInfo('Initializing secure push token manager post-authentication',
+          tag: 'PUSH_TOKEN_SECURITY');
+
       // Verify user is authenticated
       if (!await _isUserAuthenticated()) {
-        logError('Attempted to initialize push tokens without authentication', tag: 'PUSH_TOKEN_SECURITY');
+        logError('Attempted to initialize push tokens without authentication',
+            tag: 'PUSH_TOKEN_SECURITY');
         throw const SecurityException('Push token initialization requires authentication');
       }
 
       // Load previous registration state
       await _loadRegistrationState();
-      
+
       // Set up FCM token refresh listener
       await _setupTokenRefreshListener();
-      
+
       // Get current FCM token
       final currentToken = await FirebaseMessaging.instance.getToken();
       if (currentToken == null) {
         logWarning('FCM token not available during initialization', tag: 'PUSH_TOKEN_SECURITY');
         return;
       }
-      
+
       // Check if we need to register or refresh
       await _handleTokenUpdate(currentToken);
-      
+
       logInfo('Push token manager initialized successfully', tag: 'PUSH_TOKEN_SECURITY');
-      
     } catch (e, stackTrace) {
-      logError('Failed to initialize push token manager: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Failed to initialize push token manager: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
       rethrow;
     }
   }
@@ -105,7 +107,7 @@ class SecurePushTokenManager {
   Future<void> _handleTokenUpdate(String newToken) async {
     try {
       logInfo('Processing FCM token update', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       // Check if token actually changed
       if (_currentToken == newToken && _isRegistered) {
         logDebug('Token unchanged, skipping registration', tag: 'PUSH_TOKEN_SECURITY');
@@ -114,12 +116,12 @@ class SecurePushTokenManager {
 
       _currentToken = newToken;
       await _secureStorage.write(key: _currentTokenKey, value: newToken);
-      
+
       // Register the new token with backend
       await _registerTokenWithRetry(newToken);
-      
     } catch (e, stackTrace) {
-      logError('Failed to handle token update: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Failed to handle token update: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
       // Don't rethrow - we want to continue trying in the background
     }
   }
@@ -132,7 +134,7 @@ class SecurePushTokenManager {
     }
 
     _isRegistering = true;
-    
+
     try {
       // Check rate limiting
       if (_lastRegistrationAttempt != null) {
@@ -145,7 +147,7 @@ class SecurePushTokenManager {
       }
 
       final success = await _attemptTokenRegistration(token);
-      
+
       if (success) {
         // Reset retry state on success
         _registrationAttempts = 0;
@@ -153,17 +155,17 @@ class SecurePushTokenManager {
         await _secureStorage.write(key: _registrationStatusKey, value: 'registered');
         await _secureStorage.write(key: _registrationAttemptsKey, value: '0');
         await _secureStorage.write(
-          key: _tokenRegistrationTimeKey, 
+          key: _tokenRegistrationTimeKey,
           value: DateTime.now().toIso8601String(),
         );
-        
+
         logInfo('Push token registered successfully', tag: 'PUSH_TOKEN_SECURITY');
-        
       } else {
         // Increment retry attempts and schedule retry
         _registrationAttempts++;
-        await _secureStorage.write(key: _registrationAttemptsKey, value: _registrationAttempts.toString());
-        
+        await _secureStorage.write(
+            key: _registrationAttemptsKey, value: _registrationAttempts.toString());
+
         if (_registrationAttempts < _maxRetryAttempts) {
           _scheduleRetry(token);
         } else {
@@ -171,15 +173,13 @@ class SecurePushTokenManager {
           await _secureStorage.write(key: _registrationStatusKey, value: 'failed');
         }
       }
-      
     } catch (e, stackTrace) {
       logError('Token registration failed: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
       _registrationAttempts++;
-      
+
       if (_registrationAttempts < _maxRetryAttempts) {
         _scheduleRetry(token);
       }
-      
     } finally {
       _isRegistering = false;
       _lastRegistrationAttempt = DateTime.now();
@@ -190,7 +190,7 @@ class SecurePushTokenManager {
   Future<bool> _attemptTokenRegistration(String token) async {
     try {
       logInfo('Attempting push token registration with backend', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       // Verify authentication before making API call
       if (!await _isUserAuthenticated()) {
         logError('User no longer authenticated, cannot register token', tag: 'PUSH_TOKEN_SECURITY');
@@ -199,7 +199,7 @@ class SecurePushTokenManager {
 
       // Get secure device ID
       final deviceId = await _deviceService.getSecureDeviceId();
-      
+
       // Create registration payload with security metadata
       final deviceMetadata = await _deviceService.getDeviceSecurityMetadata();
       final registrationData = {
@@ -214,9 +214,9 @@ class SecurePushTokenManager {
       };
 
       logDebug('Sending registration request to backend', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       final success = await _apiService.registerPushToken(token);
-      
+
       if (success) {
         // Log successful registration for audit
         logInfo('Push token registration successful', tag: 'PUSH_TOKEN_SECURITY', extra: {
@@ -224,15 +224,15 @@ class SecurePushTokenManager {
           'platform': registrationData['platform'],
           'attempt_number': registrationData['registration_attempt'],
         });
-        
+
         return true;
       } else {
         logWarning('Backend rejected push token registration', tag: 'PUSH_TOKEN_SECURITY');
         return false;
       }
-      
     } catch (e, stackTrace) {
-      logError('Push token registration API call failed: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Push token registration API call failed: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
       return false;
     }
   }
@@ -240,16 +240,17 @@ class SecurePushTokenManager {
   /// Schedule retry with exponential backoff
   void _scheduleRetry(String token) {
     _retryTimer?.cancel();
-    
+
     // Calculate delay with exponential backoff
     final delaySeconds = min(
       _baseRetryDelaySeconds * pow(2, _registrationAttempts - 1).toInt(),
       _maxRetryDelaySeconds,
     );
-    
-    logInfo('Scheduling token registration retry in ${delaySeconds}s (attempt $_registrationAttempts/$_maxRetryAttempts)', 
-           tag: 'PUSH_TOKEN_SECURITY');
-    
+
+    logInfo(
+        'Scheduling token registration retry in ${delaySeconds}s (attempt $_registrationAttempts/$_maxRetryAttempts)',
+        tag: 'PUSH_TOKEN_SECURITY');
+
     _retryTimer = Timer(Duration(seconds: delaySeconds), () {
       if (!_isRegistering) {
         _registerTokenWithRetry(token);
@@ -261,26 +262,27 @@ class SecurePushTokenManager {
   Future<void> _setupTokenRefreshListener() async {
     try {
       logInfo('Setting up FCM token refresh listener', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       // Cancel existing subscription
       _tokenRefreshSubscription?.cancel();
-      
+
       // Listen for token refresh events
       _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
         (String newToken) async {
           logInfo('FCM token refresh detected', tag: 'PUSH_TOKEN_SECURITY');
-          await _secureStorage.write(key: _lastRefreshTimeKey, value: DateTime.now().toIso8601String());
+          await _secureStorage.write(
+              key: _lastRefreshTimeKey, value: DateTime.now().toIso8601String());
           await _handleTokenUpdate(newToken);
         },
         onError: (error) {
           logError('FCM token refresh error: $error', tag: 'PUSH_TOKEN_SECURITY');
         },
       );
-      
+
       logDebug('FCM token refresh listener active', tag: 'PUSH_TOKEN_SECURITY');
-      
     } catch (e, stackTrace) {
-      logError('Failed to setup token refresh listener: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Failed to setup token refresh listener: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
     }
   }
 
@@ -288,11 +290,11 @@ class SecurePushTokenManager {
   Future<void> cleanupOnLogout() async {
     try {
       logInfo('Cleaning up push tokens on user logout', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       // Cancel any pending operations
       _retryTimer?.cancel();
       _tokenRefreshSubscription?.cancel();
-      
+
       // Unregister current token if we have one
       if (_currentToken != null && _isRegistered) {
         try {
@@ -304,21 +306,21 @@ class SecurePushTokenManager {
           // Continue with cleanup even if unregistration fails
         }
       }
-      
+
       // Clear all stored token data
       await _clearStoredTokenData();
-      
+
       // Reset internal state
       _currentToken = null;
       _isRegistered = false;
       _isRegistering = false;
       _lastRegistrationAttempt = null;
       _registrationAttempts = 0;
-      
+
       logInfo('Push token cleanup completed', tag: 'PUSH_TOKEN_SECURITY');
-      
     } catch (e, stackTrace) {
-      logError('Failed to cleanup push tokens: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Failed to cleanup push tokens: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
     }
   }
 
@@ -332,7 +334,7 @@ class SecurePushTokenManager {
         _secureStorage.delete(key: _registrationAttemptsKey),
         _secureStorage.delete(key: _registrationStatusKey),
       ]);
-      
+
       logDebug('Cleared all stored token data', tag: 'PUSH_TOKEN_SECURITY');
     } catch (e) {
       logWarning('Failed to clear stored token data: $e', tag: 'PUSH_TOKEN_SECURITY');
@@ -345,14 +347,14 @@ class SecurePushTokenManager {
       final currentToken = await _secureStorage.read(key: _currentTokenKey);
       final registrationStatus = await _secureStorage.read(key: _registrationStatusKey);
       final attemptsStr = await _secureStorage.read(key: _registrationAttemptsKey);
-      
+
       _currentToken = currentToken;
       _isRegistered = registrationStatus == 'registered';
       _registrationAttempts = int.tryParse(attemptsStr ?? '0') ?? 0;
-      
-      logDebug('Loaded registration state: registered=$_isRegistered, attempts=$_registrationAttempts', 
-              tag: 'PUSH_TOKEN_SECURITY');
-      
+
+      logDebug(
+          'Loaded registration state: registered=$_isRegistered, attempts=$_registrationAttempts',
+          tag: 'PUSH_TOKEN_SECURITY');
     } catch (e) {
       logWarning('Failed to load registration state: $e', tag: 'PUSH_TOKEN_SECURITY');
     }
@@ -393,7 +395,7 @@ class SecurePushTokenManager {
       final registrationTime = await _secureStorage.read(key: _tokenRegistrationTimeKey);
       final lastRefreshTime = await _secureStorage.read(key: _lastRefreshTimeKey);
       final status = await _secureStorage.read(key: _registrationStatusKey);
-      
+
       return {
         'is_registered': _isRegistered,
         'is_registering': _isRegistering,
@@ -415,17 +417,17 @@ class SecurePushTokenManager {
   Future<void> forceTokenRefresh() async {
     try {
       logInfo('Forcing FCM token refresh', tag: 'PUSH_TOKEN_SECURITY');
-      
+
       // This will trigger the onTokenRefresh listener
       await FirebaseMessaging.instance.deleteToken();
       final newToken = await FirebaseMessaging.instance.getToken();
-      
+
       if (newToken != null) {
         await _handleTokenUpdate(newToken);
       }
-      
     } catch (e, stackTrace) {
-      logError('Failed to force token refresh: $e', tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
+      logError('Failed to force token refresh: $e',
+          tag: 'PUSH_TOKEN_SECURITY', stackTrace: stackTrace);
     }
   }
 
@@ -441,7 +443,7 @@ class SecurePushTokenManager {
 class SecurityException implements Exception {
   final String message;
   const SecurityException(this.message);
-  
+
   @override
   String toString() => 'SecurityException: $message';
 }

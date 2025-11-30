@@ -1,7 +1,8 @@
 /// Smart Cache Service for MITA Flutter App
 /// Intelligent multi-tier caching with analytics and optimization
-/// 
+///
 library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -102,9 +103,9 @@ class CacheStats {
 
 /// Cache tier enumeration
 enum CacheTier {
-  memory,    // Fastest, most volatile
+  memory, // Fastest, most volatile
   persistent, // Medium speed, survives app restarts
-  disk,      // Slowest, largest capacity
+  disk, // Slowest, largest capacity
 }
 
 /// Abstract cache backend
@@ -165,7 +166,7 @@ class MemoryCache implements CacheBackend {
   Future<bool> set(String key, dynamic value, {Duration? ttl, List<String>? tags}) async {
     try {
       final valueBytes = _calculateSize(value);
-      
+
       // Check if single entry is too large
       if (valueBytes > maxSizeBytes) {
         logWarning('Value too large for memory cache: $valueBytes bytes', tag: 'CACHE');
@@ -228,10 +229,8 @@ class MemoryCache implements CacheBackend {
 
   @override
   Future<void> cleanup() async {
-    final expiredKeys = _cache.entries
-        .where((entry) => entry.value.isExpired)
-        .map((entry) => entry.key)
-        .toList();
+    final expiredKeys =
+        _cache.entries.where((entry) => entry.value.isExpired).map((entry) => entry.key).toList();
 
     for (final key in expiredKeys) {
       _cache.remove(key);
@@ -292,8 +291,7 @@ class MemoryCache implements CacheBackend {
 
   void _updateStats() {
     _stats.entryCount = _cache.length;
-    _stats.totalSizeBytes = _cache.values
-        .fold(0, (sum, entry) => sum + entry.sizeBytes);
+    _stats.totalSizeBytes = _cache.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
   }
 
   void dispose() {
@@ -317,7 +315,7 @@ class PersistentCache implements CacheBackend {
 
   Future<void> _loadMetadata() async {
     final keys = _prefs!.getKeys().where((key) => key.startsWith(keyPrefix));
-    
+
     for (final key in keys) {
       try {
         final data = _prefs!.getString(key);
@@ -340,7 +338,7 @@ class PersistentCache implements CacheBackend {
   @override
   Future<dynamic> get(String key) async {
     await _ensureInitialized();
-    
+
     final entry = _metadata[key];
     if (entry == null) {
       _stats.misses++;
@@ -355,10 +353,10 @@ class PersistentCache implements CacheBackend {
 
     entry.updateAccess();
     _stats.hits++;
-    
+
     // Save updated metadata
     await _saveEntry(entry);
-    
+
     return entry.value;
   }
 
@@ -369,7 +367,7 @@ class PersistentCache implements CacheBackend {
     try {
       final sizeBytes = _calculateSize(value);
       final expiresAt = ttl != null ? DateTime.now().add(ttl) : null;
-      
+
       final entry = CacheEntry(
         key: key,
         value: value,
@@ -383,7 +381,7 @@ class PersistentCache implements CacheBackend {
       _metadata[key] = entry;
       _stats.sets++;
       _updateStats();
-      
+
       return true;
     } catch (e) {
       logError('Error setting persistent cache entry: $e', tag: 'CACHE');
@@ -394,16 +392,16 @@ class PersistentCache implements CacheBackend {
   @override
   Future<bool> delete(String key) async {
     await _ensureInitialized();
-    
+
     final prefKey = _makeKey(key);
     final existed = await _prefs!.remove(prefKey);
-    
+
     if (_metadata.remove(key) != null) {
       _stats.deletes++;
       _updateStats();
       return true;
     }
-    
+
     return existed;
   }
 
@@ -417,12 +415,12 @@ class PersistentCache implements CacheBackend {
   @override
   Future<void> clear() async {
     await _ensureInitialized();
-    
+
     final keys = _prefs!.getKeys().where((key) => key.startsWith(keyPrefix));
     for (final key in keys) {
       await _prefs!.remove(key);
     }
-    
+
     _metadata.clear();
     _stats.hits = 0;
     _stats.misses = 0;
@@ -438,7 +436,7 @@ class PersistentCache implements CacheBackend {
   @override
   Future<void> cleanup() async {
     await _ensureInitialized();
-    
+
     final expiredKeys = _metadata.entries
         .where((entry) => entry.value.isExpired)
         .map((entry) => entry.key)
@@ -471,8 +469,7 @@ class PersistentCache implements CacheBackend {
 
   void _updateStats() {
     _stats.entryCount = _metadata.length;
-    _stats.totalSizeBytes = _metadata.values
-        .fold(0, (sum, entry) => sum + entry.sizeBytes);
+    _stats.totalSizeBytes = _metadata.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
   }
 }
 
@@ -486,7 +483,7 @@ class SmartCacheService {
   final Map<String, List<String>> _keyTags = {};
   final Map<String, List<DateTime>> _accessHistory = {};
   Timer? _analyticsTimer;
-  
+
   // Configuration
   int maxMemoryEntries = 1000;
   int maxMemorySizeBytes = 50 * 1024 * 1024; // 50MB
@@ -499,24 +496,24 @@ class SmartCacheService {
       maxEntries: maxMemoryEntries,
       maxSizeBytes: maxMemorySizeBytes,
     );
-    
+
     _tiers[CacheTier.persistent] = PersistentCache();
-    
+
     // Start analytics collection
     _startAnalytics();
-    
+
     logInfo('Smart cache service initialized', tag: 'CACHE');
   }
 
   /// Get value from cache
   Future<T?> get<T>(String key, {List<String>? tags}) async {
     _recordAccess(key);
-    
+
     // Try each tier in order (fastest first)
     for (final tier in CacheTier.values) {
       final backend = _tiers[tier];
       if (backend == null) continue;
-      
+
       try {
         final value = await backend.get(key);
         if (value != null) {
@@ -528,18 +525,20 @@ class SmartCacheService {
         logError('Error getting from ${tier.name} cache: $e', tag: 'CACHE');
       }
     }
-    
+
     return null;
   }
 
   /// Set value in cache
-  Future<bool> set<T>(String key, T value, {
+  Future<bool> set<T>(
+    String key,
+    T value, {
     Duration? ttl,
     List<String>? tags,
     CacheTier? preferredTier,
   }) async {
     ttl ??= defaultTTL;
-    
+
     if (tags != null) {
       _keyTags[key] = tags;
     }
@@ -558,7 +557,7 @@ class SmartCacheService {
     for (final tier in CacheTier.values) {
       final backend = _tiers[tier];
       if (backend == null) continue;
-      
+
       try {
         final success = await backend.set(key, value, ttl: ttl, tags: tags);
         if (success) anySuccess = true;
@@ -592,7 +591,7 @@ class SmartCacheService {
   Future<bool> delete(String key) async {
     _keyTags.remove(key);
     _accessHistory.remove(key);
-    
+
     bool anySuccess = false;
     for (final backend in _tiers.values) {
       try {
@@ -609,7 +608,7 @@ class SmartCacheService {
   /// Delete all keys with specified tags
   Future<int> deleteByTags(List<String> tags) async {
     int deletedCount = 0;
-    
+
     final keysToDelete = _keyTags.entries
         .where((entry) => entry.value.any((tag) => tags.contains(tag)))
         .map((entry) => entry.key)
@@ -642,7 +641,7 @@ class SmartCacheService {
   Future<void> clear() async {
     _keyTags.clear();
     _accessHistory.clear();
-    
+
     for (final backend in _tiers.values) {
       try {
         await backend.clear();
@@ -655,7 +654,7 @@ class SmartCacheService {
   /// Get comprehensive cache statistics
   Map<String, dynamic> getStats() {
     final stats = <String, dynamic>{};
-    
+
     for (final entry in _tiers.entries) {
       stats['${entry.key.name}_cache'] = entry.value.stats.toMap();
     }
@@ -671,7 +670,8 @@ class SmartCacheService {
       'totalEntries': totalEntries,
       'hitRate': totalHits + totalMisses > 0 ? (totalHits / (totalHits + totalMisses)) * 100 : 0.0,
       'taggedKeys': _keyTags.length,
-      'frequentlyAccessedKeys': _accessHistory.entries.where((e) => e.value.length >= promotionThreshold).length,
+      'frequentlyAccessedKeys':
+          _accessHistory.entries.where((e) => e.value.length >= promotionThreshold).length,
     };
 
     return stats;
@@ -681,7 +681,7 @@ class SmartCacheService {
   Map<String, dynamic> getAnalyticsReport() {
     final now = DateTime.now();
     final oneHourAgo = now.subtract(const Duration(hours: 1));
-    
+
     // Recent activity
     final recentActivity = <String, int>{};
     for (final entry in _accessHistory.entries) {
@@ -707,14 +707,11 @@ class SmartCacheService {
 
     return {
       'timestamp': now.toIso8601String(),
-      'recentActivity': Map.fromEntries(
-        recentActivity.entries.take(20).map((e) => MapEntry(e.key, e.value))
-      ),
+      'recentActivity':
+          Map.fromEntries(recentActivity.entries.take(20).map((e) => MapEntry(e.key, e.value))),
       'popularKeys': popularKeys.take(20).toList(),
       'tagUsage': Map.fromEntries(
-        (tagCounts.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value))).take(10)
-      ),
+          (tagCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(10)),
       'recommendations': _generateRecommendations(),
     };
   }
@@ -733,7 +730,7 @@ class SmartCacheService {
   /// Dispose resources
   void dispose() {
     _analyticsTimer?.cancel();
-    
+
     for (final backend in _tiers.values) {
       if (backend is MemoryCache) {
         backend.dispose();
@@ -745,7 +742,7 @@ class SmartCacheService {
     final now = DateTime.now();
     _accessHistory[key] ??= [];
     _accessHistory[key]!.add(now);
-    
+
     // Keep only recent access history (last 100 accesses per key)
     if (_accessHistory[key]!.length > 100) {
       _accessHistory[key] = _accessHistory[key]!.sublist(_accessHistory[key]!.length - 100);
@@ -754,7 +751,7 @@ class SmartCacheService {
 
   Future<void> _promoteIfNeeded(String key, dynamic value, CacheTier currentTier) async {
     final accessCount = _accessHistory[key]?.length ?? 0;
-    
+
     if (accessCount >= promotionThreshold && currentTier != CacheTier.memory) {
       // Promote to memory cache
       final memoryCache = _tiers[CacheTier.memory];
@@ -782,11 +779,12 @@ class SmartCacheService {
     final recommendations = <String>[];
     final stats = getStats();
     final overallStats = stats['overall'] as Map<String, dynamic>;
-    
+
     // Check hit rate
     final hitRate = overallStats['hitRate'] as double;
     if (hitRate < 60) {
-      recommendations.add('Low overall hit rate (${hitRate.toStringAsFixed(1)}%) - consider increasing TTL or reviewing cache keys');
+      recommendations.add(
+          'Low overall hit rate (${hitRate.toStringAsFixed(1)}%) - consider increasing TTL or reviewing cache keys');
     }
 
     // Check memory usage
@@ -794,20 +792,23 @@ class SmartCacheService {
     if (memoryStats != null) {
       final entryCount = memoryStats['entryCount'] as int;
       if (entryCount > maxMemoryEntries * 0.8) {
-        recommendations.add('Memory cache is ${((entryCount / maxMemoryEntries) * 100).toStringAsFixed(1)}% full - consider increasing size or improving eviction');
+        recommendations.add(
+            'Memory cache is ${((entryCount / maxMemoryEntries) * 100).toStringAsFixed(1)}% full - consider increasing size or improving eviction');
       }
     }
 
     // Check for unused tags
     final taggedKeysCount = overallStats['taggedKeys'] as int;
     if (taggedKeysCount < overallStats['totalEntries'] * 0.5) {
-      recommendations.add('Consider using more cache tags for better organization and selective invalidation');
+      recommendations
+          .add('Consider using more cache tags for better organization and selective invalidation');
     }
 
     // Check for frequently accessed keys
     final frequentKeys = overallStats['frequentlyAccessedKeys'] as int;
     if (frequentKeys > 0) {
-      recommendations.add('$frequentKeys keys are frequently accessed - ensure they are in the memory tier');
+      recommendations
+          .add('$frequentKeys keys are frequently accessed - ensure they are in the memory tier');
     }
 
     if (recommendations.isEmpty) {

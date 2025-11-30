@@ -77,8 +77,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     }
   }
 
-  final List<String> _languages = ['English', 'Spanish', 'French', 'German', 'Bulgarian', 'Russian'];
-  
+  final List<String> _languages = [
+    'English',
+    'Spanish',
+    'French',
+    'German',
+    'Bulgarian',
+    'Russian'
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -90,25 +97,34 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     });
     _loadSettings();
   }
-  
+
   Future<void> _loadSettings() async {
     try {
       setState(() => _isLoading = true);
 
       // Load behavioral settings and other non-provider settings from API
       final results = await Future.wait([
-        _apiService.getUserProfile().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => <String, dynamic>{},
-        ).catchError((e) => <String, dynamic>{}),
-        _apiService.getBehavioralNotificationSettings().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => <String, dynamic>{},
-        ).catchError((e) => <String, dynamic>{}),
-        _apiService.getBehavioralPreferences().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => <String, dynamic>{},
-        ).catchError((e) => <String, dynamic>{}),
+        _apiService
+            .getUserProfile()
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => <String, dynamic>{},
+            )
+            .catchError((e) => <String, dynamic>{}),
+        _apiService
+            .getBehavioralNotificationSettings()
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => <String, dynamic>{},
+            )
+            .catchError((e) => <String, dynamic>{}),
+        _apiService
+            .getBehavioralPreferences()
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => <String, dynamic>{},
+            )
+            .catchError((e) => <String, dynamic>{}),
       ]);
 
       final settings = results[0] as Map<String, dynamic>;
@@ -122,7 +138,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             _autoSyncEnabled = settings['auto_sync'] ?? true;
             _offlineModeEnabled = settings['offline_mode'] ?? true;
             _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
-            _budgetAlertThreshold = (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
+            _budgetAlertThreshold =
+                (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
           }
 
           // Behavioral notification settings
@@ -144,7 +161,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-  
+
   Future<void> _saveSettings() async {
     try {
       final settingsProvider = context.read<SettingsProvider>();
@@ -164,18 +181,20 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       // Save general settings and behavioral settings in parallel
       await Future.wait([
         _apiService.updateUserProfile(settings).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => throw Exception('Settings save timeout'),
-        ),
-        _apiService.updateBehavioralNotificationSettings(
-          patternAlerts: _patternAlerts,
-          anomalyDetection: _anomalyDetection,
-          budgetAdaptation: _budgetAdaptation,
-          weeklyInsights: _weeklyInsights,
-        ).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => throw Exception('Behavioral settings save timeout'),
-        ),
+              const Duration(seconds: 5),
+              onTimeout: () => throw Exception('Settings save timeout'),
+            ),
+        _apiService
+            .updateBehavioralNotificationSettings(
+              patternAlerts: _patternAlerts,
+              anomalyDetection: _anomalyDetection,
+              budgetAdaptation: _budgetAdaptation,
+              weeklyInsights: _weeklyInsights,
+            )
+            .timeout(
+              const Duration(seconds: 5),
+              onTimeout: () => throw Exception('Behavioral settings save timeout'),
+            ),
       ]);
 
       if (mounted) {
@@ -212,7 +231,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -246,10 +265,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           ),
         ],
       ),
-      body: isLoading ? _buildLoadingState() : _buildSettingsContent(colorScheme, textTheme, settingsProvider),
+      body: isLoading
+          ? _buildLoadingState()
+          : _buildSettingsContent(colorScheme, textTheme, settingsProvider),
     );
   }
-  
+
   Widget _buildLoadingState() {
     return const Center(
       child: Column(
@@ -262,8 +283,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
-  Widget _buildSettingsContent(ColorScheme colorScheme, TextTheme textTheme, SettingsProvider settingsProvider) {
+
+  Widget _buildSettingsContent(
+      ColorScheme colorScheme, TextTheme textTheme, SettingsProvider settingsProvider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -367,9 +389,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             colorScheme,
             textTheme,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Security Settings
           _buildSectionCard(
             'Security & Privacy',
@@ -398,9 +420,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             colorScheme,
             textTheme,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Data & Sync Settings
           _buildSectionCard(
             'Data & Sync',
@@ -432,9 +454,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             colorScheme,
             textTheme,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // About Settings
           _buildSectionCard(
             'About',
@@ -467,18 +489,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             colorScheme,
             textTheme,
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Danger Zone
           _buildDangerSection(colorScheme, textTheme),
-          
+
           const SizedBox(height: 32),
         ],
       ),
     );
   }
-  
+
   Widget _buildSectionCard(
     String title,
     IconData icon,
@@ -521,7 +543,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildSwitchTile(
     String title,
     String subtitle,
@@ -546,7 +568,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildDropdownTile(
     String title,
     String subtitle,
@@ -569,14 +591,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       trailing: DropdownButton<String>(
         value: value,
         onChanged: onChanged,
-        items: options.map((option) => DropdownMenuItem(
-          value: option,
-          child: Text(option),
-        )).toList(),
+        items: options
+            .map((option) => DropdownMenuItem(
+                  value: option,
+                  child: Text(option),
+                ))
+            .toList(),
       ),
     );
   }
-  
+
   Widget _buildSliderTile(
     String title,
     String subtitle,
@@ -591,7 +615,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           leading: Icon(icon),
           title: Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+            style:
+                const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
           ),
           subtitle: Text(
             subtitle,
@@ -612,7 +637,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ],
     );
   }
-  
+
   Widget _buildActionTile(
     String title,
     String subtitle,
@@ -634,7 +659,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       onTap: onTap,
     );
   }
-  
+
   Widget _buildInfoTile(
     String title,
     String value,
@@ -656,7 +681,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   Widget _buildDangerSection(ColorScheme colorScheme, TextTheme textTheme) {
     return Card(
       elevation: 1,
@@ -693,7 +718,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
             _buildActionTile(
               'Delete Account',
               'Permanently delete your account and data',
@@ -711,7 +735,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   // Dialog methods
   void _showChangePasswordDialog() {
     showDialog(
@@ -735,7 +759,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showExportDialog() {
     showDialog(
       context: context,
@@ -760,13 +784,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showHelpDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Help & Support'),
-        content: const Text('Contact our support team at support@mita.finance or visit our help center.'),
+        content: const Text(
+            'Contact our support team at support@mita.finance or visit our help center.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -776,7 +801,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showPrivacyPolicy() {
     showDialog(
       context: context,
@@ -799,7 +824,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showTermsOfService() {
     showDialog(
       context: context,
@@ -822,13 +847,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Account'),
-        content: const Text('Are you sure you want to permanently delete your account? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to permanently delete your account? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -846,7 +872,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       ),
     );
   }
-  
+
   void _showSignOutDialog() {
     showDialog(
       context: context,
@@ -1027,7 +1053,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final ApiService _apiService = ApiService();
-  
+
   bool _isLoading = false;
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
@@ -1065,7 +1091,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 30),
-              
+
               // Current Password Field
               TextFormField(
                 controller: _currentPasswordController,
@@ -1092,7 +1118,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              
+
               // New Password Field
               TextFormField(
                 controller: _newPasswordController,
@@ -1122,7 +1148,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              
+
               // Confirm Password Field
               TextFormField(
                 controller: _confirmPasswordController,
@@ -1152,16 +1178,15 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 },
               ),
               const SizedBox(height: 30),
-              
+
               // Change Password Button
               ElevatedButton(
                 onPressed: _isLoading ? null : _changePassword,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Change Password'),
+                child:
+                    _isLoading ? const CircularProgressIndicator() : const Text('Change Password'),
               ),
             ],
           ),
@@ -1184,7 +1209,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
 
       if (response.data['success'] == true) {
         logInfo('Password changed successfully', tag: 'PASSWORD_CHANGE');
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Password changed successfully'),
@@ -1192,7 +1217,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
             duration: Duration(seconds: 3),
           ),
         );
-        
+
         Navigator.pop(context, true);
       } else {
         throw Exception('Password change failed');

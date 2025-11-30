@@ -18,36 +18,36 @@ enum FinancialErrorType {
   accountLocked,
   twoFactorRequired,
   biometricFailed,
-  
+
   // Financial Operations
   budgetExceeded,
   insufficientBudget,
   invalidAmount,
   transactionFailed,
   duplicateTransaction,
-  
+
   // Data & Sync
   syncFailed,
   dataCorrupted,
   offlineMode,
-  
+
   // Network & Connectivity
   noInternet,
   serverMaintenance,
   requestTimeout,
-  
+
   // Validation
   invalidEmail,
   weakPassword,
   requiredField,
   invalidFormat,
-  
+
   // System & Device
   storageFullError,
   cameraPermission,
   locationPermission,
   deviceNotSupported,
-  
+
   // Generic
   unknown,
 }
@@ -62,10 +62,10 @@ class FinancialErrorMessages {
   }) {
     final errorType = _categorizeError(error, additionalContext);
     final l10n = context != null ? AppLocalizations.of(context) : null;
-    
+
     return _getErrorInfoForType(errorType, error, l10n, additionalContext);
   }
-  
+
   /// Categorize error into financial error types
   static FinancialErrorType _categorizeError(
     dynamic error,
@@ -74,102 +74,102 @@ class FinancialErrorMessages {
     final errorString = error.toString().toLowerCase();
     final contextOperation = context?['operation']?.toString().toLowerCase() ?? '';
     final contextEndpoint = context?['endpoint']?.toString().toLowerCase() ?? '';
-    
+
     // Authentication & Security errors
-    if (errorString.contains('session expired') || 
+    if (errorString.contains('session expired') ||
         errorString.contains('token expired') ||
         errorString.contains('unauthorized') ||
         (error is DioException && error.response?.statusCode == 401)) {
       return FinancialErrorType.sessionExpired;
     }
-    
-    if (errorString.contains('invalid credentials') || 
+
+    if (errorString.contains('invalid credentials') ||
         errorString.contains('login failed') ||
         errorString.contains('wrong password') ||
         (error is DioException && error.response?.statusCode == 403)) {
       return FinancialErrorType.invalidCredentials;
     }
-    
-    if (errorString.contains('account locked') || 
-        errorString.contains('too many attempts')) {
+
+    if (errorString.contains('account locked') || errorString.contains('too many attempts')) {
       return FinancialErrorType.accountLocked;
     }
-    
+
     if (errorString.contains('biometric') || errorString.contains('fingerprint')) {
       return FinancialErrorType.biometricFailed;
     }
-    
+
     // Financial operation errors
     if (errorString.contains('budget') && errorString.contains('exceed')) {
       return FinancialErrorType.budgetExceeded;
     }
-    
+
     if (contextOperation.contains('transaction') || contextEndpoint.contains('transaction')) {
       if (errorString.contains('duplicate')) {
         return FinancialErrorType.duplicateTransaction;
       }
       return FinancialErrorType.transactionFailed;
     }
-    
-    if (errorString.contains('invalid amount') || 
+
+    if (errorString.contains('invalid amount') ||
         errorString.contains('amount') && errorString.contains('invalid')) {
       return FinancialErrorType.invalidAmount;
     }
-    
+
     // Network & connectivity errors
-    if (error is SocketException || errorString.contains('no internet') ||
+    if (error is SocketException ||
+        errorString.contains('no internet') ||
         errorString.contains('network unreachable')) {
       return FinancialErrorType.noInternet;
     }
-    
-    if (error is TimeoutException || 
+
+    if (error is TimeoutException ||
         (error is DioException && error.type == DioExceptionType.connectionTimeout)) {
       return FinancialErrorType.requestTimeout;
     }
-    
+
     if (error is DioException && error.response?.statusCode == 503) {
       return FinancialErrorType.serverMaintenance;
     }
-    
+
     // Validation errors
     if (errorString.contains('email') && errorString.contains('invalid')) {
       return FinancialErrorType.invalidEmail;
     }
-    
-    if (errorString.contains('password') && 
+
+    if (errorString.contains('password') &&
         (errorString.contains('weak') || errorString.contains('short'))) {
       return FinancialErrorType.weakPassword;
     }
-    
+
     if (errorString.contains('required')) {
       return FinancialErrorType.requiredField;
     }
-    
+
     // System errors
     if (errorString.contains('storage') || errorString.contains('disk full')) {
       return FinancialErrorType.storageFullError;
     }
-    
+
     if (errorString.contains('camera permission')) {
       return FinancialErrorType.cameraPermission;
     }
-    
+
     if (errorString.contains('location permission')) {
       return FinancialErrorType.locationPermission;
     }
-    
+
     // Data & sync errors
     if (contextOperation.contains('sync') || errorString.contains('sync')) {
       return FinancialErrorType.syncFailed;
     }
-    
+
     if (errorString.contains('offline')) {
       return FinancialErrorType.offlineMode;
     }
-    
+
     return FinancialErrorType.unknown;
   }
-  
+
   /// Get detailed error information for each error type
   static FinancialErrorInfo _getErrorInfoForType(
     FinancialErrorType type,
@@ -181,7 +181,8 @@ class FinancialErrorMessages {
       case FinancialErrorType.sessionExpired:
         return FinancialErrorInfo(
           title: 'Session Expired',
-          message: 'Your secure session has expired for your protection. Please sign in again to continue managing your finances.',
+          message:
+              'Your secure session has expired for your protection. Please sign in again to continue managing your finances.',
           actions: [
             FinancialErrorAction(
               label: 'Sign In Again',
@@ -194,11 +195,12 @@ class FinancialErrorMessages {
           category: 'Authentication',
           financialContext: 'Your financial data remains secure while your session is refreshed.',
         );
-        
+
       case FinancialErrorType.invalidCredentials:
         return FinancialErrorInfo(
           title: 'Login Failed',
-          message: 'We couldn\'t verify your credentials. Please check your email and password, then try again.',
+          message:
+              'We couldn\'t verify your credentials. Please check your email and password, then try again.',
           actions: [
             FinancialErrorAction(
               label: 'Try Again',
@@ -216,12 +218,13 @@ class FinancialErrorMessages {
           category: 'Authentication',
           financialContext: 'Your financial data is protected by secure authentication.',
         );
-        
+
       case FinancialErrorType.budgetExceeded:
         final amount = context?['amount'] ?? '\$0.00';
         return FinancialErrorInfo(
           title: 'Budget Alert',
-          message: 'This transaction would exceed your daily budget by $amount. You can still proceed, or consider adjusting the amount.',
+          message:
+              'This transaction would exceed your daily budget by $amount. You can still proceed, or consider adjusting the amount.',
           actions: [
             FinancialErrorAction(
               label: 'Adjust Amount',
@@ -243,18 +246,20 @@ class FinancialErrorMessages {
           icon: Icons.savings_outlined,
           severity: FinancialErrorSeverity.low,
           category: 'Budget Management',
-          financialContext: 'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.',
+          financialContext:
+              'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.',
           tips: [
             'Review your spending categories to find areas to save',
             'Consider postponing non-essential purchases',
             'Check if you can use a different payment method or account',
           ],
         );
-        
+
       case FinancialErrorType.transactionFailed:
         return FinancialErrorInfo(
           title: 'Transaction Failed',
-          message: 'We couldn\'t save your transaction right now. Your data is safe, and you can try again.',
+          message:
+              'We couldn\'t save your transaction right now. Your data is safe, and you can try again.',
           actions: [
             FinancialErrorAction(
               label: 'Try Again',
@@ -277,11 +282,12 @@ class FinancialErrorMessages {
             'Try again in a few moments',
           ],
         );
-        
+
       case FinancialErrorType.noInternet:
         return FinancialErrorInfo(
           title: 'No Internet Connection',
-          message: 'You\'re currently offline. Your transactions will be saved locally and synced when you reconnect.',
+          message:
+              'You\'re currently offline. Your transactions will be saved locally and synced when you reconnect.',
           actions: [
             FinancialErrorAction(
               label: 'Continue Offline',
@@ -297,18 +303,20 @@ class FinancialErrorMessages {
           icon: Icons.wifi_off_outlined,
           severity: FinancialErrorSeverity.low,
           category: 'Connectivity',
-          financialContext: 'Your financial data is safely stored locally until connection is restored.',
+          financialContext:
+              'Your financial data is safely stored locally until connection is restored.',
           tips: [
             'Check your WiFi or mobile data connection',
             'You can still record transactions offline',
             'Data will sync automatically when reconnected',
           ],
         );
-        
+
       case FinancialErrorType.invalidAmount:
         return FinancialErrorInfo(
           title: 'Invalid Amount',
-          message: 'The amount entered is not valid. Please enter a positive number with up to 2 decimal places.',
+          message:
+              'The amount entered is not valid. Please enter a positive number with up to 2 decimal places.',
           actions: [
             FinancialErrorAction(
               label: 'Fix Amount',
@@ -326,11 +334,12 @@ class FinancialErrorMessages {
             'Maximum 2 decimal places for cents',
           ],
         );
-        
+
       case FinancialErrorType.duplicateTransaction:
         return FinancialErrorInfo(
           title: 'Duplicate Transaction Detected',
-          message: 'A similar transaction was already recorded today. Is this a new expense or the same one?',
+          message:
+              'A similar transaction was already recorded today. Is this a new expense or the same one?',
           actions: [
             FinancialErrorAction(
               label: 'It\'s New',
@@ -354,7 +363,7 @@ class FinancialErrorMessages {
           category: 'Transaction',
           financialContext: 'Avoiding duplicates keeps your financial records accurate.',
         );
-        
+
       case FinancialErrorType.cameraPermission:
         return FinancialErrorInfo(
           title: 'Camera Access Needed',
@@ -381,11 +390,12 @@ class FinancialErrorMessages {
             'You can always enter expenses manually',
           ],
         );
-        
+
       case FinancialErrorType.serverMaintenance:
         return FinancialErrorInfo(
           title: 'Service Temporarily Unavailable',
-          message: 'We\'re performing maintenance to improve your experience. This usually takes just a few minutes.',
+          message:
+              'We\'re performing maintenance to improve your experience. This usually takes just a few minutes.',
           actions: [
             FinancialErrorAction(
               label: 'Try Again Later',
@@ -408,11 +418,12 @@ class FinancialErrorMessages {
             'Check our status page for updates',
           ],
         );
-        
+
       default:
         return FinancialErrorInfo(
           title: 'Something Went Wrong',
-          message: 'We encountered an unexpected issue. Your financial data is safe, and our team has been notified.',
+          message:
+              'We encountered an unexpected issue. Your financial data is safe, and our team has been notified.',
           actions: [
             FinancialErrorAction(
               label: 'Try Again',
@@ -450,7 +461,7 @@ class FinancialErrorInfo {
   final String? financialContext;
   final List<String>? tips;
   final Map<String, dynamic>? metadata;
-  
+
   const FinancialErrorInfo({
     required this.title,
     required this.message,
@@ -462,7 +473,7 @@ class FinancialErrorInfo {
     this.tips,
     this.metadata,
   });
-  
+
   /// Get appropriate color for the error severity
   Color getColor(ColorScheme colorScheme) {
     switch (severity) {
@@ -476,21 +487,20 @@ class FinancialErrorInfo {
         return colorScheme.error;
     }
   }
-  
+
   /// Check if error should be displayed immediately
-  bool get shouldShowImmediately => 
-      severity == FinancialErrorSeverity.high || 
-      severity == FinancialErrorSeverity.critical;
-      
+  bool get shouldShowImmediately =>
+      severity == FinancialErrorSeverity.high || severity == FinancialErrorSeverity.critical;
+
   /// Check if error allows retry
   bool get allowsRetry => actions.any((action) => action.action == FinancialErrorActionType.retry);
 }
 
 /// Severity levels for financial errors
 enum FinancialErrorSeverity {
-  low,     // Info/warning, doesn't block user flow
-  medium,  // Prevents action completion, needs user attention
-  high,    // Significant issue, may affect financial data
+  low, // Info/warning, doesn't block user flow
+  medium, // Prevents action completion, needs user attention
+  high, // Significant issue, may affect financial data
   critical // Critical security/data issue
 }
 
@@ -518,7 +528,7 @@ class FinancialErrorAction {
   final String? navigationRoute;
   final Map<String, dynamic>? parameters;
   final VoidCallback? onTap;
-  
+
   const FinancialErrorAction({
     required this.label,
     required this.action,
@@ -543,7 +553,7 @@ extension FinancialErrorHandling on BuildContext {
       context: this,
       additionalContext: context,
     );
-    
+
     if (errorInfo.severity == FinancialErrorSeverity.critical) {
       _showErrorDialog(errorInfo, onRetry: onRetry, onDismiss: onDismiss);
     } else if (errorInfo.severity == FinancialErrorSeverity.high) {
@@ -552,7 +562,7 @@ extension FinancialErrorHandling on BuildContext {
       _showErrorSnackBar(errorInfo, onRetry: onRetry);
     }
   }
-  
+
   void _showErrorDialog(
     FinancialErrorInfo errorInfo, {
     VoidCallback? onRetry,
@@ -568,7 +578,7 @@ extension FinancialErrorHandling on BuildContext {
       ),
     );
   }
-  
+
   void _showErrorBottomSheet(
     FinancialErrorInfo errorInfo, {
     VoidCallback? onRetry,
@@ -587,7 +597,7 @@ extension FinancialErrorHandling on BuildContext {
       ),
     );
   }
-  
+
   void _showErrorSnackBar(
     FinancialErrorInfo errorInfo, {
     VoidCallback? onRetry,

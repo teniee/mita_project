@@ -30,7 +30,6 @@ class PredictiveAnalyticsWidget extends StatefulWidget {
 
 class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
     with TickerProviderStateMixin {
-
   late AnimationController _chartAnimationController;
   late AnimationController _riskAnimationController;
   late Animation<double> _chartAnimation;
@@ -56,7 +55,7 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _riskAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -115,7 +114,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       setState(() {
         _predictiveAnalytics = {
           'spending_prediction': spendingPrediction,
-          'behavior_predictions': <String, dynamic>{}, // Can be populated with getBehavioralPredictions
+          'behavior_predictions':
+              <String, dynamic>{}, // Can be populated with getBehavioralPredictions
         };
 
         _riskAssessment = {
@@ -221,20 +221,20 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   _buildTimeFrameSelector(),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Risk Assessment Section
               if (widget.showRiskAssessment && _riskAssessment != null)
                 _buildRiskAssessmentSection(),
-              
+
               // Spending Prediction Section
               if (widget.showSpendingPrediction && _predictiveAnalytics != null) ...[
                 if (widget.showRiskAssessment && _riskAssessment != null)
                   const SizedBox(height: 20),
                 _buildSpendingPredictionSection(),
               ],
-              
+
               // Behavioral Predictions Section
               if (widget.showBehavioralPredictions && _predictiveAnalytics != null) ...[
                 const SizedBox(height: 20),
@@ -318,16 +318,16 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                     _buildRiskLevelIndicator(riskLevel),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Risk Score Gauge
                 Center(
                   child: _buildRiskGauge(riskScore, riskLevel),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Risk Recommendations
                 if (recommendations.isNotEmpty) ...[
                   const Text(
@@ -341,31 +341,31 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   ),
                   const SizedBox(height: 8),
                   ...recommendations.take(2).map((rec) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '• ',
-                          style: TextStyle(
-                            fontFamily: AppTypography.fontBody,
-                            fontSize: 12,
-                            color: AppColors.textLightSubtle,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            rec.toString(),
-                            style: const TextStyle(
-                              fontFamily: AppTypography.fontBody,
-                              fontSize: 12,
-                              color: AppColors.textLightSubtle,
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '• ',
+                              style: TextStyle(
+                                fontFamily: AppTypography.fontBody,
+                                fontSize: 12,
+                                color: AppColors.textLightSubtle,
+                              ),
                             ),
-                          ),
+                            Expanded(
+                              child: Text(
+                                rec.toString(),
+                                style: const TextStyle(
+                                  fontFamily: AppTypography.fontBody,
+                                  fontSize: 12,
+                                  color: AppColors.textLightSubtle,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )),
+                      )),
                 ],
               ],
             ),
@@ -469,7 +469,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   }
 
   Widget _buildSpendingPredictionSection() {
-    final spendingPrediction = _predictiveAnalytics!['spending_prediction'] as Map<String, dynamic>? ?? {};
+    final spendingPrediction =
+        _predictiveAnalytics!['spending_prediction'] as Map<String, dynamic>? ?? {};
     final predictedAmount = (spendingPrediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
     final confidence = (spendingPrediction['confidence'] as num?)?.toDouble() ?? 0.0;
 
@@ -510,9 +511,9 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Prediction Details
             Row(
               children: [
@@ -567,7 +568,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   Widget _buildBehavioralPredictionsSection() {
     // TODO: Use behaviorPredictions when backend provides data
     // ignore: unused_local_variable
-    final behaviorPredictions = _predictiveAnalytics!['behavior_predictions'] as Map<String, dynamic>? ?? {};
+    final behaviorPredictions =
+        _predictiveAnalytics!['behavior_predictions'] as Map<String, dynamic>? ?? {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

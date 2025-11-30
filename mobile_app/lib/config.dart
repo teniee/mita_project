@@ -8,13 +8,13 @@ const String defaultApiBaseUrl = 'https://mita-docker-ready-project-manus.onrend
 class ApiConfig {
   static const String baseUrl = 'https://mita-docker-ready-project-manus.onrender.com';
   static const String apiPath = '/api';
-  
+
   // Standard FastAPI authentication endpoints
   static const String registerEndpoint = '/api/auth/register';
   static const String loginEndpoint = '/api/auth/login';
   static const String refreshEndpoint = '/api/auth/refresh';
   static const String healthEndpoint = '/api/health';
-  
+
   static String get fullApiUrl => '$baseUrl$apiPath';
   static String get fullRegisterUrl => '$baseUrl$registerEndpoint';
   static String get fullLoginUrl => '$baseUrl$loginEndpoint';

@@ -23,8 +23,14 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   late DateTime _selectedDate;
 
   final List<String> _actions = [
-    'Food', 'Transport', 'Entertainment', 'Health',
-    'Shopping', 'Utilities', 'Education', 'Other',
+    'Food',
+    'Transport',
+    'Entertainment',
+    'Health',
+    'Shopping',
+    'Utilities',
+    'Education',
+    'Other',
   ];
 
   @override
@@ -161,8 +167,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text('Date', style: AppTypography.bodyLargeMedium),
-                subtitle: Text(DateFormat.yMMMd().format(_selectedDate),
-                    style: AppTypography.bodyMedium),
+                subtitle:
+                    Text(DateFormat.yMMMd().format(_selectedDate), style: AppTypography.bodyMedium),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,

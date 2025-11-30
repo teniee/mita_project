@@ -16,24 +16,22 @@ class LocationService {
   /// Check if location permissions are granted
   Future<bool> hasLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always || 
-           permission == LocationPermission.whileInUse;
+    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
   }
 
   /// Request location permissions
   Future<bool> requestLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
       return false;
     }
-    
-    return permission == LocationPermission.always || 
-           permission == LocationPermission.whileInUse;
+
+    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
   }
 
   /// Get current location and derive country/state
@@ -69,9 +67,10 @@ class LocationService {
         final placemark = placemarks.first;
         final countryCode = placemark.isoCountryCode?.toUpperCase();
         final stateCode = placemark.administrativeArea?.toUpperCase();
-        
-        logInfo('Detected location: Country=$countryCode, State=$stateCode', tag: 'LOCATION_SERVICE');
-        
+
+        logInfo('Detected location: Country=$countryCode, State=$stateCode',
+            tag: 'LOCATION_SERVICE');
+
         return {
           'country': countryCode,
           'state': stateCode,
@@ -87,18 +86,20 @@ class LocationService {
   }
 
   /// Save user's location to preferences
-  Future<void> saveUserLocation(String countryCode, {String? stateCode, bool manuallySet = false}) async {
+  Future<void> saveUserLocation(String countryCode,
+      {String? stateCode, bool manuallySet = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_countryCodeKey, countryCode.toUpperCase());
-    
+
     if (stateCode != null) {
       await prefs.setString(_stateCodeKey, stateCode.toUpperCase());
     } else {
       await prefs.remove(_stateCodeKey);
     }
-    
+
     await prefs.setBool(_locationSetKey, manuallySet);
-    logInfo('Saved user location: $countryCode, $stateCode (manual: $manuallySet)', tag: 'LOCATION_SERVICE');
+    logInfo('Saved user location: $countryCode, $stateCode (manual: $manuallySet)',
+        tag: 'LOCATION_SERVICE');
   }
 
   /// Get saved user location from preferences
@@ -107,7 +108,7 @@ class LocationService {
     final countryCode = prefs.getString(_countryCodeKey);
     final stateCode = prefs.getString(_stateCodeKey);
     final manuallySet = prefs.getBool(_locationSetKey) ?? false;
-    
+
     return {
       'country': countryCode,
       'state': stateCode,
@@ -121,7 +122,8 @@ class LocationService {
     if (!forceDetection) {
       final saved = await getSavedUserLocation();
       if (saved['country'] != null) {
-        logInfo('Using saved location: ${saved['country']}, ${saved['state']}', tag: 'LOCATION_SERVICE');
+        logInfo('Using saved location: ${saved['country']}, ${saved['state']}',
+            tag: 'LOCATION_SERVICE');
         return saved;
       }
     }
@@ -135,7 +137,8 @@ class LocationService {
         stateCode: detected['state'],
         manuallySet: false,
       );
-      logInfo('Using detected location: ${detected['country']}, ${detected['state']}', tag: 'LOCATION_SERVICE');
+      logInfo('Using detected location: ${detected['country']}, ${detected['state']}',
+          tag: 'LOCATION_SERVICE');
       return detected;
     }
 
@@ -229,9 +232,9 @@ class LocationService {
       (c) => c['code'] == countryCode,
       orElse: () => {'name': countryCode, 'flag': ''},
     );
-    
+
     String display = '${country['flag']} ${country['name']}';
-    
+
     if (stateCode != null && countryCode == 'US') {
       final states = getUSStatesForSelection();
       final state = states.firstWhere(
@@ -240,7 +243,7 @@ class LocationService {
       );
       display += ', ${state['name']}';
     }
-    
+
     return display;
   }
 }

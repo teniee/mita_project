@@ -10,12 +10,12 @@ class LoadingService {
 
   final ValueNotifier<int> _counter = ValueNotifier<int>(0);
   final ValueNotifier<bool> _isForceHidden = ValueNotifier<bool>(false);
-  
+
   // Track loading operations with unique IDs and timeouts
   final Map<String, LoadingOperation> _operations = {};
   final Duration _defaultTimeout = const Duration(seconds: 15);
   final Duration _maxLoadingTime = const Duration(seconds: 20); // Reduced for fast backend
-  
+
   Timer? _timeoutWatchdog;
   DateTime? _firstLoadingStart;
 
@@ -30,10 +30,10 @@ class LoadingService {
   }) {
     final id = operationId ?? _generateOperationId();
     final timeoutDuration = timeout ?? _defaultTimeout;
-    
+
     // Track first loading start for global timeout
     _firstLoadingStart ??= DateTime.now();
-    
+
     // Create operation tracker
     _operations[id] = LoadingOperation(
       id: id,
@@ -41,10 +41,10 @@ class LoadingService {
       startTime: DateTime.now(),
       timeout: timeoutDuration,
     );
-    
+
     // Increment counter
     _counter.value++;
-    
+
     // Set up operation timeout
     Timer(timeoutDuration, () {
       if (_operations.containsKey(id)) {
@@ -56,16 +56,16 @@ class LoadingService {
         _forceStopOperation(id, reason: 'timeout');
       }
     });
-    
+
     // Start watchdog timer if needed
     _startTimeoutWatchdog();
-    
+
     logDebug(
       'Loading started: $description',
       tag: 'LOADING',
       extra: {'operation_id': id, 'total_operations': _operations.length},
     );
-    
+
     return id;
   }
 
@@ -74,19 +74,19 @@ class LoadingService {
     if (_operations.containsKey(operationId)) {
       final operation = _operations[operationId]!;
       final duration = DateTime.now().difference(operation.startTime);
-      
+
       logDebug(
         'Loading completed: ${operation.description} (${duration.inMilliseconds}ms)',
         tag: 'LOADING',
         extra: {'operation_id': operationId, 'duration_ms': duration.inMilliseconds},
       );
-      
+
       _operations.remove(operationId);
-      
+
       if (_counter.value > 0) {
         _counter.value--;
       }
-      
+
       _checkStopWatchdog();
     }
   }
@@ -109,13 +109,13 @@ class LoadingService {
         tag: 'LOADING_FORCE_STOP',
         extra: {'operation_id': operationId, 'reason': reason},
       );
-      
+
       _operations.remove(operationId);
-      
+
       if (_counter.value > 0) {
         _counter.value--;
       }
-      
+
       _checkStopWatchdog();
     }
   }
@@ -124,13 +124,13 @@ class LoadingService {
   void reset({String reason = 'manual_reset'}) {
     final hadOperations = _operations.isNotEmpty;
     final previousCounter = _counter.value;
-    
+
     _operations.clear();
     _counter.value = 0;
     _isForceHidden.value = false;
     _firstLoadingStart = null;
     _stopTimeoutWatchdog();
-    
+
     if (hadOperations || previousCounter > 0) {
       logWarning(
         'Loading service reset: $reason',
@@ -151,7 +151,7 @@ class LoadingService {
       tag: 'LOADING_FORCE_HIDE',
       extra: {'active_counter': _counter.value, 'active_operations': _operations.length},
     );
-    
+
     // Auto-restore after a delay
     Timer(const Duration(seconds: 3), () {
       _isForceHidden.value = false;
@@ -161,10 +161,10 @@ class LoadingService {
   /// Start timeout watchdog to prevent infinite loading
   void _startTimeoutWatchdog() {
     _stopTimeoutWatchdog();
-    
+
     _timeoutWatchdog = Timer.periodic(const Duration(seconds: 5), (timer) {
       final now = DateTime.now();
-      
+
       // Check global timeout
       if (_firstLoadingStart != null &&
           now.difference(_firstLoadingStart!).compareTo(_maxLoadingTime) > 0) {
@@ -179,7 +179,7 @@ class LoadingService {
         reset(reason: 'global_timeout');
         return;
       }
-      
+
       // Check individual operation timeouts
       final timedOutOperations = <String>[];
       _operations.forEach((id, operation) {
@@ -187,11 +187,11 @@ class LoadingService {
           timedOutOperations.add(id);
         }
       });
-      
+
       for (final id in timedOutOperations) {
         _forceStopOperation(id, reason: 'watchdog_timeout');
       }
-      
+
       // Check for stuck counters (counter > 0 but no tracked operations)
       if (_counter.value > 0 && _operations.isEmpty) {
         logWarning(
@@ -232,9 +232,8 @@ class LoadingService {
       activeOperations: _operations.length,
       counterValue: _counter.value,
       operations: List.from(_operations.values),
-      globalLoadingDuration: _firstLoadingStart != null 
-          ? DateTime.now().difference(_firstLoadingStart!)
-          : null,
+      globalLoadingDuration:
+          _firstLoadingStart != null ? DateTime.now().difference(_firstLoadingStart!) : null,
     );
   }
 
@@ -286,13 +285,12 @@ class LoadingStatus {
     this.globalLoadingDuration,
   });
 
-  bool get hasInconsistentState => 
-      (counterValue > 0 && activeOperations == 0) || 
-      (counterValue == 0 && activeOperations > 0);
+  bool get hasInconsistentState =>
+      (counterValue > 0 && activeOperations == 0) || (counterValue == 0 && activeOperations > 0);
 
   @override
   String toString() {
     return 'LoadingStatus(loading: $isLoading, hidden: $isForceHidden, '
-           'operations: $activeOperations, counter: $counterValue)';
+        'operations: $activeOperations, counter: $counterValue)';
   }
 }

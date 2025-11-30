@@ -21,8 +21,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcome => 'Welcome to MITA';
 
   @override
-  String get welcomeSubtitle =>
-      'Your personal financial companion for smarter money management';
+  String get welcomeSubtitle => 'Your personal financial companion for smarter money management';
 
   @override
   String get getStarted => 'Get Started';
@@ -115,8 +114,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noTransactionsYet => 'No transactions yet';
 
   @override
-  String get startTrackingExpenses =>
-      'Start tracking your expenses to see them here';
+  String get startTrackingExpenses => 'Start tracking your expenses to see them here';
 
   @override
   String get insights => 'Insights';
@@ -209,8 +207,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get receiptProcessed => 'Receipt processed successfully';
 
   @override
-  String get receiptProcessingError =>
-      'Unable to process receipt. Please try again.';
+  String get receiptProcessingError => 'Unable to process receipt. Please try again.';
 
   @override
   String get notifications => 'Notifications';
@@ -404,8 +401,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get missingGoogleToken => 'Missing Google ID token';
 
   @override
-  String get loginFailed =>
-      'Login failed. Please check your credentials and try again.';
+  String get loginFailed => 'Login failed. Please check your credentials and try again.';
 
   @override
   String get dontHaveAccountQuestion => 'Don\'t have an account? ';
@@ -526,8 +522,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.';
 
   @override
-  String get errorFinancialContextAccuracy =>
-      'Your financial records remain accurate and secure.';
+  String get errorFinancialContextAccuracy => 'Your financial records remain accurate and secure.';
 
   @override
   String get errorFinancialContextOffline =>
@@ -596,12 +591,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorTipsTitle => 'What you can do:';
 
   @override
-  String get errorTipBudgetReview =>
-      'Review your spending categories to find areas to save';
+  String get errorTipBudgetReview => 'Review your spending categories to find areas to save';
 
   @override
-  String get errorTipBudgetPostpone =>
-      'Consider postponing non-essential purchases';
+  String get errorTipBudgetPostpone => 'Consider postponing non-essential purchases';
 
   @override
   String get errorTipBudgetPaymentMethod =>
@@ -611,8 +604,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorTipConnectionCheck => 'Check your internet connection';
 
   @override
-  String get errorTipTransactionFields =>
-      'Verify all required fields are filled correctly';
+  String get errorTipTransactionFields => 'Verify all required fields are filled correctly';
 
   @override
   String get errorTipRetryMoment => 'Try again in a few moments';
@@ -624,8 +616,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorTipOfflineMode => 'You can still record transactions offline';
 
   @override
-  String get errorTipAutoSync =>
-      'Data will sync automatically when reconnected';
+  String get errorTipAutoSync => 'Data will sync automatically when reconnected';
 
   @override
   String get errorTipAmountFormat => 'Use numbers only (e.g., 25.50)';

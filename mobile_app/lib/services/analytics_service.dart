@@ -231,9 +231,8 @@ class AnalyticsService extends ChangeNotifier {
 
       return {
         'session_id': _sessionId,
-        'session_duration_minutes': _sessionStart != null
-            ? DateTime.now().difference(_sessionStart!).inMinutes
-            : 0,
+        'session_duration_minutes':
+            _sessionStart != null ? DateTime.now().difference(_sessionStart!).inMinutes : 0,
         'features_used': _featureUsageCount.length,
         'total_interactions': _featureUsageCount.values.fold<int>(0, (sum, count) => sum + count),
         'errors_count': errorSummary.totalErrors,
@@ -248,13 +247,15 @@ class AnalyticsService extends ChangeNotifier {
 
   /// Get top used features
   List<Map<String, dynamic>> _getTopFeatures(int limit) {
-    final sorted = _featureUsageCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = _featureUsageCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    return sorted.take(limit).map((entry) => {
-      'feature': entry.key,
-      'count': entry.value,
-    }).toList();
+    return sorted
+        .take(limit)
+        .map((entry) => {
+              'feature': entry.key,
+              'count': entry.value,
+            })
+        .toList();
   }
 
   /// Generate unique session ID
@@ -277,9 +278,8 @@ class AnalyticsService extends ChangeNotifier {
     try {
       await _endScreenTiming();
 
-      final sessionDuration = _sessionStart != null
-          ? DateTime.now().difference(_sessionStart!)
-          : Duration.zero;
+      final sessionDuration =
+          _sessionStart != null ? DateTime.now().difference(_sessionStart!) : Duration.zero;
 
       await logFeatureUsage(
         feature: 'app_session',
@@ -292,7 +292,8 @@ class AnalyticsService extends ChangeNotifier {
         },
       );
 
-      logInfo('Session ended: $_sessionId (${sessionDuration.inMinutes} minutes)', tag: 'ANALYTICS');
+      logInfo('Session ended: $_sessionId (${sessionDuration.inMinutes} minutes)',
+          tag: 'ANALYTICS');
 
       // Reset session
       _sessionId = null;

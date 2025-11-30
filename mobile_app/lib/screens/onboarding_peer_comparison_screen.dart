@@ -16,17 +16,17 @@ class OnboardingPeerComparisonScreen extends StatefulWidget {
   State<OnboardingPeerComparisonScreen> createState() => _OnboardingPeerComparisonScreenState();
 }
 
-class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerComparisonScreen> 
+class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerComparisonScreen>
     with TickerProviderStateMixin {
   final _incomeService = IncomeService();
   final _apiService = ApiService();
-  
+
   late IncomeTier _incomeTier;
   late double _monthlyIncome;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  
+
   Map<String, dynamic>? _peerData;
   Map<String, dynamic>? _cohortInsights;
   bool _isLoading = true;
@@ -34,14 +34,16 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
   @override
   void initState() {
     super.initState();
-    
+
     // Get income data from onboarding state
     if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
-      throw Exception('Income must be provided before peer comparison. Please go back and complete income entry.');
+      throw Exception(
+          'Income must be provided before peer comparison. Please go back and complete income entry.');
     }
     _monthlyIncome = OnboardingState.instance.income!;
-    _incomeTier = OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
-    
+    _incomeTier =
+        OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -53,7 +55,7 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
-    
+
     _loadPeerData();
   }
 
@@ -64,13 +66,13 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
         _apiService.getPeerComparison(),
         _apiService.getCohortInsights(),
       ]);
-      
+
       setState(() {
         _peerData = results[0];
         _cohortInsights = results[1];
         _isLoading = false;
       });
-      
+
       _animationController.forward();
     } catch (e) {
       // Show empty state when peer comparison service is unavailable
@@ -97,7 +99,6 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
       _animationController.forward();
     }
   }
-
 
   void _continueToFinish() {
     Navigator.pushNamed(context, '/onboarding_finish');
@@ -258,10 +259,10 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Top insights
-                        ...(_cohortInsights?['top_insights'] as List<String>? ?? []).map((insight) =>
-                          Padding(
+                        ...(_cohortInsights?['top_insights'] as List<String>? ?? []).map(
+                          (insight) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,10 +328,10 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Recommendations
-                        ...(_cohortInsights?['recommendations'] as List<String>? ?? []).map((recommendation) =>
-                          Container(
+                        ...(_cohortInsights?['recommendations'] as List<String>? ?? []).map(
+                          (recommendation) => Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(

@@ -100,7 +100,8 @@ class InstallmentsProvider extends ChangeNotifier {
       final summary = await _installmentService.getInstallments(status: status);
       _summary = summary;
       _state = InstallmentsState.loaded;
-      logInfo('Installments loaded: ${summary.totalInstallments} total, ${summary.totalActive} active',
+      logInfo(
+          'Installments loaded: ${summary.totalInstallments} total, ${summary.totalActive} active',
           tag: 'INSTALLMENTS_PROVIDER');
     } catch (e) {
       logError('Failed to load installments: $e', tag: 'INSTALLMENTS_PROVIDER');
@@ -153,8 +154,7 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Cancel an installment
   Future<bool> cancelInstallment(String installmentId) async {
     try {
-      logInfo('Cancelling installment: $installmentId',
-          tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Cancelling installment: $installmentId', tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.cancelInstallment(installmentId);
       _successMessage = 'Installment cancelled';
@@ -176,8 +176,7 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Delete an installment
   Future<bool> deleteInstallment(String installmentId) async {
     try {
-      logInfo('Deleting installment: $installmentId',
-          tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Deleting installment: $installmentId', tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.deleteInstallment(installmentId);
       _successMessage = 'Installment deleted';
@@ -199,8 +198,7 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Create a new installment
   Future<Installment?> createInstallment(Installment installment) async {
     try {
-      logInfo('Creating new installment: ${installment.itemName}',
-          tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Creating new installment: ${installment.itemName}', tag: 'INSTALLMENTS_PROVIDER');
 
       final created = await _installmentService.createInstallment(installment);
       _successMessage = 'Installment created successfully';

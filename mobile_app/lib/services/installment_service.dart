@@ -41,10 +41,14 @@ class InstallmentService {
       final errorData = json.decode(response.body);
       if (errorData is Map) {
         // RFC7807 Problem Details
-        errorMessage = (errorData['detail'] ?? errorData['message'] ?? errorData['title'] ?? 'Unknown error') as String;
+        errorMessage = (errorData['detail'] ??
+            errorData['message'] ??
+            errorData['title'] ??
+            'Unknown error') as String;
 
         // Log structured error
-        logError('Installment API Error: $operation',
+        logError(
+          'Installment API Error: $operation',
           tag: 'INSTALLMENT_SERVICE',
           extra: {
             'operation': operation,
@@ -60,7 +64,7 @@ class InstallmentService {
     } catch (e) {
       errorMessage = 'Server error: $statusCode';
       logError('Failed to parse error response for $operation',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+          tag: 'INSTALLMENT_SERVICE', error: e);
     }
 
     throw InstallmentServiceException(errorMessage, statusCode);
@@ -80,7 +84,8 @@ class InstallmentService {
         final response = await request();
 
         // Log successful requests
-        logDebug('Installment API Success: $operation',
+        logDebug(
+          'Installment API Success: $operation',
           tag: 'INSTALLMENT_SERVICE',
           extra: {
             'operation': operation,
@@ -92,7 +97,8 @@ class InstallmentService {
         return response;
       } on http.ClientException catch (e) {
         lastException = e;
-        logWarning('Network error on attempt $attempts/$_maxRetries for $operation',
+        logWarning(
+          'Network error on attempt $attempts/$_maxRetries for $operation',
           tag: 'INSTALLMENT_SERVICE',
           extra: {'error': e.toString()},
         );
@@ -102,8 +108,7 @@ class InstallmentService {
         }
       } catch (e) {
         // For other errors, don't retry
-        logError('Non-retryable error for $operation',
-          tag: 'INSTALLMENT_SERVICE', error: e);
+        logError('Non-retryable error for $operation', tag: 'INSTALLMENT_SERVICE', error: e);
         rethrow;
       }
     }
@@ -124,7 +129,8 @@ class InstallmentService {
     InstallmentCalculatorInput input,
   ) async {
     try {
-      logInfo('Calculating installment risk',
+      logInfo(
+        'Calculating installment risk',
         tag: 'INSTALLMENT_SERVICE',
         extra: {
           'purchaseAmount': input.purchaseAmount,
@@ -153,8 +159,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error calculating installment risk',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error calculating installment risk', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to calculate installment risk: $e', 0);
     }
   }
@@ -187,8 +192,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error creating financial profile',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error creating financial profile', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to create financial profile: $e', 0);
     }
   }
@@ -222,8 +226,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching financial profile',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching financial profile', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch financial profile: $e', 0);
     }
   }
@@ -232,7 +235,8 @@ class InstallmentService {
   /// POST /api/installments
   Future<Installment> createInstallment(Installment installment) async {
     try {
-      logInfo('Creating installment plan',
+      logInfo(
+        'Creating installment plan',
         tag: 'INSTALLMENT_SERVICE',
         extra: {
           'itemName': installment.itemName,
@@ -260,8 +264,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error creating installment',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error creating installment', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to create installment: $e', 0);
     }
   }
@@ -270,7 +273,8 @@ class InstallmentService {
   /// GET /api/installments?status=active
   Future<InstallmentsSummary> getInstallments({InstallmentStatus? status}) async {
     try {
-      logDebug('Fetching installments',
+      logDebug(
+        'Fetching installments',
         tag: 'INSTALLMENT_SERVICE',
         extra: {'status': status?.name},
       );
@@ -285,9 +289,7 @@ class InstallmentService {
 
       final response = await _executeWithRetry(() async {
         final headers = await _getHeaders();
-        return await http
-            .get(uri, headers: headers)
-            .timeout(_defaultTimeout);
+        return await http.get(uri, headers: headers).timeout(_defaultTimeout);
       }, 'getInstallments');
 
       if (response.statusCode == 200) {
@@ -299,8 +301,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching installments',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching installments', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch installments: $e', 0);
     }
   }
@@ -309,7 +310,8 @@ class InstallmentService {
   /// GET /api/installments/{installment_id}
   Future<Installment> getInstallment(String installmentId) async {
     try {
-      logDebug('Fetching installment',
+      logDebug(
+        'Fetching installment',
         tag: 'INSTALLMENT_SERVICE',
         extra: {'installmentId': installmentId},
       );
@@ -335,8 +337,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching installment',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching installment', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch installment: $e', 0);
     }
   }
@@ -348,7 +349,8 @@ class InstallmentService {
     Map<String, dynamic> updates,
   ) async {
     try {
-      logInfo('Updating installment',
+      logInfo(
+        'Updating installment',
         tag: 'INSTALLMENT_SERVICE',
         extra: {
           'installmentId': installmentId,
@@ -378,8 +380,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error updating installment',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error updating installment', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to update installment: $e', 0);
     }
   }
@@ -388,7 +389,8 @@ class InstallmentService {
   /// DELETE /api/installments/{installment_id}
   Future<void> deleteInstallment(String installmentId) async {
     try {
-      logInfo('Deleting installment',
+      logInfo(
+        'Deleting installment',
         tag: 'INSTALLMENT_SERVICE',
         extra: {'installmentId': installmentId},
       );
@@ -404,7 +406,8 @@ class InstallmentService {
       }, 'deleteInstallment');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        logInfo('Installment deleted successfully',
+        logInfo(
+          'Installment deleted successfully',
           tag: 'INSTALLMENT_SERVICE',
           extra: {'installmentId': installmentId},
         );
@@ -415,8 +418,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error deleting installment',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error deleting installment', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to delete installment: $e', 0);
     }
   }
@@ -425,7 +427,8 @@ class InstallmentService {
   /// GET /api/installments/calendar/{year}/{month}
   Future<Map<String, dynamic>> getMonthlyCalendar(int year, int month) async {
     try {
-      logDebug('Fetching monthly calendar',
+      logDebug(
+        'Fetching monthly calendar',
         tag: 'INSTALLMENT_SERVICE',
         extra: {'year': year, 'month': month},
       );
@@ -449,8 +452,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching monthly calendar',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching monthly calendar', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch monthly calendar: $e', 0);
     }
   }
@@ -480,8 +482,7 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching achievements',
-        tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching achievements', tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch achievements: $e', 0);
     }
   }
@@ -530,8 +531,7 @@ class InstallmentService {
         return profile;
       }
     } catch (e) {
-      logDebug('No existing profile found, creating new one',
-        tag: 'INSTALLMENT_SERVICE');
+      logDebug('No existing profile found, creating new one', tag: 'INSTALLMENT_SERVICE');
     }
 
     // Create new profile

@@ -83,7 +83,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     final income = userProvider.userIncome;
 
     if (income <= 0) {
-      logError('Income data required for budget settings. Please complete onboarding.', tag: 'BUDGET_SETTINGS');
+      logError('Income data required for budget settings. Please complete onboarding.',
+          tag: 'BUDGET_SETTINGS');
       return;
     }
 
@@ -182,7 +183,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     );
   }
 
-  Widget _buildBudgetModeCard(Map<String, dynamic> mode, String currentBudgetMode, bool isUpdating) {
+  Widget _buildBudgetModeCard(
+      Map<String, dynamic> mode, String currentBudgetMode, bool isUpdating) {
     final isSelected = mode['id'] == currentBudgetMode;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -191,9 +193,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: isSelected
-          ? BorderSide(color: mode['color'], width: 2)
-          : BorderSide.none,
+        side: isSelected ? BorderSide(color: mode['color'], width: 2) : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -282,24 +282,26 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (mode['features'] as List<String>).map<Widget>((feature) =>
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: mode['color'].withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      feature,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: mode['color'],
-                        fontWeight: FontWeight.w500,
+                children: (mode['features'] as List<String>)
+                    .map<Widget>(
+                      (feature) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: mode['color'].withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          feature,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: mode['color'],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ).toList(),
+                    )
+                    .toList(),
               ),
             ],
           ),
@@ -312,7 +314,9 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     if (budgetRemaining == null) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : colorScheme.primary;
 
     final totalBudget = (budgetRemaining['total_budget'] as num?)?.toDouble() ?? 0.0;
     final totalSpent = (budgetRemaining['total_spent'] as num?)?.toDouble() ?? 0.0;
@@ -353,7 +357,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 minHeight: 12,
                 backgroundColor: Colors.grey[200],
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  percentageUsed > 90 ? Colors.red : percentageUsed > 70 ? Colors.orange : primaryColor,
+                  percentageUsed > 90
+                      ? Colors.red
+                      : percentageUsed > 70
+                          ? Colors.orange
+                          : primaryColor,
                 ),
               ),
             ),
@@ -539,7 +547,9 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : colorScheme.primary;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : colorScheme.primary;
 
     // Watch BudgetProvider for reactive updates
     final budgetProvider = context.watch<BudgetProvider>();
@@ -555,366 +565,372 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: _incomeTier != null
-        ? IncomeTheme.createTierAppBar(
-            tier: _incomeTier!,
-            title: 'Budget Settings',
-          )
-        : AppBar(
-            title: const Text(
-              'Budget Settings',
-              style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
-                fontWeight: FontWeight.bold,
+          ? IncomeTheme.createTierAppBar(
+              tier: _incomeTier!,
+              title: 'Budget Settings',
+            )
+          : AppBar(
+              title: const Text(
+                'Budget Settings',
+                style: TextStyle(
+                  fontFamily: AppTypography.fontHeading,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              backgroundColor: colorScheme.surface,
+              elevation: 0,
+              centerTitle: true,
+              iconTheme: IconThemeData(color: colorScheme.onSurface),
             ),
-            backgroundColor: colorScheme.surface,
-            elevation: 0,
-            centerTitle: true,
-            iconTheme: IconThemeData(color: colorScheme.onSurface),
-          ),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
-            onRefresh: _refreshSettings,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Income Context Card
-                  if (_incomeTier != null)
-                    IncomeTierCard(
-                      monthlyIncome: _monthlyIncome,
-                      showDetails: false,
-                    ),
-
-                  if (_incomeTier != null)
-                    const SizedBox(height: 16),
-
-                  // Budget Remaining Status
-                  _buildBudgetRemainingCard(budgetRemaining),
-
-                  // Income-based Budget Recommendations
-                  if (budgetRecommendations != null)
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.recommend_rounded,
-                                  color: primaryColor,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Income-Based Recommendations',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontHeading,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: primaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            ...(budgetRecommendations['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
-                              final category = entry.key;
-                              final amount = entry.value as double;
-                              final percentage = _incomeService.getIncomePercentage(amount, _monthlyIncome);
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      category.toUpperCase(),
-                                      style: const TextStyle(
-                                        fontFamily: AppTypography.fontHeading,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          '\$${amount.toStringAsFixed(0)}',
-                                          style: TextStyle(
-                                            fontFamily: AppTypography.fontHeading,
-                                            fontWeight: FontWeight.bold,
-                                            color: primaryColor,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${percentage.toStringAsFixed(1)}% of income',
-                                          style: TextStyle(
-                                            fontFamily: AppTypography.fontBody,
-                                            fontSize: 11,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList() ?? [],
-                          ],
-                        ),
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _refreshSettings,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Income Context Card
+                    if (_incomeTier != null)
+                      IncomeTierCard(
+                        monthlyIncome: _monthlyIncome,
+                        showDetails: false,
                       ),
-                    ),
 
-                  if (budgetRecommendations != null)
-                    const SizedBox(height: 16),
+                    if (_incomeTier != null) const SizedBox(height: 16),
 
-                  // Behavioral Budget Allocation (AI-powered)
-                  if (behavioralAllocation != null && behavioralAllocation['allocations'] != null)
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.psychology,
-                                  color: AppColors.accent,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'AI Behavioral Allocation',
-                                  style: TextStyle(
-                                    fontFamily: AppTypography.fontHeading,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: colorScheme.onSurface,
+                    // Budget Remaining Status
+                    _buildBudgetRemainingCard(budgetRemaining),
+
+                    // Income-based Budget Recommendations
+                    if (budgetRecommendations != null)
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.recommend_rounded,
+                                    color: primaryColor,
+                                    size: 24,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Budget allocation based on your behavioral patterns',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...(behavioralAllocation['allocations'] as Map<String, dynamic>?)?.entries.map((entry) {
-                              final category = entry.key;
-                              final data = entry.value as Map<String, dynamic>;
-                              final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-                              final confidence = (data['confidence'] as num?)?.toDouble() ?? 0.0;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          category.toUpperCase(),
-                                          style: const TextStyle(
-                                            fontFamily: AppTypography.fontHeading,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        Text(
-                                          '\$${amount.toStringAsFixed(0)}',
-                                          style: const TextStyle(
-                                            fontFamily: AppTypography.fontHeading,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                      ],
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Income-Based Recommendations',
+                                    style: TextStyle(
+                                      fontFamily: AppTypography.fontHeading,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: primaryColor,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(4),
-                                            child: LinearProgressIndicator(
-                                              value: confidence / 100,
-                                              minHeight: 6,
-                                              backgroundColor: Colors.grey[200],
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                AppColors.accent,
-                                              ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              ...(budgetRecommendations['allocations'] as Map<String, dynamic>?)
+                                      ?.entries
+                                      .map((entry) {
+                                    final category = entry.key;
+                                    final amount = entry.value as double;
+                                    final percentage =
+                                        _incomeService.getIncomePercentage(amount, _monthlyIncome);
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            category.toUpperCase(),
+                                            style: const TextStyle(
+                                              fontFamily: AppTypography.fontHeading,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '${confidence.toStringAsFixed(0)}% confidence',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey[600],
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                '\$${amount.toStringAsFixed(0)}',
+                                                style: TextStyle(
+                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: primaryColor,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${percentage.toStringAsFixed(1)}% of income',
+                                                style: TextStyle(
+                                                  fontFamily: AppTypography.fontBody,
+                                                  fontSize: 11,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
+                                    );
+                                  }).toList() ??
+                                  [],
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    if (budgetRecommendations != null) const SizedBox(height: 16),
+
+                    // Behavioral Budget Allocation (AI-powered)
+                    if (behavioralAllocation != null && behavioralAllocation['allocations'] != null)
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.psychology,
+                                    color: AppColors.accent,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'AI Behavioral Allocation',
+                                    style: TextStyle(
+                                      fontFamily: AppTypography.fontHeading,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: colorScheme.onSurface,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Budget allocation based on your behavioral patterns',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
-                              );
-                            }).toList() ?? [],
+                              ),
+                              const SizedBox(height: 16),
+                              ...(behavioralAllocation['allocations'] as Map<String, dynamic>?)
+                                      ?.entries
+                                      .map((entry) {
+                                    final category = entry.key;
+                                    final data = entry.value as Map<String, dynamic>;
+                                    final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                                    final confidence =
+                                        (data['confidence'] as num?)?.toDouble() ?? 0.0;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                category.toUpperCase(),
+                                                style: const TextStyle(
+                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              Text(
+                                                '\$${amount.toStringAsFixed(0)}',
+                                                style: const TextStyle(
+                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  child: LinearProgressIndicator(
+                                                    value: confidence / 100,
+                                                    minHeight: 6,
+                                                    backgroundColor: Colors.grey[200],
+                                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                                      AppColors.accent,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '${confidence.toStringAsFixed(0)}% confidence',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList() ??
+                                  [],
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    if (behavioralAllocation != null) const SizedBox(height: 24),
+
+                    // Current Mode Display
+                    Card(
+                      elevation: 4,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            colors: [
+                              _getBudgetModeById(currentBudgetMode)['color'],
+                              _getBudgetModeById(currentBudgetMode)['color'].withValues(alpha: 0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getBudgetModeById(currentBudgetMode)['icon'],
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Current Budget Mode',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _getBudgetModeById(currentBudgetMode)['name'],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: AppTypography.fontHeading,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
 
-                  if (behavioralAllocation != null)
+                    // Budget Modes Section
+                    Text(
+                      'Choose Your Budget Mode',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                        fontFamily: AppTypography.fontHeading,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Select the budget management approach that best fits your financial goals and spending habits.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Budget mode cards
+                    ..._budgetModes
+                        .map((mode) => _buildBudgetModeCard(mode, currentBudgetMode, isUpdating)),
+
                     const SizedBox(height: 24),
 
-                  // Current Mode Display
-                  Card(
-                    elevation: 4,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
+                    // Automation Settings
+                    Text(
+                      'Automation Preferences',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                        fontFamily: AppTypography.fontHeading,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Customize how MITA automatically manages your budget and provides intelligent recommendations.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildAutomationSettings(automationSettings),
+
+                    const SizedBox(height: 24),
+
+                    // Additional Info
+                    Container(
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            _getBudgetModeById(currentBudgetMode)['color'],
-                            _getBudgetModeById(currentBudgetMode)['color'].withValues(alpha: 0.8),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            _getBudgetModeById(currentBudgetMode)['icon'],
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 16),
+                          Icon(Icons.info_outline, color: colorScheme.primary),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Current Budget Mode',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _getBudgetModeById(currentBudgetMode)['name'],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: AppTypography.fontHeading,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              'Changes to your budget mode will take effect immediately and may trigger automatic redistribution of your current budget.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.primary,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-
-                  // Budget Modes Section
-                  Text(
-                    'Choose Your Budget Mode',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      fontFamily: AppTypography.fontHeading,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Select the budget management approach that best fits your financial goals and spending habits.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Budget mode cards
-                  ..._budgetModes.map((mode) => _buildBudgetModeCard(mode, currentBudgetMode, isUpdating)),
-
-                  const SizedBox(height: 24),
-
-                  // Automation Settings
-                  Text(
-                    'Automation Preferences',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      fontFamily: AppTypography.fontHeading,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Customize how MITA automatically manages your budget and provides intelligent recommendations.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  _buildAutomationSettings(automationSettings),
-
-                  const SizedBox(height: 24),
-
-                  // Additional Info
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: colorScheme.primary),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Changes to your budget mode will take effect immediately and may trigger automatic redistribution of your current budget.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
     );
   }
 }

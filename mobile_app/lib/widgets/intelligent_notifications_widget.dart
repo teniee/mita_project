@@ -7,8 +7,8 @@ import '../providers/notifications_provider.dart';
 import '../models/notification_model.dart';
 
 /// Intelligent Notifications Widget
-/// 
-/// Displays smart, contextual financial notifications powered by the 
+///
+/// Displays smart, contextual financial notifications powered by the
 /// Advanced Financial Engine, including behavioral insights, spending alerts,
 /// predictive warnings, and personalized recommendations.
 class IntelligentNotificationsWidget extends StatefulWidget {
@@ -31,7 +31,6 @@ class IntelligentNotificationsWidget extends StatefulWidget {
 
 class _IntelligentNotificationsWidgetState extends State<IntelligentNotificationsWidget>
     with TickerProviderStateMixin {
-
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -57,7 +56,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -90,15 +89,17 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
   }
 
   List<Map<String, dynamic>> _getFilteredNotifications(List<NotificationModel> notifications) {
-    var filtered = notifications.map((n) => {
-      'id': n.id,
-      'type': n.type,
-      'priority': n.priority,
-      'title': n.title,
-      'message': n.message,
-      'timestamp': n.createdAt.toIso8601String(),
-      'isRead': n.isRead,
-    }).toList();
+    var filtered = notifications
+        .map((n) => {
+              'id': n.id,
+              'type': n.type,
+              'priority': n.priority,
+              'title': n.title,
+              'message': n.message,
+              'timestamp': n.createdAt.toIso8601String(),
+              'isRead': n.isRead,
+            })
+        .toList();
 
     if (widget.showOnlyHighPriority) {
       filtered = filtered.where((notification) {
@@ -201,15 +202,13 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                       ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Notifications List
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  height: _isExpanded 
-                      ? (filteredNotifications.length * 70.0).clamp(0, 350)
-                      : 70,
+                  height: _isExpanded ? (filteredNotifications.length * 70.0).clamp(0, 350) : 70,
                   child: ListView.builder(
                     physics: _isExpanded ? null : const NeverScrollableScrollPhysics(),
                     itemCount: _isExpanded ? filteredNotifications.length : 1,
@@ -236,9 +235,9 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
     final message = notification['message'] as String? ?? '';
     final priority = notification['priority'] as String? ?? 'medium';
     final timestamp = notification['timestamp'] as String?;
-    
+
     final notificationInfo = _getNotificationInfo(type, priority);
-    
+
     return Container(
       margin: EdgeInsets.only(bottom: isFirst ? 0 : 8),
       padding: const EdgeInsets.all(12),
@@ -264,9 +263,9 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // Icon
             Container(
               padding: const EdgeInsets.all(6),
@@ -280,9 +279,9 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 size: 16,
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // Content
             Expanded(
               child: Column(
@@ -315,7 +314,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 ],
               ),
             ),
-            
+
             // Timestamp
             if (timestamp != null) ...[
               const SizedBox(width: 8),
@@ -412,7 +411,7 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
       final dateTime = DateTime.parse(timestamp);
       final now = DateTime.now();
       final difference = now.difference(dateTime);
-      
+
       if (difference.inMinutes < 60) {
         return '${difference.inMinutes}m';
       } else if (difference.inHours < 24) {
@@ -455,9 +454,9 @@ class CompactIntelligentNotifications extends StatelessWidget {
       listenable: financialEngine,
       builder: (context, child) {
         // FUTURE FEATURE: Intelligent notifications backend integration
-      // This will be connected to AI-powered notification service in a future release
+        // This will be connected to AI-powered notification service in a future release
         final notifications = <Map<String, dynamic>>[];
-        
+
         if (notifications.isEmpty) {
           return const SizedBox.shrink();
         }
@@ -472,27 +471,19 @@ class CompactIntelligentNotifications extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: highPriorityCount > 0 
-                  ? Colors.red.shade50 
-                  : Colors.blue.shade50,
+              color: highPriorityCount > 0 ? Colors.red.shade50 : Colors.blue.shade50,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: highPriorityCount > 0 
-                    ? Colors.red.shade200 
-                    : Colors.blue.shade200,
+                color: highPriorityCount > 0 ? Colors.red.shade200 : Colors.blue.shade200,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  highPriorityCount > 0 
-                      ? Icons.warning 
-                      : Icons.notifications_active,
+                  highPriorityCount > 0 ? Icons.warning : Icons.notifications_active,
                   size: 16,
-                  color: highPriorityCount > 0 
-                      ? Colors.red.shade600 
-                      : Colors.blue.shade600,
+                  color: highPriorityCount > 0 ? Colors.red.shade600 : Colors.blue.shade600,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -501,9 +492,7 @@ class CompactIntelligentNotifications extends StatelessWidget {
                     fontFamily: AppTypography.fontBody,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: highPriorityCount > 0 
-                        ? Colors.red.shade700 
-                        : Colors.blue.shade700,
+                    color: highPriorityCount > 0 ? Colors.red.shade700 : Colors.blue.shade700,
                   ),
                 ),
                 if (highPriorityCount > 0) ...[

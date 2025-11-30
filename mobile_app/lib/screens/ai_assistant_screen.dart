@@ -180,10 +180,12 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     required double spendingPercentage,
   }) {
     // Determine contextual hint based on budget status
-    String contextualHint = 'I can help you with budgeting tips, spending insights, savings goals, and more.';
+    String contextualHint =
+        'I can help you with budgeting tips, spending insights, savings goals, and more.';
 
     if (budgetStatus == 'exceeded') {
-      contextualHint = 'I notice you\'ve exceeded your budget. Ask me for tips on getting back on track!';
+      contextualHint =
+          'I notice you\'ve exceeded your budget. Ask me for tips on getting back on track!';
     } else if (budgetStatus == 'warning') {
       contextualHint = 'You\'re approaching your budget limit. I can help you find ways to save!';
     }
@@ -291,9 +293,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _isLoading
-                    ? AppColors.accent.withValues(alpha: 0.5)
-                    : AppColors.accent,
+                color: _isLoading ? AppColors.accent.withValues(alpha: 0.5) : AppColors.accent,
                 shape: BoxShape.circle,
               ),
               child: const Icon(

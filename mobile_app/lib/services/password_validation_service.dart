@@ -11,18 +11,64 @@ class PasswordValidationService {
 
   // Common weak passwords and patterns
   static const Set<String> _commonPasswords = {
-    'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
-    'admin', 'welcome', 'monkey', 'dragon', 'letmein', 'trustno1',
-    '111111', 'iloveyou', 'master', 'sunshine', 'ashley', 'princess',
-    'football', 'michael', 'ninja', 'mustang', 'password1', 'shadow',
-    'baseball', 'superman', 'tigger', 'charlie', 'robert', 'jennifer',
-    'jordan', 'hunter', 'michelle', 'harley', 'matthew', 'daniel',
-    'andrew', 'joshua', 'anthony', 'william', 'david', 'chris',
+    'password',
+    '123456',
+    '123456789',
+    'qwerty',
+    'abc123',
+    'password123',
+    'admin',
+    'welcome',
+    'monkey',
+    'dragon',
+    'letmein',
+    'trustno1',
+    '111111',
+    'iloveyou',
+    'master',
+    'sunshine',
+    'ashley',
+    'princess',
+    'football',
+    'michael',
+    'ninja',
+    'mustang',
+    'password1',
+    'shadow',
+    'baseball',
+    'superman',
+    'tigger',
+    'charlie',
+    'robert',
+    'jennifer',
+    'jordan',
+    'hunter',
+    'michelle',
+    'harley',
+    'matthew',
+    'daniel',
+    'andrew',
+    'joshua',
+    'anthony',
+    'william',
+    'david',
+    'chris',
   };
 
   static const Set<String> _keyboardPatterns = {
-    'qwerty', 'qwertyuiop', 'asdfgh', 'asdfghjkl', 'zxcvbn', 'zxcvbnm',
-    '123456', '1234567890', 'abcdef', 'abcdefg', 'qwer', 'asdf', 'zxcv',
+    'qwerty',
+    'qwertyuiop',
+    'asdfgh',
+    'asdfghjkl',
+    'zxcvbn',
+    'zxcvbnm',
+    '123456',
+    '1234567890',
+    'abcdef',
+    'abcdefg',
+    'qwer',
+    'asdf',
+    'zxcv',
   };
 
   /// Comprehensive password validation result
@@ -40,7 +86,8 @@ class PasswordValidationService {
         issues.add('Password must be at least $_minLength characters long');
         isStrong = false;
       } else if (password.length < _recommendedMinLength) {
-        warnings.add('Consider using at least $_recommendedMinLength characters for better security');
+        warnings
+            .add('Consider using at least $_recommendedMinLength characters for better security');
       }
 
       // Character variety requirements
@@ -110,10 +157,12 @@ class PasswordValidationService {
       strength = _calculatePasswordStrength(password, entropy);
 
       if (entropy < _minEntropy) {
-        issues.add('Password complexity is too low (entropy: ${entropy.toStringAsFixed(1)}/${_minEntropy.toStringAsFixed(1)})');
+        issues.add(
+            'Password complexity is too low (entropy: ${entropy.toStringAsFixed(1)}/${_minEntropy.toStringAsFixed(1)})');
         isStrong = false;
       } else if (entropy < _recommendedEntropy) {
-        warnings.add('Consider increasing password complexity for maximum security (entropy: ${entropy.toStringAsFixed(1)}/${_recommendedEntropy.toStringAsFixed(1)})');
+        warnings.add(
+            'Consider increasing password complexity for maximum security (entropy: ${entropy.toStringAsFixed(1)}/${_recommendedEntropy.toStringAsFixed(1)})');
       }
 
       // Check for dictionary words
@@ -136,22 +185,20 @@ class PasswordValidationService {
         suggestions: _generateSuggestions(password, issues),
       );
 
-      logInfo('Password validation completed', tag: 'PASSWORD_VALIDATION',
-        extra: {
-          'is_valid': result.isValid,
-          'is_strong': result.isStrong,
-          'entropy': entropy,
-          'security_score': securityScore,
-          'issues_count': issues.length,
-          'warnings_count': warnings.length,
-        });
+      logInfo('Password validation completed', tag: 'PASSWORD_VALIDATION', extra: {
+        'is_valid': result.isValid,
+        'is_strong': result.isStrong,
+        'entropy': entropy,
+        'security_score': securityScore,
+        'issues_count': issues.length,
+        'warnings_count': warnings.length,
+      });
 
       return result;
-
     } catch (e, stackTrace) {
-      logError('Password validation failed: $e', tag: 'PASSWORD_VALIDATION',
-          error: e, stackTrace: stackTrace);
-      
+      logError('Password validation failed: $e',
+          tag: 'PASSWORD_VALIDATION', error: e, stackTrace: stackTrace);
+
       return const PasswordValidationResult(
         isValid: false,
         isStrong: false,
@@ -298,7 +345,8 @@ class PasswordValidationService {
         }
       }
       if (isSequential) {
-        issues.add('Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 3)}"');
+        issues
+            .add('Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 3)}"');
         break;
       }
     }
@@ -317,8 +365,20 @@ class PasswordValidationService {
     }
 
     // Check for months
-    final monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                       'july', 'august', 'september', 'october', 'november', 'december'];
+    final monthNames = [
+      'january',
+      'february',
+      'march',
+      'april',
+      'may',
+      'june',
+      'july',
+      'august',
+      'september',
+      'october',
+      'november',
+      'december'
+    ];
     final lowerPassword = password.toLowerCase();
     for (final month in monthNames) {
       if (lowerPassword.contains(month.substring(0, 3)) || lowerPassword.contains(month)) {
@@ -328,8 +388,20 @@ class PasswordValidationService {
     }
 
     // Check for common names (basic check)
-    final commonNames = ['john', 'mary', 'james', 'patricia', 'robert', 'jennifer',
-                        'michael', 'linda', 'william', 'elizabeth', 'david', 'barbara'];
+    final commonNames = [
+      'john',
+      'mary',
+      'james',
+      'patricia',
+      'robert',
+      'jennifer',
+      'michael',
+      'linda',
+      'william',
+      'elizabeth',
+      'david',
+      'barbara'
+    ];
     for (final name in commonNames) {
       if (lowerPassword.contains(name)) {
         warnings.add('Avoid using common names in passwords');
@@ -346,9 +418,22 @@ class PasswordValidationService {
     final lowerPassword = password.toLowerCase();
 
     // Basic dictionary words check (simplified)
-    final commonWords = ['love', 'life', 'work', 'home', 'family', 'money', 'happy',
-                        'secure', 'strong', 'safe', 'trust', 'peace', 'hope'];
-    
+    final commonWords = [
+      'love',
+      'life',
+      'work',
+      'home',
+      'family',
+      'money',
+      'happy',
+      'secure',
+      'strong',
+      'safe',
+      'trust',
+      'peace',
+      'hope'
+    ];
+
     for (final word in commonWords) {
       if (lowerPassword.contains(word) && word.length >= 4) {
         warnings.add('Consider avoiding dictionary words like "$word"');
@@ -362,7 +447,7 @@ class PasswordValidationService {
   /// Check if password has common patterns
   static bool _hasCommonPatterns(String password) {
     final lowerPassword = password.toLowerCase();
-    
+
     // Check keyboard patterns
     for (final pattern in _keyboardPatterns) {
       if (lowerPassword.contains(pattern) && pattern.length >= 3) {
@@ -409,7 +494,8 @@ class PasswordValidationService {
     }
 
     if (suggestions.isEmpty) {
-      suggestions.add('Your password meets basic requirements. Consider making it longer for maximum security.');
+      suggestions.add(
+          'Your password meets basic requirements. Consider making it longer for maximum security.');
     }
 
     return suggestions;
@@ -464,12 +550,13 @@ class PasswordValidationResult {
   });
 
   String get strengthDescription => PasswordValidationService.getStrengthDescription(strength);
-  String get securityScoreDescription => PasswordValidationService.getSecurityScoreDescription(securityScore);
+  String get securityScoreDescription =>
+      PasswordValidationService.getSecurityScoreDescription(securityScore);
 
   @override
   String toString() {
     return 'PasswordValidationResult(valid: $isValid, strong: $isStrong, '
-           'strength: ${strength.toStringAsFixed(2)}, entropy: ${entropy.toStringAsFixed(1)}, '
-           'score: $securityScore, issues: ${issues.length}, warnings: ${warnings.length})';
+        'strength: ${strength.toStringAsFixed(2)}, entropy: ${entropy.toStringAsFixed(1)}, '
+        'score: $securityScore, issues: ${issues.length}, warnings: ${warnings.length})';
   }
 }

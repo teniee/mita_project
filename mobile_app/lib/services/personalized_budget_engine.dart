@@ -10,24 +10,24 @@ class PersonalizedBudgetEngine {
 
   final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
-  
+
   // User financial profile data
   Map<String, dynamic>? _userProfile;
   Map<String, dynamic>? _spendingHistory;
   Map<String, dynamic>? _behaviorProfile;
   Map<String, dynamic>? _peerData;
-  
+
   /// Initialize the budget engine with user data
   Future<void> initialize() async {
     try {
       logInfo('Initializing Personalized Budget Engine', tag: 'BUDGET_ENGINE');
-      
+
       // Load user profile and financial data
       await _loadUserProfile();
       await _loadSpendingHistory();
       await _loadBehaviorProfile();
       await _loadPeerData();
-      
+
       logInfo('Budget engine initialized successfully', tag: 'BUDGET_ENGINE');
     } catch (e) {
       logError('Failed to initialize budget engine: $e', tag: 'BUDGET_ENGINE', error: e);
@@ -43,58 +43,36 @@ class PersonalizedBudgetEngine {
     BudgetStyle? preferredStyle,
   }) async {
     try {
-      logInfo('Generating personalized budget for income: \$${monthlyIncome.toStringAsFixed(2)}', tag: 'BUDGET_ENGINE');
-      
+      logInfo('Generating personalized budget for income: \$${monthlyIncome.toStringAsFixed(2)}',
+          tag: 'BUDGET_ENGINE');
+
       // 1. Determine income tier and base recommendations
       final incomeTier = _incomeService.classifyIncome(monthlyIncome);
       final baseRecommendations = await _getBaseRecommendations(monthlyIncome, incomeTier);
-      
+
       // 2. Apply behavioral adjustments
-      final behavioralAdjustments = await _applyBehavioralAdjustments(
-        baseRecommendations, 
-        _behaviorProfile,
-        incomeTier
-      );
-      
+      final behavioralAdjustments =
+          await _applyBehavioralAdjustments(baseRecommendations, _behaviorProfile, incomeTier);
+
       // 3. Incorporate spending history patterns
-      final historyAdjusted = _incorporateSpendingHistory(
-        behavioralAdjustments,
-        currentSpending ?? {},
-        monthlyIncome
-      );
-      
+      final historyAdjusted =
+          _incorporateSpendingHistory(behavioralAdjustments, currentSpending ?? {}, monthlyIncome);
+
       // 4. Apply peer comparison insights
-      final peerAdjusted = await _applyPeerInsights(
-        historyAdjusted,
-        monthlyIncome,
-        incomeTier
-      );
-      
+      final peerAdjusted = await _applyPeerInsights(historyAdjusted, monthlyIncome, incomeTier);
+
       // 5. Incorporate goals and priorities
-      final goalOptimized = _optimizeForGoals(
-        peerAdjusted,
-        financialGoals ?? [],
-        monthlyIncome
-      );
-      
+      final goalOptimized = _optimizeForGoals(peerAdjusted, financialGoals ?? [], monthlyIncome);
+
       // 6. Apply location-based adjustments
-      final locationAdjusted = _applyLocationAdjustments(
-        goalOptimized,
-        location,
-        incomeTier
-      );
-      
+      final locationAdjusted = _applyLocationAdjustments(goalOptimized, location, incomeTier);
+
       // 7. Generate final recommendations with insights
       final finalRecommendation = await _generateFinalRecommendation(
-        locationAdjusted,
-        monthlyIncome,
-        incomeTier,
-        preferredStyle ?? BudgetStyle.balanced
-      );
-      
+          locationAdjusted, monthlyIncome, incomeTier, preferredStyle ?? BudgetStyle.balanced);
+
       logInfo('Budget recommendations generated successfully', tag: 'BUDGET_ENGINE');
       return finalRecommendation;
-      
     } catch (e) {
       logError('Failed to generate budget recommendations: $e', tag: 'BUDGET_ENGINE', error: e);
       return _getFallbackRecommendation(monthlyIncome);
@@ -109,43 +87,31 @@ class PersonalizedBudgetEngine {
   }) async {
     try {
       final optimizations = <BudgetOptimization>[];
-      
+
       // 1. Identify overspending categories
-      final overspendingOptimizations = _identifyOverspendingOptimizations(
-        currentBudget,
-        actualSpending
-      );
+      final overspendingOptimizations =
+          _identifyOverspendingOptimizations(currentBudget, actualSpending);
       optimizations.addAll(overspendingOptimizations);
-      
+
       // 2. Find underspending opportunities
-      final underspendingOptimizations = _identifyUnderspendingOptimizations(
-        currentBudget,
-        actualSpending,
-        monthlyIncome
-      );
+      final underspendingOptimizations =
+          _identifyUnderspendingOptimizations(currentBudget, actualSpending, monthlyIncome);
       optimizations.addAll(underspendingOptimizations);
-      
+
       // 3. Behavioral pattern optimizations
-      final behavioralOptimizations = await _identifyBehavioralOptimizations(
-        currentBudget,
-        actualSpending,
-        monthlyIncome
-      );
+      final behavioralOptimizations =
+          await _identifyBehavioralOptimizations(currentBudget, actualSpending, monthlyIncome);
       optimizations.addAll(behavioralOptimizations);
-      
+
       // 4. Peer comparison optimizations
-      final peerOptimizations = await _identifyPeerOptimizations(
-        currentBudget,
-        actualSpending,
-        monthlyIncome
-      );
+      final peerOptimizations =
+          await _identifyPeerOptimizations(currentBudget, actualSpending, monthlyIncome);
       optimizations.addAll(peerOptimizations);
-      
+
       // Sort by potential savings impact
       optimizations.sort((a, b) => b.potentialSavings.compareTo(a.potentialSavings));
-      
+
       return optimizations.take(8).toList();
-      
     } catch (e) {
       logError('Failed to generate budget optimizations: $e', tag: 'BUDGET_ENGINE', error: e);
       return [];
@@ -159,32 +125,31 @@ class PersonalizedBudgetEngine {
   }) async {
     try {
       final insights = <BudgetInsight>[];
-      
+
       // 1. Income allocation insights
       final allocationInsights = _generateAllocationInsights(currentBudget, monthlyIncome);
       insights.addAll(allocationInsights);
-      
+
       // 2. Behavioral pattern insights
       final behaviorInsights = await _generateBehaviorInsights(currentBudget);
       insights.addAll(behaviorInsights);
-      
+
       // 3. Peer comparison insights
       final peerInsights = await _generatePeerInsights(currentBudget, monthlyIncome);
       insights.addAll(peerInsights);
-      
+
       // 4. Goal alignment insights
       final goalInsights = _generateGoalInsights(currentBudget, monthlyIncome);
       insights.addAll(goalInsights);
-      
+
       // 5. Risk assessment insights
       final riskInsights = _generateRiskInsights(currentBudget, monthlyIncome);
       insights.addAll(riskInsights);
-      
+
       // Sort by priority and relevance
       insights.sort((a, b) => b.priority.index.compareTo(a.priority.index));
-      
+
       return insights.take(10).toList();
-      
     } catch (e) {
       logError('Failed to generate budget insights: $e', tag: 'BUDGET_ENGINE', error: e);
       return [];
@@ -200,19 +165,16 @@ class PersonalizedBudgetEngine {
   }) async {
     try {
       final adjustments = <CategoryAdjustment>[];
-      
+
       // Calculate spending velocity for each category
-      final velocityAnalysis = _calculateSpendingVelocity(
-        currentBudget,
-        monthToDateSpending,
-        remainingDays
-      );
-      
+      final velocityAnalysis =
+          _calculateSpendingVelocity(currentBudget, monthToDateSpending, remainingDays);
+
       // Identify categories needing adjustment
       for (final analysis in velocityAnalysis.entries) {
         final category = analysis.key;
         final data = analysis.value;
-        
+
         if (data['needs_adjustment'] == true) {
           final adjustment = CategoryAdjustment(
             category: category,
@@ -225,37 +187,40 @@ class PersonalizedBudgetEngine {
           adjustments.add(adjustment);
         }
       }
-      
+
       // Generate redistribution suggestions
-      final redistributions = _generateRedistributionSuggestions(
-        adjustments,
-        currentBudget,
-        monthlyIncome
-      );
-      
+      final redistributions =
+          _generateRedistributionSuggestions(adjustments, currentBudget, monthlyIncome);
+
       return BudgetAdjustment(
         adjustments: adjustments,
         redistributions: redistributions,
         totalImpact: adjustments.fold<double>(0, (sum, adj) => sum + adj.impact),
-        confidence: adjustments.isEmpty ? 0.0 : 
-          adjustments.fold<double>(0, (sum, adj) => sum + adj.confidence) / adjustments.length,
+        confidence: adjustments.isEmpty
+            ? 0.0
+            : adjustments.fold<double>(0, (sum, adj) => sum + adj.confidence) / adjustments.length,
         implementationSteps: _generateImplementationSteps(adjustments),
       );
-      
     } catch (e) {
       logError('Failed to generate dynamic adjustment: $e', tag: 'BUDGET_ENGINE', error: e);
-      return BudgetAdjustment(adjustments: [], redistributions: [], totalImpact: 0.0, confidence: 0.0, implementationSteps: []);
+      return BudgetAdjustment(
+          adjustments: [],
+          redistributions: [],
+          totalImpact: 0.0,
+          confidence: 0.0,
+          implementationSteps: []);
     }
   }
 
   /// Get budget recommendations for specific income tiers
-  Future<Map<String, BudgetAllocation>> getIncomeBasedRecommendations(List<double> incomeList) async {
+  Future<Map<String, BudgetAllocation>> getIncomeBasedRecommendations(
+      List<double> incomeList) async {
     final recommendations = <String, BudgetAllocation>{};
-    
+
     for (final income in incomeList) {
       final tier = _incomeService.classifyIncome(income);
       final recommendation = await generateRecommendations(monthlyIncome: income);
-      
+
       recommendations[tier.name] = BudgetAllocation(
         allocations: recommendation.categoryAllocations,
         confidence: recommendation.confidence,
@@ -263,7 +228,7 @@ class PersonalizedBudgetEngine {
         optimizationOpportunities: recommendation.optimizationTips,
       );
     }
-    
+
     return recommendations;
   }
 
@@ -325,17 +290,14 @@ class PersonalizedBudgetEngine {
   }
 
   /// Apply behavioral adjustments to base recommendations
-  Future<Map<String, double>> _applyBehavioralAdjustments(
-    Map<String, double> baseAmounts,
-    Map<String, dynamic>? behaviorProfile,
-    IncomeTier tier
-  ) async {
+  Future<Map<String, double>> _applyBehavioralAdjustments(Map<String, double> baseAmounts,
+      Map<String, dynamic>? behaviorProfile, IncomeTier tier) async {
     if (behaviorProfile == null) return baseAmounts;
-    
+
     final adjusted = Map<String, double>.from(baseAmounts);
     final spendingPersonality = behaviorProfile['spending_personality'] as String? ?? 'balanced';
     final keyTraits = List<String>.from(behaviorProfile['key_traits'] ?? []);
-    
+
     // Apply personality-based adjustments
     switch (spendingPersonality) {
       case 'conservative':
@@ -353,7 +315,7 @@ class PersonalizedBudgetEngine {
         adjusted['savings'] = (adjusted['savings'] ?? 0.0) * 1.10;
         break;
     }
-    
+
     // Apply trait-based adjustments
     for (final trait in keyTraits) {
       switch (trait) {
@@ -369,21 +331,18 @@ class PersonalizedBudgetEngine {
           break;
       }
     }
-    
+
     return _normalizeAllocations(adjusted);
   }
 
   /// Incorporate spending history into recommendations
   Map<String, double> _incorporateSpendingHistory(
-    Map<String, double> baseAmounts,
-    Map<String, double> currentSpending,
-    double income
-  ) {
+      Map<String, double> baseAmounts, Map<String, double> currentSpending, double income) {
     if (currentSpending.isEmpty) return baseAmounts;
-    
+
     final adjusted = Map<String, double>.from(baseAmounts);
     final totalCurrent = currentSpending.values.fold(0.0, (sum, amount) => sum + amount);
-    
+
     if (totalCurrent > 0) {
       // Blend historical patterns with recommendations (60% historical, 40% recommended)
       currentSpending.forEach((category, amount) {
@@ -393,27 +352,24 @@ class PersonalizedBudgetEngine {
         adjusted[category] = income * blendedWeight;
       });
     }
-    
+
     return _normalizeAllocations(adjusted);
   }
 
   /// Apply peer comparison insights
   Future<Map<String, double>> _applyPeerInsights(
-    Map<String, double> baseAmounts,
-    double income,
-    IncomeTier tier
-  ) async {
+      Map<String, double> baseAmounts, double income, IncomeTier tier) async {
     if (_peerData == null) return baseAmounts;
-    
+
     final adjusted = Map<String, double>.from(baseAmounts);
     final peerCategories = _peerData!['categories'] as Map<String, dynamic>? ?? {};
-    
+
     // Apply peer comparison adjustments cautiously
     peerCategories.forEach((category, data) {
       if (data is Map<String, dynamic>) {
         final peerAverage = (data['peer_average'] as num?)?.toDouble() ?? 0.0;
         final currentAmount = adjusted[category] ?? 0.0;
-        
+
         // If user's allocation is significantly different from peers, nudge towards peer average
         final difference = (peerAverage - currentAmount).abs();
         if (difference > currentAmount * 0.3) {
@@ -422,20 +378,17 @@ class PersonalizedBudgetEngine {
         }
       }
     });
-    
+
     return _normalizeAllocations(adjusted);
   }
 
   /// Optimize allocations for financial goals
   Map<String, double> _optimizeForGoals(
-    Map<String, double> baseAmounts,
-    List<String> goals,
-    double income
-  ) {
+      Map<String, double> baseAmounts, List<String> goals, double income) {
     if (goals.isEmpty) return baseAmounts;
-    
+
     final adjusted = Map<String, double>.from(baseAmounts);
-    
+
     // Adjust based on goal priorities
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
@@ -457,25 +410,22 @@ class PersonalizedBudgetEngine {
           break;
       }
     }
-    
+
     return _normalizeAllocations(adjusted);
   }
 
   /// Apply location-based cost-of-living adjustments
   Map<String, double> _applyLocationAdjustments(
-    Map<String, double> baseAmounts,
-    String? location,
-    IncomeTier tier
-  ) {
+      Map<String, double> baseAmounts, String? location, IncomeTier tier) {
     if (location == null) return baseAmounts;
-    
+
     final adjusted = Map<String, double>.from(baseAmounts);
-    
+
     // Apply basic cost-of-living adjustments
     // This would be enhanced with real location data
     final highCostAreas = ['san francisco', 'new york', 'los angeles', 'seattle'];
     final lowCostAreas = ['kansas city', 'oklahoma city', 'memphis', 'birmingham'];
-    
+
     if (highCostAreas.any((area) => location.toLowerCase().contains(area))) {
       adjusted['housing'] = (adjusted['housing'] ?? 0.0) * 1.25;
       adjusted['food'] = (adjusted['food'] ?? 0.0) * 1.15;
@@ -485,24 +435,17 @@ class PersonalizedBudgetEngine {
       adjusted['food'] = (adjusted['food'] ?? 0.0) * 0.90;
       adjusted['transportation'] = (adjusted['transportation'] ?? 0.0) * 0.85;
     }
-    
+
     return _normalizeAllocations(adjusted);
   }
 
   /// Generate final recommendation with insights
   Future<BudgetRecommendation> _generateFinalRecommendation(
-    Map<String, double> allocations,
-    double income,
-    IncomeTier tier,
-    BudgetStyle style
-  ) async {
+      Map<String, double> allocations, double income, IncomeTier tier, BudgetStyle style) async {
     final insights = await getBudgetInsights(currentBudget: allocations, monthlyIncome: income);
     final optimizations = await generateOptimizations(
-      currentBudget: allocations,
-      actualSpending: {},
-      monthlyIncome: income
-    );
-    
+        currentBudget: allocations, actualSpending: {}, monthlyIncome: income);
+
     return BudgetRecommendation(
       categoryAllocations: allocations,
       totalAllocated: allocations.values.fold(0.0, (sum, amount) => sum + amount),
@@ -523,31 +466,28 @@ class PersonalizedBudgetEngine {
   Map<String, double> _normalizeAllocations(Map<String, double> allocations) {
     final total = allocations.values.fold(0.0, (sum, amount) => sum + amount);
     if (total <= 0) return allocations;
-    
+
     final targetSum = allocations.values.first; // Use income as target
     final scaleFactor = targetSum / total;
-    
+
     return allocations.map((key, value) => MapEntry(key, value * scaleFactor));
   }
 
   /// Calculate spending velocity for dynamic adjustments
   Map<String, Map<String, dynamic>> _calculateSpendingVelocity(
-    Map<String, double> budget,
-    Map<String, double> spending,
-    int remainingDays
-  ) {
+      Map<String, double> budget, Map<String, double> spending, int remainingDays) {
     final analysis = <String, Map<String, dynamic>>{};
     const daysInMonth = 30;
     final daysPassed = daysInMonth - remainingDays;
-    
+
     budget.forEach((category, budgetAmount) {
       final spentAmount = spending[category] ?? 0.0;
       final actualDailySpending = daysPassed > 0 ? spentAmount / daysPassed : 0.0;
       final projectedMonthlySpending = actualDailySpending * daysInMonth;
-      
+
       final velocity = budgetAmount > 0 ? projectedMonthlySpending / budgetAmount : 0.0;
       final needsAdjustment = velocity > 1.2 || velocity < 0.5;
-      
+
       analysis[category] = {
         'velocity': velocity,
         'needs_adjustment': needsAdjustment,
@@ -557,14 +497,14 @@ class PersonalizedBudgetEngine {
         'urgency': _getVelocityUrgency(velocity),
       };
     });
-    
+
     return analysis;
   }
 
   /// Generate implementation steps for budget adjustments
   List<String> _generateImplementationSteps(List<CategoryAdjustment> adjustments) {
     final steps = <String>[];
-    
+
     if (adjustments.isNotEmpty) {
       steps.add('Review the recommended budget adjustments below');
       steps.add('Identify which changes are most important for your goals');
@@ -572,7 +512,7 @@ class PersonalizedBudgetEngine {
       steps.add('Set up tracking to monitor the impact of changes');
       steps.add('Review and refine your budget in 2 weeks');
     }
-    
+
     return steps;
   }
 
@@ -611,17 +551,17 @@ class PersonalizedBudgetEngine {
 
   List<String> _identifyRiskFactors(Map<String, double> allocations, double income) {
     final risks = <String>[];
-    
+
     final savingsRate = (allocations['savings'] ?? 0.0) / income;
     if (savingsRate < 0.10) {
       risks.add('Low savings rate (below 10%)');
     }
-    
+
     final housingRate = (allocations['housing'] ?? 0.0) / income;
     if (housingRate > 0.35) {
       risks.add('High housing costs (above 35% of income)');
     }
-    
+
     return risks;
   }
 
@@ -630,7 +570,7 @@ class PersonalizedBudgetEngine {
     final tier = _incomeService.classifyIncome(income);
     final weights = _incomeService.getDefaultBudgetWeights(tier);
     final allocations = weights.map((key, weight) => MapEntry(key, income * weight));
-    
+
     return BudgetRecommendation(
       categoryAllocations: allocations,
       totalAllocated: income,
@@ -649,57 +589,36 @@ class PersonalizedBudgetEngine {
 
   // Placeholder implementations for complex analysis methods
   List<BudgetOptimization> _identifyOverspendingOptimizations(
-    Map<String, double> budget,
-    Map<String, double> spending
-  ) => [];
+          Map<String, double> budget, Map<String, double> spending) =>
+      [];
 
   List<BudgetOptimization> _identifyUnderspendingOptimizations(
-    Map<String, double> budget,
-    Map<String, double> spending,
-    double income
-  ) => [];
+          Map<String, double> budget, Map<String, double> spending, double income) =>
+      [];
 
   Future<List<BudgetOptimization>> _identifyBehavioralOptimizations(
-    Map<String, double> budget,
-    Map<String, double> spending,
-    double income
-  ) async => [];
+          Map<String, double> budget, Map<String, double> spending, double income) async =>
+      [];
 
   Future<List<BudgetOptimization>> _identifyPeerOptimizations(
-    Map<String, double> budget,
-    Map<String, double> spending,
-    double income
-  ) async => [];
+          Map<String, double> budget, Map<String, double> spending, double income) async =>
+      [];
 
-  List<BudgetInsight> _generateAllocationInsights(
-    Map<String, double> budget,
-    double income
-  ) => [];
+  List<BudgetInsight> _generateAllocationInsights(Map<String, double> budget, double income) => [];
 
-  Future<List<BudgetInsight>> _generateBehaviorInsights(
-    Map<String, double> budget
-  ) async => [];
+  Future<List<BudgetInsight>> _generateBehaviorInsights(Map<String, double> budget) async => [];
 
   Future<List<BudgetInsight>> _generatePeerInsights(
-    Map<String, double> budget,
-    double income
-  ) async => [];
+          Map<String, double> budget, double income) async =>
+      [];
 
-  List<BudgetInsight> _generateGoalInsights(
-    Map<String, double> budget,
-    double income
-  ) => [];
+  List<BudgetInsight> _generateGoalInsights(Map<String, double> budget, double income) => [];
 
-  List<BudgetInsight> _generateRiskInsights(
-    Map<String, double> budget,
-    double income
-  ) => [];
+  List<BudgetInsight> _generateRiskInsights(Map<String, double> budget, double income) => [];
 
   List<RedistributionOpportunity> _generateRedistributionSuggestions(
-    List<CategoryAdjustment> adjustments,
-    Map<String, double> budget,
-    double income
-  ) => [];
+          List<CategoryAdjustment> adjustments, Map<String, double> budget, double income) =>
+      [];
 }
 
 // ============================================================================
@@ -821,7 +740,11 @@ class BudgetAllocation {
 }
 
 enum BudgetStyle { conservative, balanced, aggressive, custom }
+
 enum OptimizationType { reduction, reallocation, increase, behavioral }
+
 enum InsightPriority { low, medium, high, critical }
+
 enum InsightType { warning, opportunity, achievement, information }
+
 enum AdjustmentUrgency { low, medium, high }

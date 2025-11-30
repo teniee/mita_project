@@ -309,9 +309,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureConfirmPassword
-                      ? Icons.visibility
-                      : Icons.visibility_off,
+                  _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
                 ),
                 onPressed: () {
                   setState(() {

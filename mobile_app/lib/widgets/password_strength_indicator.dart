@@ -19,13 +19,13 @@ class PasswordStrengthIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     if (password.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     final validation = PasswordValidationService.validatePassword(password);
-    
+
     return Container(
       padding: padding ?? const EdgeInsets.all(16),
       child: Column(
@@ -33,9 +33,9 @@ class PasswordStrengthIndicator extends StatelessWidget {
         children: [
           // Strength meter
           _buildStrengthMeter(validation, colorScheme),
-          
+
           const SizedBox(height: 12),
-          
+
           // Strength description and score
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -53,7 +53,8 @@ class PasswordStrengthIndicator extends StatelessWidget {
                   color: _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.3),
+                    color:
+                        _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -66,23 +67,23 @@ class PasswordStrengthIndicator extends StatelessWidget {
               ),
             ],
           ),
-          
+
           if (showDetailedFeedback) ...[
             const SizedBox(height: 16),
-            
+
             // Requirements checklist
             _buildRequirementsChecklist(validation, theme),
-            
+
             if (validation.issues.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildIssuesList(validation.issues, theme, true),
             ],
-            
+
             if (validation.warnings.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildIssuesList(validation.warnings, theme, false),
             ],
-            
+
             if (validation.suggestions.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildSuggestionsList(validation.suggestions, theme),
@@ -95,7 +96,7 @@ class PasswordStrengthIndicator extends StatelessWidget {
 
   Widget _buildStrengthMeter(PasswordValidationResult validation, ColorScheme colorScheme) {
     final strengthColor = _getStrengthColor(validation.strength, colorScheme);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -115,9 +116,9 @@ class PasswordStrengthIndicator extends StatelessWidget {
             ),
           ),
         ),
-        
+
         const SizedBox(height: 4),
-        
+
         // Entropy info
         Text(
           'Entropy: ${validation.entropy.toStringAsFixed(1)} bits',
@@ -136,7 +137,8 @@ class PasswordStrengthIndicator extends StatelessWidget {
       _ChecklistItem('Uppercase letter', password.contains(RegExp(r'[A-Z]'))),
       _ChecklistItem('Lowercase letter', password.contains(RegExp(r'[a-z]'))),
       _ChecklistItem('Number', password.contains(RegExp(r'\d'))),
-      _ChecklistItem('Special character', password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))),
+      _ChecklistItem(
+          'Special character', password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))),
       _ChecklistItem('Strong password', validation.isStrong),
     ];
 
@@ -156,8 +158,9 @@ class PasswordStrengthIndicator extends StatelessWidget {
   }
 
   Widget _buildChecklistItem(_ChecklistItem item, ThemeData theme) {
-    final color = item.isComplete ? Colors.green : theme.colorScheme.onSurface.withValues(alpha: 0.6);
-    
+    final color =
+        item.isComplete ? Colors.green : theme.colorScheme.onSurface.withValues(alpha: 0.6);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
@@ -199,21 +202,21 @@ class PasswordStrengthIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         ...items.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  item,
-                  style: theme.textTheme.bodySmall?.copyWith(color: color),
-                ),
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: theme.textTheme.bodySmall?.copyWith(color: color),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        )),
+            )),
       ],
     );
   }
@@ -231,27 +234,27 @@ class PasswordStrengthIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         ...suggestions.map((suggestion) => Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.lightbulb_outline,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  suggestion,
-                  style: theme.textTheme.bodySmall?.copyWith(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 16,
                     color: theme.colorScheme.primary,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      suggestion,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        )),
+            )),
       ],
     );
   }
@@ -287,14 +290,14 @@ class CompactPasswordStrengthIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     if (password.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     final validation = PasswordValidationService.validatePassword(password);
     final strengthColor = _getStrengthColor(validation.strength, colorScheme);
-    
+
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(vertical: 8),
       child: Column(

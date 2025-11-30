@@ -58,7 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile: ${userProvider.errorMessage ?? 'Unknown error'}')),
+        SnackBar(
+            content:
+                Text('Error updating profile: ${userProvider.errorMessage ?? 'Unknown error'}')),
       );
     }
 
@@ -100,8 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         prefixIcon: Icon(Icons.person),
                       ),
                       style: const TextStyle(fontFamily: AppTypography.fontBody),
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Enter name' : null,
+                      validator: (val) => val == null || val.isEmpty ? 'Enter name' : null,
                     ),
                     const SizedBox(height: 20),
                     TextFormField(

@@ -27,7 +27,6 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
   DateTime currentMonth = DateTime.now();
   late AnimationController _redistributionAnimationController;
 
-
   @override
   void initState() {
     super.initState();
@@ -59,8 +58,18 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
 
   String _getMonthName(int month) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return months[month - 1];
   }
@@ -184,16 +193,16 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               Text(
                 'No calendar data available',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                      color: Colors.grey[600],
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Complete your budget setup to view your spending calendar',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
+                      color: Colors.grey[500],
+                    ),
               ),
             ],
           ),
@@ -225,43 +234,43 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                     mainAxisSpacing: isTablet ? 8 : 4,
                     childAspectRatio: isTablet ? 0.9 : 0.75,
                   ),
-              itemBuilder: (context, index) {
-                try {
-                  final day = calendarData[index];
-                  final dayNumber = day['day'] as int? ?? 0;
-                  final status = day['status'] as String? ?? 'good';
-                  final limit = day['limit'] as int? ?? 0;
-                  final spent = day['spent'] as int? ?? 0;
-                  final isToday = dayNumber == today.day &&
-                                 currentMonth.month == today.month &&
-                                 currentMonth.year == today.year;
+                  itemBuilder: (context, index) {
+                    try {
+                      final day = calendarData[index];
+                      final dayNumber = day['day'] as int? ?? 0;
+                      final status = day['status'] as String? ?? 'good';
+                      final limit = day['limit'] as int? ?? 0;
+                      final spent = day['spent'] as int? ?? 0;
+                      final isToday = dayNumber == today.day &&
+                          currentMonth.month == today.month &&
+                          currentMonth.year == today.year;
 
-                  // Handle empty cells (before month starts)
-                  if (dayNumber == 0 || status == 'empty') {
-                    return Container();
-                  }
+                      // Handle empty cells (before month starts)
+                      if (dayNumber == 0 || status == 'empty') {
+                        return Container();
+                      }
 
-                  return _buildSimpleDayCell(
-                    dayNumber: dayNumber,
-                    limit: limit,
-                    spent: spent,
-                    status: status,
-                    isToday: isToday,
-                    colorScheme: colorScheme,
-                  );
-                } catch (e) {
-                  // Return a simple error cell
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Text('?', style: TextStyle(color: Colors.grey)),
-                    ),
-                  );
-                }
-              },
+                      return _buildSimpleDayCell(
+                        dayNumber: dayNumber,
+                        limit: limit,
+                        spent: spent,
+                        status: status,
+                        isToday: isToday,
+                        colorScheme: colorScheme,
+                      );
+                    } catch (e) {
+                      // Return a simple error cell
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Text('?', style: TextStyle(color: Colors.grey)),
+                        ),
+                      );
+                    }
+                  },
                 );
               },
             ),
@@ -277,17 +286,19 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     final weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return Row(
-      children: weekdays.map((day) => Expanded(
-        child: Center(
-          child: Text(
-            day,
-            style: textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      )).toList(),
+      children: weekdays
+          .map((day) => Expanded(
+                child: Center(
+                  child: Text(
+                    day,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -308,8 +319,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         color: dayColor,
         borderRadius: BorderRadius.circular(12),
         border: isToday
-          ? Border.all(color: colorScheme.primary, width: 3)
-          : Border.all(color: dayColor.darken(0.1), width: 1),
+            ? Border.all(color: colorScheme.primary, width: 3)
+            : Border.all(color: dayColor.darken(0.1), width: 1),
         boxShadow: [
           if (isToday || status == 'over')
             BoxShadow(
@@ -491,7 +502,6 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -543,8 +553,7 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Month summary card
-                if (!isLoading && calendarData.isNotEmpty)
-                  _buildMonthSummaryCard(calendarData),
+                if (!isLoading && calendarData.isNotEmpty) _buildMonthSummaryCard(calendarData),
 
                 // Status legend
                 Card(
@@ -890,8 +899,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
         ),
       ],
     );

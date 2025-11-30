@@ -27,8 +27,7 @@ class FadeInListItem extends StatefulWidget {
   State<FadeInListItem> createState() => _FadeInListItemState();
 }
 
-class _FadeInListItemState extends State<FadeInListItem>
-    with SingleTickerProviderStateMixin {
+class _FadeInListItemState extends State<FadeInListItem> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -109,8 +108,7 @@ class AnimatedCounter extends StatefulWidget {
   State<AnimatedCounter> createState() => _AnimatedCounterState();
 }
 
-class _AnimatedCounterState extends State<AnimatedCounter>
-    with SingleTickerProviderStateMixin {
+class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   double _previousValue = 0;
@@ -193,8 +191,7 @@ class GradientCircularProgress extends StatefulWidget {
   });
 
   @override
-  State<GradientCircularProgress> createState() =>
-      _GradientCircularProgressState();
+  State<GradientCircularProgress> createState() => _GradientCircularProgressState();
 }
 
 class _GradientCircularProgressState extends State<GradientCircularProgress>
@@ -345,8 +342,7 @@ class BouncyButton extends StatefulWidget {
   State<BouncyButton> createState() => _BouncyButtonState();
 }
 
-class _BouncyButtonState extends State<BouncyButton>
-    with SingleTickerProviderStateMixin {
+class _BouncyButtonState extends State<BouncyButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -427,8 +423,7 @@ class ShimmerLoading extends StatefulWidget {
   State<ShimmerLoading> createState() => _ShimmerLoadingState();
 }
 
-class _ShimmerLoadingState extends State<ShimmerLoading>
-    with SingleTickerProviderStateMixin {
+class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -514,8 +509,7 @@ class EnhancedCard extends StatefulWidget {
   State<EnhancedCard> createState() => _EnhancedCardState();
 }
 
-class _EnhancedCardState extends State<EnhancedCard>
-    with SingleTickerProviderStateMixin {
+class _EnhancedCardState extends State<EnhancedCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _elevationAnimation;
   late Animation<double> _scaleAnimation;
@@ -667,8 +661,7 @@ class FABAction {
   });
 }
 
-class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
-    with SingleTickerProviderStateMixin {
+class _AnimatedMultiFABState extends State<AnimatedMultiFAB> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
   late Animation<double> _scaleAnimation;
@@ -746,39 +739,45 @@ class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
   }
 
   List<Widget> _buildActionButtons() {
-    return widget.actions.asMap().entries.map((entry) {
-      final index = entry.key;
-      final action = entry.value;
+    return widget.actions
+        .asMap()
+        .entries
+        .map((entry) {
+          final index = entry.key;
+          final action = entry.value;
 
-      return AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: AnimatedOpacity(
-              opacity: _scaleAnimation.value,
-              duration: const Duration(milliseconds: 100),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: 8.0,
-                  top: index == 0 ? 8.0 : 0,
+          return AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: AnimatedOpacity(
+                  opacity: _scaleAnimation.value,
+                  duration: const Duration(milliseconds: 100),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: 8.0,
+                      top: index == 0 ? 8.0 : 0,
+                    ),
+                    child: FloatingActionButton.small(
+                      heroTag: "enhanced_animation_small_fab_$index",
+                      onPressed: () {
+                        action.onPressed();
+                        _toggle(); // Close after action
+                      },
+                      tooltip: action.tooltip,
+                      backgroundColor: action.backgroundColor,
+                      child: Icon(action.icon),
+                    ),
+                  ),
                 ),
-                child: FloatingActionButton.small(
-                  heroTag: "enhanced_animation_small_fab_$index",
-                  onPressed: () {
-                    action.onPressed();
-                    _toggle(); // Close after action
-                  },
-                  tooltip: action.tooltip,
-                  backgroundColor: action.backgroundColor,
-                  child: Icon(action.icon),
-                ),
-              ),
-            ),
+              );
+            },
           );
-        },
-      );
-    }).toList().reversed.toList();
+        })
+        .toList()
+        .reversed
+        .toList();
   }
 }
 
@@ -929,7 +928,7 @@ class _FinancialMilestoneAnimationState extends State<FinancialMilestoneAnimatio
     _particleController.forward().then((_) {
       _particleController.reset();
     });
-    
+
     // Haptic feedback for celebration
     HapticFeedback.heavyImpact();
   }

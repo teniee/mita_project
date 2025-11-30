@@ -86,13 +86,14 @@ class EnhancedDailyBudgetCalculation {
 /// Enhanced production budget engine integrating all intelligence services
 /// Backward compatible with existing MITA infrastructure
 class EnhancedProductionBudgetEngine {
-  static final EnhancedProductionBudgetEngine _instance = EnhancedProductionBudgetEngine._internal();
+  static final EnhancedProductionBudgetEngine _instance =
+      EnhancedProductionBudgetEngine._internal();
   factory EnhancedProductionBudgetEngine() => _instance;
   EnhancedProductionBudgetEngine._internal();
 
   // Master engine instance
   final EnhancedMasterBudgetEngine _masterEngine = EnhancedMasterBudgetEngine();
-  
+
   // Individual service instances for direct access
   final EnhancedIncomeService _incomeService = EnhancedIncomeService();
   final AdvancedHabitRecognitionService _habitService = AdvancedHabitRecognitionService();
@@ -112,12 +113,13 @@ class EnhancedProductionBudgetEngine {
     bool useEnhancedFeatures = true,
   }) async {
     try {
-      logInfo('Calculating enhanced daily budget with full intelligence integration', tag: 'ENHANCED_BUDGET_ENGINE');
-      
+      logInfo('Calculating enhanced daily budget with full intelligence integration',
+          tag: 'ENHANCED_BUDGET_ENGINE');
+
       final actualTargetDate = targetDate ?? DateTime.now();
       final actualUserId = userId ?? 'anonymous_${DateTime.now().millisecondsSinceEpoch}';
       final actualTransactionHistory = transactionHistory ?? <Map<String, dynamic>>[];
-      
+
       // Convert onboarding data to enhanced user profile
       final userProfile = _convertOnboardingToProfile(onboardingData, additionalContext);
 
@@ -141,7 +143,7 @@ class EnhancedProductionBudgetEngine {
       }
     } catch (e) {
       logError('Error in enhanced budget calculation: $e', tag: 'ENHANCED_BUDGET_ENGINE');
-      
+
       // Fallback to legacy calculation
       return await _calculateLegacyCompatibleBudget(
         onboardingData: onboardingData,
@@ -171,12 +173,12 @@ class EnhancedProductionBudgetEngine {
     // Extract legacy-compatible values
     final totalDailyBudget = enhancedResult.dailyBudget;
     final confidence = enhancedResult.confidence;
-    
+
     // Calculate legacy format values for backward compatibility
     final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
     const fixedCommitmentRatio = 0.55; // Default, would be calculated by enhanced system
-    const savingsTargetRatio = 0.15;   // Default, would be calculated by enhanced system
-    
+    const savingsTargetRatio = 0.15; // Default, would be calculated by enhanced system
+
     final fixedCommitments = monthlyIncome * fixedCommitmentRatio;
     final savingsTarget = monthlyIncome * savingsTargetRatio;
     final baseAmount = (monthlyIncome - fixedCommitments - savingsTarget) / 30;
@@ -196,7 +198,7 @@ class EnhancedProductionBudgetEngine {
       savingsTarget: savingsTarget,
       confidence: confidence,
       methodology: 'enhanced_intelligence_v2',
-      
+
       // Enhanced intelligence fields
       enhancedResult: enhancedResult,
       intelligentInsights: intelligentInsights,
@@ -225,7 +227,7 @@ class EnhancedProductionBudgetEngine {
 
     // Get budget parameters from enhanced classification
     final budgetParams = _incomeService.calculateBlendedBudgetParameters(incomeClassification);
-    
+
     final monthlyIncome = onboardingData.income ?? 0.0;
     final fixedCommitments = monthlyIncome * budgetParams['fixedCommitmentRatio']!;
     final savingsTarget = monthlyIncome * budgetParams['savingsTargetRatio']!;
@@ -234,12 +236,12 @@ class EnhancedProductionBudgetEngine {
 
     // Apply basic temporal adjustment
     var temporalMultiplier = 1.0;
-    
+
     // Weekend adjustment
     if (targetDate.weekday >= 6) {
       temporalMultiplier *= 1.15; // 15% increase for weekends
     }
-    
+
     // Month-end adjustment
     if (targetDate.day > 25) {
       temporalMultiplier *= 0.85; // 15% decrease for month-end conservation
@@ -276,9 +278,10 @@ class EnhancedProductionBudgetEngine {
     // Generate basic insights
     final insights = <String>[];
     insights.add(_incomeService.generateTierExplanation(incomeClassification));
-    
+
     if (temporalMultiplier != 1.0) {
-      insights.add('Budget adjusted for ${temporalMultiplier > 1.0 ? 'weekend' : 'month-end'} spending patterns');
+      insights.add(
+          'Budget adjusted for ${temporalMultiplier > 1.0 ? 'weekend' : 'month-end'} spending patterns');
     }
 
     // Create mock enhanced result for compatibility
@@ -302,7 +305,7 @@ class EnhancedProductionBudgetEngine {
       savingsTarget: savingsTarget,
       confidence: incomeClassification.isInTransition ? 0.7 : 0.85,
       methodology: 'enhanced_income_classification',
-      
+
       // Enhanced intelligence fields (basic versions)
       enhancedResult: mockEnhancedResult,
       intelligentInsights: insights,
@@ -347,7 +350,7 @@ class EnhancedProductionBudgetEngine {
     Map<String, dynamic>? additionalContext,
   }) async {
     final userProfile = _convertOnboardingToProfile(onboardingData, additionalContext);
-    
+
     return await _masterEngine.generateBudgetIntelligence(
       userId: userId,
       userProfile: userProfile,
@@ -377,8 +380,10 @@ class EnhancedProductionBudgetEngine {
   }) async {
     final userProfile = UserDemographicProfile(
       userId: userId,
-      incomeTier: (onboardingData.incomeTier != null) 
-          ? IncomeTier.values.firstWhere((e) => e.toString() == onboardingData.incomeTier.toString(), orElse: () => IncomeTier.middle)
+      incomeTier: (onboardingData.incomeTier != null)
+          ? IncomeTier.values.firstWhere(
+              (e) => e.toString() == onboardingData.incomeTier.toString(),
+              orElse: () => IncomeTier.middle)
           : IncomeTier.middle,
       interests: onboardingData.goals ?? <String>[],
       spendingPersonality: <String, dynamic>{},

@@ -18,11 +18,11 @@ class AccessibilityService {
   bool _highContrastEnabled = false;
   bool _reducedMotionEnabled = false;
   double _textScaleFactor = 1.0;
-  
+
   /// Focus management
   FocusNode? _currentFocus;
   final List<FocusNode> _focusHistory = [];
-  
+
   /// Announcements queue for screen readers
   final List<String> _announcementQueue = [];
   bool _isAnnouncing = false;
@@ -38,15 +38,17 @@ class AccessibilityService {
     try {
       final binding = WidgetsBinding.instance;
       final mediaQuery = MediaQueryData.fromView(binding.platformDispatcher.views.first);
-      
+
       _screenReaderEnabled = mediaQuery.accessibleNavigation;
       _highContrastEnabled = mediaQuery.highContrast;
       _reducedMotionEnabled = mediaQuery.disableAnimations;
       _textScaleFactor = mediaQuery.textScaler.scale(14) / 14;
-      
-      logInfo('Accessibility settings loaded: screenReader=$_screenReaderEnabled, '
-                'highContrast=$_highContrastEnabled, reducedMotion=$_reducedMotionEnabled, '
-                'textScale=$_textScaleFactor', tag: 'ACCESSIBILITY');
+
+      logInfo(
+          'Accessibility settings loaded: screenReader=$_screenReaderEnabled, '
+          'highContrast=$_highContrastEnabled, reducedMotion=$_reducedMotionEnabled, '
+          'textScale=$_textScaleFactor',
+          tag: 'ACCESSIBILITY');
     } catch (e) {
       logError('Error loading accessibility settings: $e', tag: 'ACCESSIBILITY');
     }
@@ -66,7 +68,8 @@ class AccessibilityService {
   double get textScaleFactor => _textScaleFactor;
 
   /// Announce text to screen readers with financial context
-  Future<void> announceToScreenReader(String message, {
+  Future<void> announceToScreenReader(
+    String message, {
     String? financialContext,
     bool isImportant = false,
   }) async {
@@ -78,11 +81,11 @@ class AccessibilityService {
     }
 
     _announcementQueue.add(fullMessage);
-    
+
     if (!_isAnnouncing) {
       await _processAnnouncementQueue();
     }
-    
+
     // Provide haptic feedback for important announcements
     if (isImportant) {
       HapticFeedback.mediumImpact();
@@ -92,10 +95,10 @@ class AccessibilityService {
   /// Process queued announcements
   Future<void> _processAnnouncementQueue() async {
     _isAnnouncing = true;
-    
+
     while (_announcementQueue.isNotEmpty) {
       final message = _announcementQueue.removeAt(0);
-      
+
       try {
         SemanticsService.announce(message, TextDirection.ltr);
         // Wait between announcements to avoid overwhelming screen readers
@@ -104,21 +107,23 @@ class AccessibilityService {
         logError('Error announcing to screen reader: $e', tag: 'ACCESSIBILITY');
       }
     }
-    
+
     _isAnnouncing = false;
   }
 
   /// Announce financial data changes with currency formatting
-  Future<void> announceFinancialUpdate(String type, double amount, {
+  Future<void> announceFinancialUpdate(
+    String type,
+    double amount, {
     String? category,
     String? context,
   }) async {
     final formattedAmount = formatCurrency(amount);
     final categoryText = category != null ? ' in $category' : '';
     final contextText = context != null ? ' $context' : '';
-    
+
     final message = '$type of $formattedAmount$categoryText$contextText';
-    
+
     await announceToScreenReader(
       message,
       financialContext: 'Financial Update',
@@ -139,10 +144,9 @@ class AccessibilityService {
 
   /// Announce navigation changes
   Future<void> announceNavigation(String screenName, {String? description}) async {
-    final message = description != null 
-        ? 'Navigated to $screenName. $description'
-        : 'Navigated to $screenName';
-    
+    final message =
+        description != null ? 'Navigated to $screenName. $description' : 'Navigated to $screenName';
+
     await announceToScreenReader(
       message,
       financialContext: 'Navigation',
@@ -154,7 +158,7 @@ class AccessibilityService {
     if (addToHistory && _currentFocus != null) {
       _focusHistory.add(_currentFocus!);
     }
-    
+
     _currentFocus = focusNode;
     focusNode.requestFocus();
   }
@@ -189,7 +193,7 @@ class AccessibilityService {
     final formattedAmount = formatCurrency(amount);
     final categoryText = category != null ? ' for $category' : '';
     final statusText = status != null ? '. Status: $status' : '';
-    
+
     if (isBalance) {
       return '$label: $formattedAmount$categoryText$statusText. Available balance.';
     } else {
@@ -209,16 +213,16 @@ class AccessibilityService {
     final limitFormatted = formatCurrency(limit);
     final remaining = limit - spent;
     final remainingFormatted = formatCurrency(remaining.abs());
-    
+
     String progressText;
     if (remaining >= 0) {
       progressText = '$spentFormatted spent of $limitFormatted budget. '
-                    '$remainingFormatted remaining. $percentage percent used.';
+          '$remainingFormatted remaining. $percentage percent used.';
     } else {
       progressText = '$spentFormatted spent of $limitFormatted budget. '
-                    'Over budget by $remainingFormatted. $percentage percent used.';
+          'Over budget by $remainingFormatted. $percentage percent used.';
     }
-    
+
     final statusText = status != null ? ' Status: $status.' : '';
     return '$category budget progress. $progressText$statusText';
   }
@@ -233,7 +237,7 @@ class AccessibilityService {
     final contextText = context != null ? ' $context' : '';
     final destructiveText = isDestructive ? ' Warning: This action cannot be undone.' : '';
     final disabledText = isDisabled ? ' Button is currently disabled.' : '';
-    
+
     return '$action$contextText$destructiveText$disabledText';
   }
 
@@ -258,22 +262,20 @@ class AccessibilityService {
     String? helperText,
   }) {
     final requiredText = isRequired ? ' Required field.' : '';
-    final errorText = hasError && errorMessage != null 
-        ? ' Error: $errorMessage' 
-        : '';
+    final errorText = hasError && errorMessage != null ? ' Error: $errorMessage' : '';
     final helperTextFormatted = helperText != null ? ' $helperText' : '';
-    
+
     return '$label$requiredText$errorText$helperTextFormatted';
   }
 
   /// Announce form validation errors
   Future<void> announceFormErrors(List<String> errors) async {
     if (errors.isEmpty) return;
-    
+
     final errorCount = errors.length;
     final pluralText = errorCount == 1 ? 'error' : 'errors';
     final summary = '$errorCount form $pluralText found.';
-    
+
     await announceToScreenReader(
       '$summary ${errors.join('. ')}',
       financialContext: 'Form Validation',
@@ -284,7 +286,7 @@ class AccessibilityService {
   /// Get high contrast color scheme if enabled
   ColorScheme? getHighContrastColorScheme(ColorScheme baseScheme) {
     if (!_highContrastEnabled) return null;
-    
+
     // Return high contrast version of the color scheme
     return baseScheme.copyWith(
       primary: _highContrastEnabled ? Colors.blue.shade900 : baseScheme.primary,
@@ -301,9 +303,7 @@ class AccessibilityService {
 
   /// Get animation duration considering reduced motion preferences
   Duration getAnimationDuration(Duration defaultDuration) {
-    return _reducedMotionEnabled 
-        ? Duration.zero 
-        : defaultDuration;
+    return _reducedMotionEnabled ? Duration.zero : defaultDuration;
   }
 
   /// Dispose of accessibility service resources

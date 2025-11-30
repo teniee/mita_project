@@ -20,7 +20,7 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
   List<BehavioralInsight> _insights = [];
   List<SpendingAnomaly> _anomalies = [];
   Map<String, SpendingVelocity> _velocityAnalysis = {};
-  
+
   // Pattern detection thresholds
   static const double ANOMALY_THRESHOLD = 2.0; // Standard deviations
   static const int MIN_TRANSACTIONS_FOR_PATTERN = 3;
@@ -37,22 +37,21 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       logInfo('Initializing Spending Pattern Analyzer', tag: 'PATTERN_ANALYZER');
-      
+
       // Load historical spending data
       await _loadHistoricalData();
-      
+
       // Analyze current patterns
       await analyzePatterns();
-      
+
       // Detect spending anomalies
       await detectAnomalies();
-      
+
       // Generate behavioral insights
       await generateInsights();
-      
+
       logInfo('Pattern analyzer initialized successfully', tag: 'PATTERN_ANALYZER');
       notifyListeners();
-      
     } catch (e) {
       logError('Failed to initialize pattern analyzer: $e', tag: 'PATTERN_ANALYZER', error: e);
     }
@@ -65,10 +64,10 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
       // Get comprehensive pattern analysis from backend
       final backendPatterns = await _apiService.getSpendingPatternAnalysis();
-      
+
       _patterns = {};
       final patternsData = backendPatterns['patterns'] as Map<String, dynamic>? ?? {};
-      
+
       // Process backend patterns
       patternsData.forEach((category, data) {
         if (data is Map<String, dynamic>) {
@@ -91,12 +90,11 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
       // Analyze spending velocity
       await _analyzeSpendingVelocity();
-      
+
       // Detect trending patterns
       await _analyzeTrends();
 
       notifyListeners();
-      
     } catch (e) {
       logError('Pattern analysis failed: $e', tag: 'PATTERN_ANALYZER', error: e);
       _patterns = {};
@@ -109,10 +107,10 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
       logInfo('Detecting spending anomalies', tag: 'PATTERN_ANALYZER');
 
       _anomalies = [];
-      
+
       // Get anomalies from backend
       final backendAnomalies = await _apiService.getSpendingAnomalies();
-      
+
       for (final anomaly in backendAnomalies) {
         _anomalies.add(SpendingAnomaly(
           id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -128,7 +126,7 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
           severity: _calculateSeverity(anomaly['anomaly_score'] as num? ?? 0),
           confidence: (anomaly['confidence'] as num?)?.toDouble() ?? 0.5,
         ));
-            }
+      }
 
       // Local anomaly detection for additional insights
       await _detectLocalAnomalies();
@@ -141,7 +139,6 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
       });
 
       notifyListeners();
-      
     } catch (e) {
       logError('Anomaly detection failed: $e', tag: 'PATTERN_ANALYZER', error: e);
       _anomalies = [];
@@ -157,10 +154,10 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
       // Get behavioral insights from backend
       final backendInsights = await _apiService.getBehavioralInsights();
-      
+
       // Process insights if they exist
       final insightsList = backendInsights['insights'] as List<dynamic>? ?? [];
-      
+
       for (final insight in insightsList) {
         if (insight is Map<String, dynamic>) {
           _insights.add(BehavioralInsight(
@@ -190,7 +187,6 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
       });
 
       notifyListeners();
-      
     } catch (e) {
       logError('Insight generation failed: $e', tag: 'PATTERN_ANALYZER', error: e);
       _insights = [];
@@ -210,7 +206,7 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
         // Calculate current velocity
         final currentVelocity = _calculateCurrentVelocity(patternData);
-        
+
         // Predict future spending
         final prediction = _predictCategorySpending(patternData, daysAhead: 30);
 
@@ -225,7 +221,6 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
           riskLevel: _assessVelocityRisk(currentVelocity, patternData.averageAmount),
         );
       }
-      
     } catch (e) {
       logError('Velocity analysis failed: $e', tag: 'PATTERN_ANALYZER', error: e);
     }
@@ -264,7 +259,6 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
         _trends[category] = trends;
       }
-      
     } catch (e) {
       logError('Trend analysis failed: $e', tag: 'PATTERN_ANALYZER', error: e);
     }
@@ -272,22 +266,22 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
 
   /// Get spending insights for a specific category
   List<BehavioralInsight> getCategoryInsights(String category) {
-    return _insights.where((insight) => 
-      insight.category == category || 
-      insight.relatedPatterns.contains(category)
-    ).toList();
+    return _insights
+        .where(
+            (insight) => insight.category == category || insight.relatedPatterns.contains(category))
+        .toList();
   }
 
   /// Get spending forecast for next period
   Map<String, double> getSpendingForecast({int daysAhead = 30}) {
     final forecast = <String, double>{};
-    
+
     if (_patterns == null) return forecast;
 
     for (final pattern in _patterns!.entries) {
       final category = pattern.key;
       final patternData = pattern.value;
-      
+
       forecast[category] = _predictCategorySpending(patternData, daysAhead: daysAhead);
     }
 
@@ -369,8 +363,8 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
     // Weekend vs weekday spending patterns
     for (final pattern in _patterns!.entries) {
       final patternData = pattern.value;
-      final weekendSpending = (patternData.dayOfWeekPatterns['6'] ?? 0.0) + 
-                             (patternData.dayOfWeekPatterns['7'] ?? 0.0);
+      final weekendSpending =
+          (patternData.dayOfWeekPatterns['6'] ?? 0.0) + (patternData.dayOfWeekPatterns['7'] ?? 0.0);
       final weekdaySpending = patternData.dayOfWeekPatterns.entries
           .where((e) => !['6', '7'].contains(e.key))
           .fold(0.0, (sum, entry) => sum + entry.value);
@@ -408,19 +402,25 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
   /// Calculate spending acceleration
   double _calculateAcceleration(SpendingPattern pattern) {
     // This would calculate rate of change in spending velocity
-    return pattern.trend == TrendDirection.increasing ? 0.1 : 
-           pattern.trend == TrendDirection.decreasing ? -0.1 : 0.0;
+    return pattern.trend == TrendDirection.increasing
+        ? 0.1
+        : pattern.trend == TrendDirection.decreasing
+            ? -0.1
+            : 0.0;
   }
 
   /// Predict category spending for future period
   double _predictCategorySpending(SpendingPattern pattern, {required int daysAhead}) {
     final baseAmount = pattern.averageAmount;
-    final trendMultiplier = pattern.trend == TrendDirection.increasing ? 1.1 :
-                           pattern.trend == TrendDirection.decreasing ? 0.9 : 1.0;
-    
+    final trendMultiplier = pattern.trend == TrendDirection.increasing
+        ? 1.1
+        : pattern.trend == TrendDirection.decreasing
+            ? 0.9
+            : 1.0;
+
     // Apply seasonality if available
     final seasonalAdjustment = _getSeasonalAdjustment(pattern, daysAhead);
-    
+
     return baseAmount * trendMultiplier * seasonalAdjustment * (daysAhead / 30.0);
   }
 
@@ -452,9 +452,13 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
     final baseStrength = pattern.consistency * (1.0 - pattern.variability.clamp(0.0, 1.0));
 
     // Adjust based on period
-    final periodMultiplier = period == TrendPeriod.weekly ? 0.7 :
-                            period == TrendPeriod.monthly ? 1.0 :
-                            period == TrendPeriod.quarterly ? 1.2 : 1.0;
+    final periodMultiplier = period == TrendPeriod.weekly
+        ? 0.7
+        : period == TrendPeriod.monthly
+            ? 1.0
+            : period == TrendPeriod.quarterly
+                ? 1.2
+                : 1.0;
 
     return (baseStrength * periodMultiplier).clamp(0.0, 1.0);
   }
@@ -468,42 +472,60 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
   /// Parse trend direction from string
   TrendDirection _parseTrend(String? trend) {
     switch (trend?.toLowerCase()) {
-      case 'increasing': return TrendDirection.increasing;
-      case 'decreasing': return TrendDirection.decreasing;
-      case 'stable': return TrendDirection.stable;
-      default: return TrendDirection.stable;
+      case 'increasing':
+        return TrendDirection.increasing;
+      case 'decreasing':
+        return TrendDirection.decreasing;
+      case 'stable':
+        return TrendDirection.stable;
+      default:
+        return TrendDirection.stable;
     }
   }
 
   /// Parse anomaly type from string
   AnomalyType _parseAnomalyType(String? type) {
     switch (type?.toLowerCase()) {
-      case 'amount': return AnomalyType.amount;
-      case 'frequency': return AnomalyType.frequency;
-      case 'merchant': return AnomalyType.merchant;
-      case 'time': return AnomalyType.time;
-      default: return AnomalyType.amount;
+      case 'amount':
+        return AnomalyType.amount;
+      case 'frequency':
+        return AnomalyType.frequency;
+      case 'merchant':
+        return AnomalyType.merchant;
+      case 'time':
+        return AnomalyType.time;
+      default:
+        return AnomalyType.amount;
     }
   }
 
   /// Parse insight type from string
   InsightType _parseInsightType(String? type) {
     switch (type?.toLowerCase()) {
-      case 'pattern': return InsightType.pattern;
-      case 'trend': return InsightType.trend;
-      case 'anomaly': return InsightType.anomaly;
-      case 'optimization': return InsightType.optimization;
-      default: return InsightType.pattern;
+      case 'pattern':
+        return InsightType.pattern;
+      case 'trend':
+        return InsightType.trend;
+      case 'anomaly':
+        return InsightType.anomaly;
+      case 'optimization':
+        return InsightType.optimization;
+      default:
+        return InsightType.pattern;
     }
   }
 
   /// Parse impact level from string
   ImpactLevel _parseImpactLevel(String? impact) {
     switch (impact?.toLowerCase()) {
-      case 'high': return ImpactLevel.high;
-      case 'medium': return ImpactLevel.medium;
-      case 'low': return ImpactLevel.low;
-      default: return ImpactLevel.medium;
+      case 'high':
+        return ImpactLevel.high;
+      case 'medium':
+        return ImpactLevel.medium;
+      case 'low':
+        return ImpactLevel.low;
+      default:
+        return ImpactLevel.medium;
     }
   }
 
@@ -669,10 +691,17 @@ class SpendingRecommendation {
 
 // Enums
 enum TrendDirection { increasing, decreasing, stable }
+
 enum TrendPeriod { weekly, monthly, quarterly }
+
 enum InsightType { pattern, trend, anomaly, optimization }
+
 enum ImpactLevel { low, medium, high }
+
 enum AnomalyType { amount, frequency, merchant, time }
+
 enum AnomalySeverity { low, medium, high }
+
 enum VelocityRisk { low, medium, high }
+
 enum RecommendationType { reduction, increase, reallocation, caution, opportunity }

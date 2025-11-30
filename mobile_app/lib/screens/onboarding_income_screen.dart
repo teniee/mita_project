@@ -15,11 +15,12 @@ class OnboardingIncomeScreen extends StatefulWidget {
   State<OnboardingIncomeScreen> createState() => _OnboardingIncomeScreenState();
 }
 
-class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with TickerProviderStateMixin {
+class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _incomeController = TextEditingController();
   final _incomeService = IncomeService();
-  
+
   IncomeTier? _currentTier;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -50,14 +51,12 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
         IncomeTier newTier;
         if (OnboardingState.instance.countryCode != null) {
           newTier = _incomeService.classifyIncomeForLocation(
-            income, 
-            OnboardingState.instance.countryCode!, 
-            stateCode: OnboardingState.instance.stateCode
-          );
+              income, OnboardingState.instance.countryCode!,
+              stateCode: OnboardingState.instance.stateCode);
         } else {
           newTier = await _incomeService.classifyIncomeByLocation(income);
         }
-        
+
         if (newTier != _currentTier) {
           setState(() {
             _currentTier = newTier;
@@ -78,22 +77,20 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
   void _submitIncome() async {
     if (_formKey.currentState?.validate() ?? false) {
       double income = double.parse(_incomeController.text.replaceAll(',', ''));
-      
+
       // Use location-aware classification
       IncomeTier tier;
       if (OnboardingState.instance.countryCode != null) {
         tier = _incomeService.classifyIncomeForLocation(
-          income, 
-          OnboardingState.instance.countryCode!, 
-          stateCode: OnboardingState.instance.stateCode
-        );
+            income, OnboardingState.instance.countryCode!,
+            stateCode: OnboardingState.instance.stateCode);
       } else {
         tier = await _incomeService.classifyIncomeByLocation(income);
       }
 
       // Store income and tier information
       OnboardingState.instance.income = income;
-    await OnboardingState.instance.save();
+      await OnboardingState.instance.save();
       OnboardingState.instance.incomeTier = tier;
 
       // Show personalized message before continuing
@@ -105,7 +102,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
     final tierName = _incomeService.getIncomeTierName(tier);
     final message = _incomeService.getOnboardingMessage(tier);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -207,10 +204,10 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = _currentTier != null 
+    final primaryColor = _currentTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_currentTier!)
         : AppColors.textPrimary;
-    
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -343,7 +340,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                     ),
                   ),
                 ),
-                
+
                 // Income tier information card (animated)
                 if (_showTierInfo && _currentTier != null)
                   AnimatedBuilder(
@@ -359,12 +356,14 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                               children: [
                                 // Income tier display
                                 IncomeTierCard(
-                                  monthlyIncome: double.tryParse(_incomeController.text.replaceAll(',', '')) ?? 0.0,
+                                  monthlyIncome:
+                                      double.tryParse(_incomeController.text.replaceAll(',', '')) ??
+                                          0.0,
                                   showDetails: true,
                                 ),
-                                
+
                                 const SizedBox(height: 16),
-                                
+
                                 // Quick preview of benefits
                                 Card(
                                   elevation: 2,
@@ -397,8 +396,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                                           ],
                                         ),
                                         const SizedBox(height: 16),
-                                        ..._getIncomeBasedBenefits(_currentTier!).map((benefit) => 
-                                          Padding(
+                                        ..._getIncomeBasedBenefits(_currentTier!).map(
+                                          (benefit) => Padding(
                                             padding: const EdgeInsets.only(bottom: 8),
                                             child: Row(
                                               children: [
@@ -432,7 +431,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
                       );
                     },
                   ),
-                
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -441,7 +440,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
       ),
     );
   }
-  
+
   List<String> _getIncomeBasedBenefits(IncomeTier tier) {
     switch (tier) {
       case IncomeTier.low:
@@ -475,7 +474,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen> with Ti
       case IncomeTier.high:
         return [
           'Advanced wealth-building strategies',
-          'Tax optimization recommendations',  
+          'Tax optimization recommendations',
           'Premium investment opportunities',
           'High-value goal planning',
         ];

@@ -41,20 +41,20 @@ class OfflineQueueService {
   /// Queue a registration attempt for when connection is restored
   Future<void> queueRegistration(String email, String password) async {
     logInfo('Queueing registration for when connection is restored', tag: 'OFFLINE_QUEUE');
-    
+
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('queued_registrations') ?? [];
-    
+
     final registrationData = {
       'email': email,
       'password': password,
       'timestamp': DateTime.now().toIso8601String(),
       'type': 'registration',
     };
-    
+
     list.add(jsonEncode(registrationData));
     await prefs.setStringList('queued_registrations', list);
-    
+
     logInfo('Registration queued for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
   }
 
@@ -69,9 +69,9 @@ class OfflineQueueService {
   Future<Map<String, dynamic>?> peekQueuedRegistration() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('queued_registrations') ?? [];
-    
+
     if (list.isEmpty) return null;
-    
+
     try {
       return jsonDecode(list.first) as Map<String, dynamic>;
     } catch (e) {
@@ -91,7 +91,7 @@ class OfflineQueueService {
   Future<void> removeFirstQueuedRegistration() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('queued_registrations') ?? [];
-    
+
     if (list.isNotEmpty) {
       list.removeAt(0);
       await prefs.setStringList('queued_registrations', list);
@@ -124,30 +124,33 @@ class OfflineQueueService {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('queued_registrations') ?? [];
     final remaining = <String>[];
-    
+
     logInfo('Processing ${list.length} queued registrations', tag: 'OFFLINE_QUEUE');
-    
+
     for (final item in list) {
       try {
         final data = jsonDecode(item) as Map<String, dynamic>;
         final email = data['email'] as String;
         final password = data['password'] as String;
-        
-        logInfo('Attempting queued registration for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
-        
+
+        logInfo('Attempting queued registration for ${email.substring(0, 3)}***',
+            tag: 'OFFLINE_QUEUE');
+
         // Use standard FastAPI registration (emergency methods removed)
         await ApiService().register(email, password);
-        logInfo('Queued FastAPI registration successful for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
+        logInfo('Queued FastAPI registration successful for ${email.substring(0, 3)}***',
+            tag: 'OFFLINE_QUEUE');
       } catch (e) {
         logWarning('Queued registration failed, keeping in queue: $e', tag: 'OFFLINE_QUEUE');
         remaining.add(item);
       }
     }
-    
+
     await prefs.setStringList('queued_registrations', remaining);
-    
+
     if (remaining.length < list.length) {
-      logInfo('Successfully processed ${list.length - remaining.length} queued registrations', tag: 'OFFLINE_QUEUE');
+      logInfo('Successfully processed ${list.length - remaining.length} queued registrations',
+          tag: 'OFFLINE_QUEUE');
     }
   }
 

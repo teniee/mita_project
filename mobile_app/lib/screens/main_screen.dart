@@ -1,4 +1,3 @@
-
 import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -148,7 +147,8 @@ class _MainScreenState extends State<MainScreen> {
     _incomeTier = null;
 
     latestAdvice = {
-      'text': 'Complete your profile setup to get personalized financial insights and budget recommendations.',
+      'text':
+          'Complete your profile setup to get personalized financial insights and budget recommendations.',
       'title': 'Complete Your Profile',
       'action': 'complete_profile',
     };
@@ -239,16 +239,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Map<String, dynamic> _getDefaultAdvice() => {
-    'text': 'Start tracking your expenses to receive personalized financial insights and advice.',
-    'title': 'Getting Started',
-  };
+        'text':
+            'Start tracking your expenses to receive personalized financial insights and advice.',
+        'title': 'Getting Started',
+      };
 
   List<Map<String, dynamic>> _generateWeekData() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return List.generate(7, (index) => {
-      'day': days[index],
-      'status': 'neutral',
-    });
+    return List.generate(
+        7,
+        (index) => {
+              'day': days[index],
+              'status': 'neutral',
+            });
   }
 
   Widget _buildErrorState(BuildContext context) {
@@ -301,7 +304,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -313,12 +315,10 @@ class _MainScreenState extends State<MainScreen> {
     final transactionProvider = context.watch<TransactionProvider>();
 
     // Determine loading and error states from providers
-    final isLoading = userProvider.isLoading ||
-                      budgetProvider.isLoading ||
-                      transactionProvider.isLoading;
+    final isLoading =
+        userProvider.isLoading || budgetProvider.isLoading || transactionProvider.isLoading;
 
-    final hasError = userProvider.errorMessage != null ||
-                     budgetProvider.errorMessage != null;
+    final hasError = userProvider.errorMessage != null || budgetProvider.errorMessage != null;
 
     // Get dashboard data from budget provider
     final dashboardData = _buildDashboardData(userProvider, budgetProvider, transactionProvider);
@@ -406,21 +406,23 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
       ),
-      floatingActionButton: !hasError && !isLoading ? Semantics(
-        button: true,
-        label: 'Add Expense - Record a new expense transaction',
-        child: FloatingActionButton.extended(
-        heroTag: "main_fab",
-        onPressed: () {
-          Navigator.pushNamed(context, '/add_expense');
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Expense'),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        tooltip: 'Add new expense',
-        ),
-      ) : null,
+      floatingActionButton: !hasError && !isLoading
+          ? Semantics(
+              button: true,
+              label: 'Add Expense - Record a new expense transaction',
+              child: FloatingActionButton.extended(
+                heroTag: "main_fab",
+                onPressed: () {
+                  Navigator.pushNamed(context, '/add_expense');
+                },
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Expense'),
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+                tooltip: 'Add new expense',
+              ),
+            )
+          : null,
     );
   }
 
@@ -431,7 +433,8 @@ class _MainScreenState extends State<MainScreen> {
     TransactionProvider transactionProvider,
   ) {
     final financialContext = userProvider.financialContext;
-    final hasIncompleteProfile = financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
+    final hasIncompleteProfile =
+        financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
     final hasNetworkError = financialContext['api_error'] == true;
 
     return {
@@ -441,14 +444,17 @@ class _MainScreenState extends State<MainScreen> {
       'week': budgetProvider.calendarData.isNotEmpty
           ? _convertCalendarToWeekData(budgetProvider.calendarData)
           : _generateWeekData(),
-      'transactions': transactionProvider.transactions.take(5).map((t) => {
-        'action': t.description,
-        'category': t.category,
-        'amount': t.amount,
-        'date': t.spentAt.toIso8601String(),
-        'icon': _getCategoryIcon(t.category),
-        'color': _getCategoryColor(t.category),
-      }).toList(),
+      'transactions': transactionProvider.transactions
+          .take(5)
+          .map((t) => {
+                'action': t.description,
+                'category': t.category,
+                'amount': t.amount,
+                'date': t.spentAt.toIso8601String(),
+                'icon': _getCategoryIcon(t.category),
+                'color': _getCategoryColor(t.category),
+              })
+          .toList(),
       'incomplete_profile': hasIncompleteProfile,
       'network_error': hasNetworkError,
       'data': {
@@ -581,9 +587,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildHeader(UserProvider userProvider) {
-    final tierName = _incomeTier != null ? _incomeService.getIncomeTierName(_incomeTier!) : userProvider.userName;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
-    final hasIncompleteProfile = userProvider.financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
+    final tierName = _incomeTier != null
+        ? _incomeService.getIncomeTierName(_incomeTier!)
+        : userProvider.userName;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : const Color(0xFF193C57);
+    final hasIncompleteProfile =
+        userProvider.financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
     final hasNetworkError = userProvider.financialContext['api_error'] == true;
 
     return Row(
@@ -713,12 +724,13 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-
   Widget _buildBalanceCard(Map<String, dynamic> dashboardData) {
     final balance = dashboardData['balance'] ?? 0;
     final spent = dashboardData['spent'] ?? 0;
     final remaining = (balance is num && spent is num) ? balance - spent : balance;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFFFFD25F);
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : const Color(0xFFFFD25F);
 
     return Card(
       color: primaryColor,
@@ -820,10 +832,11 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-
   Widget _buildBudgetTargets(Map<String, dynamic> dashboardData) {
     final targets = dashboardData['daily_targets'] ?? [];
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : const Color(0xFF193C57);
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : const Color(0xFF193C57);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -993,7 +1006,9 @@ class _MainScreenState extends State<MainScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            remaining > 0 ? 'Remaining: \$${remaining.toStringAsFixed(0)}' : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
+                            remaining > 0
+                                ? 'Remaining: \$${remaining.toStringAsFixed(0)}'
+                                : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
                             style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,
@@ -1052,10 +1067,17 @@ class _MainScreenState extends State<MainScreen> {
           children: week.map<Widget>((day) {
             Color color;
             switch (day['status']) {
-              case 'over': color = const Color(0xFFFF5C5C); break;
-              case 'warning': color = const Color(0xFFFFD25F); break;
-              case 'good': color = const Color(0xFF84FAA1); break;
-              default: color = Colors.grey.shade300;
+              case 'over':
+                color = const Color(0xFFFF5C5C);
+                break;
+              case 'warning':
+                color = const Color(0xFFFFD25F);
+                break;
+              case 'good':
+                color = const Color(0xFF84FAA1);
+                break;
+              default:
+                color = Colors.grey.shade300;
             }
 
             return Container(
@@ -1470,7 +1492,8 @@ class _MainScreenState extends State<MainScreen> {
 
     // Get challenges data from dashboard
     final challengesData = dashboardData['data']?['challenges'] as List<dynamic>? ?? [];
-    final challengesSummary = dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ?? {};
+    final challengesSummary =
+        dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ?? {};
 
     final activeChallenges = challengesSummary['active_challenges'] ?? 0;
     final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
@@ -2125,7 +2148,8 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            advice['text'] ?? 'Complete your profile setup to get personalized financial insights and budget recommendations.',
+            advice['text'] ??
+                'Complete your profile setup to get personalized financial insights and budget recommendations.',
             style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
@@ -2163,7 +2187,8 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            advice['text'] ?? 'Unable to load your data. Please check your internet connection and try refreshing.',
+            advice['text'] ??
+                'Unable to load your data. Please check your internet connection and try refreshing.',
             style: TextStyle(
               fontFamily: 'Manrope',
               fontSize: 14,
@@ -2191,7 +2216,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-
   IconData _getTrendIcon(String trend) {
     switch (trend.toLowerCase()) {
       case 'improving':
@@ -2213,7 +2237,6 @@ class _MainScreenState extends State<MainScreen> {
         return Colors.orange;
     }
   }
-
 
   Widget _buildRecentTransactions(TransactionProvider transactionProvider) {
     final transactions = transactionProvider.transactions.take(5).toList();
@@ -2303,7 +2326,7 @@ class _MainScreenState extends State<MainScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            tx.description,
+                            tx.description ?? '',
                             style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.w600,

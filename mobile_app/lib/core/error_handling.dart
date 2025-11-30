@@ -83,7 +83,7 @@ class ErrorReport {
 class ErrorHandler {
   static ErrorHandler? _instance;
   static ErrorHandler get instance => _instance ??= ErrorHandler._();
-  
+
   ErrorHandler._();
 
   String? _userId;
@@ -97,22 +97,22 @@ class ErrorHandler {
   Future<void> initialize({String? userId}) async {
     _userId = userId;
     _prefs = await SharedPreferences.getInstance();
-    
+
     // Get app and device info
     await _initializeSystemInfo();
-    
+
     // Set up Flutter error handling
     _setupFlutterErrorHandling();
-    
+
     // Set up platform error handling
     _setupPlatformErrorHandling();
-    
+
     // Start periodic error reporting
     _startPeriodicReporting();
-    
+
     // Load and retry pending reports
     await _loadPendingReports();
-    
+
     developer.log('Error handling system initialized', name: 'ErrorHandler');
   }
 
@@ -124,7 +124,7 @@ class ErrorHandler {
       if (kDebugMode) {
         FlutterError.presentError(details);
       }
-      
+
       // Create error report
       final report = _createErrorReport(
         error: details.exception.toString(),
@@ -137,7 +137,7 @@ class ErrorHandler {
           'informationCollector': details.informationCollector?.toString(),
         },
       );
-      
+
       _handleErrorReport(report);
     };
 
@@ -150,7 +150,7 @@ class ErrorHandler {
         category: ErrorCategory.system,
         context: {'source': 'platform_dispatcher'},
       );
-      
+
       _handleErrorReport(report);
       return true;
     };
@@ -167,7 +167,7 @@ class ErrorHandler {
         category: ErrorCategory.system,
         context: {'source': 'async_error'},
       );
-      
+
       _handleErrorReport(report);
     });
   }
@@ -177,7 +177,7 @@ class ErrorHandler {
     try {
       // Get app version - simplified version without package_info_plus
       _appVersion = '1.0.0 (1)'; // Hardcoded for now, can be made configurable
-      
+
       // Get basic device information without device_info_plus
       String deviceDetails = Platform.operatingSystem;
       if (Platform.isAndroid) {
@@ -185,9 +185,8 @@ class ErrorHandler {
       } else if (Platform.isIOS) {
         deviceDetails = 'iOS Device';
       }
-      
+
       _deviceInfo = deviceDetails;
-      
     } catch (e) {
       developer.log('Failed to initialize system info: $e', name: 'ErrorHandler');
       _appVersion = 'Unknown';
@@ -231,7 +230,7 @@ class ErrorHandler {
 
     // Check connectivity - simplified without connectivity_plus
     const isConnected = true; // Assume connected for now
-    
+
     final updatedReport = ErrorReport(
       id: report.id,
       timestamp: report.timestamp,
@@ -253,7 +252,7 @@ class ErrorHandler {
       // Store for later if sending fails
       await _storePendingReport(updatedReport);
     }
-    
+
     // Try to retry pending reports after new report is processed
     _retryPendingReports();
   }
@@ -263,15 +262,17 @@ class ErrorHandler {
     try {
       // Replace with your actual error reporting endpoint
       const endpoint = 'https://your-api.com/api/errors/report';
-      
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${await _getAuthToken()}',
-        },
-        body: jsonEncode(report.toJson()),
-      ).timeout(const Duration(seconds: 10));
+
+      final response = await http
+          .post(
+            Uri.parse(endpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${await _getAuthToken()}',
+            },
+            body: jsonEncode(report.toJson()),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         developer.log('Error report sent successfully: ${report.id}', name: 'ErrorHandler');
@@ -290,18 +291,18 @@ class ErrorHandler {
   Future<void> _storePendingReport(ErrorReport report) async {
     try {
       _pendingReports.add(report);
-      
+
       // Store in local storage
       final reports = _prefs.getStringList('pending_error_reports') ?? [];
       reports.add(jsonEncode(report.toJson()));
-      
+
       // Keep only the most recent 50 reports
       if (reports.length > 50) {
         reports.removeRange(0, reports.length - 50);
       }
-      
+
       await _prefs.setStringList('pending_error_reports', reports);
-      
+
       developer.log('Error report stored for later: ${report.id}', name: 'ErrorHandler');
     } catch (e) {
       developer.log('Failed to store error report: $e', name: 'ErrorHandler');
@@ -312,7 +313,7 @@ class ErrorHandler {
   Future<void> _loadPendingReports() async {
     try {
       final reports = _prefs.getStringList('pending_error_reports') ?? [];
-      
+
       for (final reportJson in reports) {
         final reportData = jsonDecode(reportJson);
         _pendingReports.add(ErrorReport(
@@ -336,7 +337,7 @@ class ErrorHandler {
           userId: reportData['userId'],
         ));
       }
-      
+
       developer.log('Loaded ${_pendingReports.length} pending error reports', name: 'ErrorHandler');
     } catch (e) {
       developer.log('Failed to load pending reports: $e', name: 'ErrorHandler');
@@ -346,7 +347,7 @@ class ErrorHandler {
   // Start periodic reporting of pending errors - RE-ENABLED for stable backend
   void _startPeriodicReporting() {
     developer.log('Starting periodic error reporting for stable backend', name: 'ERROR_HANDLER');
-    
+
     // Periodic timer to process pending reports
     Timer.periodic(const Duration(minutes: 2), (timer) async {
       if (_pendingReports.isNotEmpty) {
@@ -364,13 +365,13 @@ class ErrorHandler {
 
     try {
       final successfulReports = <ErrorReport>[];
-      
+
       // Create a completely separate copy to avoid any concurrent modification
       final reportsCopy = <ErrorReport>[];
       for (final report in _pendingReports) {
         reportsCopy.add(report);
       }
-      
+
       // Process the copy safely
       for (final report in reportsCopy) {
         try {
@@ -388,7 +389,7 @@ class ErrorHandler {
       if (successfulReports.isNotEmpty) {
         // Remove from original list
         _pendingReports.removeWhere((report) => successfulReports.contains(report));
-        
+
         // Update stored reports
         final remainingReports = <String>[];
         for (final report in _pendingReports) {
@@ -399,9 +400,10 @@ class ErrorHandler {
             developer.log('Skipping corrupted report: $e', name: 'ErrorHandler');
           }
         }
-        
+
         await _prefs.setStringList('pending_error_reports', remainingReports);
-        developer.log('Sent ${successfulReports.length} pending error reports', name: 'ErrorHandler');
+        developer.log('Sent ${successfulReports.length} pending error reports',
+            name: 'ErrorHandler');
       }
     } catch (e) {
       developer.log('Error in _retryPendingReports: $e', name: 'ErrorHandler');
@@ -429,7 +431,7 @@ class ErrorHandler {
       category: category,
       context: context,
     );
-    
+
     instance._handleErrorReport(report);
   }
 
@@ -478,15 +480,15 @@ class ErrorHandler {
   Map<String, dynamic> getErrorStats() {
     final categoryCounts = <String, int>{};
     final severityCounts = <String, int>{};
-    
+
     for (final report in _pendingReports) {
       final category = report.category.toString().split('.').last;
       final severity = report.severity.toString().split('.').last;
-      
+
       categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
       severityCounts[severity] = (severityCounts[severity] ?? 0) + 1;
     }
-    
+
     return {
       'pendingReports': _pendingReports.length,
       'categoryCounts': categoryCounts,
@@ -534,7 +536,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
           _error = error;
           _stackTrace = stackTrace;
         });
-        
+
         widget.onError?.call(error, stackTrace);
         ErrorHandler.reportError(
           error,
@@ -648,7 +650,7 @@ class _ErrorCaptureState extends State<ErrorCapture> {
   @override
   void initState() {
     super.initState();
-    
+
     // Override error handling for this widget subtree
     FlutterError.onError = (FlutterErrorDetails details) {
       widget.onError(details.exception, details.stack ?? StackTrace.current);

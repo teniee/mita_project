@@ -37,7 +37,7 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.pop(context, true);  // Return to goals screen
+      Navigator.pop(context, true); // Return to goals screen
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -643,18 +643,22 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailRow('Description', (rec['description'] ?? rec['reasoning'] ?? 'No description') as String),
+                    _buildDetailRow('Description',
+                        (rec['description'] ?? rec['reasoning'] ?? 'No description') as String),
                     const SizedBox(height: 16),
                     _buildDetailRow('Category', (rec['category'] ?? 'General') as String),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Target Amount', '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
+                    _buildDetailRow(
+                        'Target Amount', '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Monthly Contribution', '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(2)}'),
+                    _buildDetailRow('Monthly Contribution',
+                        '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
                     _buildDetailRow('Priority', (rec['priority'] ?? 'medium') as String),
                     if (rec['suggested_deadline'] != null) ...[
                       const SizedBox(height: 16),
-                      _buildDetailRow('Suggested Deadline', (rec['suggested_deadline'] ?? '') as String),
+                      _buildDetailRow(
+                          'Suggested Deadline', (rec['suggested_deadline'] ?? '') as String),
                     ],
                   ],
                 ),

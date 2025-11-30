@@ -631,21 +631,34 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                       itemBuilder: (context) => [
                         const PopupMenuItem(
                           value: 'insights',
-                          child: Row(children: [Icon(Icons.insights, size: 20), SizedBox(width: 8), Text('AI Insights')]),
+                          child: Row(children: [
+                            Icon(Icons.insights, size: 20),
+                            SizedBox(width: 8),
+                            Text('AI Insights')
+                          ]),
                         ),
                         const PopupMenuItem(
                           value: 'edit',
-                          child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit')]),
+                          child: Row(children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('Edit')
+                          ]),
                         ),
                         const PopupMenuItem(
                           value: 'add_savings',
-                          child: Row(children: [Icon(Icons.add_circle, size: 20), SizedBox(width: 8), Text('Add Savings')]),
+                          child: Row(children: [
+                            Icon(Icons.add_circle, size: 20),
+                            SizedBox(width: 8),
+                            Text('Add Savings')
+                          ]),
                         ),
                         PopupMenuItem(
                           value: 'toggle_status',
                           child: Row(
                             children: [
-                              Icon(goal.status == 'active' ? Icons.pause : Icons.play_arrow, size: 20),
+                              Icon(goal.status == 'active' ? Icons.pause : Icons.play_arrow,
+                                  size: 20),
                               const SizedBox(width: 8),
                               Text(goal.status == 'active' ? 'Pause' : 'Resume'),
                             ],

@@ -25,8 +25,7 @@ import 'logging_service.dart';
 /// }
 /// ```
 class ScreenshotProtectionService {
-  static final ScreenshotProtectionService _instance =
-      ScreenshotProtectionService._internal();
+  static final ScreenshotProtectionService _instance = ScreenshotProtectionService._internal();
   factory ScreenshotProtectionService() => _instance;
   ScreenshotProtectionService._internal();
 
@@ -144,12 +143,10 @@ class ScreenshotProtectionWrapper extends StatefulWidget {
   });
 
   @override
-  State<ScreenshotProtectionWrapper> createState() =>
-      _ScreenshotProtectionWrapperState();
+  State<ScreenshotProtectionWrapper> createState() => _ScreenshotProtectionWrapperState();
 }
 
-class _ScreenshotProtectionWrapperState
-    extends State<ScreenshotProtectionWrapper> {
+class _ScreenshotProtectionWrapperState extends State<ScreenshotProtectionWrapper> {
   final _protection = ScreenshotProtectionService();
 
   @override

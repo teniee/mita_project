@@ -56,7 +56,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
 
     try {
       final location = await _locationService.getUserLocation();
-      
+
       if (location['country'] != null) {
         setState(() {
           // Always use US, but try to detect the state
@@ -258,7 +258,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _locationService.formatLocationForDisplay(_selectedCountry, stateCode: _selectedState),
+                          _locationService.formatLocationForDisplay(_selectedCountry,
+                              stateCode: _selectedState),
                           style: const TextStyle(
                             fontFamily: AppTypography.fontBody,
                             fontSize: 16,
@@ -426,28 +427,28 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         itemCount: _getFilteredStates().length,
                         itemBuilder: (context, index) {
                           final state = _getFilteredStates()[index];
-                    return ListTile(
-                      title: Text(
-                        state['name']!,
-                        style: TextStyle(
-                          fontFamily: AppTypography.fontBody,
-                          fontWeight: _selectedState == state['code']
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
+                          return ListTile(
+                            title: Text(
+                              state['name']!,
+                              style: TextStyle(
+                                fontFamily: AppTypography.fontBody,
+                                fontWeight: _selectedState == state['code']
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                            trailing: _selectedState == state['code']
+                                ? const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: AppColors.textPrimary,
+                                  )
+                                : null,
+                            selected: _selectedState == state['code'],
+                            selectedTileColor: AppColors.textPrimary.withValues(alpha: 0.1),
+                            onTap: () => _selectState(state['code']!),
+                          );
+                        },
                       ),
-                      trailing: _selectedState == state['code']
-                          ? const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppColors.textPrimary,
-                            )
-                          : null,
-                      selected: _selectedState == state['code'],
-                      selectedTileColor: AppColors.textPrimary.withValues(alpha: 0.1),
-                      onTap: () => _selectState(state['code']!),
-                    );
-                  },
-                ),
               ),
 
               const SizedBox(height: 32),
@@ -456,9 +457,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _selectedState != null
-                      ? _continueWithLocation
-                      : null,
+                  onPressed: _selectedState != null ? _continueWithLocation : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.textPrimary,
                     foregroundColor: Colors.white,

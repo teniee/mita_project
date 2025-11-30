@@ -29,7 +29,6 @@ class BehavioralInsightsWidget extends StatefulWidget {
 
 class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
     with TickerProviderStateMixin {
-
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -55,7 +54,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -218,10 +217,10 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     ],
                   ),
                 ),
-                
+
                 // Tab Navigation
                 _buildTabNavigation(),
-                
+
                 // Content
                 Padding(
                   padding: const EdgeInsets.all(20),
@@ -237,11 +236,11 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
 
   Widget _buildTabNavigation() {
     final tabs = <String>[];
-    
+
     if (widget.showSpendingPatterns) tabs.add('Patterns');
     if (widget.showPersonalityProfile) tabs.add('Profile');
     if (widget.showLearningProgress) tabs.add('Learning');
-    
+
     if (tabs.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -256,7 +255,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           final index = entry.key;
           final tab = entry.value;
           final isSelected = _selectedTab == index;
-          
+
           return Expanded(
             child: GestureDetector(
               onTap: () {
@@ -291,9 +290,11 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   Widget _buildTabContent() {
     switch (_selectedTab) {
       case 0:
-        return widget.showSpendingPatterns 
-            ? _buildSpendingPatternsContent() 
-            : (widget.showPersonalityProfile ? _buildPersonalityProfileContent() : _buildLearningProgressContent());
+        return widget.showSpendingPatterns
+            ? _buildSpendingPatternsContent()
+            : (widget.showPersonalityProfile
+                ? _buildPersonalityProfileContent()
+                : _buildLearningProgressContent());
       case 1:
         if (widget.showSpendingPatterns && widget.showPersonalityProfile) {
           return _buildPersonalityProfileContent();
@@ -310,7 +311,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
 
   Widget _buildSpendingPatternsContent() {
     final patterns = _behavioralAnalysis?['key_traits'] as List<dynamic>? ?? [];
-    final spendingPersonality = _behavioralAnalysis?['spending_personality'] as String? ?? 'Unknown';
+    final spendingPersonality =
+        _behavioralAnalysis?['spending_personality'] as String? ?? 'Unknown';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,9 +326,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             color: AppColors.textLight,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         if (patterns.isNotEmpty) ...[
           const Text(
             'Identified Patterns:',
@@ -340,9 +342,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           const SizedBox(height: 8),
           ...patterns.map((pattern) => _buildPatternItem(pattern.toString())),
         ],
-        
+
         const SizedBox(height: 16),
-        
+
         // Pattern Strength Indicators
         _buildPatternStrengthSection(),
       ],
@@ -352,7 +354,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   Widget _buildPatternItem(String pattern) {
     IconData patternIcon;
     String patternDescription;
-    
+
     switch (pattern.toLowerCase()) {
       case 'weekend_overspending':
         patternIcon = Icons.weekend;
@@ -480,7 +482,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   }
 
   Widget _buildPersonalityProfileContent() {
-    final spendingPersonality = _behavioralAnalysis?['spending_personality'] as String? ?? 'balanced';
+    final spendingPersonality =
+        _behavioralAnalysis?['spending_personality'] as String? ?? 'balanced';
     final recommendations = _behavioralAnalysis?['recommendations'] as List<dynamic>? ?? [];
 
     return Column(
@@ -502,9 +505,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             ),
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         Text(
           _getPersonalityTitle(spendingPersonality),
           textAlign: TextAlign.center,
@@ -515,9 +518,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             color: AppColors.textLight,
           ),
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         Text(
           _getPersonalityDescription(spendingPersonality),
           textAlign: TextAlign.center,
@@ -527,9 +530,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             color: AppColors.textLightSubtle,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Recommendations
         if (recommendations.isNotEmpty) ...[
           const Text(
@@ -543,34 +546,34 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
           ),
           const SizedBox(height: 8),
           ...recommendations.take(3).map((rec) => Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight10,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '💡 ',
-                  style: TextStyle(
-                    color: AppColors.textLightSubtle,
-                  ),
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight10,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                Expanded(
-                  child: Text(
-                    rec.toString(),
-                    style: TextStyle(
-                      fontFamily: AppTypography.fontBody,
-                      fontSize: 12,
-                      color: AppColors.textLightSubtle,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '💡 ',
+                      style: TextStyle(
+                        color: AppColors.textLightSubtle,
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: Text(
+                        rec.toString(),
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontBody,
+                          fontSize: 12,
+                          color: AppColors.textLightSubtle,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          )),
+              )),
         ],
       ],
     );
@@ -592,9 +595,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             color: AppColors.textLight,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Learning Stats
         Row(
           children: [
@@ -607,9 +610,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
             ),
           ],
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Learning Timeline
         Container(
           padding: const EdgeInsets.all(12),
@@ -772,7 +775,7 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       final dateTime = DateTime.parse(timestamp);
       final now = DateTime.now();
       final difference = now.difference(dateTime);
-      
+
       if (difference.inMinutes < 60) {
         return '${difference.inMinutes}m ago';
       } else if (difference.inHours < 24) {

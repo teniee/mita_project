@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -177,7 +176,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       final transactionProvider = context.read<TransactionProvider>();
       final categoryTotals = transactionProvider.spendingByCategory;
       if (categoryTotals.isNotEmpty) {
-        _budgetOptimization = _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
+        _budgetOptimization =
+            _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
       }
     } catch (e) {
       logError('Error fetching income-based insights: $e');
@@ -197,9 +197,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       }
     }
 
-    dailyTotals = daily.entries
-        .map((e) => {'date': e.key, 'amount': e.value})
-        .toList()
+    dailyTotals = daily.entries.map((e) => {'date': e.key, 'amount': e.value}).toList()
       ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
   }
 
@@ -232,7 +230,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       aiSnapshot = {
         'rating': 'B+',
         'risk': 'moderate',
-        'summary': 'Your spending patterns show good discipline with occasional room for improvement. You\'re doing well with food budgeting but could optimize transportation costs.',
+        'summary':
+            'Your spending patterns show good discipline with occasional room for improvement. You\'re doing well with food budgeting but could optimize transportation costs.',
       };
     }
   }
@@ -364,23 +363,28 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       financialHealthScore ??= {
         'score': (confidence * 100).round(),
         'grade': _getGradeFromConfidence(confidence),
-        'improvements': budgetProvider.budgetSuggestions['intelligent_insights']?.map((insight) =>
-          insight['message'] ?? insight.toString()).toList() ?? [],
+        'improvements': budgetProvider.budgetSuggestions['intelligent_insights']
+                ?.map((insight) => insight['message'] ?? insight.toString())
+                .toList() ??
+            [],
       };
 
       if (budgetProvider.budgetSuggestions['intelligent_insights'] != null) {
         personalizedFeedback ??= {
-          'feedback': 'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
+          'feedback':
+              'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
           'tips': budgetProvider.budgetSuggestions['intelligent_insights']
-              .map((insight) => insight['message'] ?? insight.toString()).toList(),
+              .map((insight) => insight['message'] ?? insight.toString())
+              .toList(),
         };
       }
 
       if (budgetProvider.budgetSuggestions['category_insights'] != null) {
         final categoryInsights = budgetProvider.budgetSuggestions['category_insights'] as List;
         spendingPatterns ??= {
-          'patterns': categoryInsights.map((insight) =>
-            insight['message'] ?? 'Smart category optimization detected').toList(),
+          'patterns': categoryInsights
+              .map((insight) => insight['message'] ?? 'Smart category optimization detected')
+              .toList(),
         };
       }
     }
@@ -388,30 +392,33 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _incomeTier != null
-        ? IncomeTheme.createTierAppBar(
-            tier: _incomeTier!,
-            title: 'Financial Insights',
-          )
-        : AppBar(
-            title: const Text(
-              'Financial Insights',
-              style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+          ? IncomeTheme.createTierAppBar(
+              tier: _incomeTier!,
+              title: 'Financial Insights',
+            )
+          : AppBar(
+              title: const Text(
+                'Financial Insights',
+                style: TextStyle(
+                  fontFamily: AppTypography.fontHeading,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
+              backgroundColor: AppColors.background,
+              elevation: 0,
+              iconTheme: const IconThemeData(color: AppColors.textPrimary),
+              centerTitle: true,
             ),
-            backgroundColor: AppColors.background,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: AppColors.textPrimary),
-            centerTitle: true,
-          ),
-      body: isLoading ? _buildLoadingState() : _buildTabContent(budgetProvider, transactionProvider),
+      body:
+          isLoading ? _buildLoadingState() : _buildTabContent(budgetProvider, transactionProvider),
     );
   }
 
   Widget _buildLoadingState() {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : AppColors.textPrimary;
 
     return Center(
       child: Column(
@@ -432,7 +439,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   Widget _buildTabContent(BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : AppColors.textPrimary;
 
     return Column(
       children: [
@@ -496,8 +505,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 20),
 
           // Cohort insights
-          if (_incomeTier != null)
-            CohortInsightsWidget(monthlyIncome: _monthlyIncome),
+          if (_incomeTier != null) CohortInsightsWidget(monthlyIncome: _monthlyIncome),
 
           const SizedBox(height: 20),
 
@@ -527,7 +535,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       children: [
                         Icon(
                           Icons.lightbulb_rounded,
-                          color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : Colors.amber,
+                          color: _incomeTier != null
+                              ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+                              : Colors.amber,
                           size: 24,
                         ),
                         const SizedBox(width: 12),
@@ -537,14 +547,16 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            color: _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary,
+                            color: _incomeTier != null
+                                ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+                                : AppColors.textPrimary,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    ..._incomeBasedTips.map((tip) =>
-                      Container(
+                    ..._incomeBasedTips.map(
+                      (tip) => Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -634,7 +646,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
           ),
           const SizedBox(height: 20),
-
           if (categoryTotals.isNotEmpty) ...[
             const Text(
               'Spending by Category',
@@ -681,9 +692,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               ),
             ),
           ],
-
           const SizedBox(height: 30),
-
           if (dailyTotals.isNotEmpty) ...[
             const Text(
               'Daily Spending Trend',
@@ -722,7 +731,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
                           if (index < 0 || index >= dailyTotals.length) return Container();
-                          final label = DateFormat('MM/dd').format(DateTime.parse(dailyTotals[index]['date']));
+                          final label = DateFormat('MM/dd')
+                              .format(DateTime.parse(dailyTotals[index]['date']));
                           return Text(
                             label,
                             style: const TextStyle(
@@ -775,18 +785,14 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Income-based budget optimization
-          if (_budgetOptimization != null)
-            _buildBudgetOptimizationCard(),
+          if (_budgetOptimization != null) _buildBudgetOptimizationCard(),
 
-          if (_budgetOptimization != null)
-            const SizedBox(height: 20),
+          if (_budgetOptimization != null) const SizedBox(height: 20),
 
           // Cohort-based habit recommendations
-          if (_incomeTier != null)
-            _buildCohortHabitRecommendationsCard(),
+          if (_incomeTier != null) _buildCohortHabitRecommendationsCard(),
 
-          if (_incomeTier != null)
-            const SizedBox(height: 20),
+          if (_incomeTier != null) const SizedBox(height: 20),
 
           // Personalized Feedback
           _buildPersonalizedFeedbackCard(),
@@ -797,8 +803,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 20),
 
           // Income-level specific goal suggestions
-          if (_incomeTier != null)
-            _buildIncomeGoalSuggestionsCard(),
+          if (_incomeTier != null) _buildIncomeGoalSuggestionsCard(),
         ],
       ),
     );
@@ -897,27 +902,27 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
             const SizedBox(height: 8),
             ...improvements.take(3).map((improvement) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.arrow_right,
-                    color: Colors.white.withValues(alpha: 0.7),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      improvement,
-                      style: TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        color: Colors.white.withValues(alpha: 0.9),
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.arrow_right,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: 16,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          improvement,
+                          style: TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ],
       ),
@@ -1049,22 +1054,24 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: patterns.map((pattern) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _formatPatternName(pattern),
-                style: const TextStyle(
-                  fontFamily: AppTypography.fontBody,
-                  fontSize: 12,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )).toList(),
+            children: patterns
+                .map((pattern) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.textPrimary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _formatPatternName(pattern),
+                        style: const TextStyle(
+                          fontFamily: AppTypography.fontBody,
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
         ],
       ),
@@ -1184,28 +1191,28 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           ),
           const SizedBox(height: 16),
           ...spendingAnomalies.take(3).map((anomaly) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.orange,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    anomaly['description'] ?? 'Unusual spending detected',
-                    style: const TextStyle(
-                      fontFamily: AppTypography.fontBody,
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.orange,
+                      size: 16,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        anomaly['description'] ?? 'Unusual spending detected',
+                        style: const TextStyle(
+                          fontFamily: AppTypography.fontBody,
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          )),
+              )),
         ],
       ),
     );
@@ -1282,34 +1289,34 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
             const SizedBox(height: 8),
             ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.only(top: 6),
-                    decoration: const BoxDecoration(
-                      color: AppColors.textPrimary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      tip,
-                      style: const TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(top: 6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.textPrimary,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          tip,
+                          style: const TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ],
       ),
@@ -1378,30 +1385,30 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 16),
             ...suggestions.map((suggestion) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.eco,
-                    color: Colors.green,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      suggestion,
-                      style: const TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.eco,
+                        color: Colors.green,
+                        size: 16,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          suggestion,
+                          style: const TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ],
       ),
@@ -1527,11 +1534,7 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   String _formatPatternName(String pattern) {
-    return pattern
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word.capitalize())
-        .join(' ');
+    return pattern.replaceAll('_', ' ').split(' ').map((word) => word.capitalize()).join(' ');
   }
 
   Widget _buildBudgetOptimizationCard() {
@@ -1539,7 +1542,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
     final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
-    final primaryColor = _incomeTier != null ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!) : AppColors.textPrimary;
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : AppColors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1600,7 +1605,6 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 16),
-
           if (suggestions.isNotEmpty) ...[
             Text(
               'Optimization Suggestions:',
@@ -1612,36 +1616,36 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               ),
             ),
             const SizedBox(height: 12),
-            ...suggestions.take(3).map((suggestion) =>
-              Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.auto_fix_high_rounded,
-                      color: primaryColor,
-                      size: 16,
+            ...suggestions.take(3).map(
+                  (suggestion) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        suggestion,
-                        style: const TextStyle(
-                          fontFamily: AppTypography.fontBody,
-                          fontSize: 14,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.auto_fix_high_rounded,
+                          color: primaryColor,
+                          size: 16,
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            suggestion,
+                            style: const TextStyle(
+                              fontFamily: AppTypography.fontBody,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
           ],
         ],
       ),
@@ -1711,9 +1715,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 20),
-
-          ...habits.map((habit) =>
-            Container(
+          ...habits.map(
+            (habit) => Container(
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1885,109 +1888,108 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ],
           ),
           const SizedBox(height: 20),
-
-          ...goalSuggestions.take(3).map((goal) =>
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withValues(alpha: 0.05),
-                    primaryColor.withValues(alpha: 0.02),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          ...goalSuggestions.take(3).map(
+                (goal) => Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        primaryColor.withValues(alpha: 0.05),
+                        primaryColor.withValues(alpha: 0.02),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          goal['title'],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              goal['title'],
+                              style: TextStyle(
+                                fontFamily: AppTypography.fontHeading,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${(goal['peer_adoption'] * 100).toStringAsFixed(0)}% adopt',
+                              style: const TextStyle(
+                                fontFamily: AppTypography.fontBody,
+                                fontSize: 10,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        goal['description'],
+                        style: const TextStyle(
+                          fontFamily: AppTypography.fontBody,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (goal['target_amount'] != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Target: \$${goal['target_amount'].toStringAsFixed(0)}',
                           style: TextStyle(
                             fontFamily: AppTypography.fontHeading,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                             color: primaryColor,
                           ),
                         ),
-                      ),
+                      ],
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          '${(goal['peer_adoption'] * 100).toStringAsFixed(0)}% adopt',
-                          style: const TextStyle(
-                            fontFamily: AppTypography.fontBody,
-                            fontSize: 10,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: Colors.blue.shade600,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                goal['cohort_context'],
+                                style: TextStyle(
+                                  fontFamily: AppTypography.fontBody,
+                                  fontSize: 12,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    goal['description'],
-                    style: const TextStyle(
-                      fontFamily: AppTypography.fontBody,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                  if (goal['target_amount'] != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Target: \$${goal['target_amount'].toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontFamily: AppTypography.fontHeading,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: Colors.blue.shade600,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            goal['cohort_context'],
-                            style: TextStyle(
-                              fontFamily: AppTypography.fontBody,
-                              fontSize: 12,
-                              color: Colors.blue.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
         ],
       ),
     );
@@ -2073,30 +2075,30 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
             const SizedBox(height: 8),
             ...highlights.map((highlight) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.star,
-                    color: AppColors.secondary,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      highlight,
-                      style: const TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.star,
+                        color: AppColors.secondary,
+                        size: 16,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          highlight,
+                          style: const TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
           if (recommendations.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -2111,30 +2113,30 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             ),
             const SizedBox(height: 8),
             ...recommendations.map((rec) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.arrow_forward,
-                    color: AppColors.accent,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      rec,
-                      style: const TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.accent,
+                        size: 16,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          rec,
+                          style: const TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ],
       ),

@@ -15,12 +15,12 @@ class AdvancedOfflineService {
   Database? _database;
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
-  
+
   // Cache management
   final Map<String, CacheEntry> _memoryCache = {};
   final int _maxCacheSize = 100; // Maximum items in memory cache
   final Duration _defaultCacheExpiry = const Duration(hours: 1);
-  
+
   // Sync management
   final List<PendingSync> _pendingSyncs = [];
   Timer? _syncTimer;
@@ -141,10 +141,14 @@ class AdvancedOfflineService {
   /// Create database indexes
   Future<void> _createIndexes(Database db) async {
     await db.execute('CREATE INDEX idx_cache_expires_at ON cache(expires_at)');
-    await db.execute('CREATE INDEX idx_pending_syncs_priority ON pending_syncs(priority DESC, created_at ASC)');
-    await db.execute('CREATE INDEX idx_offline_expenses_user_date ON offline_expenses(user_id, date DESC)');
-    await db.execute('CREATE INDEX idx_offline_transactions_user_date ON offline_transactions(user_id, created_at DESC)');
-    await db.execute('CREATE INDEX idx_offline_expenses_synced ON offline_expenses(is_synced, user_id)');
+    await db.execute(
+        'CREATE INDEX idx_pending_syncs_priority ON pending_syncs(priority DESC, created_at ASC)');
+    await db.execute(
+        'CREATE INDEX idx_offline_expenses_user_date ON offline_expenses(user_id, date DESC)');
+    await db.execute(
+        'CREATE INDEX idx_offline_transactions_user_date ON offline_transactions(user_id, created_at DESC)');
+    await db.execute(
+        'CREATE INDEX idx_offline_expenses_synced ON offline_expenses(is_synced, user_id)');
   }
 
   /// Upgrade database tables
@@ -171,7 +175,7 @@ class AdvancedOfflineService {
         final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
         final wasOnline = _isOnline;
         _isOnline = result != ConnectivityResult.none;
-        
+
         if (!wasOnline && _isOnline) {
           // Just came online - trigger sync
           _triggerSync();
@@ -183,7 +187,7 @@ class AdvancedOfflineService {
   /// Start periodic sync timer
   Future<void> _startPeriodicSync() async {
     logInfo('Starting periodic sync timer', tag: 'OFFLINE_SERVICE');
-    
+
     _syncTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (_isOnline && !_isSyncing) {
         logDebug('Triggering scheduled sync', tag: 'OFFLINE_SERVICE');
@@ -239,7 +243,8 @@ class AdvancedOfflineService {
     );
 
     // Store in memory cache if small enough
-    if (dataSize < 1024 * 100) { // 100KB limit for memory cache
+    if (dataSize < 1024 * 100) {
+      // 100KB limit for memory cache
       _memoryCache[key] = CacheEntry(
         data: data,
         contentType: contentType,
@@ -453,7 +458,7 @@ class AdvancedOfflineService {
     if (!_isOnline || _isSyncing || _pendingSyncs.isEmpty) return;
 
     _isSyncing = true;
-    
+
     try {
       await _processPendingSyncs();
     } finally {
@@ -464,9 +469,9 @@ class AdvancedOfflineService {
   /// Process pending sync operations
   Future<void> _processPendingSyncs() async {
     final now = DateTime.now();
-    final toProcess = _pendingSyncs.where((sync) => 
-      sync.scheduledAt.isBefore(now) || sync.scheduledAt.isAtSameMomentAs(now)
-    ).toList();
+    final toProcess = _pendingSyncs
+        .where((sync) => sync.scheduledAt.isBefore(now) || sync.scheduledAt.isAtSameMomentAs(now))
+        .toList();
 
     for (final sync in toProcess) {
       try {
@@ -484,10 +489,10 @@ class AdvancedOfflineService {
     // This would integrate with your ApiService
     // For now, this is a placeholder
     logDebug('Processing sync: ${sync.method} ${sync.endpoint}', tag: 'OFFLINE');
-    
+
     // Simulate API call
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     // Mark as synced in local database if it's a local record
     if (sync.data != null && sync.data!.containsKey('local_id')) {
       await _markLocalRecordAsSynced(sync.data!['local_id']);
@@ -499,7 +504,7 @@ class AdvancedOfflineService {
     if (_database == null) return;
 
     final newRetryCount = sync.retryCount + 1;
-    
+
     if (newRetryCount >= sync.maxRetries) {
       // Max retries reached, remove from queue
       await _removeSyncFromQueue(sync.id);
@@ -509,7 +514,7 @@ class AdvancedOfflineService {
       // Update retry count and schedule for later
       final backoffDelay = Duration(minutes: newRetryCount * 5); // Exponential backoff
       final newScheduledAt = DateTime.now().add(backoffDelay);
-      
+
       await _database!.update(
         'pending_syncs',
         {
@@ -522,7 +527,7 @@ class AdvancedOfflineService {
 
       sync.retryCount = newRetryCount;
       sync.scheduledAt = newScheduledAt;
-      
+
       logWarning('Sync failed, retrying later: ${sync.endpoint} - $error', tag: 'OFFLINE');
     }
   }
@@ -555,7 +560,7 @@ class AdvancedOfflineService {
     if (_database == null) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    
+
     await _database!.delete(
       'cache',
       where: 'expires_at < ?',
@@ -573,7 +578,7 @@ class AdvancedOfflineService {
     // Remove oldest entries
     final entries = _memoryCache.entries.toList();
     entries.sort((a, b) => a.value.createdAt.compareTo(b.value.createdAt));
-    
+
     final toRemove = entries.length - _maxCacheSize;
     for (int i = 0; i < toRemove; i++) {
       _memoryCache.remove(entries[i].key);
@@ -608,9 +613,8 @@ class AdvancedOfflineService {
     }
 
     final pendingCount = await _database!.rawQuery('SELECT COUNT(*) as count FROM pending_syncs');
-    final failedCount = await _database!.rawQuery(
-      'SELECT COUNT(*) as count FROM pending_syncs WHERE retry_count >= max_retries'
-    );
+    final failedCount = await _database!
+        .rawQuery('SELECT COUNT(*) as count FROM pending_syncs WHERE retry_count >= max_retries');
     final cacheCount = await _database!.rawQuery('SELECT COUNT(*) as count FROM cache');
 
     return SyncStatus(
@@ -698,8 +702,7 @@ class PendingSync {
       endpoint: map['endpoint'],
       method: map['method'],
       data: map['data'] != null ? jsonDecode(map['data']) : null,
-      headers: map['headers'] != null ? 
-        Map<String, String>.from(jsonDecode(map['headers'])) : null,
+      headers: map['headers'] != null ? Map<String, String>.from(jsonDecode(map['headers'])) : null,
       priority: map['priority'],
       retryCount: map['retry_count'],
       maxRetries: map['max_retries'],

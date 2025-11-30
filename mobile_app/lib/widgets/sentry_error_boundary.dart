@@ -34,7 +34,7 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
   @override
   Widget build(BuildContext context) {
     if (_error != null) {
-      return widget.fallbackWidget?.call(_error!) ?? 
+      return widget.fallbackWidget?.call(_error!) ??
           _DefaultErrorWidget(
             error: _error!,
             screenName: widget.screenName,
@@ -100,7 +100,6 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
           'user_id': widget.userId,
         },
       );
-
     } catch (e) {
       // Don't let error reporting crash the error boundary
       if (kDebugMode) {
@@ -116,7 +115,7 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
     } else if (error.toString().toLowerCase().contains('permission')) {
       return FinancialErrorCategory.authorization;
     } else if (error.toString().toLowerCase().contains('network') ||
-               error.toString().toLowerCase().contains('http')) {
+        error.toString().toLowerCase().contains('http')) {
       return FinancialErrorCategory.networkError;
     } else if (error.toString().toLowerCase().contains('transaction')) {
       return FinancialErrorCategory.transactionProcessing;
@@ -128,19 +127,17 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
 
     // Categorize based on screen name
     final lowerScreenName = screenName.toLowerCase();
-    if (lowerScreenName.contains('login') || 
+    if (lowerScreenName.contains('login') ||
         lowerScreenName.contains('register') ||
         lowerScreenName.contains('auth')) {
       return FinancialErrorCategory.authentication;
     } else if (lowerScreenName.contains('transaction') ||
-               lowerScreenName.contains('expense') ||
-               lowerScreenName.contains('payment')) {
+        lowerScreenName.contains('expense') ||
+        lowerScreenName.contains('payment')) {
       return FinancialErrorCategory.transactionProcessing;
-    } else if (lowerScreenName.contains('budget') ||
-               lowerScreenName.contains('goal')) {
+    } else if (lowerScreenName.contains('budget') || lowerScreenName.contains('goal')) {
       return FinancialErrorCategory.budgetCalculation;
-    } else if (lowerScreenName.contains('profile') ||
-               lowerScreenName.contains('account')) {
+    } else if (lowerScreenName.contains('profile') || lowerScreenName.contains('account')) {
       return FinancialErrorCategory.accountManagement;
     }
 
@@ -149,7 +146,7 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
 
   FinancialSeverity _determineSeverity(Object error) {
     final errorString = error.toString().toLowerCase();
-    
+
     // Critical errors
     if (errorString.contains('security') ||
         errorString.contains('unauthorized') ||
@@ -237,7 +234,7 @@ class _DefaultErrorWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Oops! Something went wrong'),

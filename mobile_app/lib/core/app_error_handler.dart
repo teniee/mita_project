@@ -18,7 +18,7 @@ class AppErrorHandler {
     try {
       // Initialize the error handler
       await ErrorHandler.instance.initialize(userId: userId);
-      
+
       _initialized = true;
       debugPrint('AppErrorHandler initialized successfully');
     } catch (e) {
@@ -179,7 +179,9 @@ class AppErrorBoundary extends StatelessWidget {
   Widget build(BuildContext context) {
     return ErrorBoundary(
       onError: (error, stackTrace) {
-        if (kDebugMode) dev.log('ERROR CAUGHT IN ${screenName ?? "Unknown"}: $error', name: 'AppErrorHandler', error: error);
+        if (kDebugMode)
+          dev.log('ERROR CAUGHT IN ${screenName ?? "Unknown"}: $error',
+              name: 'AppErrorHandler', error: error);
         if (kDebugMode) dev.log('STACK TRACE: $stackTrace', name: 'AppErrorHandler');
         AppErrorHandler.reportUIError(
           error,
@@ -215,17 +217,17 @@ class AppErrorBoundary extends StatelessWidget {
               Text(
                 'Oops! Something went wrong',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
                 'We\'ve been notified about this issue and are working to fix it. Please try again.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -290,8 +292,8 @@ class AppErrorBoundary extends StatelessWidget {
                             Text(
                               error.toString(),
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                fontFamily: 'monospace',
-                              ),
+                                    fontFamily: 'monospace',
+                                  ),
                             ),
                             if (stackTrace != null) ...[
                               const SizedBox(height: 16),
@@ -303,8 +305,8 @@ class AppErrorBoundary extends StatelessWidget {
                               Text(
                                 stackTrace.toString(),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontFamily: 'monospace',
-                                ),
+                                      fontFamily: 'monospace',
+                                    ),
                               ),
                             ],
                           ],
@@ -447,10 +449,14 @@ class SafeExecution {
 class ErrorMessageUtils {
   static String getUserFriendlyMessage(dynamic error) {
     final errorString = error.toString().toLowerCase();
-    
-    if (error is NetworkException || errorString.contains('network') || errorString.contains('connection')) {
+
+    if (error is NetworkException ||
+        errorString.contains('network') ||
+        errorString.contains('connection')) {
       return 'Please check your internet connection and try again.';
-    } else if (error is AuthenticationException || errorString.contains('session expired') || errorString.contains('unauthorized')) {
+    } else if (error is AuthenticationException ||
+        errorString.contains('session expired') ||
+        errorString.contains('unauthorized')) {
       return 'Your session has expired. Please log in again.';
     } else if (error is ValidationException || errorString.contains('validation')) {
       return 'Please check your input and try again.';
@@ -470,7 +476,7 @@ class ErrorMessageUtils {
     if (!context.mounted) return;
 
     final message = getUserFriendlyMessage(error);
-    
+
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -500,19 +506,19 @@ class ErrorMessageUtils {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        action: onRetry != null 
-          ? SnackBarAction(
-              label: 'Retry',
-              textColor: Theme.of(context).colorScheme.onError,
-              onPressed: onRetry,
-            )
-          : SnackBarAction(
-              label: 'Dismiss',
-              textColor: Theme.of(context).colorScheme.onError,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
+        action: onRetry != null
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Theme.of(context).colorScheme.onError,
+                onPressed: onRetry,
+              )
+            : SnackBarAction(
+                label: 'Dismiss',
+                textColor: Theme.of(context).colorScheme.onError,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
       ),
     );
   }
@@ -526,7 +532,7 @@ class ErrorMessageUtils {
     if (!context.mounted) return;
 
     final message = getUserFriendlyMessage(error);
-    
+
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
@@ -589,7 +595,7 @@ class ErrorMessageUtils {
     Duration duration = const Duration(seconds: 3),
   }) {
     if (!context.mounted) return;
-    
+
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

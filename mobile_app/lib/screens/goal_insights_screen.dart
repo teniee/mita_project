@@ -18,7 +18,8 @@ class GoalInsightsScreen extends StatefulWidget {
   State<GoalInsightsScreen> createState() => _GoalInsightsScreenState();
 }
 
-class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTickerProviderStateMixin {
+class _GoalInsightsScreenState extends State<GoalInsightsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -302,7 +303,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen> with SingleTick
             const Divider(height: 24),
             _buildOverviewRow('Target', widget.goal.formattedTargetAmount, Icons.savings),
             const Divider(height: 24),
-            _buildOverviewRow('Saved', widget.goal.formattedSavedAmount, Icons.account_balance_wallet),
+            _buildOverviewRow(
+                'Saved', widget.goal.formattedSavedAmount, Icons.account_balance_wallet),
             const Divider(height: 24),
             _buildOverviewRow('Progress', widget.goal.progressPercentage, Icons.show_chart),
             if (widget.goal.targetDate != null) ...[

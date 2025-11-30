@@ -43,9 +43,8 @@ class Goal {
       category: json['category'] as String?,
       targetAmount: _parseDouble(json['target_amount']),
       savedAmount: _parseDouble(json['saved_amount'] ?? json['current_amount']),
-      monthlyContribution: json['monthly_contribution'] != null
-          ? _parseDouble(json['monthly_contribution'])
-          : null,
+      monthlyContribution:
+          json['monthly_contribution'] != null ? _parseDouble(json['monthly_contribution']) : null,
       status: json['status'] as String? ?? 'active',
       progress: _parseDouble(json['progress'] ?? 0),
       targetDate: json['target_date'] != null
@@ -53,9 +52,8 @@ class Goal {
           : (json['deadline'] != null ? DateTime.parse(json['deadline'] as String) : null),
       createdAt: DateTime.parse(json['created_at'] as String),
       lastUpdated: DateTime.parse(json['last_updated'] as String),
-      completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'] as String)
-          : null,
+      completedAt:
+          json['completed_at'] != null ? DateTime.parse(json['completed_at'] as String) : null,
       priority: json['priority'] as String? ?? 'medium',
     );
   }
@@ -192,17 +190,17 @@ class GoalCategories {
   static const String other = 'Other';
 
   static List<String> get all => [
-    savings,
-    travel,
-    emergency,
-    technology,
-    education,
-    health,
-    home,
-    vehicle,
-    investment,
-    other,
-  ];
+        savings,
+        travel,
+        emergency,
+        technology,
+        education,
+        health,
+        home,
+        vehicle,
+        investment,
+        other,
+      ];
 }
 
 /// Goal priorities

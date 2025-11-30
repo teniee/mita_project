@@ -86,7 +86,9 @@ class ChallengesProvider extends ChangeNotifier {
       _gamificationStats = results[2] as Map<String, dynamic>;
       _leaderboard = results[3] as List<dynamic>;
 
-      logInfo('Loaded ${_activeChallenges.length} active challenges, ${_availableChallenges.length} available', tag: 'CHALLENGES_PROVIDER');
+      logInfo(
+          'Loaded ${_activeChallenges.length} active challenges, ${_availableChallenges.length} available',
+          tag: 'CHALLENGES_PROVIDER');
       notifyListeners();
 
       // Load progress for each active challenge
@@ -161,7 +163,8 @@ class ChallengesProvider extends ChangeNotifier {
   }
 
   /// Update challenge progress
-  Future<bool> updateChallengeProgress(String challengeId, Map<String, dynamic> progressData) async {
+  Future<bool> updateChallengeProgress(
+      String challengeId, Map<String, dynamic> progressData) async {
     try {
       _setLoading(true);
 

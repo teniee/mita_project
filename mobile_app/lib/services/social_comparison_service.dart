@@ -28,12 +28,12 @@ class SocialComparisonService {
     }
 
     final peerData = _extractPeerData(peerComparisonData);
-    
+
     // Spending comparison
     final userSpending = (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
     final peerAverageSpending = peerData['averageSpending']!;
     final spendingPercentile = _calculatePercentile(userSpending, peerAverageSpending);
-    
+
     insights.add(SocialComparisonInsight(
       insightId: 'spending_comparison_${DateTime.now().millisecondsSinceEpoch}',
       insightType: 'spending_comparison',
@@ -41,7 +41,8 @@ class SocialComparisonService {
       userValue: userSpending,
       peerAverage: peerAverageSpending,
       percentile: spendingPercentile,
-      comparisonText: _generateComparisonText('spending', spendingPercentile, userSpending, peerAverageSpending),
+      comparisonText: _generateComparisonText(
+          'spending', spendingPercentile, userSpending, peerAverageSpending),
       recommendation: _generateRecommendation('spending', spendingPercentile),
       confidenceLevel: 0.8,
       metadata: {
@@ -49,12 +50,12 @@ class SocialComparisonService {
         'incomeTier': userProfile.incomeTier.toString(),
       },
     ));
-    
+
     // Savings rate comparison
     final userSavingsRate = (userMetrics['savingsRate'] as num?)?.toDouble() ?? 0.0;
     final peerAverageSavingsRate = peerData['averageSavingsRate']!;
     final savingsPercentile = _calculatePercentile(userSavingsRate, peerAverageSavingsRate);
-    
+
     insights.add(SocialComparisonInsight(
       insightId: 'savings_comparison_${DateTime.now().millisecondsSinceEpoch}',
       insightType: 'savings_comparison',
@@ -62,7 +63,8 @@ class SocialComparisonService {
       userValue: userSavingsRate,
       peerAverage: peerAverageSavingsRate,
       percentile: savingsPercentile,
-      comparisonText: _generateComparisonText('savings_rate', savingsPercentile, userSavingsRate, peerAverageSavingsRate),
+      comparisonText: _generateComparisonText(
+          'savings_rate', savingsPercentile, userSavingsRate, peerAverageSavingsRate),
       recommendation: _generateRecommendation('savings_rate', savingsPercentile),
       confidenceLevel: 0.8,
       metadata: {
@@ -70,7 +72,7 @@ class SocialComparisonService {
         'incomeTier': userProfile.incomeTier.toString(),
       },
     ));
-    
+
     return insights;
   }
 
@@ -101,7 +103,8 @@ class SocialComparisonService {
       userValue: userSpending,
       peerAverage: peerAverageSpending,
       percentile: spendingPercentile,
-      comparisonText: _generateComparisonText('spending', spendingPercentile, userSpending, peerAverageSpending),
+      comparisonText: _generateComparisonText(
+          'spending', spendingPercentile, userSpending, peerAverageSpending),
       recommendation: _generateRecommendation('spending', spendingPercentile),
       confidenceLevel: 0.6, // Lower confidence for fallback data
       metadata: {
@@ -160,7 +163,8 @@ class SocialComparisonService {
     return 0.10;
   }
 
-  String _generateComparisonText(String metric, double percentile, double userValue, double peerAverage) {
+  String _generateComparisonText(
+      String metric, double percentile, double userValue, double peerAverage) {
     switch (metric) {
       case 'spending':
         if (percentile > 0.8) {

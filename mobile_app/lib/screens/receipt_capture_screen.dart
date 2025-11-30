@@ -27,11 +27,10 @@ class ReceiptCaptureScreen extends StatefulWidget {
   State<ReceiptCaptureScreen> createState() => _ReceiptCaptureScreenState();
 }
 
-class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
-    with TickerProviderStateMixin {
+class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with TickerProviderStateMixin {
   final OCRService _ocrService = OCRService();
   final ApiService _apiService = ApiService();
-  
+
   // State management
   OCRResult? _ocrResult;
   List<File> _selectedImages = [];
@@ -41,12 +40,12 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   List<String> _merchantSuggestions = [];
   bool _isValidating = false;
   bool _isEnhancing = false;
-  
+
   // Animation controllers
   late AnimationController _slideController;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
+
   // Page controller for step navigation
   late PageController _pageController;
   int _currentStep = 0;
@@ -54,7 +53,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -64,8 +63,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -73,14 +71,14 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
       parent: _fadeController,
       curve: Curves.easeInOut,
     ));
-    
+
     _pageController = PageController();
-    
+
     // Load initial images if provided
     if (widget.initialImages != null) {
       _selectedImages = List.from(widget.initialImages!);
     }
-    
+
     _checkPremiumStatus();
     _fadeController.forward();
   }
@@ -110,7 +108,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      
+
       if (widget.enableBatchProcessing && source == ImageSource.gallery) {
         // Multi-select for batch processing
         final images = await picker.pickMultiImage(
@@ -118,7 +116,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           maxWidth: 2048,
           imageQuality: 80,
         );
-        
+
         if (images.isNotEmpty) {
           final files = images.map((image) => File(image.path)).toList();
           setState(() {
@@ -135,7 +133,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           maxWidth: 2048,
           imageQuality: 80,
         );
-        
+
         if (picked != null) {
           // Crop the image for better OCR results
           final cropped = await _cropImage(picked.path);
@@ -183,11 +181,11 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
 
   Future<void> _processReceipts() async {
     if (_selectedImages.isEmpty) return;
-    
+
     setState(() {
       _error = null;
     });
-    
+
     try {
       if (_selectedImages.length == 1) {
         // Single receipt processing
@@ -195,14 +193,14 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           _selectedImages.first,
           isPremiumUser: _isPremiumUser,
         );
-        
+
         setState(() {
           _ocrResult = result;
         });
-        
+
         // Load merchant suggestions
         _loadMerchantSuggestions(result.merchant);
-        
+
         _navigateToStep(2);
       } else {
         // Batch processing
@@ -214,11 +212,11 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
             setState(() {});
           },
         );
-        
+
         setState(() {
           _batchResult = batchResult;
         });
-        
+
         _navigateToStep(3);
       }
     } catch (e) {
@@ -327,7 +325,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
     setState(() {
       _currentStep = step;
     });
-    
+
     _slideController.forward().then((_) {
       _pageController.animateToPage(
         step,
@@ -443,7 +441,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.enableBatchProcessing ? 'Batch Receipt Scan' : 'Scan Receipt'),
@@ -480,7 +478,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               ],
             ),
           ),
-          
+
           // Progress indicator
           Positioned(
             top: 0,
@@ -492,7 +490,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               valueColor: AlwaysStoppedAnimation(colorScheme.primary),
             ),
           ),
-          
+
           // Error overlay
           if (_error != null)
             Positioned(
@@ -536,14 +534,14 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
   Widget _buildImageSelectionStep() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24.0),
-          
+
           // Header
           Text(
             widget.enableBatchProcessing ? 'Select Receipts' : 'Capture Receipt',
@@ -554,16 +552,16 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           ),
           const SizedBox(height: 8.0),
           Text(
-            widget.enableBatchProcessing 
+            widget.enableBatchProcessing
                 ? 'Select multiple receipt images for batch processing'
                 : 'Take a photo or select an image of your receipt',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-          
+
           const SizedBox(height: 32.0),
-          
+
           // Selected images preview
           if (_selectedImages.isNotEmpty) ...[
             Text(
@@ -628,9 +626,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
             ),
             const SizedBox(height: 24.0),
           ],
-          
+
           const Spacer(),
-          
+
           // Action buttons
           Column(
             children: [
@@ -649,9 +647,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 12.0),
-              
+
               // Gallery button
               SizedBox(
                 width: double.infinity,
@@ -659,9 +657,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                 child: OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
-                  label: Text(widget.enableBatchProcessing 
-                      ? 'Select from Gallery' 
-                      : 'Choose from Gallery'),
+                  label: Text(
+                      widget.enableBatchProcessing ? 'Select from Gallery' : 'Choose from Gallery'),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16.0),
@@ -669,7 +666,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                   ),
                 ),
               ),
-              
+
               if (_selectedImages.isNotEmpty) ...[
                 const SizedBox(height: 12.0),
                 SizedBox(
@@ -678,8 +675,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                   child: FilledButton.icon(
                     onPressed: _processReceipts,
                     icon: const Icon(Icons.auto_awesome),
-                    label: Text(_selectedImages.length > 1 
-                        ? 'Process ${_selectedImages.length} Receipts' 
+                    label: Text(_selectedImages.length > 1
+                        ? 'Process ${_selectedImages.length} Receipts'
                         : 'Process Receipt'),
                     style: FilledButton.styleFrom(
                       backgroundColor: colorScheme.secondary,
@@ -693,7 +690,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               ],
             ],
           ),
-          
+
           const SizedBox(height: 24.0),
         ],
       ),
@@ -729,16 +726,16 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
     if (_ocrResult == null) {
       return const Center(child: Text('No OCR result available'));
     }
-    
+
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24.0),
-          
+
           // Header
           Row(
             children: [
@@ -755,7 +752,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16.0),
 
           // Action buttons for validation and enhancement
@@ -830,9 +827,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                     },
                     prefixIcon: Icons.store,
                   ),
-                  
+
                   const SizedBox(height: 16.0),
-                  
+
                   // Total field
                   OCRDataField(
                     label: 'Total Amount',
@@ -857,9 +854,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                     },
                     prefixIcon: Icons.attach_money,
                   ),
-                  
+
                   const SizedBox(height: 16.0),
-                  
+
                   // Date field
                   OCRDataField(
                     label: 'Date',
@@ -883,9 +880,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                     },
                     prefixIcon: Icons.calendar_today,
                   ),
-                  
+
                   const SizedBox(height: 16.0),
-                  
+
                   // Category field
                   OCRDataField(
                     label: 'Category',
@@ -908,9 +905,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
                     },
                     prefixIcon: Icons.category,
                   ),
-                  
+
                   const SizedBox(height: 24.0),
-                  
+
                   // Receipt items
                   if (_ocrResult!.items.isNotEmpty)
                     OCRReceiptItemsList(
@@ -937,9 +934,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16.0),
-          
+
           // Save button
           SizedBox(
             width: double.infinity,
@@ -964,33 +961,28 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
     if (_batchResult == null) {
       return const Center(child: Text('No batch result available'));
     }
-    
+
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 24.0),
-          
           Text(
             'Batch Processing Complete',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
-          
           const SizedBox(height: 16.0),
-          
           BatchProcessingIndicator(
             processed: _batchResult!.processed,
             total: _batchResult!.total,
             failed: _batchResult!.failures.length,
           ),
-          
           const SizedBox(height: 24.0),
-          
           Expanded(
             child: ListView.builder(
               itemCount: _batchResult!.results.length,
@@ -1015,9 +1007,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
               },
             ),
           ),
-          
           const SizedBox(height: 16.0),
-          
           SizedBox(
             width: double.infinity,
             height: 56.0,

@@ -18,7 +18,7 @@ class ExpenseIntegrationHelper {
 
     try {
       final result = await Navigator.pushNamed(context, '/add_expense');
-      
+
       if (result != null && result is Map<String, dynamic>) {
         logInfo('Add expense navigation completed', tag: 'EXPENSE_INTEGRATION', extra: {
           'success': result['success'],
@@ -76,7 +76,7 @@ class ExpenseIntegrationHelper {
     try {
       final data = await _apiService.getCalendar();
       _expenseStateService.updateCalendarData(data);
-      
+
       logInfo('Calendar data refreshed successfully', tag: 'EXPENSE_INTEGRATION', extra: {
         'dataCount': data.length,
       });
@@ -94,7 +94,7 @@ class ExpenseIntegrationHelper {
   static Map<String, dynamic>? getTodaySpendingStatus() {
     final today = DateTime.now().day;
     final dayStatus = _expenseStateService.getDayStatus(today);
-    
+
     if (dayStatus != null) {
       logDebug('Retrieved today\'s spending status', tag: 'EXPENSE_INTEGRATION', extra: {
         'day': today,
@@ -120,7 +120,7 @@ class ExpenseIntegrationHelper {
 
     final spent = (todayStatus['spent'] as num?)?.toDouble() ?? 0.0;
     final limit = (todayStatus['limit'] as num?)?.toDouble() ?? 0.0;
-    
+
     return limit > 0 ? (spent / limit) * 100 : 0.0;
   }
 
@@ -131,7 +131,7 @@ class ExpenseIntegrationHelper {
 
     final spent = (todayStatus['spent'] as num?)?.toDouble() ?? 0.0;
     final limit = (todayStatus['limit'] as num?)?.toDouble() ?? 0.0;
-    
+
     return (limit - spent).clamp(0.0, double.infinity);
   }
 
@@ -218,7 +218,7 @@ class ExpenseIntegrationHelper {
     return _expenseStateService.calendarUpdates.listen(onUpdate);
   }
 
-  /// Listen to expense additions and provide callbacks  
+  /// Listen to expense additions and provide callbacks
   static StreamSubscription<Map<String, dynamic>> listenToExpenseAdditions(
     Function(Map<String, dynamic>) onExpenseAdded,
   ) {
@@ -246,10 +246,10 @@ class ExpenseIntegrationHelper {
       'spent_percentage': spentPercentage,
       'remaining_budget': totalBudget - totalSpent,
       'is_over_budget': spentPercentage > 100,
-      'status': spentPercentage > 100 
-          ? 'over' 
-          : spentPercentage > 85 
-              ? 'warning' 
+      'status': spentPercentage > 100
+          ? 'over'
+          : spentPercentage > 85
+              ? 'warning'
               : 'good',
     };
   }
@@ -258,10 +258,10 @@ class ExpenseIntegrationHelper {
   static void showBudgetWarningIfNeeded(BuildContext context) {
     final summary = getMonthSummary();
     final spentPercentage = summary['spent_percentage'] as double;
-    
+
     if (spentPercentage > 90 && context.mounted) {
       final isOver = spentPercentage > 100;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(

@@ -25,15 +25,15 @@ class IncomeTheme {
   /// Essential Earner (Low Income) - Green Growth Theme
   static ColorScheme _getLowIncomeColorScheme() {
     return const ColorScheme.light(
-      primary: Color(0xFF2E7D32),        // Deep green
+      primary: Color(0xFF2E7D32), // Deep green
       onPrimary: Color(0xFFFFFFFF),
       primaryContainer: Color(0xFFA5D6A7), // Light green container
       onPrimaryContainer: Color(0xFF1B5E20),
-      secondary: Color(0xFF66BB6A),       // Medium green
+      secondary: Color(0xFF66BB6A), // Medium green
       onSecondary: Color(0xFFFFFFFF),
       secondaryContainer: Color(0xFFC8E6C9),
       onSecondaryContainer: Color(0xFF2E7D32),
-      tertiary: Color(0xFF81C784),        // Lighter green
+      tertiary: Color(0xFF81C784), // Lighter green
       onTertiary: Color(0xFF1B5E20),
       tertiaryContainer: Color(0xFFE8F5E8),
       onTertiaryContainer: Color(0xFF2E7D32),
@@ -52,15 +52,15 @@ class IncomeTheme {
   /// Rising Saver (Lower Middle Income) - Cyan Rising Theme
   static ColorScheme _getLowerMiddleIncomeColorScheme() {
     return const ColorScheme.light(
-      primary: Color(0xFF00BCD4),        // Cyan
+      primary: Color(0xFF00BCD4), // Cyan
       onPrimary: Color(0xFFFFFFFF),
       primaryContainer: Color(0xFFB2EBF2), // Light cyan container
       onPrimaryContainer: Color(0xFF006064),
-      secondary: Color(0xFF26C6DA),       // Medium cyan
+      secondary: Color(0xFF26C6DA), // Medium cyan
       onSecondary: Color(0xFFFFFFFF),
       secondaryContainer: Color(0xFFE0F7FA),
       onSecondaryContainer: Color(0xFF00BCD4),
-      tertiary: Color(0xFF4DD0E1),        // Lighter cyan
+      tertiary: Color(0xFF4DD0E1), // Lighter cyan
       onTertiary: Color(0xFF006064),
       tertiaryContainer: Color(0xFFE0F2F1),
       onTertiaryContainer: Color(0xFF00BCD4),
@@ -79,15 +79,15 @@ class IncomeTheme {
   /// Growing Professional (Mid Income) - Blue Professional Theme
   static ColorScheme _getMidIncomeColorScheme() {
     return const ColorScheme.light(
-      primary: Color(0xFF1976D2),        // Professional blue
+      primary: Color(0xFF1976D2), // Professional blue
       onPrimary: Color(0xFFFFFFFF),
       primaryContainer: Color(0xFFBBDEFB), // Light blue container
       onPrimaryContainer: Color(0xFF0D47A1),
-      secondary: Color(0xFF42A5F5),       // Medium blue
+      secondary: Color(0xFF42A5F5), // Medium blue
       onSecondary: Color(0xFFFFFFFF),
       secondaryContainer: Color(0xFFE3F2FD),
       onSecondaryContainer: Color(0xFF1976D2),
-      tertiary: Color(0xFF64B5F6),        // Lighter blue
+      tertiary: Color(0xFF64B5F6), // Lighter blue
       onTertiary: Color(0xFF0D47A1),
       tertiaryContainer: Color(0xFFE1F5FE),
       onTertiaryContainer: Color(0xFF1976D2),
@@ -106,15 +106,15 @@ class IncomeTheme {
   /// Established Professional (Upper Middle Income) - Deep Purple Established Theme
   static ColorScheme _getUpperMiddleIncomeColorScheme() {
     return const ColorScheme.light(
-      primary: Color(0xFF673AB7),        // Deep purple
+      primary: Color(0xFF673AB7), // Deep purple
       onPrimary: Color(0xFFFFFFFF),
       primaryContainer: Color(0xFFD1C4E9), // Light deep purple container
       onPrimaryContainer: Color(0xFF311B92),
-      secondary: Color(0xFF7986CB),       // Medium deep purple
+      secondary: Color(0xFF7986CB), // Medium deep purple
       onSecondary: Color(0xFFFFFFFF),
       secondaryContainer: Color(0xFFEDE7F6),
       onSecondaryContainer: Color(0xFF673AB7),
-      tertiary: Color(0xFF9575CD),        // Lighter deep purple
+      tertiary: Color(0xFF9575CD), // Lighter deep purple
       onTertiary: Color(0xFF311B92),
       tertiaryContainer: Color(0xFFF3E5F5),
       onTertiaryContainer: Color(0xFF673AB7),
@@ -133,15 +133,15 @@ class IncomeTheme {
   /// High Achiever (High Income) - Purple Premium Theme
   static ColorScheme _getHighIncomeColorScheme() {
     return const ColorScheme.light(
-      primary: Color(0xFF7B1FA2),        // Deep purple
+      primary: Color(0xFF7B1FA2), // Deep purple
       onPrimary: Color(0xFFFFFFFF),
       primaryContainer: Color(0xFFE1BEE7), // Light purple container
       onPrimaryContainer: Color(0xFF4A148C),
-      secondary: Color(0xFF9C27B0),       // Medium purple
+      secondary: Color(0xFF9C27B0), // Medium purple
       onSecondary: Color(0xFFFFFFFF),
       secondaryContainer: Color(0xFFF3E5F5),
       onSecondaryContainer: Color(0xFF7B1FA2),
-      tertiary: Color(0xFFBA68C8),        // Lighter purple
+      tertiary: Color(0xFFBA68C8), // Lighter purple
       onTertiary: Color(0xFF4A148C),
       tertiaryContainer: Color(0xFFFCE4EC),
       onTertiaryContainer: Color(0xFF7B1FA2),
@@ -160,12 +160,12 @@ class IncomeTheme {
   /// Get theme data for specific income tier
   static ThemeData getIncomeTheme(IncomeTier tier) {
     final colorScheme = getIncomeColorScheme(tier);
-    
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: 'Manrope',
-      
+
       // App Bar Theme
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
@@ -179,7 +179,7 @@ class IncomeTheme {
           color: colorScheme.onSurface,
         ),
       ),
-      
+
       // Card Theme
       cardTheme: CardThemeData(
         elevation: 2,
@@ -188,7 +188,7 @@ class IncomeTheme {
         ),
         color: colorScheme.surface,
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -206,7 +206,7 @@ class IncomeTheme {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -236,7 +236,7 @@ class IncomeTheme {
           color: colorScheme.onSurface.withValues(alpha: 0.6),
         ),
       ),
-      
+
       // Text Theme
       textTheme: TextTheme(
         displayLarge: TextStyle(
@@ -336,7 +336,7 @@ class IncomeTheme {
   /// Get spending status colors based on income tier
   static Map<String, Color> getSpendingStatusColors(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     return {
       'good': primary,
       'warning': Colors.orange.shade600,
@@ -349,61 +349,61 @@ class IncomeTheme {
   static Map<String, Color> getBudgetCategoryColors(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
-    
+
     switch (tier) {
       case IncomeTier.low:
         return {
-          'housing': const Color(0xFF388E3C),    // Deep green
-          'food': const Color(0xFF66BB6A),       // Medium green
+          'housing': const Color(0xFF388E3C), // Deep green
+          'food': const Color(0xFF66BB6A), // Medium green
           'transportation': const Color(0xFF81C784), // Light green
-          'utilities': const Color(0xFF4CAF50),  // Green
+          'utilities': const Color(0xFF4CAF50), // Green
           'healthcare': const Color(0xFF2E7D32), // Dark green
           'entertainment': const Color(0xFFA5D6A7), // Very light green
-          'savings': const Color(0xFF1B5E20),    // Very dark green
+          'savings': const Color(0xFF1B5E20), // Very dark green
           'other': Colors.grey.shade500,
         };
       case IncomeTier.lowerMiddle:
         return {
-          'housing': const Color(0xFF00ACC1),    // Deep cyan
-          'food': const Color(0xFF26C6DA),       // Medium cyan
+          'housing': const Color(0xFF00ACC1), // Deep cyan
+          'food': const Color(0xFF26C6DA), // Medium cyan
           'transportation': const Color(0xFF4DD0E1), // Light cyan
-          'utilities': const Color(0xFF00BCD4),  // Cyan
+          'utilities': const Color(0xFF00BCD4), // Cyan
           'healthcare': const Color(0xFF006064), // Dark cyan
           'entertainment': const Color(0xFFB2EBF2), // Very light cyan
-          'savings': const Color(0xFF00838F),    // Very dark cyan
+          'savings': const Color(0xFF00838F), // Very dark cyan
           'other': Colors.grey.shade500,
         };
       case IncomeTier.middle:
         return {
-          'housing': const Color(0xFF1976D2),    // Deep blue
-          'food': const Color(0xFF42A5F5),       // Medium blue  
+          'housing': const Color(0xFF1976D2), // Deep blue
+          'food': const Color(0xFF42A5F5), // Medium blue
           'transportation': const Color(0xFF64B5F6), // Light blue
-          'utilities': const Color(0xFF2196F3),  // Blue
+          'utilities': const Color(0xFF2196F3), // Blue
           'healthcare': const Color(0xFF0D47A1), // Dark blue
           'entertainment': const Color(0xFFBBDEFB), // Very light blue
-          'savings': const Color(0xFF0277BD),    // Very dark blue
+          'savings': const Color(0xFF0277BD), // Very dark blue
           'other': Colors.grey.shade500,
         };
       case IncomeTier.upperMiddle:
         return {
-          'housing': const Color(0xFF5E35B1),    // Deep purple
-          'food': const Color(0xFF7986CB),       // Medium purple
+          'housing': const Color(0xFF5E35B1), // Deep purple
+          'food': const Color(0xFF7986CB), // Medium purple
           'transportation': const Color(0xFF9575CD), // Light purple
-          'utilities': const Color(0xFF673AB7),  // Deep purple
+          'utilities': const Color(0xFF673AB7), // Deep purple
           'healthcare': const Color(0xFF311B92), // Dark purple
           'entertainment': const Color(0xFFD1C4E9), // Very light purple
-          'savings': const Color(0xFF4527A0),    // Very dark purple
+          'savings': const Color(0xFF4527A0), // Very dark purple
           'other': Colors.grey.shade500,
         };
       case IncomeTier.high:
         return {
-          'housing': const Color(0xFF7B1FA2),    // Deep purple
-          'food': const Color(0xFF9C27B0),       // Medium purple
+          'housing': const Color(0xFF7B1FA2), // Deep purple
+          'food': const Color(0xFF9C27B0), // Medium purple
           'transportation': const Color(0xFFBA68C8), // Light purple
-          'utilities': const Color(0xFF8E24AA),  // Purple
+          'utilities': const Color(0xFF8E24AA), // Purple
           'healthcare': const Color(0xFF4A148C), // Dark purple
           'entertainment': const Color(0xFFE1BEE7), // Very light purple
-          'savings': const Color(0xFF6A1B9A),    // Very dark purple
+          'savings': const Color(0xFF6A1B9A), // Very dark purple
           'other': Colors.grey.shade500,
         };
     }
@@ -413,7 +413,7 @@ class IncomeTheme {
   static LinearGradient getTierGradient(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
-    
+
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -428,7 +428,7 @@ class IncomeTheme {
   /// Get tier-specific shadow colors
   static List<BoxShadow> getTierShadows(IncomeTier tier) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     return [
       BoxShadow(
         color: primary.withValues(alpha: 0.1),
@@ -455,7 +455,7 @@ class IncomeTheme {
   }) {
     final gradient = getTierGradient(tier);
     final shadows = getTierShadows(tier);
-    
+
     return Container(
       margin: margin,
       decoration: BoxDecoration(
@@ -487,7 +487,7 @@ class IncomeTheme {
     required Widget child,
   }) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     return FloatingActionButton(
       onPressed: onPressed,
       backgroundColor: primary,
@@ -509,7 +509,7 @@ class IncomeTheme {
     bool centerTitle = true,
   }) {
     final primary = _incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     return AppBar(
       title: Text(
         title,

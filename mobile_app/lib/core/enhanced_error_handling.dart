@@ -30,20 +30,21 @@ class EnhancedErrorHandling {
     T? fallbackValue,
   }) async {
     String opName = operationName ?? 'Unknown Operation';
-    
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        logDebug('Executing $opName - Attempt $attempt/$maxRetries', tag: 'ENHANCED_ERROR_HANDLING');
+        logDebug('Executing $opName - Attempt $attempt/$maxRetries',
+            tag: 'ENHANCED_ERROR_HANDLING');
         return await operation();
       } catch (error, stackTrace) {
-        bool shouldRetry = attempt < maxRetries && 
-                          retryableExceptions.any((type) => error.runtimeType == type || error is DioException);
-        
+        bool shouldRetry = attempt < maxRetries &&
+            retryableExceptions.any((type) => error.runtimeType == type || error is DioException);
+
         logWarning(
-          'Error in $opName - Attempt $attempt/$maxRetries: $error', 
+          'Error in $opName - Attempt $attempt/$maxRetries: $error',
           tag: 'ENHANCED_ERROR_HANDLING',
         );
-        
+
         // Report error to error handler
         AppErrorHandler.reportError(
           error,
@@ -57,25 +58,28 @@ class EnhancedErrorHandling {
             'willRetry': shouldRetry,
           },
         );
-        
+
         if (shouldRetry) {
           // Calculate delay with optional exponential backoff
-          Duration delay = exponentialBackoff 
-            ? Duration(milliseconds: (retryDelay.inMilliseconds * (attempt * attempt)).clamp(1000, 30000))
-            : retryDelay;
-            
+          Duration delay = exponentialBackoff
+              ? Duration(
+                  milliseconds:
+                      (retryDelay.inMilliseconds * (attempt * attempt)).clamp(1000, 30000))
+              : retryDelay;
+
           logDebug('Retrying $opName in ${delay.inSeconds}s', tag: 'ENHANCED_ERROR_HANDLING');
           await Future<void>.delayed(delay);
         } else {
-          logError('Final failure for $opName after $attempt attempts', tag: 'ENHANCED_ERROR_HANDLING');
+          logError('Final failure for $opName after $attempt attempts',
+              tag: 'ENHANCED_ERROR_HANDLING');
           return fallbackValue;
         }
       }
     }
-    
+
     return fallbackValue;
   }
-  
+
   /// Execute operation with timeout and circuit breaker pattern
   static Future<T?> executeWithCircuitBreaker<T>(
     Future<T> Function() operation, {
@@ -85,14 +89,14 @@ class EnhancedErrorHandling {
     T? fallbackValue,
   }) async {
     String opName = operationName ?? 'Circuit Breaker Operation';
-    
+
     try {
       logDebug('Executing $opName with ${timeout.inSeconds}s timeout', tag: 'CIRCUIT_BREAKER');
-      
+
       return await operation().timeout(timeout);
     } on TimeoutException catch (error, stackTrace) {
       logError('Timeout in $opName after ${timeout.inSeconds}s', tag: 'CIRCUIT_BREAKER');
-      
+
       AppErrorHandler.reportError(
         error,
         stackTrace: stackTrace,
@@ -104,11 +108,11 @@ class EnhancedErrorHandling {
           'error_type': 'timeout',
         },
       );
-      
+
       return fallbackValue;
     } catch (error, stackTrace) {
       logError('Error in $opName: $error', tag: 'CIRCUIT_BREAKER', error: error);
-      
+
       AppErrorHandler.reportError(
         error,
         stackTrace: stackTrace,
@@ -120,11 +124,11 @@ class EnhancedErrorHandling {
           'error_type': 'general',
         },
       );
-      
+
       return fallbackValue;
     }
   }
-  
+
   /// Safe widget builder that catches and handles rendering errors
   static Widget safeBuilder(
     Widget Function() builder, {
@@ -135,9 +139,9 @@ class EnhancedErrorHandling {
       return builder();
     } catch (error, stackTrace) {
       String name = widgetName ?? 'Unknown Widget';
-      
+
       logError('Widget rendering error in $name: $error', tag: 'SAFE_WIDGET_BUILDER', error: error);
-      
+
       AppErrorHandler.reportUIError(
         error,
         widgetName: name,
@@ -146,11 +150,11 @@ class EnhancedErrorHandling {
           'has_fallback': fallbackWidget != null,
         },
       );
-      
+
       return fallbackWidget ?? const SizedBox.shrink();
     }
   }
-  
+
   /// Enhanced network error handler with specific error categorization
   static String handleNetworkError(dynamic error) {
     if (error is DioException) {
@@ -239,13 +243,13 @@ class RobustErrorBoundary extends StatelessWidget {
 mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
   bool _isLoading = false;
   String? _errorMessage;
-  
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  
+
   /// Access to financial error service
   FinancialErrorService get errorService => FinancialErrorService.instance;
-  
+
   /// Execute an async operation with comprehensive error handling
   Future<U?> executeRobustly<U>(
     Future<U> Function() operation, {
@@ -257,37 +261,37 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
     VoidCallback? onError,
   }) async {
     final String opName = operationName ?? 'Operation';
-    
+
     if (showLoadingState) {
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
     }
-    
+
     try {
       logDebug('Executing robust operation: $opName', tag: 'ROBUST_MIXIN');
-      
+
       final result = await EnhancedErrorHandling.executeWithRetry<U>(
         operation,
         operationName: opName,
         category: ErrorCategory.ui,
         fallbackValue: fallbackValue,
       );
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
           _errorMessage = null;
         });
-        
+
         onSuccess?.call();
       }
-      
+
       return result;
     } catch (error, stackTrace) {
       logError('Robust operation failed: $opName - $error', tag: 'ROBUST_MIXIN', error: error);
-      
+
       AppErrorHandler.reportError(
         error,
         stackTrace: stackTrace,
@@ -298,19 +302,19 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
           'operation': opName,
         },
       );
-      
+
       if (mounted && showErrorState) {
         setState(() {
           _isLoading = false;
           _errorMessage = EnhancedErrorHandling.handleNetworkError(error);
         });
       }
-      
+
       onError?.call();
       return fallbackValue;
     }
   }
-  
+
   /// Clear error state
   void clearError() {
     if (mounted && _errorMessage != null) {
@@ -319,7 +323,7 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
       });
     }
   }
-  
+
   /// Show enhanced error dialog with financial context and retry functionality
   Future<void> showEnhancedErrorDialog(
     String title,
@@ -329,10 +333,10 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
     Map<String, dynamic>? additionalContext,
   }) async {
     if (!mounted) return;
-    
+
     // Create error with financial context
     final error = Exception(message);
-    
+
     await errorService.showError(
       context,
       error,
@@ -346,7 +350,7 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
       forceDialog: true,
     );
   }
-  
+
   /// Build error state widget
   Widget buildErrorState({
     String? title,
@@ -369,17 +373,17 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
             Text(
               title ?? 'Something went wrong',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               message ?? _errorMessage ?? 'An unexpected error occurred. Please try again.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -397,7 +401,7 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
       ),
     );
   }
-  
+
   /// Build loading state widget
   Widget buildLoadingState({String? message}) {
     return Center(
@@ -412,8 +416,8 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -426,11 +430,11 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
 /// Enhanced error handling for form validation
 class FormErrorHandler {
   static Map<String, String> _fieldErrors = {};
-  
+
   /// Add field-specific error
   static void addFieldError(String field, String message) {
     _fieldErrors[field] = message;
-    
+
     AppErrorHandler.reportValidationError(
       message,
       field: field,
@@ -440,32 +444,32 @@ class FormErrorHandler {
       },
     );
   }
-  
+
   /// Get field error
   static String? getFieldError(String field) {
     return _fieldErrors[field];
   }
-  
+
   /// Clear field error
   static void clearFieldError(String field) {
     _fieldErrors.remove(field);
   }
-  
+
   /// Clear all errors
   static void clearAllErrors() {
     _fieldErrors.clear();
   }
-  
+
   /// Check if form has errors
   static bool hasErrors() {
     return _fieldErrors.isNotEmpty;
   }
-  
+
   /// Get all errors
   static Map<String, String> getAllErrors() {
     return Map.from(_fieldErrors);
   }
-  
+
   /// Validate email with enhanced error reporting
   static String? validateEmail(String? value, {bool reportError = true}) {
     if (value == null || value.isEmpty) {
@@ -473,18 +477,18 @@ class FormErrorHandler {
       if (reportError) addFieldError('email', error);
       return error;
     }
-    
+
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailRegex.hasMatch(value)) {
       const error = 'Please enter a valid email address';
       if (reportError) addFieldError('email', error);
       return error;
     }
-    
+
     if (reportError) clearFieldError('email');
     return null;
   }
-  
+
   /// Validate password with enhanced error reporting
   static String? validatePassword(String? value, {bool reportError = true}) {
     if (value == null || value.isEmpty) {
@@ -492,19 +496,19 @@ class FormErrorHandler {
       if (reportError) addFieldError('password', error);
       return error;
     }
-    
+
     if (value.length < 8) {
       const error = 'Password must be at least 8 characters long';
       if (reportError) addFieldError('password', error);
       return error;
     }
-    
+
     if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
       const error = 'Password must contain uppercase, lowercase, and number';
       if (reportError) addFieldError('password', error);
       return error;
     }
-    
+
     if (reportError) clearFieldError('password');
     return null;
   }
@@ -527,7 +531,7 @@ extension SafeAsyncExecution<T> on Future<T> {
       category: category,
     );
   }
-  
+
   /// Execute with circuit breaker
   Future<T?> executeWithBreaker({
     Duration timeout = const Duration(seconds: 30),
@@ -549,7 +553,7 @@ extension SafeAsyncExecution<T> on Future<T> {
 extension ContextErrorHandling on BuildContext {
   /// Access to financial error service
   FinancialErrorService get errorService => FinancialErrorService.instance;
-  
+
   /// Show enhanced error with financial context
   Future<void> showErrorSnack(
     dynamic error, {
@@ -564,7 +568,7 @@ extension ContextErrorHandling on BuildContext {
       onRetry: onRetry,
     );
   }
-  
+
   /// Show success snackbar with financial context
   void showSuccessSnack(
     String message, {
@@ -572,13 +576,13 @@ extension ContextErrorHandling on BuildContext {
     String? financialContext,
   }) {
     errorService.showSuccess(
-      this, 
-      message, 
+      this,
+      message,
       financialContext: financialContext,
       duration: duration,
     );
   }
-  
+
   /// Show financial warning
   void showFinancialWarning(
     String title,

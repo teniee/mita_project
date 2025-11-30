@@ -16,18 +16,18 @@ import 'logging_service.dart';
 class EnhancedApiWrapper {
   static EnhancedApiWrapper? _instance;
   static EnhancedApiWrapper get instance => _instance ??= EnhancedApiWrapper._();
-  
+
   EnhancedApiWrapper._();
 
   final ApiService _apiService = ApiService();
   final Map<String, DateTime> _circuitBreakerRegistry = {};
   final Map<String, int> _failureCountRegistry = {};
-  
+
   // Circuit breaker configuration
   static const Duration _circuitBreakerTimeout = Duration(minutes: 5);
   static const int _maxFailuresBeforeCircuitBreaker = 3;
   static const Duration _defaultApiTimeout = Duration(seconds: 30);
-  
+
   /// Execute API operation with comprehensive error handling and circuit breaker
   Future<T?> executeApiCall<T>(
     Future<T> Function() operation, {
@@ -41,7 +41,7 @@ class EnhancedApiWrapper {
     // Check circuit breaker
     if (enableCircuitBreaker && _isCircuitOpen(operationName)) {
       logWarning('Circuit breaker open for $operationName', tag: 'ENHANCED_API');
-      
+
       AppErrorHandler.reportError(
         'Circuit breaker triggered for $operationName',
         severity: ErrorSeverity.medium,
@@ -52,20 +52,20 @@ class EnhancedApiWrapper {
           'failure_count': _failureCountRegistry[operationName] ?? 0,
         },
       );
-      
+
       return fallbackValue;
     }
-    
+
     return await EnhancedErrorHandling.executeWithRetry<T>(
       () async {
         try {
           final result = await operation().timeout(timeout);
-          
+
           // Reset circuit breaker on success
           if (enableCircuitBreaker) {
             _resetCircuitBreaker(operationName);
           }
-          
+
           logDebug('API operation successful: $operationName', tag: 'ENHANCED_API');
           return result;
         } catch (error) {
@@ -73,7 +73,7 @@ class EnhancedApiWrapper {
           if (enableCircuitBreaker) {
             _recordFailure(operationName);
           }
-          
+
           // Enhanced error reporting with context
           _reportApiError(error, operationName, category);
           rethrow;
@@ -91,7 +91,7 @@ class EnhancedApiWrapper {
       fallbackValue: fallbackValue,
     );
   }
-  
+
   /// Authentication operations with specialized error handling
   Future<Response?> authenticateUser({
     required String email,
@@ -112,7 +112,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.authentication,
     );
   }
-  
+
   /// Google authentication with enhanced error handling
   Future<Response?> authenticateWithGoogle(String idToken) async {
     return await executeApiCall<Response>(
@@ -123,7 +123,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.authentication,
     );
   }
-  
+
   /// Budget operations with financial data protection
   Future<List<dynamic>?> getDailyBudgets() async {
     return await executeApiCall<List<dynamic>>(
@@ -134,7 +134,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Calendar operations with enhanced reliability
   Future<List<dynamic>?> getCalendarData() async {
     return await executeApiCall<List<dynamic>>(
@@ -145,7 +145,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Transaction operations with data integrity protection
   Future<void> addTransaction({
     required Map<String, dynamic> transactionData,
@@ -158,7 +158,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Budget redistribution with careful error handling
   Future<Map<String, dynamic>?> redistributeBudget(Map<String, dynamic> calendarData) async {
     return await executeApiCall<Map<String, dynamic>>(
@@ -170,7 +170,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.system,
     );
   }
-  
+
   /// Profile and settings operations
   Future<Map<String, dynamic>?> getUserProfile() async {
     return await executeApiCall<Map<String, dynamic>>(
@@ -181,7 +181,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Dashboard data with fallback handling
   Future<Map<String, dynamic>?> getDashboardData() async {
     return await executeApiCall<Map<String, dynamic>>(
@@ -192,7 +192,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Transaction history with pagination support
   Future<List<dynamic>?> getTransactionsByDate(String date) async {
     return await executeApiCall<List<dynamic>>(
@@ -203,7 +203,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Live budget status with high availability
   Future<Map<String, dynamic>?> getLiveBudgetStatus() async {
     return await executeApiCall<Map<String, dynamic>>(
@@ -215,7 +215,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Budget suggestions with enhanced fallback
   Future<Map<String, dynamic>?> getBudgetSuggestions() async {
     return await executeApiCall<Map<String, dynamic>>(
@@ -226,7 +226,7 @@ class EnhancedApiWrapper {
       category: ErrorCategory.network,
     );
   }
-  
+
   /// Onboarding completion check
   Future<bool?> hasCompletedOnboarding() async {
     final result = await executeApiCall<bool>(
@@ -238,7 +238,7 @@ class EnhancedApiWrapper {
     );
     return result;
   }
-  
+
   /// Token management operations
   Future<bool> saveAuthTokens(String accessToken, String? refreshToken) async {
     try {
@@ -253,49 +253,49 @@ class EnhancedApiWrapper {
       return false;
     }
   }
-  
+
   /// Circuit breaker implementation
   bool _isCircuitOpen(String operationName) {
     final failures = _failureCountRegistry[operationName] ?? 0;
     if (failures < _maxFailuresBeforeCircuitBreaker) return false;
-    
+
     final breakerTime = _circuitBreakerRegistry[operationName];
     if (breakerTime == null) return false;
-    
+
     final now = DateTime.now();
     if (now.difference(breakerTime) > _circuitBreakerTimeout) {
       // Reset circuit breaker after timeout
       _resetCircuitBreaker(operationName);
       return false;
     }
-    
+
     return true;
   }
-  
+
   void _recordFailure(String operationName) {
     final currentFailures = _failureCountRegistry[operationName] ?? 0;
     _failureCountRegistry[operationName] = currentFailures + 1;
-    
+
     if (currentFailures + 1 >= _maxFailuresBeforeCircuitBreaker) {
       _circuitBreakerRegistry[operationName] = DateTime.now();
       logWarning('Circuit breaker activated for $operationName', tag: 'CIRCUIT_BREAKER');
     }
   }
-  
+
   void _resetCircuitBreaker(String operationName) {
     _failureCountRegistry.remove(operationName);
     _circuitBreakerRegistry.remove(operationName);
   }
-  
+
   /// Enhanced error reporting with API-specific context
   void _reportApiError(dynamic error, String operationName, ErrorCategory category) {
     Map<String, dynamic> context = {
       'operation': operationName,
       'timestamp': DateTime.now().toIso8601String(),
     };
-    
+
     ErrorSeverity severity = ErrorSeverity.medium;
-    
+
     if (error is DioException) {
       context.addAll({
         'dio_error_type': error.type.toString(),
@@ -304,7 +304,7 @@ class EnhancedApiWrapper {
         'request_path': error.requestOptions.path,
         'request_method': error.requestOptions.method,
       });
-      
+
       // Determine severity based on error type and status code
       if (error.response?.statusCode == null) {
         severity = ErrorSeverity.high; // Network connectivity issues
@@ -317,7 +317,7 @@ class EnhancedApiWrapper {
       context['timeout_type'] = 'operation_timeout';
       severity = ErrorSeverity.medium;
     }
-    
+
     AppErrorHandler.reportError(
       error,
       severity: severity,
@@ -325,7 +325,7 @@ class EnhancedApiWrapper {
       context: context,
     );
   }
-  
+
   /// Get circuit breaker statistics
   Map<String, dynamic> getCircuitBreakerStats() {
     return {
@@ -335,19 +335,19 @@ class EnhancedApiWrapper {
       'max_failures_threshold': _maxFailuresBeforeCircuitBreaker,
     };
   }
-  
+
   /// Reset all circuit breakers (for testing or administrative purposes)
   void resetAllCircuitBreakers() {
     _circuitBreakerRegistry.clear();
     _failureCountRegistry.clear();
     logInfo('All circuit breakers reset', tag: 'ENHANCED_API');
   }
-  
+
   /// Check API health with comprehensive diagnostics
   Future<Map<String, dynamic>> performHealthCheck() async {
     final healthResults = <String, dynamic>{};
     final startTime = DateTime.now();
-    
+
     // Test basic connectivity
     try {
       await executeApiCall<Map<String, dynamic>>(
@@ -357,19 +357,23 @@ class EnhancedApiWrapper {
         timeout: const Duration(seconds: 10),
         enableCircuitBreaker: false,
       );
-      healthResults['dashboard_api'] = {'status': 'healthy', 'response_time_ms': DateTime.now().difference(startTime).inMilliseconds};
+      healthResults['dashboard_api'] = {
+        'status': 'healthy',
+        'response_time_ms': DateTime.now().difference(startTime).inMilliseconds
+      };
     } catch (e) {
       healthResults['dashboard_api'] = {'status': 'unhealthy', 'error': e.toString()};
     }
-    
+
     // Add circuit breaker status
     healthResults['circuit_breakers'] = getCircuitBreakerStats();
-    
+
     // Add overall health score
-    final healthyApis = healthResults.values.where((v) => v is Map && v['status'] == 'healthy').length;
+    final healthyApis =
+        healthResults.values.where((v) => v is Map && v['status'] == 'healthy').length;
     final totalApis = healthResults.length - 1; // Excluding circuit_breakers entry
     healthResults['overall_health_score'] = totalApis > 0 ? (healthyApis / totalApis) : 0.0;
-    
+
     return healthResults;
   }
 }
@@ -380,21 +384,21 @@ extension ApiConvenience on EnhancedApiWrapper {
   Future<Map<String, dynamic>?> refreshDashboard() async {
     return await getDashboardData();
   }
-  
+
   /// Quick budget refresh with error handling
   Future<List<dynamic>?> refreshBudgets() async {
     return await getDailyBudgets();
   }
-  
+
   /// Quick calendar refresh with error handling
   Future<List<dynamic>?> refreshCalendar() async {
     return await getCalendarData();
   }
-  
+
   /// Comprehensive data refresh for main screen
   Future<Map<String, dynamic>> refreshAllMainScreenData() async {
     final results = <String, dynamic>{};
-    
+
     // Execute all operations concurrently with individual error handling
     final futures = [
       getDashboardData().then((data) => results['dashboard'] = data),
@@ -402,13 +406,14 @@ extension ApiConvenience on EnhancedApiWrapper {
       getCalendarData().then((data) => results['calendar'] = data),
       getLiveBudgetStatus().then((data) => results['live_status'] = data),
     ];
-    
+
     // Wait for all operations to complete (some may fail gracefully)
     await Future.wait(futures, eagerError: false);
-    
+
     results['refresh_timestamp'] = DateTime.now().toIso8601String();
-    results['success_count'] = results.values.where((v) => v != null && v != false).length - 1; // Excluding timestamp
-    
+    results['success_count'] =
+        results.values.where((v) => v != null && v != false).length - 1; // Excluding timestamp
+
     return results;
   }
 }

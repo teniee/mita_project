@@ -91,16 +91,16 @@ class PerformanceMetric {
   });
 
   Map<String, dynamic> toJson() => {
-    'operation_name': operationName,
-    'category': category.value,
-    'duration_ms': durationMs,
-    'timestamp': timestamp.toIso8601String(),
-    'success': success,
-    'user_id': userId,
-    'screen_name': screenName,
-    'additional_context': additionalContext,
-    'platform': Platform.operatingSystem,
-  };
+        'operation_name': operationName,
+        'category': category.value,
+        'duration_ms': durationMs,
+        'timestamp': timestamp.toIso8601String(),
+        'success': success,
+        'user_id': userId,
+        'screen_name': screenName,
+        'additional_context': additionalContext,
+        'platform': Platform.operatingSystem,
+      };
 }
 
 /// Comprehensive performance monitoring service for mobile
@@ -196,7 +196,6 @@ class MobilePerformanceMonitor {
 
       transaction?.finish();
       return result;
-
     } catch (error, stackTrace) {
       stopwatch.stop();
       final durationMs = stopwatch.elapsedMilliseconds;
@@ -305,7 +304,6 @@ class MobilePerformanceMonitor {
 
       transaction?.finish();
       return result;
-
     } catch (error, stackTrace) {
       stopwatch.stop();
       final durationMs = stopwatch.elapsedMilliseconds;
@@ -432,7 +430,6 @@ class MobilePerformanceMonitor {
 
       transaction?.finish();
       return result;
-
     } catch (error, stackTrace) {
       stopwatch.stop();
       final durationMs = stopwatch.elapsedMilliseconds;
@@ -519,7 +516,9 @@ class MobilePerformanceMonitor {
     // Log slow interactions
     if (durationMs > 1000) {
       if (kDebugMode) {
-        if (kDebugMode) dev.log('Slow user interaction: $interaction took ${durationMs}ms', name: 'PerformanceMonitor');
+        if (kDebugMode)
+          dev.log('Slow user interaction: $interaction took ${durationMs}ms',
+              name: 'PerformanceMonitor');
       }
     }
   }
@@ -535,15 +534,20 @@ class MobilePerformanceMonitor {
 
     // Log performance issues in debug mode
     if (kDebugMode) {
-      if (metric.category == MobilePerformanceCategory.screenRender && 
-          metric.durationMs > 1000) {
-        if (kDebugMode) dev.log('Slow screen render: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
-      } else if (metric.category == MobilePerformanceCategory.apiRequest && 
-                 metric.durationMs > 2000) {
-        if (kDebugMode) dev.log('Slow API request: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
-      } else if (metric.category == MobilePerformanceCategory.financialCalculation && 
-                 metric.durationMs > 1500) {
-        if (kDebugMode) dev.log('Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms', name: 'PerformanceMonitor');
+      if (metric.category == MobilePerformanceCategory.screenRender && metric.durationMs > 1000) {
+        if (kDebugMode)
+          dev.log('Slow screen render: ${metric.operationName} took ${metric.durationMs}ms',
+              name: 'PerformanceMonitor');
+      } else if (metric.category == MobilePerformanceCategory.apiRequest &&
+          metric.durationMs > 2000) {
+        if (kDebugMode)
+          dev.log('Slow API request: ${metric.operationName} took ${metric.durationMs}ms',
+              name: 'PerformanceMonitor');
+      } else if (metric.category == MobilePerformanceCategory.financialCalculation &&
+          metric.durationMs > 1500) {
+        if (kDebugMode)
+          dev.log('Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms',
+              name: 'PerformanceMonitor');
       }
     }
   }
@@ -605,12 +609,12 @@ class MobilePerformanceMonitor {
       );
 
       if (kDebugMode) {
-        if (kDebugMode) dev.log(
-          'Performance alert: $operationName took ${durationMs}ms '
-          '(threshold: ${threshold}ms)',
-        );
+        if (kDebugMode)
+          dev.log(
+            'Performance alert: $operationName took ${durationMs}ms '
+            '(threshold: ${threshold}ms)',
+          );
       }
-
     } catch (e) {
       if (kDebugMode) {
         if (kDebugMode) dev.log('Failed to send performance alert to Sentry: $e');
@@ -675,15 +679,18 @@ class MobilePerformanceMonitor {
     final sortedMetrics = List<PerformanceMetric>.from(metrics)
       ..sort((a, b) => b.durationMs.compareTo(a.durationMs));
 
-    return sortedMetrics.take(limit).map((metric) => {
-      'operation_name': metric.operationName,
-      'duration_ms': metric.durationMs,
-      'category': metric.category.value,
-      'timestamp': metric.timestamp.toIso8601String(),
-      'success': metric.success,
-      'screen_name': metric.screenName,
-      'user_id': metric.userId,
-    }).toList();
+    return sortedMetrics
+        .take(limit)
+        .map((metric) => {
+              'operation_name': metric.operationName,
+              'duration_ms': metric.durationMs,
+              'category': metric.category.value,
+              'timestamp': metric.timestamp.toIso8601String(),
+              'success': metric.success,
+              'screen_name': metric.screenName,
+              'user_id': metric.userId,
+            })
+        .toList();
   }
 }
 

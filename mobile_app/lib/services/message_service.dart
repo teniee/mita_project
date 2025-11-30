@@ -9,8 +9,7 @@ class MessageService {
   // Allow creation of instances for specific use cases
   factory MessageService() => instance;
 
-  final GlobalKey<ScaffoldMessengerState> messengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+  final GlobalKey<ScaffoldMessengerState> messengerKey = GlobalKey<ScaffoldMessengerState>();
 
   void showError(String text) {
     messengerKey.currentState?.showSnackBar(

@@ -25,8 +25,7 @@ class FinancialErrorDialog extends StatefulWidget {
   State<FinancialErrorDialog> createState() => _FinancialErrorDialogState();
 }
 
-class _FinancialErrorDialogState extends State<FinancialErrorDialog>
-    with TickerProviderStateMixin {
+class _FinancialErrorDialogState extends State<FinancialErrorDialog> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -368,7 +367,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Header with icon and title
               Row(
                 children: [
@@ -409,7 +408,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Error message
               Text(
                 widget.errorInfo.message,
@@ -418,7 +417,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                   height: 1.4,
                 ),
               ),
-              
+
               // Financial context
               if (widget.errorInfo.financialContext != null) ...[
                 const SizedBox(height: 16),
@@ -449,7 +448,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                   ),
                 ),
               ],
-              
+
               // Tips
               if (widget.errorInfo.tips?.isNotEmpty == true) ...[
                 const SizedBox(height: 20),
@@ -487,9 +486,9 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                       ),
                     )),
               ],
-              
+
               const SizedBox(height: 24),
-              
+
               // Actions
               Row(
                 children: [
@@ -520,7 +519,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                           )),
                 ],
               ),
-              
+
               // Additional bottom padding for safe area
               const SizedBox(height: 8),
             ],
@@ -532,7 +531,7 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
 
   void _handleAction(BuildContext context, FinancialErrorAction action) {
     HapticFeedback.selectionClick();
-    
+
     switch (action.action) {
       case FinancialErrorActionType.retry:
         Navigator.of(context).pop();

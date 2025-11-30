@@ -40,8 +40,8 @@ class TransactionService {
         queryParams['category'] = category;
       }
 
-      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions')
-          .replace(queryParameters: queryParams);
+      final uri =
+          Uri.parse('${AppConfig.fullApiUrl}/transactions').replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,
@@ -104,9 +104,7 @@ class TransactionService {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data')
-            ? data['data']
-            : data;
+        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
 
         return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
@@ -130,22 +128,22 @@ class TransactionService {
         throw Exception('Not authenticated');
       }
 
-      final response = await http.post(
-        Uri.parse('${AppConfig.fullApiUrl}/transactions'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(input.toJson()),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.fullApiUrl}/transactions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode(input.toJson()),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data')
-            ? data['data']
-            : data;
+        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
 
         return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 401) {
@@ -173,22 +171,22 @@ class TransactionService {
         throw Exception('Not authenticated');
       }
 
-      final response = await http.put(
-        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(input.toJson()),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: json.encode(input.toJson()),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data')
-            ? data['data']
-            : data;
+        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
 
         return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {

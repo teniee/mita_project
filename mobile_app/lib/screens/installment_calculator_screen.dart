@@ -482,7 +482,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   children: [
                     Icon(_getCategoryIcon(category), size: 20, color: AppColors.textPrimary),
                     const SizedBox(width: 8),
-                    Text(category.displayName, style: const TextStyle(fontFamily: AppTypography.fontBody)),
+                    Text(category.displayName,
+                        style: const TextStyle(fontFamily: AppTypography.fontBody)),
                   ],
                 ),
               );
@@ -1042,9 +1043,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             _buildDetailRow(
               'Remaining Monthly Funds',
               '\$${result.remainingMonthlyFunds!.toStringAsFixed(2)}',
-              valueColor: result.remainingMonthlyFunds! < 0
-                  ? AppColors.error
-                  : AppColors.success,
+              valueColor: result.remainingMonthlyFunds! < 0 ? AppColors.error : AppColors.success,
             ),
           ],
           if (result.balanceAfterFirstPayment != null) ...[
@@ -1052,9 +1051,7 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             _buildDetailRow(
               'Balance After First Payment',
               '\$${result.balanceAfterFirstPayment!.toStringAsFixed(2)}',
-              valueColor: result.balanceAfterFirstPayment! < 0
-                  ? AppColors.error
-                  : null,
+              valueColor: result.balanceAfterFirstPayment! < 0 ? AppColors.error : null,
             ),
           ],
         ],

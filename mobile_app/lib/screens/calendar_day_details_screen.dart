@@ -36,7 +36,6 @@ class CalendarDayDetailsScreen extends StatefulWidget {
 
 class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     with TickerProviderStateMixin {
-
   final PredictiveAnalyticsService _predictiveService = PredictiveAnalyticsService();
 
   late AnimationController _slideController;
@@ -124,7 +123,6 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
       // Start chart animation
       _chartController.forward();
-
     } catch (e) {
       logError('Failed to load day details: $e', tag: 'CALENDAR_DAY_DETAILS');
     } finally {
@@ -147,7 +145,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         endDate: endOfDay,
       );
 
-      logInfo('Loaded transactions for ${DateFormat('yyyy-MM-dd').format(widget.date)}', tag: 'CALENDAR_DAY_DETAILS');
+      logInfo('Loaded transactions for ${DateFormat('yyyy-MM-dd').format(widget.date)}',
+          tag: 'CALENDAR_DAY_DETAILS');
     } catch (e) {
       logWarning('Failed to load transactions: $e', tag: 'CALENDAR_DAY_DETAILS');
     }
@@ -346,7 +345,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
                       // Content
                       Expanded(
-                        child: _buildTabContent(colorScheme, textTheme, transactionProvider, budgetProvider),
+                        child: _buildTabContent(
+                            colorScheme, textTheme, transactionProvider, budgetProvider),
                       ),
 
                       // Action Buttons
@@ -362,7 +362,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildHeaderSection(ColorScheme colorScheme, TextTheme textTheme, BudgetProvider budgetProvider) {
+  Widget _buildHeaderSection(
+      ColorScheme colorScheme, TextTheme textTheme, BudgetProvider budgetProvider) {
     final remaining = widget.limit - widget.spent;
     final spentPercentage = widget.limit > 0 ? (widget.spent / widget.limit) * 100 : 0.0;
     final isToday = _isToday();
@@ -501,12 +502,22 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   ),
                   Expanded(
                     child: _buildBudgetStat(
-                      isPast ? 'Spent' : isFuture ? 'Available' : 'Spent',
+                      isPast
+                          ? 'Spent'
+                          : isFuture
+                              ? 'Available'
+                              : 'Spent',
                       '\$${isPast ? widget.spent : isFuture ? widget.limit : widget.spent}',
-                      isPast ? Icons.shopping_cart_outlined :
-                      isFuture ? Icons.savings_outlined : Icons.shopping_cart_outlined,
-                      isPast ? colorScheme.error :
-                      isFuture ? colorScheme.tertiary : colorScheme.error,
+                      isPast
+                          ? Icons.shopping_cart_outlined
+                          : isFuture
+                              ? Icons.savings_outlined
+                              : Icons.shopping_cart_outlined,
+                      isPast
+                          ? colorScheme.error
+                          : isFuture
+                              ? colorScheme.tertiary
+                              : colorScheme.error,
                       textTheme,
                     ),
                   ),
@@ -526,7 +537,6 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   ),
                 ],
               ),
-
               if (!isFuture) ...[
                 const SizedBox(height: 16),
                 _buildProgressIndicator(spentPercentage, colorScheme, textTheme),
@@ -538,7 +548,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildBudgetStat(String label, String amount, IconData icon, Color color, TextTheme textTheme) {
+  Widget _buildBudgetStat(
+      String label, String amount, IconData icon, Color color, TextTheme textTheme) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -563,7 +574,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildProgressIndicator(double spentPercentage, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildProgressIndicator(
+      double spentPercentage, ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
         Row(
@@ -593,9 +605,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               value: (spentPercentage / 100 * _chartAnimation.value).clamp(0.0, 1.0),
               backgroundColor: colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(
-                spentPercentage > 100 ? colorScheme.error :
-                spentPercentage > 80 ? Colors.orange :
-                colorScheme.primary,
+                spentPercentage > 100
+                    ? colorScheme.error
+                    : spentPercentage > 80
+                        ? Colors.orange
+                        : colorScheme.primary,
               ),
               minHeight: 8,
               borderRadius: BorderRadius.circular(4),
@@ -658,7 +672,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildTabContent(ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider, BudgetProvider budgetProvider) {
+  Widget _buildTabContent(ColorScheme colorScheme, TextTheme textTheme,
+      TransactionProvider transactionProvider, BudgetProvider budgetProvider) {
     // Show loading state from providers or local loading
     if (_isLoadingLocal || transactionProvider.isLoading || budgetProvider.isLoading) {
       return const Center(
@@ -685,14 +700,17 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     }
   }
 
-  Widget _buildSpendingTab(ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider) {
+  Widget _buildSpendingTab(
+      ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider) {
     // Convert provider transactions to the expected format
-    final transactions = transactionProvider.transactions.map((t) => {
-      'amount': t.amount,
-      'description': t.description,
-      'category': t.category,
-      'time': DateFormat('HH:mm').format(t.spentAt),
-    }).toList();
+    final transactions = transactionProvider.transactions
+        .map((t) => {
+              'amount': t.amount,
+              'description': t.description,
+              'category': t.category,
+              'time': DateFormat('HH:mm').format(t.spentAt),
+            })
+        .toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -708,7 +726,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           ),
           const SizedBox(height: 16),
 
-          ..._categoryBreakdown.map((category) => _buildCategoryItem(category, colorScheme, textTheme)),
+          ..._categoryBreakdown
+              .map((category) => _buildCategoryItem(category, colorScheme, textTheme)),
 
           const SizedBox(height: 24),
 
@@ -722,10 +741,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               ),
             ),
             const SizedBox(height: 16),
-
             if (transactions.isNotEmpty)
-              ...transactions.take(5).map((transaction) =>
-                  _buildTransactionItem(transaction, colorScheme, textTheme))
+              ...transactions
+                  .take(5)
+                  .map((transaction) => _buildTransactionItem(transaction, colorScheme, textTheme))
             else
               _buildEmptyTransactionsState(colorScheme, textTheme),
           ],
@@ -734,7 +753,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildCategoryItem(Map<String, dynamic> category, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildCategoryItem(
+      Map<String, dynamic> category, ColorScheme colorScheme, TextTheme textTheme) {
     final budgeted = (category['budgeted'] as num).toDouble();
     final spent = (category['spent'] as num).toDouble();
     final color = category['color'] as Color;
@@ -789,8 +809,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    _isFuture() ? '\$${budgeted.toStringAsFixed(0)}' :
-                    '\$${spent.toStringAsFixed(0)} / \$${budgeted.toStringAsFixed(0)}',
+                    _isFuture()
+                        ? '\$${budgeted.toStringAsFixed(0)}'
+                        : '\$${spent.toStringAsFixed(0)} / \$${budgeted.toStringAsFixed(0)}',
                     style: textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: percentage > 1.0 ? colorScheme.error : colorScheme.onSurface,
@@ -800,15 +821,15 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                     Text(
                       '${(percentage * 100).toStringAsFixed(0)}% used',
                       style: textTheme.bodySmall?.copyWith(
-                        color: percentage > 1.0 ? colorScheme.error :
-                               colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: percentage > 1.0
+                            ? colorScheme.error
+                            : colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                 ],
               ),
             ],
           ),
-
           if (!_isFuture()) ...[
             const SizedBox(height: 12),
             AnimatedBuilder(
@@ -831,7 +852,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> transaction, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildTransactionItem(
+      Map<String, dynamic> transaction, ColorScheme colorScheme, TextTheme textTheme) {
     final amount = (transaction['amount'] as num).toDouble();
     final description = transaction['description'] as String? ?? 'Unknown';
     final category = transaction['category'] as String? ?? 'Other';
@@ -965,14 +987,15 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           const SizedBox(height: 20),
 
           // Prediction Items
-          ...(_predictions!.entries.map((entry) =>
-              _buildPredictionItem(entry.key, entry.value, colorScheme, textTheme))),
+          ...(_predictions!.entries.map(
+              (entry) => _buildPredictionItem(entry.key, entry.value, colorScheme, textTheme))),
         ],
       ),
     );
   }
 
-  Widget _buildPredictionItem(String category, dynamic prediction, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildPredictionItem(
+      String category, dynamic prediction, ColorScheme colorScheme, TextTheme textTheme) {
     final predictedAmount = (prediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
     final confidence = (prediction['confidence'] as num?)?.toDouble() ?? 0.0;
     final factors = prediction['factors'] as List<dynamic>? ?? [];
@@ -1056,9 +1079,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                       value: confidence * _chartAnimation.value,
                       backgroundColor: colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        confidence > 0.8 ? Colors.green :
-                        confidence > 0.5 ? Colors.orange :
-                        Colors.red,
+                        confidence > 0.8
+                            ? Colors.green
+                            : confidence > 0.5
+                                ? Colors.orange
+                                : Colors.red,
                       ),
                       minHeight: 4,
                       borderRadius: BorderRadius.circular(2),
@@ -1080,14 +1105,14 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
             ),
             const SizedBox(height: 4),
             ...factors.take(2).map((factor) => Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                '• $factor',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            )),
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '• $factor',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                )),
           ],
         ],
       ),
@@ -1110,13 +1135,15 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           const SizedBox(height: 16),
 
           // Insights Cards
-          ..._generateInsights().map((insight) => _buildInsightCard(insight, colorScheme, textTheme)),
+          ..._generateInsights()
+              .map((insight) => _buildInsightCard(insight, colorScheme, textTheme)),
         ],
       ),
     );
   }
 
-  Widget _buildInsightCard(Map<String, dynamic> insight, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildInsightCard(
+      Map<String, dynamic> insight, ColorScheme colorScheme, TextTheme textTheme) {
     final type = insight['type'] as String;
     final title = insight['title'] as String;
     final description = insight['description'] as String;
@@ -1228,98 +1255,140 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   String _getTabTitle(String tab) {
     switch (tab) {
-      case 'spending': return 'Spending';
-      case 'predictions': return 'Predictions';
-      case 'insights': return 'Insights';
-      default: return tab;
+      case 'spending':
+        return 'Spending';
+      case 'predictions':
+        return 'Predictions';
+      case 'insights':
+        return 'Insights';
+      default:
+        return tab;
     }
   }
 
   Color _getStatusColor() {
     final colorScheme = Theme.of(context).colorScheme;
     switch (widget.status.toLowerCase()) {
-      case 'over': return colorScheme.error;
-      case 'warning': return Colors.orange;
+      case 'over':
+        return colorScheme.error;
+      case 'warning':
+        return Colors.orange;
       case 'good':
-      default: return colorScheme.primary;
+      default:
+        return colorScheme.primary;
     }
   }
 
   String _getStatusText() {
     switch (widget.status.toLowerCase()) {
-      case 'over': return 'Over Budget';
-      case 'warning': return 'Approaching Limit';
+      case 'over':
+        return 'Over Budget';
+      case 'warning':
+        return 'Approaching Limit';
       case 'good':
-      default: return _isToday() ? 'On Track Today' : _isFuture() ? 'Budget Available' : 'Completed';
+      default:
+        return _isToday()
+            ? 'On Track Today'
+            : _isFuture()
+                ? 'Budget Available'
+                : 'Completed';
     }
   }
 
   IconData _getStatusIcon() {
     switch (widget.status.toLowerCase()) {
-      case 'over': return Icons.warning_rounded;
-      case 'warning': return Icons.info_outline_rounded;
+      case 'over':
+        return Icons.warning_rounded;
+      case 'warning':
+        return Icons.info_outline_rounded;
       case 'good':
-      default: return Icons.check_circle_outline_rounded;
+      default:
+        return Icons.check_circle_outline_rounded;
     }
   }
 
   Color _getStatusChipColor() {
     final colorScheme = Theme.of(context).colorScheme;
     switch (widget.status.toLowerCase()) {
-      case 'over': return colorScheme.errorContainer;
-      case 'warning': return Colors.orange.withValues(alpha: 0.1);
+      case 'over':
+        return colorScheme.errorContainer;
+      case 'warning':
+        return Colors.orange.withValues(alpha: 0.1);
       case 'good':
-      default: return colorScheme.primaryContainer;
+      default:
+        return colorScheme.primaryContainer;
     }
   }
 
   Color _getStatusChipTextColor() {
     final colorScheme = Theme.of(context).colorScheme;
     switch (widget.status.toLowerCase()) {
-      case 'over': return colorScheme.onErrorContainer;
-      case 'warning': return Colors.orange;
+      case 'over':
+        return colorScheme.onErrorContainer;
+      case 'warning':
+        return Colors.orange;
       case 'good':
-      default: return colorScheme.onPrimaryContainer;
+      default:
+        return colorScheme.onPrimaryContainer;
     }
   }
 
   double _getPredictedSpending() {
     if (_predictions == null) return 0.0;
-    return _predictions!.values.fold<double>(0.0, (sum, pred) => sum + ((pred['predicted_amount'] as num?)?.toDouble() ?? 0.0));
+    return _predictions!.values.fold<double>(
+        0.0, (sum, pred) => sum + ((pred['predicted_amount'] as num?)?.toDouble() ?? 0.0));
   }
 
   String _formatCategoryName(String category) {
     switch (category.toLowerCase()) {
-      case 'food': return 'Food & Dining';
-      case 'transportation': return 'Transportation';
-      case 'entertainment': return 'Entertainment';
-      case 'shopping': return 'Shopping';
-      case 'healthcare': return 'Healthcare';
-      default: return category.substring(0, 1).toUpperCase() + category.substring(1);
+      case 'food':
+        return 'Food & Dining';
+      case 'transportation':
+        return 'Transportation';
+      case 'entertainment':
+        return 'Entertainment';
+      case 'shopping':
+        return 'Shopping';
+      case 'healthcare':
+        return 'Healthcare';
+      default:
+        return category.substring(0, 1).toUpperCase() + category.substring(1);
     }
   }
 
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'food':
-      case 'food & dining': return Colors.green;
-      case 'transportation': return Colors.blue;
-      case 'entertainment': return Colors.purple;
-      case 'shopping': return Colors.orange;
-      case 'healthcare': return Colors.red;
-      default: return Colors.grey;
+      case 'food & dining':
+        return Colors.green;
+      case 'transportation':
+        return Colors.blue;
+      case 'entertainment':
+        return Colors.purple;
+      case 'shopping':
+        return Colors.orange;
+      case 'healthcare':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'food':
-      case 'food & dining': return Icons.restaurant_outlined;
-      case 'transportation': return Icons.directions_car_outlined;
-      case 'entertainment': return Icons.movie_outlined;
-      case 'shopping': return Icons.shopping_bag_outlined;
-      case 'healthcare': return Icons.health_and_safety_outlined;
-      default: return Icons.category_outlined;
+      case 'food & dining':
+        return Icons.restaurant_outlined;
+      case 'transportation':
+        return Icons.directions_car_outlined;
+      case 'entertainment':
+        return Icons.movie_outlined;
+      case 'shopping':
+        return Icons.shopping_bag_outlined;
+      case 'healthcare':
+        return Icons.health_and_safety_outlined;
+      default:
+        return Icons.category_outlined;
     }
   }
 
@@ -1416,14 +1485,16 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         insights.add({
           'type': 'positive',
           'title': 'Great spending control!',
-          'description': 'You have \$${remaining.toStringAsFixed(0)} remaining today. You\'re on track to stay under budget.',
+          'description':
+              'You have \$${remaining.toStringAsFixed(0)} remaining today. You\'re on track to stay under budget.',
           'action': 'Keep up the good work!',
         });
       } else if (remaining < widget.limit * 0.2) {
         insights.add({
           'type': 'warning',
           'title': 'Budget running low',
-          'description': 'Only \$${remaining.toStringAsFixed(0)} left for today. Consider making fewer purchases.',
+          'description':
+              'Only \$${remaining.toStringAsFixed(0)} left for today. Consider making fewer purchases.',
           'action': 'Monitor remaining expenses carefully',
         });
       }
@@ -1433,7 +1504,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       insights.add({
         'type': 'info',
         'title': 'Budget planning',
-        'description': 'Based on your spending patterns, you\'re predicted to spend \$${_getPredictedSpending().toStringAsFixed(0)} on this day.',
+        'description':
+            'Based on your spending patterns, you\'re predicted to spend \$${_getPredictedSpending().toStringAsFixed(0)} on this day.',
         'action': 'Plan your expenses accordingly',
       });
     }
@@ -1444,14 +1516,16 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         insights.add({
           'type': 'positive',
           'title': 'Budget success',
-          'description': 'You stayed well within budget on this day, spending only ${(spentRatio * 100).toStringAsFixed(0)}% of your daily limit.',
+          'description':
+              'You stayed well within budget on this day, spending only ${(spentRatio * 100).toStringAsFixed(0)}% of your daily limit.',
           'action': 'This is a great example to follow',
         });
       } else if (spentRatio > 1.2) {
         insights.add({
           'type': 'warning',
           'title': 'Over-budget day',
-          'description': 'You exceeded your budget by ${((spentRatio - 1) * 100).toStringAsFixed(0)}% on this day.',
+          'description':
+              'You exceeded your budget by ${((spentRatio - 1) * 100).toStringAsFixed(0)}% on this day.',
           'action': 'Analyze what led to overspending',
         });
       }
@@ -1461,7 +1535,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     insights.add({
       'type': 'tip',
       'title': 'Smart spending tip',
-      'description': 'Track your largest category expenses to identify areas for potential savings.',
+      'description':
+          'Track your largest category expenses to identify areas for potential savings.',
       'action': 'Review your Food & Dining expenses',
     });
 
@@ -1470,23 +1545,35 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Color _getInsightColor(String type) {
     switch (type) {
-      case 'positive': return Colors.green;
-      case 'warning': return Colors.orange;
-      case 'error': return Colors.red;
-      case 'info': return Colors.blue;
-      case 'tip': return Colors.purple;
-      default: return Colors.grey;
+      case 'positive':
+        return Colors.green;
+      case 'warning':
+        return Colors.orange;
+      case 'error':
+        return Colors.red;
+      case 'info':
+        return Colors.blue;
+      case 'tip':
+        return Colors.purple;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getInsightIcon(String type) {
     switch (type) {
-      case 'positive': return Icons.check_circle_outline;
-      case 'warning': return Icons.warning_outlined;
-      case 'error': return Icons.error_outline;
-      case 'info': return Icons.info_outline;
-      case 'tip': return Icons.lightbulb_outline;
-      default: return Icons.insights;
+      case 'positive':
+        return Icons.check_circle_outline;
+      case 'warning':
+        return Icons.warning_outlined;
+      case 'error':
+        return Icons.error_outline;
+      case 'info':
+        return Icons.info_outline;
+      case 'tip':
+        return Icons.lightbulb_outline;
+      default:
+        return Icons.insights;
     }
   }
 }

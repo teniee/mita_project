@@ -41,7 +41,7 @@ class SecureDeviceService {
 
       // Try to retrieve stored device ID first
       final storedId = await _secureStorage.read(key: 'secure_device_id');
-      
+
       if (storedId != null && await _validateStoredDeviceId(storedId)) {
         _cachedDeviceId = storedId;
         logDebug('Retrieved valid stored device ID', tag: 'SECURE_DEVICE');
@@ -50,18 +50,16 @@ class SecureDeviceService {
 
       // Generate new secure device ID
       final deviceId = await _generateSecureDeviceId();
-      
+
       // Store securely
       await _secureStorage.write(key: 'secure_device_id', value: deviceId);
-      await _secureStorage.write(key: 'device_created_at', 
-          value: DateTime.now().toIso8601String());
-      
+      await _secureStorage.write(key: 'device_created_at', value: DateTime.now().toIso8601String());
+
       _cachedDeviceId = deviceId;
       logInfo('Generated new secure device ID', tag: 'SECURE_DEVICE');
       return deviceId;
-      
     } catch (e, stackTrace) {
-      logError('Failed to get secure device ID: $e', 
+      logError('Failed to get secure device ID: $e',
           tag: 'SECURE_DEVICE', error: e, stackTrace: stackTrace);
       return _getFallbackDeviceId();
     }
@@ -76,38 +74,36 @@ class SecureDeviceService {
   Future<String> _generateSecureDeviceId() async {
     try {
       final entropy = <String>[];
-      
+
       // Hardware information entropy
       final deviceInfo = await _getDeviceFingerprint();
       entropy.add(jsonEncode(deviceInfo));
-      
+
       // High-resolution timestamp entropy
       entropy.add(DateTime.now().microsecondsSinceEpoch.toString());
-      
+
       // Cryptographically secure random bytes
       final random = Random.secure();
       final randomBytes = List.generate(32, (_) => random.nextInt(256));
       entropy.add(base64Encode(randomBytes));
-      
+
       // Platform-specific entropy
       entropy.add(Platform.operatingSystem);
       entropy.add(Platform.operatingSystemVersion);
-      
+
       // Combine all entropy sources
       final combinedEntropy = entropy.join('|');
-      
+
       // Generate SHA-256 hash
       final bytes = utf8.encode(combinedEntropy);
       final digest = sha256.convert(bytes);
-      
+
       // Create device ID with prefix for identification
       final deviceId = 'mita_device_${digest.toString()}';
-      
-      logDebug('Device ID generated with ${entropy.length} entropy sources', 
-          tag: 'SECURE_DEVICE');
-      
+
+      logDebug('Device ID generated with ${entropy.length} entropy sources', tag: 'SECURE_DEVICE');
+
       return deviceId;
-      
     } catch (e) {
       logError('Failed to generate secure device ID: $e', tag: 'SECURE_DEVICE');
       rethrow;
@@ -166,12 +162,11 @@ class SecureDeviceService {
       fingerprint['number_of_processors'] = Platform.numberOfProcessors;
       fingerprint['executable'] = Platform.executable;
       fingerprint['resolved_executable'] = Platform.resolvedExecutable;
-      
+
       _cachedFingerprint = fingerprint;
       _lastFingerprintGeneration = DateTime.now();
-      
+
       return fingerprint;
-      
     } catch (e) {
       logError('Failed to get device fingerprint: $e', tag: 'SECURE_DEVICE');
       return {'error': 'fingerprint_failed', 'timestamp': DateTime.now().toIso8601String()};
@@ -192,17 +187,16 @@ class SecureDeviceService {
       if (createdAtString != null) {
         final createdAt = DateTime.parse(createdAtString);
         final deviceAge = DateTime.now().difference(createdAt);
-        
+
         // Regenerate ID if older than 365 days for security
         if (deviceAge.inDays > 365) {
-          logInfo('Device ID expired after ${deviceAge.inDays} days, regenerating', 
+          logInfo('Device ID expired after ${deviceAge.inDays} days, regenerating',
               tag: 'SECURE_DEVICE');
           return false;
         }
       }
 
       return true;
-      
     } catch (e) {
       logWarning('Device ID validation failed: $e', tag: 'SECURE_DEVICE');
       return false;
@@ -214,17 +208,17 @@ class SecureDeviceService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final random = Random.secure().nextInt(1000000);
     final fallbackId = 'mita_fallback_${timestamp}_$random';
-    
-    logWarning('Using fallback device ID', tag: 'SECURE_DEVICE', 
-        extra: {'fallback_id': fallbackId});
-    
+
+    logWarning('Using fallback device ID',
+        tag: 'SECURE_DEVICE', extra: {'fallback_id': fallbackId});
+
     return fallbackId;
   }
 
   /// Check if cached data is still valid
   bool _isValidCache() {
     if (_lastFingerprintGeneration == null) return false;
-    
+
     final cacheAge = DateTime.now().difference(_lastFingerprintGeneration!);
     return cacheAge.inHours < 24; // Cache for 24 hours
   }
@@ -235,7 +229,7 @@ class SecureDeviceService {
       final deviceId = await getSecureDeviceId();
       final fingerprint = _cachedFingerprint ?? await _getDeviceFingerprint();
       final createdAtString = await _secureStorage.read(key: 'device_created_at');
-      
+
       return {
         'device_id': deviceId,
         'is_physical_device': fingerprint['isPhysicalDevice'] ?? true,
@@ -260,11 +254,11 @@ class SecureDeviceService {
     try {
       await _secureStorage.delete(key: 'secure_device_id');
       await _secureStorage.delete(key: 'device_created_at');
-      
+
       _cachedDeviceId = null;
       _cachedFingerprint = null;
       _lastFingerprintGeneration = null;
-      
+
       logInfo('Device data cleared successfully', tag: 'SECURE_DEVICE');
     } catch (e) {
       logError('Failed to clear device data: $e', tag: 'SECURE_DEVICE');
@@ -275,26 +269,24 @@ class SecureDeviceService {
   Future<bool> detectTampering() async {
     try {
       final currentFingerprint = await _getDeviceFingerprint();
-      
+
       if (_cachedFingerprint == null) {
         return false; // No baseline to compare
       }
-      
+
       // Check critical hardware identifiers
       final criticalFields = ['model', 'manufacturer', 'brand', 'hardware'];
-      
+
       for (final field in criticalFields) {
         if (_cachedFingerprint![field] != currentFingerprint[field]) {
-          logWarning('Device tampering detected in field: $field', 
-              tag: 'SECURE_DEVICE',
-              extra: {
-                'expected': _cachedFingerprint![field],
-                'actual': currentFingerprint[field],
-              });
+          logWarning('Device tampering detected in field: $field', tag: 'SECURE_DEVICE', extra: {
+            'expected': _cachedFingerprint![field],
+            'actual': currentFingerprint[field],
+          });
           return true;
         }
       }
-      
+
       return false;
     } catch (e) {
       logError('Failed to detect tampering: $e', tag: 'SECURE_DEVICE');

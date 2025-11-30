@@ -147,7 +147,9 @@ class BudgetProvider extends ChangeNotifier {
     try {
       final enhancedSuggestions = await _budgetService.getEnhancedBudgetSuggestions();
       _budgetSuggestions = enhancedSuggestions;
-      logInfo('Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions', tag: 'BUDGET_PROVIDER');
+      logInfo(
+          'Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions',
+          tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
       logError('Error loading enhanced budget suggestions: $e', tag: 'BUDGET_PROVIDER');
@@ -249,9 +251,11 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   /// Load behavioral budget allocation
-  Future<void> loadBehavioralAllocation(double monthlyIncome, {Map<String, dynamic>? profile}) async {
+  Future<void> loadBehavioralAllocation(double monthlyIncome,
+      {Map<String, dynamic>? profile}) async {
     try {
-      final allocation = await _apiService.getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
+      final allocation =
+          await _apiService.getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
       _behavioralAllocation = allocation;
       logDebug('Behavioral allocation loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
@@ -269,7 +273,8 @@ class BudgetProvider extends ChangeNotifier {
         loadAutomationSettings(),
         loadBudgetRemaining(),
         loadBudgetRecommendations(monthlyIncome),
-        loadBehavioralAllocation(monthlyIncome, profile: incomeTier != null ? {'income_tier': incomeTier} : null),
+        loadBehavioralAllocation(monthlyIncome,
+            profile: incomeTier != null ? {'income_tier': incomeTier} : null),
       ]);
       logInfo('Budget settings data loaded successfully', tag: 'BUDGET_PROVIDER');
     } catch (e) {
@@ -285,7 +290,8 @@ class BudgetProvider extends ChangeNotifier {
     try {
       final history = await _apiService.getBudgetRedistributionHistory();
       _redistributionHistory = history;
-      logDebug('Redistribution history loaded: ${_redistributionHistory.length} items', tag: 'BUDGET_PROVIDER');
+      logDebug('Redistribution history loaded: ${_redistributionHistory.length} items',
+          tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
       logError('Error loading redistribution history: $e', tag: 'BUDGET_PROVIDER');
@@ -303,7 +309,8 @@ class BudgetProvider extends ChangeNotifier {
       logInfo('Loading calendar data from production budget engine', tag: 'BUDGET_PROVIDER');
       final productionData = await _budgetService.getCalendarData();
       _calendarData = productionData;
-      logInfo('Calendar data loaded from production budget engine: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+      logInfo('Calendar data loaded from production budget engine: ${_calendarData.length} items',
+          tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
       logError('Error loading production calendar data: $e', tag: 'BUDGET_PROVIDER');
@@ -318,7 +325,8 @@ class BudgetProvider extends ChangeNotifier {
 
         // Convert behavioral calendar format to standard calendar format
         _calendarData = _convertBehavioralCalendarData(behavioralCalendar);
-        logInfo('Loaded behavioral calendar: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+        logInfo('Loaded behavioral calendar: ${_calendarData.length} items',
+            tag: 'BUDGET_PROVIDER');
         notifyListeners();
       } catch (behavioralError) {
         logError('Error loading behavioral calendar: $behavioralError', tag: 'BUDGET_PROVIDER');
@@ -327,7 +335,8 @@ class BudgetProvider extends ChangeNotifier {
           // Fallback to standard API
           final data = await _apiService.getCalendar();
           _calendarData = data;
-          logInfo('Loaded standard calendar: ${_calendarData.length} items', tag: 'BUDGET_PROVIDER');
+          logInfo('Loaded standard calendar: ${_calendarData.length} items',
+              tag: 'BUDGET_PROVIDER');
           notifyListeners();
         } catch (apiError) {
           logError('Error loading API calendar: $apiError', tag: 'BUDGET_PROVIDER');

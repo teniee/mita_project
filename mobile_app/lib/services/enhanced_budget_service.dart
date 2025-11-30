@@ -24,7 +24,7 @@ class EnhancedBudgetService {
   }) async {
     try {
       logInfo('Starting enhanced budget calculation', tag: 'ENHANCED_BUDGET');
-      
+
       final actualTargetDate = targetDate ?? DateTime.now();
       final actualUserId = userId ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
       final actualTransactions = transactionHistory ?? [];
@@ -32,10 +32,10 @@ class EnhancedBudgetService {
 
       // Step 1: Enhanced Income Classification
       final incomeClassification = await _performEnhancedIncomeClassification(onboardingData);
-      
+
       // Step 2: Base Budget Calculation
       final baseBudgetResult = await _calculateBaseBudget(onboardingData, incomeClassification);
-      
+
       // Step 3: Apply Intelligence Enhancements
       final enhancedResult = await _applyIntelligenceEnhancements(
         baseBudgetResult,
@@ -75,12 +75,12 @@ class EnhancedBudgetService {
         // Core budget values
         dailyBudget: enhancedResult.adjustedDailyBudget,
         confidence: enhancedResult.confidence,
-        
+
         // Enhanced intelligence
         insights: insights,
         riskScore: riskAssessment,
         explanation: explanation,
-        
+
         // Metadata
         metadata: {
           'calculatedAt': DateTime.now().toIso8601String(),
@@ -102,10 +102,9 @@ class EnhancedBudgetService {
           'methodology': 'enhanced_intelligence_v2',
         },
       );
-
     } catch (e) {
       logError('Error in enhanced budget calculation: $e', tag: 'ENHANCED_BUDGET');
-      
+
       // Fallback to basic calculation
       return await _calculateFallbackBudget(onboardingData, targetDate);
     }
@@ -118,24 +117,24 @@ class EnhancedBudgetService {
     final monthlyIncome = onboardingData.income ?? 0.0;
     final legacyTier = _incomeService.classifyIncome(monthlyIncome);
     final baseTier = _convertLegacyTierToNew(legacyTier);
-    
+
     // Check for transition zones (within 15% of tier boundaries)
     const tierBoundaries = [3000.0, 4500.0, 7000.0, 12000.0];
     const transitionZoneWidth = 0.15;
-    
+
     for (int i = 0; i < tierBoundaries.length; i++) {
       final boundary = tierBoundaries[i];
       final lowerBound = boundary * (1.0 - transitionZoneWidth);
       final upperBound = boundary * (1.0 + transitionZoneWidth);
-      
+
       if (monthlyIncome >= lowerBound && monthlyIncome <= upperBound) {
         // In transition zone
         final transitionFactor = (monthlyIncome - lowerBound) / (upperBound - lowerBound);
         final smoothFactor = _sigmoidTransition(transitionFactor);
-        
+
         final lowerTier = _getTierByIndex(i);
         final upperTier = _getTierByIndex(i + 1);
-        
+
         return IncomeClassificationResult(
           primaryTier: smoothFactor > 0.5 ? upperTier : lowerTier,
           secondaryTier: smoothFactor > 0.5 ? lowerTier : upperTier,
@@ -151,7 +150,7 @@ class EnhancedBudgetService {
         );
       }
     }
-    
+
     // Not in transition zone
     return IncomeClassificationResult(
       primaryTier: baseTier,
@@ -172,10 +171,10 @@ class EnhancedBudgetService {
     IncomeClassificationResult incomeClassification,
   ) async {
     final monthlyIncome = onboardingData.income ?? 0.0;
-    
+
     // Get tier-specific ratios with blending if in transition
     final budgetRatios = _getBlendedBudgetRatios(incomeClassification);
-    
+
     final fixedCommitments = monthlyIncome * budgetRatios['fixedCommitmentRatio']!;
     final savingsTarget = monthlyIncome * budgetRatios['savingsTargetRatio']!;
     final availableSpending = monthlyIncome - fixedCommitments - savingsTarget;
@@ -266,15 +265,19 @@ class EnhancedBudgetService {
 
     // Income tier insight
     if (incomeClassification.isInTransition) {
-      insights.add('Your income places you between ${incomeClassification.secondaryTier} and ${incomeClassification.primaryTier} tiers - budget optimized for both');
+      insights.add(
+          'Your income places you between ${incomeClassification.secondaryTier} and ${incomeClassification.primaryTier} tiers - budget optimized for both');
     } else {
       insights.add('Your budget is optimized for ${incomeClassification.primaryTier} income tier');
     }
 
     // Budget adjustment insights
-    final adjustmentPercentage = ((enhancedResult.adjustedDailyBudget / enhancedResult.baseBudget.baseAmount - 1.0) * 100).round();
+    final adjustmentPercentage =
+        ((enhancedResult.adjustedDailyBudget / enhancedResult.baseBudget.baseAmount - 1.0) * 100)
+            .round();
     if (adjustmentPercentage.abs() > 5) {
-      insights.add('Your daily budget has been ${adjustmentPercentage > 0 ? 'increased' : 'decreased'} by ${adjustmentPercentage.abs()}% based on your patterns');
+      insights.add(
+          'Your daily budget has been ${adjustmentPercentage > 0 ? 'increased' : 'decreased'} by ${adjustmentPercentage.abs()}% based on your patterns');
     }
 
     // Goal alignment insights
@@ -309,8 +312,9 @@ class EnhancedBudgetService {
     final monthlyIncome = onboardingData.income ?? 0.0;
     final monthlyBudget = enhancedResult.adjustedDailyBudget * 30;
     final budgetRatio = monthlyBudget / monthlyIncome;
-    
-    if (budgetRatio > 0.6) riskScore += 0.3;
+
+    if (budgetRatio > 0.6)
+      riskScore += 0.3;
     else if (budgetRatio > 0.4) riskScore += 0.1;
 
     // Goal risk
@@ -335,17 +339,20 @@ class EnhancedBudgetService {
     DateTime targetDate,
   ) {
     final monthlyIncome = onboardingData.income ?? 0.0;
-    final spendingRatio = monthlyIncome > 0 ? (enhancedResult.adjustedDailyBudget * 30) / monthlyIncome : 0.0;
+    final spendingRatio =
+        monthlyIncome > 0 ? (enhancedResult.adjustedDailyBudget * 30) / monthlyIncome : 0.0;
 
-    var explanation = 'Your daily budget of \$${enhancedResult.adjustedDailyBudget.toStringAsFixed(0)} ';
-    explanation += 'represents ${(spendingRatio * 100).toStringAsFixed(0)}% of your monthly income ';
+    var explanation =
+        'Your daily budget of \$${enhancedResult.adjustedDailyBudget.toStringAsFixed(0)} ';
+    explanation +=
+        'represents ${(spendingRatio * 100).toStringAsFixed(0)}% of your monthly income ';
     explanation += 'and is calculated using enhanced algorithms that consider your ';
     explanation += '${incomeClassification.primaryTier} income classification';
-    
+
     if (incomeClassification.isInTransition) {
       explanation += ' (with smooth transition blending)';
     }
-    
+
     explanation += ', financial goals, and spending patterns.';
 
     if (enhancedResult.enhancements.isNotEmpty) {
@@ -363,12 +370,18 @@ class EnhancedBudgetService {
 
   IncomeTier _getTierByIndex(int index) {
     switch (index) {
-      case 0: return IncomeTier.low;
-      case 1: return IncomeTier.lowerMiddle;
-      case 2: return IncomeTier.middle;
-      case 3: return IncomeTier.upperMiddle;
-      case 4: return IncomeTier.high;
-      default: return IncomeTier.high;
+      case 0:
+        return IncomeTier.low;
+      case 1:
+        return IncomeTier.lowerMiddle;
+      case 2:
+        return IncomeTier.middle;
+      case 3:
+        return IncomeTier.upperMiddle;
+      case 4:
+        return IncomeTier.high;
+      default:
+        return IncomeTier.high;
     }
   }
 
@@ -380,12 +393,13 @@ class EnhancedBudgetService {
     // Blend ratios from both tiers
     final primaryRatios = _getBudgetRatiosForTier(classification.primaryTier);
     final secondaryRatios = _getBudgetRatiosForTier(classification.secondaryTier!);
-    
+
     return {
-      'fixedCommitmentRatio': primaryRatios['fixedCommitmentRatio']! * classification.primaryWeight +
-                             secondaryRatios['fixedCommitmentRatio']! * classification.secondaryWeight,
+      'fixedCommitmentRatio':
+          primaryRatios['fixedCommitmentRatio']! * classification.primaryWeight +
+              secondaryRatios['fixedCommitmentRatio']! * classification.secondaryWeight,
       'savingsTargetRatio': primaryRatios['savingsTargetRatio']! * classification.primaryWeight +
-                           secondaryRatios['savingsTargetRatio']! * classification.secondaryWeight,
+          secondaryRatios['savingsTargetRatio']! * classification.secondaryWeight,
     };
   }
 
@@ -419,7 +433,8 @@ class EnhancedBudgetService {
     }
   }
 
-  BudgetAdjustment _calculateTemporalAdjustment(DateTime targetDate, List<Map<String, dynamic>> transactions) {
+  BudgetAdjustment _calculateTemporalAdjustment(
+      DateTime targetDate, List<Map<String, dynamic>> transactions) {
     var multiplier = 1.0;
     var confidence = 1.0;
     var reason = '';
@@ -510,15 +525,17 @@ class EnhancedBudgetService {
 
     // Calculate recent vs historical spending velocity
     final recentTransactions = transactions.take(7).toList();
-    final recentTotal = recentTransactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+    final recentTotal =
+        recentTransactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
     final recentAvg = recentTotal / 7;
 
-    final historicalTotal = transactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+    final historicalTotal =
+        transactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
     final historicalAvg = historicalTotal / transactions.length;
 
     if (historicalAvg > 0) {
       final velocityRatio = recentAvg / historicalAvg;
-      
+
       if (velocityRatio > 1.5) {
         return BudgetAdjustment(
           multiplier: 0.85,
@@ -541,7 +558,8 @@ class EnhancedBudgetService {
     final habits = <String>[];
 
     // Simple impulse buying detection
-    final largeTransactions = transactions.where((t) => ((t['amount'] as num?)?.toDouble() ?? 0.0) > 100).length;
+    final largeTransactions =
+        transactions.where((t) => ((t['amount'] as num?)?.toDouble() ?? 0.0) > 100).length;
     if (largeTransactions > transactions.length * 0.2) {
       habits.add('impulse_buying');
     }
@@ -551,7 +569,7 @@ class EnhancedBudgetService {
       final date = DateTime.parse(t['date']?.toString() ?? DateTime.now().toIso8601String());
       return date.weekday >= 6;
     }).length;
-    
+
     if (weekendTransactions > transactions.length * 0.4) {
       habits.add('weekend_spending');
     }

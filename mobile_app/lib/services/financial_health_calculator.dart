@@ -2,7 +2,7 @@ import 'income_service.dart';
 import 'advanced_financial_engine.dart';
 
 /// Financial Health Calculator - Production-Ready Implementation
-/// 
+///
 /// Provides comprehensive financial health scoring and analysis:
 /// - Budget adherence scoring with behavioral insights
 /// - Savings rate optimization based on income tier
@@ -32,52 +32,33 @@ class FinancialHealthCalculator {
     final score = FinancialHealthScore();
 
     // Component 1: Budget Adherence Score (25%)
-    score.budgetAdherenceScore = _calculateBudgetAdherenceScore(
-      actualSpending,
-      budgetAllocations
-    );
+    score.budgetAdherenceScore = _calculateBudgetAdherenceScore(actualSpending, budgetAllocations);
 
     // Component 2: Savings Rate Score (20%)
     final savingsAmount = budgetAllocations['savings'] ?? 0.0;
-    score.savingsRateScore = _calculateSavingsRateScore(
-      savingsAmount,
-      monthlyIncome,
-      incomeTier
-    );
+    score.savingsRateScore = _calculateSavingsRateScore(savingsAmount, monthlyIncome, incomeTier);
 
     // Component 3: Debt Management Score (20%)
-    score.debtManagementScore = _calculateDebtManagementScore(
-      totalDebt,
-      monthlyIncome,
-      incomeTier
-    );
+    score.debtManagementScore = _calculateDebtManagementScore(totalDebt, monthlyIncome, incomeTier);
 
     // Component 4: Emergency Fund Score (15%)
-    score.emergencyFundScore = _calculateEmergencyFundScore(
-      emergencyFund,
-      monthlyIncome,
-      incomeTier
-    );
+    score.emergencyFundScore =
+        _calculateEmergencyFundScore(emergencyFund, monthlyIncome, incomeTier);
 
     // Component 5: Investment Diversification Score (10%)
-    score.investmentScore = _calculateInvestmentScore(
-      totalInvestments,
-      monthlyIncome,
-      incomeTier
-    );
+    score.investmentScore = _calculateInvestmentScore(totalInvestments, monthlyIncome, incomeTier);
 
     // Component 6: Goal Progress Score (10%)
     score.goalProgressScore = _calculateGoalProgressScore(goals, monthsOfData);
 
     // Calculate weighted final score
-    score.overallScore = (
-      score.budgetAdherenceScore * 0.25 +
-      score.savingsRateScore * 0.20 +
-      score.debtManagementScore * 0.20 +
-      score.emergencyFundScore * 0.15 +
-      score.investmentScore * 0.10 +
-      score.goalProgressScore * 0.10
-    ).clamp(0.0, 100.0);
+    score.overallScore = (score.budgetAdherenceScore * 0.25 +
+            score.savingsRateScore * 0.20 +
+            score.debtManagementScore * 0.20 +
+            score.emergencyFundScore * 0.15 +
+            score.investmentScore * 0.10 +
+            score.goalProgressScore * 0.10)
+        .clamp(0.0, 100.0);
 
     // Generate insights and recommendations
     score.insights = _generateHealthScoreInsights(score, incomeTier);
@@ -145,11 +126,16 @@ class FinancialHealthCalculator {
 
   double _getTargetSavingsRate(IncomeTier tier) {
     switch (tier) {
-      case IncomeTier.low: return 0.05; // 5%
-      case IncomeTier.lowerMiddle: return 0.10; // 10%
-      case IncomeTier.middle: return 0.15; // 15%
-      case IncomeTier.upperMiddle: return 0.20; // 20%
-      case IncomeTier.high: return 0.25; // 25%
+      case IncomeTier.low:
+        return 0.05; // 5%
+      case IncomeTier.lowerMiddle:
+        return 0.10; // 10%
+      case IncomeTier.middle:
+        return 0.15; // 15%
+      case IncomeTier.upperMiddle:
+        return 0.20; // 20%
+      case IncomeTier.high:
+        return 0.25; // 25%
     }
   }
 
@@ -183,11 +169,16 @@ class FinancialHealthCalculator {
 
   double _getMaxHealthyDebtRatio(IncomeTier tier) {
     switch (tier) {
-      case IncomeTier.low: return 2.0; // 2x annual income max
-      case IncomeTier.lowerMiddle: return 2.5;
-      case IncomeTier.middle: return 3.0;
-      case IncomeTier.upperMiddle: return 3.5;
-      case IncomeTier.high: return 4.0;
+      case IncomeTier.low:
+        return 2.0; // 2x annual income max
+      case IncomeTier.lowerMiddle:
+        return 2.5;
+      case IncomeTier.middle:
+        return 3.0;
+      case IncomeTier.upperMiddle:
+        return 3.5;
+      case IncomeTier.high:
+        return 4.0;
     }
   }
 
@@ -218,11 +209,16 @@ class FinancialHealthCalculator {
 
   double _getTargetEmergencyFundMonths(IncomeTier tier) {
     switch (tier) {
-      case IncomeTier.low: return 3.0; // 3 months
-      case IncomeTier.lowerMiddle: return 4.0; // 4 months
-      case IncomeTier.middle: return 5.0; // 5 months
-      case IncomeTier.upperMiddle: return 6.0; // 6 months
-      case IncomeTier.high: return 6.0; // 6 months
+      case IncomeTier.low:
+        return 3.0; // 3 months
+      case IncomeTier.lowerMiddle:
+        return 4.0; // 4 months
+      case IncomeTier.middle:
+        return 5.0; // 5 months
+      case IncomeTier.upperMiddle:
+        return 6.0; // 6 months
+      case IncomeTier.high:
+        return 6.0; // 6 months
     }
   }
 
@@ -253,11 +249,16 @@ class FinancialHealthCalculator {
 
   double _getTargetInvestmentRatio(IncomeTier tier) {
     switch (tier) {
-      case IncomeTier.low: return 0.5; // 0.5x annual income
-      case IncomeTier.lowerMiddle: return 1.0; // 1x annual income
-      case IncomeTier.middle: return 1.5; // 1.5x annual income
-      case IncomeTier.upperMiddle: return 2.0; // 2x annual income
-      case IncomeTier.high: return 3.0; // 3x annual income
+      case IncomeTier.low:
+        return 0.5; // 0.5x annual income
+      case IncomeTier.lowerMiddle:
+        return 1.0; // 1x annual income
+      case IncomeTier.middle:
+        return 1.5; // 1.5x annual income
+      case IncomeTier.upperMiddle:
+        return 2.0; // 2x annual income
+      case IncomeTier.high:
+        return 3.0; // 3x annual income
     }
   }
 
@@ -270,7 +271,12 @@ class FinancialHealthCalculator {
     for (final goal in goals) {
       if (goal.isActive) {
         final progress = goal.currentAmount / goal.targetAmount;
-        final timeElapsed = DateTime.now().difference(DateTime.now().subtract(Duration(days: monthsOfData * 30))).inDays / goal.targetDate.difference(DateTime.now().subtract(Duration(days: monthsOfData * 30))).inDays;
+        final timeElapsed = DateTime.now()
+                .difference(DateTime.now().subtract(Duration(days: monthsOfData * 30)))
+                .inDays /
+            goal.targetDate
+                .difference(DateTime.now().subtract(Duration(days: monthsOfData * 30)))
+                .inDays;
 
         final expectedProgress = timeElapsed.clamp(0.0, 1.0);
         final progressRatio = expectedProgress > 0 ? progress / expectedProgress : 0.0;
@@ -311,7 +317,8 @@ class FinancialHealthCalculator {
 
     // Component-specific insights
     if (score.budgetAdherenceScore < 60) {
-      insights.add('Budget adherence needs improvement - consider smaller, more realistic allocations.');
+      insights.add(
+          'Budget adherence needs improvement - consider smaller, more realistic allocations.');
     }
 
     if (score.savingsRateScore < 60) {
@@ -438,9 +445,8 @@ class FinancialHealthScore {
     // Calculate health as a weighted score:
     // 60% from staying within total budget
     // 40% from number of categories within budget
-    final totalBudgetHealth = totalBudget > 0
-        ? (1.0 - (totalSpending / totalBudget).clamp(0.0, 2.0) / 2.0) * 60.0
-        : 0.0;
+    final totalBudgetHealth =
+        totalBudget > 0 ? (1.0 - (totalSpending / totalBudget).clamp(0.0, 2.0) / 2.0) * 60.0 : 0.0;
 
     final categoryHealth = (categoriesWithinBudget / totalCategories) * 40.0;
 

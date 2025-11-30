@@ -67,7 +67,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      body: userProvider.isLoading ? _buildLoadingState() : _buildProfileContent(colorScheme, textTheme, userProvider),
+      body: userProvider.isLoading
+          ? _buildLoadingState()
+          : _buildProfileContent(colorScheme, textTheme, userProvider),
     );
   }
 
@@ -84,7 +86,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildProfileContent(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+  Widget _buildProfileContent(
+      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     return CustomScrollView(
       slivers: [
         // App Bar
@@ -166,7 +169,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildProfileHeader(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+  Widget _buildProfileHeader(
+      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     final name = userProvider.userName;
     final email = userProvider.userEmail.isNotEmpty ? userProvider.userEmail : 'user@mita.finance';
     final memberSince = userProvider.userProfile['member_since'] as String?;
@@ -345,7 +349,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildFinancialOverview(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+  Widget _buildFinancialOverview(
+      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     final financialContext = userProvider.financialContext;
 
     return Column(
@@ -372,8 +377,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             _buildStatCard(
               'Monthly Income',
               userProvider.userIncome > 0
-                ? '\$${userProvider.userIncome.toStringAsFixed(0)}'
-                : 'Complete onboarding',
+                  ? '\$${userProvider.userIncome.toStringAsFixed(0)}'
+                  : 'Complete onboarding',
               Icons.trending_up,
               Colors.green,
               colorScheme,
@@ -456,7 +461,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildAccountDetails(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+  Widget _buildAccountDetails(
+      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     final financialContext = userProvider.financialContext;
 
     return Card(
@@ -475,7 +481,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-
             _buildDetailRow(
               'Budget Method',
               userProvider.userProfile['budget_method'] as String? ?? '50/30/20 Rule',
@@ -517,8 +522,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon,
-      ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildDetailRow(
+      String label, String value, IconData icon, ColorScheme colorScheme, TextTheme textTheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -558,7 +563,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildQuickActions(ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+  Widget _buildQuickActions(
+      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -575,7 +581,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-
             Row(
               children: [
                 Expanded(
@@ -602,7 +607,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -634,8 +638,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap,
-      Color color, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap, Color color,
+      ColorScheme colorScheme, TextTheme textTheme) {
     return Material(
       color: color.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(12),
@@ -700,7 +704,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Help & Support'),
-        content: const Text('Need help? Contact our support team at support@mita.finance or check our FAQ in the app settings.'),
+        content: const Text(
+            'Need help? Contact our support team at support@mita.finance or check our FAQ in the app settings.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

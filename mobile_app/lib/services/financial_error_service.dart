@@ -14,11 +14,11 @@ import 'logging_service.dart';
 class FinancialErrorService {
   static FinancialErrorService? _instance;
   static FinancialErrorService get instance => _instance ??= FinancialErrorService._();
-  
+
   FinancialErrorService._();
 
   final AccessibilityService _accessibility = AccessibilityService.instance;
-  
+
   /// Display error with appropriate UI based on severity and context
   Future<void> showError(
     BuildContext context,
@@ -75,7 +75,7 @@ class FinancialErrorService {
     Duration duration = const Duration(seconds: 3),
   }) {
     _provideHapticFeedback(FinancialErrorSeverity.low, isSuccess: true);
-    
+
     _accessibility.announceToScreenReader(
       'Success: $message',
       isImportant: true,
@@ -193,7 +193,7 @@ class FinancialErrorService {
 
     if (value != null && value.isNotEmpty) {
       final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.-]'), ''));
-      
+
       if (amount == null) {
         return 'Please enter a valid amount (numbers only)';
       }
@@ -243,7 +243,8 @@ class FinancialErrorService {
   }) async {
     final errorInfo = FinancialErrorInfo(
       title: 'Budget Alert',
-      message: 'This ${category.toLowerCase()} expense would exceed your daily budget by \$${exceededAmount.toStringAsFixed(2)}.',
+      message:
+          'This ${category.toLowerCase()} expense would exceed your daily budget by \$${exceededAmount.toStringAsFixed(2)}.',
       actions: [
         FinancialErrorAction(
           label: 'Adjust Amount',
@@ -267,7 +268,8 @@ class FinancialErrorService {
       icon: Icons.savings_outlined,
       severity: FinancialErrorSeverity.medium,
       category: 'Budget Management',
-      financialContext: 'Your daily budget is \$${dailyBudget.toStringAsFixed(2)}. Staying within budget helps achieve your financial goals.',
+      financialContext:
+          'Your daily budget is \$${dailyBudget.toStringAsFixed(2)}. Staying within budget helps achieve your financial goals.',
       tips: [
         'Consider if this expense is necessary right now',
         'Look for ways to reduce the amount',
@@ -285,7 +287,7 @@ class FinancialErrorService {
     await _accessibility.announceToScreenReader(
       '${errorInfo.category} error: ${errorInfo.title}. ${errorInfo.message}',
       isImportant: errorInfo.severity == FinancialErrorSeverity.critical ||
-                   errorInfo.severity == FinancialErrorSeverity.high,
+          errorInfo.severity == FinancialErrorSeverity.high,
     );
   }
 
@@ -431,7 +433,7 @@ mixin FinancialErrorHandling<T extends StatefulWidget> on State<T> {
     bool forceDialog = false,
   }) async {
     if (!mounted) return;
-    
+
     await errorService.showError(
       this.context,
       error,
@@ -555,15 +557,18 @@ class FinancialErrorMessages {
   static const String budgetExceededError = 'This transaction would exceed your budget.';
   static const String duplicateTransactionError = 'A similar transaction was already recorded.';
   static const String permissionDeniedError = 'Permission is required to continue.';
-  static const String serverMaintenanceError = 'Service temporarily unavailable. Please try again later.';
-  
+  static const String serverMaintenanceError =
+      'Service temporarily unavailable. Please try again later.';
+
   // Success messages
   static const String transactionSavedSuccess = 'Transaction saved successfully!';
   static const String budgetUpdatedSuccess = 'Budget updated successfully!';
   static const String profileUpdatedSuccess = 'Profile updated successfully!';
-  
+
   // Financial context messages
   static const String dataSecurityContext = 'Your financial data remains secure and private.';
-  static const String budgetHelpContext = 'Staying within budget helps achieve your financial goals.';
-  static const String accuracyContext = 'Accurate records help you make better financial decisions.';
+  static const String budgetHelpContext =
+      'Staying within budget helps achieve your financial goals.';
+  static const String accuracyContext =
+      'Accurate records help you make better financial decisions.';
 }

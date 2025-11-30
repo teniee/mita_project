@@ -94,9 +94,11 @@ class HealthMetric {
   }
 
   String get displayName {
-    return name.replaceAll('_', ' ').split(' ').map((word) => 
-      word.isEmpty ? word : word[0].toUpperCase() + word.substring(1)
-    ).join(' ');
+    return name
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isEmpty ? word : word[0].toUpperCase() + word.substring(1))
+        .join(' ');
   }
 
   bool get isHealthy => status == HealthStatus.healthy;
@@ -130,7 +132,7 @@ class HealthReport {
   factory HealthReport.fromJson(Map<String, dynamic> json) {
     final middlewareData = json['middleware'] ?? {};
     final metricsData = middlewareData['metrics'] ?? {};
-    
+
     final Map<String, HealthMetric> metrics = {};
     metricsData.forEach((key, value) {
       if (value is Map<String, dynamic>) {
@@ -159,15 +161,15 @@ class HealthReport {
   }
 
   bool get hasTimeoutRisk {
-    return middlewareMetrics.values.any((metric) => 
-      metric.responseTimeMs != null && metric.responseTimeMs! > 5000
-    ) || responseTimeMs > 10000;
+    return middlewareMetrics.values
+            .any((metric) => metric.responseTimeMs != null && metric.responseTimeMs! > 5000) ||
+        responseTimeMs > 10000;
   }
 
   bool get hasCriticalIssues {
-    return overallStatus == HealthStatus.critical || 
-           overallStatus == HealthStatus.unhealthy ||
-           alerts.any((alert) => alert.toUpperCase().contains('CRITICAL'));
+    return overallStatus == HealthStatus.critical ||
+        overallStatus == HealthStatus.unhealthy ||
+        alerts.any((alert) => alert.toUpperCase().contains('CRITICAL'));
   }
 
   int get healthyComponentsCount {
@@ -191,25 +193,24 @@ class HealthMonitorService {
   HealthMonitorService._internal();
 
   final ApiService _apiService = ApiService();
-  
+
   // Health monitoring state
   HealthReport? _lastHealthReport;
   DateTime? _lastHealthCheck;
   Timer? _periodicHealthCheck;
   final List<HealthReport> _healthHistory = [];
   static const int maxHistorySize = 50;
-  
+
   // Health check configuration
   bool _healthMonitoringEnabled = true;
   Duration _healthCheckInterval = const Duration(minutes: 5);
   Duration _criticalHealthCheckInterval = const Duration(minutes: 1);
   bool _isInCriticalMode = false;
-  
+
   // Stream controllers for reactive updates
-  final StreamController<HealthReport> _healthReportController = 
+  final StreamController<HealthReport> _healthReportController =
       StreamController<HealthReport>.broadcast();
-  final StreamController<bool> _connectionHealthController = 
-      StreamController<bool>.broadcast();
+  final StreamController<bool> _connectionHealthController = StreamController<bool>.broadcast();
 
   // Getters
   HealthReport? get lastHealthReport => _lastHealthReport;
@@ -218,7 +219,7 @@ class HealthMonitorService {
   bool get hasTimeoutRisk => _lastHealthReport?.hasTimeoutRisk ?? false;
   bool get hasCriticalIssues => _lastHealthReport?.hasCriticalIssues ?? false;
   List<HealthReport> get healthHistory => List.unmodifiable(_healthHistory);
-  
+
   // Streams for reactive UI updates
   Stream<HealthReport> get healthReportStream => _healthReportController.stream;
   Stream<bool> get connectionHealthStream => _connectionHealthController.stream;
@@ -226,12 +227,12 @@ class HealthMonitorService {
   /// Initialize health monitoring
   void initialize() {
     if (!_healthMonitoringEnabled) return;
-    
+
     logInfo('Initializing health monitoring service', tag: 'HealthMonitor');
-    
+
     // Start periodic health checks
     _startPeriodicHealthChecks();
-    
+
     // Perform initial health check
     checkHealth();
   }
@@ -239,77 +240,76 @@ class HealthMonitorService {
   /// Start periodic health checks
   void _startPeriodicHealthChecks() {
     _periodicHealthCheck?.cancel();
-    
-    final interval = _isInCriticalMode ? 
-        _criticalHealthCheckInterval : _healthCheckInterval;
-    
+
+    final interval = _isInCriticalMode ? _criticalHealthCheckInterval : _healthCheckInterval;
+
     _periodicHealthCheck = Timer.periodic(interval, (_) {
       checkHealth();
     });
-    
-    logDebug('Started periodic health checks every ${interval.inMinutes} minutes', 
+
+    logDebug('Started periodic health checks every ${interval.inMinutes} minutes',
         tag: 'HealthMonitor');
   }
 
   /// Perform comprehensive health check
   Future<HealthReport?> checkHealth() async {
     if (!_healthMonitoringEnabled) return null;
-    
+
     try {
       logDebug('Performing comprehensive health check', tag: 'HealthMonitor');
-      
+
       final stopwatch = Stopwatch()..start();
       final response = await _apiService.get('/health/comprehensive');
       stopwatch.stop();
-      
+
       if (response.statusCode == 200 || response.statusCode == 503) {
         // 503 is expected for degraded/critical health status
         final healthReport = HealthReport.fromJson(response.data as Map<String, dynamic>);
-        
+
         // Update internal state
         _lastHealthReport = healthReport;
         _lastHealthCheck = DateTime.now();
-        
+
         // Store in history
         _addToHistory(healthReport);
-        
+
         // Check if we should switch to critical monitoring mode
         _updateMonitoringMode(healthReport);
-        
+
         // Notify listeners
         _healthReportController.add(healthReport);
         _connectionHealthController.add(true);
-        
-        logInfo('Health check completed: ${healthReport.overallStatus.name} '
-               '(${stopwatch.elapsedMilliseconds}ms)', tag: 'HealthMonitor');
-        
+
+        logInfo(
+            'Health check completed: ${healthReport.overallStatus.name} '
+            '(${stopwatch.elapsedMilliseconds}ms)',
+            tag: 'HealthMonitor');
+
         // Log critical issues
         if (healthReport.hasCriticalIssues) {
-          logWarning('Critical health issues detected: ${healthReport.alerts}', 
+          logWarning('Critical health issues detected: ${healthReport.alerts}',
               tag: 'HealthMonitor');
         }
-        
+
         // Log timeout risks
         if (healthReport.hasTimeoutRisk) {
-          logWarning('Timeout risk detected - high response times', 
-              tag: 'HealthMonitor');
+          logWarning('Timeout risk detected - high response times', tag: 'HealthMonitor');
         }
-        
+
         return healthReport;
       } else {
         throw Exception('Unexpected health check response: ${response.statusCode}');
       }
-      
     } catch (e) {
       logError('Health check failed: $e', tag: 'HealthMonitor');
-      
+
       // Notify connection issues
       _connectionHealthController.add(false);
-      
+
       // In case of failure, assume unhealthy status
       _lastHealthReport = null;
       _lastHealthCheck = DateTime.now();
-      
+
       return null;
     }
   }
@@ -317,21 +317,19 @@ class HealthMonitorService {
   /// Check specific component health
   Future<HealthMetric?> checkComponentHealth(String component) async {
     if (!_healthMonitoringEnabled) return null;
-    
+
     try {
       logDebug('Checking health for component: $component', tag: 'HealthMonitor');
-      
+
       final response = await _apiService.get('/health/middleware/$component');
-      
+
       if (response.statusCode == 200 || response.statusCode == 503) {
         return HealthMetric.fromJson(response.data as Map<String, dynamic>);
       } else {
         throw Exception('Component health check failed: ${response.statusCode}');
       }
-      
     } catch (e) {
-      logError('Component health check failed for $component: $e', 
-          tag: 'HealthMonitor');
+      logError('Component health check failed for $component: $e', tag: 'HealthMonitor');
       return null;
     }
   }
@@ -339,18 +337,17 @@ class HealthMonitorService {
   /// Get performance-focused health metrics
   Future<Map<String, dynamic>?> getPerformanceHealth() async {
     if (!_healthMonitoringEnabled) return null;
-    
+
     try {
       logDebug('Getting performance health metrics', tag: 'HealthMonitor');
-      
+
       final response = await _apiService.get('/health/performance');
-      
+
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>?;
       } else {
         throw Exception('Performance health check failed: ${response.statusCode}');
       }
-      
     } catch (e) {
       logError('Performance health check failed: $e', tag: 'HealthMonitor');
       return null;
@@ -360,10 +357,10 @@ class HealthMonitorService {
   /// Get current alerts
   Future<Map<String, dynamic>?> getCurrentAlerts() async {
     if (!_healthMonitoringEnabled) return null;
-    
+
     try {
       logDebug('Getting current health alerts', tag: 'HealthMonitor');
-      
+
       final response = await _apiService.get('/health/alerts');
 
       if (response.statusCode == 200) {
@@ -371,7 +368,6 @@ class HealthMonitorService {
       } else {
         throw Exception('Alerts check failed: ${response.statusCode}');
       }
-      
     } catch (e) {
       logError('Alerts check failed: $e', tag: 'HealthMonitor');
       return null;
@@ -380,20 +376,17 @@ class HealthMonitorService {
 
   /// Update monitoring mode based on health status
   void _updateMonitoringMode(HealthReport healthReport) {
-    final shouldBeInCriticalMode = healthReport.hasCriticalIssues || 
-                                  healthReport.hasTimeoutRisk;
-    
+    final shouldBeInCriticalMode = healthReport.hasCriticalIssues || healthReport.hasTimeoutRisk;
+
     if (shouldBeInCriticalMode != _isInCriticalMode) {
       _isInCriticalMode = shouldBeInCriticalMode;
-      
+
       if (_isInCriticalMode) {
-        logWarning('Switching to critical health monitoring mode', 
-            tag: 'HealthMonitor');
+        logWarning('Switching to critical health monitoring mode', tag: 'HealthMonitor');
       } else {
-        logInfo('Switching back to normal health monitoring mode', 
-            tag: 'HealthMonitor');
+        logInfo('Switching back to normal health monitoring mode', tag: 'HealthMonitor');
       }
-      
+
       // Restart periodic checks with new interval
       _startPeriodicHealthChecks();
     }
@@ -402,7 +395,7 @@ class HealthMonitorService {
   /// Add health report to history
   void _addToHistory(HealthReport report) {
     _healthHistory.add(report);
-    
+
     // Keep only recent history
     if (_healthHistory.length > maxHistorySize) {
       _healthHistory.removeAt(0);
@@ -412,41 +405,34 @@ class HealthMonitorService {
   /// Get health trend analysis
   Map<String, dynamic> getHealthTrend({int hours = 24}) {
     if (_healthHistory.isEmpty) {
-      return {
-        'trend': 'no_data',
-        'message': 'Insufficient data for trend analysis'
-      };
+      return {'trend': 'no_data', 'message': 'Insufficient data for trend analysis'};
     }
-    
+
     final cutoff = DateTime.now().subtract(Duration(hours: hours));
-    final recentReports = _healthHistory.where((r) => 
-        r.timestamp.isAfter(cutoff)).toList();
-    
+    final recentReports = _healthHistory.where((r) => r.timestamp.isAfter(cutoff)).toList();
+
     if (recentReports.length < 2) {
-      return {
-        'trend': 'insufficient_data',
-        'message': 'Need more data points for trend analysis'
-      };
+      return {'trend': 'insufficient_data', 'message': 'Need more data points for trend analysis'};
     }
-    
+
     // Analyze status changes
     final statuses = recentReports.map((r) => r.overallStatus).toList();
     final healthyCount = statuses.where((s) => s == HealthStatus.healthy).length;
     final degradedCount = statuses.where((s) => s == HealthStatus.degraded).length;
     final criticalCount = statuses.where((s) => s == HealthStatus.critical).length;
     final unhealthyCount = statuses.where((s) => s == HealthStatus.unhealthy).length;
-    
+
     // Analyze response time trend
     final responseTimes = recentReports.map((r) => r.responseTimeMs).toList();
     final avgResponseTime = responseTimes.reduce((a, b) => a + b) / responseTimes.length;
-    final firstHalfAvg = responseTimes.take(responseTimes.length ~/ 2)
-        .reduce((a, b) => a + b) / (responseTimes.length ~/ 2);
-    final secondHalfAvg = responseTimes.skip(responseTimes.length ~/ 2)
-        .reduce((a, b) => a + b) / (responseTimes.length - responseTimes.length ~/ 2);
-    
+    final firstHalfAvg = responseTimes.take(responseTimes.length ~/ 2).reduce((a, b) => a + b) /
+        (responseTimes.length ~/ 2);
+    final secondHalfAvg = responseTimes.skip(responseTimes.length ~/ 2).reduce((a, b) => a + b) /
+        (responseTimes.length - responseTimes.length ~/ 2);
+
     String trend;
     String message;
-    
+
     if (criticalCount > recentReports.length * 0.3) {
       trend = 'critical_issues';
       message = 'Frequent critical issues detected';
@@ -466,7 +452,7 @@ class HealthMonitorService {
       trend = 'mixed';
       message = 'Mixed health status';
     }
-    
+
     return {
       'trend': trend,
       'message': message,
@@ -479,9 +465,11 @@ class HealthMonitorService {
         'unhealthy': unhealthyCount,
       },
       'average_response_time_ms': avgResponseTime,
-      'performance_trend': secondHalfAvg > firstHalfAvg * 1.1 ? 
-          'declining' : secondHalfAvg < firstHalfAvg * 0.9 ? 
-          'improving' : 'stable',
+      'performance_trend': secondHalfAvg > firstHalfAvg * 1.1
+          ? 'declining'
+          : secondHalfAvg < firstHalfAvg * 0.9
+              ? 'improving'
+              : 'stable',
     };
   }
 
@@ -496,12 +484,12 @@ class HealthMonitorService {
         'send': const Duration(seconds: 15),
       };
     }
-    
+
     // Adjust timeouts based on system health and performance
     Duration connectTimeout;
     Duration receiveTimeout;
     Duration sendTimeout;
-    
+
     if (report.hasCriticalIssues || report.hasTimeoutRisk) {
       // Longer timeouts for critical systems to avoid false failures
       connectTimeout = const Duration(seconds: 20);
@@ -523,7 +511,7 @@ class HealthMonitorService {
       receiveTimeout = const Duration(seconds: 15);
       sendTimeout = const Duration(seconds: 10);
     }
-    
+
     return {
       'connect': connectTimeout,
       'receive': receiveTimeout,
@@ -534,9 +522,9 @@ class HealthMonitorService {
   /// Enable or disable health monitoring
   void setHealthMonitoringEnabled(bool enabled) {
     if (_healthMonitoringEnabled == enabled) return;
-    
+
     _healthMonitoringEnabled = enabled;
-    
+
     if (enabled) {
       logInfo('Health monitoring enabled', tag: 'HealthMonitor');
       initialize();
@@ -549,11 +537,10 @@ class HealthMonitorService {
   /// Set health check interval
   void setHealthCheckInterval(Duration interval) {
     if (_healthCheckInterval == interval) return;
-    
+
     _healthCheckInterval = interval;
-    logInfo('Health check interval changed to ${interval.inMinutes} minutes', 
-        tag: 'HealthMonitor');
-    
+    logInfo('Health check interval changed to ${interval.inMinutes} minutes', tag: 'HealthMonitor');
+
     if (_healthMonitoringEnabled && !_isInCriticalMode) {
       _startPeriodicHealthChecks();
     }
@@ -574,7 +561,7 @@ class HealthMonitorService {
   /// Dispose resources
   void dispose() {
     logInfo('Disposing health monitoring service', tag: 'HealthMonitor');
-    
+
     _periodicHealthCheck?.cancel();
     _healthReportController.close();
     _connectionHealthController.close();

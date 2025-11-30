@@ -44,10 +44,8 @@ class Habit {
 
   bool get isCompletedToday {
     final today = DateTime.now();
-    return completedDates.any((date) =>
-        date.year == today.year &&
-        date.month == today.month &&
-        date.day == today.day);
+    return completedDates.any(
+        (date) => date.year == today.year && date.month == today.month && date.day == today.day);
   }
 }
 
@@ -86,6 +84,7 @@ class HabitsProvider extends ChangeNotifier {
     if (_habits.isEmpty) return 0.0;
     return _habits.map((h) => h.completionRate).reduce((a, b) => a + b) / _habits.length;
   }
+
   int get totalCurrentStreak {
     if (_habits.isEmpty) return 0;
     return _habits.map((h) => h.currentStreak).reduce((a, b) => a > b ? a : b);

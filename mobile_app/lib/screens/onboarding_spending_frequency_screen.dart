@@ -10,7 +10,8 @@ class OnboardingSpendingFrequencyScreen extends StatefulWidget {
   const OnboardingSpendingFrequencyScreen({super.key});
 
   @override
-  State<OnboardingSpendingFrequencyScreen> createState() => _OnboardingSpendingFrequencyScreenState();
+  State<OnboardingSpendingFrequencyScreen> createState() =>
+      _OnboardingSpendingFrequencyScreenState();
 }
 
 class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFrequencyScreen> {

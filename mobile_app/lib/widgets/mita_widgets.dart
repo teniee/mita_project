@@ -8,7 +8,6 @@ import '../core/error_handling.dart';
 /// Production-ready widget library for MITA
 /// Provides consistent, Material 3 compliant components
 class MitaWidgets {
-  
   /// Creates a skeleton loading card with shimmer effect
   static Widget buildSkeletonCard({
     double? width,
@@ -58,7 +57,7 @@ class MitaWidgets {
   }) {
     final accessibilityService = AccessibilityService.instance;
     final loadingMessage = message ?? 'Loading MITA financial data';
-    
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Semantics(
@@ -109,7 +108,7 @@ class MitaWidgets {
       builder: (BuildContext builderContext) {
         final theme = Theme.of(builderContext);
         final colorScheme = theme.colorScheme;
-        
+
         return Scaffold(
           backgroundColor: colorScheme.surface,
           body: SafeArea(
@@ -134,7 +133,7 @@ class MitaWidgets {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Enhanced title with Material 3 typography
                     Text(
                       title,
@@ -145,7 +144,7 @@ class MitaWidgets {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Enhanced message with Material 3 typography
                     Text(
                       message,
@@ -156,7 +155,7 @@ class MitaWidgets {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Enhanced action buttons with Material 3 styling
                     if (onRetry != null) ...[
                       SizedBox(
@@ -175,16 +174,18 @@ class MitaWidgets {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    
+
                     // Go to home button
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: onGoHome ?? () {
-                          if (context != null && Navigator.of(context).canPop()) {
-                            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                          }
-                        },
+                        onPressed: onGoHome ??
+                            () {
+                              if (context != null && Navigator.of(context).canPop()) {
+                                Navigator.of(context)
+                                    .pushNamedAndRemoveUntil('/', (route) => false);
+                              }
+                            },
                         icon: const Icon(Icons.home_rounded),
                         label: const Text('Go to Home'),
                         style: OutlinedButton.styleFrom(
@@ -309,7 +310,7 @@ class MitaWidgets {
     final accessibilityService = AccessibilityService.instance;
     final color = progressColor ?? MitaTheme.getSpendingStatusColor(progress);
     final percentage = (progress * 100).round();
-    
+
     String statusDescription;
     if (progress >= 1.0) {
       statusDescription = 'Budget exceeded';
@@ -320,9 +321,10 @@ class MitaWidgets {
     } else {
       statusDescription = 'Good spending level';
     }
-    
+
     return Semantics(
-      label: 'Budget progress ring for $label. $amount. $percentage percent used. $statusDescription.',
+      label:
+          'Budget progress ring for $label. $amount. $percentage percent used. $statusDescription.',
       child: SizedBox(
         width: size,
         height: size,
@@ -392,18 +394,16 @@ class MitaWidgets {
   }) {
     final accessibilityService = AccessibilityService.instance;
     final cardColor = color ?? AppColors.primary;
-    
+
     final numericValue = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
     final semanticLabel = accessibilityService.createFinancialSemanticLabel(
       label: title,
       amount: numericValue,
       status: subtitle,
     );
-    
+
     return Semantics(
-      label: onTap != null 
-        ? '$semanticLabel. Tap for more details.'
-        : semanticLabel,
+      label: onTap != null ? '$semanticLabel. Tap for more details.' : semanticLabel,
       button: onTap != null,
       child: MitaTheme.createElevatedCard(
         onTap: onTap,
@@ -495,7 +495,7 @@ class MitaWidgets {
       builder: (context, constraints) {
         final isTablet = constraints.maxWidth > 600;
         final adjustedCrossAxisCount = isTablet ? crossAxisCount * 2 : crossAxisCount;
-        
+
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -569,11 +569,11 @@ class MitaWidgets {
       builder: (BuildContext builderContext) {
         final theme = Theme.of(builderContext);
         final colorScheme = theme.colorScheme;
-        
+
         Color backgroundColor;
         Color foregroundColor;
         IconData icon;
-        
+
         switch (severity) {
           case ErrorSeverity.low:
             backgroundColor = colorScheme.secondaryContainer;
@@ -596,7 +596,7 @@ class MitaWidgets {
             icon = Icons.dangerous_outlined;
             break;
         }
-        
+
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -668,7 +668,7 @@ class MitaWidgets {
       builder: (BuildContext builderContext) {
         final theme = Theme.of(builderContext);
         final errorColor = color ?? theme.colorScheme.error;
-        
+
         return Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Row(
@@ -709,7 +709,7 @@ class MitaWidgets {
       builder: (BuildContext builderContext) {
         final theme = Theme.of(builderContext);
         final colorScheme = theme.colorScheme;
-        
+
         if (isLoading) {
           return Center(
             child: Column(
@@ -729,7 +729,7 @@ class MitaWidgets {
             ),
           );
         }
-        
+
         if (error != null) {
           return buildErrorScreen(
             title: 'Something went wrong',
@@ -738,7 +738,7 @@ class MitaWidgets {
             context: builderContext,
           );
         }
-        
+
         return child ?? const SizedBox.shrink();
       },
     );
@@ -753,39 +753,30 @@ class MitaWidgets {
     if (isConnected && !showWhenConnected) {
       return const SizedBox.shrink();
     }
-    
+
     return Builder(
       builder: (BuildContext builderContext) {
         final theme = Theme.of(builderContext);
         final colorScheme = theme.colorScheme;
-        
+
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          color: isConnected 
-            ? colorScheme.primaryContainer 
-            : colorScheme.errorContainer,
+          color: isConnected ? colorScheme.primaryContainer : colorScheme.errorContainer,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                isConnected 
-                  ? Icons.wifi_rounded 
-                  : Icons.wifi_off_rounded,
+                isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
                 size: 16,
-                color: isConnected 
-                  ? colorScheme.onPrimaryContainer 
-                  : colorScheme.onErrorContainer,
+                color: isConnected ? colorScheme.onPrimaryContainer : colorScheme.onErrorContainer,
               ),
               const SizedBox(width: 8),
               Text(
-                isConnected 
-                  ? 'Connected' 
-                  : 'No internet connection',
+                isConnected ? 'Connected' : 'No internet connection',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: isConnected 
-                    ? colorScheme.onPrimaryContainer 
-                    : colorScheme.onErrorContainer,
+                  color:
+                      isConnected ? colorScheme.onPrimaryContainer : colorScheme.onErrorContainer,
                   fontWeight: FontWeight.w500,
                 ),
               ),

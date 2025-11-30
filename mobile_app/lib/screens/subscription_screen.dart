@@ -150,25 +150,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         Icon(
                           isPremium ? Icons.star : Icons.star_border,
                           size: 48,
-                          color: isPremium
-                              ? AppColors.premium
-                              : AppColors.primary,
+                          color: isPremium ? AppColors.premium : AppColors.primary,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           isPremium ? 'Premium Active' : 'Free Plan',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                         ),
                         if (_subscriptionInfo != null && isPremium) ...[
                           const SizedBox(height: 8),
                           Text(
                             'Expires: ${_subscriptionInfo!.expiryDate?.toString().split(' ').first ?? 'N/A'}',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                                  color: Colors.grey[600],
+                                ),
                           ),
                         ],
                       ],

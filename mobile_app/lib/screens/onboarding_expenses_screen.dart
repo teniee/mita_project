@@ -37,7 +37,10 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     PredefinedExpense(id: 'internet', label: 'Internet & Phone', icon: Icons.wifi),
     PredefinedExpense(id: 'insurance', label: 'Insurance', icon: Icons.shield),
     PredefinedExpense(id: 'car_payment', label: 'Car Payment', icon: Icons.directions_car),
-    PredefinedExpense(id: 'subscriptions', label: 'Subscriptions (Netflix, Spotify, etc.)', icon: Icons.subscriptions),
+    PredefinedExpense(
+        id: 'subscriptions',
+        label: 'Subscriptions (Netflix, Spotify, etc.)',
+        icon: Icons.subscriptions),
     PredefinedExpense(id: 'loan_payment', label: 'Loan Payments', icon: Icons.payment),
     PredefinedExpense(id: 'childcare', label: 'Childcare', icon: Icons.child_care),
   ];
@@ -45,7 +48,11 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
   Future<void> _submitExpenses() async {
     if (_formKey.currentState?.validate() ?? false) {
       final apiExpenses = expenses
-          .where((e) => e.isSelected && e.amount.isNotEmpty && double.tryParse(e.amount) != null && double.parse(e.amount) > 0)
+          .where((e) =>
+              e.isSelected &&
+              e.amount.isNotEmpty &&
+              double.tryParse(e.amount) != null &&
+              double.parse(e.amount) > 0)
           .map((e) => {"category": e.id, "amount": double.parse(e.amount)})
           .toList();
 
@@ -226,9 +233,9 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                       const SizedBox(height: 20),
                       // Expense cards
                       ...expenses.map((expense) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildExpenseCard(expense),
-                      )),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildExpenseCard(expense),
+                          )),
                       const SizedBox(height: 24),
                       // Buttons
                       SizedBox(

@@ -18,7 +18,7 @@ class ContextualNudgeService {
   }) async {
     // Analyze user's nudge history to determine most effective nudge type
     final mostEffectiveNudgeType = await _determineMostEffectiveNudgeType(userId, context);
-    
+
     // Generate personalized message based on context and user data
     final personalizedMessage = await _generatePersonalizedMessage(
       mostEffectiveNudgeType,
@@ -26,10 +26,11 @@ class ContextualNudgeService {
       contextData,
       userId,
     );
-    
+
     // Calculate expected effectiveness based on historical data
-    final expectedEffectiveness = _calculateExpectedEffectiveness(userId, mostEffectiveNudgeType, context);
-    
+    final expectedEffectiveness =
+        _calculateExpectedEffectiveness(userId, mostEffectiveNudgeType, context);
+
     return PersonalizedNudge(
       nudgeId: 'nudge_${DateTime.now().millisecondsSinceEpoch}',
       nudgeType: mostEffectiveNudgeType,
@@ -56,7 +57,7 @@ class ContextualNudgeService {
     required Map<String, dynamic> outcomeMetadata,
   }) async {
     final effectiveness = wasEffective ? 1.0 : 0.0;
-    
+
     final result = NudgeEffectivenessResult(
       nudgeId: nudgeId,
       wasEffective: wasEffective,
@@ -68,10 +69,10 @@ class ContextualNudgeService {
       },
       recordedAt: DateTime.now(),
     );
-    
+
     // Store in user's nudge history
     _userNudgeHistory.putIfAbsent(userId, () => []).add(result);
-    
+
     // Update personalized effectiveness scores
     await _updatePersonalizedEffectiveness(userId, result);
   }
@@ -83,7 +84,7 @@ class ContextualNudgeService {
     required Map<String, dynamic> userData,
   }) async {
     final recommendations = <PersonalizedNudge>[];
-    
+
     for (final context in contexts) {
       final nudge = await generatePersonalizedNudge(
         userId: userId,
@@ -95,10 +96,10 @@ class ContextualNudgeService {
       );
       recommendations.add(nudge);
     }
-    
+
     // Sort by expected effectiveness
     recommendations.sort((a, b) => b.expectedEffectiveness.compareTo(a.expectedEffectiveness));
-    
+
     return recommendations.take(3).toList(); // Return top 3 recommendations
   }
 
@@ -110,26 +111,27 @@ class ContextualNudgeService {
     int testDurationDays = 7,
   }) async {
     final results = <String, double>{};
-    
+
     // Simulate A/B test results based on nudge type effectiveness
     for (final nudgeType in nudgeTypes) {
       final baselineEffectiveness = _getBaselineEffectiveness(nudgeType);
       final contextMultiplier = _getContextMultiplier(nudgeType, context);
-      
+
       // Add some randomness to simulate real A/B test variance
       final variance = (Random().nextDouble() - 0.5) * 0.2; // ±10% variance
-      final testEffectiveness = (baselineEffectiveness * contextMultiplier + variance).clamp(0.0, 1.0);
-      
+      final testEffectiveness =
+          (baselineEffectiveness * contextMultiplier + variance).clamp(0.0, 1.0);
+
       results[nudgeType.toString()] = testEffectiveness;
     }
-    
+
     return results;
   }
 
   /// Get nudge analytics for a user
   Future<Map<String, dynamic>> getNudgeAnalytics(String userId) async {
     final history = _userNudgeHistory[userId] ?? [];
-    
+
     if (history.isEmpty) {
       return {
         'totalNudges': 0,
@@ -139,10 +141,11 @@ class ContextualNudgeService {
         'improvementTrend': 'insufficient_data',
       };
     }
-    
+
     // Calculate overall effectiveness
-    final overallEffectiveness = history.fold(0.0, (sum, result) => sum + result.effectiveness) / history.length;
-    
+    final overallEffectiveness =
+        history.fold(0.0, (sum, result) => sum + result.effectiveness) / history.length;
+
     // Find best performing nudge types
     final nudgeTypeEffectiveness = <String, List<double>>{};
     for (final result in history) {
@@ -150,7 +153,7 @@ class ContextualNudgeService {
       final nudgeType = result.metadata['nudgeType']?.toString() ?? 'unknown';
       nudgeTypeEffectiveness.putIfAbsent(nudgeType, () => []).add(result.effectiveness);
     }
-    
+
     final bestNudgeTypes = nudgeTypeEffectiveness.entries
         .map((entry) => {
               'type': entry.key,
@@ -158,16 +161,17 @@ class ContextualNudgeService {
             })
         .toList()
       ..sort((a, b) => (b['effectiveness'] as double).compareTo(a['effectiveness'] as double));
-    
+
     // Calculate improvement trend
     final recentEffectiveness = history.length >= 10
-        ? history.skip(history.length - 10).fold(0.0, (sum, result) => sum + result.effectiveness) / 10
+        ? history.skip(history.length - 10).fold(0.0, (sum, result) => sum + result.effectiveness) /
+            10
         : overallEffectiveness;
-    
+
     final earlyEffectiveness = history.length >= 10
         ? history.take(10).fold(0.0, (sum, result) => sum + result.effectiveness) / 10
         : overallEffectiveness;
-    
+
     String improvementTrend;
     if (recentEffectiveness > earlyEffectiveness + 0.1) {
       improvementTrend = 'improving';
@@ -176,7 +180,7 @@ class ContextualNudgeService {
     } else {
       improvementTrend = 'stable';
     }
-    
+
     return {
       'totalNudges': history.length,
       'overallEffectiveness': overallEffectiveness,
@@ -184,7 +188,11 @@ class ContextualNudgeService {
       'contextEffectiveness': _calculateContextEffectiveness(history),
       'improvementTrend': improvementTrend,
       'recentEffectiveness': recentEffectiveness,
-      'dataQuality': history.length >= 20 ? 'good' : history.length >= 10 ? 'moderate' : 'limited',
+      'dataQuality': history.length >= 20
+          ? 'good'
+          : history.length >= 10
+              ? 'moderate'
+              : 'limited',
     };
   }
 
@@ -192,16 +200,16 @@ class ContextualNudgeService {
 
   Future<NudgeType> _determineMostEffectiveNudgeType(String userId, NudgeContext context) async {
     final personalizedScores = _personalizedEffectiveness[userId];
-    
+
     if (personalizedScores == null || personalizedScores.isEmpty) {
       // Use baseline effectiveness for new users
       return _getDefaultNudgeTypeForContext(context);
     }
-    
+
     // Find the nudge type with highest personalized effectiveness for this user
     final sortedTypes = personalizedScores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    
+
     return sortedTypes.first.key;
   }
 
@@ -213,11 +221,11 @@ class ContextualNudgeService {
   ) async {
     final templates = _getNudgeTemplates(nudgeType, context);
     final selectedTemplate = templates[Random().nextInt(templates.length)];
-    
+
     // Personalize the message with context data
     final personalizedMessage = _personalizeMessage(selectedTemplate['message']!, contextData);
     final personalizedAction = _personalizeMessage(selectedTemplate['action']!, contextData);
-    
+
     return {
       'message': personalizedMessage,
       'actionText': personalizedAction,
@@ -229,7 +237,7 @@ class ContextualNudgeService {
     final personalizedScore = _personalizedEffectiveness[userId]?[nudgeType];
     final baselineScore = _getBaselineEffectiveness(nudgeType);
     final contextMultiplier = _getContextMultiplier(nudgeType, context);
-    
+
     if (personalizedScore != null) {
       return (personalizedScore * contextMultiplier).clamp(0.0, 1.0);
     } else {
@@ -258,11 +266,12 @@ class ContextualNudgeService {
     }
   }
 
-  Future<void> _updatePersonalizedEffectiveness(String userId, NudgeEffectivenessResult result) async {
+  Future<void> _updatePersonalizedEffectiveness(
+      String userId, NudgeEffectivenessResult result) async {
     // Extract nudge type from metadata
     final nudgeTypeString = result.metadata['nudgeType']?.toString();
     if (nudgeTypeString == null) return;
-    
+
     // Convert string back to enum (simplified approach)
     NudgeType? nudgeType;
     for (final type in NudgeType.values) {
@@ -271,15 +280,16 @@ class ContextualNudgeService {
         break;
       }
     }
-    
+
     if (nudgeType == null) return;
-    
+
     // Update the personalized effectiveness score using exponential smoothing
-    final currentScore = _personalizedEffectiveness[userId]?[nudgeType] ?? _getBaselineEffectiveness(nudgeType);
+    final currentScore =
+        _personalizedEffectiveness[userId]?[nudgeType] ?? _getBaselineEffectiveness(nudgeType);
     const learningRate = 0.3; // How quickly to adapt to new data
-    
+
     final newScore = currentScore * (1 - learningRate) + result.effectiveness * learningRate;
-    
+
     _personalizedEffectiveness.putIfAbsent(userId, () => {})[nudgeType] = newScore.clamp(0.0, 1.0);
   }
 
@@ -351,7 +361,8 @@ class ContextualNudgeService {
       case NudgeType.lossAversion:
         return [
           {
-            'message': 'You could lose \${amount} from your {goal} if you continue this spending pattern',
+            'message':
+                'You could lose \${amount} from your {goal} if you continue this spending pattern',
             'action': 'Protect My Goal',
             'factors': 'loss_framing,goal_threat',
           },
@@ -377,7 +388,8 @@ class ContextualNudgeService {
       case NudgeType.commitmentDevice:
         return [
           {
-            'message': 'You committed to saving \${amount} this month. You\'re {percentage}% there!',
+            'message':
+                'You committed to saving \${amount} this month. You\'re {percentage}% there!',
             'action': 'Stay Committed',
             'factors': 'commitment_reminder,progress_update',
           },
@@ -403,7 +415,7 @@ class ContextualNudgeService {
 
   String _personalizeMessage(String template, Map<String, dynamic> contextData) {
     var message = template;
-    
+
     // Replace common placeholders
     final replacements = {
       '{amount}': '\$${(contextData['amount'] ?? 50).toString()}',
@@ -412,27 +424,27 @@ class ContextualNudgeService {
       '{percentage}': (contextData['percentage'] ?? 75).toString(),
       '{category}': contextData['category']?.toString() ?? 'this category',
     };
-    
+
     for (final entry in replacements.entries) {
       message = message.replaceAll(entry.key, entry.value);
     }
-    
+
     return message;
   }
 
   Map<String, double> _calculateContextEffectiveness(List<NudgeEffectivenessResult> history) {
     final contextResults = <String, List<double>>{};
-    
+
     for (final result in history) {
       final context = result.metadata['context']?.toString() ?? 'unknown';
       contextResults.putIfAbsent(context, () => []).add(result.effectiveness);
     }
-    
+
     final contextEffectiveness = <String, double>{};
     for (final entry in contextResults.entries) {
       contextEffectiveness[entry.key] = entry.value.reduce((a, b) => a + b) / entry.value.length;
     }
-    
+
     return contextEffectiveness;
   }
 }

@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (password.isEmpty) {
       return 'Please enter a password';
     }
-    
+
     final passwordValidation = _validatePassword(password);
     if (!passwordValidation.isValid) {
       return passwordValidation.issues.first;
@@ -52,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!passwordValidation.isStrong) {
       return 'Password does not meet security requirements. ${passwordValidation.issues.join('; ')}';
     }
-    
+
     return null;
   }
 
@@ -69,11 +69,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _loading = true;
       _error = null;
     });
-    
+
     try {
       // Use reliable FastAPI registration with restored backend
       logInfo('Attempting FastAPI registration with stable backend', tag: 'REGISTER');
-      
+
       final response = await _api.reliableRegister(
         _emailController.text.trim(),
         _passwordController.text,
@@ -84,7 +84,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final accessToken = responseData['access_token'] as String;
       final refreshToken = responseData['refresh_token'] as String?;
 
-      logInfo('Tokens received - access: ${accessToken.substring(0, 20)}..., refresh: ${refreshToken?.substring(0, 20) ?? 'null'}', tag: 'REGISTER');
+      logInfo(
+          'Tokens received - access: ${accessToken.substring(0, 20)}..., refresh: ${refreshToken?.substring(0, 20) ?? 'null'}',
+          tag: 'REGISTER');
 
       // Save tokens from FastAPI registration
       await _api.saveTokens(accessToken, refreshToken ?? '');
@@ -103,7 +105,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Check if user has completed onboarding (should be false for new registration)
       final hasOnboarded = userProvider.hasCompletedOnboarding;
 
-      logInfo('Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}', tag: 'REGISTER');
+      logInfo('Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}',
+          tag: 'REGISTER');
 
       // Navigate based on onboarding status
       if (hasOnboarded) {
@@ -111,19 +114,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         Navigator.pushReplacementNamed(context, '/onboarding_location');
       }
-      
     } catch (e) {
       logError('FastAPI registration FAILED', tag: 'REGISTER', error: e);
-      
+
       String errorMessage = 'Registration failed';
-      
+
       // Extract more specific error message from DioException
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
         final errorData = e.response?.data?.toString() ?? '';
-        
+
         if (statusCode == 400) {
-          if (errorData.contains('already registered') || errorData.contains('Email already registered')) {
+          if (errorData.contains('already registered') ||
+              errorData.contains('Email already registered')) {
             errorMessage = 'This email is already registered. Please try logging in instead.';
           } else if (errorData.contains('Password too short')) {
             errorMessage = 'Password must be at least 8 characters long.';
@@ -135,17 +138,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else if (statusCode == 409 || statusCode == 422) {
           errorMessage = 'This email is already registered. Please try logging in instead.';
         } else if (statusCode == 500) {
-          errorMessage = 'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
+          errorMessage =
+              'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
         } else if (statusCode != null && statusCode >= 500) {
           errorMessage = 'Server error (${statusCode}). Please try again later.';
         }
-        
+
         // Handle timeout errors specifically
         switch (e.type) {
           case DioExceptionType.receiveTimeout:
           case DioExceptionType.sendTimeout:
           case DioExceptionType.connectionTimeout:
-            errorMessage = 'Registration is taking longer than expected. Our servers may be experiencing high load. Please try again.';
+            errorMessage =
+                'Registration is taking longer than expected. Our servers may be experiencing high load. Please try again.';
             _showTimeoutRetryDialog();
             return; // Don't show the generic error
           case DioExceptionType.connectionError:
@@ -155,13 +160,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             break;
         }
       } else if (e is TimeoutException) {
-        errorMessage = 'Registration timeout. Our servers may be busy. Please try again in a moment.';
-      } else if (e.toString().contains('SocketException') || 
-                 e.toString().contains('network') ||
-                 e.toString().contains('HandshakeException')) {
+        errorMessage =
+            'Registration timeout. Our servers may be busy. Please try again in a moment.';
+      } else if (e.toString().contains('SocketException') ||
+          e.toString().contains('network') ||
+          e.toString().contains('HandshakeException')) {
         errorMessage = 'Network error. Check your internet connection and try again.';
       }
-      
+
       setState(() {
         _loading = false;
         _error = errorMessage;
@@ -266,8 +272,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 24),
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                             textStyle: const TextStyle(
                               fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
@@ -340,4 +345,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

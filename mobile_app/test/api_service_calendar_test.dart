@@ -260,7 +260,7 @@ void main() {
             expect(expectedSavingsWeight, lessThan(0.15));
           } else if (tier == 'high') {
             expect(expectedFoodWeight, lessThan(0.15));
-            expect(expectedSavingsWeight, greaterThan(0.20);
+            expect(expectedSavingsWeight, greaterThan(0.20));
           }
         }
       });

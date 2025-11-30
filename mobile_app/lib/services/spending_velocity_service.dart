@@ -16,16 +16,16 @@ class SpendingVelocityService {
   }) async {
     // Calculate current spending velocity (spending per day)
     final currentVelocity = _calculateCurrentVelocity(recentTransactions, analysisDate);
-    
+
     // Calculate normal/historical velocity
     final normalVelocity = _calculateNormalVelocity(historicalTransactions);
-    
+
     // Calculate velocity ratio
     final velocityRatio = normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
-    
+
     // Categorize velocity
     final velocityCategory = _categorizeVelocity(velocityRatio);
-    
+
     // Calculate optimal remaining budget distribution
     final remainingBudgetOptimal = _calculateOptimalRemainingBudget(
       currentVelocity,
@@ -33,16 +33,17 @@ class SpendingVelocityService {
       currentDailyBudget,
       analysisDate,
     );
-    
+
     // Calculate redistribution amount
     final redistributionAmount = remainingBudgetOptimal - currentDailyBudget;
-    
+
     // Generate insights
-    final insights = _generateVelocityInsights(velocityRatio, velocityCategory, currentVelocity, normalVelocity);
-    
+    final insights =
+        _generateVelocityInsights(velocityRatio, velocityCategory, currentVelocity, normalVelocity);
+
     // Calculate confidence based on data quality
     final confidence = _calculateAnalysisConfidence(recentTransactions, historicalTransactions);
-    
+
     return SpendingVelocityAnalysis(
       currentVelocity: currentVelocity,
       normalVelocity: normalVelocity,
@@ -69,11 +70,11 @@ class SpendingVelocityService {
     int daysAhead = 30,
   }) async {
     final strategy = _determineAllocationStrategy(velocityAnalysis);
-    
+
     // Calculate future budget allocations
     final futureBudgetAllocations = <DateTime, double>{};
     final dailyBaseAllocation = monthlyBudget / 30;
-    
+
     for (int i = 0; i < daysAhead; i++) {
       final date = startDate.add(Duration(days: i));
       final dayBudget = _calculateDayBudget(
@@ -84,16 +85,17 @@ class SpendingVelocityService {
       );
       futureBudgetAllocations[date] = dayBudget;
     }
-    
+
     // Calculate total remaining budget
     final totalRemainingBudget = futureBudgetAllocations.values.reduce((a, b) => a + b);
-    
+
     // Generate recommendations
     final recommendations = _generateAllocationRecommendations(velocityAnalysis, strategy);
-    
+
     // Calculate system confidence
-    final systemConfidence = velocityAnalysis.confidence * 0.9; // Slightly lower for allocation predictions
-    
+    final systemConfidence =
+        velocityAnalysis.confidence * 0.9; // Slightly lower for allocation predictions
+
     return AdaptiveBudgetAllocation(
       originalDailyBudget: dailyBaseAllocation,
       adjustedDailyBudget: velocityAnalysis.remainingBudgetOptimal,
@@ -110,60 +112,59 @@ class SpendingVelocityService {
     List<Map<String, dynamic>> transactions,
   ) async {
     final patterns = <String>[];
-    
+
     if (transactions.length < 10) {
       patterns.add('Insufficient transaction history for pattern detection');
       return patterns;
     }
-    
+
     // Analyze spending consistency
     final dailySpending = _groupByDay(transactions);
     final spendingVariance = _calculateVariance(dailySpending.values.toList());
-    
+
     if (spendingVariance > 50) {
       patterns.add('High spending variability detected - consider more consistent budgeting');
     } else if (spendingVariance < 10) {
       patterns.add('Very consistent spending pattern - good budget discipline');
     }
-    
+
     // Analyze weekly patterns
     final weeklyPattern = _analyzeWeeklyPattern(transactions);
     if (weeklyPattern.isNotEmpty) {
       patterns.add(weeklyPattern);
     }
-    
+
     // Analyze spending acceleration/deceleration
     final trendPattern = _analyzeTrend(transactions);
     if (trendPattern.isNotEmpty) {
       patterns.add(trendPattern);
     }
-    
+
     return patterns.take(3).toList();
   }
 
   // Helper methods for velocity calculations
 
-  double _calculateCurrentVelocity(List<Map<String, dynamic>> recentTransactions, DateTime analysisDate) {
+  double _calculateCurrentVelocity(
+      List<Map<String, dynamic>> recentTransactions, DateTime analysisDate) {
     if (recentTransactions.isEmpty) return 0.0;
-    
+
     // Calculate spending over the last 7 days
     final cutoffDate = analysisDate.subtract(const Duration(days: 7));
-    final recentSpending = recentTransactions
-        .where((t) {
-          final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
-          return date.isAfter(cutoffDate);
-        })
-        .fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
-    
+    final recentSpending = recentTransactions.where((t) {
+      final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+      return date.isAfter(cutoffDate);
+    }).fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
     return recentSpending / 7; // Daily average over last 7 days
   }
 
   double _calculateNormalVelocity(List<Map<String, dynamic>> historicalTransactions) {
     if (historicalTransactions.isEmpty) return 0.0;
-    
-    final totalSpending = historicalTransactions.fold(0.0, 
-        (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
-    
+
+    final totalSpending = historicalTransactions.fold(
+        0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
     // Calculate number of unique days
     final uniqueDays = historicalTransactions
         .map((t) => DateTime.tryParse(t['date']?.toString() ?? ''))
@@ -171,7 +172,7 @@ class SpendingVelocityService {
         .map((date) => '${date!.year}-${date.month}-${date.day}')
         .toSet()
         .length;
-    
+
     return uniqueDays > 0 ? totalSpending / uniqueDays : 0.0;
   }
 
@@ -197,10 +198,10 @@ class SpendingVelocityService {
   ) {
     // Base calculation on velocity ratio
     final velocityRatio = normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
-    
+
     // Apply velocity-based adjustment
     var adjustmentFactor = 1.0;
-    
+
     if (velocityRatio > 1.5) {
       // High velocity - reduce budget
       adjustmentFactor = 0.85;
@@ -214,7 +215,7 @@ class SpendingVelocityService {
       // Very low velocity - significant increase possible
       adjustmentFactor = 1.25;
     }
-    
+
     // Apply time-of-month factor
     final dayOfMonth = analysisDate.day;
     if (dayOfMonth > 25) {
@@ -224,7 +225,7 @@ class SpendingVelocityService {
       // Beginning of month - can be more flexible
       adjustmentFactor *= 1.05;
     }
-    
+
     return currentDailyBudget * adjustmentFactor;
   }
 
@@ -235,14 +236,17 @@ class SpendingVelocityService {
     double normalVelocity,
   ) {
     final insights = <String>[];
-    
+
     switch (velocityCategory) {
       case 'very_high':
-        insights.add('Spending velocity is ${(velocityRatio * 100).round()}% above normal - consider reducing daily expenses');
-        insights.add('Current pace: \$${currentVelocity.toStringAsFixed(2)}/day vs normal \$${normalVelocity.toStringAsFixed(2)}/day');
+        insights.add(
+            'Spending velocity is ${(velocityRatio * 100).round()}% above normal - consider reducing daily expenses');
+        insights.add(
+            'Current pace: \$${currentVelocity.toStringAsFixed(2)}/day vs normal \$${normalVelocity.toStringAsFixed(2)}/day');
         break;
       case 'high':
-        insights.add('Spending slightly elevated at ${((velocityRatio - 1) * 100).round()}% above normal');
+        insights.add(
+            'Spending slightly elevated at ${((velocityRatio - 1) * 100).round()}% above normal');
         insights.add('Monitor discretionary spending categories closely');
         break;
       case 'normal':
@@ -254,11 +258,12 @@ class SpendingVelocityService {
         insights.add('Opportunity to increase flexible spending or boost savings');
         break;
       case 'very_low':
-        insights.add('Very low spending velocity - ${((1 - velocityRatio) * 100).round()}% below normal');
+        insights.add(
+            'Very low spending velocity - ${((1 - velocityRatio) * 100).round()}% below normal');
         insights.add('Consider if underspending affects quality of life');
         break;
     }
-    
+
     return insights;
   }
 
@@ -267,15 +272,15 @@ class SpendingVelocityService {
     List<Map<String, dynamic>> historicalTransactions,
   ) {
     var confidence = 0.5; // Base confidence
-    
+
     // Increase confidence based on recent data quantity
     if (recentTransactions.length >= 10) confidence += 0.2;
     if (recentTransactions.length >= 20) confidence += 0.1;
-    
+
     // Increase confidence based on historical data quantity
     if (historicalTransactions.length >= 50) confidence += 0.1;
     if (historicalTransactions.length >= 100) confidence += 0.1;
-    
+
     return confidence.clamp(0.0, 1.0);
   }
 
@@ -303,7 +308,7 @@ class SpendingVelocityService {
     String strategy,
   ) {
     var multiplier = 1.0;
-    
+
     // Apply strategy-based multiplier
     switch (strategy) {
       case 'emergency_conservation':
@@ -322,12 +327,12 @@ class SpendingVelocityService {
         multiplier = 1.3;
         break;
     }
-    
+
     // Apply weekend adjustment
     if (date.weekday >= 6) {
       multiplier *= 1.1; // 10% weekend boost
     }
-    
+
     return baseBudget * multiplier;
   }
 
@@ -336,7 +341,7 @@ class SpendingVelocityService {
     String strategy,
   ) {
     final recommendations = <String>[];
-    
+
     switch (strategy) {
       case 'emergency_conservation':
         recommendations.add('Implement immediate spending controls');
@@ -363,27 +368,27 @@ class SpendingVelocityService {
         recommendations.add('Consider investing surplus in long-term goals');
         break;
     }
-    
+
     return recommendations;
   }
 
   Map<String, double> _groupByDay(List<Map<String, dynamic>> transactions) {
     final dailySpending = <String, double>{};
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final dateKey = '${date.year}-${date.month}-${date.day}';
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       dailySpending[dateKey] = (dailySpending[dateKey] ?? 0.0) + amount;
     }
-    
+
     return dailySpending;
   }
 
   double _calculateVariance(List<double> values) {
     if (values.isEmpty) return 0.0;
-    
+
     final mean = values.reduce((a, b) => a + b) / values.length;
     final squaredDiffs = values.map((value) => pow(value - mean, 2)).toList();
     return squaredDiffs.reduce((a, b) => a + b) / values.length;
@@ -392,35 +397,35 @@ class SpendingVelocityService {
   String _analyzeWeeklyPattern(List<Map<String, dynamic>> transactions) {
     final weekdaySpending = <double>[];
     final weekendSpending = <double>[];
-    
+
     for (final transaction in transactions) {
       final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       if (date.weekday >= 6) {
         weekendSpending.add(amount);
       } else {
         weekdaySpending.add(amount);
       }
     }
-    
+
     if (weekdaySpending.isEmpty || weekendSpending.isEmpty) return '';
-    
+
     final weekdayAvg = weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
     final weekendAvg = weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
-    
+
     if (weekendAvg > weekdayAvg * 1.2) {
       return 'Weekend spending is ${((weekendAvg / weekdayAvg - 1) * 100).round()}% higher than weekdays';
     } else if (weekdayAvg > weekendAvg * 1.2) {
       return 'Weekday spending is ${((weekdayAvg / weekendAvg - 1) * 100).round()}% higher than weekends';
     }
-    
+
     return '';
   }
 
   String _analyzeTrend(List<Map<String, dynamic>> transactions) {
     if (transactions.length < 14) return '';
-    
+
     // Sort transactions by date
     final sortedTransactions = List<Map<String, dynamic>>.from(transactions);
     sortedTransactions.sort((a, b) {
@@ -428,23 +433,27 @@ class SpendingVelocityService {
       final dateB = DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime.now();
       return dateA.compareTo(dateB);
     });
-    
+
     // Compare first half vs second half spending
     final midpoint = sortedTransactions.length ~/ 2;
     final firstHalf = sortedTransactions.take(midpoint);
     final secondHalf = sortedTransactions.skip(midpoint);
-    
-    final firstHalfAvg = firstHalf.isEmpty ? 0.0 : 
-        firstHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) / firstHalf.length;
-    final secondHalfAvg = secondHalf.isEmpty ? 0.0 :
-        secondHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) / secondHalf.length;
-    
+
+    final firstHalfAvg = firstHalf.isEmpty
+        ? 0.0
+        : firstHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
+            firstHalf.length;
+    final secondHalfAvg = secondHalf.isEmpty
+        ? 0.0
+        : secondHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
+            secondHalf.length;
+
     if (secondHalfAvg > firstHalfAvg * 1.15) {
       return 'Spending trend increasing - ${((secondHalfAvg / firstHalfAvg - 1) * 100).round()}% higher recently';
     } else if (firstHalfAvg > secondHalfAvg * 1.15) {
       return 'Spending trend decreasing - ${((1 - secondHalfAvg / firstHalfAvg) * 100).round()}% lower recently';
     }
-    
+
     return '';
   }
 }

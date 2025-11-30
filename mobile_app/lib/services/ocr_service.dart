@@ -7,14 +7,7 @@ import 'logging_service.dart';
 enum OCRConfidence { low, medium, high }
 
 /// Processing status for OCR operations
-enum OCRProcessingStatus {
-  idle,
-  preprocessing,
-  extracting,
-  categorizing,
-  complete,
-  error
-}
+enum OCRProcessingStatus { idle, preprocessing, extracting, categorizing, complete, error }
 
 /// Detailed item from OCR extraction
 class ReceiptItem {
@@ -102,9 +95,8 @@ class OCRResult {
 
   factory OCRResult.fromJson(Map<String, dynamic> json) {
     final itemsJson = json['items'] as List<dynamic>? ?? [];
-    final items = itemsJson
-        .map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
-        .toList();
+    final items =
+        itemsJson.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>)).toList();
 
     return OCRResult(
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
@@ -200,9 +192,9 @@ class OCRService {
   OCRService._internal();
 
   final ApiService _apiService = ApiService();
-  
+
   /// Current processing status
-  final ValueNotifier<OCRProcessingStatus> processingStatus = 
+  final ValueNotifier<OCRProcessingStatus> processingStatus =
       ValueNotifier(OCRProcessingStatus.idle);
 
   /// Current processing progress (0.0 to 1.0)
@@ -316,9 +308,7 @@ class OCRService {
         'Best Buy',
         'Amazon',
         'Costco',
-      ].where((name) =>
-        name.toLowerCase().contains(partialName.toLowerCase())
-      ).toList();
+      ].where((name) => name.toLowerCase().contains(partialName.toLowerCase())).toList();
 
       return fallbackSuggestions.take(5).toList();
     }
@@ -332,7 +322,7 @@ class OCRService {
     try {
       // This would use the AI categorization service
       return await _apiService.getAICategorySuggestions(
-        merchant, 
+        merchant,
         amount: amount,
       );
     } catch (e) {
@@ -449,12 +439,12 @@ class OCRService {
 
   /// Build enhanced OCR result from raw API response
   OCRResult _buildEnhancedResult(
-    Map<String, dynamic> rawResult, 
+    Map<String, dynamic> rawResult,
     bool isPremiumUser,
   ) {
     // Simulate confidence scoring based on premium tier
     final baseConfidence = isPremiumUser ? OCRConfidence.high : OCRConfidence.medium;
-    
+
     return OCRResult(
       merchant: rawResult['merchant'] as String? ?? 'Unknown Merchant',
       total: (rawResult['total'] as num?)?.toDouble() ?? 0.0,
@@ -473,9 +463,7 @@ class OCRService {
   }
 
   List<ReceiptItem> _parseItems(List<dynamic> itemsJson) {
-    return itemsJson
-        .map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return itemsJson.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   OCRConfidence _adjustConfidence(OCRConfidence base, dynamic value) {
@@ -483,7 +471,7 @@ class OCRService {
     if (value == null || value.toString().trim().isEmpty) {
       return OCRConfidence.low;
     }
-    
+
     // Additional logic could be added here to analyze the quality
     // of extracted values and adjust confidence accordingly
     return base;

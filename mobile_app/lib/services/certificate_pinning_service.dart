@@ -14,8 +14,7 @@ import 'logging_service.dart';
 /// 2. Add it to _pinnedCertificates list
 /// 3. Update certificates before expiry (typical 90 days)
 class CertificatePinningService {
-  static final CertificatePinningService _instance =
-      CertificatePinningService._internal();
+  static final CertificatePinningService _instance = CertificatePinningService._internal();
   factory CertificatePinningService() => _instance;
   CertificatePinningService._internal();
 

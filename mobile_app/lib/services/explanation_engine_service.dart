@@ -100,17 +100,20 @@ class ExplanationEngineService {
     required String userLevel,
   }) async {
     final spendingRatio = monthlyIncome > 0 ? (dailyBudget * 30) / monthlyIncome : 0.0;
-    
+
     String explanation;
     switch (userLevel) {
       case 'beginner':
-        explanation = 'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} comes from taking your monthly income, setting aside money for essential expenses and savings, then dividing what\'s left by 30 days.';
+        explanation =
+            'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} comes from taking your monthly income, setting aside money for essential expenses and savings, then dividing what\'s left by 30 days.';
         break;
       case 'advanced':
-        explanation = 'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} represents ${(spendingRatio * 100).toStringAsFixed(1)}% of your monthly income, calculated using income tier classification and multi-factor optimization.';
+        explanation =
+            'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} represents ${(spendingRatio * 100).toStringAsFixed(1)}% of your monthly income, calculated using income tier classification and multi-factor optimization.';
         break;
       default:
-        explanation = 'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} gives you ${(spendingRatio * 100).toStringAsFixed(0)}% of your income for flexible spending while covering essentials and savings.';
+        explanation =
+            'Your daily budget of \$${dailyBudget.toStringAsFixed(0)} gives you ${(spendingRatio * 100).toStringAsFixed(0)}% of your income for flexible spending while covering essentials and savings.';
     }
 
     return BudgetExplanation(
@@ -136,9 +139,10 @@ class ExplanationEngineService {
   }) async {
     final difference = adjustedBudget - originalBudget;
     final percentChange = originalBudget > 0 ? (difference / originalBudget * 100) : 0.0;
-    
-    final explanation = 'Your budget was ${difference > 0 ? 'increased' : 'decreased'} by \$${difference.abs().toStringAsFixed(0)} (${percentChange.abs().toStringAsFixed(0)}%) due to $adjustmentReason.';
-    
+
+    final explanation =
+        'Your budget was ${difference > 0 ? 'increased' : 'decreased'} by \$${difference.abs().toStringAsFixed(0)} (${percentChange.abs().toStringAsFixed(0)}%) due to $adjustmentReason.';
+
     final detailedSteps = [
       'Original budget: \$${originalBudget.toStringAsFixed(0)}',
       'Adjustment: ${difference > 0 ? '+' : ''}\$${difference.toStringAsFixed(0)}',
@@ -201,11 +205,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 1,
       'stepName': 'Income Analysis',
-      'description': 'Your monthly income of \$${monthlyIncome.toStringAsFixed(0)} forms the foundation for all budget calculations. ${adjustedIncome != monthlyIncome ? 'We adjusted it to \$${adjustedIncome.toStringAsFixed(0)} based on stability patterns.' : ''}',
+      'description':
+          'Your monthly income of \$${monthlyIncome.toStringAsFixed(0)} forms the foundation for all budget calculations. ${adjustedIncome != monthlyIncome ? 'We adjusted it to \$${adjustedIncome.toStringAsFixed(0)} based on stability patterns.' : ''}',
       'inputValue': monthlyIncome,
       'outputValue': adjustedIncome,
       'formula': 'Adjusted Income = Monthly Income × Income Stability Factor',
-      'reasoning': 'We start with your reported monthly income and may adjust it based on income stability patterns if available.',
+      'reasoning':
+          'We start with your reported monthly income and may adjust it based on income stability patterns if available.',
       'impactWeight': 0.4, // High impact on final budget
     };
   }
@@ -221,11 +227,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 2,
       'stepName': 'Income Tier Classification',
-      'description': 'Your income places you in the $tierName category, which determines your budget parameters and spending ratios.',
+      'description':
+          'Your income places you in the $tierName category, which determines your budget parameters and spending ratios.',
       'inputValue': monthlyIncome,
       'outputValue': _getTierNumericValue(incomeTier),
       'formula': 'Income Tier = Classification(Monthly Income, Location Adjustments)',
-      'reasoning': 'Income tiers help us apply research-based budget ratios that work best for people in similar financial situations.',
+      'reasoning':
+          'Income tiers help us apply research-based budget ratios that work best for people in similar financial situations.',
       'impactWeight': 0.25,
     };
   }
@@ -241,11 +249,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 3,
       'stepName': 'Fixed Commitments',
-      'description': 'Essential expenses like rent, utilities, and debt payments are calculated first. We allocate ${(fixedCommitmentRatio * 100).toStringAsFixed(0)}% of your income (\$${fixedCommitments.toStringAsFixed(0)}) for these necessities.',
+      'description':
+          'Essential expenses like rent, utilities, and debt payments are calculated first. We allocate ${(fixedCommitmentRatio * 100).toStringAsFixed(0)}% of your income (\$${fixedCommitments.toStringAsFixed(0)}) for these necessities.',
       'inputValue': adjustedIncome,
       'outputValue': fixedCommitments,
       'formula': 'Fixed Commitments = Adjusted Income × Fixed Commitment Ratio',
-      'reasoning': 'Your income tier determines the recommended ratio for fixed expenses. This ensures essential needs are covered first.',
+      'reasoning':
+          'Your income tier determines the recommended ratio for fixed expenses. This ensures essential needs are covered first.',
       'impactWeight': 0.3,
     };
   }
@@ -261,11 +271,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 4,
       'stepName': 'Savings Target',
-      'description': 'A portion of your income (${(savingsTargetRatio * 100).toStringAsFixed(0)}% = \$${savingsTarget.toStringAsFixed(0)}) is allocated for savings and future goals to build financial security.',
+      'description':
+          'A portion of your income (${(savingsTargetRatio * 100).toStringAsFixed(0)}% = \$${savingsTarget.toStringAsFixed(0)}) is allocated for savings and future goals to build financial security.',
       'inputValue': adjustedIncome,
       'outputValue': savingsTarget,
       'formula': 'Savings Target = Adjusted Income × Savings Target Ratio',
-      'reasoning': 'Automatic savings allocation helps build financial security. The ratio increases with higher income tiers.',
+      'reasoning':
+          'Automatic savings allocation helps build financial security. The ratio increases with higher income tiers.',
       'impactWeight': 0.2,
     };
   }
@@ -282,11 +294,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 5,
       'stepName': 'Available Spending',
-      'description': 'After fixed costs (\$${fixedCommitments.toStringAsFixed(0)}) and savings (\$${savingsTarget.toStringAsFixed(0)}), you have \$${availableSpending.toStringAsFixed(0)} available for flexible spending.',
+      'description':
+          'After fixed costs (\$${fixedCommitments.toStringAsFixed(0)}) and savings (\$${savingsTarget.toStringAsFixed(0)}), you have \$${availableSpending.toStringAsFixed(0)} available for flexible spending.',
       'inputValue': adjustedIncome,
       'outputValue': availableSpending,
       'formula': 'Available Spending = Income - Fixed Commitments - Savings Target',
-      'reasoning': 'This represents the money available for discretionary spending like food, entertainment, and shopping.',
+      'reasoning':
+          'This represents the money available for discretionary spending like food, entertainment, and shopping.',
       'impactWeight': 0.15,
     };
   }
@@ -301,11 +315,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 6,
       'stepName': 'Daily Budget Calculation',
-      'description': 'Your available spending (\$${availableSpending.toStringAsFixed(0)}) is divided by 30 days to give you a daily budget of \$${dailyBudget.toStringAsFixed(0)}.',
+      'description':
+          'Your available spending (\$${availableSpending.toStringAsFixed(0)}) is divided by 30 days to give you a daily budget of \$${dailyBudget.toStringAsFixed(0)}.',
       'inputValue': availableSpending,
       'outputValue': dailyBudget,
       'formula': 'Daily Budget = Available Spending ÷ 30 days',
-      'reasoning': 'Breaking down your budget into daily amounts makes it easier to track and control spending.',
+      'reasoning':
+          'Breaking down your budget into daily amounts makes it easier to track and control spending.',
       'impactWeight': 0.1,
     };
   }
@@ -322,11 +338,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 7,
       'stepName': 'Location Adjustment',
-      'description': 'Your budget is adjusted for the cost of living in $location. The ${locationMultiplier > 1 ? 'higher' : 'lower'} cost of living ${locationMultiplier > 1 ? 'increases' : 'decreases'} your budget to \$${adjustedBudget.toStringAsFixed(0)}.',
+      'description':
+          'Your budget is adjusted for the cost of living in $location. The ${locationMultiplier > 1 ? 'higher' : 'lower'} cost of living ${locationMultiplier > 1 ? 'increases' : 'decreases'} your budget to \$${adjustedBudget.toStringAsFixed(0)}.',
       'inputValue': baseBudget,
       'outputValue': adjustedBudget,
       'formula': 'Adjusted Budget = Base Budget × Location Multiplier',
-      'reasoning': 'Different locations have different costs of living. This adjustment ensures your budget reflects local prices.',
+      'reasoning':
+          'Different locations have different costs of living. This adjustment ensures your budget reflects local prices.',
       'impactWeight': 0.1,
     };
   }
@@ -344,11 +362,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 8,
       'stepName': 'Goal-Based Adjustments',
-      'description': 'Your budget is fine-tuned based on your financial goals: ${goalNames.join(', ')}. This ${goalAdjustment > 0 ? 'increases' : 'decreases'} your budget by \$${goalAdjustment.abs().toStringAsFixed(0)}.',
+      'description':
+          'Your budget is fine-tuned based on your financial goals: ${goalNames.join(', ')}. This ${goalAdjustment > 0 ? 'increases' : 'decreases'} your budget by \$${goalAdjustment.abs().toStringAsFixed(0)}.',
       'inputValue': baseBudget,
       'outputValue': adjustedBudget,
       'formula': 'Goal-Adjusted Budget = Base Budget + Goal Adjustments',
-      'reasoning': 'Different financial goals require different spending patterns. These adjustments help you achieve your objectives.',
+      'reasoning':
+          'Different financial goals require different spending patterns. These adjustments help you achieve your objectives.',
       'impactWeight': 0.08,
     };
   }
@@ -366,11 +386,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 9,
       'stepName': 'Behavioral Corrections',
-      'description': 'Your budget accounts for spending habits: ${habitNames.join(', ')}. We apply a ${habitAdjustment > 0 ? 'protective buffer' : 'spending encouragement'} of \$${habitAdjustment.abs().toStringAsFixed(0)}.',
+      'description':
+          'Your budget accounts for spending habits: ${habitNames.join(', ')}. We apply a ${habitAdjustment > 0 ? 'protective buffer' : 'spending encouragement'} of \$${habitAdjustment.abs().toStringAsFixed(0)}.',
       'inputValue': baseBudget,
       'outputValue': adjustedBudget,
       'formula': 'Habit-Corrected Budget = Goal-Adjusted Budget + Habit Corrections',
-      'reasoning': 'We apply research-based adjustments to help counteract common spending habits and improve your success rate.',
+      'reasoning':
+          'We apply research-based adjustments to help counteract common spending habits and improve your success rate.',
       'impactWeight': 0.07,
     };
   }
@@ -386,11 +408,13 @@ class ExplanationEngineService {
     return {
       'stepNumber': 10,
       'stepName': 'Temporal Adjustments',
-      'description': 'Final adjustments based on the specific day, week, and month patterns. ${_getTemporalAdjustmentReason(temporalAdjustment)} by \$${temporalAdjustment.abs().toStringAsFixed(0)}.',
+      'description':
+          'Final adjustments based on the specific day, week, and month patterns. ${_getTemporalAdjustmentReason(temporalAdjustment)} by \$${temporalAdjustment.abs().toStringAsFixed(0)}.',
       'inputValue': baseBudget,
       'outputValue': finalBudget,
       'formula': 'Final Budget = Habit-Corrected Budget + Temporal Adjustments',
-      'reasoning': 'Spending patterns vary by day of week, time of month, and season. These final adjustments account for these patterns.',
+      'reasoning':
+          'Spending patterns vary by day of week, time of month, and season. These final adjustments account for these patterns.',
       'impactWeight': 0.05,
     };
   }
@@ -438,16 +462,19 @@ class ExplanationEngineService {
 
     if (sortedFactors.isNotEmpty) {
       final topFactor = sortedFactors.first;
-      insights.add('Your ${_getFactorDisplayName(topFactor.key)} has the biggest impact on your budget (${(topFactor.value * 100).toStringAsFixed(0)}% influence)');
+      insights.add(
+          'Your ${_getFactorDisplayName(topFactor.key)} has the biggest impact on your budget (${(topFactor.value * 100).toStringAsFixed(0)}% influence)');
     }
 
     // Add contextual insights based on user level
     switch (context.userLevel) {
       case 'beginner':
-        insights.add('Your budget follows proven financial principles that work for people in similar situations');
+        insights.add(
+            'Your budget follows proven financial principles that work for people in similar situations');
         break;
       case 'advanced':
-        insights.add('The algorithm uses multi-factor optimization with behavioral economics principles');
+        insights.add(
+            'The algorithm uses multi-factor optimization with behavioral economics principles');
         break;
       default:
         insights.add('Your budget balances immediate needs with long-term financial health');
@@ -470,16 +497,21 @@ class ExplanationEngineService {
 
     switch (context.userLevel) {
       case 'beginner':
-        summary += 'by taking your monthly income, setting aside money for essential expenses and savings, then dividing the remainder by 30 days. ';
-        summary += 'This represents ${(spendingRatio * 100).toStringAsFixed(0)}% of your monthly income available for flexible spending.';
+        summary +=
+            'by taking your monthly income, setting aside money for essential expenses and savings, then dividing the remainder by 30 days. ';
+        summary +=
+            'This represents ${(spendingRatio * 100).toStringAsFixed(0)}% of your monthly income available for flexible spending.';
         break;
       case 'advanced':
-        summary += 'using a multi-factor algorithm that considers your income tier classification, location-adjusted cost ratios, goal-based optimizations, and behavioral habit corrections. ';
-        summary += 'The final amount represents ${(spendingRatio * 100).toStringAsFixed(1)}% of your adjusted monthly income allocated to discretionary spending.';
+        summary +=
+            'using a multi-factor algorithm that considers your income tier classification, location-adjusted cost ratios, goal-based optimizations, and behavioral habit corrections. ';
+        summary +=
+            'The final amount represents ${(spendingRatio * 100).toStringAsFixed(1)}% of your adjusted monthly income allocated to discretionary spending.';
         break;
       default:
         summary += 'by analyzing your income, expenses, goals, and spending patterns. ';
-        summary += 'This amount (${(spendingRatio * 100).toStringAsFixed(0)}% of your income) gives you flexibility while ensuring your essential needs and savings goals are met.';
+        summary +=
+            'This amount (${(spendingRatio * 100).toStringAsFixed(0)}% of your income) gives you flexibility while ensuring your essential needs and savings goals are met.';
     }
 
     return summary;
@@ -489,23 +521,35 @@ class ExplanationEngineService {
 
   String _getTierDisplayName(String tier) {
     switch (tier) {
-      case 'low': return 'Foundation Builder';
-      case 'lowerMiddle': return 'Stability Seeker';
-      case 'middle': return 'Strategic Achiever';
-      case 'upperMiddle': return 'Wealth Accelerator';
-      case 'high': return 'Legacy Builder';
-      default: return 'Budget Optimizer';
+      case 'low':
+        return 'Foundation Builder';
+      case 'lowerMiddle':
+        return 'Stability Seeker';
+      case 'middle':
+        return 'Strategic Achiever';
+      case 'upperMiddle':
+        return 'Wealth Accelerator';
+      case 'high':
+        return 'Legacy Builder';
+      default:
+        return 'Budget Optimizer';
     }
   }
 
   double _getTierNumericValue(String tier) {
     switch (tier) {
-      case 'low': return 1.0;
-      case 'lowerMiddle': return 2.0;
-      case 'middle': return 3.0;
-      case 'upperMiddle': return 4.0;
-      case 'high': return 5.0;
-      default: return 3.0;
+      case 'low':
+        return 1.0;
+      case 'lowerMiddle':
+        return 2.0;
+      case 'middle':
+        return 3.0;
+      case 'upperMiddle':
+        return 4.0;
+      case 'high':
+        return 5.0;
+      default:
+        return 3.0;
     }
   }
 
@@ -521,15 +565,24 @@ class ExplanationEngineService {
 
   String _getFactorDisplayName(String factor) {
     switch (factor) {
-      case 'income': return 'monthly income';
-      case 'incomeTier': return 'income tier classification';
-      case 'fixedCommitments': return 'fixed expenses';
-      case 'savingsTarget': return 'savings goals';
-      case 'locationAdjustment': return 'location cost adjustments';
-      case 'goalAdjustments': return 'financial goals';
-      case 'habitCorrections': return 'spending habit corrections';
-      case 'temporalAdjustments': return 'timing-based adjustments';
-      default: return factor;
+      case 'income':
+        return 'monthly income';
+      case 'incomeTier':
+        return 'income tier classification';
+      case 'fixedCommitments':
+        return 'fixed expenses';
+      case 'savingsTarget':
+        return 'savings goals';
+      case 'locationAdjustment':
+        return 'location cost adjustments';
+      case 'goalAdjustments':
+        return 'financial goals';
+      case 'habitCorrections':
+        return 'spending habit corrections';
+      case 'temporalAdjustments':
+        return 'timing-based adjustments';
+      default:
+        return factor;
     }
   }
 }

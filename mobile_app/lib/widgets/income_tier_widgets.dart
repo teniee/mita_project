@@ -27,88 +27,88 @@ class IncomeTierCard extends StatelessWidget {
       final secondaryColor = incomeService.getIncomeTierSecondaryColor(tier);
       final icon = incomeService.getIncomeTierIcon(tier);
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                secondaryColor,
-                secondaryColor.withValues(alpha: 0.7),
-              ],
+      return Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  secondaryColor,
+                  secondaryColor.withValues(alpha: 0.7),
+                ],
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: primaryColor,
-                        borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: primaryColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          icon,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
-                      child: Icon(
-                        icon,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tierName,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                              fontFamily: AppTypography.fontHeading,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tierName,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            rangeString,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: primaryColor.withValues(alpha: 0.8),
-                              fontFamily: AppTypography.fontBody,
+                            const SizedBox(height: 4),
+                            Text(
+                              rangeString,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: primaryColor.withValues(alpha: 0.8),
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                  if (showDetails) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      tierDescription,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.black87,
+                            fontFamily: AppTypography.fontBody,
+                          ),
                     ),
                   ],
-                ),
-                if (showDetails) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    tierDescription,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.black87,
-                      fontFamily: AppTypography.fontBody,
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
     } catch (e) {
       // Return a simple fallback card if there's an error
       return Card(
@@ -144,18 +144,18 @@ class IncomeTierCard extends StatelessWidget {
                         Text(
                           'Income Tier',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                                fontFamily: AppTypography.fontHeading,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '\$${monthlyIncome.toStringAsFixed(0)} monthly',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.blue.withValues(alpha: 0.8),
-                            fontFamily: AppTypography.fontBody,
-                          ),
+                                color: Colors.blue.withValues(alpha: 0.8),
+                                fontFamily: AppTypography.fontBody,
+                              ),
                         ),
                       ],
                     ),
@@ -191,35 +191,35 @@ class IncomeTierBadge extends StatelessWidget {
       final icon = incomeService.getIncomeTierIcon(tier);
 
       return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: primaryColor.withValues(alpha: 0.1),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showIcon) ...[
-            Icon(
-              icon,
-              size: 16,
-              color: primaryColor,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: primaryColor.withValues(alpha: 0.1),
+          border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Icon(
+                icon,
+                size: 16,
+                color: primaryColor,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              tierName,
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFamily: AppTypography.fontHeading,
+              ),
             ),
-            const SizedBox(width: 6),
           ],
-          Text(
-            tierName,
-            style: TextStyle(
-              color: primaryColor,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              fontFamily: AppTypography.fontHeading,
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      );
     } catch (e) {
       // Return a simple fallback badge if there's an error
       return Container(
@@ -276,7 +276,7 @@ class IncomePercentageIndicator extends StatelessWidget {
     final incomeService = IncomeService();
     final percentage = incomeService.getIncomePercentage(amount, monthlyIncome);
     final category = incomeService.getSpendingPercentageCategory(percentage);
-    
+
     Color getPercentageColor() {
       if (percentage < 5) return Colors.green;
       if (percentage < 15) return Colors.lightGreen;
@@ -301,17 +301,17 @@ class IncomePercentageIndicator extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFamily: AppTypography.fontHeading,
-                ),
+                      fontWeight: FontWeight.w600,
+                      fontFamily: AppTypography.fontHeading,
+                    ),
               ),
               Text(
                 '${percentage.toStringAsFixed(1)}%',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: getPercentageColor(),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: AppTypography.fontHeading,
-                ),
+                      color: getPercentageColor(),
+                      fontWeight: FontWeight.bold,
+                      fontFamily: AppTypography.fontHeading,
+                    ),
               ),
             ],
           ),
@@ -319,9 +319,9 @@ class IncomePercentageIndicator extends StatelessWidget {
           Text(
             '$category impact on income',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey.shade600,
-              fontFamily: AppTypography.fontBody,
-            ),
+                  color: Colors.grey.shade600,
+                  fontFamily: AppTypography.fontBody,
+                ),
           ),
           if (showProgressBar) ...[
             const SizedBox(height: 12),
@@ -356,173 +356,174 @@ class PeerComparisonCard extends StatelessWidget {
       final tier = incomeService.classifyIncome(monthlyIncome);
       final tierName = incomeService.getIncomeTierName(tier);
       final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-      
+
       final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
       final peerAverage = comparisonData['peer_average'] as double? ?? 0.0;
       final percentile = comparisonData['percentile'] as int? ?? 50;
       final insights = List<String>.from(comparisonData['insights'] ?? []);
 
       final isAboveAverage = yourSpending > peerAverage;
-      final difference = peerAverage > 0 ? ((yourSpending - peerAverage) / peerAverage * 100).abs() : 0.0;
+      final difference =
+          peerAverage > 0 ? ((yourSpending - peerAverage) / peerAverage * 100).abs() : 0.0;
 
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.people_rounded,
-                  color: primaryColor,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Compare with $tierName Peers',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontFamily: AppTypography.fontHeading,
-                        ),
-                      ),
-                      Text(
-                        'You\'re in the ${percentile}th percentile',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: primaryColor,
-                          fontFamily: AppTypography.fontBody,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // Spending comparison
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+      return Card(
+        elevation: 3,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
+                  Icon(
+                    Icons.people_rounded,
+                    color: primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Your Spending',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                            fontFamily: AppTypography.fontBody,
-                          ),
-                        ),
-                        Text(
-                          '\$${yourSpending.toStringAsFixed(0)}',
+                          'Compare with $tierName Peers',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isAboveAverage ? Colors.red.shade100 : Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${isAboveAverage ? '+' : '-'}${difference.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        color: isAboveAverage ? Colors.red.shade700 : Colors.green.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        fontFamily: AppTypography.fontHeading,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Peer Average',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                            fontFamily: AppTypography.fontBody,
-                          ),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: AppTypography.fontHeading,
+                              ),
                         ),
                         Text(
-                          '\$${peerAverage.toStringAsFixed(0)}',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
+                          'You\'re in the ${percentile}th percentile',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: primaryColor,
+                                fontFamily: AppTypography.fontBody,
+                              ),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
-            
-            if (insights.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Key Insights',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFamily: AppTypography.fontHeading,
+              const SizedBox(height: 20),
+
+              // Spending comparison
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              const SizedBox(height: 8),
-              ...insights.take(3).map((insight) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: primaryColor,
-                        shape: BoxShape.circle,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your Spending',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey.shade600,
+                                  fontFamily: AppTypography.fontBody,
+                                ),
+                          ),
+                          Text(
+                            '\$${yourSpending.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isAboveAverage ? Colors.red.shade100 : Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       child: Text(
-                        insight,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontFamily: AppTypography.fontBody,
+                        '${isAboveAverage ? '+' : '-'}${difference.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          color: isAboveAverage ? Colors.red.shade700 : Colors.green.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          fontFamily: AppTypography.fontHeading,
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Peer Average',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey.shade600,
+                                  fontFamily: AppTypography.fontBody,
+                                ),
+                          ),
+                          Text(
+                            '\$${peerAverage.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              )),
+              ),
+
+              if (insights.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Key Insights',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFamily: AppTypography.fontHeading,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                ...insights.take(3).map((insight) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(top: 6),
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              insight,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    );
+      );
     } catch (e) {
       // Return a simple fallback card if there's an error
       return Card(
@@ -551,16 +552,16 @@ class PeerComparisonCard extends StatelessWidget {
                         Text(
                           'Peer Comparison',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: AppTypography.fontHeading,
+                              ),
                         ),
                         Text(
                           'Data will be available after more transactions',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[600],
-                            fontFamily: AppTypography.fontBody,
-                          ),
+                                color: Colors.grey[600],
+                                fontFamily: AppTypography.fontBody,
+                              ),
                         ),
                       ],
                     ),
@@ -593,7 +594,7 @@ class IncomeBasedGoalCard extends StatelessWidget {
     final incomeService = IncomeService();
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-    
+
     final title = goalData['title'] as String? ?? '';
     final description = goalData['description'] as String? ?? '';
     final targetAmount = goalData['target_amount'] as double? ?? 0.0;
@@ -649,9 +650,9 @@ class IncomeBasedGoalCard extends StatelessWidget {
                           Text(
                             title,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontFamily: AppTypography.fontHeading,
-                            ),
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
                           ),
                           const SizedBox(width: 8),
                           Container(
@@ -676,9 +677,9 @@ class IncomeBasedGoalCard extends StatelessWidget {
                       Text(
                         description,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                          fontFamily: AppTypography.fontBody,
-                        ),
+                              color: Colors.grey.shade600,
+                              fontFamily: AppTypography.fontBody,
+                            ),
                       ),
                     ],
                   ),
@@ -695,16 +696,16 @@ class IncomeBasedGoalCard extends StatelessWidget {
                       Text(
                         'Target Amount',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                          fontFamily: AppTypography.fontBody,
-                        ),
+                              color: Colors.grey.shade600,
+                              fontFamily: AppTypography.fontBody,
+                            ),
                       ),
                       Text(
                         '\$${targetAmount.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontFamily: AppTypography.fontHeading,
-                        ),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: AppTypography.fontHeading,
+                            ),
                       ),
                     ],
                   ),
@@ -716,17 +717,17 @@ class IncomeBasedGoalCard extends StatelessWidget {
                       Text(
                         'Monthly Target',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                          fontFamily: AppTypography.fontBody,
-                        ),
+                              color: Colors.grey.shade600,
+                              fontFamily: AppTypography.fontBody,
+                            ),
                       ),
                       Text(
                         '\$${monthlyTarget.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: AppTypography.fontHeading,
-                        ),
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: AppTypography.fontHeading,
+                            ),
                       ),
                     ],
                   ),
@@ -791,26 +792,27 @@ class IncomeCategoryBreakdown extends StatelessWidget {
             Text(
               'Spending vs Income',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontFamily: AppTypography.fontHeading,
-              ),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: AppTypography.fontHeading,
+                  ),
             ),
             const SizedBox(height: 4),
             Text(
               'How your spending compares to income-appropriate levels',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade600,
-                fontFamily: AppTypography.fontBody,
-              ),
+                    color: Colors.grey.shade600,
+                    fontFamily: AppTypography.fontBody,
+                  ),
             ),
             const SizedBox(height: 20),
             ...categorySpending.entries.map((entry) {
               final category = entry.key;
               final amount = entry.value;
               final percentage = incomeService.getIncomePercentage(amount, monthlyIncome);
-              final recommendedPercentage = (recommendedWeights[category.toLowerCase()] ?? 0.1) * 100;
+              final recommendedPercentage =
+                  (recommendedWeights[category.toLowerCase()] ?? 0.1) * 100;
               final isOverRecommended = percentage > recommendedPercentage;
-              
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
@@ -822,17 +824,17 @@ class IncomeCategoryBreakdown extends StatelessWidget {
                         Text(
                           category.toUpperCase(),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
+                                fontWeight: FontWeight.w600,
+                                fontFamily: AppTypography.fontHeading,
+                              ),
                         ),
                         Text(
                           '${percentage.toStringAsFixed(1)}% of income',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: isOverRecommended ? Colors.red.shade600 : primaryColor,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: AppTypography.fontHeading,
-                          ),
+                                color: isOverRecommended ? Colors.red.shade600 : primaryColor,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: AppTypography.fontHeading,
+                              ),
                         ),
                       ],
                     ),
@@ -847,13 +849,13 @@ class IncomeCategoryBreakdown extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isOverRecommended 
-                        ? '${(percentage - recommendedPercentage).toStringAsFixed(1)}% above recommended'
-                        : '${(recommendedPercentage - percentage).toStringAsFixed(1)}% below recommended',
+                      isOverRecommended
+                          ? '${(percentage - recommendedPercentage).toStringAsFixed(1)}% above recommended'
+                          : '${(recommendedPercentage - percentage).toStringAsFixed(1)}% below recommended',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isOverRecommended ? Colors.red.shade600 : Colors.green.shade600,
-                        fontFamily: AppTypography.fontBody,
-                      ),
+                            color: isOverRecommended ? Colors.red.shade600 : Colors.green.shade600,
+                            fontFamily: AppTypography.fontBody,
+                          ),
                     ),
                   ],
                 ),

@@ -17,7 +17,7 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) async {
     final interferences = <GoalInterference>[];
-    
+
     // Store goals for analysis
     for (final goal in goals) {
       _goals[goal.goalId] = goal;
@@ -36,7 +36,8 @@ class GoalInterferenceService {
     interferences.addAll(priorityInterferences);
 
     // 4. Constraint violation analysis
-    final constraintInterferences = await _analyzeConstraintViolations(goals, currentFinancialState);
+    final constraintInterferences =
+        await _analyzeConstraintViolations(goals, currentFinancialState);
     interferences.addAll(constraintInterferences);
 
     // Sort by severity and probability
@@ -60,9 +61,8 @@ class GoalInterferenceService {
 
     for (final interference in interferences) {
       // Get relevant goals for this interference
-      final relevantGoals = goals.where((g) => 
-        interference.conflictingGoalIds.contains(g.goalId)
-      ).toList();
+      final relevantGoals =
+          goals.where((g) => interference.conflictingGoalIds.contains(g.goalId)).toList();
 
       if (relevantGoals.isEmpty) continue;
 
@@ -94,7 +94,8 @@ class GoalInterferenceService {
     final optimizedGoals = await _applyOptimization(goals, strategies, currentFinancialState);
 
     // 4. Calculate resource allocation
-    final resourceAllocation = _calculateOptimalResourceAllocation(optimizedGoals, currentFinancialState);
+    final resourceAllocation =
+        _calculateOptimalResourceAllocation(optimizedGoals, currentFinancialState);
 
     // 5. Calculate feasibility score
     final feasibilityScore = _calculateFeasibilityScore(optimizedGoals, currentFinancialState);
@@ -125,7 +126,7 @@ class GoalInterferenceService {
     final availableForGoals = monthlyIncome - fixedExpenses;
 
     final totalRequiredContribution = goals.fold<double>(
-      0.0, 
+      0.0,
       (sum, goal) => sum + goal.monthlyRequiredContribution,
     );
 
@@ -135,9 +136,10 @@ class GoalInterferenceService {
         for (int j = i + 1; j < goals.length; j++) {
           final goal1 = goals[i];
           final goal2 = goals[j];
-          
-          final competitionSeverity = _calculateResourceCompetition(goal1, goal2, availableForGoals);
-          
+
+          final competitionSeverity =
+              _calculateResourceCompetition(goal1, goal2, availableForGoals);
+
           if (competitionSeverity > 0.3) {
             interferences.add(GoalInterference(
               interferenceId: 'resource_${goal1.goalId}_${goal2.goalId}',
@@ -145,7 +147,8 @@ class GoalInterferenceService {
               interferenceType: 'resource_competition',
               severity: competitionSeverity,
               probability: 0.8,
-              description: 'Goals ${goal1.name} and ${goal2.name} compete for limited financial resources',
+              description:
+                  'Goals ${goal1.name} and ${goal2.name} compete for limited financial resources',
               rootCauses: ['insufficient_income', 'high_goal_requirements'],
               resourceCompetition: {
                 goal1.goalId: goal1.monthlyRequiredContribution,
@@ -164,10 +167,10 @@ class GoalInterferenceService {
   /// Analyze timeline conflicts between goals
   Future<List<GoalInterference>> _analyzeTimelineConflicts(List<FinancialGoal> goals) async {
     final interferences = <GoalInterference>[];
-    
+
     // Group goals by target timeframe
     final goalsByTimeframe = <String, List<FinancialGoal>>{};
-    
+
     for (final goal in goals) {
       final timeframe = _getTimeframe(goal.targetDate);
       goalsByTimeframe.putIfAbsent(timeframe, () => []).add(goal);
@@ -178,13 +181,13 @@ class GoalInterferenceService {
       if (timeframeGoals.length > 1) {
         // Sort by priority
         timeframeGoals.sort((a, b) => b.priority.compareTo(a.priority));
-        
+
         // Check if high-priority goals conflict with lower-priority ones
         for (int i = 0; i < timeframeGoals.length; i++) {
           for (int j = i + 1; j < timeframeGoals.length; j++) {
             final highPriorityGoal = timeframeGoals[i];
             final lowPriorityGoal = timeframeGoals[j];
-            
+
             if (highPriorityGoal.priority > lowPriorityGoal.priority) {
               interferences.add(GoalInterference(
                 interferenceId: 'timeline_${highPriorityGoal.goalId}_${lowPriorityGoal.goalId}',
@@ -192,7 +195,8 @@ class GoalInterferenceService {
                 interferenceType: 'timeline_conflict',
                 severity: 0.6,
                 probability: 0.7,
-                description: 'Goals ${highPriorityGoal.name} and ${lowPriorityGoal.name} have conflicting timelines',
+                description:
+                    'Goals ${highPriorityGoal.name} and ${lowPriorityGoal.name} have conflicting timelines',
                 rootCauses: ['overlapping_deadlines', 'priority_mismatch'],
                 resourceCompetition: {},
                 detectedAt: DateTime.now(),
@@ -209,10 +213,10 @@ class GoalInterferenceService {
   /// Analyze priority conflicts
   Future<List<GoalInterference>> _analyzePriorityConflicts(List<FinancialGoal> goals) async {
     final interferences = <GoalInterference>[];
-    
+
     // Check for goals with similar priority but different resource requirements
     final goalsByPriority = <int, List<FinancialGoal>>{};
-    
+
     for (final goal in goals) {
       goalsByPriority.putIfAbsent(goal.priority, () => []).add(goal);
     }
@@ -222,7 +226,7 @@ class GoalInterferenceService {
         // Check resource requirements variance
         final contributions = priorityGoals.map((g) => g.monthlyRequiredContribution).toList();
         final avgContribution = contributions.reduce((a, b) => a + b) / contributions.length;
-        
+
         for (final goal in priorityGoals) {
           if ((goal.monthlyRequiredContribution - avgContribution).abs() > avgContribution * 0.5) {
             interferences.add(GoalInterference(
@@ -250,13 +254,14 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) async {
     final interferences = <GoalInterference>[];
-    
+
     for (final goal in goals) {
       final constraints = goal.constraints;
-      
+
       // Check budget constraints
       if (constraints.containsKey('max_monthly_contribution')) {
-        final maxContribution = (constraints['max_monthly_contribution'] as num?)?.toDouble() ?? double.infinity;
+        final maxContribution =
+            (constraints['max_monthly_contribution'] as num?)?.toDouble() ?? double.infinity;
         if (goal.monthlyRequiredContribution > maxContribution) {
           interferences.add(GoalInterference(
             interferenceId: 'constraint_${goal.goalId}',
@@ -271,7 +276,7 @@ class GoalInterferenceService {
           ));
         }
       }
-      
+
       // Check timeline constraints
       if (constraints.containsKey('min_completion_date')) {
         final minDate = constraints['min_completion_date'] as DateTime?;
@@ -472,11 +477,11 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) {
     final allocation = <String, double>{};
-    
+
     for (final goal in goals) {
       allocation[goal.goalId] = goal.monthlyRequiredContribution;
     }
-    
+
     return allocation;
   }
 
@@ -488,14 +493,14 @@ class GoalInterferenceService {
     final monthlyIncome = (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
     final fixedExpenses = (currentFinancialState['fixedExpenses'] as num?)?.toDouble() ?? 0.0;
     final availableForGoals = monthlyIncome - fixedExpenses;
-    
+
     final totalRequired = goals.fold<double>(
-      0.0, 
+      0.0,
       (sum, goal) => sum + goal.monthlyRequiredContribution,
     );
-    
+
     if (totalRequired <= 0) return 1.0;
-    
+
     final utilizationRatio = availableForGoals / totalRequired;
     return utilizationRatio.clamp(0.0, 1.0);
   }
@@ -506,13 +511,13 @@ class GoalInterferenceService {
     List<GoalInterference> interferences,
   ) {
     final warnings = <String>[];
-    
+
     for (final interference in interferences) {
       if (interference.severity > 0.7) {
         warnings.add('High severity interference detected: ${interference.description}');
       }
     }
-    
+
     return warnings;
   }
 
@@ -522,15 +527,16 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) {
     final opportunities = <String>[];
-    
+
     // Check for income increase opportunities
     final monthlyIncome = (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final totalRequired = goals.fold<double>(0.0, (sum, goal) => sum + goal.monthlyRequiredContribution);
-    
+    final totalRequired =
+        goals.fold<double>(0.0, (sum, goal) => sum + goal.monthlyRequiredContribution);
+
     if (totalRequired > monthlyIncome * 0.3) {
       opportunities.add('Consider increasing income to achieve goals faster');
     }
-    
+
     return opportunities;
   }
 
@@ -542,7 +548,7 @@ class GoalInterferenceService {
   ) {
     final combined = goal1.monthlyRequiredContribution + goal2.monthlyRequiredContribution;
     if (availableResources <= 0) return 1.0;
-    
+
     final overAllocation = (combined - availableResources) / availableResources;
     return overAllocation.clamp(0.0, 1.0);
   }
@@ -551,7 +557,7 @@ class GoalInterferenceService {
   String _getTimeframe(DateTime targetDate) {
     final now = DateTime.now();
     final monthsUntil = targetDate.difference(now).inDays / 30;
-    
+
     if (monthsUntil <= 6) return 'short_term';
     if (monthsUntil <= 24) return 'medium_term';
     return 'long_term';

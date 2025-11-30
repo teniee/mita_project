@@ -23,14 +23,16 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
     final incomeService = IncomeService();
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
-    
-    final peerAverage = peerData?['categories']?[category.toLowerCase()]?['peer_average'] ?? userAmount * 1.2;
+
+    final peerAverage =
+        peerData?['categories']?[category.toLowerCase()]?['peer_average'] ?? userAmount * 1.2;
     final userPercentage = incomeService.getIncomePercentage(userAmount, monthlyIncome);
     final peerPercentage = incomeService.getIncomePercentage(peerAverage, monthlyIncome);
     final difference = ((userAmount - peerAverage) / peerAverage * 100);
-    
+
     final isUserBetter = userAmount < peerAverage;
-    final comparison = incomeService.getPeerComparisonMessage(tier, category, userAmount, peerAverage);
+    final comparison =
+        incomeService.getPeerComparisonMessage(tier, category, userAmount, peerAverage);
 
     return Card(
       elevation: 2,
@@ -63,7 +65,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Comparison bars
             Column(
               children: [
@@ -76,7 +78,7 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                   isHighlighted: true,
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Peer average
                 _buildComparisonBar(
                   label: 'Peer Average',
@@ -87,9 +89,9 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Insight message
             Container(
               padding: const EdgeInsets.all(12),
@@ -185,7 +187,7 @@ class CohortInsightsWidget extends StatefulWidget {
 class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
   final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
-  
+
   Map<String, dynamic>? _cohortData;
   bool _isLoading = true;
 
@@ -217,18 +219,26 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
   Map<String, dynamic> _getDefaultCohortData() {
     final tier = _incomeService.classifyIncome(widget.monthlyIncome);
     final tierName = _incomeService.getIncomeTierName(tier);
-    
+
     return {
-      'cohort_size': tier == IncomeTier.low ? 2847 
-                   : tier == IncomeTier.lowerMiddle ? 3241
-                   : tier == IncomeTier.middle ? 4126 
-                   : tier == IncomeTier.upperMiddle ? 2089
-                   : 1653,
-      'your_rank': tier == IncomeTier.low ? 842 
-                 : tier == IncomeTier.lowerMiddle ? 973
-                 : tier == IncomeTier.middle ? 1247 
-                 : tier == IncomeTier.upperMiddle ? 542
-                 : 423,
+      'cohort_size': tier == IncomeTier.low
+          ? 2847
+          : tier == IncomeTier.lowerMiddle
+              ? 3241
+              : tier == IncomeTier.middle
+                  ? 4126
+                  : tier == IncomeTier.upperMiddle
+                      ? 2089
+                      : 1653,
+      'your_rank': tier == IncomeTier.low
+          ? 842
+          : tier == IncomeTier.lowerMiddle
+              ? 973
+              : tier == IncomeTier.middle
+                  ? 1247
+                  : tier == IncomeTier.upperMiddle
+                      ? 542
+                      : 423,
       'percentile': 70,
       'top_insights': [
         '$tierName users typically save ${tier == IncomeTier.low ? "8-12" : tier == IncomeTier.lowerMiddle ? "12-16" : tier == IncomeTier.middle ? "15-20" : tier == IncomeTier.upperMiddle ? "20-28" : "25-35"}% of income',
@@ -255,7 +265,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
     final tier = _incomeService.classifyIncome(widget.monthlyIncome);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
     final tierName = _incomeService.getIncomeTierName(tier);
-    
+
     final cohortSize = _cohortData!['cohort_size'] ?? 0;
     final yourRank = _cohortData!['your_rank'] ?? 0;
     final percentile = _cohortData!['percentile'] ?? 0;
@@ -306,9 +316,9 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Percentile visualization
             Container(
               padding: const EdgeInsets.all(16),
@@ -349,9 +359,11 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    percentile >= 70 ? 'You\'re doing better than most!' 
-                    : percentile >= 50 ? 'You\'re on track with your peers'
-                    : 'Room for improvement compared to peers',
+                    percentile >= 70
+                        ? 'You\'re doing better than most!'
+                        : percentile >= 50
+                            ? 'You\'re on track with your peers'
+                            : 'Room for improvement compared to peers',
                     style: TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontSize: 12,
@@ -361,9 +373,9 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Key insights
             Text(
               'Cohort Insights',
@@ -375,9 +387,9 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
               ),
             ),
             const SizedBox(height: 12),
-            
-            ...insights.map((insight) => 
-              Padding(
+
+            ...insights.map(
+              (insight) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,7 +417,7 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                 ),
               ),
             ),
-            
+
             if (recommendations.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
@@ -418,9 +430,8 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
                 ),
               ),
               const SizedBox(height: 12),
-              
-              ...recommendations.map((recommendation) => 
-                Container(
+              ...recommendations.map(
+                (recommendation) => Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -515,16 +526,16 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            
             ...userSpending.entries.map((entry) {
               final category = entry.key;
               final userAmount = entry.value;
-              final peerAmount = peerData?['categories']?[category]?['peer_average'] ?? userAmount * 1.15;
+              final peerAmount =
+                  peerData?['categories']?[category]?['peer_average'] ?? userAmount * 1.15;
               final userPercentage = incomeService.getIncomePercentage(userAmount, monthlyIncome);
               final peerPercentage = incomeService.getIncomePercentage(peerAmount, monthlyIncome);
               final categoryColor = categoryColors[category] ?? Colors.grey.shade600;
               final isUserBetter = userAmount < peerAmount;
-              
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Column(
@@ -550,7 +561,7 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // User bar
                     Row(
                       children: [
@@ -589,9 +600,9 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 4),
-                    
+
                     // Peer bar
                     Row(
                       children: [

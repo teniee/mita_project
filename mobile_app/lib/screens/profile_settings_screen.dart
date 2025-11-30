@@ -30,7 +30,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   final List<String> _currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY'];
   final List<String> _regions = ['US', 'Canada', 'UK', 'Europe', 'Australia', 'Asia'];
-  final List<String> _budgetMethods = ['50/30/20 Rule', '60/20/20', 'Percentage', 'Zero-Based', 'Envelope'];
+  final List<String> _budgetMethods = [
+    '50/30/20 Rule',
+    '60/20/20',
+    'Percentage',
+    'Zero-Based',
+    'Envelope'
+  ];
 
   @override
   void initState() {
@@ -179,14 +185,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Settings', style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.w600)),
+        title: const Text('Profile Settings',
+            style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.w600)),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.only(right: 16),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                  child: SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
             )
           else
             TextButton(
@@ -196,184 +205,188 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ],
       ),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Profile Picture Section
-                  Center(
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Icon(Icons.person, size: 50, color: colorScheme.onPrimaryContainer),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary,
-                              shape: BoxShape.circle,
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile Picture Section
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: colorScheme.primaryContainer,
+                            child:
+                                Icon(Icons.person, size: 50, color: colorScheme.onPrimaryContainer),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(Icons.camera_alt, size: 20, color: colorScheme.onPrimary),
                             ),
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.camera_alt, size: 20, color: colorScheme.onPrimary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Personal Information
+                    _buildSectionHeader('Personal Information'),
+                    const SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      icon: Icons.person_outline,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Please enter your name' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Please enter your email';
+                        // Use centralized email validation
+                        return FormErrorHandler.validateEmail(value, reportError: false);
+                      },
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Financial Information
+                    _buildSectionHeader('Financial Information'),
+                    const SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: _incomeController,
+                      label: 'Monthly Income',
+                      icon: Icons.attach_money,
+                      keyboardType: TextInputType.number,
+                      prefix: const Text('\$'),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Please enter your income';
+                        if (double.tryParse(value!) == null) return 'Please enter a valid amount';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildTextField(
+                      controller: _savingsGoalController,
+                      label: 'Monthly Savings Goal',
+                      icon: Icons.savings_outlined,
+                      keyboardType: TextInputType.number,
+                      prefix: const Text('\$'),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Please enter your savings goal';
+                        if (double.tryParse(value!) == null) return 'Please enter a valid amount';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildDropdownField(
+                      value: _selectedCurrency,
+                      label: 'Currency',
+                      icon: Icons.monetization_on_outlined,
+                      items: _currencies,
+                      onChanged: (value) => setState(() => _selectedCurrency = value!),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildDropdownField(
+                      value: _selectedRegion,
+                      label: 'Region',
+                      icon: Icons.location_on_outlined,
+                      items: _regions,
+                      onChanged: (value) => setState(() => _selectedRegion = value!),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildDropdownField(
+                      value: _budgetMethod,
+                      label: 'Budget Method',
+                      icon: Icons.pie_chart_outline,
+                      items: _budgetMethods,
+                      onChanged: (value) => setState(() => _budgetMethod = value!),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Preferences
+                    _buildSectionHeader('Preferences'),
+                    const SizedBox(height: 16),
+
+                    _buildSwitchTile(
+                      title: 'Push Notifications',
+                      subtitle: 'Receive spending alerts and tips',
+                      icon: Icons.notifications_outlined,
+                      value: settingsProvider.notificationsEnabled,
+                      onChanged: (value) => settingsProvider.setNotificationsEnabled(value),
+                    ),
+
+                    _buildSwitchTile(
+                      title: 'Dark Mode',
+                      subtitle: 'Use dark theme for the app',
+                      icon: Icons.dark_mode_outlined,
+                      value: settingsProvider.isDarkMode,
+                      onChanged: (value) =>
+                          settingsProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              // Reset to defaults from provider
+                              _refreshProfile();
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Reset'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isSaving ? null : _saveProfile,
+                            icon: _isSaving
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.save),
+                            label: Text(_isSaving ? 'Saving...' : 'Save Profile'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Personal Information
-                  _buildSectionHeader('Personal Information'),
-                  const SizedBox(height: 16),
-
-                  _buildTextField(
-                    controller: _nameController,
-                    label: 'Full Name',
-                    icon: Icons.person_outline,
-                    validator: (value) => value?.isEmpty ?? true ? 'Please enter your name' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Please enter your email';
-                      // Use centralized email validation
-                      return FormErrorHandler.validateEmail(value, reportError: false);
-                    },
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Financial Information
-                  _buildSectionHeader('Financial Information'),
-                  const SizedBox(height: 16),
-
-                  _buildTextField(
-                    controller: _incomeController,
-                    label: 'Monthly Income',
-                    icon: Icons.attach_money,
-                    keyboardType: TextInputType.number,
-                    prefix: const Text('\$'),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Please enter your income';
-                      if (double.tryParse(value!) == null) return 'Please enter a valid amount';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildTextField(
-                    controller: _savingsGoalController,
-                    label: 'Monthly Savings Goal',
-                    icon: Icons.savings_outlined,
-                    keyboardType: TextInputType.number,
-                    prefix: const Text('\$'),
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Please enter your savings goal';
-                      if (double.tryParse(value!) == null) return 'Please enter a valid amount';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildDropdownField(
-                    value: _selectedCurrency,
-                    label: 'Currency',
-                    icon: Icons.monetization_on_outlined,
-                    items: _currencies,
-                    onChanged: (value) => setState(() => _selectedCurrency = value!),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildDropdownField(
-                    value: _selectedRegion,
-                    label: 'Region',
-                    icon: Icons.location_on_outlined,
-                    items: _regions,
-                    onChanged: (value) => setState(() => _selectedRegion = value!),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildDropdownField(
-                    value: _budgetMethod,
-                    label: 'Budget Method',
-                    icon: Icons.pie_chart_outline,
-                    items: _budgetMethods,
-                    onChanged: (value) => setState(() => _budgetMethod = value!),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Preferences
-                  _buildSectionHeader('Preferences'),
-                  const SizedBox(height: 16),
-
-                  _buildSwitchTile(
-                    title: 'Push Notifications',
-                    subtitle: 'Receive spending alerts and tips',
-                    icon: Icons.notifications_outlined,
-                    value: settingsProvider.notificationsEnabled,
-                    onChanged: (value) => settingsProvider.setNotificationsEnabled(value),
-                  ),
-
-                  _buildSwitchTile(
-                    title: 'Dark Mode',
-                    subtitle: 'Use dark theme for the app',
-                    icon: Icons.dark_mode_outlined,
-                    value: settingsProvider.isDarkMode,
-                    onChanged: (value) => settingsProvider.setThemeMode(
-                      value ? ThemeMode.dark : ThemeMode.light
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // Reset to defaults from provider
-                            _refreshProfile();
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Reset'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isSaving ? null : _saveProfile,
-                          icon: _isSaving
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.save),
-                          label: Text(_isSaving ? 'Saving...' : 'Save Profile'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
             ),
-          ),
     );
   }
 
@@ -433,10 +446,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         filled: true,
         fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
-      items: items.map((item) => DropdownMenuItem(
-        value: item,
-        child: Text(item),
-      )).toList(),
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
     );
   }
 

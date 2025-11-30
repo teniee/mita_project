@@ -28,9 +28,7 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen>
-    with TickerProviderStateMixin {
-
+class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateMixin {
   // Animation controllers for smooth transitions (local UI state)
   late AnimationController _logoController;
   late AnimationController _textController;
@@ -55,7 +53,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
-    
+
     // Set initial localized text and start sequence
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -72,7 +70,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _logoScale = Tween<double>(
       begin: 0.5,
       end: 1.0,
@@ -80,7 +78,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       parent: _logoController,
       curve: Curves.elasticOut,
     ));
-    
+
     _logoOpacity = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -94,7 +92,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -102,7 +100,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       parent: _textController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _textOpacity = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -116,7 +114,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    
+
     _progressValue = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -128,30 +126,29 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Future<void> _startWelcomeSequence() async {
     final l10n = AppLocalizations.of(context);
-    
+
     try {
       // Start logo animation immediately
       _logoController.forward();
-      
+
       // Start text animation after brief delay
       await Future.delayed(const Duration(milliseconds: 400));
       _textController.forward();
-      
+
       // Start progress animation
       await Future.delayed(const Duration(milliseconds: 200));
       _progressController.forward();
-      
+
       // Check authentication status
       await _checkAuthenticationStatus();
-      
     } catch (e) {
       logError('Welcome screen initialization failed: $e', tag: 'WELCOME_SCREEN');
-      
+
       setState(() {
         _hasError = true;
         _statusText = l10n.initializationFailed;
       });
-      
+
       // Navigate to login after error delay
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
@@ -214,7 +211,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToOnboarding();
       }
-
     } catch (e) {
       logError('Authentication check failed: $e', tag: 'WELCOME_SCREEN');
 
@@ -257,21 +253,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
     final isLargeScreen = size.width > 600;
-    
+
     return Scaffold(
       backgroundColor: theme.colorScheme.primary,
       // Add debug FAB for auth testing in debug mode only
-      floatingActionButton: kDebugMode ? FloatingActionButton.small(
-        onPressed: () {
-          Navigator.pushNamed(context, '/auth-test');
-        },
-        backgroundColor: theme.colorScheme.secondary,
-        child: Icon(
-          Icons.bug_report,
-          color: theme.colorScheme.onSecondary,
-        ),
-        tooltip: 'Auth Test Screen',
-      ) : null,
+      floatingActionButton: kDebugMode
+          ? FloatingActionButton.small(
+              onPressed: () {
+                Navigator.pushNamed(context, '/auth-test');
+              },
+              backgroundColor: theme.colorScheme.secondary,
+              child: Icon(
+                Icons.bug_report,
+                color: theme.colorScheme.onSecondary,
+              ),
+              tooltip: 'Auth Test Screen',
+            )
+          : null,
       body: SafeArea(
         child: Container(
           width: double.infinity,
@@ -312,8 +310,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: theme.colorScheme.secondary
-                                            .withValues(alpha: 0.3),
+                                        color: theme.colorScheme.secondary.withValues(alpha: 0.3),
                                         blurRadius: 20,
                                         spreadRadius: 5,
                                       ),
@@ -343,9 +340,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             );
                           },
                         ),
-                        
+
                         SizedBox(height: isLargeScreen ? 40 : 32),
-                        
+
                         // Animated Text
                         AnimatedBuilder(
                           animation: _textController,
@@ -368,9 +365,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                       ),
                                       semanticsLabel: 'MITA - Money Intelligence Task Assistant',
                                     ),
-                                    
                                     SizedBox(height: isLargeScreen ? 16 : 12),
-                                    
                                     Text(
                                       'Money Intelligence Task Assistant',
                                       textAlign: TextAlign.center,
@@ -378,8 +373,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                         fontFamily: AppTypography.fontBody,
                                         fontWeight: FontWeight.w400,
                                         fontSize: isLargeScreen ? 20 : 18,
-                                        color: theme.colorScheme.onPrimary
-                                            .withValues(alpha: 0.9),
+                                        color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
                                         letterSpacing: 0.5,
                                         height: 1.4,
                                       ),
@@ -395,7 +389,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
               ),
-              
+
               // Status and Progress Section
               Padding(
                 padding: EdgeInsets.symmetric(
@@ -414,16 +408,16 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w500,
                           fontSize: 16,
-                          color: _hasError 
+                          color: _hasError
                               ? theme.colorScheme.error
                               : theme.colorScheme.onPrimary.withValues(alpha: 0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Progress Indicator
                     AnimatedBuilder(
                       animation: _progressController,
@@ -432,12 +426,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           width: 200,
                           child: LinearProgressIndicator(
                             value: _hasError ? 1.0 : _progressValue.value,
-                            backgroundColor: theme.colorScheme.onPrimary
-                                .withValues(alpha: 0.2),
+                            backgroundColor: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              _hasError 
-                                  ? theme.colorScheme.error
-                                  : theme.colorScheme.secondary,
+                              _hasError ? theme.colorScheme.error : theme.colorScheme.secondary,
                             ),
                             borderRadius: BorderRadius.circular(2),
                           ),

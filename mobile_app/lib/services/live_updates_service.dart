@@ -13,46 +13,46 @@ class LiveUpdatesService {
   final UserDataManager _userDataManager = UserDataManager.instance;
 
   // Stream controllers for different types of updates
-  final StreamController<Map<String, dynamic>> _dashboardUpdatesController = 
+  final StreamController<Map<String, dynamic>> _dashboardUpdatesController =
       StreamController<Map<String, dynamic>>.broadcast();
-  final StreamController<Map<String, dynamic>> _transactionUpdatesController = 
+  final StreamController<Map<String, dynamic>> _transactionUpdatesController =
       StreamController<Map<String, dynamic>>.broadcast();
-  final StreamController<Map<String, dynamic>> _budgetUpdatesController = 
+  final StreamController<Map<String, dynamic>> _budgetUpdatesController =
       StreamController<Map<String, dynamic>>.broadcast();
-  final StreamController<Map<String, dynamic>> _profileUpdatesController = 
+  final StreamController<Map<String, dynamic>> _profileUpdatesController =
       StreamController<Map<String, dynamic>>.broadcast();
 
   // Timer for polling-based live updates
   Timer? _liveUpdateTimer;
   bool _isEnabled = false;
   bool _isRunning = false;
-  
+
   // Cache for last known data to detect changes
   Map<String, dynamic>? _lastDashboardData;
   Map<String, dynamic>? _lastProfileData;
   int _lastTransactionCount = 0;
-  
+
   // Update intervals - optimized for fast backend
   static const Duration _defaultUpdateInterval = Duration(seconds: 90);
   static const Duration _fastUpdateInterval = Duration(seconds: 20);
-  
+
   Duration _currentUpdateInterval = _defaultUpdateInterval;
 
   /// Stream of dashboard updates
   Stream<Map<String, dynamic>> get dashboardUpdates => _dashboardUpdatesController.stream;
-  
-  /// Stream of transaction updates  
+
+  /// Stream of transaction updates
   Stream<Map<String, dynamic>> get transactionUpdates => _transactionUpdatesController.stream;
-  
+
   /// Stream of budget updates
   Stream<Map<String, dynamic>> get budgetUpdates => _budgetUpdatesController.stream;
-  
+
   /// Stream of profile updates
   Stream<Map<String, dynamic>> get profileUpdates => _profileUpdatesController.stream;
 
   /// Whether live updates are currently enabled
   bool get isEnabled => _isEnabled;
-  
+
   /// Whether live updates are currently running
   bool get isRunning => _isRunning;
 
@@ -66,7 +66,7 @@ class LiveUpdatesService {
     _currentUpdateInterval = interval ?? _defaultUpdateInterval;
     _isEnabled = true;
 
-    logInfo('Enabling live updates with ${_currentUpdateInterval.inMinutes} minute intervals', 
+    logInfo('Enabling live updates with ${_currentUpdateInterval.inMinutes} minute intervals',
         tag: 'LIVE_UPDATES');
 
     await _startLiveUpdates();
@@ -80,7 +80,7 @@ class LiveUpdatesService {
     }
 
     logInfo('Disabling live updates', tag: 'LIVE_UPDATES');
-    
+
     _isEnabled = false;
     _isRunning = false;
     _liveUpdateTimer?.cancel();
@@ -116,16 +116,15 @@ class LiveUpdatesService {
 
       // Check for dashboard updates
       await _checkDashboardUpdates();
-      
-      // Check for profile updates  
+
+      // Check for profile updates
       await _checkProfileUpdates();
-      
+
       // Check for new transactions
       await _checkTransactionUpdates();
-      
+
       // Check for budget changes
       await _checkBudgetUpdates();
-
     } catch (e) {
       logError('Error during live update: $e', tag: 'LIVE_UPDATES');
     }
@@ -135,7 +134,7 @@ class LiveUpdatesService {
   Future<void> _checkDashboardUpdates() async {
     try {
       final dashboardData = await _apiService.getDashboard();
-      
+
       if (_lastDashboardData == null || _hasDataChanged(_lastDashboardData!, dashboardData)) {
         logDebug('Dashboard data changed, notifying listeners', tag: 'LIVE_UPDATES');
         _lastDashboardData = Map.from(dashboardData);
@@ -150,7 +149,7 @@ class LiveUpdatesService {
   Future<void> _checkProfileUpdates() async {
     try {
       final profileData = await _userDataManager.getUserProfile();
-      
+
       if (_lastProfileData == null || _hasDataChanged(_lastProfileData!, profileData)) {
         logDebug('Profile data changed, notifying listeners', tag: 'LIVE_UPDATES');
         _lastProfileData = Map.from(profileData);
@@ -166,15 +165,16 @@ class LiveUpdatesService {
     try {
       // Get today's transactions to check for changes
       final today = DateTime.now();
-      final todayString = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      
+      final todayString =
+          '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
       final transactions = await _apiService.getTransactionsByDate(todayString);
       final currentCount = transactions.length;
-      
+
       if (_lastTransactionCount != currentCount) {
         logDebug('New transaction detected, notifying listeners', tag: 'LIVE_UPDATES');
         _lastTransactionCount = currentCount;
-        
+
         _transactionUpdatesController.add({
           'transactions': transactions,
           'hasNewTransactions': true,
@@ -212,17 +212,16 @@ class LiveUpdatesService {
       // Compare key fields that indicate meaningful changes
       final oldBalance = oldData['balance'] ?? 0.0;
       final newBalance = newData['balance'] ?? 0.0;
-      
-      final oldTodaySpent = oldData['today_spent'] ?? 0.0; 
+
+      final oldTodaySpent = oldData['today_spent'] ?? 0.0;
       final newTodaySpent = newData['today_spent'] ?? 0.0;
-      
+
       final oldTodayBudget = oldData['today_budget'] ?? 0.0;
       final newTodayBudget = newData['today_budget'] ?? 0.0;
 
-      return (oldBalance != newBalance) || 
-             (oldTodaySpent != newTodaySpent) || 
-             (oldTodayBudget != newTodayBudget);
-             
+      return (oldBalance != newBalance) ||
+          (oldTodaySpent != newTodaySpent) ||
+          (oldTodayBudget != newTodayBudget);
     } catch (e) {
       // If comparison fails, assume data changed to be safe
       return true;
@@ -238,11 +237,12 @@ class LiveUpdatesService {
   /// Set update interval for more/less frequent updates
   void setUpdateInterval(Duration interval) {
     if (_currentUpdateInterval != interval) {
-      logInfo('Changing live update interval from ${_currentUpdateInterval.inMinutes} to ${interval.inMinutes} minutes', 
+      logInfo(
+          'Changing live update interval from ${_currentUpdateInterval.inMinutes} to ${interval.inMinutes} minutes',
           tag: 'LIVE_UPDATES');
-      
+
       _currentUpdateInterval = interval;
-      
+
       // Restart with new interval if currently running
       if (_isEnabled && _isRunning) {
         _liveUpdateTimer?.cancel();
@@ -277,9 +277,9 @@ class LiveUpdatesService {
   /// Dispose resources and clean up
   void dispose() {
     logInfo('Disposing live updates service', tag: 'LIVE_UPDATES');
-    
+
     disableLiveUpdates();
-    
+
     _dashboardUpdatesController.close();
     _transactionUpdatesController.close();
     _budgetUpdatesController.close();

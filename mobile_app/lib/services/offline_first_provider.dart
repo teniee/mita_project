@@ -16,16 +16,16 @@ class OfflineFirstProvider {
   final ApiService _apiService = ApiService();
   final AdvancedOfflineService _offlineService = AdvancedOfflineService();
   final TimeoutManagerService _timeoutManager = TimeoutManagerService();
-  
+
   // Data caches for instant access
   Map<String, dynamic>? _cachedDashboard;
   List<dynamic>? _cachedCalendar;
   Map<String, dynamic>? _cachedUserProfile;
-  
+
   // Loading state management
   final ValueNotifier<bool> _isInitialized = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _isBackgroundSyncing = ValueNotifier<bool>(false);
-  
+
   Timer? _backgroundSyncTimer;
   bool _hasInitialized = false;
 
@@ -38,13 +38,13 @@ class OfflineFirstProvider {
 
     try {
       logDebug('Initializing offline-first provider', tag: 'OFFLINE_FIRST');
-      
+
       // Initialize offline service
       await _offlineService.initialize();
-      
+
       // Load cached data immediately for instant UI
       await _loadCachedData();
-      
+
       // Mark as initialized immediately so UI can render
       _isInitialized.value = true;
       _hasInitialized = true;
@@ -52,10 +52,12 @@ class OfflineFirstProvider {
       // DISABLED: Background sync creates duplicate polling - LiveUpdatesService handles this
       // _startBackgroundSync();
 
-      logDebug('Offline-first provider initialized (background sync disabled - using LiveUpdatesService)', tag: 'OFFLINE_FIRST');
+      logDebug(
+          'Offline-first provider initialized (background sync disabled - using LiveUpdatesService)',
+          tag: 'OFFLINE_FIRST');
     } catch (e) {
       logError('Failed to initialize offline-first provider', tag: 'OFFLINE_FIRST', error: e);
-      
+
       // Still mark as initialized with fallback data
       await _generateFallbackData();
       _isInitialized.value = true;
@@ -72,21 +74,21 @@ class OfflineFirstProvider {
         _cachedDashboard = jsonDecode(dashboardCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached dashboard data', tag: 'OFFLINE_FIRST');
       }
-      
+
       // Try to load cached calendar
       final calendarCache = await _offlineService.getCachedResponse('calendar_data');
       if (calendarCache != null && !calendarCache.isExpired) {
         _cachedCalendar = jsonDecode(calendarCache.data) as List<dynamic>;
         logDebug('Loaded cached calendar data', tag: 'OFFLINE_FIRST');
       }
-      
+
       // Try to load cached user profile
       final profileCache = await _offlineService.getCachedResponse('user_profile');
       if (profileCache != null && !profileCache.isExpired) {
         _cachedUserProfile = jsonDecode(profileCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached user profile', tag: 'OFFLINE_FIRST');
       }
-      
+
       // If no cached data exists, generate fallback data
       if (_cachedDashboard == null || _cachedCalendar == null) {
         await _generateFallbackData();
@@ -118,7 +120,9 @@ class OfflineFirstProvider {
       // Ensure we at least have empty structures to prevent crashes
       _cachedDashboard ??= <String, dynamic>{};
       _cachedCalendar ??= <dynamic>[];
-      _cachedUserProfile ??= <String, dynamic>{'data': {'income': 0.0}};
+      _cachedUserProfile ??= <String, dynamic>{
+        'data': {'income': 0.0}
+      };
     }
   }
 
@@ -137,7 +141,8 @@ class OfflineFirstProvider {
       return {
         'day': day,
         'limit': dailyBudget.round(),
-        'spent': isPastDay ? (dailyBudget * 0.7).round() : (isToday ? (dailyBudget * 0.5).round() : 0),
+        'spent':
+            isPastDay ? (dailyBudget * 0.7).round() : (isToday ? (dailyBudget * 0.5).round() : 0),
         'status': 'good',
         'is_today': isToday,
         'is_weekend': currentDate.weekday >= 6,
@@ -208,10 +213,12 @@ class OfflineFirstProvider {
   /// Generate default week data for dashboard
   List<Map<String, dynamic>> _generateDefaultWeekData() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return List.generate(7, (index) => <String, dynamic>{
-      'day': days[index],
-      'status': 'neutral',
-    });
+    return List.generate(
+        7,
+        (index) => <String, dynamic>{
+              'day': days[index],
+              'status': 'neutral',
+            });
   }
 
   /// Get dashboard data (instant from cache)
@@ -237,7 +244,7 @@ class OfflineFirstProvider {
   void _startBackgroundSync() {
     // Start immediate background sync
     _performBackgroundSync();
-    
+
     // Set up periodic background sync (every 5 minutes)
     _backgroundSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _performBackgroundSync();
@@ -247,26 +254,26 @@ class OfflineFirstProvider {
   /// Perform background sync without affecting UI
   Future<void> _performBackgroundSync() async {
     if (_isBackgroundSyncing.value) return; // Avoid overlapping syncs
-    
+
     _isBackgroundSyncing.value = true;
-    
+
     try {
       logDebug('Starting background sync', tag: 'OFFLINE_FIRST');
-      
+
       // Sync dashboard data in background
       _timeoutManager.executeBackground<void>(
         operation: () async {
           try {
             final dashboardData = await _apiService.getDashboard();
             _cachedDashboard = dashboardData;
-            
+
             // Cache for next time
             await _offlineService.cacheResponse(
               key: 'dashboard_data',
               data: jsonEncode(dashboardData),
               expiry: const Duration(hours: 2),
             );
-            
+
             logDebug('Dashboard data synced in background', tag: 'OFFLINE_FIRST');
           } catch (e) {
             logDebug('Background dashboard sync failed (expected)', tag: 'OFFLINE_FIRST');
@@ -275,21 +282,21 @@ class OfflineFirstProvider {
         timeout: const Duration(seconds: 8),
         operationName: 'Background Dashboard Sync',
       );
-      
+
       // Sync calendar data in background
       _timeoutManager.executeBackground<void>(
         operation: () async {
           try {
             final calendarData = await _apiService.getCalendar();
             _cachedCalendar = calendarData;
-            
+
             // Cache for next time
             await _offlineService.cacheResponse(
               key: 'calendar_data',
               data: jsonEncode(calendarData),
               expiry: const Duration(hours: 2),
             );
-            
+
             logDebug('Calendar data synced in background', tag: 'OFFLINE_FIRST');
           } catch (e) {
             logDebug('Background calendar sync failed (expected)', tag: 'OFFLINE_FIRST');
@@ -298,21 +305,21 @@ class OfflineFirstProvider {
         timeout: const Duration(seconds: 8),
         operationName: 'Background Calendar Sync',
       );
-      
+
       // Sync user profile in background
       _timeoutManager.executeBackground<void>(
         operation: () async {
           try {
             final profileData = await _apiService.getUserProfile();
             _cachedUserProfile = profileData;
-            
+
             // Cache for next time
             await _offlineService.cacheResponse(
               key: 'user_profile',
               data: jsonEncode(profileData),
               expiry: const Duration(hours: 4),
             );
-            
+
             logDebug('User profile synced in background', tag: 'OFFLINE_FIRST');
           } catch (e) {
             logDebug('Background profile sync failed (expected)', tag: 'OFFLINE_FIRST');
@@ -321,7 +328,6 @@ class OfflineFirstProvider {
         timeout: const Duration(seconds: 5),
         operationName: 'Background Profile Sync',
       );
-      
     } finally {
       _isBackgroundSyncing.value = false;
     }
@@ -331,7 +337,7 @@ class OfflineFirstProvider {
   Future<void> refreshData() async {
     try {
       logDebug('User-initiated data refresh', tag: 'OFFLINE_FIRST');
-      
+
       // Try to get fresh data with timeout
       final dashboardFuture = _timeoutManager.executeWithFallback<Map<String, dynamic>>(
         operation: () => _apiService.getDashboard(),
@@ -339,36 +345,36 @@ class OfflineFirstProvider {
         timeout: const Duration(seconds: 8),
         operationName: 'Refresh Dashboard',
       );
-      
+
       final calendarFuture = _timeoutManager.executeWithFallback<List<dynamic>>(
         operation: () => _apiService.getCalendar(),
         fallbackValue: _cachedCalendar ?? [],
         timeout: const Duration(seconds: 8),
         operationName: 'Refresh Calendar',
       );
-      
+
       // Wait for both with reasonable timeout
       final results = await Future.wait([
         dashboardFuture,
         calendarFuture,
       ]);
-      
+
       _cachedDashboard = results[0] as Map<String, dynamic>;
       _cachedCalendar = results[1] as List<dynamic>;
-      
+
       // Cache the refreshed data
       await _offlineService.cacheResponse(
         key: 'dashboard_data',
         data: jsonEncode(_cachedDashboard),
         expiry: const Duration(hours: 2),
       );
-      
+
       await _offlineService.cacheResponse(
         key: 'calendar_data',
         data: jsonEncode(_cachedCalendar),
         expiry: const Duration(hours: 2),
       );
-      
+
       logDebug('Data refresh completed successfully', tag: 'OFFLINE_FIRST');
     } catch (e) {
       logWarning('Data refresh partially failed, keeping cached data', tag: 'OFFLINE_FIRST');
@@ -393,10 +399,10 @@ class OfflineFirstProvider {
       _cachedDashboard = null;
       _cachedCalendar = null;
       _cachedUserProfile = null;
-      
+
       // Regenerate fallback data
       await _generateFallbackData();
-      
+
       logDebug('Offline cache cleared and regenerated', tag: 'OFFLINE_FIRST');
     } catch (e) {
       logError('Failed to clear offline cache', tag: 'OFFLINE_FIRST', error: e);
@@ -432,6 +438,6 @@ class OfflineFirstStatus {
   @override
   String toString() {
     return 'OfflineFirstStatus(initialized: $isInitialized, syncing: $isBackgroundSyncing, '
-           'cached: dashboard=$hasCachedDashboard, calendar=$hasCachedCalendar, profile=$hasCachedProfile)';
+        'cached: dashboard=$hasCachedDashboard, calendar=$hasCachedCalendar, profile=$hasCachedProfile)';
   }
 }

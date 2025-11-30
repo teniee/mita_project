@@ -79,7 +79,7 @@ class NotificationsProvider extends ChangeNotifier {
       _errorMessage = null;
 
       logInfo('Notifications loaded: ${notifications.length} items, $unreadCount unread',
-        tag: 'NOTIFICATIONS_PROVIDER');
+          tag: 'NOTIFICATIONS_PROVIDER');
     } catch (e) {
       logError('Failed to load notifications: $e', tag: 'NOTIFICATIONS_PROVIDER');
       _errorMessage = e.toString();
@@ -125,10 +125,12 @@ class NotificationsProvider extends ChangeNotifier {
 
       final success = await _apiService.markAllNotificationsRead();
       if (success) {
-        _notifications = _notifications.map((n) => n.copyWith(
-          isRead: true,
-          readAt: DateTime.now(),
-        )).toList();
+        _notifications = _notifications
+            .map((n) => n.copyWith(
+                  isRead: true,
+                  readAt: DateTime.now(),
+                ))
+            .toList();
         _unreadCount = 0;
         notifyListeners();
 

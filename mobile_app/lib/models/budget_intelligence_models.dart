@@ -1,4 +1,3 @@
-
 /// Data models for the budget intelligence system
 library;
 
@@ -536,13 +535,13 @@ class EnhancedBudgetResult {
   PersonalizedNudge? get suggestedNudge => null;
   BudgetForecast? get tomorrowForecast => null;
   BudgetExplanation get explanation => BudgetExplanation(
-    explanationId: 'default',
-    primaryExplanation: 'Budget calculated using enhanced algorithms',
-    detailedSteps: [],
-    calculations: {},
-    assumptions: [],
-    userLevel: 'intermediate',
-  );
+        explanationId: 'default',
+        primaryExplanation: 'Budget calculated using enhanced algorithms',
+        detailedSteps: [],
+        calculations: {},
+        assumptions: [],
+        userLevel: 'intermediate',
+      );
 }
 
 class BudgetIntelligenceResult {

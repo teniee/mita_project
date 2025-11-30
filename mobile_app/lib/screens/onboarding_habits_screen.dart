@@ -19,7 +19,11 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
   final List<Map<String, dynamic>> habits = [
     {'id': 'impulse_buying', 'label': 'Impulse purchases', 'icon': Icons.shopping_cart},
     {'id': 'no_budgeting', 'label': 'No budgeting', 'icon': Icons.money_off},
-    {'id': 'forgot_subscriptions', 'label': 'Forget about subscriptions', 'icon': Icons.subscriptions},
+    {
+      'id': 'forgot_subscriptions',
+      'label': 'Forget about subscriptions',
+      'icon': Icons.subscriptions
+    },
     {'id': 'credit_dependency', 'label': 'Frequent loans', 'icon': Icons.credit_card},
   ];
 

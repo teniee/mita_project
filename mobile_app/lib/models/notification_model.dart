@@ -64,9 +64,11 @@ class NotificationModel {
       channel: json['channel'] as String?,
       isRead: json['is_read'] as bool,
       readAt: json['read_at'] != null ? DateTime.parse(json['read_at'] as String) : null,
-      scheduledFor: json['scheduled_for'] != null ? DateTime.parse(json['scheduled_for'] as String) : null,
+      scheduledFor:
+          json['scheduled_for'] != null ? DateTime.parse(json['scheduled_for'] as String) : null,
       sentAt: json['sent_at'] != null ? DateTime.parse(json['sent_at'] as String) : null,
-      deliveredAt: json['delivered_at'] != null ? DateTime.parse(json['delivered_at'] as String) : null,
+      deliveredAt:
+          json['delivered_at'] != null ? DateTime.parse(json['delivered_at'] as String) : null,
       errorMessage: json['error_message'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),

@@ -52,7 +52,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
               SwitchListTile(
                 title: const Text('Show Unread Only'),
                 value: provider.showUnreadOnly,
@@ -62,9 +61,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 },
                 activeColor: AppColors.primary,
               ),
-
               const Divider(),
-
               const Text(
                 'Filter by Type',
                 style: TextStyle(
@@ -75,26 +72,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               Wrap(
                 spacing: 8,
-                children: [
-                  'All', 'alert', 'warning', 'info', 'tip', 'achievement', 'reminder'
-                ].map((type) => FilterChip(
-                  label: Text(type == 'All' ? 'All' : type),
-                  selected: type == 'All' ? provider.filterType == null : provider.filterType == type,
-                  onSelected: (selected) {
-                    Navigator.pop(context);
-                    provider.setFilterType(type == 'All' ? null : type);
-                  },
-                  selectedColor: AppColors.primary,
-                  labelStyle: TextStyle(
-                    color: (type == 'All' ? provider.filterType == null : provider.filterType == type)
-                        ? Colors.white
-                        : Colors.black,
-                  ),
-                )).toList(),
+                children: ['All', 'alert', 'warning', 'info', 'tip', 'achievement', 'reminder']
+                    .map((type) => FilterChip(
+                          label: Text(type == 'All' ? 'All' : type),
+                          selected: type == 'All'
+                              ? provider.filterType == null
+                              : provider.filterType == type,
+                          onSelected: (selected) {
+                            Navigator.pop(context);
+                            provider.setFilterType(type == 'All' ? null : type);
+                          },
+                          selectedColor: AppColors.primary,
+                          labelStyle: TextStyle(
+                            color: (type == 'All'
+                                    ? provider.filterType == null
+                                    : provider.filterType == type)
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ))
+                    .toList(),
               ),
-
               const SizedBox(height: 16),
-
               const Text(
                 'Filter by Priority',
                 style: TextStyle(
@@ -105,22 +104,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               Wrap(
                 spacing: 8,
-                children: ['All', 'critical', 'high', 'medium', 'low'].map((priority) =>
-                  FilterChip(
-                    label: Text(priority == 'All' ? 'All' : priority),
-                    selected: priority == 'All' ? provider.filterPriority == null : provider.filterPriority == priority,
-                    onSelected: (selected) {
-                      Navigator.pop(context);
-                      provider.setFilterPriority(priority == 'All' ? null : priority);
-                    },
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      color: (priority == 'All' ? provider.filterPriority == null : provider.filterPriority == priority)
-                          ? Colors.white
-                          : Colors.black,
-                    ),
-                  )
-                ).toList(),
+                children: ['All', 'critical', 'high', 'medium', 'low']
+                    .map((priority) => FilterChip(
+                          label: Text(priority == 'All' ? 'All' : priority),
+                          selected: priority == 'All'
+                              ? provider.filterPriority == null
+                              : provider.filterPriority == priority,
+                          onSelected: (selected) {
+                            Navigator.pop(context);
+                            provider.setFilterPriority(priority == 'All' ? null : priority);
+                          },
+                          selectedColor: AppColors.primary,
+                          labelStyle: TextStyle(
+                            color: (priority == 'All'
+                                    ? provider.filterPriority == null
+                                    : provider.filterPriority == priority)
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ))
+                    .toList(),
               ),
             ],
           ),
@@ -243,7 +246,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildBody(NotificationsProvider provider, List<NotificationModel> notifications, bool isLoading) {
+  Widget _buildBody(
+      NotificationsProvider provider, List<NotificationModel> notifications, bool isLoading) {
     if (isLoading && notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -435,9 +439,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: notification.isRead
-                                ? Colors.black87
-                                : AppColors.primary,
+                            color: notification.isRead ? Colors.black87 : AppColors.primary,
                           ),
                         ),
                       ),
@@ -496,7 +498,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                         ],
                       ),
-
                       if (notification.actionUrl != null && notification.actionUrl!.isNotEmpty)
                         TextButton(
                           onPressed: () {

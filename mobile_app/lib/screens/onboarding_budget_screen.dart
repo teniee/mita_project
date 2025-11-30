@@ -14,32 +14,35 @@ class OnboardingBudgetScreen extends StatefulWidget {
   State<OnboardingBudgetScreen> createState() => _OnboardingBudgetScreenState();
 }
 
-class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with TickerProviderStateMixin {
+class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
+    with TickerProviderStateMixin {
   final _incomeService = IncomeService();
   late IncomeTier _incomeTier;
   late double _monthlyIncome;
   late Map<String, dynamic> _budgetTemplate;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   Map<String, double> _customAllocations = {};
   bool _useCustomBudget = false;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Get income data from onboarding state
     if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
-      throw Exception('Income must be provided before budget screen. Please go back and complete income entry.');
+      throw Exception(
+          'Income must be provided before budget screen. Please go back and complete income entry.');
     }
     _monthlyIncome = OnboardingState.instance.income!;
-    _incomeTier = OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
-    
+    _incomeTier =
+        OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
+
     // Generate budget template
     _budgetTemplate = _incomeService.getBudgetTemplate(_incomeTier, _monthlyIncome);
     _customAllocations = Map<String, double>.from(_budgetTemplate['allocations']);
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -47,7 +50,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _animationController.forward();
   }
 
@@ -67,12 +70,14 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
 
   void _continueToBudgetSetup() {
     // Store budget preferences in onboarding state
-    OnboardingState.instance.expenses = _customAllocations.entries.map((entry) => {
-      'category': entry.key,
-      'amount': entry.value,
-      'type': 'budget_allocation',
-    }).toList();
-    
+    OnboardingState.instance.expenses = _customAllocations.entries
+        .map((entry) => {
+              'category': entry.key,
+              'amount': entry.value,
+              'type': 'budget_allocation',
+            })
+        .toList();
+
     Navigator.pushNamed(context, '/onboarding_goal');
   }
 
@@ -179,9 +184,9 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Budget allocation cards
               Text(
                 'Budget Allocations',
@@ -193,13 +198,13 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               ...(_customAllocations.entries.map((entry) {
                 final category = entry.key;
                 final amount = entry.value;
                 final percentage = _incomeService.getIncomePercentage(amount, _monthlyIncome);
                 final categoryColor = categoryColors[category] ?? Colors.grey.shade600;
-                
+
                 return Card(
                   elevation: 1,
                   margin: const EdgeInsets.only(bottom: 12),
@@ -277,9 +282,9 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                   ),
                 );
               }).toList()),
-              
+
               const SizedBox(height: 20),
-              
+
               // Budget summary
               Card(
                 elevation: 3,
@@ -322,7 +327,9 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
-                              color: _remainingBudget < 0 ? Colors.red.shade600 : Colors.green.shade600,
+                              color: _remainingBudget < 0
+                                  ? Colors.red.shade600
+                                  : Colors.green.shade600,
                             ),
                           ),
                           Text(
@@ -331,7 +338,9 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                               fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: _remainingBudget < 0 ? Colors.red.shade600 : Colors.green.shade600,
+                              color: _remainingBudget < 0
+                                  ? Colors.red.shade600
+                                  : Colors.green.shade600,
                             ),
                           ),
                         ],
@@ -370,9 +379,9 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Action buttons
               Row(
                 children: [
@@ -421,7 +430,7 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen> with Ti
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 40),
             ],
           ),

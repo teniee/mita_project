@@ -57,13 +57,9 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            wasCompleted
-                ? 'Habit unmarked for today'
-                : 'Great job! Habit completed for today',
+            wasCompleted ? 'Habit unmarked for today' : 'Great job! Habit completed for today',
           ),
-          backgroundColor: wasCompleted
-              ? Colors.orange
-              : Colors.green,
+          backgroundColor: wasCompleted ? Colors.orange : Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -146,7 +142,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedFrequency,
-                  style: const TextStyle(fontFamily: AppTypography.fontBody, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontFamily: AppTypography.fontBody, color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Target Frequency',
                     labelStyle: const TextStyle(color: AppColors.textPrimary),
@@ -233,7 +230,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               ),
               child: Text(
                 isEditing ? 'Update' : 'Create',
-                style: const TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -417,24 +415,17 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: habit.isCompletedToday
-                            ? AppColors.secondary
-                            : Colors.grey.shade200,
+                        color: habit.isCompletedToday ? AppColors.secondary : Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: habit.isCompletedToday
-                              ? AppColors.secondary
-                              : Colors.grey.shade300,
+                          color:
+                              habit.isCompletedToday ? AppColors.secondary : Colors.grey.shade300,
                           width: 2,
                         ),
                       ),
                       child: Icon(
-                        habit.isCompletedToday
-                            ? Icons.check_rounded
-                            : Icons.add,
-                        color: habit.isCompletedToday
-                            ? Colors.black
-                            : Colors.grey.shade600,
+                        habit.isCompletedToday ? Icons.check_rounded : Icons.add,
+                        color: habit.isCompletedToday ? Colors.black : Colors.grey.shade600,
                         size: 20,
                       ),
                     ),
@@ -445,9 +436,7 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     style: TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.w600,
-                      color: habit.isCompletedToday
-                          ? AppColors.textPrimary
-                          : Colors.grey.shade600,
+                      color: habit.isCompletedToday ? AppColors.textPrimary : Colors.grey.shade600,
                     ),
                   ),
                   const Spacer(),
@@ -455,9 +444,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: habit.currentStreak > 0
-                          ? Colors.orange.shade100
-                          : Colors.grey.shade100,
+                      color:
+                          habit.currentStreak > 0 ? Colors.orange.shade100 : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -507,9 +495,11 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                           value: habit.completionRate / 100,
                           backgroundColor: Colors.grey.shade200,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            habit.completionRate >= 80 ? Colors.green :
-                            habit.completionRate >= 50 ? Colors.orange :
-                            Colors.red,
+                            habit.completionRate >= 80
+                                ? Colors.green
+                                : habit.completionRate >= 50
+                                    ? Colors.orange
+                                    : Colors.red,
                           ),
                           minHeight: 6,
                         ),

@@ -164,25 +164,25 @@ class BudgetWarningDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               ...suggestions.take(3).map((suggestion) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber.shade700),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        suggestion.toString(),
-                        style: const TextStyle(
-                          fontFamily: AppTypography.fontBody,
-                          fontSize: 13,
-                          color: Colors.black87,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            suggestion.toString(),
+                            style: const TextStyle(
+                              fontFamily: AppTypography.fontBody,
+                              fontSize: 13,
+                              color: Colors.black87,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              )),
+                  )),
               const SizedBox(height: 16),
             ],
 
@@ -219,7 +219,8 @@ class BudgetWarningDialog extends StatelessWidget {
                     backgroundColor: Colors.green.shade50,
                     side: BorderSide(color: Colors.green.shade300),
                     onPressed: () {
-                      onUseAlternative!(categoryName); // This will close the dialog and handle category switch
+                      onUseAlternative!(
+                          categoryName); // This will close the dialog and handle category switch
                     },
                   );
                 }).toList(),
@@ -259,9 +260,7 @@ class BudgetWarningDialog extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: warningLevel == 'blocked'
-                          ? Colors.red
-                          : AppColors.primary,
+                      backgroundColor: warningLevel == 'blocked' ? Colors.red : AppColors.primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -372,7 +371,8 @@ Future<bool?> showBudgetWarningDialog({
         overage: ((affordabilityCheck['overage'] ?? 0.0) as num).toDouble(),
         percentageUsed: ((affordabilityCheck['percentage_used'] ?? 0.0) as num).toDouble(),
         impactMessage: (affordabilityCheck['impact_message'] ?? '') as String,
-        alternativeCategories: (affordabilityCheck['alternative_categories'] ?? []) as List<dynamic>,
+        alternativeCategories:
+            (affordabilityCheck['alternative_categories'] ?? []) as List<dynamic>,
         suggestions: (affordabilityCheck['suggestions'] ?? []) as List<dynamic>,
         onProceed: onProceed,
         onUseAlternative: onUseAlternative,

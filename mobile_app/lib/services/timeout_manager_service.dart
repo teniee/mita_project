@@ -14,7 +14,7 @@ class TimeoutManagerService {
   static const Duration _mediumTimeout = Duration(seconds: 30);
   static const Duration _longTimeout = Duration(seconds: 90);
   static const Duration _maxTimeout = Duration(seconds: 120);
-  
+
   // Retry configurations
   static const int _maxRetries = 3;
   static const Duration _baseRetryDelay = Duration(milliseconds: 500);
@@ -33,7 +33,7 @@ class TimeoutManagerService {
     final effectiveTimeout = timeout ?? _mediumTimeout;
     final effectiveMaxRetries = enableRetry ? (maxRetries ?? _maxRetries) : 0;
     final name = operationName ?? 'API Operation';
-    
+
     String? loadingId;
     if (useLoading) {
       loadingId = LoadingService.instance.start(
@@ -67,7 +67,7 @@ class TimeoutManagerService {
   }) async {
     int attempt = 0;
     Duration currentDelay = _baseRetryDelay;
-    
+
     while (attempt <= maxRetries) {
       try {
         logDebug(
@@ -87,7 +87,7 @@ class TimeoutManagerService {
         );
       } catch (e) {
         final shouldRetry = attempt < maxRetries && _shouldRetryException(e, retryOnExceptions);
-        
+
         if (shouldRetry) {
           logWarning(
             '$operationName failed, retrying in ${currentDelay.inMilliseconds}ms',
@@ -131,7 +131,7 @@ class TimeoutManagerService {
   }) async {
     final completer = Completer<T>();
     late Timer timeoutTimer;
-    
+
     // Set up timeout
     timeoutTimer = Timer(timeout, () {
       if (!completer.isCompleted) {
@@ -146,11 +146,11 @@ class TimeoutManagerService {
     try {
       // Execute the operation
       final result = await operation();
-      
+
       if (!completer.isCompleted) {
         completer.complete(result);
       }
-      
+
       return await completer.future;
     } catch (e) {
       if (!completer.isCompleted) {
@@ -278,7 +278,7 @@ class TimeoutManagerService {
   }) async {
     final effectiveTimeout = timeout ?? _mediumTimeout;
     final name = operationName ?? 'Race Operations';
-    
+
     final loadingId = LoadingService.instance.start(
       timeout: effectiveTimeout,
       description: name,
@@ -301,7 +301,7 @@ class TimeoutManagerService {
   void cancelAllOperations() {
     // Reset loading service to cancel all tracked operations
     LoadingService.instance.reset(reason: 'cancel_all_operations');
-    
+
     logWarning(
       'All pending operations cancelled',
       tag: 'TIMEOUT_MANAGER',

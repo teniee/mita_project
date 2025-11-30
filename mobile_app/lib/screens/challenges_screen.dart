@@ -12,8 +12,7 @@ class ChallengesScreen extends StatefulWidget {
   State<ChallengesScreen> createState() => _ChallengesScreenState();
 }
 
-class _ChallengesScreenState extends State<ChallengesScreen>
-    with SingleTickerProviderStateMixin {
+class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -58,7 +57,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Leave Challenge'),
-        content: const Text('Are you sure you want to leave this challenge? Your progress will be lost.'),
+        content: const Text(
+            'Are you sure you want to leave this challenge? Your progress will be lost.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -94,7 +94,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget build(BuildContext context) {
     // Use context.watch for reactive state updates
     final challengesProvider = context.watch<ChallengesProvider>();
-    final isLoading = challengesProvider.isLoading || challengesProvider.state == ChallengesState.loading;
+    final isLoading =
+        challengesProvider.isLoading || challengesProvider.state == ChallengesState.loading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -623,7 +624,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     final totalPoints = challengesProvider.totalPoints;
     final nextLevelPoints = challengesProvider.nextLevelPoints;
     final pointsToNext = challengesProvider.pointsToNextLevel;
-    final levelProgress = nextLevelPoints > 0 ? (totalPoints / nextLevelPoints).clamp(0.0, 1.0) : 0.0;
+    final levelProgress =
+        nextLevelPoints > 0 ? (totalPoints / nextLevelPoints).clamp(0.0, 1.0) : 0.0;
     final gamificationStats = challengesProvider.gamificationStats;
 
     return Column(
@@ -822,7 +824,6 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ),
         ),
         const SizedBox(height: 12),
-
         if (badges.isEmpty)
           Card(
             child: Padding(
@@ -931,7 +932,6 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ),
         ),
         const SizedBox(height: 12),
-
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,

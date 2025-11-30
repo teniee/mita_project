@@ -5,9 +5,9 @@ import 'localization_service.dart';
 /// Provides utilities for proper RTL/LTR layout and text handling
 class TextDirectionService {
   static TextDirectionService? _instance;
-  
+
   TextDirectionService._internal();
-  
+
   static TextDirectionService get instance {
     _instance ??= TextDirectionService._internal();
     return _instance!;
@@ -22,9 +22,11 @@ class TextDirectionService {
   /// Get appropriate alignment for text in current locale
   TextAlign getTextAlign({TextAlign? fallback}) {
     if (isRTL) {
-      return fallback == TextAlign.left ? TextAlign.right : 
-             fallback == TextAlign.right ? TextAlign.left :
-             fallback ?? TextAlign.right;
+      return fallback == TextAlign.left
+          ? TextAlign.right
+          : fallback == TextAlign.right
+              ? TextAlign.left
+              : fallback ?? TextAlign.right;
     } else {
       return fallback ?? TextAlign.left;
     }
@@ -40,7 +42,8 @@ class TextDirectionService {
   }
 
   /// Get appropriate MainAxisAlignment for flex layouts
-  MainAxisAlignment getMainAxisAlignment({MainAxisAlignment? ltrAlignment, MainAxisAlignment? rtlAlignment}) {
+  MainAxisAlignment getMainAxisAlignment(
+      {MainAxisAlignment? ltrAlignment, MainAxisAlignment? rtlAlignment}) {
     if (isRTL) {
       return rtlAlignment ?? _mirrorMainAxisAlignment(ltrAlignment ?? MainAxisAlignment.start);
     } else {
@@ -49,7 +52,8 @@ class TextDirectionService {
   }
 
   /// Get appropriate CrossAxisAlignment for flex layouts
-  CrossAxisAlignment getCrossAxisAlignment({CrossAxisAlignment? ltrAlignment, CrossAxisAlignment? rtlAlignment}) {
+  CrossAxisAlignment getCrossAxisAlignment(
+      {CrossAxisAlignment? ltrAlignment, CrossAxisAlignment? rtlAlignment}) {
     if (isRTL) {
       return rtlAlignment ?? _mirrorCrossAxisAlignment(ltrAlignment ?? CrossAxisAlignment.start);
     } else {
@@ -242,14 +246,16 @@ class TextDirectionService {
   /// Check if a string contains RTL characters
   bool containsRTLCharacters(String text) {
     // Check for Arabic, Hebrew, and other RTL Unicode ranges
-    return RegExp(r'[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
+    return RegExp(
+            r'[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]')
+        .hasMatch(text);
   }
 
   /// Get appropriate TextStyle with direction-aware properties
   TextStyle getDirectionalTextStyle(TextStyle baseStyle) {
     return baseStyle.copyWith(
-      // Add any RTL-specific text styling if needed
-    );
+        // Add any RTL-specific text styling if needed
+        );
   }
 
   /// Create appropriate ListTile with direction-aware layout
@@ -305,7 +311,7 @@ class TextDirectionService {
   /// Format mixed content (numbers in RTL text)
   String formatMixedContent(String text) {
     if (!isRTL) return text;
-    
+
     // For RTL languages, numbers should still be displayed LTR
     // Add proper directional marks around numbers
     return text.replaceAllMapped(RegExp(r'\d+\.?\d*'), (match) {
@@ -319,7 +325,7 @@ extension TextDirectionExtension on Widget {
   /// Wrap widget with appropriate text direction
   Widget withTextDirection([TextDirection? direction]) {
     return TextDirectionService.instance.wrapWithDirectionality(
-      this, 
+      this,
       textDirection: direction,
     );
   }
@@ -329,10 +335,10 @@ extension TextDirectionExtension on Widget {
 extension TextDirectionContextExtension on BuildContext {
   /// Get text direction service instance
   TextDirectionService get textDirection => TextDirectionService.instance;
-  
+
   /// Check if current context uses RTL
   bool get isRTL => TextDirectionService.instance.isRTL;
-  
+
   /// Get appropriate text align for current direction
   TextAlign textAlign([TextAlign? fallback]) {
     return TextDirectionService.instance.getTextAlign(fallback: fallback);

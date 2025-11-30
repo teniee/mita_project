@@ -11,31 +11,31 @@ class ProductionBudgetEngine {
   ProductionBudgetEngine._internal();
 
   final IncomeService _incomeService = IncomeService();
-  
+
   // Regional cost-of-living multipliers (based on economic data)
   static const Map<String, double> _costOfLivingMultipliers = {
     // North America
-    'US-CA': 1.45,  // California
-    'US-NY': 1.35,  // New York
-    'US-WA': 1.25,  // Washington
-    'US-MA': 1.30,  // Massachusetts
-    'US-TX': 0.95,  // Texas
-    'US-FL': 1.00,  // Florida
-    'US-IL': 1.05,  // Illinois
-    'CA': 1.15,     // Canada
-    
+    'US-CA': 1.45, // California
+    'US-NY': 1.35, // New York
+    'US-WA': 1.25, // Washington
+    'US-MA': 1.30, // Massachusetts
+    'US-TX': 0.95, // Texas
+    'US-FL': 1.00, // Florida
+    'US-IL': 1.05, // Illinois
+    'CA': 1.15, // Canada
+
     // Europe
-    'GB': 1.20,     // United Kingdom
-    'DE': 1.10,     // Germany
-    'FR': 1.15,     // France
-    'IT': 1.05,     // Italy
-    'ES': 0.95,     // Spain
-    'NL': 1.25,     // Netherlands
-    'CH': 1.60,     // Switzerland
-    'NO': 1.50,     // Norway
-    'SE': 1.20,     // Sweden
-    'DK': 1.30,     // Denmark
-    
+    'GB': 1.20, // United Kingdom
+    'DE': 1.10, // Germany
+    'FR': 1.15, // France
+    'IT': 1.05, // Italy
+    'ES': 0.95, // Spain
+    'NL': 1.25, // Netherlands
+    'CH': 1.60, // Switzerland
+    'NO': 1.50, // Norway
+    'SE': 1.20, // Sweden
+    'DK': 1.30, // Denmark
+
     // Default
     'DEFAULT': 1.00,
   };
@@ -47,7 +47,7 @@ class ProductionBudgetEngine {
   }) {
     try {
       logInfo('Calculating personalized daily budget from onboarding data', tag: 'BUDGET_ENGINE');
-      
+
       // 1. Extract core financial data
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for budget calculations');
@@ -57,38 +57,31 @@ class ProductionBudgetEngine {
       final expenses = onboardingData.expenses;
       final goals = onboardingData.goals;
       final habits = onboardingData.habits;
-      
+
       // 2. Calculate base daily budget using MITA methodology
       final baseDaily = _calculateBaseDailyBudget(monthlyIncome, incomeTier);
-      
+
       // 3. Apply user's actual fixed expenses
       final adjustedForExpenses = _adjustForFixedExpenses(baseDaily, expenses, monthlyIncome);
-      
+
       // 4. Apply goal-based prioritization
       final goalAdjusted = _applyGoalBasedAdjustments(adjustedForExpenses, goals, monthlyIncome);
-      
+
       // 5. Apply behavioral habit corrections
       final habitAdjusted = _applyHabitBasedCorrections(goalAdjusted, habits, incomeTier);
-      
+
       // 6. Apply regional cost-of-living adjustments
       final locationAdjusted = _applyLocationAdjustments(
-        habitAdjusted, 
-        onboardingData.countryCode, 
-        onboardingData.stateCode
-      );
-      
+          habitAdjusted, onboardingData.countryCode, onboardingData.stateCode);
+
       // 7. Apply date-specific adjustments (weekends, paydays, etc.)
       final finalDaily = _applyDateSpecificAdjustments(
-        locationAdjusted,
-        targetDate ?? DateTime.now(),
-        habits,
-        incomeTier
-      );
-      
-      logInfo('Daily budget calculated: \$${finalDaily.totalDailyBudget.toStringAsFixed(2)}', tag: 'BUDGET_ENGINE');
-      
+          locationAdjusted, targetDate ?? DateTime.now(), habits, incomeTier);
+
+      logInfo('Daily budget calculated: \$${finalDaily.totalDailyBudget.toStringAsFixed(2)}',
+          tag: 'BUDGET_ENGINE');
+
       return finalDaily;
-      
     } catch (e) {
       logError('Error calculating daily budget: $e', tag: 'BUDGET_ENGINE', error: e);
       if (onboardingData.income == null || onboardingData.income! <= 0) {
@@ -105,7 +98,7 @@ class ProductionBudgetEngine {
   }) {
     try {
       logInfo('Calculating personalized category budgets', tag: 'BUDGET_ENGINE');
-      
+
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for budget calculations');
       }
@@ -114,31 +107,27 @@ class ProductionBudgetEngine {
       final userExpenses = onboardingData.expenses;
       final goals = onboardingData.goals;
       final habits = onboardingData.habits;
-      
+
       // 1. Get base category weights for income tier
       final baseWeights = _getIntelligentCategoryWeights(incomeTier, goals, habits);
-      
+
       // 2. Incorporate user's actual expense categories
-      final userAdjusted = _incorporateUserExpenseCategories(baseWeights, userExpenses, monthlyIncome);
-      
+      final userAdjusted =
+          _incorporateUserExpenseCategories(baseWeights, userExpenses, monthlyIncome);
+
       // 3. Apply goal-specific category priorities
       final goalOptimized = _optimizeCategoriesForGoals(userAdjusted, goals, monthlyIncome);
-      
+
       // 4. Apply behavioral spending pattern adjustments
       final behaviorAdjusted = _adjustCategoriesForBehavior(goalOptimized, habits, incomeTier);
-      
+
       // 5. Calculate daily amounts for each category
       final dailyAllocations = _convertToDailyAllocations(behaviorAdjusted, monthlyIncome);
-      
+
       // 6. Generate spending recommendations and insights
-      final insights = _generateCategoryInsights(
-        dailyAllocations,
-        userExpenses,
-        goals,
-        habits,
-        incomeTier
-      );
-      
+      final insights =
+          _generateCategoryInsights(dailyAllocations, userExpenses, goals, habits, incomeTier);
+
       return CategoryBudgetAllocation(
         dailyAllocations: dailyAllocations,
         monthlyAllocations: behaviorAdjusted,
@@ -146,7 +135,6 @@ class ProductionBudgetEngine {
         confidence: _calculateCategoryConfidence(userExpenses, goals),
         lastUpdated: DateTime.now(),
       );
-      
     } catch (e) {
       logError('Error calculating category budgets: $e', tag: 'BUDGET_ENGINE', error: e);
       if (onboardingData.income == null || onboardingData.income! <= 0) {
@@ -168,44 +156,45 @@ class ProductionBudgetEngine {
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for tier classification');
       }
-      final incomeTier = onboardingData.incomeTier ?? _incomeService.classifyIncome(onboardingData.income!);
-      
+      final incomeTier =
+          onboardingData.incomeTier ?? _incomeService.classifyIncome(onboardingData.income!);
+
       final rules = <BudgetRule>[];
-      
+
       // 1. Habit-aware spending limits
       rules.addAll(_generateHabitBasedRules(habits, incomeTier));
-      
+
       // 2. Goal-oriented redistribution rules
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for goal-based rules');
       }
       rules.addAll(_generateGoalBasedRules(goals, onboardingData.income!));
-      
+
       // 3. Mid-month adjustment rules
       if (currentMonthSpending != null && daysIntoMonth > 10) {
-        rules.addAll(_generateMidMonthAdjustmentRules(
-          currentMonthSpending,
-          daysIntoMonth,
-          onboardingData
-        ));
+        rules.addAll(
+            _generateMidMonthAdjustmentRules(currentMonthSpending, daysIntoMonth, onboardingData));
       }
-      
+
       // 4. Emergency reallocation rules
       rules.addAll(_generateEmergencyReallocationRules(habits, incomeTier));
-      
+
       // 5. Weekend/weekday spending rules
       rules.addAll(_generateTemporalSpendingRules(habits, incomeTier));
-      
+
       return DynamicBudgetRules(
         rules: rules,
         adaptationFrequency: _getAdaptationFrequency(incomeTier),
         confidenceLevel: _calculateRuleConfidence(habits, goals),
         lastUpdated: DateTime.now(),
       );
-      
     } catch (e) {
       logError('Error generating dynamic rules: $e', tag: 'BUDGET_ENGINE', error: e);
-      return DynamicBudgetRules(rules: [], adaptationFrequency: AdaptationFrequency.weekly, confidenceLevel: 0.5, lastUpdated: DateTime.now());
+      return DynamicBudgetRules(
+          rules: [],
+          adaptationFrequency: AdaptationFrequency.weekly,
+          confidenceLevel: 0.5,
+          lastUpdated: DateTime.now());
     }
   }
 
@@ -219,27 +208,28 @@ class ProductionBudgetEngine {
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for tier classification');
       }
-      final incomeTier = onboardingData.incomeTier ?? _incomeService.classifyIncome(onboardingData.income!);
+      final incomeTier =
+          onboardingData.incomeTier ?? _incomeService.classifyIncome(onboardingData.income!);
       if (onboardingData.income == null || onboardingData.income! <= 0) {
         throw ArgumentError('Monthly income is required for budget calculations');
       }
       final monthlyIncome = onboardingData.income!;
-      
+
       // 1. Generate goal-based nudges
       final goalNudges = _generateGoalBasedNudges(goals, monthlyIncome, incomeTier);
-      
+
       // 2. Generate habit-breaking interventions
       final habitNudges = _generateHabitInterventions(habits, incomeTier);
-      
+
       // 3. Generate income-tier specific strategies
       final tierStrategies = _generateIncomeTierStrategies(incomeTier, monthlyIncome);
-      
+
       // 4. Generate behavioral economics nudges
       final behavioralNudges = _generateBehavioralNudges(habits, goals, incomeTier);
-      
+
       // 5. Create personalized success metrics
       final successMetrics = _createPersonalizedMetrics(goals, habits, monthlyIncome);
-      
+
       return PersonalizationEngine(
         goalNudges: goalNudges,
         habitInterventions: habitNudges,
@@ -249,7 +239,6 @@ class ProductionBudgetEngine {
         personalityProfile: _generatePersonalityProfile(habits, goals, incomeTier),
         lastUpdated: DateTime.now(),
       );
-      
     } catch (e) {
       logError('Error creating personalization engine: $e', tag: 'BUDGET_ENGINE', error: e);
       return PersonalizationEngine(
@@ -273,14 +262,14 @@ class ProductionBudgetEngine {
     // MITA's daily budget model: Focus on available spending after fixed commitments
     final fixedCommitmentRatio = _getFixedCommitmentRatio(tier);
     final savingsTargetRatio = _getSavingsTargetRatio(tier);
-    
+
     // Calculate available daily spending
     final availableForSpending = monthlyIncome * (1.0 - fixedCommitmentRatio - savingsTargetRatio);
     final dailyBudget = availableForSpending / 30.0; // 30-day average
-    
+
     // Calculate redistribution buffer (MITA's flexible budgeting)
     final redistributionBuffer = dailyBudget * 0.15; // 15% flexibility
-    
+
     return DailyBudgetCalculation(
       totalDailyBudget: dailyBudget,
       baseAmount: dailyBudget - redistributionBuffer,
@@ -293,32 +282,37 @@ class ProductionBudgetEngine {
   }
 
   /// Apply user's actual fixed expenses to budget calculation
-  DailyBudgetCalculation _adjustForFixedExpenses(
-    DailyBudgetCalculation baseDaily,
-    List<Map<String, dynamic>> userExpenses,
-    double monthlyIncome
-  ) {
+  DailyBudgetCalculation _adjustForFixedExpenses(DailyBudgetCalculation baseDaily,
+      List<Map<String, dynamic>> userExpenses, double monthlyIncome) {
     if (userExpenses.isEmpty) return baseDaily;
-    
+
     // Calculate actual fixed expenses from user data
     double totalFixed = 0.0;
-    final fixedCategories = ['housing', 'rent', 'mortgage', 'insurance', 'utilities', 'subscriptions'];
-    
+    final fixedCategories = [
+      'housing',
+      'rent',
+      'mortgage',
+      'insurance',
+      'utilities',
+      'subscriptions'
+    ];
+
     for (final expense in userExpenses) {
       final category = expense['category']?.toString().toLowerCase() ?? '';
       final amount = (expense['amount'] as num?)?.toDouble() ?? 0.0;
-      
+
       if (fixedCategories.any((fixed) => category.contains(fixed))) {
         totalFixed += amount;
       }
     }
-    
+
     // Adjust available spending based on actual fixed expenses
     final actualFixedDaily = totalFixed / 30.0;
     final adjustedAvailable = (monthlyIncome / 30.0) - actualFixedDaily - baseDaily.savingsTarget;
-    
+
     return DailyBudgetCalculation(
-      totalDailyBudget: math.max(adjustedAvailable, baseDaily.totalDailyBudget * 0.5), // Minimum safety
+      totalDailyBudget:
+          math.max(adjustedAvailable, baseDaily.totalDailyBudget * 0.5), // Minimum safety
       baseAmount: math.max(adjustedAvailable * 0.85, baseDaily.baseAmount * 0.5),
       redistributionBuffer: math.max(adjustedAvailable * 0.15, 10.0), // Minimum $10 buffer
       fixedCommitments: actualFixedDaily,
@@ -330,15 +324,12 @@ class ProductionBudgetEngine {
 
   /// Apply goal-based budget prioritization
   DailyBudgetCalculation _applyGoalBasedAdjustments(
-    DailyBudgetCalculation baseDaily,
-    List<String> goals,
-    double monthlyIncome
-  ) {
+      DailyBudgetCalculation baseDaily, List<String> goals, double monthlyIncome) {
     if (goals.isEmpty) return baseDaily;
-    
+
     double savingsBoost = 0.0;
     double spendingReduction = 0.0;
-    
+
     // Apply goal-specific adjustments
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
@@ -360,9 +351,10 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return DailyBudgetCalculation(
-      totalDailyBudget: math.max(baseDaily.totalDailyBudget - spendingReduction, baseDaily.totalDailyBudget * 0.6),
+      totalDailyBudget: math.max(
+          baseDaily.totalDailyBudget - spendingReduction, baseDaily.totalDailyBudget * 0.6),
       baseAmount: math.max(baseDaily.baseAmount - spendingReduction, baseDaily.baseAmount * 0.6),
       redistributionBuffer: baseDaily.redistributionBuffer,
       fixedCommitments: baseDaily.fixedCommitments,
@@ -374,15 +366,12 @@ class ProductionBudgetEngine {
 
   /// Apply behavioral habit corrections
   DailyBudgetCalculation _applyHabitBasedCorrections(
-    DailyBudgetCalculation baseDaily,
-    List<String> habits,
-    IncomeTier tier
-  ) {
+      DailyBudgetCalculation baseDaily, List<String> habits, IncomeTier tier) {
     if (habits.isEmpty) return baseDaily;
-    
+
     double spendingMultiplier = 1.0;
     double bufferMultiplier = 1.0;
-    
+
     // Apply habit-specific corrections
     for (final habit in habits) {
       switch (habit.toLowerCase()) {
@@ -403,7 +392,7 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return DailyBudgetCalculation(
       totalDailyBudget: baseDaily.totalDailyBudget * spendingMultiplier,
       baseAmount: baseDaily.baseAmount * spendingMultiplier,
@@ -417,21 +406,20 @@ class ProductionBudgetEngine {
 
   /// Apply regional cost-of-living adjustments
   DailyBudgetCalculation _applyLocationAdjustments(
-    DailyBudgetCalculation baseDaily,
-    String? countryCode,
-    String? stateCode
-  ) {
+      DailyBudgetCalculation baseDaily, String? countryCode, String? stateCode) {
     if (countryCode == null) return baseDaily;
-    
+
     // Get location-specific multiplier
     final locationKey = stateCode != null ? '$countryCode-$stateCode' : countryCode;
-    final multiplier = _costOfLivingMultipliers[locationKey] ?? _costOfLivingMultipliers['DEFAULT']!;
-    
+    final multiplier =
+        _costOfLivingMultipliers[locationKey] ?? _costOfLivingMultipliers['DEFAULT']!;
+
     // Adjust spending categories that are affected by location
     const locationSensitiveRatio = 0.7; // 70% of spending is location-sensitive
     final adjustedBase = baseDaily.baseAmount * (1.0 + (multiplier - 1.0) * locationSensitiveRatio);
-    final adjustedTotal = baseDaily.totalDailyBudget * (1.0 + (multiplier - 1.0) * locationSensitiveRatio);
-    
+    final adjustedTotal =
+        baseDaily.totalDailyBudget * (1.0 + (multiplier - 1.0) * locationSensitiveRatio);
+
     return DailyBudgetCalculation(
       totalDailyBudget: adjustedTotal,
       baseAmount: adjustedBase,
@@ -445,31 +433,27 @@ class ProductionBudgetEngine {
 
   /// Apply date-specific adjustments (weekends, paydays, etc.)
   DailyBudgetCalculation _applyDateSpecificAdjustments(
-    DailyBudgetCalculation baseDaily,
-    DateTime targetDate,
-    List<String> habits,
-    IncomeTier tier
-  ) {
+      DailyBudgetCalculation baseDaily, DateTime targetDate, List<String> habits, IncomeTier tier) {
     double dateMultiplier = 1.0;
-    
+
     // Weekend adjustment
     final isWeekend = targetDate.weekday >= 6;
     if (isWeekend) {
       dateMultiplier *= 1.2; // 20% more for weekend spending
     }
-    
+
     // Payday adjustment (assume bi-weekly)
     final dayOfMonth = targetDate.day;
     final isPayday = dayOfMonth == 1 || dayOfMonth == 15;
     if (isPayday && habits.contains('impulse_buying')) {
       dateMultiplier *= 0.9; // Reduce payday spending for impulse buyers
     }
-    
+
     // Month-end tightening
     if (dayOfMonth > 25) {
       dateMultiplier *= 0.85; // Tighten budget near month-end
     }
-    
+
     return DailyBudgetCalculation(
       totalDailyBudget: baseDaily.totalDailyBudget * dateMultiplier,
       baseAmount: baseDaily.baseAmount * dateMultiplier,
@@ -487,14 +471,11 @@ class ProductionBudgetEngine {
 
   /// Get intelligent category weights based on income tier, goals, and habits
   Map<String, double> _getIntelligentCategoryWeights(
-    IncomeTier tier,
-    List<String> goals,
-    List<String> habits
-  ) {
+      IncomeTier tier, List<String> goals, List<String> habits) {
     // Start with base weights from income service
     final baseWeights = _incomeService.getDefaultBudgetWeights(tier);
     final adjustedWeights = Map<String, double>.from(baseWeights);
-    
+
     // Apply goal-based adjustments
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
@@ -512,7 +493,7 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     // Apply habit-based adjustments
     for (final habit in habits) {
       switch (habit.toLowerCase()) {
@@ -530,61 +511,55 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return _normalizeWeights(adjustedWeights);
   }
 
   /// Incorporate user's actual expense categories
-  Map<String, double> _incorporateUserExpenseCategories(
-    Map<String, double> baseWeights,
-    List<Map<String, dynamic>> userExpenses,
-    double monthlyIncome
-  ) {
+  Map<String, double> _incorporateUserExpenseCategories(Map<String, double> baseWeights,
+      List<Map<String, dynamic>> userExpenses, double monthlyIncome) {
     if (userExpenses.isEmpty) return baseWeights;
-    
+
     // Calculate actual spending by category
     final userCategorySpending = <String, double>{};
     double totalUserSpending = 0.0;
-    
+
     for (final expense in userExpenses) {
       final category = expense['category']?.toString().toLowerCase() ?? 'other';
       final amount = (expense['amount'] as num?)?.toDouble() ?? 0.0;
       userCategorySpending[category] = (userCategorySpending[category] ?? 0.0) + amount;
       totalUserSpending += amount;
     }
-    
+
     if (totalUserSpending == 0) return baseWeights;
-    
+
     // Blend user's actual patterns with recommended weights (70% user, 30% recommended)
     final blendedWeights = <String, double>{};
-    
+
     // First, add all user categories with their actual weights
     userCategorySpending.forEach((category, amount) {
       final userWeight = amount / monthlyIncome;
       final recommendedWeight = baseWeights[category] ?? 0.0;
       blendedWeights[category] = (userWeight * 0.7) + (recommendedWeight * 0.3);
     });
-    
+
     // Then add recommended categories that user doesn't have
     baseWeights.forEach((category, weight) {
       if (!blendedWeights.containsKey(category)) {
         blendedWeights[category] = weight * 0.3; // Reduced weight for missing categories
       }
     });
-    
+
     return _normalizeWeights(blendedWeights);
   }
 
   /// Optimize category allocations for specific goals
   Map<String, double> _optimizeCategoriesForGoals(
-    Map<String, double> baseWeights,
-    List<String> goals,
-    double monthlyIncome
-  ) {
+      Map<String, double> baseWeights, List<String> goals, double monthlyIncome) {
     if (goals.isEmpty) return baseWeights;
-    
+
     final optimized = Map<String, double>.from(baseWeights);
-    
+
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
         case 'save_more':
@@ -602,20 +577,17 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return _normalizeWeights(optimized);
   }
 
   /// Adjust categories based on behavioral patterns
   Map<String, double> _adjustCategoriesForBehavior(
-    Map<String, double> baseWeights,
-    List<String> habits,
-    IncomeTier tier
-  ) {
+      Map<String, double> baseWeights, List<String> habits, IncomeTier tier) {
     if (habits.isEmpty) return baseWeights;
-    
+
     final adjusted = Map<String, double>.from(baseWeights);
-    
+
     for (final habit in habits) {
       switch (habit.toLowerCase()) {
         case 'impulse_buying':
@@ -640,7 +612,7 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return _normalizeWeights(adjusted);
   }
 
@@ -684,27 +656,28 @@ class ProductionBudgetEngine {
   Map<String, double> _normalizeWeights(Map<String, double> weights) {
     final total = weights.values.fold(0.0, (sum, weight) => sum + weight);
     if (total <= 0) return weights;
-    
+
     // Don't normalize if already close to 1.0, just return the weights as monetary amounts
     if (total > 10.0) {
       // These are monetary amounts, not weights
       return weights;
     }
-    
+
     return weights.map((key, value) => MapEntry(key, value / total));
   }
 
   /// Convert monthly allocations to daily amounts
-  Map<String, double> _convertToDailyAllocations(Map<String, double> monthlyWeights, double monthlyIncome) {
-    return monthlyWeights.map((category, weight) => 
-      MapEntry(category, (monthlyIncome * weight) / 30.0));
+  Map<String, double> _convertToDailyAllocations(
+      Map<String, double> monthlyWeights, double monthlyIncome) {
+    return monthlyWeights
+        .map((category, weight) => MapEntry(category, (monthlyIncome * weight) / 30.0));
   }
 
   /// Redistribute weight to a specific category
   void _redistributeToCategory(Map<String, double> weights, String targetCategory, double amount) {
     final donorCategories = ['entertainment', 'shopping', 'miscellaneous'];
     final totalDonor = donorCategories.fold(0.0, (sum, cat) => sum + (weights[cat] ?? 0.0));
-    
+
     if (totalDonor > amount) {
       // Proportionally reduce donor categories
       for (final donor in donorCategories) {
@@ -719,9 +692,10 @@ class ProductionBudgetEngine {
   }
 
   /// Redistribute weight from multiple categories
-  void _redistributeFromCategories(Map<String, double> weights, List<String> fromCategories, double amount) {
+  void _redistributeFromCategories(
+      Map<String, double> weights, List<String> fromCategories, double amount) {
     final totalFrom = fromCategories.fold(0.0, (sum, cat) => sum + (weights[cat] ?? 0.0));
-    
+
     if (totalFrom > amount) {
       for (final category in fromCategories) {
         final currentWeight = weights[category] ?? 0.0;
@@ -735,14 +709,13 @@ class ProductionBudgetEngine {
 
   /// Generate category insights and recommendations
   List<CategoryInsight> _generateCategoryInsights(
-    Map<String, double> dailyAllocations,
-    List<Map<String, dynamic>> userExpenses,
-    List<String> goals,
-    List<String> habits,
-    IncomeTier tier
-  ) {
+      Map<String, double> dailyAllocations,
+      List<Map<String, dynamic>> userExpenses,
+      List<String> goals,
+      List<String> habits,
+      IncomeTier tier) {
     final insights = <CategoryInsight>[];
-    
+
     // Add goal-specific insights
     if (goals.contains('save_more')) {
       insights.add(CategoryInsight(
@@ -753,7 +726,7 @@ class ProductionBudgetEngine {
         actionable: true,
       ));
     }
-    
+
     // Add habit-specific insights
     if (habits.contains('impulse_buying')) {
       insights.add(CategoryInsight(
@@ -764,7 +737,7 @@ class ProductionBudgetEngine {
         actionable: true,
       ));
     }
-    
+
     // Add tier-specific insights
     final tierName = _incomeService.getIncomeTierName(tier);
     insights.add(CategoryInsight(
@@ -774,7 +747,7 @@ class ProductionBudgetEngine {
       priority: InsightPriority.medium,
       actionable: false,
     ));
-    
+
     return insights;
   }
 
@@ -796,15 +769,15 @@ class ProductionBudgetEngine {
   /// Calculate confidence level for category allocations
   double _calculateCategoryConfidence(List<Map<String, dynamic>> userExpenses, List<String> goals) {
     double confidence = 0.5; // Base confidence
-    
+
     // Increase confidence with more expense data
     if (userExpenses.length >= 5) confidence += 0.2;
     if (userExpenses.length >= 10) confidence += 0.1;
-    
+
     // Increase confidence with clear goals
     if (goals.isNotEmpty) confidence += 0.1;
     if (goals.length >= 2) confidence += 0.1;
-    
+
     return math.min(confidence, 1.0);
   }
 
@@ -814,7 +787,7 @@ class ProductionBudgetEngine {
 
   List<BudgetRule> _generateHabitBasedRules(List<String> habits, IncomeTier tier) {
     final rules = <BudgetRule>[];
-    
+
     for (final habit in habits) {
       switch (habit.toLowerCase()) {
         case 'impulse_buying':
@@ -849,13 +822,13 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return rules;
   }
 
   List<BudgetRule> _generateGoalBasedRules(List<String> goals, double monthlyIncome) {
     final rules = <BudgetRule>[];
-    
+
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
         case 'save_more':
@@ -880,25 +853,23 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return rules;
   }
 
   List<BudgetRule> _generateMidMonthAdjustmentRules(
-    Map<String, double> currentSpending,
-    int daysIntoMonth,
-    OnboardingState onboardingData
-  ) {
+      Map<String, double> currentSpending, int daysIntoMonth, OnboardingState onboardingData) {
     final rules = <BudgetRule>[];
     if (onboardingData.income == null || onboardingData.income! <= 0) {
       throw ArgumentError('Monthly income is required for personalization');
     }
     final monthlyIncome = onboardingData.income!;
-    
+
     // Calculate spending velocity
-    final expectedSpending = (monthlyIncome * 0.7) * (daysIntoMonth / 30.0); // Expected 70% spending
+    final expectedSpending =
+        (monthlyIncome * 0.7) * (daysIntoMonth / 30.0); // Expected 70% spending
     final actualSpending = currentSpending.values.fold(0.0, (sum, amount) => sum + amount);
-    
+
     if (actualSpending > expectedSpending * 1.2) {
       rules.add(BudgetRule(
         id: 'overspending_correction',
@@ -909,13 +880,13 @@ class ProductionBudgetEngine {
         frequency: RuleFrequency.immediate,
       ));
     }
-    
+
     return rules;
   }
 
   List<BudgetRule> _generateEmergencyReallocationRules(List<String> habits, IncomeTier tier) {
     final rules = <BudgetRule>[];
-    
+
     rules.add(BudgetRule(
       id: 'emergency_reallocation',
       description: 'Emergency expense reallocation',
@@ -924,13 +895,13 @@ class ProductionBudgetEngine {
       priority: RulePriority.critical,
       frequency: RuleFrequency.immediate,
     ));
-    
+
     return rules;
   }
 
   List<BudgetRule> _generateTemporalSpendingRules(List<String> habits, IncomeTier tier) {
     final rules = <BudgetRule>[];
-    
+
     rules.add(BudgetRule(
       id: 'weekend_adjustment',
       description: 'Weekend spending adjustment',
@@ -939,7 +910,7 @@ class ProductionBudgetEngine {
       priority: RulePriority.low,
       frequency: RuleFrequency.weekly,
     ));
-    
+
     rules.add(BudgetRule(
       id: 'month_end_tightening',
       description: 'Month-end budget tightening',
@@ -948,7 +919,7 @@ class ProductionBudgetEngine {
       priority: RulePriority.medium,
       frequency: RuleFrequency.daily,
     ));
-    
+
     return rules;
   }
 
@@ -967,10 +938,10 @@ class ProductionBudgetEngine {
 
   double _calculateRuleConfidence(List<String> habits, List<String> goals) {
     double confidence = 0.6; // Base confidence
-    
+
     if (habits.isNotEmpty) confidence += 0.2;
     if (goals.isNotEmpty) confidence += 0.2;
-    
+
     return math.min(confidence, 1.0);
   }
 
@@ -978,15 +949,17 @@ class ProductionBudgetEngine {
   // PERSONALIZATION ENGINE METHODS
   // ============================================================================
 
-  List<GoalNudge> _generateGoalBasedNudges(List<String> goals, double monthlyIncome, IncomeTier tier) {
+  List<GoalNudge> _generateGoalBasedNudges(
+      List<String> goals, double monthlyIncome, IncomeTier tier) {
     final nudges = <GoalNudge>[];
-    
+
     for (final goal in goals) {
       switch (goal.toLowerCase()) {
         case 'save_more':
           nudges.add(GoalNudge(
             goal: 'save_more',
-            message: 'You\'re on track! Consider automating an extra \$${(monthlyIncome * 0.02).toStringAsFixed(0)} to savings.',
+            message:
+                'You\'re on track! Consider automating an extra \$${(monthlyIncome * 0.02).toStringAsFixed(0)} to savings.',
             frequency: NudgeFrequency.weekly,
             effectiveness: 0.85,
           ));
@@ -1001,19 +974,20 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return nudges;
   }
 
   List<HabitIntervention> _generateHabitInterventions(List<String> habits, IncomeTier tier) {
     final interventions = <HabitIntervention>[];
-    
+
     for (final habit in habits) {
       switch (habit.toLowerCase()) {
         case 'impulse_buying':
           interventions.add(HabitIntervention(
             habit: 'impulse_buying',
-            intervention: 'Use the 24-hour rule: Wait a full day before non-essential purchases over \$50.',
+            intervention:
+                'Use the 24-hour rule: Wait a full day before non-essential purchases over \$50.',
             type: InterventionType.delayTactic,
             effectiveness: 0.8,
           ));
@@ -1028,13 +1002,13 @@ class ProductionBudgetEngine {
           break;
       }
     }
-    
+
     return interventions;
   }
 
   List<TierStrategy> _generateIncomeTierStrategies(IncomeTier tier, double monthlyIncome) {
     final strategies = <TierStrategy>[];
-    
+
     switch (tier) {
       case IncomeTier.low:
         strategies.add(TierStrategy(
@@ -1047,7 +1021,8 @@ class ProductionBudgetEngine {
       case IncomeTier.middle:
         strategies.add(TierStrategy(
           tier: tier,
-          strategy: 'Balance debt payoff, emergency fund growth, and begin investing with index funds.',
+          strategy:
+              'Balance debt payoff, emergency fund growth, and begin investing with index funds.',
           priority: StrategyPriority.high,
           timeframe: 'quarterly',
         ));
@@ -1055,7 +1030,8 @@ class ProductionBudgetEngine {
       case IncomeTier.high:
         strategies.add(TierStrategy(
           tier: tier,
-          strategy: 'Optimize tax-advantaged accounts, diversify investments, and consider real estate.',
+          strategy:
+              'Optimize tax-advantaged accounts, diversify investments, and consider real estate.',
           priority: StrategyPriority.medium,
           timeframe: 'annually',
         ));
@@ -1068,13 +1044,14 @@ class ProductionBudgetEngine {
           timeframe: 'monthly',
         ));
     }
-    
+
     return strategies;
   }
 
-  List<BehavioralNudge> _generateBehavioralNudges(List<String> habits, List<String> goals, IncomeTier tier) {
+  List<BehavioralNudge> _generateBehavioralNudges(
+      List<String> habits, List<String> goals, IncomeTier tier) {
     final nudges = <BehavioralNudge>[];
-    
+
     // Loss framing nudge
     nudges.add(BehavioralNudge(
       type: NudgeType.lossFraming,
@@ -1082,7 +1059,7 @@ class ProductionBudgetEngine {
       trigger: 'daily_budget_check',
       effectiveness: 0.75,
     ));
-    
+
     // Social proof nudge
     final tierName = _incomeService.getIncomeTierName(tier);
     nudges.add(BehavioralNudge(
@@ -1091,7 +1068,7 @@ class ProductionBudgetEngine {
       trigger: 'weekly_review',
       effectiveness: 0.7,
     ));
-    
+
     // Progress celebration
     nudges.add(BehavioralNudge(
       type: NudgeType.progress,
@@ -1099,13 +1076,14 @@ class ProductionBudgetEngine {
       trigger: 'achievement_unlock',
       effectiveness: 0.85,
     ));
-    
+
     return nudges;
   }
 
-  List<SuccessMetric> _createPersonalizedMetrics(List<String> goals, List<String> habits, double monthlyIncome) {
+  List<SuccessMetric> _createPersonalizedMetrics(
+      List<String> goals, List<String> habits, double monthlyIncome) {
     final metrics = <SuccessMetric>[];
-    
+
     // Goal-based metrics
     if (goals.contains('save_more')) {
       metrics.add(SuccessMetric(
@@ -1115,7 +1093,7 @@ class ProductionBudgetEngine {
         frequency: MetricFrequency.monthly,
       ));
     }
-    
+
     // Habit-based metrics
     if (habits.contains('impulse_buying')) {
       metrics.add(SuccessMetric(
@@ -1125,7 +1103,7 @@ class ProductionBudgetEngine {
         frequency: MetricFrequency.monthly,
       ));
     }
-    
+
     // Universal metrics
     metrics.add(SuccessMetric(
       name: 'Budget Adherence',
@@ -1133,15 +1111,16 @@ class ProductionBudgetEngine {
       unit: 'percentage',
       frequency: MetricFrequency.weekly,
     ));
-    
+
     return metrics;
   }
 
-  PersonalityProfile _generatePersonalityProfile(List<String> habits, List<String> goals, IncomeTier tier) {
+  PersonalityProfile _generatePersonalityProfile(
+      List<String> habits, List<String> goals, IncomeTier tier) {
     // Analyze habits and goals to determine personality
     final hasImpulsiveHabits = habits.any((h) => ['impulse_buying', 'no_budgeting'].contains(h));
     final hasConservativeGoals = goals.any((g) => ['save_more', 'budgeting'].contains(g));
-    
+
     if (hasConservativeGoals && !hasImpulsiveHabits) {
       return PersonalityProfile.conservative;
     } else if (hasImpulsiveHabits && !hasConservativeGoals) {
@@ -1157,7 +1136,7 @@ class ProductionBudgetEngine {
 
   DailyBudgetCalculation _getFallbackDailyBudget(double monthlyIncome) {
     final dailyBudget = (monthlyIncome * 0.7) / 30.0; // Simple 70% rule
-    
+
     return DailyBudgetCalculation(
       totalDailyBudget: dailyBudget,
       baseAmount: dailyBudget * 0.85,
@@ -1173,7 +1152,7 @@ class ProductionBudgetEngine {
     final tier = _incomeService.classifyIncome(monthlyIncome);
     final weights = _incomeService.getDefaultBudgetWeights(tier);
     final dailyAllocations = _convertToDailyAllocations(weights, monthlyIncome);
-    
+
     return CategoryBudgetAllocation(
       dailyAllocations: dailyAllocations,
       monthlyAllocations: weights.map((k, v) => MapEntry(k, monthlyIncome * v)),
@@ -1378,13 +1357,23 @@ class SuccessMetric {
 
 // Enums
 enum InsightType { warning, opportunity, achievement, information }
+
 enum InsightPriority { low, medium, high, critical }
+
 enum AdaptationFrequency { daily, weekly, monthly }
+
 enum RulePriority { low, medium, high, critical }
+
 enum RuleFrequency { immediate, daily, weekly, monthly }
+
 enum NudgeFrequency { daily, weekly, monthly }
+
 enum InterventionType { delayTactic, behaviorReplacement, environmentalChange, socialSupport }
+
 enum StrategyPriority { low, medium, high, critical }
+
 enum NudgeType { lossFraming, socialProof, progress, scarcity, commitment }
+
 enum MetricFrequency { daily, weekly, monthly }
+
 enum PersonalityProfile { conservative, balanced, aggressive }
