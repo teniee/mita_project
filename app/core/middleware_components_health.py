@@ -124,10 +124,10 @@ class SecurityMiddlewareHealthChecker:
         start_time = time.time()
         
         try:
-            from app.core.audit_logging import SecurityAuditLogger
-            
+            from app.core.audit_logging import AuditLogger
+
             # Test security audit logger
-            audit_logger = SecurityAuditLogger()
+            audit_logger = AuditLogger()
             
             # Test log writing performance
             log_start = time.time()

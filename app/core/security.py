@@ -1195,3 +1195,14 @@ class JWTSecurity:
             except Exception:
                 return False
         return False
+
+
+def get_user_tier_from_request(request) -> str:
+    """
+    Get user tier from request for rate limiting
+    Stub function - returns default tier for all requests
+    TODO: Implement proper tier detection based on user authentication/subscription
+    """
+    # Check if user is authenticated and has premium/admin status
+    # For now, return basic_user as default tier
+    return "basic_user"

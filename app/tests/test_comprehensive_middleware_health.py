@@ -315,7 +315,7 @@ class TestSecurityMiddlewareHealthChecker:
 
     async def test_security_event_logging_health(self, security_checker):
         """Test security event logging health check"""
-        with patch('app.core.audit_logging.SecurityAuditLogger') as mock_logger, \
+        with patch('app.core.audit_logging.AuditLogger') as mock_logger, \
              patch('os.path.exists') as mock_exists, \
              patch('os.access') as mock_access:
             

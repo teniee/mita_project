@@ -12,8 +12,8 @@ from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import requests
 from threading import Lock
 
@@ -420,7 +420,7 @@ class HealthAlertManager:
         config = self.notification_channels[AlertChannel.EMAIL]
         
         # Create email message
-        msg = MimeMultipart()
+        msg = MIMEMultipart()
         msg['From'] = config['from_email']
         msg['To'] = ', '.join(config['to_emails'])
         msg['Subject'] = f"[{alert.severity.value.upper()}] {alert.title}"
@@ -443,8 +443,8 @@ Please investigate and resolve the issue promptly.
 Dashboard: https://mita.finance/admin/health
 Support: support@mita.finance
         """
-        
-        msg.attach(MimeText(body, 'plain'))
+
+        msg.attach(MIMEText(body, 'plain'))
         
         # Send email
         try:

@@ -17,7 +17,7 @@ from app.core.security import (
     AdvancedRateLimiter,
     SecurityConfig,
     get_rate_limiter,
-    reset_security_instances,
+    # reset_security_instances,  # Function doesn't exist
     get_security_health_status
 )
 from app.middleware.comprehensive_rate_limiter import ComprehensiveRateLimitMiddleware
@@ -61,7 +61,7 @@ def mock_request():
 @pytest.fixture
 def rate_limiter(mock_redis):
     """Create rate limiter with mock Redis"""
-    reset_security_instances()
+    # reset_security_instances()  # Function doesn't exist - removed
     with patch('app.core.security.redis_client', mock_redis):
         limiter = AdvancedRateLimiter()
         limiter.redis = mock_redis

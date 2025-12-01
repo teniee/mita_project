@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from app.core.config import settings
 from app.core.rate_limiter import rate_limiter, RateLimitRule
 from app.core.jwt_security import validate_jwt_security_config
-from app.core.audit_logging import SecurityAuditLogger
+from app.core.audit_logging import AuditLogger
 
 logger = logging.getLogger(__name__)
 
@@ -415,8 +415,8 @@ class MiddlewareHealthMonitor:
         
         try:
             # Test audit logger functionality
-            test_logger = SecurityAuditLogger()
-            
+            test_logger = AuditLogger()
+
             # Test log writing
             log_start = time.time()
             await test_logger.log_security_event(

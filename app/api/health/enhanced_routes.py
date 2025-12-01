@@ -13,7 +13,7 @@ from app.core.circuit_breaker import get_circuit_breaker_manager
 from app.services.resilient_gpt_service import get_gpt_service
 from app.services.resilient_google_auth_service import get_google_auth_service
 from app.core.config import settings
-from app.core.async_session import get_async_session
+from app.core.async_session import get_async_db
 from app.core.middleware_health_monitor import middleware_health_monitor, HealthStatus
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 @router.get("/health/comprehensive", response_model=Dict[str, Any])
-async def get_comprehensive_health(session: AsyncSession = Depends(get_async_session)):
+async def get_comprehensive_health(session: AsyncSession = Depends(get_async_db)):
     """
     Get comprehensive system health status including middleware validation
     This endpoint is designed to detect issues that could cause 8-15+ second timeouts
@@ -148,7 +148,7 @@ async def get_comprehensive_health(session: AsyncSession = Depends(get_async_ses
 
 
 @router.get("/health/middleware", response_model=Dict[str, Any])
-async def get_middleware_health(session: AsyncSession = Depends(get_async_session)):
+async def get_middleware_health(session: AsyncSession = Depends(get_async_db)):
     """Get detailed middleware health status"""
     try:
         middleware_report = await middleware_health_monitor.run_comprehensive_middleware_health_check(session)
@@ -204,7 +204,7 @@ async def get_middleware_health(session: AsyncSession = Depends(get_async_sessio
 @router.get("/health/middleware/{component}", response_model=Dict[str, Any])
 async def get_component_health(
     component: str, 
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_db)
 ):
     """Get health status of a specific middleware component"""
     try:
@@ -254,7 +254,7 @@ async def get_component_health(
 
 
 @router.get("/health/performance", response_model=Dict[str, Any])
-async def get_performance_health(session: AsyncSession = Depends(get_async_session)):
+async def get_performance_health(session: AsyncSession = Depends(get_async_db)):
     """Get performance-focused health metrics to detect timeout risks"""
     try:
         middleware_report = await middleware_health_monitor.run_comprehensive_middleware_health_check(session)
@@ -389,7 +389,7 @@ async def get_health_history(
 
 
 @router.get("/health/alerts", response_model=Dict[str, Any])
-async def get_current_alerts(session: AsyncSession = Depends(get_async_session)):
+async def get_current_alerts(session: AsyncSession = Depends(get_async_db)):
     """Get current health alerts and critical issues"""
     try:
         middleware_report = await middleware_health_monitor.run_comprehensive_middleware_health_check(session)
@@ -458,7 +458,7 @@ async def get_current_alerts(session: AsyncSession = Depends(get_async_session))
 
 
 @router.get("/health/metrics", response_model=Dict[str, Any])
-async def get_health_metrics(session: AsyncSession = Depends(get_async_session)):
+async def get_health_metrics(session: AsyncSession = Depends(get_async_db)):
     """Get health metrics in Prometheus format for monitoring integration"""
     try:
         middleware_report = await middleware_health_monitor.run_comprehensive_middleware_health_check(session)
