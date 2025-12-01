@@ -10,7 +10,8 @@ void main() {
     });
 
     group('End-to-End Calendar Flow', () {
-      testWidgets('Full calendar workflow with different income tiers', (WidgetTester tester) async {
+      testWidgets('Full calendar workflow with different income tiers',
+          (WidgetTester tester) async {
         final incomeTestCases = [
           {'income': 2000.0, 'tier': 'low'},
           {'income': 5000.0, 'tier': 'mid'},
@@ -22,19 +23,22 @@ void main() {
           final tier = testCase['tier'] as String;
 
           // Generate calendar data for this income tier
-          final calendarData = await fallbackService.generateFallbackCalendarData(
+          final calendarData =
+              await fallbackService.generateFallbackCalendarData(
             monthlyIncome: income,
             location: 'Chicago, IL',
           );
 
           // Verify calendar structure
           expect(calendarData, isNotEmpty);
-          expect(calendarData.length, greaterThan(25)); // At least 25 days in month
+          expect(calendarData.length,
+              greaterThan(25)); // At least 25 days in month
 
           // Verify income-appropriate budgets
           final avgDailyBudget = calendarData
-              .map((day) => day['limit'] as int)
-              .reduce((a, b) => a + b) / calendarData.length;
+                  .map((day) => day['limit'] as int)
+                  .reduce((a, b) => a + b) /
+              calendarData.length;
 
           switch (tier) {
             case 'low':
@@ -51,11 +55,12 @@ void main() {
         }
       });
 
-      testWidgets('Calendar data consistency across different locations', (WidgetTester tester) async {
+      testWidgets('Calendar data consistency across different locations',
+          (WidgetTester tester) async {
         final locations = [
           'San Francisco, CA', // High cost
-          'Chicago, IL',       // Medium cost
-          'Rural Iowa',        // Low cost
+          'Chicago, IL', // Medium cost
+          'Rural Iowa', // Low cost
         ];
 
         const income = 5000.0;
@@ -63,7 +68,8 @@ void main() {
 
         // Generate calendar data for each location
         for (final location in locations) {
-          results[location] = await fallbackService.generateFallbackCalendarData(
+          results[location] =
+              await fallbackService.generateFallbackCalendarData(
             monthlyIncome: income,
             location: location,
           );
@@ -74,9 +80,15 @@ void main() {
         final chicagoData = results['Chicago, IL']!;
         final iowaData = results['Rural Iowa']!;
 
-        final sfAvgBudget = sfData.map((d) => d['limit'] as int).reduce((a, b) => a + b) / sfData.length;
-        final chicagoAvgBudget = chicagoData.map((d) => d['limit'] as int).reduce((a, b) => a + b) / chicagoData.length;
-        final iowaAvgBudget = iowaData.map((d) => d['limit'] as int).reduce((a, b) => a + b) / iowaData.length;
+        final sfAvgBudget =
+            sfData.map((d) => d['limit'] as int).reduce((a, b) => a + b) /
+                sfData.length;
+        final chicagoAvgBudget =
+            chicagoData.map((d) => d['limit'] as int).reduce((a, b) => a + b) /
+                chicagoData.length;
+        final iowaAvgBudget =
+            iowaData.map((d) => d['limit'] as int).reduce((a, b) => a + b) /
+                iowaData.length;
 
         // San Francisco should have highest budgets, Iowa lowest
         expect(sfAvgBudget, greaterThan(chicagoAvgBudget));
@@ -113,7 +125,8 @@ void main() {
           final categories = day['categories'] as Map<String, dynamic>;
           final dailyLimit = day['limit'] as int;
 
-          final categorySum = categories.values.fold<int>(0, (sum, amount) => sum + (amount as int));
+          final categorySum = categories.values
+              .fold<int>(0, (sum, amount) => sum + (amount as int));
 
           // Category sum should be close to daily limit (within reasonable variance)
           expect(categorySum, greaterThan(dailyLimit * 0.8));
@@ -134,7 +147,8 @@ void main() {
           final dayNumber = day['day'] as int;
           final status = day['status'] as String;
 
-          if (dayNumber < today) { // Past days
+          if (dayNumber < today) {
+            // Past days
             if (status == 'over') totalOverBudgetDays++;
             if (status == 'good') totalGoodDays++;
           }
@@ -142,7 +156,8 @@ void main() {
 
         // Realistic spending: most days should be good, some over budget
         expect(totalGoodDays, greaterThan(totalOverBudgetDays));
-        expect(totalOverBudgetDays, lessThan(today ~/ 3)); // Less than 1/3 over budget
+        expect(totalOverBudgetDays,
+            lessThan(today ~/ 3)); // Less than 1/3 over budget
       });
     });
 
@@ -151,7 +166,8 @@ void main() {
         final extremeIncomes = [0.01, 1.0, 100.0, 100000.0, 1000000.0];
 
         for (final income in extremeIncomes) {
-          final calendarData = await fallbackService.generateFallbackCalendarData(
+          final calendarData =
+              await fallbackService.generateFallbackCalendarData(
             monthlyIncome: income,
           );
 
@@ -168,7 +184,8 @@ void main() {
         final invalidLocations = [null, '', 'Invalid Location, XX', '12345'];
 
         for (final location in invalidLocations) {
-          final calendarData = await fallbackService.generateFallbackCalendarData(
+          final calendarData =
+              await fallbackService.generateFallbackCalendarData(
             monthlyIncome: 5000,
             location: location,
           );
@@ -190,7 +207,8 @@ void main() {
           final year = testMonth['year'] as int;
           final month = testMonth['month'] as int;
 
-          final calendarData = await fallbackService.generateFallbackCalendarData(
+          final calendarData =
+              await fallbackService.generateFallbackCalendarData(
             monthlyIncome: 5000,
             year: year,
             month: month,
@@ -266,20 +284,25 @@ void main() {
           monthlyIncome: 5000,
         );
 
-        final weekendDays = calendarData.where((day) => day['is_weekend'] == true);
-        final weekdayDays = calendarData.where((day) => day['is_weekend'] == false);
+        final weekendDays =
+            calendarData.where((day) => day['is_weekend'] == true);
+        final weekdayDays =
+            calendarData.where((day) => day['is_weekend'] == false);
 
         if (weekendDays.isNotEmpty && weekdayDays.isNotEmpty) {
           final avgWeekendBudget = weekendDays
-              .map((day) => day['limit'] as int)
-              .reduce((a, b) => a + b) / weekendDays.length;
+                  .map((day) => day['limit'] as int)
+                  .reduce((a, b) => a + b) /
+              weekendDays.length;
 
           final avgWeekdayBudget = weekdayDays
-              .map((day) => day['limit'] as int)
-              .reduce((a, b) => a + b) / weekdayDays.length;
+                  .map((day) => day['limit'] as int)
+                  .reduce((a, b) => a + b) /
+              weekdayDays.length;
 
           // Weekend budgets should be higher on average
-          expect(avgWeekendBudget, greaterThanOrEqualTo(avgWeekdayBudget * 0.9));
+          expect(
+              avgWeekendBudget, greaterThanOrEqualTo(avgWeekdayBudget * 0.9));
         }
       });
 
@@ -289,12 +312,14 @@ void main() {
         );
 
         final todayNumber = DateTime.now().day;
-        final todayData = calendarData.firstWhere((day) => day['day'] == todayNumber);
+        final todayData =
+            calendarData.firstWhere((day) => day['day'] == todayNumber);
 
         expect(todayData['is_today'], isTrue);
 
         // Only one day should be marked as today
-        final todayCount = calendarData.where((day) => day['is_today'] == true).length;
+        final todayCount =
+            calendarData.where((day) => day['is_today'] == true).length;
         expect(todayCount, equals(1));
       });
 
@@ -338,13 +363,22 @@ void main() {
         final sampleLocations = CalendarFallbackService.getSampleLocations();
 
         // Should include high-cost cities
-        expect(sampleLocations.any((loc) => loc.contains('San Francisco') || loc.contains('New York')), isTrue);
+        expect(
+            sampleLocations.any((loc) =>
+                loc.contains('San Francisco') || loc.contains('New York')),
+            isTrue);
 
         // Should include low-cost areas
-        expect(sampleLocations.any((loc) => loc.contains('Rural') || loc.contains('Iowa')), isTrue);
+        expect(
+            sampleLocations
+                .any((loc) => loc.contains('Rural') || loc.contains('Iowa')),
+            isTrue);
 
         // Should include medium-cost cities
-        expect(sampleLocations.any((loc) => loc.contains('Chicago') || loc.contains('Austin')), isTrue);
+        expect(
+            sampleLocations.any(
+                (loc) => loc.contains('Chicago') || loc.contains('Austin')),
+            isTrue);
       });
     });
   });

@@ -27,7 +27,8 @@ class FadeInListItem extends StatefulWidget {
   State<FadeInListItem> createState() => _FadeInListItemState();
 }
 
-class _FadeInListItemState extends State<FadeInListItem> with SingleTickerProviderStateMixin {
+class _FadeInListItemState extends State<FadeInListItem>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -108,7 +109,8 @@ class AnimatedCounter extends StatefulWidget {
   State<AnimatedCounter> createState() => _AnimatedCounterState();
 }
 
-class _AnimatedCounterState extends State<AnimatedCounter> with SingleTickerProviderStateMixin {
+class _AnimatedCounterState extends State<AnimatedCounter>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
   double _previousValue = 0;
@@ -191,7 +193,8 @@ class GradientCircularProgress extends StatefulWidget {
   });
 
   @override
-  State<GradientCircularProgress> createState() => _GradientCircularProgressState();
+  State<GradientCircularProgress> createState() =>
+      _GradientCircularProgressState();
 }
 
 class _GradientCircularProgressState extends State<GradientCircularProgress>
@@ -342,7 +345,8 @@ class BouncyButton extends StatefulWidget {
   State<BouncyButton> createState() => _BouncyButtonState();
 }
 
-class _BouncyButtonState extends State<BouncyButton> with SingleTickerProviderStateMixin {
+class _BouncyButtonState extends State<BouncyButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -423,7 +427,8 @@ class ShimmerLoading extends StatefulWidget {
   State<ShimmerLoading> createState() => _ShimmerLoadingState();
 }
 
-class _ShimmerLoadingState extends State<ShimmerLoading> with SingleTickerProviderStateMixin {
+class _ShimmerLoadingState extends State<ShimmerLoading>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -509,7 +514,8 @@ class EnhancedCard extends StatefulWidget {
   State<EnhancedCard> createState() => _EnhancedCardState();
 }
 
-class _EnhancedCardState extends State<EnhancedCard> with SingleTickerProviderStateMixin {
+class _EnhancedCardState extends State<EnhancedCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _elevationAnimation;
   late Animation<double> _scaleAnimation;
@@ -579,7 +585,8 @@ class _EnhancedCardState extends State<EnhancedCard> with SingleTickerProviderSt
               ),
               child: InkWell(
                 onTap: widget.onTap,
-                borderRadius: (widget.borderRadius ?? BorderRadius.circular(12)) as BorderRadius,
+                borderRadius: (widget.borderRadius ?? BorderRadius.circular(12))
+                    as BorderRadius,
                 child: Padding(
                   padding: widget.padding ?? const EdgeInsets.all(16),
                   child: widget.child,
@@ -661,7 +668,8 @@ class FABAction {
   });
 }
 
-class _AnimatedMultiFABState extends State<AnimatedMultiFAB> with SingleTickerProviderStateMixin {
+class _AnimatedMultiFABState extends State<AnimatedMultiFAB>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
   late Animation<double> _scaleAnimation;
@@ -864,11 +872,12 @@ class FinancialMilestoneAnimation extends StatefulWidget {
   });
 
   @override
-  State<FinancialMilestoneAnimation> createState() => _FinancialMilestoneAnimationState();
+  State<FinancialMilestoneAnimation> createState() =>
+      _FinancialMilestoneAnimationState();
 }
 
-class _FinancialMilestoneAnimationState extends State<FinancialMilestoneAnimation>
-    with TickerProviderStateMixin {
+class _FinancialMilestoneAnimationState
+    extends State<FinancialMilestoneAnimation> with TickerProviderStateMixin {
   late AnimationController _controller;
   late AnimationController _particleController;
   late Animation<double> _scaleAnimation;
@@ -988,7 +997,8 @@ class _CelebrationParticlesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (animation.value == 0) return;
 
-    final paint = Paint()..color = color.withValues(alpha: 1.0 - animation.value);
+    final paint = Paint()
+      ..color = color.withValues(alpha: 1.0 - animation.value);
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width * 0.3 * animation.value;
 

@@ -40,7 +40,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(
+        parent: _animationController, curve: Curves.easeOutCubic));
   }
 
   void _onIncomeChanged(String value) async {
@@ -98,7 +99,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
     }
   }
 
-  Future<void> _showIncomeConfirmationDialog(double income, IncomeTier tier) async {
+  Future<void> _showIncomeConfirmationDialog(
+      double income, IncomeTier tier) async {
     final tierName = _incomeService.getIncomeTierName(tier);
     final message = _incomeService.getOnboardingMessage(tier);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
@@ -240,7 +242,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                   ),
                   color: Colors.white,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 40, horizontal: 28),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -269,7 +272,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                           const SizedBox(height: 30),
                           TextFormField(
                             controller: _incomeController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             onChanged: _onIncomeChanged,
                             decoration: InputDecoration(
                               labelText: "Monthly Income (\$)",
@@ -278,7 +282,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: primaryColor, width: 2),
+                                borderSide:
+                                    BorderSide(color: primaryColor, width: 2),
                               ),
                               prefixIcon: Icon(
                                 Icons.attach_money,
@@ -289,7 +294,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                               if (value == null || value.isEmpty) {
                                 return "Please enter your income.";
                               }
-                              final income = double.tryParse(value.replaceAll(',', ''));
+                              final income =
+                                  double.tryParse(value.replaceAll(',', ''));
                               if (income == null || income <= 0) {
                                 return "Enter a positive amount.";
                               }
@@ -324,7 +330,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 18),
                                 textStyle: const TextStyle(
                                   fontFamily: AppTypography.fontHeading,
                                   fontWeight: FontWeight.w600,
@@ -356,9 +363,10 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                               children: [
                                 // Income tier display
                                 IncomeTierCard(
-                                  monthlyIncome:
-                                      double.tryParse(_incomeController.text.replaceAll(',', '')) ??
-                                          0.0,
+                                  monthlyIncome: double.tryParse(
+                                          _incomeController.text
+                                              .replaceAll(',', '')) ??
+                                      0.0,
                                   showDetails: true,
                                 ),
 
@@ -367,14 +375,16 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                                 // Quick preview of benefits
                                 Card(
                                   elevation: 2,
-                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(20),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
@@ -387,7 +397,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                                             Text(
                                               'What You\'ll Get',
                                               style: TextStyle(
-                                                fontFamily: AppTypography.fontHeading,
+                                                fontFamily:
+                                                    AppTypography.fontHeading,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 18,
                                                 color: primaryColor,
@@ -396,9 +407,12 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                                           ],
                                         ),
                                         const SizedBox(height: 16),
-                                        ..._getIncomeBasedBenefits(_currentTier!).map(
+                                        ..._getIncomeBasedBenefits(
+                                                _currentTier!)
+                                            .map(
                                           (benefit) => Padding(
-                                            padding: const EdgeInsets.only(bottom: 8),
+                                            padding: const EdgeInsets.only(
+                                                bottom: 8),
                                             child: Row(
                                               children: [
                                                 Icon(
@@ -411,7 +425,8 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
                                                   child: Text(
                                                     benefit,
                                                     style: const TextStyle(
-                                                      fontFamily: AppTypography.fontBody,
+                                                      fontFamily: AppTypography
+                                                          .fontBody,
                                                       fontSize: 14,
                                                     ),
                                                   ),

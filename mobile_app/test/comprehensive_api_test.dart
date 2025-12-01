@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 
 /// Comprehensive API Endpoint Testing
 /// Tests all the critical endpoints mentioned in the QA requirements
-/// 
+///
 /// This test file validates the fixed endpoints:
 /// - /api/cohort/insights
 /// - /api/insights/
@@ -17,7 +17,7 @@ void main() {
   group('MITA API Endpoint Tests', () {
     late Dio dio;
     const baseUrl = 'https://mita-docker-ready-project-manus.onrender.com/api';
-    
+
     setUpAll(() {
       dio = Dio(BaseOptions(
         baseUrl: baseUrl,
@@ -29,14 +29,12 @@ void main() {
     group('Authentication & User Management', () {
       test('POST /auth/login - Should handle login requests', () async {
         try {
-          final response = await dio.post('/auth/login', data: {
-            'email': 'test@example.com',
-            'password': 'testpassword'
-          });
-          
+          final response = await dio.post('/auth/login',
+              data: {'email': 'test@example.com', 'password': 'testpassword'});
+
           // Should return either valid auth response or proper error
           expect(response.statusCode, isIn([200, 400, 401, 404]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             // Should contain token fields for successful login
@@ -57,16 +55,16 @@ void main() {
       test('GET /users/me - Fixed duplicate path issue', () async {
         try {
           final response = await dio.get('/users/me');
-          
+
           // Should return 401 for unauthenticated, not 404 for wrong path
           expect(response.statusCode, isIn([200, 401]));
-          
         } catch (e) {
           if (e is DioException) {
             // Should be 401 (unauthorized) not 404 (not found)
             // 404 would indicate the old broken path /users/users/me
-            expect(e.response?.statusCode, isNot(404), 
-              reason: 'Endpoint should exist but require authentication, not return 404');
+            expect(e.response?.statusCode, isNot(404),
+                reason:
+                    'Endpoint should exist but require authentication, not return 404');
             expect(e.response?.statusCode, isIn([401, 500]));
           }
         }
@@ -77,10 +75,10 @@ void main() {
       test('GET /api/cohort/insights - Should return insights data', () async {
         try {
           final response = await dio.get('/cohort/insights');
-          
+
           // Should return 200 or 401, not 404
           expect(response.statusCode, isIn([200, 401]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             expect(response.data['data'], isNotNull);
@@ -94,12 +92,14 @@ void main() {
         }
       });
 
-      test('GET /api/cohort/income_classification - Should return income tier data', () async {
+      test(
+          'GET /api/cohort/income_classification - Should return income tier data',
+          () async {
         try {
           final response = await dio.get('/cohort/income_classification');
-          
+
           expect(response.statusCode, isIn([200, 401]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             final data = response.data['data'];
@@ -116,12 +116,13 @@ void main() {
         }
       });
 
-      test('GET /api/insights/ - Should work for premium and non-premium users', () async {
+      test('GET /api/insights/ - Should work for premium and non-premium users',
+          () async {
         try {
           final response = await dio.get('/insights/');
-          
+
           expect(response.statusCode, isIn([200, 401, 403]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
           } else if (response.statusCode == 403) {
@@ -141,9 +142,9 @@ void main() {
       test('GET /api/ai/latest-snapshots - Fixed duplicate path', () async {
         try {
           final response = await dio.get('/ai/latest-snapshots');
-          
+
           expect(response.statusCode, isIn([200, 401]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             final data = response.data['data'];
@@ -154,8 +155,9 @@ void main() {
         } catch (e) {
           if (e is DioException) {
             // Should NOT return 404 - the old broken path was /ai/ai/ai/latest-snapshots
-            expect(e.response?.statusCode, isNot(404), 
-              reason: 'Fixed path should exist, old /ai/ai/ai/latest-snapshots was broken');
+            expect(e.response?.statusCode, isNot(404),
+                reason:
+                    'Fixed path should exist, old /ai/ai/ai/latest-snapshots was broken');
             expect(e.response?.statusCode, isIn([401, 500]));
           }
         }
@@ -164,9 +166,9 @@ void main() {
       test('GET /api/analytics/monthly - Fixed duplicate path', () async {
         try {
           final response = await dio.get('/analytics/monthly');
-          
+
           expect(response.statusCode, isIn([200, 401]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             expect(response.data['data'], isNotNull);
@@ -175,7 +177,8 @@ void main() {
           if (e is DioException) {
             // Should NOT return 404 - old broken path was /analytics/analytics/monthly
             expect(e.response?.statusCode, isNot(404),
-              reason: 'Fixed path should exist, old /analytics/analytics/monthly was broken');
+                reason:
+                    'Fixed path should exist, old /analytics/analytics/monthly was broken');
             expect(e.response?.statusCode, isIn([401, 500]));
           }
         }
@@ -183,7 +186,9 @@ void main() {
     });
 
     group('Calendar & Budget Endpoints', () {
-      test('POST /api/calendar/shell - Should return calendar data without 500 errors', () async {
+      test(
+          'POST /api/calendar/shell - Should return calendar data without 500 errors',
+          () async {
         try {
           // Test with realistic shell configuration
           final shellConfig = {
@@ -206,11 +211,11 @@ void main() {
           };
 
           final response = await dio.post('/calendar/shell', data: shellConfig);
-          
+
           // Should not return 500 internal server error
           expect(response.statusCode, isNot(500));
           expect(response.statusCode, isIn([200, 400, 401]));
-          
+
           if (response.statusCode == 200) {
             expect(response.data, isA<Map<String, dynamic>>());
             expect(response.data['data'], isNotNull);
@@ -223,7 +228,7 @@ void main() {
           if (e is DioException) {
             // Should NOT return 500 - that was the bug being fixed
             expect(e.response?.statusCode, isNot(500),
-              reason: 'Calendar endpoint should not return 500 errors');
+                reason: 'Calendar endpoint should not return 500 errors');
             expect(e.response?.statusCode, isIn([400, 401, 422]));
           }
         }
@@ -236,7 +241,7 @@ void main() {
           '/cohort/insights',
           '/insights/',
           '/ai/latest-snapshots',
-          '/cohort/income_classification', 
+          '/cohort/income_classification',
           '/users/me',
           '/analytics/monthly',
         ];
@@ -244,15 +249,15 @@ void main() {
         for (final endpoint in endpoints) {
           try {
             final response = await dio.get(endpoint);
-            
+
             // Should return valid JSON
             expect(response.data, isA<Map<String, dynamic>>());
-            
           } catch (e) {
             if (e is DioException && e.response != null) {
               // Even error responses should be valid JSON
-              expect(e.response!.data, isA<Map<String, dynamic>>(), 
-                reason: 'Endpoint $endpoint should return JSON even for errors');
+              expect(e.response!.data, isA<Map<String, dynamic>>(),
+                  reason:
+                      'Endpoint $endpoint should return JSON even for errors');
             }
           }
         }
@@ -261,9 +266,10 @@ void main() {
       test('Endpoints should have consistent error response format', () async {
         try {
           // Test with invalid auth token
-          final response = await dio.get('/users/me', 
-            options: Options(headers: {'Authorization': 'Bearer invalid-token'}));
-          
+          final response = await dio.get('/users/me',
+              options:
+                  Options(headers: {'Authorization': 'Bearer invalid-token'}));
+
           if (response.statusCode == 401) {
             expect(response.data, isA<Map<String, dynamic>>());
             // Should have consistent error structure
@@ -280,18 +286,18 @@ void main() {
     group('Performance & Reliability Tests', () {
       test('Endpoints should respond within reasonable time', () async {
         final stopwatch = Stopwatch()..start();
-        
+
         try {
           await dio.get('/cohort/insights');
         } catch (e) {
           // Error is fine, we're testing response time
         }
-        
+
         stopwatch.stop();
-        
+
         // Should respond within 10 seconds (network included)
         expect(stopwatch.elapsedMilliseconds, lessThan(10000),
-          reason: 'API endpoints should respond quickly');
+            reason: 'API endpoints should respond quickly');
       });
 
       test('Calendar endpoint should handle invalid data gracefully', () async {
@@ -301,15 +307,15 @@ void main() {
             'invalid': 'data',
             'income': 'not-a-number',
           });
-          
+
           // Should return 400 bad request, not 500 internal error
           expect(response.statusCode, isIn([400, 422]));
-          
         } catch (e) {
           if (e is DioException) {
             // Should be client error (400-499), not server error (500-599)
             expect(e.response?.statusCode, lessThan(500),
-              reason: 'Invalid input should return client error, not server error');
+                reason:
+                    'Invalid input should return client error, not server error');
           }
         }
       });

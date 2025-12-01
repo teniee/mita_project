@@ -47,15 +47,16 @@ class SmartGoalEngine {
     List<FinancialGoal>? existingGoals,
   }) {
     try {
-      logInfo('Optimizing goal: $title, target: \$${targetAmount.toStringAsFixed(2)}');
+      logInfo(
+          'Optimizing goal: $title, target: \$${targetAmount.toStringAsFixed(2)}');
 
       // Step 1: Validate and enhance SMART criteria
       final smartValidation = _validateAndEnhanceSMARTCriteria(
           title, targetAmount, targetDate, category, monthlyIncome, incomeTier);
 
       // Step 2: Apply behavioral optimizations
-      final behavioralOptimization =
-          _applyBehavioralGoalOptimizations(smartValidation, behavioralProfile, incomeTier);
+      final behavioralOptimization = _applyBehavioralGoalOptimizations(
+          smartValidation, behavioralProfile, incomeTier);
 
       // Step 3: Calculate optimal contribution strategy
       final contributionStrategy = _calculateOptimalContributionStrategy(
@@ -66,12 +67,20 @@ class SmartGoalEngine {
           currentAmount);
 
       // Step 4: Create adaptive milestones
-      final milestones = _createAdaptiveMilestones(behavioralOptimization.targetAmount,
-          behavioralOptimization.targetDate, contributionStrategy, incomeTier, currentAmount);
+      final milestones = _createAdaptiveMilestones(
+          behavioralOptimization.targetAmount,
+          behavioralOptimization.targetDate,
+          contributionStrategy,
+          incomeTier,
+          currentAmount);
 
       // Step 5: Assess goal feasibility and risks
       final feasibilityAssessment = _assessGoalFeasibility(
-          behavioralOptimization, contributionStrategy, monthlyIncome, incomeTier, existingGoals);
+          behavioralOptimization,
+          contributionStrategy,
+          monthlyIncome,
+          incomeTier,
+          existingGoals);
 
       // Step 6: Generate motivation strategy
       final motivationStrategy = _generateMotivationStrategy(
@@ -96,12 +105,14 @@ class SmartGoalEngine {
         feasibilityScore: feasibilityAssessment.score,
         riskFactors: feasibilityAssessment.riskFactors,
         motivationStrategy: motivationStrategy,
-        behavioralInsights: _generateGoalBehavioralInsights(behavioralOptimization, incomeTier),
+        behavioralInsights:
+            _generateGoalBehavioralInsights(behavioralOptimization, incomeTier),
         recommendations: feasibilityAssessment.recommendations,
       );
     } catch (e, stackTrace) {
       logError('Error optimizing goal: $e', error: e, stackTrace: stackTrace);
-      return _createFallbackOptimizedGoal(title, targetAmount, targetDate, category, monthlyIncome);
+      return _createFallbackOptimizedGoal(
+          title, targetAmount, targetDate, category, monthlyIncome);
     }
   }
 
@@ -128,27 +139,28 @@ class SmartGoalEngine {
       logInfo('Analyzing progress for goal: ${goal.title}');
 
       // Calculate current progress metrics
-      final progressMetrics = _calculateProgressMetrics(goal, contributionHistory);
+      final progressMetrics =
+          _calculateProgressMetrics(goal, contributionHistory);
 
       // Analyze contribution patterns
       final contributionAnalysis =
           _analyzeContributionPatterns(contributionHistory, goal, incomeTier);
 
       // Predict goal completion
-      final completionPrediction =
-          _predictGoalCompletion(goal, progressMetrics, contributionAnalysis, incomeTier);
+      final completionPrediction = _predictGoalCompletion(
+          goal, progressMetrics, contributionAnalysis, incomeTier);
 
       // Identify optimization opportunities
-      final optimizationOpportunities =
-          _identifyProgressOptimizations(goal, progressMetrics, monthlyIncome, incomeTier);
+      final optimizationOpportunities = _identifyProgressOptimizations(
+          goal, progressMetrics, monthlyIncome, incomeTier);
 
       // Generate adaptive recommendations
-      final recommendations = _generateProgressRecommendations(
-          goal, progressMetrics, completionPrediction, incomeTier, behavioralProfile);
+      final recommendations = _generateProgressRecommendations(goal,
+          progressMetrics, completionPrediction, incomeTier, behavioralProfile);
 
       // Update motivation strategy based on progress
-      final motivationUpdate =
-          _updateMotivationStrategy(goal, progressMetrics, incomeTier, behavioralProfile);
+      final motivationUpdate = _updateMotivationStrategy(
+          goal, progressMetrics, incomeTier, behavioralProfile);
 
       return GoalProgressAnalysis(
         goal: goal,
@@ -158,11 +170,14 @@ class SmartGoalEngine {
         optimizationOpportunities: optimizationOpportunities,
         recommendations: recommendations,
         motivationUpdate: motivationUpdate,
-        nextMilestone: _getNextMilestone(goal, progressMetrics.progressPercentage),
-        behavioralInsights: _generateProgressBehavioralInsights(progressMetrics, incomeTier),
+        nextMilestone:
+            _getNextMilestone(goal, progressMetrics.progressPercentage),
+        behavioralInsights:
+            _generateProgressBehavioralInsights(progressMetrics, incomeTier),
       );
     } catch (e, stackTrace) {
-      logError('Error analyzing goal progress: $e', error: e, stackTrace: stackTrace);
+      logError('Error analyzing goal progress: $e',
+          error: e, stackTrace: stackTrace);
       return _createFallbackProgressAnalysis(goal);
     }
   }
@@ -192,18 +207,20 @@ class SmartGoalEngine {
       final conflicts = _identifyGoalConflicts(goals, monthlyIncome);
 
       // Analyze goal priorities
-      final priorities = _analyzeGoalPriorities(goals, incomeTier, behavioralProfile);
+      final priorities =
+          _analyzeGoalPriorities(goals, incomeTier, behavioralProfile);
 
       // Calculate optimal resource allocation
-      final allocation =
-          _calculateOptimalGoalAllocation(goals, monthlyIncome, incomeTier, priorities);
+      final allocation = _calculateOptimalGoalAllocation(
+          goals, monthlyIncome, incomeTier, priorities);
 
       // Generate compromise solutions
-      final compromises = _generateCompromiseSolutions(conflicts, allocation, incomeTier);
+      final compromises =
+          _generateCompromiseSolutions(conflicts, allocation, incomeTier);
 
       // Create implementation plan
-      final implementationPlan =
-          _createGoalImplementationPlan(goals, allocation, compromises, incomeTier);
+      final implementationPlan = _createGoalImplementationPlan(
+          goals, allocation, compromises, incomeTier);
 
       return GoalConflictResolution(
         conflicts: conflicts,
@@ -211,11 +228,12 @@ class SmartGoalEngine {
         optimalAllocation: allocation,
         compromises: compromises,
         implementationPlan: implementationPlan,
-        recommendations:
-            _generateConflictResolutionRecommendations(conflicts, compromises, incomeTier),
+        recommendations: _generateConflictResolutionRecommendations(
+            conflicts, compromises, incomeTier),
       );
     } catch (e, stackTrace) {
-      logError('Error resolving goal conflicts: $e', error: e, stackTrace: stackTrace);
+      logError('Error resolving goal conflicts: $e',
+          error: e, stackTrace: stackTrace);
       return GoalConflictResolution(
         conflicts: [],
         priorities: {},
@@ -242,26 +260,32 @@ class SmartGoalEngine {
 
     try {
       // Behavioral pattern insights
-      insights.addAll(_generateBehavioralPatternInsights(goal, progressAnalysis, incomeTier));
+      insights.addAll(_generateBehavioralPatternInsights(
+          goal, progressAnalysis, incomeTier));
 
       // Motivation optimization insights
-      insights.addAll(_generateMotivationOptimizationInsights(goal, incomeTier, behavioralProfile));
+      insights.addAll(_generateMotivationOptimizationInsights(
+          goal, incomeTier, behavioralProfile));
 
       // Habit formation coaching
-      insights.addAll(_generateHabitFormationCoaching(goal, progressAnalysis, incomeTier));
+      insights.addAll(
+          _generateHabitFormationCoaching(goal, progressAnalysis, incomeTier));
 
       // Obstacle identification and solutions
-      insights.addAll(_generateObstacleCoaching(goal, progressAnalysis, incomeTier));
+      insights.addAll(
+          _generateObstacleCoaching(goal, progressAnalysis, incomeTier));
 
       // Success strategy refinement
-      insights.addAll(_generateSuccessStrategyCoaching(goal, progressAnalysis, incomeTier));
+      insights.addAll(
+          _generateSuccessStrategyCoaching(goal, progressAnalysis, incomeTier));
 
       // Sort by relevance and impact
       insights.sort((a, b) => b.impactScore.compareTo(a.impactScore));
 
       return insights.take(5).toList(); // Return top 5 most impactful insights
     } catch (e, stackTrace) {
-      logError('Error generating goal coaching: $e', error: e, stackTrace: stackTrace);
+      logError('Error generating goal coaching: $e',
+          error: e, stackTrace: stackTrace);
       return [];
     }
   }
@@ -270,32 +294,38 @@ class SmartGoalEngine {
   // PRIVATE HELPER METHODS
   // ===========================================================================
 
-  SMARTGoalValidation _validateAndEnhanceSMARTCriteria(String title, double targetAmount,
-      DateTime targetDate, String category, double monthlyIncome, IncomeTier incomeTier) {
+  SMARTGoalValidation _validateAndEnhanceSMARTCriteria(
+      String title,
+      double targetAmount,
+      DateTime targetDate,
+      String category,
+      double monthlyIncome,
+      IncomeTier incomeTier) {
     final validation = SMARTGoalValidation();
 
     // Specific: Enhance title with specific details
     validation.title = _enhanceGoalSpecificity(title, targetAmount, category);
 
     // Measurable: Ensure amount is appropriate for income tier
-    validation.targetAmount =
-        _optimizeTargetAmount(targetAmount, monthlyIncome, incomeTier, category);
+    validation.targetAmount = _optimizeTargetAmount(
+        targetAmount, monthlyIncome, incomeTier, category);
 
     // Achievable: Validate feasibility
-    validation.isAchievable =
-        _validateGoalAchievability(validation.targetAmount, monthlyIncome, incomeTier);
+    validation.isAchievable = _validateGoalAchievability(
+        validation.targetAmount, monthlyIncome, incomeTier);
 
     // Relevant: Ensure goal aligns with tier priorities
     validation.isRelevant = _validateGoalRelevance(category, incomeTier);
 
     // Time-bound: Optimize timeline
-    validation.targetDate =
-        _optimizeGoalTimeline(targetDate, validation.targetAmount, monthlyIncome, incomeTier);
+    validation.targetDate = _optimizeGoalTimeline(
+        targetDate, validation.targetAmount, monthlyIncome, incomeTier);
 
     return validation;
   }
 
-  String _enhanceGoalSpecificity(String title, double targetAmount, String category) {
+  String _enhanceGoalSpecificity(
+      String title, double targetAmount, String category) {
     if (title.toLowerCase().contains('emergency fund')) {
       return 'Build \$${targetAmount.toStringAsFixed(0)} Emergency Fund for 3-6 months expenses';
     } else if (title.toLowerCase().contains('save')) {
@@ -333,7 +363,8 @@ class SmartGoalEngine {
 
     // Use dynamic timeline based on age and income instead of hardcoded 5 years
     try {
-      final maxTimelineYears = await ThresholdHelper.getMaxGoalTimelineYears(monthlyIncome, age);
+      final maxTimelineYears =
+          await ThresholdHelper.getMaxGoalTimelineYears(monthlyIncome, age);
       return yearsNeeded <= maxTimelineYears;
     } catch (e) {
       LoggingService.logError('Failed to get dynamic timeline: $e');
@@ -351,7 +382,8 @@ class SmartGoalEngine {
     // Use dynamic thresholds instead of hardcoded tier-based rates
     try {
       final dynamicService = DynamicThresholdService();
-      final savingsRate = await dynamicService.getSavingsRateTarget(monthlyIncome);
+      final savingsRate =
+          await dynamicService.getSavingsRateTarget(monthlyIncome);
       return (savingsRate * 1.5).clamp(0.05, 0.50); // 150% of target as maximum
     } catch (e) {
       LoggingService.logError('Failed to get dynamic savings rate: $e');
@@ -384,13 +416,14 @@ class SmartGoalEngine {
     }
   }
 
-  DateTime _optimizeGoalTimeline(
-      DateTime targetDate, double targetAmount, double monthlyIncome, IncomeTier tier) {
+  DateTime _optimizeGoalTimeline(DateTime targetDate, double targetAmount,
+      double monthlyIncome, IncomeTier tier) {
     final now = DateTime.now();
     final monthsToTarget = targetDate.difference(now).inDays / 30.44;
 
     final maxSavingsRate = await _getMaxSavingsRate(monthlyIncome);
-    final availableMonthly = monthlyIncome * maxSavingsRate * 0.8; // 80% of max savings rate
+    final availableMonthly =
+        monthlyIncome * maxSavingsRate * 0.8; // 80% of max savings rate
     final optimalMonths = (targetAmount / availableMonthly).ceil();
 
     // If target date is too aggressive, extend it
@@ -401,10 +434,15 @@ class SmartGoalEngine {
     return targetDate;
   }
 
-  ContributionStrategy _calculateOptimalContributionStrategy(double targetAmount,
-      DateTime targetDate, double monthlyIncome, IncomeTier tier, double currentAmount) {
+  ContributionStrategy _calculateOptimalContributionStrategy(
+      double targetAmount,
+      DateTime targetDate,
+      double monthlyIncome,
+      IncomeTier tier,
+      double currentAmount) {
     final remainingAmount = targetAmount - currentAmount;
-    final monthsRemaining = targetDate.difference(DateTime.now()).inDays / 30.44;
+    final monthsRemaining =
+        targetDate.difference(DateTime.now()).inDays / 30.44;
 
     final baseMonthlyContribution = remainingAmount / monthsRemaining;
     final tierMultiplier = _getTierContributionMultiplier(tier);
@@ -415,7 +453,8 @@ class SmartGoalEngine {
       weeklyContribution: optimizedContribution / 4.33,
       dailyContribution: optimizedContribution / 30,
       contributionFrequency: _getOptimalContributionFrequency(tier),
-      automationRecommended: tier != IncomeTier.low, // Low tier might prefer manual control
+      automationRecommended:
+          tier != IncomeTier.low, // Low tier might prefer manual control
     );
   }
 
@@ -449,8 +488,12 @@ class SmartGoalEngine {
     }
   }
 
-  List<GoalMilestone> _createAdaptiveMilestones(double targetAmount, DateTime targetDate,
-      ContributionStrategy strategy, IncomeTier tier, double currentAmount) {
+  List<GoalMilestone> _createAdaptiveMilestones(
+      double targetAmount,
+      DateTime targetDate,
+      ContributionStrategy strategy,
+      IncomeTier tier,
+      double currentAmount) {
     final milestones = <GoalMilestone>[];
     final remainingAmount = targetAmount - currentAmount;
     final milestoneCount = _getMilestoneCount(tier, targetAmount);
@@ -486,7 +529,8 @@ class SmartGoalEngine {
     return now.add(Duration(days: milestoneDay));
   }
 
-  String _generateMilestoneTitle(double percentage, double amount, IncomeTier tier) {
+  String _generateMilestoneTitle(
+      double percentage, double amount, IncomeTier tier) {
     final percentStr = (percentage * 100).round();
     final amountStr = amount.toStringAsFixed(0);
 
@@ -530,18 +574,21 @@ class SmartGoalEngine {
       assessment.score = 0.5; // Challenging but possible
     } else {
       assessment.score = 0.2; // Very challenging
-      assessment.riskFactors.add('Monthly contribution exceeds recommended savings rate');
+      assessment.riskFactors
+          .add('Monthly contribution exceeds recommended savings rate');
     }
 
     // Check conflicts with existing goals
     if (existingGoals != null && existingGoals.isNotEmpty) {
-      final totalExistingContributions =
-          existingGoals.fold<double>(0, (sum, goal) => sum + goal.monthlyContribution);
-      final totalContributions = totalExistingContributions + strategy.monthlyContribution;
+      final totalExistingContributions = existingGoals.fold<double>(
+          0, (sum, goal) => sum + goal.monthlyContribution);
+      final totalContributions =
+          totalExistingContributions + strategy.monthlyContribution;
 
       if (totalContributions > monthlyIncome * maxSafePercentage) {
         assessment.score = math.min(assessment.score, 0.3);
-        assessment.riskFactors.add('Total goal contributions exceed savings capacity');
+        assessment.riskFactors
+            .add('Total goal contributions exceed savings capacity');
       }
     }
 
@@ -549,14 +596,15 @@ class SmartGoalEngine {
     if (assessment.score < 0.5) {
       assessment.recommendations
           .add('Consider extending the timeline or reducing the target amount');
-      assessment.recommendations.add('Review existing goals for potential adjustments');
+      assessment.recommendations
+          .add('Review existing goals for potential adjustments');
     }
 
     return assessment;
   }
 
-  OptimizedGoal _createFallbackOptimizedGoal(String title, double targetAmount, DateTime targetDate,
-      String category, double monthlyIncome) {
+  OptimizedGoal _createFallbackOptimizedGoal(String title, double targetAmount,
+      DateTime targetDate, String category, double monthlyIncome) {
     return OptimizedGoal(
       originalGoal: FinancialGoal(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -581,7 +629,8 @@ class SmartGoalEngine {
       milestones: [],
       feasibilityScore: 0.5,
       riskFactors: ['Goal optimization failed - using safe defaults'],
-      motivationStrategy: MotivationStrategy(type: 'basic', frequency: 'weekly', messages: []),
+      motivationStrategy:
+          MotivationStrategy(type: 'basic', frequency: 'weekly', messages: []),
       behavioralInsights: [],
       recommendations: ['Review goal parameters and try optimization again'],
     );
@@ -592,20 +641,28 @@ class SmartGoalEngine {
   // ===========================================================================
 
   SMARTGoalValidation _applyBehavioralGoalOptimizations(
-      SMARTGoalValidation validation, BehavioralProfile? profile, IncomeTier tier) {
+      SMARTGoalValidation validation,
+      BehavioralProfile? profile,
+      IncomeTier tier) {
     return validation;
   }
 
-  MotivationStrategy _generateMotivationStrategy(SMARTGoalValidation goal,
-      List<GoalMilestone> milestones, IncomeTier tier, BehavioralProfile? profile) {
-    return MotivationStrategy(type: 'basic', frequency: 'weekly', messages: ['Stay motivated!']);
+  MotivationStrategy _generateMotivationStrategy(
+      SMARTGoalValidation goal,
+      List<GoalMilestone> milestones,
+      IncomeTier tier,
+      BehavioralProfile? profile) {
+    return MotivationStrategy(
+        type: 'basic', frequency: 'weekly', messages: ['Stay motivated!']);
   }
 
-  List<String> _generateGoalBehavioralInsights(SMARTGoalValidation goal, IncomeTier tier) {
+  List<String> _generateGoalBehavioralInsights(
+      SMARTGoalValidation goal, IncomeTier tier) {
     return ['Goal is appropriate for your income level'];
   }
 
-  ProgressMetrics _calculateProgressMetrics(FinancialGoal goal, Map<DateTime, double>? history) {
+  ProgressMetrics _calculateProgressMetrics(
+      FinancialGoal goal, Map<DateTime, double>? history) {
     final progress = goal.currentAmount / goal.targetAmount;
     return ProgressMetrics(
       progressPercentage: progress,
@@ -625,8 +682,8 @@ class SmartGoalEngine {
     );
   }
 
-  CompletionPrediction _predictGoalCompletion(
-      FinancialGoal goal, ProgressMetrics metrics, ContributionAnalysis analysis, IncomeTier tier) {
+  CompletionPrediction _predictGoalCompletion(FinancialGoal goal,
+      ProgressMetrics metrics, ContributionAnalysis analysis, IncomeTier tier) {
     return CompletionPrediction(
       predictedCompletionDate: goal.targetDate,
       confidence: 0.7,
@@ -634,22 +691,28 @@ class SmartGoalEngine {
     );
   }
 
-  List<String> _identifyProgressOptimizations(
-      FinancialGoal goal, ProgressMetrics metrics, double income, IncomeTier tier) {
+  List<String> _identifyProgressOptimizations(FinancialGoal goal,
+      ProgressMetrics metrics, double income, IncomeTier tier) {
     return ['Consider increasing monthly contribution'];
   }
 
-  List<String> _generateProgressRecommendations(FinancialGoal goal, ProgressMetrics metrics,
-      CompletionPrediction prediction, IncomeTier tier, BehavioralProfile? profile) {
+  List<String> _generateProgressRecommendations(
+      FinancialGoal goal,
+      ProgressMetrics metrics,
+      CompletionPrediction prediction,
+      IncomeTier tier,
+      BehavioralProfile? profile) {
     return ['Stay on track with regular contributions'];
   }
 
-  MotivationStrategy _updateMotivationStrategy(
-      FinancialGoal goal, ProgressMetrics metrics, IncomeTier tier, BehavioralProfile? profile) {
-    return MotivationStrategy(type: 'progress', frequency: 'weekly', messages: ['Great progress!']);
+  MotivationStrategy _updateMotivationStrategy(FinancialGoal goal,
+      ProgressMetrics metrics, IncomeTier tier, BehavioralProfile? profile) {
+    return MotivationStrategy(
+        type: 'progress', frequency: 'weekly', messages: ['Great progress!']);
   }
 
-  GoalMilestone? _getNextMilestone(FinancialGoal goal, double progressPercentage) {
+  GoalMilestone? _getNextMilestone(
+      FinancialGoal goal, double progressPercentage) {
     if (progressPercentage < 0.25) {
       return GoalMilestone(
         id: '1',
@@ -663,7 +726,8 @@ class SmartGoalEngine {
     return null;
   }
 
-  List<String> _generateProgressBehavioralInsights(ProgressMetrics metrics, IncomeTier tier) {
+  List<String> _generateProgressBehavioralInsights(
+      ProgressMetrics metrics, IncomeTier tier) {
     return ['Your progress aligns with typical ${tier.name} earner patterns'];
   }
 
@@ -689,12 +753,14 @@ class SmartGoalEngine {
       ),
       optimizationOpportunities: [],
       recommendations: [],
-      motivationUpdate: MotivationStrategy(type: 'basic', frequency: 'weekly', messages: []),
+      motivationUpdate:
+          MotivationStrategy(type: 'basic', frequency: 'weekly', messages: []),
       behavioralInsights: [],
     );
   }
 
-  List<String> _identifyGoalConflicts(List<FinancialGoal> goals, double income) {
+  List<String> _identifyGoalConflicts(
+      List<FinancialGoal> goals, double income) {
     return [];
   }
 
@@ -703,8 +769,8 @@ class SmartGoalEngine {
     return {};
   }
 
-  Map<String, double> _calculateOptimalGoalAllocation(
-      List<FinancialGoal> goals, double income, IncomeTier tier, Map<String, double> priorities) {
+  Map<String, double> _calculateOptimalGoalAllocation(List<FinancialGoal> goals,
+      double income, IncomeTier tier, Map<String, double> priorities) {
     return {};
   }
 
@@ -713,8 +779,11 @@ class SmartGoalEngine {
     return [];
   }
 
-  List<String> _createGoalImplementationPlan(List<FinancialGoal> goals,
-      Map<String, double> allocation, List<String> compromises, IncomeTier tier) {
+  List<String> _createGoalImplementationPlan(
+      List<FinancialGoal> goals,
+      Map<String, double> allocation,
+      List<String> compromises,
+      IncomeTier tier) {
     return [];
   }
 

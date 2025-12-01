@@ -23,12 +23,14 @@ class AddExpenseScreen extends StatefulWidget {
   State<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProviderStateMixin {
+class _AddExpenseScreenState extends State<AddExpenseScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final ApiService _apiService = ApiService();
-  final AccessibilityService _accessibilityService = AccessibilityService.instance;
+  final AccessibilityService _accessibilityService =
+      AccessibilityService.instance;
 
   // Focus nodes for proper navigation
   final FocusNode _amountFocusNode = FocusNode();
@@ -59,13 +61,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       'name': 'Food & Dining',
       'icon': Icons.restaurant,
       'color': Colors.orange,
-      'subcategories': ['Restaurants', 'Groceries', 'Fast Food', 'Coffee', 'Delivery']
+      'subcategories': [
+        'Restaurants',
+        'Groceries',
+        'Fast Food',
+        'Coffee',
+        'Delivery'
+      ]
     },
     {
       'name': 'Transportation',
       'icon': Icons.directions_car,
       'color': Colors.blue,
-      'subcategories': ['Gas', 'Public Transit', 'Taxi/Uber', 'Parking', 'Car Maintenance']
+      'subcategories': [
+        'Gas',
+        'Public Transit',
+        'Taxi/Uber',
+        'Parking',
+        'Car Maintenance'
+      ]
     },
     {
       'name': 'Entertainment',
@@ -89,13 +103,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       'name': 'Bills & Utilities',
       'icon': Icons.receipt_long,
       'color': Colors.red,
-      'subcategories': ['Electricity', 'Water', 'Internet', 'Phone', 'Insurance']
+      'subcategories': [
+        'Electricity',
+        'Water',
+        'Internet',
+        'Phone',
+        'Insurance'
+      ]
     },
     {
       'name': 'Education',
       'icon': Icons.school,
       'color': Colors.indigo,
-      'subcategories': ['Courses', 'Books', 'Supplies', 'Tuition', 'Certifications']
+      'subcategories': [
+        'Courses',
+        'Books',
+        'Supplies',
+        'Tuition',
+        'Certifications'
+      ]
     },
     {
       'name': 'Travel',
@@ -134,7 +160,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _accessibilityService.announceNavigation(
         'Add Expense Screen',
-        description: 'Record a new financial transaction with amount, category, and description',
+        description:
+            'Record a new financial transaction with amount, category, and description',
       );
 
       // Set initial focus to amount field for screen readers
@@ -157,7 +184,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       vsync: this,
     );
     _submitAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _submitAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+          parent: _submitAnimationController, curve: Curves.easeInOut),
     );
 
     _successAnimationController = AnimationController(
@@ -165,7 +193,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       vsync: this,
     );
     _successAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+          parent: _successAnimationController, curve: Curves.elasticOut),
     );
   }
 
@@ -238,7 +267,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       _action = category;
       if (suggestion['confidence'] != null) {
         final confidencePercent = (confidence * 100).toInt();
-        final message = 'AI suggestion applied with $confidencePercent% confidence';
+        final message =
+            'AI suggestion applied with $confidencePercent% confidence';
 
         // Announce to screen readers
         _accessibilityService.announceToScreenReader(
@@ -391,19 +421,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
       category: _action!,
       description: _description,
       spentAt: _selectedDate,
-      notes: _selectedSubcategory != null ? 'Subcategory: $_selectedSubcategory' : null,
+      notes: _selectedSubcategory != null
+          ? 'Subcategory: $_selectedSubcategory'
+          : null,
     );
 
     try {
       // Use TransactionProvider for centralized state management
       final transactionProvider = context.read<TransactionProvider>();
-      final transaction = await transactionProvider.createTransaction(transactionInput);
+      final transaction =
+          await transactionProvider.createTransaction(transactionInput);
 
       if (transaction != null) {
         // Show success feedback with animation
         await _showSuccessFeedback();
 
-        logInfo('Expense submitted via TransactionProvider successfully', tag: 'ADD_EXPENSE');
+        logInfo('Expense submitted via TransactionProvider successfully',
+            tag: 'ADD_EXPENSE');
 
         // Navigate back with success result
         if (mounted) {
@@ -424,11 +458,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
         throw Exception('Failed to create transaction');
       }
     } catch (e, stackTrace) {
-      logError('Failed to submit expense', tag: 'ADD_EXPENSE', error: e, extra: {
-        'stackTrace': stackTrace.toString(),
-        'amount': _amount,
-        'category': _action,
-      });
+      logError('Failed to submit expense',
+          tag: 'ADD_EXPENSE',
+          error: e,
+          extra: {
+            'stackTrace': stackTrace.toString(),
+            'amount': _amount,
+            'category': _action,
+          });
 
       if (mounted) {
         // Reset animations
@@ -536,7 +573,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
     final transactionProvider = context.watch<TransactionProvider>();
 
     // Show provider error if present
-    if (transactionProvider.errorMessage != null && transactionProvider.errorMessage!.isNotEmpty) {
+    if (transactionProvider.errorMessage != null &&
+        transactionProvider.errorMessage!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -619,7 +657,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                     prefixIcon: Icon(Icons.attach_money),
                   ),
                   style: const TextStyle(fontFamily: AppTypography.fontBody),
-                  validator: (value) => value == null || value.isEmpty ? 'Enter amount' : null,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Enter amount' : null,
                   onSaved: (value) => _amount = double.tryParse(value ?? ''),
                   onChanged: (value) {
                     _amount = double.tryParse(value);
@@ -669,14 +708,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                      border:
+                          Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.psychology, color: Colors.blue, size: 20),
+                            Icon(Icons.psychology,
+                                color: Colors.blue, size: 20),
                             SizedBox(width: 8),
                             Text(
                               'AI Category Suggestions',
@@ -695,7 +736,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                           runSpacing: 8,
                           children: _aiSuggestions.map((suggestion) {
                             final category = suggestion['category'] as String;
-                            final confidence = suggestion['confidence'] as double? ?? 0.0;
+                            final confidence =
+                                suggestion['confidence'] as double? ?? 0.0;
 
                             return GestureDetector(
                               onTap: () => _selectAISuggestion(suggestion),
@@ -705,7 +747,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _action == category ? Colors.blue : Colors.white,
+                                  color: _action == category
+                                      ? Colors.blue
+                                      : Colors.white,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _action == category
@@ -722,7 +766,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                         fontFamily: AppTypography.fontBody,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: _action == category ? Colors.white : Colors.blue,
+                                        color: _action == category
+                                            ? Colors.white
+                                            : Colors.blue,
                                       ),
                                     ),
                                     const SizedBox(width: 4),
@@ -732,8 +778,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                         fontFamily: AppTypography.fontBody,
                                         fontSize: 10,
                                         color: _action == category
-                                            ? Colors.white.withValues(alpha: 0.8)
-                                            : Colors.blue.withValues(alpha: 0.7),
+                                            ? Colors.white
+                                                .withValues(alpha: 0.8)
+                                            : Colors.blue
+                                                .withValues(alpha: 0.7),
                                       ),
                                     ),
                                   ],
@@ -772,16 +820,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       value: cat['name'] as String,
                       child: Row(
                         children: [
-                          Icon(cat['icon'] as IconData, color: cat['color'] as Color, size: 20),
+                          Icon(cat['icon'] as IconData,
+                              color: cat['color'] as Color, size: 20),
                           const SizedBox(width: 8),
                           Text(cat['name'] as String,
-                              style: const TextStyle(fontFamily: AppTypography.fontBody)),
+                              style: const TextStyle(
+                                  fontFamily: AppTypography.fontBody)),
                         ],
                       ),
                     );
                   }).toList(),
                   onChanged: (value) => setState(() => _action = value),
-                  validator: (value) => value == null ? 'Select category' : null,
+                  validator: (value) =>
+                      value == null ? 'Select category' : null,
                 ),
 
                 // Subcategory dropdown if a category is selected
@@ -797,16 +848,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       return DropdownMenuItem(
                         value: subcat,
                         child: Text(subcat,
-                            style: const TextStyle(fontFamily: AppTypography.fontBody)),
+                            style: const TextStyle(
+                                fontFamily: AppTypography.fontBody)),
                       );
                     }).toList(),
-                    onChanged: (value) => setState(() => _selectedSubcategory = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedSubcategory = value),
                   ),
                 ],
                 const SizedBox(height: 20),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Date', style: TextStyle(fontFamily: AppTypography.fontBody)),
+                  title: const Text('Date',
+                      style: TextStyle(fontFamily: AppTypography.fontBody)),
                   subtitle: Text(
                     DateFormat.yMMMd().format(_selectedDate),
                     style: const TextStyle(fontFamily: AppTypography.fontBody),
@@ -842,9 +896,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       child: ElevatedButton(
                         onPressed: _isSubmitting ? null : _submitExpense,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              _isSubmitting ? Colors.grey.shade300 : AppColors.secondary,
-                          foregroundColor: _isSubmitting ? Colors.grey.shade600 : Colors.black,
+                          backgroundColor: _isSubmitting
+                              ? Colors.grey.shade300
+                              : AppColors.secondary,
+                          foregroundColor: _isSubmitting
+                              ? Colors.grey.shade600
+                              : Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -862,7 +919,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
                                           Colors.grey.shade600,
                                         ),
                                       ),
@@ -904,7 +962,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> with TickerProvider
                       const SizedBox(width: 20),
                       Expanded(
                         child: Center(
-                          child: Icon(Icons.receipt_long, size: 120, color: Colors.grey[400]),
+                          child: Icon(Icons.receipt_long,
+                              size: 120, color: Colors.grey[400]),
                         ),
                       ),
                     ],

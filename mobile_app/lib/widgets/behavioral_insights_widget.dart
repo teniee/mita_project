@@ -24,7 +24,8 @@ class BehavioralInsightsWidget extends StatefulWidget {
   });
 
   @override
-  State<BehavioralInsightsWidget> createState() => _BehavioralInsightsWidgetState();
+  State<BehavioralInsightsWidget> createState() =>
+      _BehavioralInsightsWidgetState();
 }
 
 class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
@@ -127,7 +128,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
       _fadeController.forward();
       _slideController.forward();
     } catch (e) {
-      logError('Failed to load behavioral insights: $e', tag: 'BEHAVIORAL_WIDGET');
+      logError('Failed to load behavioral insights: $e',
+          tag: 'BEHAVIORAL_WIDGET');
       setState(() {
         _behavioralAnalysis = null;
         _userProfile = null;
@@ -157,7 +159,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         child: Card(
           elevation: 3,
           margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -276,7 +279,9 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     fontFamily: AppTypography.fontHeading,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
-                    color: isSelected ? AppColors.emerald : AppColors.textLightMuted,
+                    color: isSelected
+                        ? AppColors.emerald
+                        : AppColors.textLightMuted,
                   ),
                 ),
               ),
@@ -459,7 +464,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
                     LinearProgressIndicator(
                       value: 0.85,
                       backgroundColor: AppColors.surfaceLight20,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.textLight),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.textLight),
                     ),
                   ],
                 ),
@@ -484,7 +490,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
   Widget _buildPersonalityProfileContent() {
     final spendingPersonality =
         _behavioralAnalysis?['spending_personality'] as String? ?? 'balanced';
-    final recommendations = _behavioralAnalysis?['recommendations'] as List<dynamic>? ?? [];
+    final recommendations =
+        _behavioralAnalysis?['recommendations'] as List<dynamic>? ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,7 +609,8 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
         Row(
           children: [
             Expanded(
-              child: _buildLearningStatCard('Data Points', '247', Icons.data_usage),
+              child: _buildLearningStatCard(
+                  'Data Points', '247', Icons.data_usage),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -634,10 +642,12 @@ class _BehavioralInsightsWidgetState extends State<BehavioralInsightsWidget>
               ),
               const SizedBox(height: 8),
               if (learningTimestamp != null)
-                _buildActivityItem('Behavioral learning update', learningTimestamp),
+                _buildActivityItem(
+                    'Behavioral learning update', learningTimestamp),
               if (analysisTimestamp != null)
                 _buildActivityItem('Analysis refresh', analysisTimestamp),
-              _buildActivityItem('Pattern recognition improved', DateTime.now().toString()),
+              _buildActivityItem(
+                  'Pattern recognition improved', DateTime.now().toString()),
             ],
           ),
         ),

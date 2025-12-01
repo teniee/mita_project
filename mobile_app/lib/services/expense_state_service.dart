@@ -23,7 +23,8 @@ class ExpenseStateService extends ChangeNotifier {
       StreamController<Map<String, dynamic>>.broadcast();
   final StreamController<Map<String, dynamic>> _expenseUpdatedController =
       StreamController<Map<String, dynamic>>.broadcast();
-  final StreamController<int> _expenseDeletedController = StreamController<int>.broadcast();
+  final StreamController<int> _expenseDeletedController =
+      StreamController<int>.broadcast();
 
   // Getters
   List<dynamic> get calendarData => _calendarData;
@@ -33,8 +34,10 @@ class ExpenseStateService extends ChangeNotifier {
 
   // Stream getters
   Stream<List<dynamic>> get calendarUpdates => _calendarUpdateController.stream;
-  Stream<Map<String, dynamic>> get expenseAdded => _expenseAddedController.stream;
-  Stream<Map<String, dynamic>> get expenseUpdated => _expenseUpdatedController.stream;
+  Stream<Map<String, dynamic>> get expenseAdded =>
+      _expenseAddedController.stream;
+  Stream<Map<String, dynamic>> get expenseUpdated =>
+      _expenseUpdatedController.stream;
   Stream<int> get expenseDeleted => _expenseDeletedController.stream;
 
   /// Updates the calendar data cache and notifies listeners
@@ -43,7 +46,8 @@ class ExpenseStateService extends ChangeNotifier {
     _lastUpdated = DateTime.now();
     _error = null;
 
-    logDebug('Calendar data updated with ${newData.length} items', tag: 'EXPENSE_STATE');
+    logDebug('Calendar data updated with ${newData.length} items',
+        tag: 'EXPENSE_STATE');
 
     // Notify listeners
     notifyListeners();
@@ -67,20 +71,24 @@ class ExpenseStateService extends ChangeNotifier {
   /// Optimistically adds an expense to the calendar data
   void addExpenseOptimistically(Map<String, dynamic> expenseData) {
     try {
-      logDebug('Adding expense optimistically', tag: 'EXPENSE_STATE', extra: expenseData);
+      logDebug('Adding expense optimistically',
+          tag: 'EXPENSE_STATE', extra: expenseData);
 
       final amount = (expenseData['amount'] as num?)?.toDouble() ?? 0.0;
       final dateString = expenseData['date'] as String?;
-      final category = expenseData['action'] as String? ?? expenseData['category'] as String?;
+      final category = expenseData['action'] as String? ??
+          expenseData['category'] as String?;
 
       if (dateString == null) {
-        logWarning('Cannot add expense optimistically: missing date', tag: 'EXPENSE_STATE');
+        logWarning('Cannot add expense optimistically: missing date',
+            tag: 'EXPENSE_STATE');
         return;
       }
 
       final expenseDate = DateTime.tryParse(dateString);
       if (expenseDate == null) {
-        logWarning('Cannot parse expense date: $dateString', tag: 'EXPENSE_STATE');
+        logWarning('Cannot parse expense date: $dateString',
+            tag: 'EXPENSE_STATE');
         return;
       }
 
@@ -110,11 +118,13 @@ class ExpenseStateService extends ChangeNotifier {
           }
 
           // Update categories if available
-          if (category != null && updatedDay['categories'] is Map<String, dynamic>) {
-            final categories =
-                Map<String, dynamic>.from(updatedDay['categories'] as Map<String, dynamic>);
+          if (category != null &&
+              updatedDay['categories'] is Map<String, dynamic>) {
+            final categories = Map<String, dynamic>.from(
+                updatedDay['categories'] as Map<String, dynamic>);
             final categoryKey = _mapCategoryToKey(category);
-            final currentCategorySpent = (categories[categoryKey] as num?)?.toDouble() ?? 0.0;
+            final currentCategorySpent =
+                (categories[categoryKey] as num?)?.toDouble() ?? 0.0;
             categories[categoryKey] = (currentCategorySpent + amount).round();
             updatedDay['categories'] = categories;
           }
@@ -134,21 +144,27 @@ class ExpenseStateService extends ChangeNotifier {
         'added_at': DateTime.now().toIso8601String(),
       });
 
-      logInfo('Expense added optimistically to day $dayNumber', tag: 'EXPENSE_STATE', extra: {
-        'amount': amount,
-        'category': category,
-        'day': dayNumber,
-      });
+      logInfo('Expense added optimistically to day $dayNumber',
+          tag: 'EXPENSE_STATE',
+          extra: {
+            'amount': amount,
+            'category': category,
+            'day': dayNumber,
+          });
     } catch (e, stackTrace) {
-      logError('Failed to add expense optimistically', tag: 'EXPENSE_STATE', error: e, extra: {
-        'stackTrace': stackTrace.toString(),
-        'expenseData': expenseData,
-      });
+      logError('Failed to add expense optimistically',
+          tag: 'EXPENSE_STATE',
+          error: e,
+          extra: {
+            'stackTrace': stackTrace.toString(),
+            'expenseData': expenseData,
+          });
     }
   }
 
   /// Updates an existing expense in the calendar data
-  void updateExpenseOptimistically(int expenseId, Map<String, dynamic> updatedData) {
+  void updateExpenseOptimistically(
+      int expenseId, Map<String, dynamic> updatedData) {
     try {
       logDebug('Updating expense optimistically', tag: 'EXPENSE_STATE', extra: {
         'expenseId': expenseId,
@@ -166,16 +182,20 @@ class ExpenseStateService extends ChangeNotifier {
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e, stackTrace) {
-      logError('Failed to update expense optimistically', tag: 'EXPENSE_STATE', error: e, extra: {
-        'stackTrace': stackTrace.toString(),
-        'expenseId': expenseId,
-        'updatedData': updatedData,
-      });
+      logError('Failed to update expense optimistically',
+          tag: 'EXPENSE_STATE',
+          error: e,
+          extra: {
+            'stackTrace': stackTrace.toString(),
+            'expenseId': expenseId,
+            'updatedData': updatedData,
+          });
     }
   }
 
   /// Removes an expense from the calendar data optimistically
-  void deleteExpenseOptimistically(int expenseId, Map<String, dynamic> expenseData) {
+  void deleteExpenseOptimistically(
+      int expenseId, Map<String, dynamic> expenseData) {
     try {
       logDebug('Deleting expense optimistically', tag: 'EXPENSE_STATE', extra: {
         'expenseId': expenseId,
@@ -200,7 +220,8 @@ class ExpenseStateService extends ChangeNotifier {
           // Create a copy and update spent amount
           final updatedDay = Map<String, dynamic>.from(dayData);
           final currentSpent = (updatedDay['spent'] as num?)?.toDouble() ?? 0.0;
-          updatedDay['spent'] = (currentSpent - amount).round().clamp(0, double.infinity).round();
+          updatedDay['spent'] =
+              (currentSpent - amount).round().clamp(0, double.infinity).round();
 
           // Update status based on new spending
           final limit = (updatedDay['limit'] as num?)?.toDouble() ?? 0.0;
@@ -226,17 +247,22 @@ class ExpenseStateService extends ChangeNotifier {
       // Emit expense deleted event
       _expenseDeletedController.add(expenseId);
 
-      logInfo('Expense deleted optimistically from day $dayNumber', tag: 'EXPENSE_STATE', extra: {
-        'expenseId': expenseId,
-        'amount': amount,
-        'day': dayNumber,
-      });
+      logInfo('Expense deleted optimistically from day $dayNumber',
+          tag: 'EXPENSE_STATE',
+          extra: {
+            'expenseId': expenseId,
+            'amount': amount,
+            'day': dayNumber,
+          });
     } catch (e, stackTrace) {
-      logError('Failed to delete expense optimistically', tag: 'EXPENSE_STATE', error: e, extra: {
-        'stackTrace': stackTrace.toString(),
-        'expenseId': expenseId,
-        'expenseData': expenseData,
-      });
+      logError('Failed to delete expense optimistically',
+          tag: 'EXPENSE_STATE',
+          error: e,
+          extra: {
+            'stackTrace': stackTrace.toString(),
+            'expenseId': expenseId,
+            'expenseData': expenseData,
+          });
     }
   }
 
@@ -300,7 +326,8 @@ class ExpenseStateService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      logError('Failed to get day status for day $dayNumber', tag: 'EXPENSE_STATE', error: e);
+      logError('Failed to get day status for day $dayNumber',
+          tag: 'EXPENSE_STATE', error: e);
     }
     return null;
   }
@@ -317,7 +344,8 @@ class ExpenseStateService extends ChangeNotifier {
       }
       return total;
     } catch (e) {
-      logError('Failed to calculate total month spending', tag: 'EXPENSE_STATE', error: e);
+      logError('Failed to calculate total month spending',
+          tag: 'EXPENSE_STATE', error: e);
       return 0.0;
     }
   }
@@ -334,7 +362,8 @@ class ExpenseStateService extends ChangeNotifier {
       }
       return total;
     } catch (e) {
-      logError('Failed to calculate total month budget', tag: 'EXPENSE_STATE', error: e);
+      logError('Failed to calculate total month budget',
+          tag: 'EXPENSE_STATE', error: e);
       return 0.0;
     }
   }

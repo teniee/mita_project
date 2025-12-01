@@ -45,7 +45,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+    final transactionProvider =
+        Provider.of<TransactionProvider>(context, listen: false);
 
     final input = TransactionInput(
       amount: _amount,
@@ -64,7 +65,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(transactionProvider.errorMessage ?? 'Failed to update expense')),
+        SnackBar(
+            content: Text(transactionProvider.errorMessage ??
+                'Failed to update expense')),
       );
     }
   }
@@ -76,15 +79,21 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         title: const Text('Delete Expense'),
         content: const Text('Are you sure you want to delete this expense?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete')),
         ],
       ),
     );
 
     if (confirm == true) {
-      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
-      final success = await transactionProvider.deleteTransaction(widget.expense['id']);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
+      final success =
+          await transactionProvider.deleteTransaction(widget.expense['id']);
 
       if (!mounted) return;
 
@@ -92,7 +101,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(transactionProvider.errorMessage ?? 'Failed to delete expense')),
+          SnackBar(
+              content: Text(transactionProvider.errorMessage ??
+                  'Failed to delete expense')),
         );
       }
     }
@@ -144,8 +155,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   prefixIcon: Icon(Icons.attach_money),
                 ),
                 style: AppTypography.bodyLarge,
-                validator: (value) => value == null || value.isEmpty ? 'Enter amount' : null,
-                onSaved: (value) => _amount = double.tryParse(value ?? '') ?? 0.0,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter amount' : null,
+                onSaved: (value) =>
+                    _amount = double.tryParse(value ?? '') ?? 0.0,
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
@@ -167,8 +180,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text('Date', style: AppTypography.bodyLargeMedium),
-                subtitle:
-                    Text(DateFormat.yMMMd().format(_selectedDate), style: AppTypography.bodyMedium),
+                subtitle: Text(DateFormat.yMMMd().format(_selectedDate),
+                    style: AppTypography.bodyMedium),
                 trailing: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,

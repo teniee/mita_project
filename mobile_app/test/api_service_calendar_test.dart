@@ -74,7 +74,7 @@ void main() {
           final spent = testCase['spent'] as int;
           final limit = testCase['limit'] as int;
           final expectedStatus = testCase['expectedStatus'] as String;
-          
+
           String calculatedStatus;
           if (spent == 0) {
             calculatedStatus = 'good';
@@ -88,9 +88,10 @@ void main() {
               calculatedStatus = 'good';
             }
           }
-          
+
           expect(calculatedStatus, equals(expectedStatus),
-              reason: 'Spent: $spent, Limit: $limit should result in $expectedStatus');
+              reason:
+                  'Spent: $spent, Limit: $limit should result in $expectedStatus');
         }
       });
     });
@@ -107,9 +108,10 @@ void main() {
         };
 
         // Calculate category allocations
-        final totalAllocated = weights.values.fold<double>(0.0, (sum, weight) => sum + weight);
+        final totalAllocated =
+            weights.values.fold<double>(0.0, (sum, weight) => sum + weight);
         final flexibleBudget = monthlyIncome * totalAllocated;
-        
+
         // Verify that individual category amounts sum to total
         double categorySum = 0.0;
         weights.forEach((category, weight) {
@@ -117,16 +119,18 @@ void main() {
         });
 
         expect(categorySum, equals(flexibleBudget));
-        expect(categorySum, lessThanOrEqualTo(monthlyIncome)); // Shouldn't exceed income
+        expect(categorySum,
+            lessThanOrEqualTo(monthlyIncome)); // Shouldn't exceed income
       });
 
       test('should handle decimal precision correctly', () {
         final testIncomes = [2000.33, 3500.67, 5000.99];
-        
+
         for (final income in testIncomes) {
-          final dailyBudget = (income * 0.55) / 30; // 55% for flexible spending, 30 days
+          final dailyBudget =
+              (income * 0.55) / 30; // 55% for flexible spending, 30 days
           final roundedDailyBudget = dailyBudget.round();
-          
+
           // Verify rounding doesn't create significant discrepancies
           expect((dailyBudget - roundedDailyBudget).abs(), lessThan(1.0));
           expect(roundedDailyBudget, greaterThan(0));
@@ -138,26 +142,30 @@ void main() {
         const flexiblePercentage = 0.55;
         const monthlyFlexible = monthlyIncome * flexiblePercentage;
         const daysInMonth = 30;
-        
+
         // Calculate daily budgets with variation
         const baseDailyBudget = monthlyFlexible / daysInMonth;
         final dailyBudgets = <int>[];
-        
+
         for (int day = 1; day <= daysInMonth; day++) {
           double variation = baseDailyBudget;
-          
+
           // Apply weekend effect
           final dayOfWeek = DateTime(2024, 1, day).weekday;
           if (dayOfWeek >= 6) {
             variation *= 1.5; // Weekend multiplier
           }
-          
+
           dailyBudgets.add(variation.round());
         }
-        
+
         // Verify total doesn't exceed monthly flexible budget by too much
-        final totalDaily = dailyBudgets.fold<int>(0, (sum, budget) => sum + budget);
-        expect(totalDaily, lessThan(monthlyFlexible * 1.3)); // Allow 30% variance for weekend effects
+        final totalDaily =
+            dailyBudgets.fold<int>(0, (sum, budget) => sum + budget);
+        expect(
+            totalDaily,
+            lessThan(monthlyFlexible *
+                1.3)); // Allow 30% variance for weekend effects
       });
     });
 
@@ -183,8 +191,12 @@ void main() {
         expect(categoryAmounts['shopping'], equals(30)); // 200 * 0.15
 
         // Verify total doesn't exceed daily budget significantly
-        final totalCategories = categoryAmounts.values.fold<int>(0, (sum, amount) => sum + amount);
-        expect(totalCategories, lessThanOrEqualTo(dailyBudget + 5)); // Allow small rounding variance
+        final totalCategories =
+            categoryAmounts.values.fold<int>(0, (sum, amount) => sum + amount);
+        expect(
+            totalCategories,
+            lessThanOrEqualTo(
+                dailyBudget + 5)); // Allow small rounding variance
       });
 
       test('should handle minimum category amounts', () {
@@ -199,7 +211,8 @@ void main() {
         final categoryAmounts = <String, int>{};
         categoryWeights.forEach((category, weight) {
           final amount = (smallDailyBudget * weight).round();
-          categoryAmounts[category] = amount > 0 ? amount : 1; // Ensure minimum of 1
+          categoryAmounts[category] =
+              amount > 0 ? amount : 1; // Ensure minimum of 1
         });
 
         // All categories should have at least some allocation
@@ -222,7 +235,7 @@ void main() {
         for (final testCase in testCases) {
           final income = testCase['income'] as double;
           final expectedTier = testCase['expectedTier'] as String;
-          
+
           String actualTier;
           if (income < 2500) {
             actualTier = 'low';
@@ -235,7 +248,7 @@ void main() {
           } else {
             actualTier = 'high';
           }
-          
+
           expect(actualTier, equals(expectedTier),
               reason: 'Income $income should be classified as $expectedTier');
         }
@@ -252,7 +265,7 @@ void main() {
           final tier = testCase['tier'] as String;
           final expectedFoodWeight = testCase['foodWeight'] as double;
           final expectedSavingsWeight = testCase['savingsWeight'] as double;
-          
+
           // Verify that lower income tiers allocate more to essentials like food
           // and higher income tiers allocate more to savings
           if (tier == 'low') {
@@ -270,7 +283,7 @@ void main() {
       test('should handle zero income', () {
         const income = 0.0;
         const fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
-        
+
         expect(fallbackIncome, equals(3000.0));
         expect(fallbackIncome, greaterThan(0));
       });
@@ -278,7 +291,7 @@ void main() {
       test('should handle negative income', () {
         const income = -1000.0;
         const fallbackIncome = income > 0 ? income : 3000.0; // Default fallback
-        
+
         expect(fallbackIncome, equals(3000.0));
         expect(fallbackIncome, greaterThan(0));
       });
@@ -286,10 +299,12 @@ void main() {
       test('should handle extremely high income', () {
         const income = 1000000.0; // $1M monthly
         const maxReasonableDaily = 10000; // $10k daily limit
-        
-        final dailyBudget = ((income * 0.55) / 30).round(); // 55% flexible, 30 days
-        final cappedDailyBudget = dailyBudget > maxReasonableDaily ? maxReasonableDaily : dailyBudget;
-        
+
+        final dailyBudget =
+            ((income * 0.55) / 30).round(); // 55% flexible, 30 days
+        final cappedDailyBudget =
+            dailyBudget > maxReasonableDaily ? maxReasonableDaily : dailyBudget;
+
         expect(cappedDailyBudget, lessThanOrEqualTo(maxReasonableDaily));
         expect(cappedDailyBudget, greaterThan(0));
       });
@@ -297,33 +312,35 @@ void main() {
       test('should handle leap year February', () {
         // Test February in leap year (29 days) vs non-leap year (28 days)
         final leapYearDays = DateTime(2024, 3, 0).day; // 2024 is a leap year
-        final normalYearDays = DateTime(2023, 3, 0).day; // 2023 is not a leap year
-        
+        final normalYearDays =
+            DateTime(2023, 3, 0).day; // 2023 is not a leap year
+
         expect(leapYearDays, equals(29));
         expect(normalYearDays, equals(28));
-        
+
         // Verify budget calculations work for both
         const monthlyIncome = 5000.0;
         const flexibleBudget = monthlyIncome * 0.55;
-        
+
         final leapYearDaily = (flexibleBudget / leapYearDays).round();
         final normalYearDaily = (flexibleBudget / normalYearDays).round();
-        
+
         expect(leapYearDaily, greaterThan(0));
         expect(normalYearDaily, greaterThan(0));
-        expect(normalYearDaily, greaterThan(leapYearDaily)); // Fewer days = higher daily budget
+        expect(normalYearDaily,
+            greaterThan(leapYearDaily)); // Fewer days = higher daily budget
       });
     });
 
     group('Performance and Efficiency Tests', () {
       test('should complete calendar generation quickly', () async {
         final stopwatch = Stopwatch()..start();
-        
+
         // Simulate calendar data generation
         const monthlyIncome = 5000.0;
         const daysInMonth = 31;
         final calendarData = <Map<String, dynamic>>[];
-        
+
         for (int day = 1; day <= daysInMonth; day++) {
           calendarData.add({
             'day': day,
@@ -338,17 +355,18 @@ void main() {
             }
           });
         }
-        
+
         stopwatch.stop();
-        
+
         expect(calendarData.length, equals(daysInMonth));
-        expect(stopwatch.elapsedMilliseconds, lessThan(100)); // Should complete in under 100ms
+        expect(stopwatch.elapsedMilliseconds,
+            lessThan(100)); // Should complete in under 100ms
       });
 
       test('should handle multiple concurrent calendar requests', () async {
         // Simulate multiple calendar requests
         final futures = <Future<List<Map<String, dynamic>>>>[];
-        
+
         for (int i = 0; i < 10; i++) {
           futures.add(Future.value([
             {
@@ -359,9 +377,9 @@ void main() {
             }
           ]));
         }
-        
+
         final results = await Future.wait(futures);
-        
+
         expect(results.length, equals(10));
         for (final result in results) {
           expect(result, isNotEmpty);
@@ -374,10 +392,10 @@ void main() {
         // Simulate consistent data generation with same input
         const income = 5000.0;
         const day = 15; // Fixed day for consistency
-        
+
         final result1 = _generateMockDayData(income, day);
         final result2 = _generateMockDayData(income, day);
-        
+
         expect(result1['day'], equals(result2['day']));
         expect(result1['limit'], equals(result2['limit']));
         // Note: spent amounts might vary due to randomness, which is expected
@@ -393,7 +411,7 @@ void main() {
         for (final testCase in testCases) {
           final spent = testCase['spent'] as int;
           final limit = testCase['limit'] as int;
-          
+
           final ratio = spent / limit;
           String expectedStatus;
           if (ratio > 1.1) {
@@ -403,17 +421,18 @@ void main() {
           } else {
             expectedStatus = 'good';
           }
-          
+
           final dayData = {
             'spent': spent,
             'limit': limit,
             'status': expectedStatus,
           };
-          
+
           // Verify status matches spending ratio
-          final actualRatio = (dayData['spent'] as int) / (dayData['limit'] as int);
+          final actualRatio =
+              (dayData['spent'] as int) / (dayData['limit'] as int);
           final actualStatus = dayData['status'] as String;
-          
+
           if (actualRatio > 1.1) {
             expect(actualStatus, equals('over'));
           } else if (actualRatio > 0.85) {

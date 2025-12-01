@@ -47,15 +47,19 @@ class TransactionModel {
       description: json['description'] as String?,
       merchant: json['merchant'] as String?,
       location: json['location'] as String?,
-      tags: json['tags'] != null ? List<String>.from(json['tags'] as List) : null,
+      tags:
+          json['tags'] != null ? List<String>.from(json['tags'] as List) : null,
       isRecurring: json['is_recurring'] as bool? ?? false,
-      confidenceScore:
-          json['confidence_score'] != null ? (json['confidence_score'] as num).toDouble() : null,
+      confidenceScore: json['confidence_score'] != null
+          ? (json['confidence_score'] as num).toDouble()
+          : null,
       receiptUrl: json['receipt_url'] as String?,
       notes: json['notes'] as String?,
       spentAt: DateTime.parse(json['spent_at'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -191,9 +195,10 @@ class TransactionsListResponse {
 
   factory TransactionsListResponse.fromJson(Map<String, dynamic> json) {
     return TransactionsListResponse(
-      transactions: (json['transactions'] as List? ?? json['data'] as List? ?? [])
-          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      transactions:
+          (json['transactions'] as List? ?? json['data'] as List? ?? [])
+              .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+              .toList(),
       total: json['total'] as int? ?? 0,
       skip: json['skip'] as int? ?? 0,
       limit: json['limit'] as int? ?? 100,

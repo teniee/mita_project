@@ -27,7 +27,8 @@ class ReceiptCaptureScreen extends StatefulWidget {
   State<ReceiptCaptureScreen> createState() => _ReceiptCaptureScreenState();
 }
 
-class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with TickerProviderStateMixin {
+class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
+    with TickerProviderStateMixin {
   final OCRService _ocrService = OCRService();
   final ApiService _apiService = ApiService();
 
@@ -228,7 +229,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
 
   Future<void> _loadMerchantSuggestions(String merchantName) async {
     try {
-      final suggestions = await _ocrService.getMerchantSuggestions(merchantName);
+      final suggestions =
+          await _ocrService.getMerchantSuggestions(merchantName);
       setState(() {
         _merchantSuggestions = suggestions;
       });
@@ -246,7 +248,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
     });
 
     try {
-      final validatedResult = await _ocrService.validateAndCorrectOCR(_ocrResult!);
+      final validatedResult =
+          await _ocrService.validateAndCorrectOCR(_ocrResult!);
 
       setState(() {
         _ocrResult = validatedResult;
@@ -340,7 +343,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
     if (_ocrResult == null) return;
 
     try {
-      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
 
       final input = TransactionInput(
         amount: _ocrResult!.total,
@@ -354,7 +358,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
       final result = await transactionProvider.createTransaction(input);
 
       if (result == null) {
-        throw Exception(transactionProvider.errorMessage ?? 'Failed to create transaction');
+        throw Exception(
+            transactionProvider.errorMessage ?? 'Failed to create transaction');
       }
 
       if (mounted) {
@@ -393,7 +398,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
     if (_batchResult == null || _batchResult!.results.isEmpty) return;
 
     try {
-      final transactionProvider = Provider.of<TransactionProvider>(context, listen: false);
+      final transactionProvider =
+          Provider.of<TransactionProvider>(context, listen: false);
       int successCount = 0;
 
       for (final result in _batchResult!.results) {
@@ -444,7 +450,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.enableBatchProcessing ? 'Batch Receipt Scan' : 'Scan Receipt'),
+        title: Text(widget.enableBatchProcessing
+            ? 'Batch Receipt Scan'
+            : 'Scan Receipt'),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
@@ -544,7 +552,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
 
           // Header
           Text(
-            widget.enableBatchProcessing ? 'Select Receipts' : 'Capture Receipt',
+            widget.enableBatchProcessing
+                ? 'Select Receipts'
+                : 'Capture Receipt',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: colorScheme.onSurface,
@@ -657,8 +667,9 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
                 child: OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
-                  label: Text(
-                      widget.enableBatchProcessing ? 'Select from Gallery' : 'Choose from Gallery'),
+                  label: Text(widget.enableBatchProcessing
+                      ? 'Select from Gallery'
+                      : 'Choose from Gallery'),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16.0),
@@ -747,7 +758,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
               ),
               const Spacer(),
               ConfidenceIndicator(
-                confidence: _getOverallConfidence(_ocrResult!.overallConfidence),
+                confidence:
+                    _getOverallConfidence(_ocrResult!.overallConfidence),
                 label: 'Overall',
               ),
             ],
@@ -835,7 +847,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
                     label: 'Total Amount',
                     value: _ocrResult!.total.toStringAsFixed(2),
                     confidence: _ocrResult!.totalConfidence,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (value) {
                       final total = double.tryParse(value) ?? _ocrResult!.total;
                       _ocrResult = OCRResult(
@@ -913,7 +926,8 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
                     OCRReceiptItemsList(
                       items: _ocrResult!.items,
                       onItemChanged: (index, item) {
-                        final updatedItems = List<ReceiptItem>.from(_ocrResult!.items);
+                        final updatedItems =
+                            List<ReceiptItem>.from(_ocrResult!.items);
                         updatedItems[index] = item;
                         _ocrResult = OCRResult(
                           merchant: _ocrResult!.merchant,
@@ -992,13 +1006,16 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen> with Ticker
                   margin: const EdgeInsets.only(bottom: 8.0),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
                       child: Text('${index + 1}'),
                     ),
                     title: Text(result.merchant),
-                    subtitle: Text('\$${result.total.toStringAsFixed(2)} • ${result.category}'),
+                    subtitle: Text(
+                        '\$${result.total.toStringAsFixed(2)} • ${result.category}'),
                     trailing: ConfidenceIndicator(
-                      confidence: _getOverallConfidence(result.overallConfidence),
+                      confidence:
+                          _getOverallConfidence(result.overallConfidence),
                       label: 'Confidence',
                       showLabel: false,
                     ),

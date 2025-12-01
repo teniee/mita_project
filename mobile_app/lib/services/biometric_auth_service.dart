@@ -8,7 +8,8 @@ import 'logging_service.dart';
 /// Implements Face ID, Touch ID, and Android biometric authentication
 /// Following Apple Human Interface Guidelines and Material Design patterns
 class BiometricAuthService {
-  static final BiometricAuthService _instance = BiometricAuthService._internal();
+  static final BiometricAuthService _instance =
+      BiometricAuthService._internal();
   factory BiometricAuthService() => _instance;
   BiometricAuthService._internal();
 
@@ -73,7 +74,8 @@ class BiometricAuthService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_biometricEnabledKey) ?? false;
     } catch (e) {
-      logError('Failed to check if biometric is enabled: $e', tag: 'BIOMETRIC_AUTH');
+      logError('Failed to check if biometric is enabled: $e',
+          tag: 'BIOMETRIC_AUTH');
       return false;
     }
   }
@@ -83,7 +85,8 @@ class BiometricAuthService {
     try {
       // First, verify that device supports biometric
       if (!await isDeviceSupported()) {
-        logWarning('Device does not support biometric authentication', tag: 'BIOMETRIC_AUTH');
+        logWarning('Device does not support biometric authentication',
+            tag: 'BIOMETRIC_AUTH');
         return false;
       }
 
@@ -110,7 +113,8 @@ class BiometricAuthService {
       await prefs.setBool(_biometricEnabledKey, true);
       await prefs.setString(_biometricTypeKey, await getBiometricTypeName());
 
-      logInfo('Biometric authentication enabled successfully', tag: 'BIOMETRIC_AUTH');
+      logInfo('Biometric authentication enabled successfully',
+          tag: 'BIOMETRIC_AUTH');
       return true;
     } catch (e) {
       logError('Failed to enable biometric: $e', tag: 'BIOMETRIC_AUTH');
@@ -186,7 +190,8 @@ class BiometricAuthService {
       if (newAttempts >= _maxFailedAttempts) {
         // Lock out user
         final lockoutUntil = DateTime.now().add(_lockoutDuration);
-        await prefs.setInt(_lockoutUntilKey, lockoutUntil.millisecondsSinceEpoch);
+        await prefs.setInt(
+            _lockoutUntilKey, lockoutUntil.millisecondsSinceEpoch);
 
         logWarning(
           'Biometric authentication locked out after $newAttempts failed attempts',
@@ -194,7 +199,8 @@ class BiometricAuthService {
         );
       }
     } catch (e) {
-      logError('Failed to increment failed attempts: $e', tag: 'BIOMETRIC_AUTH');
+      logError('Failed to increment failed attempts: $e',
+          tag: 'BIOMETRIC_AUTH');
     }
   }
 
@@ -242,7 +248,8 @@ class BiometricAuthService {
 
       // Check if device supports biometric
       if (!await isDeviceSupported()) {
-        logWarning('Device does not support biometric authentication', tag: 'BIOMETRIC_AUTH');
+        logWarning('Device does not support biometric authentication',
+            tag: 'BIOMETRIC_AUTH');
         return false;
       }
 
@@ -272,7 +279,8 @@ class BiometricAuthService {
 
       return authenticated;
     } on PlatformException catch (e) {
-      logError('Biometric authentication error: ${e.code} - ${e.message}', tag: 'BIOMETRIC_AUTH');
+      logError('Biometric authentication error: ${e.code} - ${e.message}',
+          tag: 'BIOMETRIC_AUTH');
 
       // Handle specific error codes
       switch (e.code) {
@@ -314,7 +322,8 @@ class BiometricAuthService {
         ),
       );
     } catch (e) {
-      logError('Authentication with fallback failed: $e', tag: 'BIOMETRIC_AUTH');
+      logError('Authentication with fallback failed: $e',
+          tag: 'BIOMETRIC_AUTH');
       return false;
     }
   }
@@ -375,8 +384,9 @@ class BiometricAuthService {
     }
 
     final biometricType = await getBiometricTypeName();
-    final reason =
-        Platform.isIOS ? 'Authenticate to access MITA' : 'Use $biometricType to access MITA';
+    final reason = Platform.isIOS
+        ? 'Authenticate to access MITA'
+        : 'Use $biometricType to access MITA';
 
     return await authenticate(
       reason: reason,
@@ -397,8 +407,9 @@ class BiometricAuthService {
     }
 
     final biometricType = await getBiometricTypeName();
-    final reason =
-        Platform.isIOS ? 'Authenticate to $operationName' : 'Use $biometricType to $operationName';
+    final reason = Platform.isIOS
+        ? 'Authenticate to $operationName'
+        : 'Use $biometricType to $operationName';
 
     return await authenticate(
       reason: reason,

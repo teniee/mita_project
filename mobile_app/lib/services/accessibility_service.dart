@@ -7,7 +7,8 @@ import 'logging_service.dart';
 /// Handles screen reader support, high contrast modes, focus management,
 /// and financial data announcements for regulatory compliance
 class AccessibilityService {
-  static final AccessibilityService _instance = AccessibilityService._internal();
+  static final AccessibilityService _instance =
+      AccessibilityService._internal();
   factory AccessibilityService() => _instance;
   AccessibilityService._internal();
 
@@ -37,7 +38,8 @@ class AccessibilityService {
   Future<void> _loadSystemAccessibilitySettings() async {
     try {
       final binding = WidgetsBinding.instance;
-      final mediaQuery = MediaQueryData.fromView(binding.platformDispatcher.views.first);
+      final mediaQuery =
+          MediaQueryData.fromView(binding.platformDispatcher.views.first);
 
       _screenReaderEnabled = mediaQuery.accessibleNavigation;
       _highContrastEnabled = mediaQuery.highContrast;
@@ -50,13 +52,15 @@ class AccessibilityService {
           'textScale=$_textScaleFactor',
           tag: 'ACCESSIBILITY');
     } catch (e) {
-      logError('Error loading accessibility settings: $e', tag: 'ACCESSIBILITY');
+      logError('Error loading accessibility settings: $e',
+          tag: 'ACCESSIBILITY');
     }
   }
 
   /// Set up listeners for system accessibility changes
   void _setupAccessibilityListeners() {
-    WidgetsBinding.instance.platformDispatcher.onAccessibilityFeaturesChanged = () {
+    WidgetsBinding.instance.platformDispatcher.onAccessibilityFeaturesChanged =
+        () {
       _loadSystemAccessibilitySettings();
     };
   }
@@ -143,9 +147,11 @@ class AccessibilityService {
   }
 
   /// Announce navigation changes
-  Future<void> announceNavigation(String screenName, {String? description}) async {
-    final message =
-        description != null ? 'Navigated to $screenName. $description' : 'Navigated to $screenName';
+  Future<void> announceNavigation(String screenName,
+      {String? description}) async {
+    final message = description != null
+        ? 'Navigated to $screenName. $description'
+        : 'Navigated to $screenName';
 
     await announceToScreenReader(
       message,
@@ -235,7 +241,8 @@ class AccessibilityService {
     bool isDisabled = false,
   }) {
     final contextText = context != null ? ' $context' : '';
-    final destructiveText = isDestructive ? ' Warning: This action cannot be undone.' : '';
+    final destructiveText =
+        isDestructive ? ' Warning: This action cannot be undone.' : '';
     final disabledText = isDisabled ? ' Button is currently disabled.' : '';
 
     return '$action$contextText$destructiveText$disabledText';
@@ -250,7 +257,8 @@ class AccessibilityService {
   /// Check if widget meets minimum touch target requirements
   bool meetsMinimumTouchTarget(Size widgetSize) {
     final minSize = getMinimumTouchTarget();
-    return widgetSize.width >= minSize.width && widgetSize.height >= minSize.height;
+    return widgetSize.width >= minSize.width &&
+        widgetSize.height >= minSize.height;
   }
 
   /// Create accessible text field label with validation context
@@ -262,7 +270,8 @@ class AccessibilityService {
     String? helperText,
   }) {
     final requiredText = isRequired ? ' Required field.' : '';
-    final errorText = hasError && errorMessage != null ? ' Error: $errorMessage' : '';
+    final errorText =
+        hasError && errorMessage != null ? ' Error: $errorMessage' : '';
     final helperTextFormatted = helperText != null ? ' $helperText' : '';
 
     return '$label$requiredText$errorText$helperTextFormatted';
@@ -291,7 +300,8 @@ class AccessibilityService {
     return baseScheme.copyWith(
       primary: _highContrastEnabled ? Colors.blue.shade900 : baseScheme.primary,
       onPrimary: Colors.white,
-      secondary: _highContrastEnabled ? Colors.orange.shade800 : baseScheme.secondary,
+      secondary:
+          _highContrastEnabled ? Colors.orange.shade800 : baseScheme.secondary,
       onSecondary: Colors.white,
       surface: _highContrastEnabled ? Colors.white : baseScheme.surface,
       onSurface: _highContrastEnabled ? Colors.black : baseScheme.onSurface,
@@ -350,7 +360,8 @@ extension AccessibilityExtensions on Widget {
 
   /// Ensure minimum touch target size
   Widget withMinimumTouchTarget({Size? customSize}) {
-    final minSize = customSize ?? AccessibilityService.instance.getMinimumTouchTarget();
+    final minSize =
+        customSize ?? AccessibilityService.instance.getMinimumTouchTarget();
     return ConstrainedBox(
       constraints: BoxConstraints(
         minWidth: minSize.width,

@@ -37,7 +37,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Use centralized email validation
-    final emailError = FormErrorHandler.validateEmail(email, reportError: false);
+    final emailError =
+        FormErrorHandler.validateEmail(email, reportError: false);
     if (emailError != null) {
       return emailError;
     }
@@ -72,7 +73,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // Use reliable FastAPI registration with restored backend
-      logInfo('Attempting FastAPI registration with stable backend', tag: 'REGISTER');
+      logInfo('Attempting FastAPI registration with stable backend',
+          tag: 'REGISTER');
 
       final response = await _api.reliableRegister(
         _emailController.text.trim(),
@@ -93,7 +95,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      logInfo('FastAPI registration SUCCESS - initializing user state', tag: 'REGISTER');
+      logInfo('FastAPI registration SUCCESS - initializing user state',
+          tag: 'REGISTER');
 
       // Set authentication state using UserProvider
       final userProvider = context.read<UserProvider>();
@@ -105,7 +108,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Check if user has completed onboarding (should be false for new registration)
       final hasOnboarded = userProvider.hasCompletedOnboarding;
 
-      logInfo('Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}',
+      logInfo(
+          'Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}',
           tag: 'REGISTER');
 
       // Navigate based on onboarding status
@@ -127,7 +131,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (statusCode == 400) {
           if (errorData.contains('already registered') ||
               errorData.contains('Email already registered')) {
-            errorMessage = 'This email is already registered. Please try logging in instead.';
+            errorMessage =
+                'This email is already registered. Please try logging in instead.';
           } else if (errorData.contains('Password too short')) {
             errorMessage = 'Password must be at least 8 characters long.';
           } else if (errorData.contains('Invalid email')) {
@@ -136,12 +141,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             errorMessage = 'Invalid email or password format.';
           }
         } else if (statusCode == 409 || statusCode == 422) {
-          errorMessage = 'This email is already registered. Please try logging in instead.';
+          errorMessage =
+              'This email is already registered. Please try logging in instead.';
         } else if (statusCode == 500) {
           errorMessage =
               'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
         } else if (statusCode != null && statusCode >= 500) {
-          errorMessage = 'Server error (${statusCode}). Please try again later.';
+          errorMessage =
+              'Server error (${statusCode}). Please try again later.';
         }
 
         // Handle timeout errors specifically
@@ -154,7 +161,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _showTimeoutRetryDialog();
             return; // Don't show the generic error
           case DioExceptionType.connectionError:
-            errorMessage = 'Connection error. Please check your internet connection and try again.';
+            errorMessage =
+                'Connection error. Please check your internet connection and try again.';
             break;
           default:
             break;
@@ -165,7 +173,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (e.toString().contains('SocketException') ||
           e.toString().contains('network') ||
           e.toString().contains('HandshakeException')) {
-        errorMessage = 'Network error. Check your internet connection and try again.';
+        errorMessage =
+            'Network error. Check your internet connection and try again.';
       }
 
       setState(() {
@@ -272,7 +281,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 24),
                             textStyle: const TextStyle(
                               fontFamily: AppTypography.fontHeading,
                               fontWeight: FontWeight.w600,
@@ -310,10 +320,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.wifi_off,
+                  color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               const Text('Connection Timeout'),
             ],

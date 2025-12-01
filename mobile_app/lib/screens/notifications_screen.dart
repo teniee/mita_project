@@ -72,7 +72,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               Wrap(
                 spacing: 8,
-                children: ['All', 'alert', 'warning', 'info', 'tip', 'achievement', 'reminder']
+                children: [
+                  'All',
+                  'alert',
+                  'warning',
+                  'info',
+                  'tip',
+                  'achievement',
+                  'reminder'
+                ]
                     .map((type) => FilterChip(
                           label: Text(type == 'All' ? 'All' : type),
                           selected: type == 'All'
@@ -112,7 +120,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               : provider.filterPriority == priority,
                           onSelected: (selected) {
                             Navigator.pop(context);
-                            provider.setFilterPriority(priority == 'All' ? null : priority);
+                            provider.setFilterPriority(
+                                priority == 'All' ? null : priority);
                           },
                           selectedColor: AppColors.primary,
                           labelStyle: TextStyle(
@@ -246,8 +255,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildBody(
-      NotificationsProvider provider, List<NotificationModel> notifications, bool isLoading) {
+  Widget _buildBody(NotificationsProvider provider,
+      List<NotificationModel> notifications, bool isLoading) {
     if (isLoading && notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -344,7 +353,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Delete Notification'),
-                  content: const Text('Are you sure you want to delete this notification?'),
+                  content: const Text(
+                      'Are you sure you want to delete this notification?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -352,7 +362,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: const Text('Delete',
+                          style: TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),
@@ -378,16 +389,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(NotificationModel notification, NotificationsProvider provider) {
+  Widget _buildNotificationCard(
+      NotificationModel notification, NotificationsProvider provider) {
     return GestureDetector(
       onTap: () => provider.markAsRead(notification),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: notification.isRead ? Colors.white : AppColors.notificationUnread,
+          color:
+              notification.isRead ? Colors.white : AppColors.notificationUnread,
           borderRadius: BorderRadius.circular(14),
           border: notification.isHighPriority
-              ? Border.all(color: _getPriorityColor(notification.priority), width: 2)
+              ? Border.all(
+                  color: _getPriorityColor(notification.priority), width: 2)
               : null,
           boxShadow: [
             BoxShadow(
@@ -401,9 +415,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image if available
-            if (notification.imageUrl != null && notification.imageUrl!.isNotEmpty)
+            if (notification.imageUrl != null &&
+                notification.imageUrl!.isNotEmpty)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(14)),
                 child: CachedNetworkImage(
                   imageUrl: notification.imageUrl!,
                   height: 150,
@@ -439,13 +455,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             fontFamily: 'Sora',
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: notification.isRead ? Colors.black87 : AppColors.primary,
+                            color: notification.isRead
+                                ? Colors.black87
+                                : AppColors.primary,
                           ),
                         ),
                       ),
                       if (notification.isHighPriority)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: _getPriorityColor(notification.priority),
                             borderRadius: BorderRadius.circular(8),
@@ -469,7 +488,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     style: TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 14,
-                      color: notification.isRead ? Colors.black54 : Colors.black87,
+                      color:
+                          notification.isRead ? Colors.black54 : Colors.black87,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -498,7 +518,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                         ],
                       ),
-                      if (notification.actionUrl != null && notification.actionUrl!.isNotEmpty)
+                      if (notification.actionUrl != null &&
+                          notification.actionUrl!.isNotEmpty)
                         TextButton(
                           onPressed: () {
                             // TODO: Handle action URL (e.g., navigate to specific screen)

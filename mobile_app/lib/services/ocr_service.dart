@@ -7,7 +7,14 @@ import 'logging_service.dart';
 enum OCRConfidence { low, medium, high }
 
 /// Processing status for OCR operations
-enum OCRProcessingStatus { idle, preprocessing, extracting, categorizing, complete, error }
+enum OCRProcessingStatus {
+  idle,
+  preprocessing,
+  extracting,
+  categorizing,
+  complete,
+  error
+}
 
 /// Detailed item from OCR extraction
 class ReceiptItem {
@@ -95,8 +102,9 @@ class OCRResult {
 
   factory OCRResult.fromJson(Map<String, dynamic> json) {
     final itemsJson = json['items'] as List<dynamic>? ?? [];
-    final items =
-        itemsJson.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>)).toList();
+    final items = itemsJson
+        .map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
+        .toList();
 
     return OCRResult(
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
@@ -104,10 +112,12 @@ class OCRResult {
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
       category: json['category'] as String? ?? 'other',
       items: items,
-      merchantConfidence: ReceiptItem._parseConfidence(json['merchant_confidence']),
+      merchantConfidence:
+          ReceiptItem._parseConfidence(json['merchant_confidence']),
       totalConfidence: ReceiptItem._parseConfidence(json['total_confidence']),
       dateConfidence: ReceiptItem._parseConfidence(json['date_confidence']),
-      categoryConfidence: ReceiptItem._parseConfidence(json['category_confidence']),
+      categoryConfidence:
+          ReceiptItem._parseConfidence(json['category_confidence']),
       rawText: json['raw_text'] as String? ?? '',
       isPremiumProcessing: json['is_premium_processing'] as bool? ?? false,
       receiptImagePath: json['receipt_image_path'] as String?,
@@ -308,7 +318,10 @@ class OCRService {
         'Best Buy',
         'Amazon',
         'Costco',
-      ].where((name) => name.toLowerCase().contains(partialName.toLowerCase())).toList();
+      ]
+          .where(
+              (name) => name.toLowerCase().contains(partialName.toLowerCase()))
+          .toList();
 
       return fallbackSuggestions.take(5).toList();
     }
@@ -335,7 +348,8 @@ class OCRService {
   Future<OCRResult> validateAndCorrectOCR(OCRResult result) async {
     try {
       // Call the API service to validate OCR data
-      final validatedData = await _apiService.validateOCRResult(result.toJson());
+      final validatedData =
+          await _apiService.validateOCRResult(result.toJson());
 
       // Rebuild the result with validated data
       return OCRResult.fromJson(validatedData);
@@ -350,7 +364,8 @@ class OCRService {
   Future<OCRResult> enhanceOCRData(OCRResult result) async {
     try {
       // Call the API service to enhance OCR data
-      final enhancedData = await _apiService.enhanceReceiptData(result.toJson());
+      final enhancedData =
+          await _apiService.enhanceReceiptData(result.toJson());
 
       // Rebuild the result with enhanced data
       return OCRResult.fromJson(enhancedData);
@@ -397,7 +412,8 @@ class OCRService {
         if (statusValue == 'complete' || statusValue == 'completed') {
           return status;
         } else if (statusValue == 'failed' || statusValue == 'error') {
-          throw Exception('OCR processing failed: ${status['error'] ?? 'Unknown error'}');
+          throw Exception(
+              'OCR processing failed: ${status['error'] ?? 'Unknown error'}');
         }
 
         // Update progress if available
@@ -414,7 +430,8 @@ class OCRService {
       }
     }
 
-    throw Exception('OCR processing timeout after ${timeout.inSeconds} seconds');
+    throw Exception(
+        'OCR processing timeout after ${timeout.inSeconds} seconds');
   }
 
   /// Get receipt image URL for viewing/downloading
@@ -443,18 +460,22 @@ class OCRService {
     bool isPremiumUser,
   ) {
     // Simulate confidence scoring based on premium tier
-    final baseConfidence = isPremiumUser ? OCRConfidence.high : OCRConfidence.medium;
+    final baseConfidence =
+        isPremiumUser ? OCRConfidence.high : OCRConfidence.medium;
 
     return OCRResult(
       merchant: rawResult['merchant'] as String? ?? 'Unknown Merchant',
       total: (rawResult['total'] as num?)?.toDouble() ?? 0.0,
-      date: DateTime.tryParse(rawResult['date'] as String? ?? '') ?? DateTime.now(),
+      date: DateTime.tryParse(rawResult['date'] as String? ?? '') ??
+          DateTime.now(),
       category: rawResult['category'] as String? ?? 'other',
       items: _parseItems(rawResult['items'] as List<dynamic>? ?? []),
-      merchantConfidence: _adjustConfidence(baseConfidence, rawResult['merchant']),
+      merchantConfidence:
+          _adjustConfidence(baseConfidence, rawResult['merchant']),
       totalConfidence: _adjustConfidence(baseConfidence, rawResult['total']),
       dateConfidence: _adjustConfidence(baseConfidence, rawResult['date']),
-      categoryConfidence: _adjustConfidence(baseConfidence, rawResult['category']),
+      categoryConfidence:
+          _adjustConfidence(baseConfidence, rawResult['category']),
       rawText: rawResult['raw_text'] as String? ?? '',
       isPremiumProcessing: isPremiumUser,
       receiptImagePath: rawResult['receipt_image_path'] as String?,
@@ -463,7 +484,9 @@ class OCRService {
   }
 
   List<ReceiptItem> _parseItems(List<dynamic> itemsJson) {
-    return itemsJson.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>)).toList();
+    return itemsJson
+        .map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   OCRConfidence _adjustConfidence(OCRConfidence base, dynamic value) {

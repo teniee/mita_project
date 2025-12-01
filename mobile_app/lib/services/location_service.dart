@@ -16,7 +16,8 @@ class LocationService {
   /// Check if location permissions are granted
   Future<bool> hasLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   /// Request location permissions
@@ -31,7 +32,8 @@ class LocationService {
       return false;
     }
 
-    return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   /// Get current location and derive country/state
@@ -41,14 +43,22 @@ class LocationService {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         logWarning('Location services are disabled', tag: 'LOCATION_SERVICE');
-        return {'country': null, 'state': null, 'error': 'Location services disabled'};
+        return {
+          'country': null,
+          'state': null,
+          'error': 'Location services disabled'
+        };
       }
 
       // Check/request permissions
       bool hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         logWarning('Location permission denied', tag: 'LOCATION_SERVICE');
-        return {'country': null, 'state': null, 'error': 'Location permission denied'};
+        return {
+          'country': null,
+          'state': null,
+          'error': 'Location permission denied'
+        };
       }
 
       // Get current position
@@ -78,7 +88,11 @@ class LocationService {
         };
       }
 
-      return {'country': null, 'state': null, 'error': 'Unable to determine location'};
+      return {
+        'country': null,
+        'state': null,
+        'error': 'Unable to determine location'
+      };
     } catch (e) {
       logError('Location detection error: $e', tag: 'LOCATION_SERVICE');
       return {'country': null, 'state': null, 'error': e.toString()};
@@ -98,7 +112,8 @@ class LocationService {
     }
 
     await prefs.setBool(_locationSetKey, manuallySet);
-    logInfo('Saved user location: $countryCode, $stateCode (manual: $manuallySet)',
+    logInfo(
+        'Saved user location: $countryCode, $stateCode (manual: $manuallySet)',
         tag: 'LOCATION_SERVICE');
   }
 
@@ -117,7 +132,8 @@ class LocationService {
   }
 
   /// Get user's location (saved or detected)
-  Future<Map<String, String?>> getUserLocation({bool forceDetection = false}) async {
+  Future<Map<String, String?>> getUserLocation(
+      {bool forceDetection = false}) async {
     // First try to get saved location
     if (!forceDetection) {
       final saved = await getSavedUserLocation();
@@ -137,7 +153,8 @@ class LocationService {
         stateCode: detected['state'],
         manuallySet: false,
       );
-      logInfo('Using detected location: ${detected['country']}, ${detected['state']}',
+      logInfo(
+          'Using detected location: ${detected['country']}, ${detected['state']}',
           tag: 'LOCATION_SERVICE');
       return detected;
     }

@@ -19,7 +19,8 @@ class GoalsScreen extends StatefulWidget {
   State<GoalsScreen> createState() => _GoalsScreenState();
 }
 
-class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStateMixin {
+class _GoalsScreenState extends State<GoalsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -68,7 +69,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
 
   Future<void> _showGoalForm({Goal? goal}) async {
     final titleController = TextEditingController(text: goal?.title);
-    final descriptionController = TextEditingController(text: goal?.description);
+    final descriptionController =
+        TextEditingController(text: goal?.description);
     final amountController = TextEditingController(
       text: goal?.targetAmount.toStringAsFixed(0) ?? '',
     );
@@ -166,7 +168,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   items: GoalPriorities.all.map((priority) {
                     return DropdownMenuItem(
                       value: priority,
-                      child: Text(priority[0].toUpperCase() + priority.substring(1)),
+                      child: Text(
+                          priority[0].toUpperCase() + priority.substring(1)),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -188,7 +191,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
-                      initialDate: selectedDate ?? DateTime.now().add(const Duration(days: 90)),
+                      initialDate: selectedDate ??
+                          DateTime.now().add(const Duration(days: 90)),
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 3650)),
                     );
@@ -208,11 +212,13 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
             ElevatedButton(
               onPressed: () async {
                 final title = titleController.text.trim();
-                final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                final amount =
+                    double.tryParse(amountController.text.trim()) ?? 0;
 
                 if (title.isEmpty || amount <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill in required fields')),
+                    const SnackBar(
+                        content: Text('Please fill in required fields')),
                   );
                   return;
                 }
@@ -222,7 +228,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   'description': descriptionController.text.trim(),
                   'category': selectedCategory,
                   'target_amount': amount,
-                  'saved_amount': double.tryParse(savedController.text.trim()) ?? 0,
+                  'saved_amount':
+                      double.tryParse(savedController.text.trim()) ?? 0,
                   'monthly_contribution': monthlyController.text.isNotEmpty
                       ? double.tryParse(monthlyController.text.trim())
                       : null,
@@ -243,7 +250,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                     Navigator.pop(context, true);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+                      SnackBar(
+                          content:
+                              Text('Error: ${goalsProvider.errorMessage}')),
                     );
                   }
                 } catch (e) {
@@ -333,7 +342,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   Navigator.pop(context, true);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${goalsProvider.errorMessage}')),
+                    SnackBar(
+                        content: Text('Error: ${goalsProvider.errorMessage}')),
                   );
                 }
               } catch (e) {
@@ -423,7 +433,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
               }
             },
             backgroundColor: AppColors.textPrimary,
-            label: const Text('AI Suggestions', style: TextStyle(color: Colors.white)),
+            label: const Text('AI Suggestions',
+                style: TextStyle(color: Colors.white)),
             icon: const Icon(Icons.auto_awesome, color: AppColors.secondary),
           ),
           const SizedBox(height: 12),
@@ -459,7 +470,10 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.textPrimary, AppColors.textPrimary.withValues(alpha: 0.7)],
+          colors: [
+            AppColors.textPrimary,
+            AppColors.textPrimary.withValues(alpha: 0.7)
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -477,9 +491,12 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem('Total', goalsProvider.totalGoals.toString(), Icons.flag),
-              _buildStatItem('Active', goalsProvider.activeGoals.toString(), Icons.play_arrow),
-              _buildStatItem('Done', goalsProvider.completedGoals.toString(), Icons.check_circle),
+              _buildStatItem(
+                  'Total', goalsProvider.totalGoals.toString(), Icons.flag),
+              _buildStatItem('Active', goalsProvider.activeGoals.toString(),
+                  Icons.play_arrow),
+              _buildStatItem('Done', goalsProvider.completedGoals.toString(),
+                  Icons.check_circle),
             ],
           ),
           const SizedBox(height: 16),
@@ -538,7 +555,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           const SizedBox(height: 16),
           const Text(
             'No goals yet',
-            style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w500),
+            style: TextStyle(
+                fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -598,11 +616,13 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          if (goal.description != null && goal.description!.isNotEmpty) ...[
+                          if (goal.description != null &&
+                              goal.description!.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               goal.description!,
-                              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
                             ),
                           ],
                         ],
@@ -657,10 +677,14 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                           value: 'toggle_status',
                           child: Row(
                             children: [
-                              Icon(goal.status == 'active' ? Icons.pause : Icons.play_arrow,
+                              Icon(
+                                  goal.status == 'active'
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
                                   size: 20),
                               const SizedBox(width: 8),
-                              Text(goal.status == 'active' ? 'Pause' : 'Resume'),
+                              Text(
+                                  goal.status == 'active' ? 'Pause' : 'Resume'),
                             ],
                           ),
                         ),
@@ -670,7 +694,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                             children: [
                               Icon(Icons.delete, size: 20, color: Colors.red),
                               SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: Colors.red)),
+                              Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
                             ],
                           ),
                         ),
@@ -685,27 +710,32 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   children: [
                     if (goal.category != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.secondary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           goal.category!,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ),
                       const SizedBox(width: 8),
                     ],
                     if (goal.priority != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _getPriorityColor(goal.priority!).withValues(alpha: 0.2),
+                          color: _getPriorityColor(goal.priority!)
+                              .withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          goal.priority![0].toUpperCase() + goal.priority!.substring(1),
+                          goal.priority![0].toUpperCase() +
+                              goal.priority!.substring(1),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -743,7 +773,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                 LinearProgressIndicator(
                   value: (goal.progress / 100).clamp(0.0, 1.0),
                   backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation(_getProgressColor(goal.progress)),
+                  valueColor:
+                      AlwaysStoppedAnimation(_getProgressColor(goal.progress)),
                   minHeight: 8,
                 ),
 
@@ -754,7 +785,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   children: [
                     Text(
                       goal.progressPercentage,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                     Text(
                       '${goal.formattedRemainingAmount} remaining',
@@ -769,10 +801,14 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: goal.isOverdue ? Colors.red.shade50 : Colors.blue.shade50,
+                      color: goal.isOverdue
+                          ? Colors.red.shade50
+                          : Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: goal.isOverdue ? Colors.red.shade200 : Colors.blue.shade200,
+                        color: goal.isOverdue
+                            ? Colors.red.shade200
+                            : Colors.blue.shade200,
                       ),
                     ),
                     child: Row(
@@ -780,7 +816,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                         Icon(
                           Icons.calendar_today,
                           size: 16,
-                          color: goal.isOverdue ? Colors.red.shade700 : Colors.blue.shade700,
+                          color: goal.isOverdue
+                              ? Colors.red.shade700
+                              : Colors.blue.shade700,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -790,7 +828,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: goal.isOverdue ? Colors.red.shade700 : Colors.blue.shade700,
+                            color: goal.isOverdue
+                                ? Colors.red.shade700
+                                : Colors.blue.shade700,
                           ),
                         ),
                       ],

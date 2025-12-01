@@ -187,7 +187,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
       contextualHint =
           'I notice you\'ve exceeded your budget. Ask me for tips on getting back on track!';
     } else if (budgetStatus == 'warning') {
-      contextualHint = 'You\'re approaching your budget limit. I can help you find ways to save!';
+      contextualHint =
+          'You\'re approaching your budget limit. I can help you find ways to save!';
     }
 
     return Center(
@@ -210,7 +211,8 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
               contextualHint,
-              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+              style: AppTypography.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ),
@@ -293,7 +295,9 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _isLoading ? AppColors.accent.withValues(alpha: 0.5) : AppColors.accent,
+                color: _isLoading
+                    ? AppColors.accent.withValues(alpha: 0.5)
+                    : AppColors.accent,
                 shape: BoxShape.circle,
               ),
               child: const Icon(

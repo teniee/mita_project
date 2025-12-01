@@ -1,6 +1,7 @@
 /// Country profiles service providing income thresholds and financial parameters by country/region
 class CountryProfilesService {
-  static final CountryProfilesService _instance = CountryProfilesService._internal();
+  static final CountryProfilesService _instance =
+      CountryProfilesService._internal();
   factory CountryProfilesService() => _instance;
   CountryProfilesService._internal();
 
@@ -379,7 +380,8 @@ class CountryProfilesService {
   }
 
   /// Get income thresholds for a specific country/region
-  Map<String, double> getIncomeThresholds(String countryCode, {String? stateCode}) {
+  Map<String, double> getIncomeThresholds(String countryCode,
+      {String? stateCode}) {
     final profile = getCountryProfile(countryCode);
     if (profile == null) {
       // Fallback to US default thresholds
@@ -390,14 +392,14 @@ class CountryProfilesService {
     if (stateCode != null && profile['states'] != null) {
       final stateThresholds = profile['states'][stateCode.toUpperCase()];
       if (stateThresholds != null) {
-        return Map<String, double>.from(
-            stateThresholds.map((key, value) => MapEntry(key, value.toDouble())));
+        return Map<String, double>.from(stateThresholds
+            .map((key, value) => MapEntry(key, value.toDouble())));
       }
     }
 
     // Return country-level thresholds
-    return Map<String, double>.from(
-        profile['class_thresholds'].map((key, value) => MapEntry(key, value.toDouble())));
+    return Map<String, double>.from(profile['class_thresholds']
+        .map((key, value) => MapEntry(key, value.toDouble())));
   }
 
   /// Get default behavior for a country
@@ -464,7 +466,8 @@ class CountryProfilesService {
   }
 
   /// Classify income tier based on monthly income and location
-  String classifyIncomeByLocation(double monthlyIncome, String countryCode, {String? stateCode}) {
+  String classifyIncomeByLocation(double monthlyIncome, String countryCode,
+      {String? stateCode}) {
     final thresholds = getIncomeThresholds(countryCode, stateCode: stateCode);
     final annualIncome = monthlyToAnnual(monthlyIncome);
 
@@ -504,8 +507,9 @@ class CountryProfilesService {
 
   /// Format currency for display
   String _formatCurrency(double amount, String currency) {
-    final formattedAmount =
-        amount >= 1000 ? '${(amount / 1000).toStringAsFixed(0)}K' : amount.toStringAsFixed(0);
+    final formattedAmount = amount >= 1000
+        ? '${(amount / 1000).toStringAsFixed(0)}K'
+        : amount.toStringAsFixed(0);
 
     switch (currency) {
       case 'USD':

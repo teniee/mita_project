@@ -17,14 +17,22 @@ class OnboardingHabitsScreen extends StatefulWidget {
 class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
     with OnboardingSessionMixin {
   final List<Map<String, dynamic>> habits = [
-    {'id': 'impulse_buying', 'label': 'Impulse purchases', 'icon': Icons.shopping_cart},
+    {
+      'id': 'impulse_buying',
+      'label': 'Impulse purchases',
+      'icon': Icons.shopping_cart
+    },
     {'id': 'no_budgeting', 'label': 'No budgeting', 'icon': Icons.money_off},
     {
       'id': 'forgot_subscriptions',
       'label': 'Forget about subscriptions',
       'icon': Icons.subscriptions
     },
-    {'id': 'credit_dependency', 'label': 'Frequent loans', 'icon': Icons.credit_card},
+    {
+      'id': 'credit_dependency',
+      'label': 'Frequent loans',
+      'icon': Icons.credit_card
+    },
   ];
 
   final Set<String> selectedHabits = {};
@@ -108,19 +116,24 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                           onTap: () => _toggleHabit(habit['id']),
                           child: Card(
                             elevation: isSelected ? 4 : 1,
-                            color: isSelected ? AppColors.secondary : Colors.white,
+                            color:
+                                isSelected ? AppColors.secondary : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
-                                color: isSelected ? AppColors.textPrimary : Colors.transparent,
+                                color: isSelected
+                                    ? AppColors.textPrimary
+                                    : Colors.transparent,
                                 width: 1.5,
                               ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 20, horizontal: 16),
                               child: Row(
                                 children: [
-                                  Icon(habit['icon'], color: AppColors.textPrimary),
+                                  Icon(habit['icon'],
+                                      color: AppColors.textPrimary),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
@@ -134,7 +147,8 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                                     ),
                                   ),
                                   if (isSelected)
-                                    const Icon(Icons.check_circle, color: AppColors.textPrimary),
+                                    const Icon(Icons.check_circle,
+                                        color: AppColors.textPrimary),
                                 ],
                               ),
                             ),
@@ -158,7 +172,8 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                         hintText: 'Describe your situation...',
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -205,7 +220,8 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
 
                     // Cache onboarding data using UserProvider for centralized state management
                     if (mounted) {
-                      final userProvider = Provider.of<UserProvider>(context, listen: false);
+                      final userProvider =
+                          Provider.of<UserProvider>(context, listen: false);
                       final onboardingData = OnboardingState.instance.toMap();
                       await userProvider.cacheOnboardingData(onboardingData);
                     }
@@ -215,7 +231,9 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
+                    style: TextStyle(
+                        fontFamily: AppTypography.fontHeading,
+                        color: Colors.grey),
                   ),
                 ),
               ),

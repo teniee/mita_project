@@ -103,7 +103,8 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
     } catch (e) {
       // Don't let error reporting crash the error boundary
       if (kDebugMode) {
-        dev.log('Failed to report error to Sentry: $e', name: 'SentryErrorBoundary');
+        dev.log('Failed to report error to Sentry: $e',
+            name: 'SentryErrorBoundary');
       }
     }
   }
@@ -135,9 +136,11 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
         lowerScreenName.contains('expense') ||
         lowerScreenName.contains('payment')) {
       return FinancialErrorCategory.transactionProcessing;
-    } else if (lowerScreenName.contains('budget') || lowerScreenName.contains('goal')) {
+    } else if (lowerScreenName.contains('budget') ||
+        lowerScreenName.contains('goal')) {
       return FinancialErrorCategory.budgetCalculation;
-    } else if (lowerScreenName.contains('profile') || lowerScreenName.contains('account')) {
+    } else if (lowerScreenName.contains('profile') ||
+        lowerScreenName.contains('account')) {
       return FinancialErrorCategory.accountManagement;
     }
 

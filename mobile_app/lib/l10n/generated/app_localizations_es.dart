@@ -115,7 +115,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noTransactionsYet => 'Aún no hay transacciones';
 
   @override
-  String get startTrackingExpenses => 'Comienza a rastrear tus gastos para verlos aquí';
+  String get startTrackingExpenses =>
+      'Comienza a rastrear tus gastos para verlos aquí';
 
   @override
   String get insights => 'Perspectivas';
@@ -245,19 +246,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get error => 'Error';
 
   @override
-  String get networkError => 'Error de conexión de red. Por favor verifica tu conexión a internet.';
+  String get networkError =>
+      'Error de conexión de red. Por favor verifica tu conexión a internet.';
 
   @override
-  String get serverError => 'Error del servidor. Por favor inténtalo de nuevo más tarde.';
+  String get serverError =>
+      'Error del servidor. Por favor inténtalo de nuevo más tarde.';
 
   @override
-  String get validationError => 'Por favor verifica tu entrada e inténtalo de nuevo.';
+  String get validationError =>
+      'Por favor verifica tu entrada e inténtalo de nuevo.';
 
   @override
-  String get invalidEmail => 'Por favor ingresa una dirección de correo electrónico válida.';
+  String get invalidEmail =>
+      'Por favor ingresa una dirección de correo electrónico válida.';
 
   @override
-  String get passwordTooShort => 'La contraseña debe tener al menos 8 caracteres.';
+  String get passwordTooShort =>
+      'La contraseña debe tener al menos 8 caracteres.';
 
   @override
   String get passwordsDoNotMatch => 'Las contraseñas no coinciden.';
@@ -355,7 +361,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get welcomeBack => 'Bienvenido de nuevo';
 
   @override
-  String get signInToContinue => 'Inicia sesión para continuar gestionando tus finanzas';
+  String get signInToContinue =>
+      'Inicia sesión para continuar gestionando tus finanzas';
 
   @override
   String get emailAddress => 'Dirección de correo electrónico';
@@ -370,7 +377,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get pleaseEnterEmail => 'Por favor ingresa tu correo electrónico';
 
   @override
-  String get pleaseEnterValidEmail => 'Por favor ingresa un correo electrónico válido';
+  String get pleaseEnterValidEmail =>
+      'Por favor ingresa un correo electrónico válido';
 
   @override
   String get pleaseEnterPassword => 'Por favor ingresa tu contraseña';
@@ -525,7 +533,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.';
 
   @override
-  String get errorFinancialContextAccuracy => 'Your financial records remain accurate and secure.';
+  String get errorFinancialContextAccuracy =>
+      'Your financial records remain accurate and secure.';
 
   @override
   String get errorFinancialContextOffline =>
@@ -594,10 +603,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get errorTipsTitle => 'What you can do:';
 
   @override
-  String get errorTipBudgetReview => 'Review your spending categories to find areas to save';
+  String get errorTipBudgetReview =>
+      'Review your spending categories to find areas to save';
 
   @override
-  String get errorTipBudgetPostpone => 'Consider postponing non-essential purchases';
+  String get errorTipBudgetPostpone =>
+      'Consider postponing non-essential purchases';
 
   @override
   String get errorTipBudgetPaymentMethod =>
@@ -607,7 +618,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get errorTipConnectionCheck => 'Check your internet connection';
 
   @override
-  String get errorTipTransactionFields => 'Verify all required fields are filled correctly';
+  String get errorTipTransactionFields =>
+      'Verify all required fields are filled correctly';
 
   @override
   String get errorTipRetryMoment => 'Try again in a few moments';
@@ -619,7 +631,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get errorTipOfflineMode => 'You can still record transactions offline';
 
   @override
-  String get errorTipAutoSync => 'Data will sync automatically when reconnected';
+  String get errorTipAutoSync =>
+      'Data will sync automatically when reconnected';
 
   @override
   String get errorTipAmountFormat => 'Use numbers only (e.g., 25.50)';

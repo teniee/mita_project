@@ -66,9 +66,11 @@ class NotificationsProvider extends ChangeNotifier {
         limit: 100,
       );
 
-      final notificationsList = response['notifications'] as List<dynamic>? ?? [];
+      final notificationsList =
+          response['notifications'] as List<dynamic>? ?? [];
       final notifications = notificationsList
-          .map((json) => NotificationModel.fromJson(json as Map<String, dynamic>))
+          .map((json) =>
+              NotificationModel.fromJson(json as Map<String, dynamic>))
           .toList();
 
       _notifications = notifications;
@@ -78,10 +80,12 @@ class NotificationsProvider extends ChangeNotifier {
       _state = NotificationState.loaded;
       _errorMessage = null;
 
-      logInfo('Notifications loaded: ${notifications.length} items, $unreadCount unread',
+      logInfo(
+          'Notifications loaded: ${notifications.length} items, $unreadCount unread',
           tag: 'NOTIFICATIONS_PROVIDER');
     } catch (e) {
-      logError('Failed to load notifications: $e', tag: 'NOTIFICATIONS_PROVIDER');
+      logError('Failed to load notifications: $e',
+          tag: 'NOTIFICATIONS_PROVIDER');
       _errorMessage = e.toString();
       _state = NotificationState.error;
     } finally {
@@ -94,7 +98,8 @@ class NotificationsProvider extends ChangeNotifier {
     if (notification.isRead) return true;
 
     try {
-      logInfo('Marking notification ${notification.id} as read', tag: 'NOTIFICATIONS_PROVIDER');
+      logInfo('Marking notification ${notification.id} as read',
+          tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.markNotificationRead(notification.id);
       if (success) {
@@ -113,7 +118,8 @@ class NotificationsProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      logError('Failed to mark notification as read: $e', tag: 'NOTIFICATIONS_PROVIDER');
+      logError('Failed to mark notification as read: $e',
+          tag: 'NOTIFICATIONS_PROVIDER');
       return false;
     }
   }
@@ -121,7 +127,8 @@ class NotificationsProvider extends ChangeNotifier {
   /// Mark all notifications as read
   Future<bool> markAllAsRead() async {
     try {
-      logInfo('Marking all notifications as read', tag: 'NOTIFICATIONS_PROVIDER');
+      logInfo('Marking all notifications as read',
+          tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.markAllNotificationsRead();
       if (success) {
@@ -134,12 +141,14 @@ class NotificationsProvider extends ChangeNotifier {
         _unreadCount = 0;
         notifyListeners();
 
-        logInfo('All notifications marked as read', tag: 'NOTIFICATIONS_PROVIDER');
+        logInfo('All notifications marked as read',
+            tag: 'NOTIFICATIONS_PROVIDER');
         return true;
       }
       return false;
     } catch (e) {
-      logError('Failed to mark all notifications as read: $e', tag: 'NOTIFICATIONS_PROVIDER');
+      logError('Failed to mark all notifications as read: $e',
+          tag: 'NOTIFICATIONS_PROVIDER');
       return false;
     }
   }
@@ -147,7 +156,8 @@ class NotificationsProvider extends ChangeNotifier {
   /// Delete a notification
   Future<bool> deleteNotification(NotificationModel notification) async {
     try {
-      logInfo('Deleting notification ${notification.id}', tag: 'NOTIFICATIONS_PROVIDER');
+      logInfo('Deleting notification ${notification.id}',
+          tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.deleteNotification(notification.id);
       if (success) {
@@ -160,7 +170,8 @@ class NotificationsProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      logError('Failed to delete notification: $e', tag: 'NOTIFICATIONS_PROVIDER');
+      logError('Failed to delete notification: $e',
+          tag: 'NOTIFICATIONS_PROVIDER');
       return false;
     }
   }
@@ -212,7 +223,8 @@ class NotificationsProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      logError('Failed to fetch unread count: $e', tag: 'NOTIFICATIONS_PROVIDER');
+      logError('Failed to fetch unread count: $e',
+          tag: 'NOTIFICATIONS_PROVIDER');
     }
   }
 

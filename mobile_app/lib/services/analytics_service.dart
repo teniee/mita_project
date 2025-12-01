@@ -19,7 +19,8 @@ class AnalyticsService extends ChangeNotifier {
 
   final ApiService _apiService = ApiService();
   final ErrorAnalyticsService _errorAnalytics = ErrorAnalyticsService.instance;
-  final PredictiveAnalyticsService _predictiveAnalytics = PredictiveAnalyticsService();
+  final PredictiveAnalyticsService _predictiveAnalytics =
+      PredictiveAnalyticsService();
 
   bool _initialized = false;
   String? _sessionId;
@@ -55,7 +56,8 @@ class AnalyticsService extends ChangeNotifier {
         },
       );
     } catch (e) {
-      logError('Failed to initialize Analytics Service: $e', tag: 'ANALYTICS', error: e);
+      logError('Failed to initialize Analytics Service: $e',
+          tag: 'ANALYTICS', error: e);
     }
   }
 
@@ -109,7 +111,8 @@ class AnalyticsService extends ChangeNotifier {
         metadata: metadata,
       );
 
-      logDebug('Logged feature access attempt: $feature (access: $hasAccess)', tag: 'ANALYTICS');
+      logDebug('Logged feature access attempt: $feature (access: $hasAccess)',
+          tag: 'ANALYTICS');
     } catch (e) {
       logError('Failed to log feature access: $e', tag: 'ANALYTICS', error: e);
     }
@@ -134,7 +137,8 @@ class AnalyticsService extends ChangeNotifier {
 
       logDebug('Logged paywall impression: $screen', tag: 'ANALYTICS');
     } catch (e) {
-      logError('Failed to log paywall impression: $e', tag: 'ANALYTICS', error: e);
+      logError('Failed to log paywall impression: $e',
+          tag: 'ANALYTICS', error: e);
     }
   }
 
@@ -231,23 +235,27 @@ class AnalyticsService extends ChangeNotifier {
 
       return {
         'session_id': _sessionId,
-        'session_duration_minutes':
-            _sessionStart != null ? DateTime.now().difference(_sessionStart!).inMinutes : 0,
+        'session_duration_minutes': _sessionStart != null
+            ? DateTime.now().difference(_sessionStart!).inMinutes
+            : 0,
         'features_used': _featureUsageCount.length,
-        'total_interactions': _featureUsageCount.values.fold<int>(0, (sum, count) => sum + count),
+        'total_interactions':
+            _featureUsageCount.values.fold<int>(0, (sum, count) => sum + count),
         'errors_count': errorSummary.totalErrors,
         'unique_errors': errorSummary.uniqueErrors,
         'top_features': _getTopFeatures(5),
       };
     } catch (e) {
-      logError('Failed to get analytics summary: $e', tag: 'ANALYTICS', error: e);
+      logError('Failed to get analytics summary: $e',
+          tag: 'ANALYTICS', error: e);
       return {};
     }
   }
 
   /// Get top used features
   List<Map<String, dynamic>> _getTopFeatures(int limit) {
-    final sorted = _featureUsageCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = _featureUsageCount.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return sorted
         .take(limit)
@@ -278,8 +286,9 @@ class AnalyticsService extends ChangeNotifier {
     try {
       await _endScreenTiming();
 
-      final sessionDuration =
-          _sessionStart != null ? DateTime.now().difference(_sessionStart!) : Duration.zero;
+      final sessionDuration = _sessionStart != null
+          ? DateTime.now().difference(_sessionStart!)
+          : Duration.zero;
 
       await logFeatureUsage(
         feature: 'app_session',
@@ -288,11 +297,13 @@ class AnalyticsService extends ChangeNotifier {
           'session_id': _sessionId,
           'duration_seconds': sessionDuration.inSeconds,
           'features_used': _featureUsageCount.length,
-          'total_interactions': _featureUsageCount.values.fold<int>(0, (sum, count) => sum + count),
+          'total_interactions': _featureUsageCount.values
+              .fold<int>(0, (sum, count) => sum + count),
         },
       );
 
-      logInfo('Session ended: $_sessionId (${sessionDuration.inMinutes} minutes)',
+      logInfo(
+          'Session ended: $_sessionId (${sessionDuration.inMinutes} minutes)',
           tag: 'ANALYTICS');
 
       // Reset session

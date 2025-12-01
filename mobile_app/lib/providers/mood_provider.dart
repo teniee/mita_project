@@ -66,7 +66,8 @@ class MoodProvider extends ChangeNotifier {
       _lastSubmissionDate = DateTime.now();
       _state = MoodState.loaded;
 
-      logInfo('Mood logged successfully: ${_selectedMood.round()}', tag: 'MOOD_PROVIDER');
+      logInfo('Mood logged successfully: ${_selectedMood.round()}',
+          tag: 'MOOD_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {

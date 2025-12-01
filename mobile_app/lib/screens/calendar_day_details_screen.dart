@@ -31,12 +31,14 @@ class CalendarDayDetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<CalendarDayDetailsScreen> createState() => _CalendarDayDetailsScreenState();
+  State<CalendarDayDetailsScreen> createState() =>
+      _CalendarDayDetailsScreenState();
 }
 
 class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     with TickerProviderStateMixin {
-  final PredictiveAnalyticsService _predictiveService = PredictiveAnalyticsService();
+  final PredictiveAnalyticsService _predictiveService =
+      PredictiveAnalyticsService();
 
   late AnimationController _slideController;
   late AnimationController _fadeController;
@@ -72,12 +74,12 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       vsync: this,
     );
 
-    _slideAnimation = Tween<double>(begin: 1.0, end: 0.0)
-        .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
-    _chartAnimation = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _chartController, curve: Curves.elasticOut));
+    _slideAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+        CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    _chartAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _chartController, curve: Curves.elasticOut));
 
     _slideController.forward();
     _fadeController.forward();
@@ -105,7 +107,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     try {
       setState(() => _isLoadingLocal = true);
 
-      final isPastDate = widget.date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+      final isPastDate = widget.date
+          .isBefore(DateTime.now().subtract(const Duration(days: 1)));
       final isFutureDate = widget.date.isAfter(DateTime.now());
 
       // Load transactions for past dates using TransactionProvider
@@ -114,7 +117,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       }
 
       // Load predictions for future dates or current date
-      if (isFutureDate || widget.date.difference(DateTime.now()).inDays.abs() <= 1) {
+      if (isFutureDate ||
+          widget.date.difference(DateTime.now()).inDays.abs() <= 1) {
         await _loadPredictions();
       }
 
@@ -137,18 +141,22 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       final transactionProvider = context.read<TransactionProvider>();
 
       // Set date range for the specific day
-      final startOfDay = DateTime(widget.date.year, widget.date.month, widget.date.day);
-      final endOfDay = DateTime(widget.date.year, widget.date.month, widget.date.day, 23, 59, 59);
+      final startOfDay =
+          DateTime(widget.date.year, widget.date.month, widget.date.day);
+      final endOfDay = DateTime(
+          widget.date.year, widget.date.month, widget.date.day, 23, 59, 59);
 
       await transactionProvider.loadTransactionsByDateRange(
         startDate: startOfDay,
         endDate: endOfDay,
       );
 
-      logInfo('Loaded transactions for ${DateFormat('yyyy-MM-dd').format(widget.date)}',
+      logInfo(
+          'Loaded transactions for ${DateFormat('yyyy-MM-dd').format(widget.date)}',
           tag: 'CALENDAR_DAY_DETAILS');
     } catch (e) {
-      logWarning('Failed to load transactions: $e', tag: 'CALENDAR_DAY_DETAILS');
+      logWarning('Failed to load transactions: $e',
+          tag: 'CALENDAR_DAY_DETAILS');
     }
   }
 
@@ -158,7 +166,12 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
       if (daysFromNow >= 0) {
         final categoryPredictions = <String, dynamic>{};
-        final categories = ['Food & Dining', 'Transportation', 'Entertainment', 'Shopping'];
+        final categories = [
+          'Food & Dining',
+          'Transportation',
+          'Entertainment',
+          'Shopping'
+        ];
 
         for (final category in categories) {
           final prediction = await _predictiveService.predictCategorySpending(
@@ -194,11 +207,13 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     try {
       // First check widget data
       if (widget.dayData != null && widget.dayData!['categories'] != null) {
-        final categories = widget.dayData!['categories'] as Map<String, dynamic>;
+        final categories =
+            widget.dayData!['categories'] as Map<String, dynamic>;
         final breakdown = <Map<String, dynamic>>[];
 
         categories.forEach((category, budgetedAmount) {
-          final spentAmount = _calculateCategorySpentAmount(category, budgetedAmount);
+          final spentAmount =
+              _calculateCategorySpentAmount(category, budgetedAmount);
           breakdown.add({
             'name': _formatCategoryName(category),
             'budgeted': (budgetedAmount as num).toDouble(),
@@ -230,7 +245,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           final breakdown = <Map<String, dynamic>>[];
 
           categories.forEach((category, budgetedAmount) {
-            final spentAmount = _calculateCategorySpentAmount(category, budgetedAmount);
+            final spentAmount =
+                _calculateCategorySpentAmount(category, budgetedAmount);
             breakdown.add({
               'name': _formatCategoryName(category),
               'budgeted': (budgetedAmount as num).toDouble(),
@@ -252,21 +268,25 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         _categoryBreakdown = _generateDefaultCategoryBreakdown();
       });
     } catch (e) {
-      logWarning('Failed to load category breakdown: $e', tag: 'CALENDAR_DAY_DETAILS');
+      logWarning('Failed to load category breakdown: $e',
+          tag: 'CALENDAR_DAY_DETAILS');
       setState(() {
         _categoryBreakdown = _generateDefaultCategoryBreakdown();
       });
     }
   }
 
-  double _calculateCategorySpentAmount(String category, dynamic budgetedAmount) {
+  double _calculateCategorySpentAmount(
+      String category, dynamic budgetedAmount) {
     final daySpent = widget.spent.toDouble();
     final dayLimit = widget.limit.toDouble();
     final spendingRatio = dayLimit > 0 ? (daySpent / dayLimit) : 0.0;
 
     // Apply some variation based on category
     final categoryMultiplier = _getCategorySpendingMultiplier(category);
-    return (budgetedAmount as num).toDouble() * spendingRatio * categoryMultiplier;
+    return (budgetedAmount as num).toDouble() *
+        spendingRatio *
+        categoryMultiplier;
   }
 
   double _getCategorySpendingMultiplier(String category) {
@@ -336,7 +356,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   child: Column(
                     children: [
                       // Header Section
-                      _buildHeaderSection(colorScheme, textTheme, budgetProvider),
+                      _buildHeaderSection(
+                          colorScheme, textTheme, budgetProvider),
                       const SizedBox(height: 24),
 
                       // Tab Navigation
@@ -345,8 +366,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
                       // Content
                       Expanded(
-                        child: _buildTabContent(
-                            colorScheme, textTheme, transactionProvider, budgetProvider),
+                        child: _buildTabContent(colorScheme, textTheme,
+                            transactionProvider, budgetProvider),
                       ),
 
                       // Action Buttons
@@ -362,10 +383,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildHeaderSection(
-      ColorScheme colorScheme, TextTheme textTheme, BudgetProvider budgetProvider) {
+  Widget _buildHeaderSection(ColorScheme colorScheme, TextTheme textTheme,
+      BudgetProvider budgetProvider) {
     final remaining = widget.limit - widget.spent;
-    final spentPercentage = widget.limit > 0 ? (widget.spent / widget.limit) * 100 : 0.0;
+    final spentPercentage =
+        widget.limit > 0 ? (widget.spent / widget.limit) * 100 : 0.0;
     final isToday = _isToday();
     final isFuture = _isFuture();
     final isPast = _isPast();
@@ -398,7 +420,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   if (isToday)
                     Container(
                       margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
@@ -429,7 +452,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: _getStatusChipColor(),
                       borderRadius: BorderRadius.circular(20),
@@ -498,7 +522,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   Container(
                     width: 1,
                     height: 40,
-                    color: colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
+                    color:
+                        colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
                   ),
                   Expanded(
                     child: _buildBudgetStat(
@@ -524,13 +549,18 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   Container(
                     width: 1,
                     height: 40,
-                    color: colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
+                    color:
+                        colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
                   ),
                   Expanded(
                     child: _buildBudgetStat(
                       isFuture ? 'Predicted' : 'Remaining',
-                      isFuture ? '\$${_getPredictedSpending().toStringAsFixed(0)}' : '\$$remaining',
-                      isFuture ? Icons.trending_up_outlined : Icons.account_balance_outlined,
+                      isFuture
+                          ? '\$${_getPredictedSpending().toStringAsFixed(0)}'
+                          : '\$$remaining',
+                      isFuture
+                          ? Icons.trending_up_outlined
+                          : Icons.account_balance_outlined,
                       isFuture ? colorScheme.secondary : colorScheme.tertiary,
                       textTheme,
                     ),
@@ -539,7 +569,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               ),
               if (!isFuture) ...[
                 const SizedBox(height: 16),
-                _buildProgressIndicator(spentPercentage, colorScheme, textTheme),
+                _buildProgressIndicator(
+                    spentPercentage, colorScheme, textTheme),
               ],
             ],
           ),
@@ -548,8 +579,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildBudgetStat(
-      String label, String amount, IconData icon, Color color, TextTheme textTheme) {
+  Widget _buildBudgetStat(String label, String amount, IconData icon,
+      Color color, TextTheme textTheme) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -592,7 +623,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               '${spentPercentage.toStringAsFixed(1)}%',
               style: textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: spentPercentage > 100 ? colorScheme.error : colorScheme.primary,
+                color: spentPercentage > 100
+                    ? colorScheme.error
+                    : colorScheme.primary,
               ),
             ),
           ],
@@ -602,8 +635,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           animation: _chartAnimation,
           builder: (context, child) {
             return LinearProgressIndicator(
-              value: (spentPercentage / 100 * _chartAnimation.value).clamp(0.0, 1.0),
-              backgroundColor: colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
+              value: (spentPercentage / 100 * _chartAnimation.value)
+                  .clamp(0.0, 1.0),
+              backgroundColor:
+                  colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(
                 spentPercentage > 100
                     ? colorScheme.error
@@ -652,14 +687,19 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                     Icon(
                       entry.value,
                       size: 18,
-                      color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
+                      color: isSelected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _getTabTitle(entry.key),
                       style: textTheme.labelMedium?.copyWith(
-                        color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSurface,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -675,7 +715,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   Widget _buildTabContent(ColorScheme colorScheme, TextTheme textTheme,
       TransactionProvider transactionProvider, BudgetProvider budgetProvider) {
     // Show loading state from providers or local loading
-    if (_isLoadingLocal || transactionProvider.isLoading || budgetProvider.isLoading) {
+    if (_isLoadingLocal ||
+        transactionProvider.isLoading ||
+        budgetProvider.isLoading) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -700,8 +742,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     }
   }
 
-  Widget _buildSpendingTab(
-      ColorScheme colorScheme, TextTheme textTheme, TransactionProvider transactionProvider) {
+  Widget _buildSpendingTab(ColorScheme colorScheme, TextTheme textTheme,
+      TransactionProvider transactionProvider) {
     // Convert provider transactions to the expected format
     final transactions = transactionProvider.transactions
         .map((t) => {
@@ -726,8 +768,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           ),
           const SizedBox(height: 16),
 
-          ..._categoryBreakdown
-              .map((category) => _buildCategoryItem(category, colorScheme, textTheme)),
+          ..._categoryBreakdown.map((category) =>
+              _buildCategoryItem(category, colorScheme, textTheme)),
 
           const SizedBox(height: 24),
 
@@ -742,9 +784,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
             ),
             const SizedBox(height: 16),
             if (transactions.isNotEmpty)
-              ...transactions
-                  .take(5)
-                  .map((transaction) => _buildTransactionItem(transaction, colorScheme, textTheme))
+              ...transactions.take(5).map((transaction) =>
+                  _buildTransactionItem(transaction, colorScheme, textTheme))
             else
               _buildEmptyTransactionsState(colorScheme, textTheme),
           ],
@@ -753,8 +794,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildCategoryItem(
-      Map<String, dynamic> category, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildCategoryItem(Map<String, dynamic> category,
+      ColorScheme colorScheme, TextTheme textTheme) {
     final budgeted = (category['budgeted'] as num).toDouble();
     final spent = (category['spent'] as num).toDouble();
     final color = category['color'] as Color;
@@ -814,7 +855,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                         : '\$${spent.toStringAsFixed(0)} / \$${budgeted.toStringAsFixed(0)}',
                     style: textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: percentage > 1.0 ? colorScheme.error : colorScheme.onSurface,
+                      color: percentage > 1.0
+                          ? colorScheme.error
+                          : colorScheme.onSurface,
                     ),
                   ),
                   if (!_isFuture())
@@ -852,12 +895,13 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     );
   }
 
-  Widget _buildTransactionItem(
-      Map<String, dynamic> transaction, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildTransactionItem(Map<String, dynamic> transaction,
+      ColorScheme colorScheme, TextTheme textTheme) {
     final amount = (transaction['amount'] as num).toDouble();
     final description = transaction['description'] as String? ?? 'Unknown';
     final category = transaction['category'] as String? ?? 'Other';
-    final time = transaction['time'] as String? ?? DateFormat('HH:mm').format(DateTime.now());
+    final time = transaction['time'] as String? ??
+        DateFormat('HH:mm').format(DateTime.now());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -972,7 +1016,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                         ),
                       ),
                       Text(
-                        _isFuture() ? 'Predicted spending for this day' : 'Spending insights',
+                        _isFuture()
+                            ? 'Predicted spending for this day'
+                            : 'Spending insights',
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -987,16 +1033,17 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           const SizedBox(height: 20),
 
           // Prediction Items
-          ...(_predictions!.entries.map(
-              (entry) => _buildPredictionItem(entry.key, entry.value, colorScheme, textTheme))),
+          ...(_predictions!.entries.map((entry) => _buildPredictionItem(
+              entry.key, entry.value, colorScheme, textTheme))),
         ],
       ),
     );
   }
 
-  Widget _buildPredictionItem(
-      String category, dynamic prediction, ColorScheme colorScheme, TextTheme textTheme) {
-    final predictedAmount = (prediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
+  Widget _buildPredictionItem(String category, dynamic prediction,
+      ColorScheme colorScheme, TextTheme textTheme) {
+    final predictedAmount =
+        (prediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
     final confidence = (prediction['confidence'] as num?)?.toDouble() ?? 0.0;
     final factors = prediction['factors'] as List<dynamic>? ?? [];
 
@@ -1135,15 +1182,15 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           const SizedBox(height: 16),
 
           // Insights Cards
-          ..._generateInsights()
-              .map((insight) => _buildInsightCard(insight, colorScheme, textTheme)),
+          ..._generateInsights().map(
+              (insight) => _buildInsightCard(insight, colorScheme, textTheme)),
         ],
       ),
     );
   }
 
-  Widget _buildInsightCard(
-      Map<String, dynamic> insight, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildInsightCard(Map<String, dynamic> insight,
+      ColorScheme colorScheme, TextTheme textTheme) {
     final type = insight['type'] as String;
     final title = insight['title'] as String;
     final description = insight['description'] as String;
@@ -1251,7 +1298,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   // Helper Methods
   bool _isToday() => DateUtils.isSameDay(widget.date, DateTime.now());
   bool _isFuture() => widget.date.isAfter(DateTime.now());
-  bool _isPast() => widget.date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+  bool _isPast() =>
+      widget.date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
   String _getTabTitle(String tab) {
     switch (tab) {
@@ -1336,7 +1384,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   double _getPredictedSpending() {
     if (_predictions == null) return 0.0;
     return _predictions!.values.fold<double>(
-        0.0, (sum, pred) => sum + ((pred['predicted_amount'] as num?)?.toDouble() ?? 0.0));
+        0.0,
+        (sum, pred) =>
+            sum + ((pred['predicted_amount'] as num?)?.toDouble() ?? 0.0));
   }
 
   String _formatCategoryName(String category) {
@@ -1425,7 +1475,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     ];
   }
 
-  Widget _buildEmptyTransactionsState(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEmptyTransactionsState(
+      ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(

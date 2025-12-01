@@ -25,7 +25,8 @@ import 'logging_service.dart';
 /// }
 /// ```
 class ScreenshotProtectionService {
-  static final ScreenshotProtectionService _instance = ScreenshotProtectionService._internal();
+  static final ScreenshotProtectionService _instance =
+      ScreenshotProtectionService._internal();
   factory ScreenshotProtectionService() => _instance;
   ScreenshotProtectionService._internal();
 
@@ -38,13 +39,15 @@ class ScreenshotProtectionService {
   /// Call this in initState() of sensitive screens
   Future<void> enableProtection() async {
     if (_isProtectionEnabled) {
-      logDebug('Screenshot protection already enabled', tag: 'SCREENSHOT_PROTECTION');
+      logDebug('Screenshot protection already enabled',
+          tag: 'SCREENSHOT_PROTECTION');
       return;
     }
 
     // Only enable in production mode
     if (kDebugMode) {
-      logDebug('Screenshot protection disabled in debug mode', tag: 'SCREENSHOT_PROTECTION');
+      logDebug('Screenshot protection disabled in debug mode',
+          tag: 'SCREENSHOT_PROTECTION');
       return;
     }
 
@@ -55,12 +58,14 @@ class ScreenshotProtectionService {
         // For now, we log that it would be enabled in production
         await _platform.invokeMethod('enableScreenshotProtection');
         _isProtectionEnabled = true;
-        logInfo('Screenshot protection enabled (iOS)', tag: 'SCREENSHOT_PROTECTION');
+        logInfo('Screenshot protection enabled (iOS)',
+            tag: 'SCREENSHOT_PROTECTION');
       } else if (Platform.isAndroid) {
         // Android implementation: Set FLAG_SECURE on window
         await _platform.invokeMethod('enableScreenshotProtection');
         _isProtectionEnabled = true;
-        logInfo('Screenshot protection enabled (Android)', tag: 'SCREENSHOT_PROTECTION');
+        logInfo('Screenshot protection enabled (Android)',
+            tag: 'SCREENSHOT_PROTECTION');
       }
     } on PlatformException catch (e) {
       // Platform channel not implemented - gracefully degrade
@@ -69,7 +74,8 @@ class ScreenshotProtectionService {
         tag: 'SCREENSHOT_PROTECTION',
       );
     } catch (e) {
-      logError('Screenshot protection error: $e', tag: 'SCREENSHOT_PROTECTION', error: e);
+      logError('Screenshot protection error: $e',
+          tag: 'SCREENSHOT_PROTECTION', error: e);
     }
   }
 
@@ -92,7 +98,8 @@ class ScreenshotProtectionService {
         tag: 'SCREENSHOT_PROTECTION',
       );
     } catch (e) {
-      logError('Screenshot protection disable error: $e', tag: 'SCREENSHOT_PROTECTION', error: e);
+      logError('Screenshot protection disable error: $e',
+          tag: 'SCREENSHOT_PROTECTION', error: e);
     }
   }
 
@@ -143,10 +150,12 @@ class ScreenshotProtectionWrapper extends StatefulWidget {
   });
 
   @override
-  State<ScreenshotProtectionWrapper> createState() => _ScreenshotProtectionWrapperState();
+  State<ScreenshotProtectionWrapper> createState() =>
+      _ScreenshotProtectionWrapperState();
 }
 
-class _ScreenshotProtectionWrapperState extends State<ScreenshotProtectionWrapper> {
+class _ScreenshotProtectionWrapperState
+    extends State<ScreenshotProtectionWrapper> {
   final _protection = ScreenshotProtectionService();
 
   @override

@@ -26,7 +26,8 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
   Widget build(BuildContext context) {
     // Use context.watch for reactive state updates
     final adviceProvider = context.watch<AdviceProvider>();
-    final isLoading = adviceProvider.isLoading || adviceProvider.state == AdviceState.initial;
+    final isLoading =
+        adviceProvider.isLoading || adviceProvider.state == AdviceState.initial;
     final items = adviceProvider.adviceHistory;
 
     return Scaffold(
@@ -67,7 +68,8 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
                   itemCount: items.length,
                   itemBuilder: (_, i) {
                     final item = items[i] as Map<String, dynamic>;
-                    final date = DateFormat.yMMMd().format(DateTime.parse(item['date'] as String));
+                    final date = DateFormat.yMMMd()
+                        .format(DateTime.parse(item['date'] as String));
                     return ListTile(
                       title: Text(item['text'] as String),
                       subtitle: Text(date),

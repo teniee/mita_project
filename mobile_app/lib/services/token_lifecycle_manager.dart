@@ -15,7 +15,8 @@ import 'api_service.dart';
 /// - Performance monitoring of token operations
 class TokenLifecycleManager {
   static TokenLifecycleManager? _instance;
-  static TokenLifecycleManager get instance => _instance ??= TokenLifecycleManager._internal();
+  static TokenLifecycleManager get instance =>
+      _instance ??= TokenLifecycleManager._internal();
 
   TokenLifecycleManager._internal();
 
@@ -121,16 +122,19 @@ class TokenLifecycleManager {
       _failedOperations = 0;
       healthResult['healthy'] = true;
 
-      logDebug('Token health check completed successfully', tag: 'TOKEN_LIFECYCLE');
+      logDebug('Token health check completed successfully',
+          tag: 'TOKEN_LIFECYCLE');
     } catch (e) {
       _failedOperations++;
       healthResult['error'] = e.toString();
       healthResult['failedOperations'] = _failedOperations;
 
-      logError('Token health check failed: $e', tag: 'TOKEN_LIFECYCLE', error: e);
+      logError('Token health check failed: $e',
+          tag: 'TOKEN_LIFECYCLE', error: e);
 
       if (_failedOperations >= _maxFailedAttempts) {
-        logError('Maximum failed operations reached - triggering security protocol',
+        logError(
+            'Maximum failed operations reached - triggering security protocol',
             tag: 'TOKEN_LIFECYCLE');
         await _handleSecurityBreach();
       }
@@ -142,7 +146,8 @@ class TokenLifecycleManager {
   /// Handle security breach by clearing tokens and notifying
   Future<void> _handleSecurityBreach() async {
     try {
-      logWarning('Security breach detected - clearing all tokens', tag: 'TOKEN_LIFECYCLE');
+      logWarning('Security breach detected - clearing all tokens',
+          tag: 'TOKEN_LIFECYCLE');
 
       if (_secureStorage != null) {
         await _secureStorage!.clearAllUserData();
@@ -157,7 +162,8 @@ class TokenLifecycleManager {
         'Suspicious activity detected. Your account has been secured.',
       );
     } catch (e) {
-      logError('Failed to handle security breach: $e', tag: 'TOKEN_LIFECYCLE', error: e);
+      logError('Failed to handle security breach: $e',
+          tag: 'TOKEN_LIFECYCLE', error: e);
     }
   }
 
@@ -165,7 +171,8 @@ class TokenLifecycleManager {
   Future<bool> checkTokenRotation() async {
     try {
       if (_secureStorage == null) {
-        logWarning('Cannot check token rotation - secure storage not initialized',
+        logWarning(
+            'Cannot check token rotation - secure storage not initialized',
             tag: 'TOKEN_LIFECYCLE');
         return false;
       }
@@ -178,15 +185,18 @@ class TokenLifecycleManager {
         // Trigger token rotation through API service
         final rotationResult = await _triggerTokenRotation();
         if (rotationResult) {
-          logInfo('Token rotation completed successfully', tag: 'TOKEN_LIFECYCLE');
+          logInfo('Token rotation completed successfully',
+              tag: 'TOKEN_LIFECYCLE');
         } else {
-          logWarning('Token rotation failed or was skipped', tag: 'TOKEN_LIFECYCLE');
+          logWarning('Token rotation failed or was skipped',
+              tag: 'TOKEN_LIFECYCLE');
         }
       }
 
       return shouldRotate;
     } catch (e) {
-      logError('Token rotation check failed: $e', tag: 'TOKEN_LIFECYCLE', error: e);
+      logError('Token rotation check failed: $e',
+          tag: 'TOKEN_LIFECYCLE', error: e);
       return false;
     }
   }
@@ -227,10 +237,13 @@ class TokenLifecycleManager {
       auditResult['auditTime'] = DateTime.now().millisecondsSinceEpoch;
 
       if (score < 70) {
-        logWarning('Security audit failed with score: $score', tag: 'TOKEN_LIFECYCLE');
-        auditResult['recommendedActions'] = _generateRecommendations(auditResult);
+        logWarning('Security audit failed with score: $score',
+            tag: 'TOKEN_LIFECYCLE');
+        auditResult['recommendedActions'] =
+            _generateRecommendations(auditResult);
       } else {
-        logInfo('Security audit passed with score: $score', tag: 'TOKEN_LIFECYCLE');
+        logInfo('Security audit passed with score: $score',
+            tag: 'TOKEN_LIFECYCLE');
       }
     } catch (e) {
       auditResult['error'] = e.toString();
@@ -245,7 +258,8 @@ class TokenLifecycleManager {
     final recommendations = <String>[];
 
     if (auditResult['healthStatus']?['tampered'] == true) {
-      recommendations.add('Immediate re-authentication required due to tampering detection');
+      recommendations.add(
+          'Immediate re-authentication required due to tampering detection');
     }
 
     if (auditResult['healthStatus']?['suspiciousActivity'] == true) {
@@ -261,7 +275,8 @@ class TokenLifecycleManager {
     }
 
     if (auditResult['securityScore'] < 50) {
-      recommendations.add('Critical security issues detected - immediate action required');
+      recommendations
+          .add('Critical security issues detected - immediate action required');
     }
 
     return recommendations;
@@ -297,7 +312,8 @@ class TokenLifecycleManager {
 
       logInfo('Token cleanup completed successfully', tag: 'TOKEN_LIFECYCLE');
     } catch (e) {
-      logError('Failed to force token cleanup: $e', tag: 'TOKEN_LIFECYCLE', error: e);
+      logError('Failed to force token cleanup: $e',
+          tag: 'TOKEN_LIFECYCLE', error: e);
       rethrow;
     }
   }
@@ -338,9 +354,11 @@ class TokenLifecycleManager {
       );
 
       // Also log for security audit
-      logInfo('Security notification sent to user: $title', tag: 'TOKEN_LIFECYCLE');
+      logInfo('Security notification sent to user: $title',
+          tag: 'TOKEN_LIFECYCLE');
     } catch (e) {
-      logError('Failed to send security notification: $e', tag: 'TOKEN_LIFECYCLE');
+      logError('Failed to send security notification: $e',
+          tag: 'TOKEN_LIFECYCLE');
     }
   }
 
@@ -350,14 +368,16 @@ class TokenLifecycleManager {
       logInfo('Starting token rotation process', tag: 'TOKEN_LIFECYCLE');
 
       if (_secureStorage == null) {
-        logWarning('Cannot rotate tokens - secure storage not initialized', tag: 'TOKEN_LIFECYCLE');
+        logWarning('Cannot rotate tokens - secure storage not initialized',
+            tag: 'TOKEN_LIFECYCLE');
         return false;
       }
 
       // Get current refresh token
       final refreshToken = await _secureStorage!.getRefreshToken();
       if (refreshToken == null) {
-        logWarning('No refresh token available for rotation', tag: 'TOKEN_LIFECYCLE');
+        logWarning('No refresh token available for rotation',
+            tag: 'TOKEN_LIFECYCLE');
         return false;
       }
 
@@ -370,7 +390,8 @@ class TokenLifecycleManager {
         _lastRotationCheck = DateTime.now();
         return true;
       } else {
-        logWarning('Token rotation returned null response', tag: 'TOKEN_LIFECYCLE');
+        logWarning('Token rotation returned null response',
+            tag: 'TOKEN_LIFECYCLE');
         return false;
       }
     } catch (e) {

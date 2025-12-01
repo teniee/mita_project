@@ -41,20 +41,24 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) dev.log('initState called - starting initialization', name: 'MainScreen');
+    if (kDebugMode)
+      dev.log('initState called - starting initialization', name: 'MainScreen');
 
     // Initialize providers after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
     });
 
-    if (kDebugMode) dev.log('initState completed - initialization scheduled', name: 'MainScreen');
+    if (kDebugMode)
+      dev.log('initState completed - initialization scheduled',
+          name: 'MainScreen');
   }
 
   /// Initialize providers and load data
   Future<void> _initializeProviders() async {
     try {
-      if (kDebugMode) dev.log('_initializeProviders started', name: 'MainScreen');
+      if (kDebugMode)
+        dev.log('_initializeProviders started', name: 'MainScreen');
 
       final userProvider = context.read<UserProvider>();
       final budgetProvider = context.read<BudgetProvider>();
@@ -67,7 +71,8 @@ class _MainScreenState extends State<MainScreen> {
       // Check if user needs to complete onboarding
       final financialContext = userProvider.financialContext;
       if (financialContext['needs_onboarding'] == true) {
-        logInfo('User needs to complete onboarding - redirecting', tag: 'MAIN_SCREEN');
+        logInfo('User needs to complete onboarding - redirecting',
+            tag: 'MAIN_SCREEN');
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/onboarding_location');
           return;
@@ -79,14 +84,18 @@ class _MainScreenState extends State<MainScreen> {
         budgetProvider.initialize(),
         transactionProvider.initialize(),
       ]);
-      if (kDebugMode) dev.log('Budget and Transaction providers initialized', name: 'MainScreen');
+      if (kDebugMode)
+        dev.log('Budget and Transaction providers initialized',
+            name: 'MainScreen');
 
       // Update income-based data from user provider
       _updateIncomeData(userProvider);
 
       logDebug('All providers initialized successfully', tag: 'MAIN_SCREEN');
     } catch (e) {
-      if (kDebugMode) dev.log('ERROR in _initializeProviders: $e', name: 'MainScreen', error: e);
+      if (kDebugMode)
+        dev.log('ERROR in _initializeProviders: $e',
+            name: 'MainScreen', error: e);
       logError('Error initializing providers: $e', tag: 'MAIN_SCREEN');
     }
   }
@@ -125,8 +134,10 @@ class _MainScreenState extends State<MainScreen> {
       final budgetProvider = context.read<BudgetProvider>();
       if (budgetProvider.budgetSuggestions['confidence'] != null) {
         financialHealthScore = {
-          'score': (budgetProvider.budgetSuggestions['confidence'] * 100).round(),
-          'grade': _getGradeFromConfidence(budgetProvider.budgetSuggestions['confidence']),
+          'score':
+              (budgetProvider.budgetSuggestions['confidence'] * 100).round(),
+          'grade': _getGradeFromConfidence(
+              budgetProvider.budgetSuggestions['confidence']),
         };
       }
     } else {
@@ -140,7 +151,8 @@ class _MainScreenState extends State<MainScreen> {
 
   /// Load safe incomplete state when user has incomplete/missing data
   void _loadSafeIncompleteState() {
-    if (kDebugMode) dev.log('_loadSafeIncompleteState() called', name: 'MainScreen');
+    if (kDebugMode)
+      dev.log('_loadSafeIncompleteState() called', name: 'MainScreen');
 
     // Set safe default values for incomplete state
     _monthlyIncome = 0.0;
@@ -163,7 +175,8 @@ class _MainScreenState extends State<MainScreen> {
     weeklyInsights = null;
     spendingAnomalies = [];
 
-    logDebug('Safe incomplete state loaded - user can complete profile', tag: 'MAIN_SCREEN');
+    logDebug('Safe incomplete state loaded - user can complete profile',
+        tag: 'MAIN_SCREEN');
   }
 
   /// User-initiated refresh
@@ -221,7 +234,9 @@ class _MainScreenState extends State<MainScreen> {
       'peer_median': null,
       'percentile': null,
       'categories': {},
-      'insights': ['Peer comparison data will be available once you start tracking expenses'],
+      'insights': [
+        'Peer comparison data will be available once you start tracking expenses'
+      ],
     };
   }
 
@@ -234,7 +249,9 @@ class _MainScreenState extends State<MainScreen> {
       'cohort_size': null,
       'your_rank': null,
       'percentile': null,
-      'top_insights': ['Cohort insights will be available once you start tracking expenses'],
+      'top_insights': [
+        'Cohort insights will be available once you start tracking expenses'
+      ],
     };
   }
 
@@ -315,13 +332,16 @@ class _MainScreenState extends State<MainScreen> {
     final transactionProvider = context.watch<TransactionProvider>();
 
     // Determine loading and error states from providers
-    final isLoading =
-        userProvider.isLoading || budgetProvider.isLoading || transactionProvider.isLoading;
+    final isLoading = userProvider.isLoading ||
+        budgetProvider.isLoading ||
+        transactionProvider.isLoading;
 
-    final hasError = userProvider.errorMessage != null || budgetProvider.errorMessage != null;
+    final hasError = userProvider.errorMessage != null ||
+        budgetProvider.errorMessage != null;
 
     // Get dashboard data from budget provider
-    final dashboardData = _buildDashboardData(userProvider, budgetProvider, transactionProvider);
+    final dashboardData =
+        _buildDashboardData(userProvider, budgetProvider, transactionProvider);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -358,7 +378,10 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                             child: Padding(
                               padding: EdgeInsets.symmetric(
-                                horizontal: MediaQuery.of(context).size.width > 600 ? 32.0 : 16.0,
+                                horizontal:
+                                    MediaQuery.of(context).size.width > 600
+                                        ? 32.0
+                                        : 16.0,
                                 vertical: 12.0,
                               ),
                               child: Column(
@@ -434,11 +457,14 @@ class _MainScreenState extends State<MainScreen> {
   ) {
     final financialContext = userProvider.financialContext;
     final hasIncompleteProfile =
-        financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
+        financialContext['incomplete_onboarding'] == true ||
+            _monthlyIncome <= 0;
     final hasNetworkError = financialContext['api_error'] == true;
 
     return {
-      'balance': budgetProvider.totalBudget > 0 ? budgetProvider.totalBudget : _monthlyIncome,
+      'balance': budgetProvider.totalBudget > 0
+          ? budgetProvider.totalBudget
+          : _monthlyIncome,
       'spent': budgetProvider.totalSpent,
       'daily_targets': _buildDailyTargets(budgetProvider),
       'week': budgetProvider.calendarData.isNotEmpty
@@ -508,7 +534,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   /// Convert calendar data to week data format
-  List<Map<String, dynamic>> _convertCalendarToWeekData(List<dynamic> calendarData) {
+  List<Map<String, dynamic>> _convertCalendarToWeekData(
+      List<dynamic> calendarData) {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
@@ -594,7 +621,8 @@ class _MainScreenState extends State<MainScreen> {
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : const Color(0xFF193C57);
     final hasIncompleteProfile =
-        userProvider.financialContext['incomplete_onboarding'] == true || _monthlyIncome <= 0;
+        userProvider.financialContext['incomplete_onboarding'] == true ||
+            _monthlyIncome <= 0;
     final hasNetworkError = userProvider.financialContext['api_error'] == true;
 
     return Row(
@@ -623,7 +651,8 @@ class _MainScreenState extends State<MainScreen> {
                 )
               else if (hasIncompleteProfile)
                 GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/onboarding_location'),
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/onboarding_location'),
                   child: Row(
                     children: [
                       Icon(
@@ -665,7 +694,8 @@ class _MainScreenState extends State<MainScreen> {
                 )
               else
                 GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/onboarding_location'),
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/onboarding_location'),
                   child: Text(
                     'Tap to complete your profile',
                     style: TextStyle(
@@ -727,7 +757,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildBalanceCard(Map<String, dynamic> dashboardData) {
     final balance = dashboardData['balance'] ?? 0;
     final spent = dashboardData['spent'] ?? 0;
-    final remaining = (balance is num && spent is num) ? balance - spent : balance;
+    final remaining =
+        (balance is num && spent is num) ? balance - spent : balance;
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : const Color(0xFFFFD25F);
@@ -870,7 +901,8 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 12),
         if (targets.isEmpty)
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: const Padding(
               padding: EdgeInsets.all(20),
               child: Center(
@@ -886,8 +918,10 @@ class _MainScreenState extends State<MainScreen> {
           )
         else
           ...targets.map<Widget>((target) {
-            final limit = double.tryParse(target['limit']?.toString() ?? '0') ?? 0.0;
-            final spent = double.tryParse(target['spent']?.toString() ?? '0') ?? 0.0;
+            final limit =
+                double.tryParse(target['limit']?.toString() ?? '0') ?? 0.0;
+            final spent =
+                double.tryParse(target['spent']?.toString() ?? '0') ?? 0.0;
             final progress = limit > 0 ? spent / limit : 0.0;
             final remaining = limit - spent;
             final categoryIcon = target['icon'] as IconData? ?? Icons.category;
@@ -904,7 +938,8 @@ class _MainScreenState extends State<MainScreen> {
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 3,
               child: Container(
                 decoration: BoxDecoration(
@@ -965,11 +1000,13 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: progressColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: progressColor.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: progressColor.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '${(progress * 100).toStringAsFixed(0)}%',
@@ -1012,7 +1049,9 @@ class _MainScreenState extends State<MainScreen> {
                             style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,
-                              color: remaining > 0 ? Colors.grey[600] : Colors.red.shade600,
+                              color: remaining > 0
+                                  ? Colors.grey[600]
+                                  : Colors.red.shade600,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1088,7 +1127,8 @@ class _MainScreenState extends State<MainScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(day['day'], style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(day['day'],
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
             );
           }).toList(),
         ),
@@ -1103,7 +1143,8 @@ class _MainScreenState extends State<MainScreen> {
 
     // Get goals data from dashboard
     final goalsData = dashboardData['data']?['goals'] as List<dynamic>? ?? [];
-    final goalsSummary = dashboardData['data']?['goals_summary'] as Map<String, dynamic>? ?? {};
+    final goalsSummary =
+        dashboardData['data']?['goals_summary'] as Map<String, dynamic>? ?? {};
 
     final totalActive = goalsSummary['total_active'] ?? 0;
     final nearCompletion = goalsSummary['near_completion'] ?? 0;
@@ -1187,7 +1228,8 @@ class _MainScreenState extends State<MainScreen> {
                 if (totalActive > 0) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
@@ -1219,7 +1261,8 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               if (nearCompletion > 0) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFD25F).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -1251,7 +1294,8 @@ class _MainScreenState extends State<MainScreen> {
               ],
               if (overdue > 0) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1291,7 +1335,8 @@ class _MainScreenState extends State<MainScreen> {
           final goal = goalData as Map<String, dynamic>;
           final title = goal['title'] ?? 'Untitled Goal';
           final progress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
-          final targetAmount = (goal['target_amount'] as num?)?.toDouble() ?? 0.0;
+          final targetAmount =
+              (goal['target_amount'] as num?)?.toDouble() ?? 0.0;
           final savedAmount = (goal['saved_amount'] as num?)?.toDouble() ?? 0.0;
           final isOverdue = goal['is_overdue'] as bool? ?? false;
           final priority = goal['priority'] ?? 'medium';
@@ -1382,7 +1427,8 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(8),
@@ -1438,7 +1484,8 @@ class _MainScreenState extends State<MainScreen> {
                 if (isOverdue) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -1491,9 +1538,11 @@ class _MainScreenState extends State<MainScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     // Get challenges data from dashboard
-    final challengesData = dashboardData['data']?['challenges'] as List<dynamic>? ?? [];
+    final challengesData =
+        dashboardData['data']?['challenges'] as List<dynamic>? ?? [];
     final challengesSummary =
-        dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ?? {};
+        dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ??
+            {};
 
     final activeChallenges = challengesSummary['active_challenges'] ?? 0;
     final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
@@ -1584,7 +1633,8 @@ class _MainScreenState extends State<MainScreen> {
                 if (activeChallenges > 0) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFF6A5ACD).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -1616,7 +1666,8 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               if (completedThisMonth > 0) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1648,7 +1699,8 @@ class _MainScreenState extends State<MainScreen> {
               ],
               if (currentStreak > 0) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF5722).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1689,7 +1741,8 @@ class _MainScreenState extends State<MainScreen> {
           final name = challenge['name'] ?? 'Challenge';
           final description = challenge['description'] ?? '';
           final difficulty = challenge['difficulty'] ?? 'medium';
-          final progressPercentage = (challenge['progress_percentage'] as num?)?.toDouble() ?? 0.0;
+          final progressPercentage =
+              (challenge['progress_percentage'] as num?)?.toDouble() ?? 0.0;
           final daysCompleted = challenge['days_completed'] ?? 0;
           final durationDays = challenge['duration_days'] ?? 0;
           final rewardPoints = challenge['reward_points'] ?? 0;
@@ -1766,7 +1819,8 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: difficultyColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
@@ -2129,7 +2183,8 @@ class _MainScreenState extends State<MainScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(16),
@@ -2168,7 +2223,8 @@ class _MainScreenState extends State<MainScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(16),
@@ -2203,7 +2259,8 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       // Default advice content
       return Text(
-        advice['text'] ?? 'Tap to view personalized AI insights based on your real financial data',
+        advice['text'] ??
+            'Tap to view personalized AI insights based on your real financial data',
         style: TextStyle(
           fontFamily: 'Manrope',
           fontSize: 14,
@@ -2273,7 +2330,8 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 16),
         if (transactions.isEmpty)
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: const Padding(
               padding: EdgeInsets.all(20),
               child: Center(
@@ -2302,7 +2360,8 @@ class _MainScreenState extends State<MainScreen> {
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 2,
               child: Padding(
                 padding: const EdgeInsets.all(16),

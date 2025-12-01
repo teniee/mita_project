@@ -24,15 +24,18 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
-    final peerAverage =
-        peerData?['categories']?[category.toLowerCase()]?['peer_average'] ?? userAmount * 1.2;
-    final userPercentage = incomeService.getIncomePercentage(userAmount, monthlyIncome);
-    final peerPercentage = incomeService.getIncomePercentage(peerAverage, monthlyIncome);
+    final peerAverage = peerData?['categories']?[category.toLowerCase()]
+            ?['peer_average'] ??
+        userAmount * 1.2;
+    final userPercentage =
+        incomeService.getIncomePercentage(userAmount, monthlyIncome);
+    final peerPercentage =
+        incomeService.getIncomePercentage(peerAverage, monthlyIncome);
     final difference = ((userAmount - peerAverage) / peerAverage * 100);
 
     final isUserBetter = userAmount < peerAverage;
-    final comparison =
-        incomeService.getPeerComparisonMessage(tier, category, userAmount, peerAverage);
+    final comparison = incomeService.getPeerComparisonMessage(
+        tier, category, userAmount, peerAverage);
 
     return Card(
       elevation: 2,
@@ -74,7 +77,9 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                   label: 'Your Spending',
                   amount: userAmount,
                   percentage: userPercentage,
-                  color: isUserBetter ? Colors.green.shade600 : Colors.orange.shade600,
+                  color: isUserBetter
+                      ? Colors.green.shade600
+                      : Colors.orange.shade600,
                   isHighlighted: true,
                 ),
                 const SizedBox(height: 12),
@@ -96,14 +101,17 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: (isUserBetter ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+                color: (isUserBetter ? Colors.green : Colors.orange)
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(
                     isUserBetter ? Icons.trending_down : Icons.trending_up,
-                    color: isUserBetter ? Colors.green.shade600 : Colors.orange.shade600,
+                    color: isUserBetter
+                        ? Colors.green.shade600
+                        : Colors.orange.shade600,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -113,7 +121,8 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontSize: 13,
-                        color: (isUserBetter ? Colors.green : Colors.orange).shade700,
+                        color: (isUserBetter ? Colors.green : Colors.orange)
+                            .shade700,
                       ),
                     ),
                   ),
@@ -270,7 +279,8 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
     final yourRank = _cohortData!['your_rank'] ?? 0;
     final percentile = _cohortData!['percentile'] ?? 0;
     final insights = List<String>.from(_cohortData!['top_insights'] ?? []);
-    final recommendations = List<String>.from(_cohortData!['recommendations'] ?? []);
+    final recommendations =
+        List<String>.from(_cohortData!['recommendations'] ?? []);
 
     return Card(
       elevation: 3,
@@ -529,11 +539,15 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
             ...userSpending.entries.map((entry) {
               final category = entry.key;
               final userAmount = entry.value;
-              final peerAmount =
-                  peerData?['categories']?[category]?['peer_average'] ?? userAmount * 1.15;
-              final userPercentage = incomeService.getIncomePercentage(userAmount, monthlyIncome);
-              final peerPercentage = incomeService.getIncomePercentage(peerAmount, monthlyIncome);
-              final categoryColor = categoryColors[category] ?? Colors.grey.shade600;
+              final peerAmount = peerData?['categories']?[category]
+                      ?['peer_average'] ??
+                  userAmount * 1.15;
+              final userPercentage =
+                  incomeService.getIncomePercentage(userAmount, monthlyIncome);
+              final peerPercentage =
+                  incomeService.getIncomePercentage(peerAmount, monthlyIncome);
+              final categoryColor =
+                  categoryColors[category] ?? Colors.grey.shade600;
               final isUserBetter = userAmount < peerAmount;
 
               return Container(
@@ -554,8 +568,12 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           ),
                         ),
                         Icon(
-                          isUserBetter ? Icons.thumb_up_rounded : Icons.trending_up_rounded,
-                          color: isUserBetter ? Colors.green.shade600 : Colors.orange.shade600,
+                          isUserBetter
+                              ? Icons.thumb_up_rounded
+                              : Icons.trending_up_rounded,
+                          color: isUserBetter
+                              ? Colors.green.shade600
+                              : Colors.orange.shade600,
                           size: 16,
                         ),
                       ],
@@ -580,7 +598,8 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: (userPercentage / 30).clamp(0.0, 1.0),
                             backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(categoryColor),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(categoryColor),
                             minHeight: 6,
                           ),
                         ),
@@ -621,7 +640,8 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: (peerPercentage / 30).clamp(0.0, 1.0),
                             backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade500),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.grey.shade500),
                             minHeight: 4,
                           ),
                         ),

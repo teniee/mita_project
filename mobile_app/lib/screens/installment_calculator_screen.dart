@@ -18,10 +18,12 @@ class InstallmentCalculatorScreen extends StatefulWidget {
   const InstallmentCalculatorScreen({super.key});
 
   @override
-  State<InstallmentCalculatorScreen> createState() => _InstallmentCalculatorScreenState();
+  State<InstallmentCalculatorScreen> createState() =>
+      _InstallmentCalculatorScreenState();
 }
 
-class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScreen>
+class _InstallmentCalculatorScreenState
+    extends State<InstallmentCalculatorScreen>
     with SingleTickerProviderStateMixin {
   final InstallmentService _installmentService = InstallmentService();
   final _formKey = GlobalKey<FormState>();
@@ -106,10 +108,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           // Pre-fill form with profile data
           if (profile != null) {
             if (profile.monthlyIncome != null) {
-              _monthlyIncomeController.text = profile.monthlyIncome!.toStringAsFixed(2);
+              _monthlyIncomeController.text =
+                  profile.monthlyIncome!.toStringAsFixed(2);
             }
             if (profile.currentBalance != null) {
-              _currentBalanceController.text = profile.currentBalance!.toStringAsFixed(2);
+              _currentBalanceController.text =
+                  profile.currentBalance!.toStringAsFixed(2);
             }
           }
         });
@@ -126,7 +130,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
 
     // Validate required fields for users without profile
     if (!_hasProfile) {
-      if (_monthlyIncomeController.text.isEmpty || _currentBalanceController.text.isEmpty) {
+      if (_monthlyIncomeController.text.isEmpty ||
+          _currentBalanceController.text.isEmpty) {
         _showErrorDialog(
           'Missing Information',
           'Please provide your monthly income and current balance to calculate risk assessment.',
@@ -431,7 +436,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                borderSide:
+                    const BorderSide(color: AppColors.textPrimary, width: 2),
               ),
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -472,7 +478,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                borderSide:
+                    const BorderSide(color: AppColors.textPrimary, width: 2),
               ),
             ),
             items: InstallmentCategory.values.map((category) {
@@ -480,10 +487,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 value: category,
                 child: Row(
                   children: [
-                    Icon(_getCategoryIcon(category), size: 20, color: AppColors.textPrimary),
+                    Icon(_getCategoryIcon(category),
+                        size: 20, color: AppColors.textPrimary),
                     const SizedBox(width: 8),
                     Text(category.displayName,
-                        style: const TextStyle(fontFamily: AppTypography.fontBody)),
+                        style: const TextStyle(
+                            fontFamily: AppTypography.fontBody)),
                   ],
                 ),
               );
@@ -514,7 +523,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   const SizedBox(width: 4),
                   Tooltip(
                     message: 'How many monthly payments?',
-                    child: Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                    child: Icon(Icons.info_outline,
+                        size: 16, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -530,7 +540,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                        color:
+                            isSelected ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                     selected: isSelected,
@@ -542,7 +553,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     selectedColor: AppColors.textPrimary,
                     backgroundColor: AppColors.background,
                     side: BorderSide(
-                      color: isSelected ? AppColors.textPrimary : Colors.grey[300]!,
+                      color: isSelected
+                          ? AppColors.textPrimary
+                          : Colors.grey[300]!,
                       width: isSelected ? 2 : 1,
                     ),
                     elevation: isSelected ? 2 : 0,
@@ -571,7 +584,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   const SizedBox(width: 4),
                   Tooltip(
                     message: 'Annual percentage rate (APR)',
-                    child: Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                    child: Icon(Icons.info_outline,
+                        size: 16, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -587,20 +601,24 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          color:
+                              isSelected ? Colors.white : AppColors.textPrimary,
                         ),
                       ),
                       selected: isSelected,
                       onSelected: (selected) {
                         setState(() {
                           _selectedInterestRate = rate;
-                          _interestRateController.text = rate.toStringAsFixed(1);
+                          _interestRateController.text =
+                              rate.toStringAsFixed(1);
                         });
                       },
                       selectedColor: AppColors.secondary,
                       backgroundColor: AppColors.background,
                       side: BorderSide(
-                        color: isSelected ? AppColors.secondary : Colors.grey[300]!,
+                        color: isSelected
+                            ? AppColors.secondary
+                            : Colors.grey[300]!,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -631,10 +649,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                    borderSide: const BorderSide(
+                        color: AppColors.textPrimary, width: 2),
                   ),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
@@ -694,10 +714,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                  borderSide:
+                      const BorderSide(color: AppColors.textPrimary, width: 2),
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -732,10 +754,12 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                  borderSide:
+                      const BorderSide(color: AppColors.textPrimary, width: 2),
                 ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -823,7 +847,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             _buildPersonalizedMessageCard(result),
             if (result.alternativeRecommendation != null) ...[
               const SizedBox(height: 16),
-              _buildAlternativeRecommendationCard(result.alternativeRecommendation!),
+              _buildAlternativeRecommendationCard(
+                  result.alternativeRecommendation!),
             ],
             if (result.warnings.isNotEmpty || result.tips.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -964,7 +989,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                   final interest = payment['interest'] ?? 0.0;
 
                   return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.background,
@@ -1043,7 +1069,9 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             _buildDetailRow(
               'Remaining Monthly Funds',
               '\$${result.remainingMonthlyFunds!.toStringAsFixed(2)}',
-              valueColor: result.remainingMonthlyFunds! < 0 ? AppColors.error : AppColors.success,
+              valueColor: result.remainingMonthlyFunds! < 0
+                  ? AppColors.error
+                  : AppColors.success,
             ),
           ],
           if (result.balanceAfterFirstPayment != null) ...[
@@ -1051,7 +1079,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
             _buildDetailRow(
               'Balance After First Payment',
               '\$${result.balanceAfterFirstPayment!.toStringAsFixed(2)}',
-              valueColor: result.balanceAfterFirstPayment! < 0 ? AppColors.error : null,
+              valueColor:
+                  result.balanceAfterFirstPayment! < 0 ? AppColors.error : null,
             ),
           ],
         ],
@@ -1072,7 +1101,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
               color: _getSeverityColor(factor.severity).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _getSeverityColor(factor.severity).withValues(alpha: 0.3),
+                color:
+                    _getSeverityColor(factor.severity).withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -1188,7 +1218,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     );
   }
 
-  Widget _buildAlternativeRecommendationCard(AlternativeRecommendation alternative) {
+  Widget _buildAlternativeRecommendationCard(
+      AlternativeRecommendation alternative) {
     return _buildCard(
       title: alternative.title,
       icon: Icons.auto_awesome,
@@ -1283,11 +1314,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
         children: [
           if (result.warnings.isNotEmpty) ...[
             Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data:
+                  Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 title: Row(
                   children: [
-                    const Icon(Icons.warning, color: AppColors.warning, size: 20),
+                    const Icon(Icons.warning,
+                        color: AppColors.warning, size: 20),
                     const SizedBox(width: 8),
                     const Text(
                       'Warnings',
@@ -1300,7 +1333,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.warning.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -1320,7 +1354,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 initiallyExpanded: true,
                 children: result.warnings.map((warning) {
                   return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withValues(alpha: 0.1),
@@ -1329,7 +1364,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.warning_amber, color: AppColors.warning, size: 18),
+                        const Icon(Icons.warning_amber,
+                            color: AppColors.warning, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1352,11 +1388,13 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
           if (result.tips.isNotEmpty) ...[
             if (result.warnings.isNotEmpty) const SizedBox(height: 8),
             Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data:
+                  Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 title: Row(
                   children: [
-                    const Icon(Icons.tips_and_updates, color: AppColors.success, size: 20),
+                    const Icon(Icons.tips_and_updates,
+                        color: AppColors.success, size: 20),
                     const SizedBox(width: 8),
                     const Text(
                       'Tips',
@@ -1369,7 +1407,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.success.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -1388,7 +1427,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 ),
                 children: result.tips.map((tip) {
                   return Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
@@ -1397,7 +1437,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle, color: AppColors.success, size: 18),
+                        const Icon(Icons.check_circle,
+                            color: AppColors.success, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1424,7 +1465,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    const Icon(Icons.show_chart, color: AppColors.info, size: 16),
+                    const Icon(Icons.show_chart,
+                        color: AppColors.info, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1676,7 +1718,8 @@ class _InstallmentCalculatorScreenState extends State<InstallmentCalculatorScree
     );
   }
 
-  Widget _buildProgressIndicator(String label, double value, String displayValue) {
+  Widget _buildProgressIndicator(
+      String label, double value, String displayValue) {
     final percentage = (value * 100).clamp(0.0, 100.0);
     Color progressColor;
 

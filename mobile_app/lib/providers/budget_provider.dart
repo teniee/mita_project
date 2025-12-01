@@ -66,10 +66,13 @@ class BudgetProvider extends ChangeNotifier {
   bool get isUpdatingMode => _isUpdatingMode;
 
   // Budget status convenience getters
-  double get totalBudget => (_liveBudgetStatus['total_budget'] as num?)?.toDouble() ?? 0.0;
-  double get totalSpent => (_liveBudgetStatus['total_spent'] as num?)?.toDouble() ?? 0.0;
+  double get totalBudget =>
+      (_liveBudgetStatus['total_budget'] as num?)?.toDouble() ?? 0.0;
+  double get totalSpent =>
+      (_liveBudgetStatus['total_spent'] as num?)?.toDouble() ?? 0.0;
   double get remaining => totalBudget - totalSpent;
-  double get spendingPercentage => totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
+  double get spendingPercentage =>
+      totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
 
   /// Initialize the provider and start listening for updates
   Future<void> initialize() async {
@@ -84,7 +87,8 @@ class BudgetProvider extends ChangeNotifier {
   void _subscribeToBudgetUpdates() {
     _budgetUpdateSubscription?.cancel();
     _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
-      logDebug('Received budget update from live service', tag: 'BUDGET_PROVIDER');
+      logDebug('Received budget update from live service',
+          tag: 'BUDGET_PROVIDER');
       loadLiveBudgetStatus();
     });
   }
@@ -122,7 +126,8 @@ class BudgetProvider extends ChangeNotifier {
     try {
       final data = await _apiService.getDailyBudgets();
       _dailyBudgets = data ?? [];
-      logInfo('Daily budgets loaded: ${_dailyBudgets.length} items', tag: 'BUDGET_PROVIDER');
+      logInfo('Daily budgets loaded: ${_dailyBudgets.length} items',
+          tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
       logError('Error loading daily budgets: $e', tag: 'BUDGET_PROVIDER');
@@ -145,21 +150,24 @@ class BudgetProvider extends ChangeNotifier {
   /// Load budget suggestions (enhanced)
   Future<void> loadBudgetSuggestions() async {
     try {
-      final enhancedSuggestions = await _budgetService.getEnhancedBudgetSuggestions();
+      final enhancedSuggestions =
+          await _budgetService.getEnhancedBudgetSuggestions();
       _budgetSuggestions = enhancedSuggestions;
       logInfo(
           'Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading enhanced budget suggestions: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading enhanced budget suggestions: $e',
+          tag: 'BUDGET_PROVIDER');
       // Fallback to legacy API
       try {
         final legacySuggestions = await _apiService.getBudgetSuggestions();
         _budgetSuggestions = legacySuggestions;
         notifyListeners();
       } catch (fallbackError) {
-        logError('Fallback budget suggestions also failed: $fallbackError', tag: 'BUDGET_PROVIDER');
+        logError('Fallback budget suggestions also failed: $fallbackError',
+            tag: 'BUDGET_PROVIDER');
       }
     }
   }
@@ -212,7 +220,8 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   /// Update automation settings
-  Future<bool> updateAutomationSettings(Map<String, dynamic> newSettings) async {
+  Future<bool> updateAutomationSettings(
+      Map<String, dynamic> newSettings) async {
     try {
       await _apiService.updateBudgetAutomationSettings(newSettings);
       _automationSettings = {..._automationSettings, ...newSettings};
@@ -220,7 +229,8 @@ class BudgetProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      logError('Error updating automation settings: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error updating automation settings: $e',
+          tag: 'BUDGET_PROVIDER');
       return false;
     }
   }
@@ -229,7 +239,8 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadBudgetRemaining() async {
     try {
       final now = DateTime.now();
-      final remaining = await _apiService.getBudgetRemaining(year: now.year, month: now.month);
+      final remaining = await _apiService.getBudgetRemaining(
+          year: now.year, month: now.month);
       _budgetRemaining = remaining;
       logDebug('Budget remaining loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
@@ -241,12 +252,14 @@ class BudgetProvider extends ChangeNotifier {
   /// Load income-based budget recommendations
   Future<void> loadBudgetRecommendations(double monthlyIncome) async {
     try {
-      final recommendations = await _apiService.getIncomeBasedBudgetRecommendations(monthlyIncome);
+      final recommendations =
+          await _apiService.getIncomeBasedBudgetRecommendations(monthlyIncome);
       _budgetRecommendations = recommendations;
       logDebug('Budget recommendations loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading budget recommendations: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading budget recommendations: $e',
+          tag: 'BUDGET_PROVIDER');
     }
   }
 
@@ -254,18 +267,20 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadBehavioralAllocation(double monthlyIncome,
       {Map<String, dynamic>? profile}) async {
     try {
-      final allocation =
-          await _apiService.getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
+      final allocation = await _apiService
+          .getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
       _behavioralAllocation = allocation;
       logDebug('Behavioral allocation loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral allocation: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading behavioral allocation: $e',
+          tag: 'BUDGET_PROVIDER');
     }
   }
 
   /// Load all budget settings data (for BudgetSettingsScreen)
-  Future<void> loadBudgetSettingsData(double monthlyIncome, {String? incomeTier}) async {
+  Future<void> loadBudgetSettingsData(double monthlyIncome,
+      {String? incomeTier}) async {
     _setLoading(true);
     try {
       await Future.wait([
@@ -276,9 +291,11 @@ class BudgetProvider extends ChangeNotifier {
         loadBehavioralAllocation(monthlyIncome,
             profile: incomeTier != null ? {'income_tier': incomeTier} : null),
       ]);
-      logInfo('Budget settings data loaded successfully', tag: 'BUDGET_PROVIDER');
+      logInfo('Budget settings data loaded successfully',
+          tag: 'BUDGET_PROVIDER');
     } catch (e) {
-      logError('Error loading budget settings data: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading budget settings data: $e',
+          tag: 'BUDGET_PROVIDER');
       _errorMessage = e.toString();
     } finally {
       _setLoading(false);
@@ -290,11 +307,13 @@ class BudgetProvider extends ChangeNotifier {
     try {
       final history = await _apiService.getBudgetRedistributionHistory();
       _redistributionHistory = history;
-      logDebug('Redistribution history loaded: ${_redistributionHistory.length} items',
+      logDebug(
+          'Redistribution history loaded: ${_redistributionHistory.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading redistribution history: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading redistribution history: $e',
+          tag: 'BUDGET_PROVIDER');
     }
   }
 
@@ -306,18 +325,22 @@ class BudgetProvider extends ChangeNotifier {
 
     try {
       // First try to get data from production budget engine
-      logInfo('Loading calendar data from production budget engine', tag: 'BUDGET_PROVIDER');
+      logInfo('Loading calendar data from production budget engine',
+          tag: 'BUDGET_PROVIDER');
       final productionData = await _budgetService.getCalendarData();
       _calendarData = productionData;
-      logInfo('Calendar data loaded from production budget engine: ${_calendarData.length} items',
+      logInfo(
+          'Calendar data loaded from production budget engine: ${_calendarData.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading production calendar data: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading production calendar data: $e',
+          tag: 'BUDGET_PROVIDER');
 
       try {
         // Try behavioral calendar endpoint
-        logInfo('Attempting to load behavioral calendar', tag: 'BUDGET_PROVIDER');
+        logInfo('Attempting to load behavioral calendar',
+            tag: 'BUDGET_PROVIDER');
         final behavioralCalendar = await _apiService.getBehaviorCalendar(
           year: targetYear,
           month: targetMonth,
@@ -329,7 +352,8 @@ class BudgetProvider extends ChangeNotifier {
             tag: 'BUDGET_PROVIDER');
         notifyListeners();
       } catch (behavioralError) {
-        logError('Error loading behavioral calendar: $behavioralError', tag: 'BUDGET_PROVIDER');
+        logError('Error loading behavioral calendar: $behavioralError',
+            tag: 'BUDGET_PROVIDER');
 
         try {
           // Fallback to standard API
@@ -339,7 +363,8 @@ class BudgetProvider extends ChangeNotifier {
               tag: 'BUDGET_PROVIDER');
           notifyListeners();
         } catch (apiError) {
-          logError('Error loading API calendar: $apiError', tag: 'BUDGET_PROVIDER');
+          logError('Error loading API calendar: $apiError',
+              tag: 'BUDGET_PROVIDER');
           _calendarData = [];
           _errorMessage = 'Failed to load calendar data';
           notifyListeners();
@@ -349,14 +374,17 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   /// Convert behavioral calendar data format to standard calendar format
-  List<Map<String, dynamic>> _convertBehavioralCalendarData(Map<String, dynamic> behavioralData) {
+  List<Map<String, dynamic>> _convertBehavioralCalendarData(
+      Map<String, dynamic> behavioralData) {
     if (behavioralData['calendar_days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['calendar_days'] as Iterable);
+      return List<Map<String, dynamic>>.from(
+          behavioralData['calendar_days'] as Iterable);
     }
 
     // If the data is already in the correct format
     if (behavioralData['days'] != null) {
-      return List<Map<String, dynamic>>.from(behavioralData['days'] as Iterable);
+      return List<Map<String, dynamic>>.from(
+          behavioralData['days'] as Iterable);
     }
 
     // Return empty list if format is unknown
@@ -391,10 +419,12 @@ class BudgetProvider extends ChangeNotifier {
       );
 
       _aiOptimization = optimization;
-      logInfo('AI budget optimization loaded successfully', tag: 'BUDGET_PROVIDER');
+      logInfo('AI budget optimization loaded successfully',
+          tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading AI budget optimization: $e', tag: 'BUDGET_PROVIDER');
+      logError('Error loading AI budget optimization: $e',
+          tag: 'BUDGET_PROVIDER');
     }
   }
 
@@ -442,7 +472,8 @@ class BudgetProvider extends ChangeNotifier {
       // Refresh all data
       await loadAllBudgetData();
 
-      logInfo('Budget redistribution completed successfully', tag: 'BUDGET_PROVIDER');
+      logInfo('Budget redistribution completed successfully',
+          tag: 'BUDGET_PROVIDER');
       return true;
     } catch (e) {
       logError('Budget redistribution failed: $e', tag: 'BUDGET_PROVIDER');
@@ -462,7 +493,8 @@ class BudgetProvider extends ChangeNotifier {
       await _apiService.triggerBudgetAdaptation();
       await loadAllBudgetData();
 
-      logInfo('Budget adaptation completed successfully', tag: 'BUDGET_PROVIDER');
+      logInfo('Budget adaptation completed successfully',
+          tag: 'BUDGET_PROVIDER');
       return true;
     } catch (e) {
       logError('Auto adaptation failed: $e', tag: 'BUDGET_PROVIDER');

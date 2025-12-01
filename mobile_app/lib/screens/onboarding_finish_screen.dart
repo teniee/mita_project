@@ -107,7 +107,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       final spendingHabits = state.spendingFrequencies ??
           {
             // Fallback to defaults only if user didn't provide input
-            "dining_out_per_month": state.habits.contains("Impulse purchases") ? 15 : 8,
+            "dining_out_per_month":
+                state.habits.contains("Impulse purchases") ? 15 : 8,
             "entertainment_per_month": 4,
             "clothing_per_month": 2,
             "travel_per_year": 2,
@@ -137,7 +138,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         },
       };
 
-      logInfo('Submitting onboarding data: $onboardingData', tag: 'ONBOARDING_FINISH');
+      logInfo('Submitting onboarding data: $onboardingData',
+          tag: 'ONBOARDING_FINISH');
 
       // Validate that we have essential data
       if (state.income == null || state.countryCode == null) {
@@ -154,7 +156,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       // Cache onboarding data using UserProvider for centralized state management
       final userProvider = context.read<UserProvider>();
       await userProvider.cacheOnboardingData(onboardingData);
-      logInfo('Onboarding data cached for immediate use', tag: 'ONBOARDING_FINISH');
+      logInfo('Onboarding data cached for immediate use',
+          tag: 'ONBOARDING_FINISH');
 
       // CRITICAL DEBUG: Verify cache was actually saved
       final cachedCheck = userProvider.hasCompletedOnboarding;
@@ -164,20 +167,24 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       // Try to submit to backend with proper error handling
       try {
         await _api.submitOnboarding(onboardingData);
-        logInfo('Onboarding submitted to backend successfully', tag: 'ONBOARDING_FINISH');
+        logInfo('Onboarding submitted to backend successfully',
+            tag: 'ONBOARDING_FINISH');
         // Note: User data refresh is already handled by UserProvider.cacheOnboardingData()
       } catch (e) {
-        logWarning('Backend submission failed (but continuing with cached data): $e',
+        logWarning(
+            'Backend submission failed (but continuing with cached data): $e',
             tag: 'ONBOARDING_FINISH');
 
         // Check if it's an authentication error
-        if (e.toString().contains('401') || e.toString().toLowerCase().contains('unauthorized')) {
+        if (e.toString().contains('401') ||
+            e.toString().toLowerCase().contains('unauthorized')) {
           // Try to refresh token and retry once
           try {
             final refreshed = await _api.refreshAccessToken();
             if (refreshed != null) {
               await _api.submitOnboarding(onboardingData);
-              logInfo('Onboarding submitted after token refresh', tag: 'ONBOARDING_FINISH');
+              logInfo('Onboarding submitted after token refresh',
+                  tag: 'ONBOARDING_FINISH');
             } else {
               throw Exception('Session expired. Please log in again.');
             }
@@ -205,16 +212,19 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
 
       // CRITICAL DEBUG: Final verification before navigation
       final finalCacheCheck = userProvider.hasCompletedOnboarding;
-      logInfo('CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck',
+      logInfo(
+          'CRITICAL DEBUG: Final cache check before navigation: $finalCacheCheck',
           tag: 'ONBOARDING_FINISH');
 
       // Clear temporary onboarding state only after successful completion
       OnboardingState.instance.reset();
-      logInfo('CRITICAL DEBUG: OnboardingState reset completed', tag: 'ONBOARDING_FINISH');
+      logInfo('CRITICAL DEBUG: OnboardingState reset completed',
+          tag: 'ONBOARDING_FINISH');
 
       // Navigate to main screen with proper replacement to prevent back navigation
       if (mounted) {
-        logInfo('CRITICAL DEBUG: Navigating to /main screen', tag: 'ONBOARDING_FINISH');
+        logInfo('CRITICAL DEBUG: Navigating to /main screen',
+            tag: 'ONBOARDING_FINISH');
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/main',
@@ -236,11 +246,13 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   String _getErrorMessage(dynamic error) {
     final errorMsg = error.toString();
 
-    if (errorMsg.contains('Session expired') || errorMsg.contains('log in again')) {
+    if (errorMsg.contains('Session expired') ||
+        errorMsg.contains('log in again')) {
       return "Your session has expired. Please log in again to continue.";
     } else if (errorMsg.contains('Missing essential')) {
       return "Please complete all onboarding steps before continuing.";
-    } else if (errorMsg.contains('network') || errorMsg.contains('connection')) {
+    } else if (errorMsg.contains('network') ||
+        errorMsg.contains('connection')) {
       return "Network connection issue. Please check your internet and try again.";
     } else {
       return "Unable to complete setup. Please try again or skip for now.";
@@ -333,14 +345,16 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                 ),
                               ),
                             // Rate limit message
-                            if (!_canRetry() && _getRetryMessage().isNotEmpty) ...[
+                            if (!_canRetry() &&
+                                _getRetryMessage().isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: Colors.orange.shade50,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.orange.shade200),
+                                  border:
+                                      Border.all(color: Colors.orange.shade200),
                                 ),
                                 child: Text(
                                   _getRetryMessage(),
@@ -371,12 +385,14 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                 foregroundColor: Colors.white,
                                 disabledBackgroundColor: Colors.grey.shade300,
                                 disabledForegroundColor: Colors.grey.shade600,
-                                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 24),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                               ),
-                              child: Text(_canRetry() ? 'Retry' : 'Retry Disabled'),
+                              child: Text(
+                                  _canRetry() ? 'Retry' : 'Retry Disabled'),
                             ),
                             const SizedBox(height: 12),
                             TextButton(
@@ -396,7 +412,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                             ),
                             const SizedBox(height: 12),
                             // Add logout option for session expired errors
-                            if (_error?.contains('session has expired') == true ||
+                            if (_error?.contains('session has expired') ==
+                                    true ||
                                 _error?.contains('log in again') == true)
                               TextButton(
                                 onPressed: () async {

@@ -5,7 +5,8 @@ class NotificationModel {
   final String userId;
   final String title;
   final String message;
-  final String type; // alert, warning, info, tip, achievement, reminder, recommendation
+  final String
+      type; // alert, warning, info, tip, achievement, reminder, recommendation
   final String priority; // low, medium, high, critical
   final String? imageUrl;
   final String? actionUrl;
@@ -63,16 +64,24 @@ class NotificationModel {
       status: json['status'] as String,
       channel: json['channel'] as String?,
       isRead: json['is_read'] as bool,
-      readAt: json['read_at'] != null ? DateTime.parse(json['read_at'] as String) : null,
-      scheduledFor:
-          json['scheduled_for'] != null ? DateTime.parse(json['scheduled_for'] as String) : null,
-      sentAt: json['sent_at'] != null ? DateTime.parse(json['sent_at'] as String) : null,
-      deliveredAt:
-          json['delivered_at'] != null ? DateTime.parse(json['delivered_at'] as String) : null,
+      readAt: json['read_at'] != null
+          ? DateTime.parse(json['read_at'] as String)
+          : null,
+      scheduledFor: json['scheduled_for'] != null
+          ? DateTime.parse(json['scheduled_for'] as String)
+          : null,
+      sentAt: json['sent_at'] != null
+          ? DateTime.parse(json['sent_at'] as String)
+          : null,
+      deliveredAt: json['delivered_at'] != null
+          ? DateTime.parse(json['delivered_at'] as String)
+          : null,
       errorMessage: json['error_message'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at'] as String) : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
+          : null,
       category: json['category'] as String?,
       groupKey: json['group_key'] as String?,
     );
@@ -258,7 +267,8 @@ class NotificationPreferences {
       dailyReminders: json['daily_reminders'] as bool? ?? true,
       aiRecommendations: json['ai_recommendations'] as bool? ?? true,
       transactionAlerts: json['transaction_alerts'] as bool? ?? true,
-      achievementNotifications: json['achievement_notifications'] as bool? ?? true,
+      achievementNotifications:
+          json['achievement_notifications'] as bool? ?? true,
     );
   }
 
@@ -293,7 +303,8 @@ class NotificationPreferences {
       dailyReminders: dailyReminders ?? this.dailyReminders,
       aiRecommendations: aiRecommendations ?? this.aiRecommendations,
       transactionAlerts: transactionAlerts ?? this.transactionAlerts,
-      achievementNotifications: achievementNotifications ?? this.achievementNotifications,
+      achievementNotifications:
+          achievementNotifications ?? this.achievementNotifications,
     );
   }
 }

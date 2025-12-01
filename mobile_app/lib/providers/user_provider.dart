@@ -48,9 +48,11 @@ class UserProvider extends ChangeNotifier {
   String get userCurrency => _userProfile['currency'] as String? ?? 'USD';
   String get userRegion => _userProfile['region'] as String? ?? '';
   String get userCountryCode => _userProfile['countryCode'] as String? ?? '';
-  List<dynamic> get userExpenses => _userProfile['expenses'] as List<dynamic>? ?? [];
+  List<dynamic> get userExpenses =>
+      _userProfile['expenses'] as List<dynamic>? ?? [];
   List<dynamic> get userGoals => _userProfile['goals'] as List<dynamic>? ?? [];
-  List<dynamic> get userHabits => _userProfile['habits'] as List<dynamic>? ?? [];
+  List<dynamic> get userHabits =>
+      _userProfile['habits'] as List<dynamic>? ?? [];
 
   /// Initialize the provider and load user data
   Future<void> initialize() async {
@@ -156,7 +158,8 @@ class UserProvider extends ChangeNotifier {
       await loadUserProfile();
       await loadFinancialContext();
 
-      logInfo('Onboarding data cached and user state updated', tag: 'USER_PROVIDER');
+      logInfo('Onboarding data cached and user state updated',
+          tag: 'USER_PROVIDER');
     } catch (e) {
       logError('Failed to cache onboarding data: $e', tag: 'USER_PROVIDER');
       rethrow;

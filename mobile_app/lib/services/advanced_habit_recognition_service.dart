@@ -16,7 +16,9 @@ class AdvancedHabitRecognitionService {
       return HabitAnalysisResult(
         detectedHabits: [],
         categoryRiskScores: {},
-        recommendations: ['Insufficient transaction history for habit analysis'],
+        recommendations: [
+          'Insufficient transaction history for habit analysis'
+        ],
         overallHabitScore: 0.5,
         insights: {'dataQuality': 'insufficient'},
       );
@@ -30,7 +32,8 @@ class AdvancedHabitRecognitionService {
     if (impulseHabit != null) detectedHabits.add(impulseHabit);
 
     // Subscription creep detection
-    final subscriptionHabit = await _detectSubscriptionCreep(transactionHistory);
+    final subscriptionHabit =
+        await _detectSubscriptionCreep(transactionHistory);
     if (subscriptionHabit != null) detectedHabits.add(subscriptionHabit);
 
     // Weekend overspending detection
@@ -42,7 +45,8 @@ class AdvancedHabitRecognitionService {
     if (emotionalHabit != null) detectedHabits.add(emotionalHabit);
 
     // Convenience spending detection
-    final convenienceHabit = await _detectConvenienceSpending(transactionHistory);
+    final convenienceHabit =
+        await _detectConvenienceSpending(transactionHistory);
     if (convenienceHabit != null) detectedHabits.add(convenienceHabit);
 
     // Social spending detection
@@ -50,13 +54,16 @@ class AdvancedHabitRecognitionService {
     if (socialHabit != null) detectedHabits.add(socialHabit);
 
     // Calculate category risk scores
-    final categoryRiskScores = _calculateCategoryRiskScores(detectedHabits, transactionHistory);
+    final categoryRiskScores =
+        _calculateCategoryRiskScores(detectedHabits, transactionHistory);
 
     // Generate recommendations
-    final recommendations = _generateRecommendations(detectedHabits, categoryRiskScores);
+    final recommendations =
+        _generateRecommendations(detectedHabits, categoryRiskScores);
 
     // Calculate overall habit score
-    final overallHabitScore = _calculateOverallHabitScore(detectedHabits, categoryRiskScores);
+    final overallHabitScore =
+        _calculateOverallHabitScore(detectedHabits, categoryRiskScores);
 
     // Generate insights
     final insights = _generateInsights(detectedHabits, transactionHistory);
@@ -109,14 +116,16 @@ class AdvancedHabitRecognitionService {
           .toList();
 
       if (times.length >= 3) {
-        final dayOfWeekConsistency = _calculateDayOfWeekConsistency(times.cast<DateTime>());
+        final dayOfWeekConsistency =
+            _calculateDayOfWeekConsistency(times.cast<DateTime>());
         riskScore += dayOfWeekConsistency * 0.2;
       }
     }
 
     // Amount consistency risk
-    final amounts =
-        categoryTransactions.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final amounts = categoryTransactions
+        .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+        .toList();
 
     if (amounts.isNotEmpty) {
       final amountConsistency = _calculateAmountConsistency(amounts);
@@ -138,7 +147,8 @@ class AdvancedHabitRecognitionService {
 
   // Habit detection methods
 
-  Future<DetectedHabit?> _detectImpulseBuying(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectImpulseBuying(
+      List<Map<String, dynamic>> transactions) async {
     final indicators = <String>[];
     final evidenceTransactions = <String>[];
     var confidence = 0.0;
@@ -152,13 +162,14 @@ class AdvancedHabitRecognitionService {
       return amountB.compareTo(amountA);
     });
 
-    final totalSpending =
-        transactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+    final totalSpending = transactions.fold(
+        0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
     final averageTransaction = totalSpending / transactions.length;
 
     // Find transactions 3x above average
     final largeTransactions = sortedTransactions
-        .where((t) => ((t['amount'] as num?)?.toDouble() ?? 0.0) > averageTransaction * 3)
+        .where((t) =>
+            ((t['amount'] as num?)?.toDouble() ?? 0.0) > averageTransaction * 3)
         .toList();
 
     if (largeTransactions.length >= 2) {
@@ -211,7 +222,8 @@ class AdvancedHabitRecognitionService {
     return null;
   }
 
-  Future<DetectedHabit?> _detectSubscriptionCreep(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectSubscriptionCreep(
+      List<Map<String, dynamic>> transactions) async {
     final subscriptions = <String, List<Map<String, dynamic>>>{};
 
     // Group recurring transactions by merchant/description
@@ -234,10 +246,11 @@ class AdvancedHabitRecognitionService {
     if (potentialSubscriptions.length >= 3) {
       final totalSubscriptionCost = potentialSubscriptions
           .expand((entry) => entry.value)
-          .fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+          .fold(0.0,
+              (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
-      final monthlySubscriptionCost =
-          totalSubscriptionCost / (transactions.length / 30); // Rough monthly estimate
+      final monthlySubscriptionCost = totalSubscriptionCost /
+          (transactions.length / 30); // Rough monthly estimate
 
       return DetectedHabit(
         habitId: 'subscription_creep_${DateTime.now().millisecondsSinceEpoch}',
@@ -267,12 +280,14 @@ class AdvancedHabitRecognitionService {
     return null;
   }
 
-  Future<DetectedHabit?> _detectWeekendOverspending(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectWeekendOverspending(
+      List<Map<String, dynamic>> transactions) async {
     final weekdaySpending = <double>[];
     final weekendSpending = <double>[];
 
     for (final transaction in transactions) {
-      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ??
+          DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
 
       if (date.weekday >= 6) {
@@ -283,14 +298,17 @@ class AdvancedHabitRecognitionService {
     }
 
     if (weekdaySpending.isNotEmpty && weekendSpending.isNotEmpty) {
-      final weekdayAvg = weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
-      final weekendAvg = weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
+      final weekdayAvg =
+          weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
+      final weekendAvg =
+          weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
 
       if (weekendAvg > weekdayAvg * 1.5) {
         final overspendingRatio = weekendAvg / weekdayAvg;
 
         return DetectedHabit(
-          habitId: 'weekend_overspending_${DateTime.now().millisecondsSinceEpoch}',
+          habitId:
+              'weekend_overspending_${DateTime.now().millisecondsSinceEpoch}',
           habitName: 'Weekend Overspending',
           category: 'temporal_spending',
           confidence: 0.9,
@@ -315,12 +333,14 @@ class AdvancedHabitRecognitionService {
     return null;
   }
 
-  Future<DetectedHabit?> _detectEmotionalSpending(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectEmotionalSpending(
+      List<Map<String, dynamic>> transactions) async {
     // Look for clustering of purchases in short time periods
     final purchasesByDay = <String, List<Map<String, dynamic>>>{};
 
     for (final transaction in transactions) {
-      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ??
+          DateTime.now();
       final dateKey = '${date.year}-${date.month}-${date.day}';
       purchasesByDay.putIfAbsent(dateKey, () => []).add(transaction);
     }
@@ -329,14 +349,18 @@ class AdvancedHabitRecognitionService {
     final heavySpendingDays = purchasesByDay.entries
         .where((entry) =>
             entry.value.length >= 4 ||
-            entry.value.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) >
+            entry.value.fold(
+                    0.0,
+                    (sum, t) =>
+                        sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) >
                 200)
         .toList();
 
     if (heavySpendingDays.length >= 2) {
       final totalHeavySpending = heavySpendingDays
           .expand((entry) => entry.value)
-          .fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+          .fold(0.0,
+              (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
       return DetectedHabit(
         habitId: 'emotional_spending_${DateTime.now().millisecondsSinceEpoch}',
@@ -366,18 +390,26 @@ class AdvancedHabitRecognitionService {
     return null;
   }
 
-  Future<DetectedHabit?> _detectConvenienceSpending(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectConvenienceSpending(
+      List<Map<String, dynamic>> transactions) async {
     // Look for delivery fees, convenience stores, etc.
-    final convenienceCategories = ['delivery', 'convenience_store', 'gas_station', 'fast_food'];
-    final convenienceTransactions =
-        transactions.where((t) => convenienceCategories.contains(t['category'])).toList();
+    final convenienceCategories = [
+      'delivery',
+      'convenience_store',
+      'gas_station',
+      'fast_food'
+    ];
+    final convenienceTransactions = transactions
+        .where((t) => convenienceCategories.contains(t['category']))
+        .toList();
 
     if (convenienceTransactions.length >= transactions.length * 0.2) {
       final convenienceSpending = convenienceTransactions.fold(
           0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
       return DetectedHabit(
-        habitId: 'convenience_spending_${DateTime.now().millisecondsSinceEpoch}',
+        habitId:
+            'convenience_spending_${DateTime.now().millisecondsSinceEpoch}',
         habitName: 'Convenience Spending',
         category: 'lifestyle_spending',
         confidence: 0.8,
@@ -386,10 +418,13 @@ class AdvancedHabitRecognitionService {
           '${((convenienceTransactions.length / transactions.length) * 100).round()}% of transactions are convenience-based',
           'Total convenience spending: \$${convenienceSpending.toStringAsFixed(2)}',
         ],
-        evidenceTransactions:
-            convenienceTransactions.take(5).map((t) => t['id']?.toString() ?? '').toList(),
+        evidenceTransactions: convenienceTransactions
+            .take(5)
+            .map((t) => t['id']?.toString() ?? '')
+            .toList(),
         parameters: {
-          'convenienceRatio': convenienceTransactions.length / transactions.length,
+          'convenienceRatio':
+              convenienceTransactions.length / transactions.length,
           'convenienceSpending': convenienceSpending,
         },
         firstDetected: DateTime.now(),
@@ -401,11 +436,13 @@ class AdvancedHabitRecognitionService {
     return null;
   }
 
-  Future<DetectedHabit?> _detectSocialSpending(List<Map<String, dynamic>> transactions) async {
+  Future<DetectedHabit?> _detectSocialSpending(
+      List<Map<String, dynamic>> transactions) async {
     // Look for restaurant, entertainment, and social categories
     final socialCategories = ['restaurant', 'entertainment', 'bars', 'events'];
-    final socialTransactions =
-        transactions.where((t) => socialCategories.contains(t['category'])).toList();
+    final socialTransactions = transactions
+        .where((t) => socialCategories.contains(t['category']))
+        .toList();
 
     if (socialTransactions.length >= 5) {
       final socialSpending = socialTransactions.fold(
@@ -426,8 +463,10 @@ class AdvancedHabitRecognitionService {
             'Total social spending: \$${socialSpending.toStringAsFixed(2)}',
             if (groupPurchases >= 3) 'Group purchase patterns detected',
           ],
-          evidenceTransactions:
-              socialTransactions.take(5).map((t) => t['id']?.toString() ?? '').toList(),
+          evidenceTransactions: socialTransactions
+              .take(5)
+              .map((t) => t['id']?.toString() ?? '')
+              .toList(),
           parameters: {
             'socialTransactionCount': socialTransactions.length,
             'socialSpending': socialSpending,
@@ -450,9 +489,11 @@ class AdvancedHabitRecognitionService {
 
     for (int i = 0; i < transactions.length - 1; i++) {
       final currentDate =
-          DateTime.tryParse(transactions[i]['date']?.toString() ?? '') ?? DateTime.now();
+          DateTime.tryParse(transactions[i]['date']?.toString() ?? '') ??
+              DateTime.now();
       final nextDate =
-          DateTime.tryParse(transactions[i + 1]['date']?.toString() ?? '') ?? DateTime.now();
+          DateTime.tryParse(transactions[i + 1]['date']?.toString() ?? '') ??
+              DateTime.now();
 
       if (nextDate.difference(currentDate).inMinutes <= 30) {
         quickPurchases++;
@@ -462,7 +503,8 @@ class AdvancedHabitRecognitionService {
     return quickPurchases;
   }
 
-  double _calculateNonEssentialSpending(List<Map<String, dynamic>> transactions) {
+  double _calculateNonEssentialSpending(
+      List<Map<String, dynamic>> transactions) {
     final essentialCategories = [
       'groceries',
       'utilities',
@@ -470,8 +512,9 @@ class AdvancedHabitRecognitionService {
       'transportation',
       'healthcare'
     ];
-    final nonEssentialTransactions =
-        transactions.where((t) => !essentialCategories.contains(t['category'])).toList();
+    final nonEssentialTransactions = transactions
+        .where((t) => !essentialCategories.contains(t['category']))
+        .toList();
 
     if (transactions.isEmpty) return 0.0;
     return nonEssentialTransactions.length / transactions.length;
@@ -481,7 +524,9 @@ class AdvancedHabitRecognitionService {
     if (transactions.length < 2) return false;
 
     // Check for recurring amounts
-    final amounts = transactions.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final amounts = transactions
+        .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+        .toList();
 
     final uniqueAmounts = amounts.toSet();
     if (uniqueAmounts.length <= 2) {
@@ -519,7 +564,8 @@ class AdvancedHabitRecognitionService {
 
     final mean = amounts.reduce((a, b) => a + b) / amounts.length;
     final variance =
-        amounts.map((amount) => pow(amount - mean, 2)).reduce((a, b) => a + b) / amounts.length;
+        amounts.map((amount) => pow(amount - mean, 2)).reduce((a, b) => a + b) /
+            amounts.length;
 
     final standardDeviation = sqrt(variance);
     final coefficientOfVariation = mean > 0 ? standardDeviation / mean : 1.0;
@@ -544,7 +590,8 @@ class AdvancedHabitRecognitionService {
     // Group by date
     final transactionsByDate = <String, List<Map<String, dynamic>>>{};
     for (final transaction in transactions) {
-      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ??
+          DateTime.now();
       final dateKey = '${date.year}-${date.month}-${date.day}';
       transactionsByDate.putIfAbsent(dateKey, () => []).add(transaction);
     }
@@ -552,8 +599,9 @@ class AdvancedHabitRecognitionService {
     // Look for multiple transactions on same day with similar amounts
     for (final dayTransactions in transactionsByDate.values) {
       if (dayTransactions.length >= 2) {
-        final amounts =
-            dayTransactions.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+        final amounts = dayTransactions
+            .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+            .toList();
 
         // Check for similar amounts (within 20% of each other)
         for (int i = 0; i < amounts.length - 1; i++) {
@@ -584,7 +632,8 @@ class AdvancedHabitRecognitionService {
     }
 
     // Normalize scores
-    final maxScore = riskScores.values.isEmpty ? 1.0 : riskScores.values.reduce(max);
+    final maxScore =
+        riskScores.values.isEmpty ? 1.0 : riskScores.values.reduce(max);
     if (maxScore > 0) {
       for (final key in riskScores.keys) {
         riskScores[key] = (riskScores[key]! / maxScore).clamp(0.0, 1.0);
@@ -603,32 +652,40 @@ class AdvancedHabitRecognitionService {
     for (final habit in habits) {
       switch (habit.habitName) {
         case 'Impulse Buying':
-          recommendations
-              .add('Implement a 24-hour waiting period for non-essential purchases over \$50');
+          recommendations.add(
+              'Implement a 24-hour waiting period for non-essential purchases over \$50');
           recommendations.add(
               'Create a dedicated "impulse budget" to satisfy spontaneous desires within limits');
           break;
         case 'Subscription Creep':
-          recommendations.add('Review and audit all recurring subscriptions monthly');
-          recommendations.add('Cancel unused subscriptions and consolidate similar services');
+          recommendations
+              .add('Review and audit all recurring subscriptions monthly');
+          recommendations.add(
+              'Cancel unused subscriptions and consolidate similar services');
           break;
         case 'Weekend Overspending':
-          recommendations.add('Set a specific weekend spending budget and track it closely');
-          recommendations.add('Plan weekend activities that don\'t require high spending');
+          recommendations.add(
+              'Set a specific weekend spending budget and track it closely');
+          recommendations
+              .add('Plan weekend activities that don\'t require high spending');
           break;
         case 'Emotional Spending':
-          recommendations
-              .add('Identify emotional triggers and develop alternative coping strategies');
-          recommendations.add('Implement a "pause and reflect" rule before making purchases');
+          recommendations.add(
+              'Identify emotional triggers and develop alternative coping strategies');
+          recommendations.add(
+              'Implement a "pause and reflect" rule before making purchases');
           break;
         case 'Convenience Spending':
-          recommendations.add('Plan ahead to reduce reliance on convenience options');
-          recommendations.add('Batch errands and meal prep to avoid last-minute expenses');
+          recommendations
+              .add('Plan ahead to reduce reliance on convenience options');
+          recommendations
+              .add('Batch errands and meal prep to avoid last-minute expenses');
           break;
         case 'Social Spending':
-          recommendations
-              .add('Set boundaries for social spending and communicate them with friends');
-          recommendations.add('Suggest lower-cost social activities and take turns hosting');
+          recommendations.add(
+              'Set boundaries for social spending and communicate them with friends');
+          recommendations.add(
+              'Suggest lower-cost social activities and take turns hosting');
           break;
       }
     }
@@ -642,8 +699,8 @@ class AdvancedHabitRecognitionService {
   ) {
     if (habits.isEmpty) return 0.5; // Neutral score
 
-    final weightedScore =
-        habits.fold(0.0, (sum, habit) => sum + (habit.confidence * habit.impactScore));
+    final weightedScore = habits.fold(
+        0.0, (sum, habit) => sum + (habit.confidence * habit.impactScore));
 
     return (weightedScore / habits.length).clamp(0.0, 1.0);
   }
@@ -665,7 +722,8 @@ class AdvancedHabitRecognitionService {
     };
   }
 
-  Future<BehavioralCorrection> _createBehavioralCorrection(DetectedHabit habit) async {
+  Future<BehavioralCorrection> _createBehavioralCorrection(
+      DetectedHabit habit) async {
     return BehavioralCorrection(
       habitId: habit.habitId,
       correctionType: _getCorrectionType(habit.habitName),
@@ -725,17 +783,33 @@ class AdvancedHabitRecognitionService {
   List<String> _getInterventions(DetectedHabit habit) {
     switch (habit.habitName) {
       case 'Impulse Buying':
-        return ['24-hour rule', 'impulse budget allocation', 'need vs want assessment'];
+        return [
+          '24-hour rule',
+          'impulse budget allocation',
+          'need vs want assessment'
+        ];
       case 'Subscription Creep':
-        return ['monthly subscription audit', 'usage tracking', 'cancellation reminders'];
+        return [
+          'monthly subscription audit',
+          'usage tracking',
+          'cancellation reminders'
+        ];
       case 'Weekend Overspending':
         return ['weekend budget cap', 'activity planning', 'spending alerts'];
       case 'Emotional Spending':
-        return ['trigger identification', 'alternative activities', 'mindfulness practices'];
+        return [
+          'trigger identification',
+          'alternative activities',
+          'mindfulness practices'
+        ];
       case 'Convenience Spending':
         return ['meal planning', 'batch shopping', 'preparation reminders'];
       case 'Social Spending':
-        return ['group budget discussion', 'cost-sharing strategies', 'alternative suggestions'];
+        return [
+          'group budget discussion',
+          'cost-sharing strategies',
+          'alternative suggestions'
+        ];
       default:
         return ['spending awareness', 'budget tracking'];
     }

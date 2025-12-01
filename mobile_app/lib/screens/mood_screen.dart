@@ -119,12 +119,14 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 8),
-              Text('Mood saved! ${_moodData[moodProvider.selectedMood.round()]!['emoji']}'),
+              Text(
+                  'Mood saved! ${_moodData[moodProvider.selectedMood.round()]!['emoji']}'),
             ],
           ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } else {
@@ -133,7 +135,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           content: Text('Failed to save mood: ${moodProvider.errorMessage}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       moodProvider.clearError();
@@ -148,7 +151,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
 
         return Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -207,9 +211,11 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: _moodData[mood.round()]!['color'],
                     thumbColor: _moodData[mood.round()]!['color'],
-                    overlayColor: _moodData[mood.round()]!['color'].withValues(alpha: 0.2),
+                    overlayColor: _moodData[mood.round()]!['color']
+                        .withValues(alpha: 0.2),
                     trackHeight: 8.0,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 12.0),
                   ),
                   child: Slider(
                     value: mood,
@@ -243,9 +249,12 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: hasSubmittedToday || moodProvider.isLoading ? null : _submit,
+                    onPressed: hasSubmittedToday || moodProvider.isLoading
+                        ? null
+                        : _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: hasSubmittedToday ? Colors.grey : AppColors.secondary,
+                      backgroundColor:
+                          hasSubmittedToday ? Colors.grey : AppColors.secondary,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -259,11 +268,14 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.black),
                             ),
                           )
                         : Text(
-                            hasSubmittedToday ? 'Mood Saved for Today' : 'Save My Mood',
+                            hasSubmittedToday
+                                ? 'Mood Saved for Today'
+                                : 'Save My Mood',
                             style: const TextStyle(
                               fontFamily: 'Sora',
                               fontWeight: FontWeight.bold,
@@ -284,7 +296,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                        Icon(Icons.check_circle,
+                            color: Colors.green.shade600, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -316,7 +329,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
 
         return Card(
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -412,7 +426,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             // Weekly mood tracking placeholder
             Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -453,13 +468,20 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildMoodHistoryItem('Mon', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem('Tue', '😐', Colors.grey.shade400),
-                        _buildMoodHistoryItem('Wed', '😔', Colors.orange.shade400),
-                        _buildMoodHistoryItem('Thu', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem('Fri', '😄', Colors.blue.shade400),
-                        _buildMoodHistoryItem('Sat', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem('Today', '?', Colors.grey.shade300),
+                        _buildMoodHistoryItem(
+                            'Mon', '😊', Colors.green.shade400),
+                        _buildMoodHistoryItem(
+                            'Tue', '😐', Colors.grey.shade400),
+                        _buildMoodHistoryItem(
+                            'Wed', '😔', Colors.orange.shade400),
+                        _buildMoodHistoryItem(
+                            'Thu', '😊', Colors.green.shade400),
+                        _buildMoodHistoryItem(
+                            'Fri', '😄', Colors.blue.shade400),
+                        _buildMoodHistoryItem(
+                            'Sat', '😊', Colors.green.shade400),
+                        _buildMoodHistoryItem(
+                            'Today', '?', Colors.grey.shade300),
                       ],
                     ),
                   ],

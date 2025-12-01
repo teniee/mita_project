@@ -38,12 +38,17 @@ class ChallengesProvider extends ChangeNotifier {
   // Stats convenience getters
   int get currentLevel => _gamificationStats['current_level'] as int? ?? 1;
   int get totalPoints => _gamificationStats['total_points'] as int? ?? 0;
-  int get nextLevelPoints => _gamificationStats['next_level_points'] as int? ?? 100;
-  int get pointsToNextLevel => _gamificationStats['points_to_next_level'] as int? ?? 100;
-  int get activeChallengesCount => _gamificationStats['active_challenges'] as int? ?? 0;
+  int get nextLevelPoints =>
+      _gamificationStats['next_level_points'] as int? ?? 100;
+  int get pointsToNextLevel =>
+      _gamificationStats['points_to_next_level'] as int? ?? 100;
+  int get activeChallengesCount =>
+      _gamificationStats['active_challenges'] as int? ?? 0;
   int get currentStreak => _gamificationStats['current_streak'] as int? ?? 0;
-  int get completedChallengesCount => _gamificationStats['completed_challenges'] as int? ?? 0;
-  List<dynamic> get badgesEarned => _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
+  int get completedChallengesCount =>
+      _gamificationStats['completed_challenges'] as int? ?? 0;
+  List<dynamic> get badgesEarned =>
+      _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
 
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
@@ -59,9 +64,11 @@ class ChallengesProvider extends ChangeNotifier {
       await loadChallengeData();
 
       _state = ChallengesState.loaded;
-      logInfo('ChallengesProvider initialized successfully', tag: 'CHALLENGES_PROVIDER');
+      logInfo('ChallengesProvider initialized successfully',
+          tag: 'CHALLENGES_PROVIDER');
     } catch (e) {
-      logError('Failed to initialize ChallengesProvider: $e', tag: 'CHALLENGES_PROVIDER');
+      logError('Failed to initialize ChallengesProvider: $e',
+          tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       _state = ChallengesState.error;
     } finally {
@@ -113,10 +120,12 @@ class ChallengesProvider extends ChangeNotifier {
       final progress = await _apiService.getChallengeProgress(challengeId);
       _challengeProgress[challengeId] = progress;
       notifyListeners();
-      logInfo('Loaded progress for challenge $challengeId', tag: 'CHALLENGES_PROVIDER');
+      logInfo('Loaded progress for challenge $challengeId',
+          tag: 'CHALLENGES_PROVIDER');
     } catch (e) {
       // Silently fail - progress not critical for display
-      logError('Failed to load challenge progress: $e', tag: 'CHALLENGES_PROVIDER');
+      logError('Failed to load challenge progress: $e',
+          tag: 'CHALLENGES_PROVIDER');
     }
   }
 
@@ -173,10 +182,12 @@ class ChallengesProvider extends ChangeNotifier {
       // Refresh progress
       await loadChallengeProgress(challengeId);
 
-      logInfo('Updated progress for challenge $challengeId', tag: 'CHALLENGES_PROVIDER');
+      logInfo('Updated progress for challenge $challengeId',
+          tag: 'CHALLENGES_PROVIDER');
       return true;
     } catch (e) {
-      logError('Failed to update challenge progress: $e', tag: 'CHALLENGES_PROVIDER');
+      logError('Failed to update challenge progress: $e',
+          tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {

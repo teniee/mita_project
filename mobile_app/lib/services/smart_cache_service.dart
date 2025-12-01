@@ -60,7 +60,8 @@ class CacheEntry {
       key: map['key'],
       value: map['value'],
       createdAt: DateTime.parse(map['createdAt']),
-      expiresAt: map['expiresAt'] != null ? DateTime.parse(map['expiresAt']) : null,
+      expiresAt:
+          map['expiresAt'] != null ? DateTime.parse(map['expiresAt']) : null,
       tags: List<String>.from(map['tags'] ?? []),
       sizeBytes: map['sizeBytes'] ?? 0,
       lastAccessed: DateTime.parse(map['lastAccessed']),
@@ -111,7 +112,8 @@ enum CacheTier {
 /// Abstract cache backend
 abstract class CacheBackend {
   Future<dynamic> get(String key);
-  Future<bool> set(String key, dynamic value, {Duration? ttl, List<String>? tags});
+  Future<bool> set(String key, dynamic value,
+      {Duration? ttl, List<String>? tags});
   Future<bool> delete(String key);
   Future<bool> exists(String key);
   Future<void> clear();
@@ -163,13 +165,15 @@ class MemoryCache implements CacheBackend {
   }
 
   @override
-  Future<bool> set(String key, dynamic value, {Duration? ttl, List<String>? tags}) async {
+  Future<bool> set(String key, dynamic value,
+      {Duration? ttl, List<String>? tags}) async {
     try {
       final valueBytes = _calculateSize(value);
 
       // Check if single entry is too large
       if (valueBytes > maxSizeBytes) {
-        logWarning('Value too large for memory cache: $valueBytes bytes', tag: 'CACHE');
+        logWarning('Value too large for memory cache: $valueBytes bytes',
+            tag: 'CACHE');
         return false;
       }
 
@@ -229,8 +233,10 @@ class MemoryCache implements CacheBackend {
 
   @override
   Future<void> cleanup() async {
-    final expiredKeys =
-        _cache.entries.where((entry) => entry.value.isExpired).map((entry) => entry.key).toList();
+    final expiredKeys = _cache.entries
+        .where((entry) => entry.value.isExpired)
+        .map((entry) => entry.key)
+        .toList();
 
     for (final key in expiredKeys) {
       _cache.remove(key);
@@ -240,7 +246,8 @@ class MemoryCache implements CacheBackend {
     _updateStats();
 
     if (expiredKeys.isNotEmpty) {
-      logDebug('Cleaned up ${expiredKeys.length} expired cache entries', tag: 'CACHE');
+      logDebug('Cleaned up ${expiredKeys.length} expired cache entries',
+          tag: 'CACHE');
     }
   }
 
@@ -251,7 +258,8 @@ class MemoryCache implements CacheBackend {
     }
 
     // Check size limit
-    while (_stats.totalSizeBytes + newEntrySize > maxSizeBytes && _cache.isNotEmpty) {
+    while (_stats.totalSizeBytes + newEntrySize > maxSizeBytes &&
+        _cache.isNotEmpty) {
       await _evictLRU();
     }
   }
@@ -264,7 +272,8 @@ class MemoryCache implements CacheBackend {
     String? lruKey;
 
     for (final entry in _cache.entries) {
-      if (lruEntry == null || entry.value.lastAccessed.isBefore(lruEntry.lastAccessed)) {
+      if (lruEntry == null ||
+          entry.value.lastAccessed.isBefore(lruEntry.lastAccessed)) {
         lruEntry = entry.value;
         lruKey = entry.key;
       }
@@ -291,7 +300,8 @@ class MemoryCache implements CacheBackend {
 
   void _updateStats() {
     _stats.entryCount = _cache.length;
-    _stats.totalSizeBytes = _cache.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
+    _stats.totalSizeBytes =
+        _cache.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
   }
 
   void dispose() {
@@ -361,7 +371,8 @@ class PersistentCache implements CacheBackend {
   }
 
   @override
-  Future<bool> set(String key, dynamic value, {Duration? ttl, List<String>? tags}) async {
+  Future<bool> set(String key, dynamic value,
+      {Duration? ttl, List<String>? tags}) async {
     await _ensureInitialized();
 
     try {
@@ -448,7 +459,9 @@ class PersistentCache implements CacheBackend {
     }
 
     if (expiredKeys.isNotEmpty) {
-      logDebug('Cleaned up ${expiredKeys.length} expired persistent cache entries', tag: 'CACHE');
+      logDebug(
+          'Cleaned up ${expiredKeys.length} expired persistent cache entries',
+          tag: 'CACHE');
     }
   }
 
@@ -469,7 +482,8 @@ class PersistentCache implements CacheBackend {
 
   void _updateStats() {
     _stats.entryCount = _metadata.length;
-    _stats.totalSizeBytes = _metadata.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
+    _stats.totalSizeBytes =
+        _metadata.values.fold(0, (sum, entry) => sum + entry.sizeBytes);
   }
 }
 
@@ -660,18 +674,24 @@ class SmartCacheService {
     }
 
     // Overall statistics
-    final totalHits = _tiers.values.fold(0, (sum, backend) => sum + backend.stats.hits);
-    final totalMisses = _tiers.values.fold(0, (sum, backend) => sum + backend.stats.misses);
-    final totalEntries = _tiers.values.fold(0, (sum, backend) => sum + backend.stats.entryCount);
+    final totalHits =
+        _tiers.values.fold(0, (sum, backend) => sum + backend.stats.hits);
+    final totalMisses =
+        _tiers.values.fold(0, (sum, backend) => sum + backend.stats.misses);
+    final totalEntries =
+        _tiers.values.fold(0, (sum, backend) => sum + backend.stats.entryCount);
 
     stats['overall'] = {
       'totalHits': totalHits,
       'totalMisses': totalMisses,
       'totalEntries': totalEntries,
-      'hitRate': totalHits + totalMisses > 0 ? (totalHits / (totalHits + totalMisses)) * 100 : 0.0,
+      'hitRate': totalHits + totalMisses > 0
+          ? (totalHits / (totalHits + totalMisses)) * 100
+          : 0.0,
       'taggedKeys': _keyTags.length,
-      'frequentlyAccessedKeys':
-          _accessHistory.entries.where((e) => e.value.length >= promotionThreshold).length,
+      'frequentlyAccessedKeys': _accessHistory.entries
+          .where((e) => e.value.length >= promotionThreshold)
+          .length,
     };
 
     return stats;
@@ -685,7 +705,8 @@ class SmartCacheService {
     // Recent activity
     final recentActivity = <String, int>{};
     for (final entry in _accessHistory.entries) {
-      final recentAccesses = entry.value.where((time) => time.isAfter(oneHourAgo)).length;
+      final recentAccesses =
+          entry.value.where((time) => time.isAfter(oneHourAgo)).length;
       if (recentAccesses > 0) {
         recentActivity[entry.key] = recentAccesses;
       }
@@ -707,11 +728,12 @@ class SmartCacheService {
 
     return {
       'timestamp': now.toIso8601String(),
-      'recentActivity':
-          Map.fromEntries(recentActivity.entries.take(20).map((e) => MapEntry(e.key, e.value))),
+      'recentActivity': Map.fromEntries(
+          recentActivity.entries.take(20).map((e) => MapEntry(e.key, e.value))),
       'popularKeys': popularKeys.take(20).toList(),
-      'tagUsage': Map.fromEntries(
-          (tagCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(10)),
+      'tagUsage': Map.fromEntries((tagCounts.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value)))
+          .take(10)),
       'recommendations': _generateRecommendations(),
     };
   }
@@ -745,11 +767,13 @@ class SmartCacheService {
 
     // Keep only recent access history (last 100 accesses per key)
     if (_accessHistory[key]!.length > 100) {
-      _accessHistory[key] = _accessHistory[key]!.sublist(_accessHistory[key]!.length - 100);
+      _accessHistory[key] =
+          _accessHistory[key]!.sublist(_accessHistory[key]!.length - 100);
     }
   }
 
-  Future<void> _promoteIfNeeded(String key, dynamic value, CacheTier currentTier) async {
+  Future<void> _promoteIfNeeded(
+      String key, dynamic value, CacheTier currentTier) async {
     final accessCount = _accessHistory[key]?.length ?? 0;
 
     if (accessCount >= promotionThreshold && currentTier != CacheTier.memory) {
@@ -800,15 +824,15 @@ class SmartCacheService {
     // Check for unused tags
     final taggedKeysCount = overallStats['taggedKeys'] as int;
     if (taggedKeysCount < overallStats['totalEntries'] * 0.5) {
-      recommendations
-          .add('Consider using more cache tags for better organization and selective invalidation');
+      recommendations.add(
+          'Consider using more cache tags for better organization and selective invalidation');
     }
 
     // Check for frequently accessed keys
     final frequentKeys = overallStats['frequentlyAccessedKeys'] as int;
     if (frequentKeys > 0) {
-      recommendations
-          .add('$frequentKeys keys are frequently accessed - ensure they are in the memory tier');
+      recommendations.add(
+          '$frequentKeys keys are frequently accessed - ensure they are in the memory tier');
     }
 
     if (recommendations.isEmpty) {

@@ -5,7 +5,8 @@ import '../l10n/generated/app_localizations.dart';
 /// Comprehensive financial formatting utilities for MITA app
 /// Provides locale-aware formatting for all financial UI components
 class FinancialFormatters {
-  static LocalizationService get _localizationService => LocalizationService.instance;
+  static LocalizationService get _localizationService =>
+      LocalizationService.instance;
 
   /// Format currency amount for display in UI components
   ///
@@ -30,7 +31,8 @@ class FinancialFormatters {
 
   /// Format budget status with proper localized messaging
   /// Returns appropriate message based on spending vs budget ratio
-  static String formatBudgetStatus(BuildContext context, double spent, double budget) {
+  static String formatBudgetStatus(
+      BuildContext context, double spent, double budget) {
     final l10n = AppLocalizations.of(context);
 
     return _localizationService.formatBudgetStatus(
@@ -44,7 +46,8 @@ class FinancialFormatters {
 
   /// Format budget progress as percentage
   /// Used in progress indicators and charts
-  static String formatBudgetProgress(BuildContext context, double spent, double budget) {
+  static String formatBudgetProgress(
+      BuildContext context, double spent, double budget) {
     return _localizationService.formatBudgetProgress(spent, budget);
   }
 
@@ -57,11 +60,13 @@ class FinancialFormatters {
   /// Format percentage with proper locale formatting
   /// Used for interest rates, progress indicators, etc.
   static String formatPercentage(double ratio, {int decimalDigits = 1}) {
-    return _localizationService.formatPercentage(ratio, decimalDigits: decimalDigits);
+    return _localizationService.formatPercentage(ratio,
+        decimalDigits: decimalDigits);
   }
 
   /// Format financial ratios (debt-to-income, savings rate, etc.)
-  static String formatRatio(BuildContext context, double numerator, double denominator) {
+  static String formatRatio(
+      BuildContext context, double numerator, double denominator) {
     if (denominator == 0) return '0%';
 
     final ratio = numerator / denominator;
@@ -71,11 +76,13 @@ class FinancialFormatters {
   /// Format date for financial transactions and reports
   static String formatTransactionDate(BuildContext context, DateTime date) {
     final l10n = AppLocalizations.of(context);
-    return _localizationService.formatRelativeDate(date, l10n.today, l10n.yesterday);
+    return _localizationService.formatRelativeDate(
+        date, l10n.today, l10n.yesterday);
   }
 
   /// Format date range for financial reports
-  static String formatDateRange(BuildContext context, DateTime start, DateTime end) {
+  static String formatDateRange(
+      BuildContext context, DateTime start, DateTime end) {
     final startFormatted = _localizationService.formatDate(start);
     final endFormatted = _localizationService.formatDate(end);
     return '$startFormatted - $endFormatted';
@@ -117,7 +124,8 @@ class FinancialFormatters {
   }
 
   /// Format savings goal progress
-  static String formatGoalProgress(BuildContext context, double current, double target) {
+  static String formatGoalProgress(
+      BuildContext context, double current, double target) {
     if (target <= 0) return formatCurrency(context, current);
 
     final percentage = (current / target).clamp(0.0, 1.0);
@@ -149,7 +157,8 @@ class FinancialFormatters {
   }
 
   /// Format daily allowance with budget context
-  static String formatDailyAllowance(BuildContext context, double allowance, double spent) {
+  static String formatDailyAllowance(
+      BuildContext context, double allowance, double spent) {
     final remaining = allowance - spent;
     final l10n = AppLocalizations.of(context);
 
@@ -163,14 +172,15 @@ class FinancialFormatters {
   }
 
   /// Format installment payment schedule
-  static String formatInstallment(
-      BuildContext context, double amount, int installmentNumber, int totalInstallments) {
+  static String formatInstallment(BuildContext context, double amount,
+      int installmentNumber, int totalInstallments) {
     final formattedAmount = formatCurrency(context, amount);
     return '$formattedAmount ($installmentNumber/$totalInstallments)';
   }
 
   /// Format financial account balance
-  static String formatAccountBalance(BuildContext context, double balance, {bool showSign = true}) {
+  static String formatAccountBalance(BuildContext context, double balance,
+      {bool showSign = true}) {
     if (balance >= 0) {
       return formatCurrency(context, balance);
     } else {
@@ -182,7 +192,8 @@ class FinancialFormatters {
   }
 
   /// Format budget variance (difference between budgeted and actual)
-  static String formatBudgetVariance(BuildContext context, double budgeted, double actual) {
+  static String formatBudgetVariance(
+      BuildContext context, double budgeted, double actual) {
     final variance = actual - budgeted;
     final l10n = AppLocalizations.of(context);
 
@@ -235,14 +246,15 @@ class FinancialFormatters {
   }
 
   /// Format spending velocity (spending per day/week/month)
-  static String formatSpendingVelocity(BuildContext context, double amount, String period) {
+  static String formatSpendingVelocity(
+      BuildContext context, double amount, String period) {
     final formattedAmount = formatCurrency(context, amount);
     return '$formattedAmount/$period';
   }
 
   /// Format time until financial goal
-  static String formatTimeToGoal(
-      BuildContext context, double currentSaved, double targetAmount, double monthlyContribution) {
+  static String formatTimeToGoal(BuildContext context, double currentSaved,
+      double targetAmount, double monthlyContribution) {
     if (monthlyContribution <= 0 || currentSaved >= targetAmount) {
       return '-';
     }
@@ -279,7 +291,8 @@ class FinancialFormatters {
   }
 
   /// Get appropriate color for financial amount based on context
-  static Color getAmountColor(BuildContext context, double amount, {bool isExpense = true}) {
+  static Color getAmountColor(BuildContext context, double amount,
+      {bool isExpense = true}) {
     final theme = Theme.of(context);
 
     if (isExpense) {
@@ -290,7 +303,8 @@ class FinancialFormatters {
   }
 
   /// Get appropriate color for budget status
-  static Color getBudgetStatusColor(BuildContext context, double spent, double budget) {
+  static Color getBudgetStatusColor(
+      BuildContext context, double spent, double budget) {
     final theme = Theme.of(context);
 
     if (budget <= 0) return theme.colorScheme.onSurface;

@@ -26,10 +26,12 @@ class IntelligentNotificationsWidget extends StatefulWidget {
   });
 
   @override
-  State<IntelligentNotificationsWidget> createState() => _IntelligentNotificationsWidgetState();
+  State<IntelligentNotificationsWidget> createState() =>
+      _IntelligentNotificationsWidgetState();
 }
 
-class _IntelligentNotificationsWidgetState extends State<IntelligentNotificationsWidget>
+class _IntelligentNotificationsWidgetState
+    extends State<IntelligentNotificationsWidget>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -88,7 +90,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
     super.dispose();
   }
 
-  List<Map<String, dynamic>> _getFilteredNotifications(List<NotificationModel> notifications) {
+  List<Map<String, dynamic>> _getFilteredNotifications(
+      List<NotificationModel> notifications) {
     var filtered = notifications
         .map((n) => {
               'id': n.id,
@@ -115,7 +118,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
   Widget build(BuildContext context) {
     // Use provider for notifications state
     final provider = context.watch<NotificationsProvider>();
-    final filteredNotifications = _getFilteredNotifications(provider.notifications);
+    final filteredNotifications =
+        _getFilteredNotifications(provider.notifications);
 
     if (filteredNotifications.isEmpty && !provider.isLoading) {
       return const SizedBox.shrink();
@@ -208,9 +212,13 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                 // Notifications List
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  height: _isExpanded ? (filteredNotifications.length * 70.0).clamp(0, 350) : 70,
+                  height: _isExpanded
+                      ? (filteredNotifications.length * 70.0).clamp(0, 350)
+                      : 70,
                   child: ListView.builder(
-                    physics: _isExpanded ? null : const NeverScrollableScrollPhysics(),
+                    physics: _isExpanded
+                        ? null
+                        : const NeverScrollableScrollPhysics(),
                     itemCount: _isExpanded ? filteredNotifications.length : 1,
                     itemBuilder: (context, index) {
                       final notification = filteredNotifications[index];
@@ -229,7 +237,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
     );
   }
 
-  Widget _buildNotificationItem(Map<String, dynamic> notification, bool isFirst) {
+  Widget _buildNotificationItem(
+      Map<String, dynamic> notification, bool isFirst) {
     final type = notification['type'] as String? ?? 'info';
     final title = notification['title'] as String? ?? '';
     final message = notification['message'] as String? ?? '';
@@ -331,7 +340,8 @@ class _IntelligentNotificationsWidgetState extends State<IntelligentNotification
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: notificationInfo.color.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
@@ -471,19 +481,27 @@ class CompactIntelligentNotifications extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: highPriorityCount > 0 ? Colors.red.shade50 : Colors.blue.shade50,
+              color: highPriorityCount > 0
+                  ? Colors.red.shade50
+                  : Colors.blue.shade50,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: highPriorityCount > 0 ? Colors.red.shade200 : Colors.blue.shade200,
+                color: highPriorityCount > 0
+                    ? Colors.red.shade200
+                    : Colors.blue.shade200,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  highPriorityCount > 0 ? Icons.warning : Icons.notifications_active,
+                  highPriorityCount > 0
+                      ? Icons.warning
+                      : Icons.notifications_active,
                   size: 16,
-                  color: highPriorityCount > 0 ? Colors.red.shade600 : Colors.blue.shade600,
+                  color: highPriorityCount > 0
+                      ? Colors.red.shade600
+                      : Colors.blue.shade600,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -492,13 +510,16 @@ class CompactIntelligentNotifications extends StatelessWidget {
                     fontFamily: AppTypography.fontBody,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: highPriorityCount > 0 ? Colors.red.shade700 : Colors.blue.shade700,
+                    color: highPriorityCount > 0
+                        ? Colors.red.shade700
+                        : Colors.blue.shade700,
                   ),
                 ),
                 if (highPriorityCount > 0) ...[
                   const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.red.shade600,
                       borderRadius: BorderRadius.circular(8),

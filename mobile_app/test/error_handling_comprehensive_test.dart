@@ -20,12 +20,13 @@ import 'package:mobile_app/widgets/mita_widgets.dart';
 
 // Mocks
 class MockSharedPreferences extends Mock implements SharedPreferences {}
+
 class MockDioException extends Mock implements DioException {}
 
 void main() {
   group('Comprehensive Error Handling Tests', () {
     late MockSharedPreferences mockPrefs;
-    
+
     setUpAll(() {
       // Register fallback values for mocktail
       registerFallbackValue(ErrorSeverity.medium);
@@ -42,7 +43,8 @@ void main() {
       test('ErrorHandler initializes correctly', () async {
         when(() => mockPrefs.getString(any())).thenReturn(null);
         when(() => mockPrefs.getStringList(any())).thenReturn(null);
-        when(() => mockPrefs.setStringList(any(), any())).thenAnswer((_) async => true);
+        when(() => mockPrefs.setStringList(any(), any()))
+            .thenAnswer((_) async => true);
 
         final errorHandler = ErrorHandler.instance;
         await errorHandler.initialize();
@@ -94,7 +96,7 @@ void main() {
     group('Enhanced Error Handling Tests', () {
       test('Enhanced error handling executes with retry', () async {
         int attemptCount = 0;
-        
+
         final result = await EnhancedErrorHandling.executeWithRetry<String>(
           () async {
             attemptCount++;
@@ -114,7 +116,7 @@ void main() {
 
       test('Enhanced error handling respects retry limits', () async {
         int attemptCount = 0;
-        
+
         final result = await EnhancedErrorHandling.executeWithRetry<String>(
           () async {
             attemptCount++;
@@ -131,7 +133,8 @@ void main() {
       });
 
       test('Circuit breaker pattern works with timeout', () async {
-        final result = await EnhancedErrorHandling.executeWithCircuitBreaker<String>(
+        final result =
+            await EnhancedErrorHandling.executeWithCircuitBreaker<String>(
           () async {
             await Future.delayed(const Duration(seconds: 2));
             return 'Should timeout';
@@ -157,19 +160,23 @@ void main() {
       test('Network error handler provides appropriate messages', () {
         // Test connection timeout
         final mockDioException = MockDioException();
-        when(() => mockDioException.type).thenReturn(DioExceptionType.connectionTimeout);
-        
-        final message = EnhancedErrorHandling.handleNetworkError(mockDioException);
+        when(() => mockDioException.type)
+            .thenReturn(DioExceptionType.connectionTimeout);
+
+        final message =
+            EnhancedErrorHandling.handleNetworkError(mockDioException);
         expect(message, contains('Connection timeout'));
 
         // Test 401 error
-        when(() => mockDioException.type).thenReturn(DioExceptionType.badResponse);
+        when(() => mockDioException.type)
+            .thenReturn(DioExceptionType.badResponse);
         when(() => mockDioException.response).thenReturn(Response(
           requestOptions: RequestOptions(path: '/api/test'),
           statusCode: 401,
         ));
-        
-        final authMessage = EnhancedErrorHandling.handleNetworkError(mockDioException);
+
+        final authMessage =
+            EnhancedErrorHandling.handleNetworkError(mockDioException);
         expect(authMessage, contains('Authentication required'));
       });
     });
@@ -189,7 +196,8 @@ void main() {
 
       test('Network recovery strategy provides appropriate delays', () async {
         final mockDioException = MockDioException();
-        when(() => mockDioException.type).thenReturn(DioExceptionType.connectionTimeout);
+        when(() => mockDioException.type)
+            .thenReturn(DioExceptionType.connectionTimeout);
 
         final strategy = NetworkRecoveryStrategy();
         final context = RecoveryContext(
@@ -202,14 +210,15 @@ void main() {
           fallbackValue: null,
         );
 
-        final result = await strategy.attemptRecovery(mockDioException, context);
+        final result =
+            await strategy.attemptRecovery(mockDioException, context);
         expect(result.shouldProceed, isTrue);
         expect(result.suggestedDelay, isNotNull);
       });
 
       test('Recovery service executes operation with recovery', () async {
         int attemptCount = 0;
-        
+
         final result = await recoveryService.executeWithRecovery<String>(
           operation: () async {
             attemptCount++;
@@ -231,9 +240,10 @@ void main() {
       test('Custom recovery strategy can be registered', () {
         final customStrategy = TestRecoveryStrategy();
         recoveryService.registerRecoveryStrategy(TestException, customStrategy);
-        
+
         final stats = recoveryService.getRecoveryStats();
-        expect(stats['registeredStrategies'], greaterThan(4)); // Default + custom
+        expect(
+            stats['registeredStrategies'], greaterThan(4)); // Default + custom
       });
     });
 
@@ -263,7 +273,7 @@ void main() {
       test('Error trends are calculated correctly', () {
         // Record errors at different times
         final baseTime = DateTime.now().subtract(const Duration(hours: 2));
-        
+
         for (int i = 0; i < 5; i++) {
           analyticsService.recordError(
             error: Exception('Trend test error $i'),
@@ -283,7 +293,7 @@ void main() {
 
       test('Error patterns are detected', () {
         final now = DateTime.now();
-        
+
         // Record errors that should form a pattern
         for (int i = 0; i < 3; i++) {
           analyticsService.recordError(
@@ -291,7 +301,7 @@ void main() {
             severity: ErrorSeverity.medium,
             category: ErrorCategory.network,
           );
-          
+
           analyticsService.recordError(
             error: Exception('Pattern error B'),
             severity: ErrorSeverity.medium,
@@ -305,7 +315,7 @@ void main() {
 
       test('Error impact assessment works correctly', () {
         const errorKey = 'test_error_key';
-        
+
         // Record multiple occurrences
         for (int i = 0; i < 5; i++) {
           analyticsService.recordError(
@@ -318,15 +328,17 @@ void main() {
 
         final summary = analyticsService.getAnalyticsSummary();
         final errorMetrics = summary.topErrors.first;
-        final assessment = analyticsService.assessErrorImpact(errorMetrics.errorKey);
-        
+        final assessment =
+            analyticsService.assessErrorImpact(errorMetrics.errorKey);
+
         expect(assessment.impactLevel, isNot(equals(ImpactLevel.minimal)));
         expect(assessment.frequency, equals(5));
       });
     });
 
     group('Error UI Widget Tests', () {
-      testWidgets('Enhanced error screen renders correctly', (WidgetTester tester) async {
+      testWidgets('Enhanced error screen renders correctly',
+          (WidgetTester tester) async {
         bool retryPressed = false;
         bool homePressed = false;
 
@@ -357,7 +369,8 @@ void main() {
         expect(homePressed, isTrue);
       });
 
-      testWidgets('Error banner renders with different severities', (WidgetTester tester) async {
+      testWidgets('Error banner renders with different severities',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -383,7 +396,8 @@ void main() {
         expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
       });
 
-      testWidgets('Inline error message displays correctly', (WidgetTester tester) async {
+      testWidgets('Inline error message displays correctly',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -398,7 +412,8 @@ void main() {
         expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
       });
 
-      testWidgets('Loading with error state handles transitions', (WidgetTester tester) async {
+      testWidgets('Loading with error state handles transitions',
+          (WidgetTester tester) async {
         bool isLoading = true;
         String? error;
 
@@ -450,7 +465,8 @@ void main() {
         expect(find.text('Try Again'), findsOneWidget);
       });
 
-      testWidgets('Network status indicator shows correct states', (WidgetTester tester) async {
+      testWidgets('Network status indicator shows correct states',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -477,14 +493,16 @@ void main() {
     });
 
     group('Error Handling Mixin Tests', () {
-      testWidgets('RobustErrorHandlingMixin provides error state management', (WidgetTester tester) async {
+      testWidgets('RobustErrorHandlingMixin provides error state management',
+          (WidgetTester tester) async {
         await tester.pumpWidget(
           MaterialApp(
             home: TestWidget(),
           ),
         );
 
-        final testWidgetState = tester.state<TestWidgetState>(find.byType(TestWidget));
+        final testWidgetState =
+            tester.state<TestWidgetState>(find.byType(TestWidget));
 
         // Test loading state
         expect(testWidgetState.isLoading, isFalse);
@@ -504,12 +522,12 @@ void main() {
       test('Full error flow from occurrence to recovery', () async {
         final recoveryService = EnhancedErrorRecoveryService.instance;
         final analyticsService = ErrorAnalyticsService.instance;
-        
+
         await analyticsService.initialize();
         recoveryService.initialize();
 
         int operationAttempts = 0;
-        
+
         // Simulate an operation that fails then succeeds
         final result = await recoveryService.executeWithRecovery<String>(
           operation: () async {
@@ -519,7 +537,7 @@ void main() {
                 requestOptions: RequestOptions(path: '/api/test'),
                 type: DioExceptionType.connectionTimeout,
               );
-              
+
               // Record in analytics
               analyticsService.recordError(
                 error: error,
@@ -527,7 +545,7 @@ void main() {
                 category: ErrorCategory.network,
                 operationName: 'test_integration',
               );
-              
+
               throw error;
             }
             return 'Integration Success';
@@ -551,14 +569,15 @@ void main() {
 class TestException implements Exception {
   final String message;
   TestException(this.message);
-  
+
   @override
   String toString() => 'TestException: $message';
 }
 
 class TestRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     return RecoveryResult.proceed(
       delay: const Duration(milliseconds: 100),
       context: {'recovery_type': 'test_recovery'},
@@ -577,14 +596,14 @@ class TestWidgetState extends State<TestWidget> with RobustErrorHandlingMixin {
     if (isLoading) {
       return buildLoadingState(message: 'Testing...');
     }
-    
+
     if (errorMessage != null) {
       return buildErrorState(
         message: errorMessage,
         onRetry: () => clearError(),
       );
     }
-    
+
     return const Scaffold(
       body: Center(
         child: Text('Test Widget Content'),

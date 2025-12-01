@@ -12,7 +12,8 @@ class ForgotPasswordScreen extends StatefulWidget {
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with TickerProviderStateMixin {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with TickerProviderStateMixin {
   final ApiService _api = ApiService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
@@ -98,14 +99,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
           _isEmailSent = true;
         });
         _successAnimationController.forward();
-        logInfo('Password reset email sent successfully', tag: 'FORGOT_PASSWORD');
+        logInfo('Password reset email sent successfully',
+            tag: 'FORGOT_PASSWORD');
       } else {
         setState(() {
           _errorMessage = 'Failed to send reset email. Please try again.';
         });
       }
     } catch (e) {
-      logError('Failed to send password reset email: $e', tag: 'FORGOT_PASSWORD');
+      logError('Failed to send password reset email: $e',
+          tag: 'FORGOT_PASSWORD');
       setState(() {
         _errorMessage = 'An error occurred. Please try again later.';
       });
@@ -134,7 +137,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
           Text(
             'Enter your email address and we\'ll send you a link to reset your password.',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.7),
                 ),
             textAlign: TextAlign.center,
           ),
@@ -155,7 +161,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -178,7 +187,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
                 return 'Please enter your email address';
               }
               // Use centralized email validation
-              final emailError = FormErrorHandler.validateEmail(value, reportError: false);
+              final emailError =
+                  FormErrorHandler.validateEmail(value, reportError: false);
               if (emailError != null) {
                 return emailError;
               }
@@ -288,7 +298,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
           Text(
             'We\'ve sent a password reset link to:',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.7),
                 ),
             textAlign: TextAlign.center,
           ),
@@ -305,7 +318,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -319,7 +335,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
                 Text(
                   'Check your email and click the reset link to create a new password. The link will expire in 24 hours.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.8),
                       ),
                   textAlign: TextAlign.center,
                 ),
@@ -377,7 +396,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> with Ticker
                 child: SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
-                    child: _isEmailSent ? _buildSuccessView() : _buildResetForm(),
+                    child:
+                        _isEmailSent ? _buildSuccessView() : _buildResetForm(),
                   ),
                 ),
               ),

@@ -11,7 +11,8 @@ import 'advanced_financial_engine.dart';
 /// - Investment diversification analysis
 /// - Goal progress tracking with predictive modeling
 class FinancialHealthCalculator {
-  static final FinancialHealthCalculator _instance = FinancialHealthCalculator._internal();
+  static final FinancialHealthCalculator _instance =
+      FinancialHealthCalculator._internal();
   factory FinancialHealthCalculator() => _instance;
   FinancialHealthCalculator._internal();
 
@@ -32,21 +33,25 @@ class FinancialHealthCalculator {
     final score = FinancialHealthScore();
 
     // Component 1: Budget Adherence Score (25%)
-    score.budgetAdherenceScore = _calculateBudgetAdherenceScore(actualSpending, budgetAllocations);
+    score.budgetAdherenceScore =
+        _calculateBudgetAdherenceScore(actualSpending, budgetAllocations);
 
     // Component 2: Savings Rate Score (20%)
     final savingsAmount = budgetAllocations['savings'] ?? 0.0;
-    score.savingsRateScore = _calculateSavingsRateScore(savingsAmount, monthlyIncome, incomeTier);
+    score.savingsRateScore =
+        _calculateSavingsRateScore(savingsAmount, monthlyIncome, incomeTier);
 
     // Component 3: Debt Management Score (20%)
-    score.debtManagementScore = _calculateDebtManagementScore(totalDebt, monthlyIncome, incomeTier);
+    score.debtManagementScore =
+        _calculateDebtManagementScore(totalDebt, monthlyIncome, incomeTier);
 
     // Component 4: Emergency Fund Score (15%)
     score.emergencyFundScore =
         _calculateEmergencyFundScore(emergencyFund, monthlyIncome, incomeTier);
 
     // Component 5: Investment Diversification Score (10%)
-    score.investmentScore = _calculateInvestmentScore(totalInvestments, monthlyIncome, incomeTier);
+    score.investmentScore =
+        _calculateInvestmentScore(totalInvestments, monthlyIncome, incomeTier);
 
     // Component 6: Goal Progress Score (10%)
     score.goalProgressScore = _calculateGoalProgressScore(goals, monthsOfData);
@@ -62,7 +67,8 @@ class FinancialHealthCalculator {
 
     // Generate insights and recommendations
     score.insights = _generateHealthScoreInsights(score, incomeTier);
-    score.recommendations = _generateHealthScoreRecommendations(score, incomeTier);
+    score.recommendations =
+        _generateHealthScoreRecommendations(score, incomeTier);
     score.riskAreas = _identifyFinancialRiskAreas(score);
 
     return score;
@@ -147,7 +153,8 @@ class FinancialHealthCalculator {
     if (totalDebt <= 0) return 100.0; // No debt is perfect
     if (monthlyIncome <= 0) return 0.0;
 
-    final debtToIncomeRatio = totalDebt / (monthlyIncome * 12); // Annual debt to income
+    final debtToIncomeRatio =
+        totalDebt / (monthlyIncome * 12); // Annual debt to income
 
     // Tier-specific debt tolerance
     final maxHealthyRatio = _getMaxHealthyDebtRatio(tier);
@@ -262,7 +269,8 @@ class FinancialHealthCalculator {
     }
   }
 
-  double _calculateGoalProgressScore(List<FinancialGoal>? goals, int monthsOfData) {
+  double _calculateGoalProgressScore(
+      List<FinancialGoal>? goals, int monthsOfData) {
     if (goals == null || goals.isEmpty) return 50.0; // Neutral score
 
     var totalScore = 0.0;
@@ -272,14 +280,17 @@ class FinancialHealthCalculator {
       if (goal.isActive) {
         final progress = goal.currentAmount / goal.targetAmount;
         final timeElapsed = DateTime.now()
-                .difference(DateTime.now().subtract(Duration(days: monthsOfData * 30)))
+                .difference(
+                    DateTime.now().subtract(Duration(days: monthsOfData * 30)))
                 .inDays /
             goal.targetDate
-                .difference(DateTime.now().subtract(Duration(days: monthsOfData * 30)))
+                .difference(
+                    DateTime.now().subtract(Duration(days: monthsOfData * 30)))
                 .inDays;
 
         final expectedProgress = timeElapsed.clamp(0.0, 1.0);
-        final progressRatio = expectedProgress > 0 ? progress / expectedProgress : 0.0;
+        final progressRatio =
+            expectedProgress > 0 ? progress / expectedProgress : 0.0;
 
         if (progressRatio >= 1.0) {
           totalScore += 100.0; // On track or ahead
@@ -300,19 +311,22 @@ class FinancialHealthCalculator {
     return goalCount > 0 ? totalScore / goalCount : 50.0;
   }
 
-  List<String> _generateHealthScoreInsights(FinancialHealthScore score, IncomeTier tier) {
+  List<String> _generateHealthScoreInsights(
+      FinancialHealthScore score, IncomeTier tier) {
     final insights = <String>[];
     final tierName = _incomeService.getIncomeTierName(tier);
 
     // Overall score insights
     if (score.overallScore >= 80) {
-      insights.add('Excellent financial health! You\'re outperforming most $tierName peers.');
+      insights.add(
+          'Excellent financial health! You\'re outperforming most $tierName peers.');
     } else if (score.overallScore >= 60) {
       insights.add('Good financial health with room for optimization.');
     } else if (score.overallScore >= 40) {
       insights.add('Fair financial health - focus on key improvement areas.');
     } else {
-      insights.add('Financial health needs attention - prioritize urgent improvements.');
+      insights.add(
+          'Financial health needs attention - prioritize urgent improvements.');
     }
 
     // Component-specific insights
@@ -322,11 +336,13 @@ class FinancialHealthCalculator {
     }
 
     if (score.savingsRateScore < 60) {
-      insights.add('Increase your savings rate gradually to build financial security.');
+      insights.add(
+          'Increase your savings rate gradually to build financial security.');
     }
 
     if (score.debtManagementScore < 60) {
-      insights.add('Focus on debt reduction strategies to improve your financial position.');
+      insights.add(
+          'Focus on debt reduction strategies to improve your financial position.');
     }
 
     if (score.emergencyFundScore < 60) {
@@ -336,7 +352,8 @@ class FinancialHealthCalculator {
     return insights.take(3).toList();
   }
 
-  List<String> _generateHealthScoreRecommendations(FinancialHealthScore score, IncomeTier tier) {
+  List<String> _generateHealthScoreRecommendations(
+      FinancialHealthScore score, IncomeTier tier) {
     final recommendations = <String>[];
 
     // Prioritize recommendations based on worst-performing areas
@@ -349,16 +366,19 @@ class FinancialHealthCalculator {
       ('Goal Progress', score.goalProgressScore),
     ];
 
-    components.sort((a, b) => a.$2.compareTo(b.$2)); // Sort by score (lowest first)
+    components
+        .sort((a, b) => a.$2.compareTo(b.$2)); // Sort by score (lowest first)
 
     for (final component in components.take(3)) {
-      recommendations.add(_getComponentRecommendation(component.$1, component.$2, tier));
+      recommendations
+          .add(_getComponentRecommendation(component.$1, component.$2, tier));
     }
 
     return recommendations;
   }
 
-  String _getComponentRecommendation(String component, double score, IncomeTier tier) {
+  String _getComponentRecommendation(
+      String component, double score, IncomeTier tier) {
     switch (component) {
       case 'Budget Adherence':
         return 'Use the 50/30/20 rule as a starting point and adjust based on your actual spending patterns.';
@@ -381,7 +401,8 @@ class FinancialHealthCalculator {
     final riskAreas = <String>[];
 
     if (score.budgetAdherenceScore < 40) {
-      riskAreas.add('High budget variance risk - overspending patterns detected');
+      riskAreas
+          .add('High budget variance risk - overspending patterns detected');
     }
 
     if (score.savingsRateScore < 30) {
@@ -389,15 +410,18 @@ class FinancialHealthCalculator {
     }
 
     if (score.debtManagementScore < 30) {
-      riskAreas.add('High debt risk - debt levels may impact financial stability');
+      riskAreas
+          .add('High debt risk - debt levels may impact financial stability');
     }
 
     if (score.emergencyFundScore < 30) {
-      riskAreas.add('Emergency fund risk - insufficient funds for unexpected expenses');
+      riskAreas.add(
+          'Emergency fund risk - insufficient funds for unexpected expenses');
     }
 
     if (score.goalProgressScore < 40) {
-      riskAreas.add('Goal achievement risk - falling behind on financial objectives');
+      riskAreas.add(
+          'Goal achievement risk - falling behind on financial objectives');
     }
 
     return riskAreas;
@@ -418,7 +442,8 @@ class FinancialHealthScore {
   List<String> riskAreas = [];
 
   // Methods for test compatibility
-  double calculateBudgetHealth(Map<String, double> spending, Map<String, double> budget) {
+  double calculateBudgetHealth(
+      Map<String, double> spending, Map<String, double> budget) {
     if (budget.isEmpty) return 0.0;
 
     double totalBudget = 0.0;
@@ -445,8 +470,9 @@ class FinancialHealthScore {
     // Calculate health as a weighted score:
     // 60% from staying within total budget
     // 40% from number of categories within budget
-    final totalBudgetHealth =
-        totalBudget > 0 ? (1.0 - (totalSpending / totalBudget).clamp(0.0, 2.0) / 2.0) * 60.0 : 0.0;
+    final totalBudgetHealth = totalBudget > 0
+        ? (1.0 - (totalSpending / totalBudget).clamp(0.0, 2.0) / 2.0) * 60.0
+        : 0.0;
 
     final categoryHealth = (categoriesWithinBudget / totalCategories) * 40.0;
 
@@ -461,7 +487,8 @@ class FinancialHealthScore {
     return (debt / income) * 100;
   }
 
-  double calculateEmergencyFundMonths(double emergencyFund, double monthlyExpenses) {
+  double calculateEmergencyFundMonths(
+      double emergencyFund, double monthlyExpenses) {
     return emergencyFund / monthlyExpenses;
   }
 }

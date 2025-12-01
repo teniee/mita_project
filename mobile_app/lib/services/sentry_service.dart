@@ -42,7 +42,8 @@ enum FinancialSeverity {
 
 /// Enhanced Sentry service for MITA Finance mobile application
 class SentryFinancialService {
-  static final SentryFinancialService _instance = SentryFinancialService._internal();
+  static final SentryFinancialService _instance =
+      SentryFinancialService._internal();
   factory SentryFinancialService() => _instance;
   SentryFinancialService._internal();
 
@@ -78,7 +79,8 @@ class SentryFinancialService {
           options.release = release ?? 'mita-mobile@1.0.0';
 
           // Performance monitoring configuration
-          options.tracesSampleRate = tracesSampleRate ?? _getTracesSampleRate(environment);
+          options.tracesSampleRate =
+              tracesSampleRate ?? _getTracesSampleRate(environment);
           options.enableAutoPerformanceTracing = enablePerformanceMonitoring;
           options.enableUserInteractionTracing = enableUserInteractionTracing;
           options.enableAutoSessionTracking = true;
@@ -104,8 +106,8 @@ class SentryFinancialService {
 
           // Set before send callbacks
           options.beforeSend = _filterSensitiveData;
-          options.beforeSendTransaction =
-              (transaction) => _filterSensitiveTransactions(transaction, Hint());
+          options.beforeSendTransaction = (transaction) =>
+              _filterSensitiveTransactions(transaction, Hint());
         },
       );
 
@@ -146,11 +148,15 @@ class SentryFinancialService {
       ));
 
       if (kDebugMode)
-        dev.log('Sentry financial monitoring initialized for $environment', name: 'SentryService');
+        dev.log('Sentry financial monitoring initialized for $environment',
+            name: 'SentryService');
     } catch (e, stackTrace) {
-      if (kDebugMode) dev.log('Failed to initialize Sentry: $e', name: 'SentryService', error: e);
+      if (kDebugMode)
+        dev.log('Failed to initialize Sentry: $e',
+            name: 'SentryService', error: e);
       if (kDebugMode) {
-        if (kDebugMode) dev.log('Stack trace: $stackTrace', name: 'SentryService');
+        if (kDebugMode)
+          dev.log('Stack trace: $stackTrace', name: 'SentryService');
       }
       // Don't let Sentry initialization failure crash the app
     }
@@ -185,7 +191,8 @@ class SentryFinancialService {
             '${androidInfo.brand} ${androidInfo.model} API${androidInfo.version.sdkInt}';
       }
 
-      _deviceInfo = '${packageInfo.appName} v${packageInfo.version} on $deviceDetails';
+      _deviceInfo =
+          '${packageInfo.appName} v${packageInfo.version} on $deviceDetails';
     } catch (e) {
       _deviceInfo = 'Unknown device';
     }
@@ -264,7 +271,8 @@ class SentryFinancialService {
   }
 
   /// Filter sensitive data from transaction events
-  SentryTransaction? _filterSensitiveTransactions(SentryTransaction transaction, Hint hint) {
+  SentryTransaction? _filterSensitiveTransactions(
+      SentryTransaction transaction, Hint hint) {
     // Add financial context to transactions
     final contexts = Map<String, dynamic>.from(transaction.contexts ?? {});
     contexts['financial_operation'] = {
@@ -293,7 +301,8 @@ class SentryFinancialService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode)
-        dev.log('Sentry not initialized - error not captured: $exception', name: 'SentryService');
+        dev.log('Sentry not initialized - error not captured: $exception',
+            name: 'SentryService');
       return const SentryId.empty();
     }
 
@@ -468,7 +477,8 @@ class SentryFinancialService {
     String? stackTrace,
   }) async {
     final results = await Connectivity().checkConnectivity();
-    final connectivity = results.isNotEmpty ? results.first : ConnectivityResult.none;
+    final connectivity =
+        results.isNotEmpty ? results.first : ConnectivityResult.none;
     final connectivityName = connectivity.name;
 
     return captureFinancialError(
@@ -588,7 +598,8 @@ class SentryFinancialService {
   /// Add network context to scope
   void _addNetworkContext(Scope scope) {
     Connectivity().checkConnectivity().then((results) {
-      final connectivity = results.isNotEmpty ? results.first : ConnectivityResult.none;
+      final connectivity =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       final connectivityName = connectivity.name;
       scope.setContexts('network', {
         'connectivity': connectivityName,
@@ -638,7 +649,9 @@ class NoOpSentrySpan implements ISentrySpan {
   Future<void> finish({SpanStatus? status, DateTime? endTimestamp}) async {}
 
   @override
-  ISentrySpan startChild(String operation, {String? description, DateTime? startTimestamp}) => this;
+  ISentrySpan startChild(String operation,
+          {String? description, DateTime? startTimestamp}) =>
+      this;
 
   @override
   void setData(String key, dynamic value) {}
@@ -720,7 +733,8 @@ class NoOpSentrySpan implements ISentrySpan {
   SentryBaggageHeader? toBaggageHeader() => null;
 
   @override
-  SentryTraceHeader toSentryTrace() => SentryTraceHeader(traceId, SpanId.fromId(spanId.toString()));
+  SentryTraceHeader toSentryTrace() =>
+      SentryTraceHeader(traceId, SpanId.fromId(spanId.toString()));
 
   @override
   SentryTraceContextHeader? traceContext() => null;

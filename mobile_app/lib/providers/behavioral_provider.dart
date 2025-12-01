@@ -56,8 +56,10 @@ class BehavioralProvider extends ChangeNotifier {
   Map<String, dynamic> get behavioralWarnings => _behavioralWarnings;
   Map<String, dynamic> get behavioralPreferences => _behavioralPreferences;
   Map<String, dynamic> get behavioralCalendar => _behavioralCalendar;
-  List<Map<String, dynamic>> get behavioralExpenseSuggestions => _behavioralExpenseSuggestions;
-  Map<String, dynamic> get behavioralNotificationSettings => _behavioralNotificationSettings;
+  List<Map<String, dynamic>> get behavioralExpenseSuggestions =>
+      _behavioralExpenseSuggestions;
+  Map<String, dynamic> get behavioralNotificationSettings =>
+      _behavioralNotificationSettings;
 
   /// Initialize the provider and load all behavioral data
   Future<void> initialize() async {
@@ -105,11 +107,14 @@ class BehavioralProvider extends ChangeNotifier {
       _behavioralWarnings = Map<String, dynamic>.from(results[10] as Map);
       _behavioralPreferences = Map<String, dynamic>.from(results[11] as Map);
       _behavioralCalendar = Map<String, dynamic>.from(results[12] as Map);
-      _behavioralExpenseSuggestions = List<Map<String, dynamic>>.from(results[13] as List? ?? []);
-      _behavioralNotificationSettings = Map<String, dynamic>.from(results[14] as Map);
+      _behavioralExpenseSuggestions =
+          List<Map<String, dynamic>>.from(results[13] as List? ?? []);
+      _behavioralNotificationSettings =
+          Map<String, dynamic>.from(results[14] as Map);
 
       _state = BehavioralState.loaded;
-      logInfo('Behavioral data loaded successfully', tag: 'BEHAVIORAL_PROVIDER');
+      logInfo('Behavioral data loaded successfully',
+          tag: 'BEHAVIORAL_PROVIDER');
     } catch (e) {
       logError('Error loading behavioral data: $e', tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = e.toString();
@@ -128,11 +133,13 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadSpendingPatterns({int? year, int? month}) async {
     try {
       _setLoading(true);
-      _patterns = await _apiService.getSpendingPatterns(year: year, month: month);
+      _patterns =
+          await _apiService.getSpendingPatterns(year: year, month: month);
       logInfo('Spending patterns loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading spending patterns: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading spending patterns: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load spending patterns';
     } finally {
       _setLoading(false);
@@ -147,7 +154,8 @@ class BehavioralProvider extends ChangeNotifier {
       logInfo('Behavioral predictions loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral predictions: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral predictions: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral predictions';
     } finally {
       _setLoading(false);
@@ -158,11 +166,13 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadBehavioralProgress({int months = 6}) async {
     try {
       _setLoading(true);
-      _behavioralProgress = await _apiService.getBehavioralProgress(months: months);
+      _behavioralProgress =
+          await _apiService.getBehavioralProgress(months: months);
       logInfo('Behavioral progress loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral progress: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral progress: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral progress';
     } finally {
       _setLoading(false);
@@ -177,7 +187,8 @@ class BehavioralProvider extends ChangeNotifier {
       logInfo('Behavioral cluster loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral cluster: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral cluster: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral cluster';
     } finally {
       _setLoading(false);
@@ -188,11 +199,13 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadSpendingTriggers({int? year, int? month}) async {
     try {
       _setLoading(true);
-      _spendingTriggers = await _apiService.getSpendingTriggers(year: year, month: month);
+      _spendingTriggers =
+          await _apiService.getSpendingTriggers(year: year, month: month);
       logInfo('Spending triggers loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading spending triggers: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading spending triggers: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load spending triggers';
     } finally {
       _setLoading(false);
@@ -203,11 +216,13 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadAdaptiveRecommendations() async {
     try {
       _setLoading(true);
-      _adaptiveRecommendations = await _apiService.getAdaptiveBehaviorRecommendations();
+      _adaptiveRecommendations =
+          await _apiService.getAdaptiveBehaviorRecommendations();
       logInfo('Adaptive recommendations loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading adaptive recommendations: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading adaptive recommendations: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load adaptive recommendations';
     } finally {
       _setLoading(false);
@@ -218,11 +233,13 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadBehavioralWarnings({int? year, int? month}) async {
     try {
       _setLoading(true);
-      _behavioralWarnings = await _apiService.getBehavioralWarnings(year: year, month: month);
+      _behavioralWarnings =
+          await _apiService.getBehavioralWarnings(year: year, month: month);
       logInfo('Behavioral warnings loaded', tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral warnings: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral warnings: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral warnings';
     } finally {
       _setLoading(false);
@@ -244,11 +261,14 @@ class BehavioralProvider extends ChangeNotifier {
         description: description,
         date: date,
       );
-      _behavioralExpenseSuggestions = List<Map<String, dynamic>>.from(result as List? ?? []);
-      logInfo('Behavioral expense suggestions loaded', tag: 'BEHAVIORAL_PROVIDER');
+      _behavioralExpenseSuggestions =
+          List<Map<String, dynamic>>.from(result as List? ?? []);
+      logInfo('Behavioral expense suggestions loaded',
+          tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral expense suggestions: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral expense suggestions: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral expense suggestions';
     } finally {
       _setLoading(false);
@@ -259,11 +279,14 @@ class BehavioralProvider extends ChangeNotifier {
   Future<void> loadBehavioralNotificationSettings() async {
     try {
       _setLoading(true);
-      _behavioralNotificationSettings = await _apiService.getBehavioralNotificationSettings();
-      logInfo('Behavioral notification settings loaded', tag: 'BEHAVIORAL_PROVIDER');
+      _behavioralNotificationSettings =
+          await _apiService.getBehavioralNotificationSettings();
+      logInfo('Behavioral notification settings loaded',
+          tag: 'BEHAVIORAL_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading behavioral notification settings: $e', tag: 'BEHAVIORAL_PROVIDER');
+      logError('Error loading behavioral notification settings: $e',
+          tag: 'BEHAVIORAL_PROVIDER');
       _errorMessage = 'Failed to load behavioral notification settings';
     } finally {
       _setLoading(false);

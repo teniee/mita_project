@@ -23,7 +23,8 @@ class InsightsScreen extends StatefulWidget {
   State<InsightsScreen> createState() => _InsightsScreenState();
 }
 
-class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStateMixin {
+class _InsightsScreenState extends State<InsightsScreen>
+    with TickerProviderStateMixin {
   // Keep services not covered by providers
   final ApiService _apiService = ApiService();
   final IncomeService _incomeService = IncomeService();
@@ -140,20 +141,23 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       final userProvider = context.read<UserProvider>();
 
       // Ensure user data is loaded
-      if (userProvider.state == UserState.initial || userProvider.state == UserState.loading) {
+      if (userProvider.state == UserState.initial ||
+          userProvider.state == UserState.loading) {
         await userProvider.initialize();
       }
 
       // Get income from UserProvider
       final incomeValue = userProvider.userIncome;
       if (incomeValue <= 0) {
-        throw Exception('Income data required for insights. Please complete onboarding.');
+        throw Exception(
+            'Income data required for insights. Please complete onboarding.');
       }
       _monthlyIncome = incomeValue;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
     } catch (e) {
       logError('Error fetching user profile: $e');
-      throw Exception('Income data required for insights. Please complete onboarding.');
+      throw Exception(
+          'Income data required for insights. Please complete onboarding.');
     }
   }
 
@@ -170,18 +174,20 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       _peerComparison = futures[0] as Map<String, dynamic>;
       _incomeBasedTips = List<String>.from(futures[2] as List);
       _incomeClassification = futures[3] as Map<String, dynamic>;
-      _incomeBasedGoals = List<Map<String, dynamic>>.from(futures[4] as List? ?? []);
+      _incomeBasedGoals =
+          List<Map<String, dynamic>>.from(futures[4] as List? ?? []);
 
       // Generate budget optimization insights using provider data
       final transactionProvider = context.read<TransactionProvider>();
       final categoryTotals = transactionProvider.spendingByCategory;
       if (categoryTotals.isNotEmpty) {
-        _budgetOptimization =
-            _cohortService.getCohortBudgetOptimization(_monthlyIncome, categoryTotals);
+        _budgetOptimization = _cohortService.getCohortBudgetOptimization(
+            _monthlyIncome, categoryTotals);
       }
     } catch (e) {
       logError('Error fetching income-based insights: $e');
-      _incomeBasedTips = _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.middle);
+      _incomeBasedTips =
+          _incomeService.getFinancialTips(_incomeTier ?? IncomeTier.middle);
     }
   }
 
@@ -197,7 +203,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       }
     }
 
-    dailyTotals = daily.entries.map((e) => {'date': e.key, 'amount': e.value}).toList()
+    dailyTotals = daily.entries
+        .map((e) => {'date': e.key, 'amount': e.value})
+        .toList()
       ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
   }
 
@@ -210,7 +218,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       final date = now.subtract(Duration(days: 13 - index));
       final isWeekend = date.weekday == 6 || date.weekday == 7;
       final spendingMultiplier = isWeekend ? 1.3 : 0.8;
-      final amount = (dailyBudget * spendingMultiplier * (0.7 + (index % 3) * 0.2));
+      final amount =
+          (dailyBudget * spendingMultiplier * (0.7 + (index % 3) * 0.2));
 
       return {
         'date': DateFormat('yyyy-MM-dd').format(date),
@@ -239,7 +248,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Future<void> _fetchAIMonthlyReport() async {
     try {
       final now = DateTime.now();
-      aiMonthlyReport = await _apiService.getAIMonthlyReport(year: now.year, month: now.month);
+      aiMonthlyReport = await _apiService.getAIMonthlyReport(
+          year: now.year, month: now.month);
     } catch (e) {
       logError('Error fetching AI monthly report: $e');
     }
@@ -338,7 +348,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     final transactionProvider = context.watch<TransactionProvider>();
 
     // Update local income data from UserProvider for reactive updates
-    if (userProvider.userIncome > 0 && _monthlyIncome != userProvider.userIncome) {
+    if (userProvider.userIncome > 0 &&
+        _monthlyIncome != userProvider.userIncome) {
       _monthlyIncome = userProvider.userIncome;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
     }
@@ -380,10 +391,12 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
       }
 
       if (budgetProvider.budgetSuggestions['category_insights'] != null) {
-        final categoryInsights = budgetProvider.budgetSuggestions['category_insights'] as List;
+        final categoryInsights =
+            budgetProvider.budgetSuggestions['category_insights'] as List;
         spendingPatterns ??= {
           'patterns': categoryInsights
-              .map((insight) => insight['message'] ?? 'Smart category optimization detected')
+              .map((insight) =>
+                  insight['message'] ?? 'Smart category optimization detected')
               .toList(),
         };
       }
@@ -410,8 +423,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               iconTheme: const IconThemeData(color: AppColors.textPrimary),
               centerTitle: true,
             ),
-      body:
-          isLoading ? _buildLoadingState() : _buildTabContent(budgetProvider, transactionProvider),
+      body: isLoading
+          ? _buildLoadingState()
+          : _buildTabContent(budgetProvider, transactionProvider),
     );
   }
 
@@ -438,7 +452,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildTabContent(BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
+  Widget _buildTabContent(
+      BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : AppColors.textPrimary;
@@ -505,7 +520,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
           const SizedBox(height: 20),
 
           // Cohort insights
-          if (_incomeTier != null) CohortInsightsWidget(monthlyIncome: _monthlyIncome),
+          if (_incomeTier != null)
+            CohortInsightsWidget(monthlyIncome: _monthlyIncome),
 
           const SizedBox(height: 20),
 
@@ -536,7 +552,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         Icon(
                           Icons.lightbulb_rounded,
                           color: _incomeTier != null
-                              ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+                              ? _incomeService
+                                  .getIncomeTierPrimaryColor(_incomeTier!)
                               : Colors.amber,
                           size: 24,
                         ),
@@ -548,7 +565,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                             color: _incomeTier != null
-                                ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+                                ? _incomeService
+                                    .getIncomeTierPrimaryColor(_incomeTier!)
                                 : AppColors.textPrimary,
                           ),
                         ),
@@ -730,9 +748,10 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         reservedSize: 32,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
-                          if (index < 0 || index >= dailyTotals.length) return Container();
-                          final label = DateFormat('MM/dd')
-                              .format(DateTime.parse(dailyTotals[index]['date']));
+                          if (index < 0 || index >= dailyTotals.length)
+                            return Container();
+                          final label = DateFormat('MM/dd').format(
+                              DateTime.parse(dailyTotals[index]['date']));
                           return Text(
                             label,
                             style: const TextStyle(
@@ -745,9 +764,12 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         interval: 1,
                       ),
                     ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                   ),
                   barGroups: List.generate(dailyTotals.length, (i) {
                     return BarChartGroupData(
@@ -814,7 +836,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
 
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B+';
-    final improvements = List<String>.from(financialHealthScore!['improvements'] ?? []);
+    final improvements =
+        List<String>.from(financialHealthScore!['improvements'] ?? []);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -874,7 +897,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -1056,7 +1080,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
             runSpacing: 8,
             children: patterns
                 .map((pattern) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.textPrimary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -1081,7 +1106,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Widget _buildWeeklyInsightsCard() {
     if (weeklyInsights == null) return Container();
 
-    final insights = weeklyInsights!['insights'] ?? 'No insights available this week.';
+    final insights =
+        weeklyInsights!['insights'] ?? 'No insights available this week.';
     final trend = weeklyInsights!['trend'] ?? 'stable';
 
     return Container(
@@ -1221,7 +1247,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Widget _buildPersonalizedFeedbackCard() {
     if (personalizedFeedback == null) return Container();
 
-    final feedback = personalizedFeedback!['feedback'] ?? 'No feedback available';
+    final feedback =
+        personalizedFeedback!['feedback'] ?? 'No feedback available';
     final tips = List<String>.from(personalizedFeedback!['tips'] ?? []);
 
     return Container(
@@ -1327,7 +1354,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
     if (savingsOptimization == null) return Container();
 
     final potentialSavings = savingsOptimization!['potential_savings'] ?? 0.0;
-    final suggestions = List<String>.from(savingsOptimization!['suggestions'] ?? []);
+    final suggestions =
+        List<String>.from(savingsOptimization!['suggestions'] ?? []);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1534,13 +1562,18 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   String _formatPatternName(String pattern) {
-    return pattern.replaceAll('_', ' ').split(' ').map((word) => word.capitalize()).join(' ');
+    return pattern
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.capitalize())
+        .join(' ');
   }
 
   Widget _buildBudgetOptimizationCard() {
     if (_budgetOptimization == null) return Container();
 
-    final suggestions = List<String>.from(_budgetOptimization!['suggestions'] ?? []);
+    final suggestions =
+        List<String>.from(_budgetOptimization!['suggestions'] ?? []);
     final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
@@ -1588,9 +1621,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getScoreColor(overallScore.toInt()).withValues(alpha: 0.1),
+                  color: _getScoreColor(overallScore.toInt())
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
@@ -1623,7 +1658,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                     decoration: BoxDecoration(
                       color: primaryColor.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                      border: Border.all(
+                          color: primaryColor.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
@@ -1722,7 +1758,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: habit['color'].withValues(alpha: 0.3)),
+                border:
+                    Border.all(color: habit['color'].withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1768,7 +1805,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -1800,7 +1838,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       Icon(
                         Icons.trending_up,
                         size: 14,
-                        color: habit['impact'] == 'high' ? Colors.green : Colors.blue,
+                        color: habit['impact'] == 'high'
+                            ? Colors.green
+                            : Colors.blue,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1808,7 +1848,9 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontSize: 10,
-                          color: habit['impact'] == 'high' ? Colors.green : Colors.blue,
+                          color: habit['impact'] == 'high'
+                              ? Colors.green
+                              : Colors.blue,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1824,7 +1866,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   }
 
   Widget _buildIncomeGoalSuggestionsCard() {
-    final goalSuggestions = _cohortService.getCohortGoalSuggestions(_monthlyIncome);
+    final goalSuggestions =
+        _cohortService.getCohortGoalSuggestions(_monthlyIncome);
     if (goalSuggestions.isEmpty) return Container();
 
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
@@ -1902,7 +1945,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                    border:
+                        Border.all(color: primaryColor.withValues(alpha: 0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1921,7 +1965,8 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.blue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
@@ -2005,9 +2050,11 @@ class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStat
   Widget _buildAIMonthlyReportCard() {
     if (aiMonthlyReport == null) return Container();
 
-    final summary = aiMonthlyReport!['summary'] ?? 'No monthly summary available';
+    final summary =
+        aiMonthlyReport!['summary'] ?? 'No monthly summary available';
     final highlights = List<String>.from(aiMonthlyReport!['highlights'] ?? []);
-    final recommendations = List<String>.from(aiMonthlyReport!['recommendations'] ?? []);
+    final recommendations =
+        List<String>.from(aiMonthlyReport!['recommendations'] ?? []);
 
     return Container(
       padding: const EdgeInsets.all(20),

@@ -79,7 +79,8 @@ class OnboardingTheme {
       labelText: labelText,
       hintText: hintText,
       prefixText: prefixText,
-      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: primaryColor) : null,
+      prefixIcon:
+          prefixIcon != null ? Icon(prefixIcon, color: primaryColor) : null,
       filled: true,
       fillColor: cardBackground,
       border: OutlineInputBorder(

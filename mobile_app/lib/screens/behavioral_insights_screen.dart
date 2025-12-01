@@ -9,7 +9,8 @@ class BehavioralInsightsScreen extends StatefulWidget {
   const BehavioralInsightsScreen({super.key});
 
   @override
-  State<BehavioralInsightsScreen> createState() => _BehavioralInsightsScreenState();
+  State<BehavioralInsightsScreen> createState() =>
+      _BehavioralInsightsScreenState();
 }
 
 class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
@@ -39,8 +40,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   @override
   Widget build(BuildContext context) {
     final behavioralProvider = context.watch<BehavioralProvider>();
-    final isLoading =
-        behavioralProvider.isLoading || behavioralProvider.state == BehavioralState.loading;
+    final isLoading = behavioralProvider.isLoading ||
+        behavioralProvider.state == BehavioralState.loading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -95,7 +96,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
   Widget _buildPatternsTab(BehavioralProvider provider) {
     final patterns = provider.patterns['patterns'] as List<dynamic>? ?? [];
-    final analysis = provider.patterns['analysis'] as Map<String, dynamic>? ?? {};
+    final analysis =
+        provider.patterns['analysis'] as Map<String, dynamic>? ?? {};
 
     return RefreshIndicator(
       onRefresh: () => provider.refresh(),
@@ -142,8 +144,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (analysis['peak_spending_times'] != null) ...[
               _buildSectionHeader('Peak Spending Times', Icons.schedule),
               const SizedBox(height: 12),
-              ...(analysis['peak_spending_times'] as List)
-                  .map((time) => _buildInfoTile(time.toString(), Icons.access_time)),
+              ...(analysis['peak_spending_times'] as List).map(
+                  (time) => _buildInfoTile(time.toString(), Icons.access_time)),
               const SizedBox(height: 24),
             ],
 
@@ -176,7 +178,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
             // Prediction Card
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 3,
               child: Container(
                 decoration: BoxDecoration(
@@ -286,7 +289,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (predictions['risk_factors'] != null) ...[
               _buildSectionHeader('Risk Factors', Icons.warning),
               const SizedBox(height: 12),
-              ...(predictions['risk_factors'] as List).map((risk) => _buildRiskFactorTile(risk)),
+              ...(predictions['risk_factors'] as List)
+                  .map((risk) => _buildRiskFactorTile(risk)),
             ],
           ],
         ),
@@ -350,13 +354,17 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
           children: [
             // Personality Card
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 3,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: LinearGradient(
-                    colors: [AppColors.categoryEntertainment, AppColors.entertainmentLightVariant],
+                    colors: [
+                      AppColors.categoryEntertainment,
+                      AppColors.entertainmentLightVariant
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -394,8 +402,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (insights['key_traits'] != null) ...[
               _buildSectionHeader('Key Traits', Icons.psychology),
               const SizedBox(height: 12),
-              ...(insights['key_traits'] as List).map((trait) =>
-                  _buildInfoTile(trait.toString(), Icons.check_circle, AppColors.success)),
+              ...(insights['key_traits'] as List).map((trait) => _buildInfoTile(
+                  trait.toString(), Icons.check_circle, AppColors.success)),
               const SizedBox(height: 24),
             ],
 
@@ -404,7 +412,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
               _buildSectionHeader('Your Strengths', Icons.star),
               const SizedBox(height: 12),
               ...(insights['strengths'] as List).map((strength) =>
-                  _buildInfoTile(strength.toString(), Icons.star, AppColors.secondary)),
+                  _buildInfoTile(
+                      strength.toString(), Icons.star, AppColors.secondary)),
               const SizedBox(height: 24),
             ],
 
@@ -412,8 +421,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (insights['improvement_areas'] != null) ...[
               _buildSectionHeader('Areas for Improvement', Icons.trending_up),
               const SizedBox(height: 12),
-              ...(insights['improvement_areas'] as List).map(
-                  (area) => _buildInfoTile(area.toString(), Icons.trending_up, AppColors.warning)),
+              ...(insights['improvement_areas'] as List).map((area) =>
+                  _buildInfoTile(
+                      area.toString(), Icons.trending_up, AppColors.warning)),
               const SizedBox(height: 24),
             ],
 
@@ -421,8 +431,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (insights['recommended_strategies'] != null) ...[
               _buildSectionHeader('Recommended Strategies', Icons.lightbulb),
               const SizedBox(height: 12),
-              ...(insights['recommended_strategies'] as List)
-                  .map((strategy) => _buildRecommendationTile(strategy.toString())),
+              ...(insights['recommended_strategies'] as List).map(
+                  (strategy) => _buildRecommendationTile(strategy.toString())),
             ],
           ],
         ),
@@ -489,8 +499,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
     );
   }
 
-  Widget _buildAnalysisCard(
-      String title, String value, String description, IconData icon, Color color) {
+  Widget _buildAnalysisCard(String title, String value, String description,
+      IconData icon, Color color) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
@@ -709,7 +719,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: severityColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -836,7 +847,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                             ),
                           ),
                           backgroundColor: Colors.grey[100],
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                         ))
                     .toList(),
               ),
@@ -864,13 +876,17 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             // Progress overview card
             if (behavioralProgress.isNotEmpty) ...[
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 3,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     gradient: LinearGradient(
-                      colors: [AppColors.success, AppColors.successLightVariant],
+                      colors: [
+                        AppColors.success,
+                        AppColors.successLightVariant
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -899,7 +915,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        behavioralProgress['progress_message'] ?? 'Keep up the great work!',
+                        behavioralProgress['progress_message'] ??
+                            'Keep up the great work!',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -917,7 +934,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (behavioralProgress['metrics'] != null) ...[
               _buildSectionHeader('Monthly Metrics', Icons.assessment),
               const SizedBox(height: 12),
-              ...(behavioralProgress['metrics'] as List).map((metric) => _buildMetricCard(metric)),
+              ...(behavioralProgress['metrics'] as List)
+                  .map((metric) => _buildMetricCard(metric)),
               const SizedBox(height: 24),
             ],
 
@@ -925,8 +943,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (behavioralProgress['improvements'] != null) ...[
               _buildSectionHeader('Improvements', Icons.star),
               const SizedBox(height: 12),
-              ...(behavioralProgress['improvements'] as List).map((improvement) =>
-                  _buildInfoTile(improvement.toString(), Icons.check_circle, AppColors.success)),
+              ...(behavioralProgress['improvements'] as List).map(
+                  (improvement) => _buildInfoTile(improvement.toString(),
+                      Icons.check_circle, AppColors.success)),
             ],
           ],
         ),
@@ -953,13 +972,17 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             // Cluster info card
             if (behavioralCluster.isNotEmpty) ...[
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 3,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     gradient: LinearGradient(
-                      colors: [AppColors.categoryEducation, AppColors.educationLightVariant],
+                      colors: [
+                        AppColors.categoryEducation,
+                        AppColors.educationLightVariant
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1006,14 +1029,15 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (behavioralCluster['characteristics'] != null) ...[
               _buildSectionHeader('Cluster Characteristics', Icons.psychology),
               const SizedBox(height: 12),
-              ...(behavioralCluster['characteristics'] as List)
-                  .map((char) => _buildInfoTile(char.toString(), Icons.check_circle)),
+              ...(behavioralCluster['characteristics'] as List).map((char) =>
+                  _buildInfoTile(char.toString(), Icons.check_circle)),
               const SizedBox(height: 24),
             ],
 
             // Adaptive recommendations
             if (adaptiveRecommendations.isNotEmpty) ...[
-              _buildSectionHeader('Personalized Recommendations', Icons.lightbulb),
+              _buildSectionHeader(
+                  'Personalized Recommendations', Icons.lightbulb),
               const SizedBox(height: 12),
               if (adaptiveRecommendations['recommendations'] != null)
                 ...(adaptiveRecommendations['recommendations'] as List)
@@ -1023,7 +1047,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
 
             // Spending triggers
             if (spendingTriggers.isNotEmpty) ...[
-              _buildSectionHeader('Your Spending Triggers', Icons.warning_amber),
+              _buildSectionHeader(
+                  'Your Spending Triggers', Icons.warning_amber),
               const SizedBox(height: 12),
               if (spendingTriggers['triggers'] != null)
                 ...(spendingTriggers['triggers'] as List)
@@ -1051,7 +1076,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.analytics, color: AppColors.success, size: 24),
+              child: const Icon(Icons.analytics,
+                  color: AppColors.success, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1082,7 +1108,9 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             ),
             if (metric['trend'] != null)
               Icon(
-                metric['trend'] == 'up' ? Icons.trending_up : Icons.trending_down,
+                metric['trend'] == 'up'
+                    ? Icons.trending_up
+                    : Icons.trending_down,
                 color: metric['trend'] == 'up' ? Colors.green : Colors.red,
                 size: 24,
               ),

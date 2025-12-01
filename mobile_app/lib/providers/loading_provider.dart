@@ -42,11 +42,14 @@ class LoadingProvider extends ChangeNotifier {
   bool isLoadingNamed(String name) => _namedLoadingStates[name] ?? false;
 
   /// Check if any operation is loading (global or named)
-  bool get isAnyLoading => _isLoading || _namedLoadingStates.values.any((loading) => loading);
+  bool get isAnyLoading =>
+      _isLoading || _namedLoadingStates.values.any((loading) => loading);
 
   /// Get all currently loading operation names
-  List<String> get activeLoadingOperations =>
-      _namedLoadingStates.entries.where((entry) => entry.value).map((entry) => entry.key).toList();
+  List<String> get activeLoadingOperations => _namedLoadingStates.entries
+      .where((entry) => entry.value)
+      .map((entry) => entry.key)
+      .toList();
 
   /// Set global loading state
   void setLoading(bool loading) {

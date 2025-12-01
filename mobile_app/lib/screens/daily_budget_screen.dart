@@ -17,8 +17,10 @@ class DailyBudgetScreen extends StatefulWidget {
   State<DailyBudgetScreen> createState() => _DailyBudgetScreenState();
 }
 
-class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorHandlingMixin {
-  final AccessibilityService _accessibilityService = AccessibilityService.instance;
+class _DailyBudgetScreenState extends State<DailyBudgetScreen>
+    with RobustErrorHandlingMixin {
+  final AccessibilityService _accessibilityService =
+      AccessibilityService.instance;
 
   @override
   void initState() {
@@ -69,7 +71,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
 
         showEnhancedErrorDialog(
           'Budget Redistribution Failed',
-          budgetProvider.errorMessage ?? 'Unable to redistribute your budget at this time.',
+          budgetProvider.errorMessage ??
+              'Unable to redistribute your budget at this time.',
           onRetry: _triggerBudgetRedistribution,
           canRetry: true,
         );
@@ -101,7 +104,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
             content: Semantics(
               liveRegion: true,
               label: 'Success: Budget adapted based on spending patterns',
-              child: const Text('Budget adapted based on your spending patterns!'),
+              child:
+                  const Text('Budget adapted based on your spending patterns!'),
             ),
             duration: const Duration(seconds: 3),
             backgroundColor: AppColors.successLight,
@@ -199,8 +203,14 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
               colors: percentage > 0.8
                   ? [AppColors.danger, AppColors.warning]
                   : percentage > 0.6
-                      ? [AppColors.secondary, AppColors.secondary.withValues(alpha: 0.7)]
-                      : [AppColors.successLight, AppColors.success.withValues(alpha: 0.5)],
+                      ? [
+                          AppColors.secondary,
+                          AppColors.secondary.withValues(alpha: 0.7)
+                        ]
+                      : [
+                          AppColors.successLight,
+                          AppColors.success.withValues(alpha: 0.5)
+                        ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -225,9 +235,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                     ),
                   ),
                   Semantics(
-                    label: 'Budget Mode: ${_getBudgetModeDisplayName(budgetProvider.budgetMode)}',
+                    label:
+                        'Budget Mode: ${_getBudgetModeDisplayName(budgetProvider.budgetMode)}',
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -332,7 +344,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                   child: LinearProgressIndicator(
                     value: percentage.clamp(0.0, 1.0),
                     backgroundColor: Colors.white.withValues(alpha: 0.3),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 8,
                   ),
                 ),
@@ -379,7 +392,9 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                 Expanded(
                   child: Semantics(
                     label: _accessibilityService.createButtonSemanticLabel(
-                      action: isRedistributing ? 'Redistributing budget' : 'Redistribute Budget',
+                      action: isRedistributing
+                          ? 'Redistributing budget'
+                          : 'Redistribute Budget',
                       context: isRedistributing
                           ? 'Budget redistribution in progress, please wait'
                           : 'Reallocate budget between days based on spending patterns',
@@ -387,18 +402,23 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                     ),
                     button: true,
                     child: ElevatedButton.icon(
-                      onPressed: isRedistributing ? null : _triggerBudgetRedistribution,
+                      onPressed: isRedistributing
+                          ? null
+                          : _triggerBudgetRedistribution,
                       icon: isRedistributing
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.balance, size: 18),
-                      label: Text(isRedistributing ? 'Redistributing...' : 'Redistribute'),
+                      label: Text(isRedistributing
+                          ? 'Redistributing...'
+                          : 'Redistribute'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accent,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ).withMinimumTouchTarget(),
@@ -420,7 +440,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.successLight,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ).withMinimumTouchTarget(),
@@ -438,7 +459,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
     final budgetSuggestions = budgetProvider.budgetSuggestions;
     if (budgetSuggestions.isEmpty) return const SizedBox.shrink();
 
-    final suggestions = budgetSuggestions['suggestions'] as List<dynamic>? ?? [];
+    final suggestions =
+        budgetSuggestions['suggestions'] as List<dynamic>? ?? [];
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Card(
@@ -477,12 +499,14 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.arrow_forward, size: 16, color: AppColors.secondary),
+                        const Icon(Icons.arrow_forward,
+                            size: 16, color: AppColors.secondary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             suggestion['message'] ?? suggestion.toString(),
-                            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                            style: const TextStyle(
+                                fontSize: 14, color: AppColors.textPrimary),
                           ),
                         ),
                       ],
@@ -537,7 +561,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                       children: [
                         Text(
                           'Day ${transfer['from']} → Day ${transfer['to']}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500),
                         ),
                         Text(
                           '\$${(transfer['amount'] ?? 0).toStringAsFixed(2)}',
@@ -610,7 +635,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
               child: const Center(child: CircularProgressIndicator()),
             )
           : RefreshIndicator(
-              onRefresh: () => context.read<BudgetProvider>().loadAllBudgetData(),
+              onRefresh: () =>
+                  context.read<BudgetProvider>().loadAllBudgetData(),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -627,13 +653,15 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                         label:
                             'No budget data available. Your intelligent budget tracking will appear here when data is loaded.',
                         child: Card(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                           elevation: 3,
                           child: const Padding(
                             padding: EdgeInsets.all(32),
                             child: Column(
                               children: [
-                                Icon(Icons.account_balance_wallet, size: 64, color: Colors.grey),
+                                Icon(Icons.account_balance_wallet,
+                                    size: 64, color: Colors.grey),
                                 SizedBox(height: 16),
                                 Text(
                                   'No budget data available',
@@ -656,15 +684,16 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                       )
                     else
                       ...(budgets.map<Widget>((budget) {
-                        final date =
-                            DateFormat('MMMM d, yyyy').format(DateTime.parse(budget['date']));
+                        final date = DateFormat('MMMM d, yyyy')
+                            .format(DateTime.parse(budget['date']));
                         final status = budget['status'] ?? 'unknown';
                         final spent = (budget['spent'] ?? 0).toDouble();
                         final limit = (budget['limit'] ?? 1).toDouble();
                         final percentage = ((spent / limit) * 100).round();
 
                         return Semantics(
-                          label: _accessibilityService.createProgressSemanticLabel(
+                          label:
+                              _accessibilityService.createProgressSemanticLabel(
                             category: 'Budget for $date',
                             spent: spent,
                             limit: limit,
@@ -672,7 +701,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                           ),
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                             elevation: 3,
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(16),
@@ -696,7 +726,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                                 children: [
                                   const SizedBox(height: 4),
                                   Semantics(
-                                    label: _accessibilityService.createFinancialSemanticLabel(
+                                    label: _accessibilityService
+                                        .createFinancialSemanticLabel(
                                       label: 'Spending summary',
                                       amount: spent,
                                       category:
@@ -704,18 +735,21 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                                     ),
                                     child: Text(
                                       'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
-                                      style: const TextStyle(fontFamily: AppTypography.fontBody),
+                                      style: const TextStyle(
+                                          fontFamily: AppTypography.fontBody),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Semantics(
-                                    label: 'Progress indicator: $percentage percent of budget used',
+                                    label:
+                                        'Progress indicator: $percentage percent of budget used',
                                     child: LinearProgressIndicator(
-                                      value: ((budget['spent'] ?? 0) / (budget['limit'] ?? 1))
+                                      value: ((budget['spent'] ?? 0) /
+                                              (budget['limit'] ?? 1))
                                           .clamp(0.0, 1.0),
                                       backgroundColor: Colors.grey[300],
-                                      valueColor:
-                                          AlwaysStoppedAnimation<Color>(getStatusColor(status)),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          getStatusColor(status)),
                                     ),
                                   ),
                                 ],
@@ -723,9 +757,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen> with RobustErrorH
                               trailing: Semantics(
                                 label: 'Budget status: $status',
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: getStatusColor(status).withValues(alpha: 0.1),
+                                    color: getStatusColor(status)
+                                        .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(

@@ -43,17 +43,21 @@ class Goal {
       category: json['category'] as String?,
       targetAmount: _parseDouble(json['target_amount']),
       savedAmount: _parseDouble(json['saved_amount'] ?? json['current_amount']),
-      monthlyContribution:
-          json['monthly_contribution'] != null ? _parseDouble(json['monthly_contribution']) : null,
+      monthlyContribution: json['monthly_contribution'] != null
+          ? _parseDouble(json['monthly_contribution'])
+          : null,
       status: json['status'] as String? ?? 'active',
       progress: _parseDouble(json['progress'] ?? 0),
       targetDate: json['target_date'] != null
           ? DateTime.parse(json['target_date'] as String)
-          : (json['deadline'] != null ? DateTime.parse(json['deadline'] as String) : null),
+          : (json['deadline'] != null
+              ? DateTime.parse(json['deadline'] as String)
+              : null),
       createdAt: DateTime.parse(json['created_at'] as String),
       lastUpdated: DateTime.parse(json['last_updated'] as String),
-      completedAt:
-          json['completed_at'] != null ? DateTime.parse(json['completed_at'] as String) : null,
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String)
+          : null,
       priority: json['priority'] as String? ?? 'medium',
     );
   }
@@ -85,7 +89,8 @@ class Goal {
   }
 
   /// Calculate remaining amount to reach goal
-  double get remainingAmount => (targetAmount - savedAmount).clamp(0, double.infinity);
+  double get remainingAmount =>
+      (targetAmount - savedAmount).clamp(0, double.infinity);
 
   /// Check if goal is completed
   bool get isCompleted => status == 'completed' || progress >= 100;
@@ -120,11 +125,13 @@ class Goal {
   String get formattedSavedAmount => '\$${savedAmount.toStringAsFixed(0)}';
 
   /// Get formatted remaining amount
-  String get formattedRemainingAmount => '\$${remainingAmount.toStringAsFixed(0)}';
+  String get formattedRemainingAmount =>
+      '\$${remainingAmount.toStringAsFixed(0)}';
 
   /// Get formatted monthly contribution
-  String? get formattedMonthlyContribution =>
-      monthlyContribution != null ? '\$${monthlyContribution!.toStringAsFixed(0)}' : null;
+  String? get formattedMonthlyContribution => monthlyContribution != null
+      ? '\$${monthlyContribution!.toStringAsFixed(0)}'
+      : null;
 
   /// Copy with method for updating fields
   Goal copyWith({

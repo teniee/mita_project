@@ -64,15 +64,17 @@ class SubscriptionInfo {
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => SubscriptionStatus.expired,
       ),
-      expiresAt: DateTime.parse(json['expires_at'] ?? DateTime.now().toIso8601String()),
+      expiresAt: DateTime.parse(
+          json['expires_at'] ?? DateTime.now().toIso8601String()),
       autoRenew: json['auto_renew'] ?? false,
       trialPeriod: json['trial_period'] ?? false,
       platform: json['platform'] ?? Platform.operatingSystem,
       gracePeriodExpiresAt: json['grace_period_expires_at'] != null
           ? DateTime.parse(json['grace_period_expires_at'])
           : null,
-      billingRetryUntil:
-          json['billing_retry_until'] != null ? DateTime.parse(json['billing_retry_until']) : null,
+      billingRetryUntil: json['billing_retry_until'] != null
+          ? DateTime.parse(json['billing_retry_until'])
+          : null,
       metadata: json['metadata'] ?? {},
     );
   }
@@ -119,7 +121,8 @@ class IapService {
   DateTime? _lastCacheUpdate;
 
   // Stream controllers for real-time updates
-  final StreamController<bool> _premiumStatusController = StreamController<bool>.broadcast();
+  final StreamController<bool> _premiumStatusController =
+      StreamController<bool>.broadcast();
   final StreamController<Set<PremiumFeature>> _premiumFeaturesController =
       StreamController<Set<PremiumFeature>>.broadcast();
 
@@ -127,7 +130,8 @@ class IapService {
   Stream<bool> get premiumStatusStream => _premiumStatusController.stream;
 
   /// Stream of available premium features
-  Stream<Set<PremiumFeature>> get premiumFeaturesStream => _premiumFeaturesController.stream;
+  Stream<Set<PremiumFeature>> get premiumFeaturesStream =>
+      _premiumFeaturesController.stream;
 
   /// Initialize the IAP service and restore previous purchases
   Future<void> initialize() async {
@@ -197,7 +201,8 @@ class IapService {
   Future<void> _handlePurchaseUpdate(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
       try {
-        _logger.info('Processing purchase: ${purchase.productID}, status: ${purchase.status}');
+        _logger.info(
+            'Processing purchase: ${purchase.productID}, status: ${purchase.status}');
 
         switch (purchase.status) {
           case PurchaseStatus.purchased:
@@ -241,7 +246,8 @@ class IapService {
 
       _logger.info('Validating purchase with backend: ${purchase.productID}');
 
-      final validationResult = await _apiService.validateReceipt(userId, receipt, platform);
+      final validationResult =
+          await _apiService.validateReceipt(userId, receipt, platform);
 
       // Store validation result in cache
       await _cacheSubscriptionInfo(validationResult);
@@ -328,8 +334,10 @@ class IapService {
       final response = await _apiService.getUserPremiumStatus(userId);
 
       if (response['subscription'] != null) {
-        final subscriptionInfo = SubscriptionInfo.fromJson(response['subscription']);
-        await _cacheSubscriptionInfo({'subscription': subscriptionInfo.toJson()});
+        final subscriptionInfo =
+            SubscriptionInfo.fromJson(response['subscription']);
+        await _cacheSubscriptionInfo(
+            {'subscription': subscriptionInfo.toJson()});
 
         // Update streams
         _premiumStatusController.add(subscriptionInfo.isActive);
@@ -408,10 +416,12 @@ class IapService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_premiumStatusKey, jsonEncode(data));
-      await prefs.setInt(_lastVerificationKey, DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+          _lastVerificationKey, DateTime.now().millisecondsSinceEpoch);
 
       if (data['subscription'] != null) {
-        _cachedSubscriptionInfo = SubscriptionInfo.fromJson(data['subscription']);
+        _cachedSubscriptionInfo =
+            SubscriptionInfo.fromJson(data['subscription']);
       }
       _lastCacheUpdate = DateTime.now();
 
@@ -431,9 +441,11 @@ class IapService {
       if (cachedData != null && lastVerification != null) {
         final data = jsonDecode(cachedData) as Map<String, dynamic>;
         if (data['subscription'] != null) {
-          _cachedSubscriptionInfo = SubscriptionInfo.fromJson(data['subscription']);
+          _cachedSubscriptionInfo =
+              SubscriptionInfo.fromJson(data['subscription']);
         }
-        _lastCacheUpdate = DateTime.fromMillisecondsSinceEpoch(lastVerification);
+        _lastCacheUpdate =
+            DateTime.fromMillisecondsSinceEpoch(lastVerification);
 
         _logger.debug('Loaded cached subscription info');
       }

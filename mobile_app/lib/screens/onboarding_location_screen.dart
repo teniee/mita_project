@@ -11,7 +11,8 @@ class OnboardingLocationScreen extends StatefulWidget {
   const OnboardingLocationScreen({super.key});
 
   @override
-  State<OnboardingLocationScreen> createState() => _OnboardingLocationScreenState();
+  State<OnboardingLocationScreen> createState() =>
+      _OnboardingLocationScreenState();
 }
 
 class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
@@ -65,7 +66,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
             _selectedState = location['state'];
             _isLocationDetected = true;
           } else {
-            _locationError = 'MITA currently supports USA only. Please select your state manually.';
+            _locationError =
+                'MITA currently supports USA only. Please select your state manually.';
           }
         });
       } else {
@@ -105,7 +107,9 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
 
   List<Map<String, String>> _getPopularStatesList() {
     final allStates = _locationService.getUSStatesForSelection();
-    return allStates.where((state) => _popularStates.contains(state['code'])).toList();
+    return allStates
+        .where((state) => _popularStates.contains(state['code']))
+        .toList();
   }
 
   @override
@@ -258,7 +262,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _locationService.formatLocationForDisplay(_selectedCountry,
+                          _locationService.formatLocationForDisplay(
+                              _selectedCountry,
                               stateCode: _selectedState),
                           style: const TextStyle(
                             fontFamily: AppTypography.fontBody,
@@ -334,7 +339,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search states...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textPrimary),
+                  prefixIcon:
+                      const Icon(Icons.search, color: AppColors.textPrimary),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -347,9 +353,11 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.textPrimary, width: 2),
+                    borderSide: const BorderSide(
+                        color: AppColors.textPrimary, width: 2),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -382,12 +390,16 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                         style: TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          color:
+                              isSelected ? Colors.white : AppColors.textPrimary,
                         ),
                       ),
-                      backgroundColor: isSelected ? AppColors.textPrimary : Colors.white,
+                      backgroundColor:
+                          isSelected ? AppColors.textPrimary : Colors.white,
                       side: BorderSide(
-                        color: isSelected ? AppColors.textPrimary : Colors.grey.shade300,
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : Colors.grey.shade300,
                       ),
                       onPressed: () => _selectState(state['code']!),
                     );
@@ -444,7 +456,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                                   )
                                 : null,
                             selected: _selectedState == state['code'],
-                            selectedTileColor: AppColors.textPrimary.withValues(alpha: 0.1),
+                            selectedTileColor:
+                                AppColors.textPrimary.withValues(alpha: 0.1),
                             onTap: () => _selectState(state['code']!),
                           );
                         },
@@ -457,7 +470,8 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _selectedState != null ? _continueWithLocation : null,
+                  onPressed:
+                      _selectedState != null ? _continueWithLocation : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.textPrimary,
                     foregroundColor: Colors.white,

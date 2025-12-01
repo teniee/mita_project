@@ -25,7 +25,8 @@ class OnboardingExpensesScreen extends StatefulWidget {
   const OnboardingExpensesScreen({super.key});
 
   @override
-  State<OnboardingExpensesScreen> createState() => _OnboardingExpensesScreenState();
+  State<OnboardingExpensesScreen> createState() =>
+      _OnboardingExpensesScreenState();
 }
 
 class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
@@ -33,16 +34,23 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
 
   final List<PredefinedExpense> expenses = [
     PredefinedExpense(id: 'rent', label: 'Rent/Mortgage', icon: Icons.home),
-    PredefinedExpense(id: 'utilities', label: 'Utilities (Electric, Water, Gas)', icon: Icons.bolt),
-    PredefinedExpense(id: 'internet', label: 'Internet & Phone', icon: Icons.wifi),
+    PredefinedExpense(
+        id: 'utilities',
+        label: 'Utilities (Electric, Water, Gas)',
+        icon: Icons.bolt),
+    PredefinedExpense(
+        id: 'internet', label: 'Internet & Phone', icon: Icons.wifi),
     PredefinedExpense(id: 'insurance', label: 'Insurance', icon: Icons.shield),
-    PredefinedExpense(id: 'car_payment', label: 'Car Payment', icon: Icons.directions_car),
+    PredefinedExpense(
+        id: 'car_payment', label: 'Car Payment', icon: Icons.directions_car),
     PredefinedExpense(
         id: 'subscriptions',
         label: 'Subscriptions (Netflix, Spotify, etc.)',
         icon: Icons.subscriptions),
-    PredefinedExpense(id: 'loan_payment', label: 'Loan Payments', icon: Icons.payment),
-    PredefinedExpense(id: 'childcare', label: 'Childcare', icon: Icons.child_care),
+    PredefinedExpense(
+        id: 'loan_payment', label: 'Loan Payments', icon: Icons.payment),
+    PredefinedExpense(
+        id: 'childcare', label: 'Childcare', icon: Icons.child_care),
   ];
 
   Future<void> _submitExpenses() async {
@@ -67,11 +75,14 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
   Widget _buildExpenseCard(PredefinedExpense expense) {
     return Card(
       elevation: expense.isSelected ? 3 : 1,
-      color: expense.isSelected ? AppColors.secondary.withOpacity(0.3) : Colors.white,
+      color: expense.isSelected
+          ? AppColors.secondary.withOpacity(0.3)
+          : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: expense.isSelected ? AppColors.textPrimary : Colors.grey.shade300,
+          color:
+              expense.isSelected ? AppColors.textPrimary : Colors.grey.shade300,
           width: expense.isSelected ? 2 : 1,
         ),
       ),
@@ -126,7 +137,8 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 initialValue: expense.amount,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
@@ -138,7 +150,8 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                 ),
                 onChanged: (value) {
                   expense.amount = value;
@@ -214,7 +227,8 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                       if (selectedCount > 0) ...[
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: AppColors.textPrimary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),

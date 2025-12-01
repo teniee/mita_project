@@ -76,16 +76,22 @@ class DynamicThresholds {
   double get savingsAllocation => _getDouble('savings', 0.12);
 
   // Spending pattern getters
-  double get smallPurchaseThreshold => _getDouble('small_purchase_threshold', 20.0);
-  double get mediumPurchaseThreshold => _getDouble('medium_purchase_threshold', 100.0);
-  double get largePurchaseThreshold => _getDouble('large_purchase_threshold', 500.0);
-  double get categoryConcentrationThreshold => _getDouble('category_concentration_threshold', 0.5);
-  double get monthlyVarianceThreshold => _getDouble('monthly_variance_threshold', 0.3);
+  double get smallPurchaseThreshold =>
+      _getDouble('small_purchase_threshold', 20.0);
+  double get mediumPurchaseThreshold =>
+      _getDouble('medium_purchase_threshold', 100.0);
+  double get largePurchaseThreshold =>
+      _getDouble('large_purchase_threshold', 500.0);
+  double get categoryConcentrationThreshold =>
+      _getDouble('category_concentration_threshold', 0.5);
+  double get monthlyVarianceThreshold =>
+      _getDouble('monthly_variance_threshold', 0.3);
   double get impulseThreshold => _getDouble('impulse_buying_threshold', 0.6);
 
   // Health scoring getters
   Map<String, double> get gradeBoundaries => _getMap('grade_boundaries');
-  Map<String, double> get componentExpectations => _getMap('component_expectations');
+  Map<String, double> get componentExpectations =>
+      _getMap('component_expectations');
 
   // Savings target getters
   double get targetSavingsRate => _getDouble('target_savings_rate', 0.12);
@@ -93,13 +99,18 @@ class DynamicThresholds {
   double get emergencyFundMonths => _getDouble('emergency_fund_months', 3.0);
 
   // Goal constraint getters
-  double get maximumTimelineYears => _getDouble('maximum_goal_timeline_years', 5.0);
-  double get minimumMonthlyContribution => _getDouble('minimum_monthly_contribution', 50.0);
-  double get maximumMonthlyContribution => _getDouble('maximum_monthly_contribution', 1000.0);
+  double get maximumTimelineYears =>
+      _getDouble('maximum_goal_timeline_years', 5.0);
+  double get minimumMonthlyContribution =>
+      _getDouble('minimum_monthly_contribution', 50.0);
+  double get maximumMonthlyContribution =>
+      _getDouble('maximum_monthly_contribution', 1000.0);
 
   // Behavioral trigger getters
-  double get totalBudgetVarianceThreshold => _getDouble('total_budget_variance_threshold', 1.1);
-  double get weekendOverspendingMultiplier => _getDouble('weekend_overspending_multiplier', 1.3);
+  double get totalBudgetVarianceThreshold =>
+      _getDouble('total_budget_variance_threshold', 1.1);
+  double get weekendOverspendingMultiplier =>
+      _getDouble('weekend_overspending_multiplier', 1.3);
 
   double _getDouble(String key, double defaultValue) {
     return (data[key] as num?)?.toDouble() ?? defaultValue;
@@ -131,13 +142,15 @@ class HousingAffordabilityThresholds {
       recommendedRatio: (json['recommended_housing_ratio'] as num).toDouble(),
       maximumRatio: (json['maximum_housing_ratio'] as num).toDouble(),
       comfortableRatio: (json['comfortable_housing_ratio'] as num).toDouble(),
-      regionalAdjustmentFactor: (json['regional_adjustment_factor'] as num).toDouble(),
+      regionalAdjustmentFactor:
+          (json['regional_adjustment_factor'] as num).toDouble(),
     );
   }
 }
 
 class DynamicThresholdService {
-  static final DynamicThresholdService _instance = DynamicThresholdService._internal();
+  static final DynamicThresholdService _instance =
+      DynamicThresholdService._internal();
   factory DynamicThresholdService() => _instance;
   DynamicThresholdService._internal();
 
@@ -154,7 +167,8 @@ class DynamicThresholdService {
     ThresholdType type,
     UserContext userContext,
   ) async {
-    final cacheKey = '${type.value}_${userContext.monthlyIncome}_${userContext.region}';
+    final cacheKey =
+        '${type.value}_${userContext.monthlyIncome}_${userContext.region}';
 
     // Check cache first
     if (_isValidCache() && _thresholdCache.containsKey(cacheKey)) {
@@ -174,7 +188,8 @@ class DynamicThresholdService {
       );
 
       if (response.statusCode == 200) {
-        final thresholds = DynamicThresholds(response.data as Map<String, dynamic>);
+        final thresholds =
+            DynamicThresholds(response.data as Map<String, dynamic>);
         _thresholdCache[cacheKey] = thresholds;
         _lastCacheUpdate = DateTime.now();
 
@@ -195,7 +210,8 @@ class DynamicThresholdService {
   Future<HousingAffordabilityThresholds> getHousingThresholds(
     UserContext userContext,
   ) async {
-    final cacheKey = 'housing_${userContext.monthlyIncome}_${userContext.region}';
+    final cacheKey =
+        'housing_${userContext.monthlyIncome}_${userContext.region}';
 
     if (_isValidCache() && _housingCache.containsKey(cacheKey)) {
       return _housingCache[cacheKey]!;
@@ -208,12 +224,13 @@ class DynamicThresholdService {
       );
 
       if (response.statusCode == 200) {
-        final thresholds =
-            HousingAffordabilityThresholds.fromJson(response.data as Map<String, dynamic>);
+        final thresholds = HousingAffordabilityThresholds.fromJson(
+            response.data as Map<String, dynamic>);
         _housingCache[cacheKey] = thresholds;
         return thresholds;
       } else {
-        throw Exception('Failed to fetch housing thresholds: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch housing thresholds: ${response.statusCode}');
       }
     } catch (e) {
       _logger.severe('Error fetching housing thresholds: $e');
@@ -235,7 +252,8 @@ class DynamicThresholdService {
       debtToIncomeRatio: debtToIncomeRatio,
     );
 
-    final thresholds = await getThresholds(ThresholdType.savingsTarget, userContext);
+    final thresholds =
+        await getThresholds(ThresholdType.savingsTarget, userContext);
     return thresholds.targetSavingsRate;
   }
 
@@ -249,7 +267,8 @@ class DynamicThresholdService {
       region: region,
     );
 
-    final thresholds = await getThresholds(ThresholdType.spendingPattern, userContext);
+    final thresholds =
+        await getThresholds(ThresholdType.spendingPattern, userContext);
     return thresholds.smallPurchaseThreshold;
   }
 
@@ -265,7 +284,8 @@ class DynamicThresholdService {
       region: region,
     );
 
-    final thresholds = await getThresholds(ThresholdType.savingsTarget, userContext);
+    final thresholds =
+        await getThresholds(ThresholdType.savingsTarget, userContext);
     return thresholds.emergencyFundMonths;
   }
 
@@ -281,7 +301,8 @@ class DynamicThresholdService {
       region: region,
     );
 
-    final thresholds = await getThresholds(ThresholdType.goalConstraint, userContext);
+    final thresholds =
+        await getThresholds(ThresholdType.goalConstraint, userContext);
 
     return {
       'maximum_timeline_years': thresholds.maximumTimelineYears,
@@ -304,7 +325,8 @@ class DynamicThresholdService {
       familySize: familySize,
     );
 
-    final thresholds = await getThresholds(ThresholdType.budgetAllocation, userContext);
+    final thresholds =
+        await getThresholds(ThresholdType.budgetAllocation, userContext);
 
     return {
       'housing': thresholds.housingAllocation,
@@ -329,7 +351,8 @@ class DynamicThresholdService {
   }
 
   /// Fallback thresholds when API is unavailable
-  DynamicThresholds _getFallbackThresholds(ThresholdType type, UserContext userContext) {
+  DynamicThresholds _getFallbackThresholds(
+      ThresholdType type, UserContext userContext) {
     _logger.warning('Using fallback thresholds for ${type.value}');
 
     switch (type) {
@@ -348,7 +371,8 @@ class DynamicThresholdService {
 
       case ThresholdType.spendingPattern:
         return DynamicThresholds({
-          'small_purchase_threshold': (userContext.monthlyIncome * 0.005).clamp(5.0, 100.0),
+          'small_purchase_threshold':
+              (userContext.monthlyIncome * 0.005).clamp(5.0, 100.0),
           'medium_purchase_threshold': userContext.monthlyIncome * 0.02,
           'large_purchase_threshold': userContext.monthlyIncome * 0.10,
           'category_concentration_threshold': 0.6,
@@ -380,7 +404,8 @@ class DynamicThresholdService {
     }
   }
 
-  HousingAffordabilityThresholds _getFallbackHousingThresholds(UserContext userContext) {
+  HousingAffordabilityThresholds _getFallbackHousingThresholds(
+      UserContext userContext) {
     final baseRatio = userContext.monthlyIncome < 3000
         ? 0.40
         : userContext.monthlyIncome < 8000
@@ -407,13 +432,15 @@ class ThresholdHelper {
   }
 
   /// Get income-appropriate goal timeline
-  static Future<double> getMaxGoalTimelineYears(double monthlyIncome, int age) async {
+  static Future<double> getMaxGoalTimelineYears(
+      double monthlyIncome, int age) async {
     final constraints = await _service.getGoalConstraints(monthlyIncome, age);
     return constraints['maximum_timeline_years']!;
   }
 
   /// Replace hardcoded small purchase amounts
-  static Future<double> getIncomeRelativeAmount(double monthlyIncome, double percentage) async {
+  static Future<double> getIncomeRelativeAmount(
+      double monthlyIncome, double percentage) async {
     final threshold = await _service.getSmallPurchaseThreshold(monthlyIncome);
     return threshold * percentage;
   }
@@ -424,7 +451,8 @@ class ThresholdHelper {
     double monthlyHousingCost, {
     String region = 'US',
   }) async {
-    final userContext = UserContext(monthlyIncome: monthlyIncome, region: region);
+    final userContext =
+        UserContext(monthlyIncome: monthlyIncome, region: region);
     final thresholds = await _service.getHousingThresholds(userContext);
 
     final currentRatio = monthlyHousingCost / monthlyIncome;

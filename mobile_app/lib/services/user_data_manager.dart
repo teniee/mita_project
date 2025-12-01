@@ -7,7 +7,8 @@ import 'api_service.dart';
 /// Handles user data flow from onboarding through entire app lifecycle
 class UserDataManager {
   static UserDataManager? _instance;
-  static UserDataManager get instance => _instance ??= UserDataManager._internal();
+  static UserDataManager get instance =>
+      _instance ??= UserDataManager._internal();
 
   UserDataManager._internal();
 
@@ -33,7 +34,8 @@ class UserDataManager {
       // Then refresh from API in background
       _refreshFromApiBackground();
     } catch (e) {
-      logError('Failed to initialize UserDataManager: $e', tag: 'USER_DATA_MANAGER');
+      logError('Failed to initialize UserDataManager: $e',
+          tag: 'USER_DATA_MANAGER');
     }
   }
 
@@ -49,11 +51,13 @@ class UserDataManager {
       final profile = await _apiService.getUserProfile().timeout(
         const Duration(seconds: 8), // Увеличиваем timeout для stability
         onTimeout: () {
-          logWarning('getUserProfile timeout - using cached data', tag: 'USER_DATA_MANAGER');
+          logWarning('getUserProfile timeout - using cached data',
+              tag: 'USER_DATA_MANAGER');
           return <String, dynamic>{};
         },
       ).catchError((error) {
-        logWarning('getUserProfile error - using cached data: $error', tag: 'USER_DATA_MANAGER');
+        logWarning('getUserProfile error - using cached data: $error',
+            tag: 'USER_DATA_MANAGER');
         return <String, dynamic>{};
       });
 
@@ -67,7 +71,8 @@ class UserDataManager {
 
       // Fall back to cached data if available
       if (_cachedUserProfile != null) {
-        logWarning('Using cached user profile due to API failure', tag: 'USER_DATA_MANAGER');
+        logWarning('Using cached user profile due to API failure',
+            tag: 'USER_DATA_MANAGER');
         return _cachedUserProfile!;
       }
 
@@ -99,10 +104,12 @@ class UserDataManager {
       logInfo('Profile update successful', tag: 'USER_DATA_MANAGER');
       return true;
     } catch (e) {
-      logError('Failed to update profile on backend: $e', tag: 'USER_DATA_MANAGER');
+      logError('Failed to update profile on backend: $e',
+          tag: 'USER_DATA_MANAGER');
 
       // Keep local changes even if backend fails
-      logWarning('Profile updated locally only - will sync later', tag: 'USER_DATA_MANAGER');
+      logWarning('Profile updated locally only - will sync later',
+          tag: 'USER_DATA_MANAGER');
       return false;
     }
   }
@@ -110,27 +117,34 @@ class UserDataManager {
   /// Save onboarding data for immediate use after completion
   Future<void> cacheOnboardingData(Map<String, dynamic> onboardingData) async {
     try {
-      logInfo('CRITICAL DEBUG: Starting to cache onboarding data: $onboardingData',
+      logInfo(
+          'CRITICAL DEBUG: Starting to cache onboarding data: $onboardingData',
           tag: 'USER_DATA_MANAGER');
 
       _cachedOnboardingData = onboardingData;
-      logInfo('CRITICAL DEBUG: Set _cachedOnboardingData in memory', tag: 'USER_DATA_MANAGER');
+      logInfo('CRITICAL DEBUG: Set _cachedOnboardingData in memory',
+          tag: 'USER_DATA_MANAGER');
 
       // Transform onboarding data to user profile format
       _cachedUserProfile = _transformOnboardingToProfile(onboardingData);
       _lastRefresh = DateTime.now();
-      logInfo('CRITICAL DEBUG: Transformed data and set timestamp', tag: 'USER_DATA_MANAGER');
+      logInfo('CRITICAL DEBUG: Transformed data and set timestamp',
+          tag: 'USER_DATA_MANAGER');
 
       await _saveCachedData();
-      logInfo('CRITICAL DEBUG: Called _saveCachedData()', tag: 'USER_DATA_MANAGER');
+      logInfo('CRITICAL DEBUG: Called _saveCachedData()',
+          tag: 'USER_DATA_MANAGER');
 
       // VERIFY IT ACTUALLY WORKED
       final verifyCache = hasCachedOnboardingData();
-      logInfo('CRITICAL DEBUG: Verification after save: $verifyCache', tag: 'USER_DATA_MANAGER');
+      logInfo('CRITICAL DEBUG: Verification after save: $verifyCache',
+          tag: 'USER_DATA_MANAGER');
 
-      logInfo('CRITICAL DEBUG: Onboarding data cached successfully', tag: 'USER_DATA_MANAGER');
+      logInfo('CRITICAL DEBUG: Onboarding data cached successfully',
+          tag: 'USER_DATA_MANAGER');
     } catch (e) {
-      logError('CRITICAL DEBUG: Failed to cache onboarding data: $e', tag: 'USER_DATA_MANAGER');
+      logError('CRITICAL DEBUG: Failed to cache onboarding data: $e',
+          tag: 'USER_DATA_MANAGER');
       rethrow;
     }
   }
@@ -155,7 +169,8 @@ class UserDataManager {
       // Check via API
       return await _apiService.hasCompletedOnboarding();
     } catch (e) {
-      logError('Failed to check onboarding status: $e', tag: 'USER_DATA_MANAGER');
+      logError('Failed to check onboarding status: $e',
+          tag: 'USER_DATA_MANAGER');
       return false;
     }
   }
@@ -203,13 +218,15 @@ class UserDataManager {
     try {
       // First check if we have cached onboarding data (immediate after onboarding completion)
       if (_cachedOnboardingData != null) {
-        logInfo('Using cached onboarding data for financial context', tag: 'USER_DATA_MANAGER');
+        logInfo('Using cached onboarding data for financial context',
+            tag: 'USER_DATA_MANAGER');
         return _transformOnboardingToFinancialContext(_cachedOnboardingData!);
       }
 
       // Try to get user profile from API
       final profile = await getUserProfile();
-      logInfo('Retrieved user profile for financial context: $profile', tag: 'USER_DATA_MANAGER');
+      logInfo('Retrieved user profile for financial context: $profile',
+          tag: 'USER_DATA_MANAGER');
 
       // Check if profile has required financial data
       final income = (profile['income'] as num?)?.toDouble();
@@ -219,7 +236,8 @@ class UserDataManager {
         final hasCompleted = await hasCompletedOnboarding();
 
         if (!hasCompleted) {
-          logInfo('User has not completed onboarding - returning incomplete context',
+          logInfo(
+              'User has not completed onboarding - returning incomplete context',
               tag: 'USER_DATA_MANAGER');
           return {
             'incomplete_onboarding': true,
@@ -235,7 +253,8 @@ class UserDataManager {
           };
         } else {
           // User completed onboarding but data is missing from profile - API issue
-          logWarning('User completed onboarding but profile missing income data',
+          logWarning(
+              'User completed onboarding but profile missing income data',
               tag: 'USER_DATA_MANAGER');
           return {
             'api_error': true,
@@ -299,7 +318,8 @@ class UserDataManager {
   Future<void> _loadCachedData() async {
     try {
       final profileData = await _secureStorage.read(key: 'cached_user_profile');
-      final onboardingData = await _secureStorage.read(key: 'cached_onboarding_data');
+      final onboardingData =
+          await _secureStorage.read(key: 'cached_onboarding_data');
       final timestampData = await _secureStorage.read(key: 'cache_timestamp');
 
       if (profileData != null) {
@@ -307,11 +327,13 @@ class UserDataManager {
       }
 
       if (onboardingData != null) {
-        _cachedOnboardingData = jsonDecode(onboardingData) as Map<String, dynamic>;
+        _cachedOnboardingData =
+            jsonDecode(onboardingData) as Map<String, dynamic>;
       }
 
       if (timestampData != null) {
-        _lastRefresh = DateTime.fromMillisecondsSinceEpoch(int.parse(timestampData));
+        _lastRefresh =
+            DateTime.fromMillisecondsSinceEpoch(int.parse(timestampData));
       }
 
       logInfo('Cached data loaded successfully', tag: 'USER_DATA_MANAGER');
@@ -357,7 +379,8 @@ class UserDataManager {
     });
   }
 
-  Map<String, dynamic> _transformOnboardingToProfile(Map<String, dynamic> onboardingData) {
+  Map<String, dynamic> _transformOnboardingToProfile(
+      Map<String, dynamic> onboardingData) {
     final income = onboardingData['income'];
     if (income == null) {
       throw ArgumentError('Income is required in onboarding data');
@@ -385,7 +408,8 @@ class UserDataManager {
   }
 
   /// Transform onboarding data directly to financial context format
-  Map<String, dynamic> _transformOnboardingToFinancialContext(Map<String, dynamic> onboardingData) {
+  Map<String, dynamic> _transformOnboardingToFinancialContext(
+      Map<String, dynamic> onboardingData) {
     final income = onboardingData['income'];
     if (income == null) {
       throw ArgumentError('Income is required in onboarding data');
@@ -445,7 +469,8 @@ class UserDataManager {
       'stateCode': 'CA',
       'incomeTier': 'middle',
       'budgetMethod': '50/30/20 Rule',
-      'member_since': DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
+      'member_since':
+          DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
       'profile_completion': 85,
       'verified_email': true,
       'dark_mode': false,

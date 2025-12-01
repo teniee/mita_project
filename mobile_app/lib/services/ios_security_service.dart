@@ -55,14 +55,16 @@ class IOSSecurityService {
 
       for (final path in jailbreakPaths) {
         if (await _fileExists(path)) {
-          logWarning('Jailbreak detected: File exists at $path', tag: 'IOS_SECURITY');
+          logWarning('Jailbreak detected: File exists at $path',
+              tag: 'IOS_SECURITY');
           return true;
         }
       }
 
       // Check 2: Symbolic link check
       if (await _canWriteToProtectedDirectory()) {
-        logWarning('Jailbreak detected: Can write to protected directory', tag: 'IOS_SECURITY');
+        logWarning('Jailbreak detected: Can write to protected directory',
+            tag: 'IOS_SECURITY');
         return true;
       }
 
@@ -113,7 +115,8 @@ class IOSSecurityService {
       final result = await _platform.invokeMethod<bool>('canFork');
       return result ?? false;
     } on PlatformException catch (e) {
-      logError('Fork detection failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      logError('Fork detection failed: ${e.code} - ${e.message}',
+          tag: 'IOS_SECURITY');
       return false;
     } catch (e) {
       logError('Fork detection error: $e', tag: 'IOS_SECURITY');
@@ -140,7 +143,8 @@ class IOSSecurityService {
       final result = await _platform.invokeMethod<bool>('isAppTampered');
       return result ?? false;
     } on PlatformException catch (e) {
-      logError('Code signing check failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      logError('Code signing check failed: ${e.code} - ${e.message}',
+          tag: 'IOS_SECURITY');
       // If check fails, assume not tampered to avoid false positives
       return false;
     } catch (e) {
@@ -160,7 +164,8 @@ class IOSSecurityService {
       final result = await _platform.invokeMethod<bool>('isDebuggerAttached');
       return result ?? false;
     } on PlatformException catch (e) {
-      logError('Debugger detection failed: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      logError('Debugger detection failed: ${e.code} - ${e.message}',
+          tag: 'IOS_SECURITY');
       return false;
     } catch (e) {
       logError('Debugger detection error: $e', tag: 'IOS_SECURITY');
@@ -177,7 +182,8 @@ class IOSSecurityService {
       final simulator = isSimulator();
 
       if (jailbroken) {
-        logError('SECURITY ALERT: Jailbroken device detected', tag: 'IOS_SECURITY');
+        logError('SECURITY ALERT: Jailbroken device detected',
+            tag: 'IOS_SECURITY');
         return false;
       }
 
@@ -215,7 +221,8 @@ class IOSSecurityService {
     }
 
     try {
-      final result = await _platform.invokeMethod<Map<dynamic, dynamic>>('getSecurityInfo');
+      final result = await _platform
+          .invokeMethod<Map<dynamic, dynamic>>('getSecurityInfo');
       if (result == null) {
         logWarning('Security info returned null', tag: 'IOS_SECURITY');
         return {};
@@ -226,7 +233,8 @@ class IOSSecurityService {
       logInfo('Security info retrieved: $info', tag: 'IOS_SECURITY');
       return info;
     } on PlatformException catch (e) {
-      logError('Failed to get security info: ${e.code} - ${e.message}', tag: 'IOS_SECURITY');
+      logError('Failed to get security info: ${e.code} - ${e.message}',
+          tag: 'IOS_SECURITY');
       return {};
     } catch (e) {
       logError('Security info error: $e', tag: 'IOS_SECURITY');

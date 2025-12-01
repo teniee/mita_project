@@ -13,18 +13,21 @@ class ExpenseIntegrationHelper {
   static final ApiService _apiService = ApiService();
 
   /// Navigate to add expense screen with proper result handling and real-time updates
-  static Future<Map<String, dynamic>?> navigateToAddExpense(BuildContext context) async {
+  static Future<Map<String, dynamic>?> navigateToAddExpense(
+      BuildContext context) async {
     logDebug('Navigating to add expense screen', tag: 'EXPENSE_INTEGRATION');
 
     try {
       final result = await Navigator.pushNamed(context, '/add_expense');
 
       if (result != null && result is Map<String, dynamic>) {
-        logInfo('Add expense navigation completed', tag: 'EXPENSE_INTEGRATION', extra: {
-          'success': result['success'],
-          'amount': result['amount'],
-          'category': result['category'],
-        });
+        logInfo('Add expense navigation completed',
+            tag: 'EXPENSE_INTEGRATION',
+            extra: {
+              'success': result['success'],
+              'amount': result['amount'],
+              'category': result['category'],
+            });
 
         // Show success feedback if not already shown
         if (result['success'] == true && context.mounted) {
@@ -34,9 +37,12 @@ class ExpenseIntegrationHelper {
         return result;
       }
     } catch (e, stackTrace) {
-      logError('Failed to navigate to add expense', tag: 'EXPENSE_INTEGRATION', error: e, extra: {
-        'stackTrace': stackTrace.toString(),
-      });
+      logError('Failed to navigate to add expense',
+          tag: 'EXPENSE_INTEGRATION',
+          error: e,
+          extra: {
+            'stackTrace': stackTrace.toString(),
+          });
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -77,11 +83,14 @@ class ExpenseIntegrationHelper {
       final data = await _apiService.getCalendar();
       _expenseStateService.updateCalendarData(data);
 
-      logInfo('Calendar data refreshed successfully', tag: 'EXPENSE_INTEGRATION', extra: {
-        'dataCount': data.length,
-      });
+      logInfo('Calendar data refreshed successfully',
+          tag: 'EXPENSE_INTEGRATION',
+          extra: {
+            'dataCount': data.length,
+          });
     } catch (e) {
-      logError('Failed to refresh calendar data', tag: 'EXPENSE_INTEGRATION', error: e);
+      logError('Failed to refresh calendar data',
+          tag: 'EXPENSE_INTEGRATION', error: e);
       _expenseStateService.setError('Failed to refresh calendar data');
     } finally {
       if (showLoading) {
@@ -96,12 +105,14 @@ class ExpenseIntegrationHelper {
     final dayStatus = _expenseStateService.getDayStatus(today);
 
     if (dayStatus != null) {
-      logDebug('Retrieved today\'s spending status', tag: 'EXPENSE_INTEGRATION', extra: {
-        'day': today,
-        'status': dayStatus['status'],
-        'spent': dayStatus['spent'],
-        'limit': dayStatus['limit'],
-      });
+      logDebug('Retrieved today\'s spending status',
+          tag: 'EXPENSE_INTEGRATION',
+          extra: {
+            'day': today,
+            'status': dayStatus['status'],
+            'spent': dayStatus['spent'],
+            'limit': dayStatus['limit'],
+          });
     }
 
     return dayStatus;
@@ -136,7 +147,8 @@ class ExpenseIntegrationHelper {
   }
 
   /// Show a consolidated success feedback across the app
-  static void _showGlobalSuccessFeedback(BuildContext context, Map<String, dynamic> result) {
+  static void _showGlobalSuccessFeedback(
+      BuildContext context, Map<String, dynamic> result) {
     final amount = result['amount'] as double?;
     final category = result['category'] as String?;
 
@@ -229,8 +241,10 @@ class ExpenseIntegrationHelper {
   static ExpenseStateService get expenseStateService => _expenseStateService;
 
   /// Check if calendar data is stale and needs refresh
-  static bool isCalendarDataStale({Duration threshold = const Duration(minutes: 5)}) {
-    final timeSinceUpdate = DateTime.now().difference(_expenseStateService.lastUpdated);
+  static bool isCalendarDataStale(
+      {Duration threshold = const Duration(minutes: 5)}) {
+    final timeSinceUpdate =
+        DateTime.now().difference(_expenseStateService.lastUpdated);
     return timeSinceUpdate > threshold;
   }
 
@@ -238,7 +252,8 @@ class ExpenseIntegrationHelper {
   static Map<String, dynamic> getMonthSummary() {
     final totalSpent = _expenseStateService.getTotalMonthSpending();
     final totalBudget = _expenseStateService.getTotalMonthBudget();
-    final spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0.0;
+    final spentPercentage =
+        totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0.0;
 
     return {
       'total_spent': totalSpent,

@@ -72,8 +72,10 @@ class FinancialErrorMessages {
     Map<String, dynamic>? context,
   ) {
     final errorString = error.toString().toLowerCase();
-    final contextOperation = context?['operation']?.toString().toLowerCase() ?? '';
-    final contextEndpoint = context?['endpoint']?.toString().toLowerCase() ?? '';
+    final contextOperation =
+        context?['operation']?.toString().toLowerCase() ?? '';
+    final contextEndpoint =
+        context?['endpoint']?.toString().toLowerCase() ?? '';
 
     // Authentication & Security errors
     if (errorString.contains('session expired') ||
@@ -90,11 +92,13 @@ class FinancialErrorMessages {
       return FinancialErrorType.invalidCredentials;
     }
 
-    if (errorString.contains('account locked') || errorString.contains('too many attempts')) {
+    if (errorString.contains('account locked') ||
+        errorString.contains('too many attempts')) {
       return FinancialErrorType.accountLocked;
     }
 
-    if (errorString.contains('biometric') || errorString.contains('fingerprint')) {
+    if (errorString.contains('biometric') ||
+        errorString.contains('fingerprint')) {
       return FinancialErrorType.biometricFailed;
     }
 
@@ -103,7 +107,8 @@ class FinancialErrorMessages {
       return FinancialErrorType.budgetExceeded;
     }
 
-    if (contextOperation.contains('transaction') || contextEndpoint.contains('transaction')) {
+    if (contextOperation.contains('transaction') ||
+        contextEndpoint.contains('transaction')) {
       if (errorString.contains('duplicate')) {
         return FinancialErrorType.duplicateTransaction;
       }
@@ -123,7 +128,8 @@ class FinancialErrorMessages {
     }
 
     if (error is TimeoutException ||
-        (error is DioException && error.type == DioExceptionType.connectionTimeout)) {
+        (error is DioException &&
+            error.type == DioExceptionType.connectionTimeout)) {
       return FinancialErrorType.requestTimeout;
     }
 
@@ -193,7 +199,8 @@ class FinancialErrorMessages {
           icon: Icons.lock_clock_outlined,
           severity: FinancialErrorSeverity.medium,
           category: 'Authentication',
-          financialContext: 'Your financial data remains secure while your session is refreshed.',
+          financialContext:
+              'Your financial data remains secure while your session is refreshed.',
         );
 
       case FinancialErrorType.invalidCredentials:
@@ -216,7 +223,8 @@ class FinancialErrorMessages {
           icon: Icons.person_off_outlined,
           severity: FinancialErrorSeverity.medium,
           category: 'Authentication',
-          financialContext: 'Your financial data is protected by secure authentication.',
+          financialContext:
+              'Your financial data is protected by secure authentication.',
         );
 
       case FinancialErrorType.budgetExceeded:
@@ -275,7 +283,8 @@ class FinancialErrorMessages {
           icon: Icons.sync_problem_outlined,
           severity: FinancialErrorSeverity.medium,
           category: 'Transaction',
-          financialContext: 'Your financial records remain accurate and secure.',
+          financialContext:
+              'Your financial records remain accurate and secure.',
           tips: [
             'Check your internet connection',
             'Verify all required fields are filled correctly',
@@ -327,7 +336,8 @@ class FinancialErrorMessages {
           icon: Icons.money_off_outlined,
           severity: FinancialErrorSeverity.low,
           category: 'Input Validation',
-          financialContext: 'Accurate amounts help maintain precise financial records.',
+          financialContext:
+              'Accurate amounts help maintain precise financial records.',
           tips: [
             'Use numbers only (e.g., 25.50)',
             'Don\'t include currency symbols',
@@ -361,13 +371,15 @@ class FinancialErrorMessages {
           icon: Icons.content_copy_outlined,
           severity: FinancialErrorSeverity.low,
           category: 'Transaction',
-          financialContext: 'Avoiding duplicates keeps your financial records accurate.',
+          financialContext:
+              'Avoiding duplicates keeps your financial records accurate.',
         );
 
       case FinancialErrorType.cameraPermission:
         return FinancialErrorInfo(
           title: 'Camera Access Needed',
-          message: 'To scan receipts and capture expenses, MITA needs access to your camera.',
+          message:
+              'To scan receipts and capture expenses, MITA needs access to your camera.',
           actions: [
             FinancialErrorAction(
               label: 'Grant Access',
@@ -383,7 +395,8 @@ class FinancialErrorMessages {
           icon: Icons.camera_alt_outlined,
           severity: FinancialErrorSeverity.low,
           category: 'Permissions',
-          financialContext: 'Receipt scanning makes expense tracking faster and more accurate.',
+          financialContext:
+              'Receipt scanning makes expense tracking faster and more accurate.',
           tips: [
             'Go to Settings > Privacy > Camera',
             'Find MITA and toggle camera access on',
@@ -411,7 +424,8 @@ class FinancialErrorMessages {
           icon: Icons.build_outlined,
           severity: FinancialErrorSeverity.medium,
           category: 'Service',
-          financialContext: 'Your financial data remains secure during maintenance.',
+          financialContext:
+              'Your financial data remains secure during maintenance.',
           tips: [
             'Try again in a few minutes',
             'You can still use offline features',
@@ -439,7 +453,8 @@ class FinancialErrorMessages {
           icon: Icons.error_outline,
           severity: FinancialErrorSeverity.medium,
           category: 'System',
-          financialContext: 'Your financial records and personal information remain secure.',
+          financialContext:
+              'Your financial records and personal information remain secure.',
           tips: [
             'Try the action again in a moment',
             'Check your internet connection',
@@ -490,10 +505,12 @@ class FinancialErrorInfo {
 
   /// Check if error should be displayed immediately
   bool get shouldShowImmediately =>
-      severity == FinancialErrorSeverity.high || severity == FinancialErrorSeverity.critical;
+      severity == FinancialErrorSeverity.high ||
+      severity == FinancialErrorSeverity.critical;
 
   /// Check if error allows retry
-  bool get allowsRetry => actions.any((action) => action.action == FinancialErrorActionType.retry);
+  bool get allowsRetry =>
+      actions.any((action) => action.action == FinancialErrorActionType.retry);
 }
 
 /// Severity levels for financial errors

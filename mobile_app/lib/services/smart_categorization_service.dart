@@ -4,7 +4,8 @@ import 'logging_service.dart';
 
 /// Smart categorization service using AI-powered suggestions and learning algorithms
 class SmartCategorizationService {
-  static final SmartCategorizationService _instance = SmartCategorizationService._internal();
+  static final SmartCategorizationService _instance =
+      SmartCategorizationService._internal();
   factory SmartCategorizationService() => _instance;
   SmartCategorizationService._internal();
 
@@ -32,9 +33,11 @@ class SmartCategorizationService {
       // Load user preferences
       await _loadUserPreferences();
 
-      logInfo('Smart categorization initialized successfully', tag: 'SMART_CAT');
+      logInfo('Smart categorization initialized successfully',
+          tag: 'SMART_CAT');
     } catch (e) {
-      logError('Failed to initialize smart categorization: $e', tag: 'SMART_CAT', error: e);
+      logError('Failed to initialize smart categorization: $e',
+          tag: 'SMART_CAT', error: e);
     }
   }
 
@@ -59,7 +62,8 @@ class SmartCategorizationService {
         );
         suggestions.addAll(aiSuggestions);
       } catch (e) {
-        logWarning('AI categorization failed, using local ML: $e', tag: 'SMART_CAT');
+        logWarning('AI categorization failed, using local ML: $e',
+            tag: 'SMART_CAT');
       }
 
       // 2. Local ML patterns as fallback/enhancement
@@ -71,13 +75,16 @@ class SmartCategorizationService {
       );
 
       // 3. Merge and rank suggestions
-      final mergedSuggestions = _mergeSuggestions(suggestions, localSuggestions);
+      final mergedSuggestions =
+          _mergeSuggestions(suggestions, localSuggestions);
 
       // 4. Apply user preference learning
-      final personalizedSuggestions = _applyUserLearning(mergedSuggestions, description);
+      final personalizedSuggestions =
+          _applyUserLearning(mergedSuggestions, description);
 
       // 5. Sort by confidence and return top suggestions
-      personalizedSuggestions.sort((a, b) => b.confidence.compareTo(a.confidence));
+      personalizedSuggestions
+          .sort((a, b) => b.confidence.compareTo(a.confidence));
 
       return personalizedSuggestions.take(5).toList();
     } catch (e) {
@@ -96,7 +103,8 @@ class SmartCategorizationService {
   }) async {
     try {
       // Update local learning patterns
-      _updateMerchantPattern(merchantName ?? description.toLowerCase(), selectedCategory);
+      _updateMerchantPattern(
+          merchantName ?? description.toLowerCase(), selectedCategory);
       _updateAmountPattern(amount, selectedCategory);
       _updateTimePattern(transactionTime ?? DateTime.now(), selectedCategory);
 
@@ -116,10 +124,12 @@ class SmartCategorizationService {
           }
         });
       } catch (e) {
-        logWarning('Failed to send categorization feedback to backend: $e', tag: 'SMART_CAT');
+        logWarning('Failed to send categorization feedback to backend: $e',
+            tag: 'SMART_CAT');
       }
 
-      logDebug('Category confirmation recorded: $selectedCategory', tag: 'SMART_CAT');
+      logDebug('Category confirmation recorded: $selectedCategory',
+          tag: 'SMART_CAT');
     } catch (e) {
       logError('Failed to confirm category: $e', tag: 'SMART_CAT', error: e);
     }
@@ -134,7 +144,8 @@ class SmartCategorizationService {
       final backendPatterns = await _apiService.getSpendingPatternAnalysis();
 
       // Process backend patterns
-      final categoriesData = backendPatterns['categories'] as Map<String, dynamic>? ?? {};
+      final categoriesData =
+          backendPatterns['categories'] as Map<String, dynamic>? ?? {};
 
       categoriesData.forEach((category, data) {
         if (data is Map<String, dynamic>) {
@@ -145,14 +156,16 @@ class SmartCategorizationService {
             trend: data['trend'] as String? ?? 'stable',
             confidence: (data['confidence'] as num?)?.toDouble() ?? 0.5,
             timePatterns: Map<String, double>.from(data['time_patterns'] ?? {}),
-            merchantPatterns: Map<String, double>.from(data['merchant_patterns'] ?? {}),
+            merchantPatterns:
+                Map<String, double>.from(data['merchant_patterns'] ?? {}),
           );
         }
       });
 
       return patterns;
     } catch (e) {
-      logError('Failed to get category patterns: $e', tag: 'SMART_CAT', error: e);
+      logError('Failed to get category patterns: $e',
+          tag: 'SMART_CAT', error: e);
       return {};
     }
   }
@@ -167,14 +180,18 @@ class SmartCategorizationService {
 
       for (final anomaly in anomalies) {
         alerts.add(SpendingAlert(
-          id: anomaly['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: anomaly['id']?.toString() ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
           type: _getAlertType(anomaly['anomaly_score'] as double? ?? 0.0),
           category: anomaly['category'] as String? ?? 'Unknown',
           amount: (anomaly['amount'] as num?)?.toDouble() ?? 0.0,
-          expectedAmount: (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
-          message: anomaly['description'] as String? ?? 'Unusual spending detected',
+          expectedAmount:
+              (anomaly['expected_amount'] as num?)?.toDouble() ?? 0.0,
+          message:
+              anomaly['description'] as String? ?? 'Unusual spending detected',
           confidence: (anomaly['anomaly_score'] as num?)?.toDouble() ?? 0.0,
-          date: DateTime.tryParse(anomaly['date'] as String? ?? '') ?? DateTime.now(),
+          date: DateTime.tryParse(anomaly['date'] as String? ?? '') ??
+              DateTime.now(),
           suggestions: List<String>.from(anomaly['possible_causes'] ?? []),
         ));
       }
@@ -213,7 +230,8 @@ class SmartCategorizationService {
       );
 
       // Only auto-categorize if we have high confidence
-      if (suggestions.isNotEmpty && suggestions.first.confidence >= HIGH_CONFIDENCE) {
+      if (suggestions.isNotEmpty &&
+          suggestions.first.confidence >= HIGH_CONFIDENCE) {
         return suggestions.first.category;
       }
 
@@ -235,7 +253,8 @@ class SmartCategorizationService {
     String? merchantName,
     DateTime? transactionTime,
   }) async {
-    final suggestions = await _apiService.getAICategorySuggestions(description, amount: amount);
+    final suggestions =
+        await _apiService.getAICategorySuggestions(description, amount: amount);
 
     return suggestions
         .map((suggestion) => CategorySuggestion(
@@ -258,7 +277,8 @@ class SmartCategorizationService {
 
     // Merchant pattern matching
     if (merchantName != null) {
-      final merchantSuggestion = _getMerchantBasedSuggestion(merchantName.toLowerCase());
+      final merchantSuggestion =
+          _getMerchantBasedSuggestion(merchantName.toLowerCase());
       if (merchantSuggestion != null) {
         suggestions.add(merchantSuggestion);
       }
@@ -271,7 +291,8 @@ class SmartCategorizationService {
     }
 
     // Description keyword matching
-    final keywordSuggestion = _getKeywordBasedSuggestion(description.toLowerCase());
+    final keywordSuggestion =
+        _getKeywordBasedSuggestion(description.toLowerCase());
     if (keywordSuggestion != null) {
       suggestions.add(keywordSuggestion);
     }
@@ -306,7 +327,8 @@ class SmartCategorizationService {
         final existing = merged[suggestion.category]!;
         merged[suggestion.category] = CategorySuggestion(
           category: suggestion.category,
-          confidence: math.min(1.0, (existing.confidence + suggestion.confidence) / 2 * 1.2),
+          confidence: math.min(
+              1.0, (existing.confidence + suggestion.confidence) / 2 * 1.2),
           reason: '${existing.reason}, ${suggestion.reason}',
           source: '${existing.source}+${suggestion.source}',
         );
@@ -328,31 +350,37 @@ class SmartCategorizationService {
       final confirmations = _userConfirmations[key] ?? 0;
 
       // Boost confidence based on user confirmations
-      double learningBoost = confirmations > 0 ? math.min(0.3, confirmations * 0.1) : 0.0;
+      double learningBoost =
+          confirmations > 0 ? math.min(0.3, confirmations * 0.1) : 0.0;
 
       return CategorySuggestion(
         category: suggestion.category,
         confidence: math.min(1.0, suggestion.confidence + learningBoost),
-        reason:
-            suggestion.reason + (confirmations > 0 ? ' (User confirmed $confirmations times)' : ''),
+        reason: suggestion.reason +
+            (confirmations > 0 ? ' (User confirmed $confirmations times)' : ''),
         source: suggestion.source,
       );
     }).toList();
   }
 
   /// Get fallback suggestions when AI fails
-  List<CategorySuggestion> _getFallbackSuggestions(String description, double amount) {
+  List<CategorySuggestion> _getFallbackSuggestions(
+      String description, double amount) {
     final desc = description.toLowerCase();
     final suggestions = <CategorySuggestion>[];
 
     // Rule-based fallback categorization
-    if (desc.contains('coffee') || desc.contains('starbucks') || desc.contains('cafe')) {
+    if (desc.contains('coffee') ||
+        desc.contains('starbucks') ||
+        desc.contains('cafe')) {
       suggestions.add(CategorySuggestion(
           category: 'Food & Dining',
           confidence: 0.8,
           reason: 'Coffee shop pattern',
           source: 'fallback'));
-    } else if (desc.contains('gas') || desc.contains('fuel') || desc.contains('shell')) {
+    } else if (desc.contains('gas') ||
+        desc.contains('fuel') ||
+        desc.contains('shell')) {
       suggestions.add(CategorySuggestion(
           category: 'Transportation',
           confidence: 0.8,
@@ -366,13 +394,17 @@ class SmartCategorizationService {
           confidence: 0.8,
           reason: 'Grocery pattern',
           source: 'fallback'));
-    } else if (desc.contains('restaurant') || desc.contains('dining') || desc.contains('pizza')) {
+    } else if (desc.contains('restaurant') ||
+        desc.contains('dining') ||
+        desc.contains('pizza')) {
       suggestions.add(CategorySuggestion(
           category: 'Food & Dining',
           confidence: 0.8,
           reason: 'Restaurant pattern',
           source: 'fallback'));
-    } else if (desc.contains('movie') || desc.contains('cinema') || desc.contains('netflix')) {
+    } else if (desc.contains('movie') ||
+        desc.contains('cinema') ||
+        desc.contains('netflix')) {
       suggestions.add(CategorySuggestion(
           category: 'Entertainment',
           confidence: 0.7,
@@ -380,7 +412,10 @@ class SmartCategorizationService {
           source: 'fallback'));
     } else {
       suggestions.add(CategorySuggestion(
-          category: 'General', confidence: 0.3, reason: 'Default category', source: 'fallback'));
+          category: 'General',
+          confidence: 0.3,
+          reason: 'Default category',
+          source: 'fallback'));
     }
 
     return suggestions;
@@ -389,7 +424,8 @@ class SmartCategorizationService {
   /// Update merchant learning patterns
   void _updateMerchantPattern(String merchant, String category) {
     _merchantPatterns.putIfAbsent(merchant, () => {});
-    _merchantPatterns[merchant]![category] = (_merchantPatterns[merchant]![category] ?? 0.0) + 1.0;
+    _merchantPatterns[merchant]![category] =
+        (_merchantPatterns[merchant]![category] ?? 0.0) + 1.0;
   }
 
   /// Update amount learning patterns
@@ -404,7 +440,8 @@ class SmartCategorizationService {
   void _updateTimePattern(DateTime time, String category) {
     final timeKey = '${time.weekday}_${time.hour}';
     _timePatterns.putIfAbsent(timeKey, () => {});
-    _timePatterns[timeKey]![category] = (_timePatterns[timeKey]![category] ?? 0.0) + 1.0;
+    _timePatterns[timeKey]![category] =
+        (_timePatterns[timeKey]![category] ?? 0.0) + 1.0;
   }
 
   /// Get merchant-based suggestion
@@ -413,7 +450,8 @@ class SmartCategorizationService {
     if (patterns == null || patterns.isEmpty) return null;
 
     final total = patterns.values.fold(0.0, (sum, count) => sum + count);
-    final topCategory = patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
+    final topCategory =
+        patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
 
     return CategorySuggestion(
       category: topCategory.key,
@@ -430,11 +468,13 @@ class SmartCategorizationService {
     if (patterns == null || patterns.isEmpty) return null;
 
     final total = patterns.values.fold(0.0, (sum, count) => sum + count);
-    final topCategory = patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
+    final topCategory =
+        patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
 
     return CategorySuggestion(
       category: topCategory.key,
-      confidence: (topCategory.value / total) * 0.7, // Lower confidence for amount-only
+      confidence:
+          (topCategory.value / total) * 0.7, // Lower confidence for amount-only
       reason: 'Amount pattern',
       source: 'local_ml',
     );
@@ -453,11 +493,13 @@ class SmartCategorizationService {
     if (patterns == null || patterns.isEmpty) return null;
 
     final total = patterns.values.fold(0.0, (sum, count) => sum + count);
-    final topCategory = patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
+    final topCategory =
+        patterns.entries.reduce((a, b) => a.value > b.value ? a : b);
 
     return CategorySuggestion(
       category: topCategory.key,
-      confidence: (topCategory.value / total) * 0.5, // Lower confidence for time-only
+      confidence:
+          (topCategory.value / total) * 0.5, // Lower confidence for time-only
       reason: 'Time pattern',
       source: 'local_ml',
     );
@@ -584,7 +626,8 @@ class SpendingAlert {
     required this.suggestions,
   });
 
-  double get deviationPercentage => ((amount - expectedAmount) / expectedAmount * 100).abs();
+  double get deviationPercentage =>
+      ((amount - expectedAmount) / expectedAmount * 100).abs();
 }
 
 enum AlertType { info, warning, critical }

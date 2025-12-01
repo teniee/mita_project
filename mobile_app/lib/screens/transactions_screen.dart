@@ -34,7 +34,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Delete Transaction'),
-          content: const Text('Are you sure you want to delete this transaction?'),
+          content:
+              const Text('Are you sure you want to delete this transaction?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -60,7 +61,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete transaction: ${provider.errorMessage}')),
+            SnackBar(
+                content: Text(
+                    'Failed to delete transaction: ${provider.errorMessage}')),
           );
         }
       }
@@ -171,7 +174,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : transactions.isEmpty
               ? RefreshIndicator(
-                  onRefresh: () => context.read<TransactionProvider>().refresh(),
+                  onRefresh: () =>
+                      context.read<TransactionProvider>().refresh(),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: SizedBox(
@@ -211,7 +215,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: () => context.read<TransactionProvider>().refresh(),
+                  onRefresh: () =>
+                      context.read<TransactionProvider>().refresh(),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: transactions.length,
@@ -236,16 +241,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             builder: (BuildContext context) {
                               return AlertDialog(
                                 title: const Text('Confirm Delete'),
-                                content:
-                                    const Text('Are you sure you want to delete this transaction?'),
+                                content: const Text(
+                                    'Are you sure you want to delete this transaction?'),
                                 actions: <Widget>[
                                   TextButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
                                     child: const Text('Cancel'),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.of(context).pop(true),
-                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red),
                                     child: const Text('Delete'),
                                   ),
                                 ],
@@ -266,7 +274,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 ),
                               ),
                             );
-                            if (result == true) context.read<TransactionProvider>().refresh();
+                            if (result == true)
+                              context.read<TransactionProvider>().refresh();
                           },
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -282,7 +291,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                     width: 48,
                                     height: 48,
                                     decoration: BoxDecoration(
-                                      color: _getCategoryColor(transaction.category),
+                                      color: _getCategoryColor(
+                                          transaction.category),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
@@ -294,14 +304,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           transaction.merchant ??
                                               transaction.description ??
                                               'Transaction',
                                           style: const TextStyle(
-                                            fontFamily: AppTypography.fontHeading,
+                                            fontFamily:
+                                                AppTypography.fontHeading,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 16,
                                             color: AppColors.textPrimary,
@@ -350,17 +362,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
                                             color: Colors.blue.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.repeat, size: 10, color: Colors.blue),
+                                              Icon(Icons.repeat,
+                                                  size: 10, color: Colors.blue),
                                               SizedBox(width: 4),
                                               Text(
                                                 'Recurring',
                                                 style: TextStyle(
-                                                  fontFamily: AppTypography.fontBody,
+                                                  fontFamily:
+                                                      AppTypography.fontBody,
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.blue,

@@ -14,7 +14,8 @@ import 'logging_service.dart';
 /// 2. Add it to _pinnedCertificates list
 /// 3. Update certificates before expiry (typical 90 days)
 class CertificatePinningService {
-  static final CertificatePinningService _instance = CertificatePinningService._internal();
+  static final CertificatePinningService _instance =
+      CertificatePinningService._internal();
   factory CertificatePinningService() => _instance;
   CertificatePinningService._internal();
 
@@ -120,7 +121,8 @@ class CertificatePinningService {
 
       return fingerprint;
     } catch (e) {
-      logError('Failed to get certificate fingerprint: $e', tag: 'CERT_PINNING');
+      logError('Failed to get certificate fingerprint: $e',
+          tag: 'CERT_PINNING');
       return '';
     }
   }
@@ -161,7 +163,8 @@ class CertificatePinningService {
 
       return isValid;
     } catch (e) {
-      logError('Certificate validation error for $host: $e', tag: 'CERT_PINNING');
+      logError('Certificate validation error for $host: $e',
+          tag: 'CERT_PINNING');
       return false;
     }
   }
@@ -217,7 +220,8 @@ class CertificatePinningService {
 
       return info;
     } catch (e) {
-      logError('Failed to get certificate info for $host: $e', tag: 'CERT_PINNING');
+      logError('Failed to get certificate info for $host: $e',
+          tag: 'CERT_PINNING');
       return {'error': e.toString()};
     }
   }

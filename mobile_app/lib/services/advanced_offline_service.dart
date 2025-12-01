@@ -8,7 +8,8 @@ import 'logging_service.dart';
 
 /// Advanced offline service with intelligent caching and sync
 class AdvancedOfflineService {
-  static final AdvancedOfflineService _instance = AdvancedOfflineService._internal();
+  static final AdvancedOfflineService _instance =
+      AdvancedOfflineService._internal();
   factory AdvancedOfflineService() => _instance;
   AdvancedOfflineService._internal();
 
@@ -152,13 +153,16 @@ class AdvancedOfflineService {
   }
 
   /// Upgrade database tables
-  Future<void> _upgradeTables(Database db, int oldVersion, int newVersion) async {
+  Future<void> _upgradeTables(
+      Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE cache ADD COLUMN size INTEGER DEFAULT 0');
     }
     if (oldVersion < 3) {
-      await db.execute('ALTER TABLE pending_syncs ADD COLUMN scheduled_at INTEGER DEFAULT 0');
-      await db.execute('UPDATE pending_syncs SET scheduled_at = created_at WHERE scheduled_at = 0');
+      await db.execute(
+          'ALTER TABLE pending_syncs ADD COLUMN scheduled_at INTEGER DEFAULT 0');
+      await db.execute(
+          'UPDATE pending_syncs SET scheduled_at = created_at WHERE scheduled_at = 0');
     }
   }
 
@@ -172,7 +176,8 @@ class AdvancedOfflineService {
     // Listen for connectivity changes
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
       (List<ConnectivityResult> results) {
-        final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
+        final result =
+            results.isNotEmpty ? results.first : ConnectivityResult.none;
         final wasOnline = _isOnline;
         _isOnline = result != ConnectivityResult.none;
 
@@ -351,7 +356,8 @@ class AdvancedOfflineService {
   }
 
   /// Get offline expenses
-  Future<List<Map<String, dynamic>>> getOfflineExpenses(int userId, {int? limit}) async {
+  Future<List<Map<String, dynamic>>> getOfflineExpenses(int userId,
+      {int? limit}) async {
     if (_database == null) return [];
 
     return await _database!.query(
@@ -397,8 +403,10 @@ class AdvancedOfflineService {
       final row = results.first;
       return {
         'profile_data': jsonDecode(row['profile_data']),
-        'settings': row['settings'] != null ? jsonDecode(row['settings']) : null,
-        'last_updated': DateTime.fromMillisecondsSinceEpoch(row['last_updated']),
+        'settings':
+            row['settings'] != null ? jsonDecode(row['settings']) : null,
+        'last_updated':
+            DateTime.fromMillisecondsSinceEpoch(row['last_updated']),
       };
     }
 
@@ -470,7 +478,9 @@ class AdvancedOfflineService {
   Future<void> _processPendingSyncs() async {
     final now = DateTime.now();
     final toProcess = _pendingSyncs
-        .where((sync) => sync.scheduledAt.isBefore(now) || sync.scheduledAt.isAtSameMomentAs(now))
+        .where((sync) =>
+            sync.scheduledAt.isBefore(now) ||
+            sync.scheduledAt.isAtSameMomentAs(now))
         .toList();
 
     for (final sync in toProcess) {
@@ -488,7 +498,8 @@ class AdvancedOfflineService {
   Future<void> _processSingleSync(PendingSync sync) async {
     // This would integrate with your ApiService
     // For now, this is a placeholder
-    logDebug('Processing sync: ${sync.method} ${sync.endpoint}', tag: 'OFFLINE');
+    logDebug('Processing sync: ${sync.method} ${sync.endpoint}',
+        tag: 'OFFLINE');
 
     // Simulate API call
     await Future.delayed(const Duration(milliseconds: 500));
@@ -509,10 +520,12 @@ class AdvancedOfflineService {
       // Max retries reached, remove from queue
       await _removeSyncFromQueue(sync.id);
       _pendingSyncs.remove(sync);
-      logError('Sync failed permanently: ${sync.endpoint} - $error', tag: 'OFFLINE');
+      logError('Sync failed permanently: ${sync.endpoint} - $error',
+          tag: 'OFFLINE');
     } else {
       // Update retry count and schedule for later
-      final backoffDelay = Duration(minutes: newRetryCount * 5); // Exponential backoff
+      final backoffDelay =
+          Duration(minutes: newRetryCount * 5); // Exponential backoff
       final newScheduledAt = DateTime.now().add(backoffDelay);
 
       await _database!.update(
@@ -528,7 +541,8 @@ class AdvancedOfflineService {
       sync.retryCount = newRetryCount;
       sync.scheduledAt = newScheduledAt;
 
-      logWarning('Sync failed, retrying later: ${sync.endpoint} - $error', tag: 'OFFLINE');
+      logWarning('Sync failed, retrying later: ${sync.endpoint} - $error',
+          tag: 'OFFLINE');
     }
   }
 
@@ -568,7 +582,8 @@ class AdvancedOfflineService {
     );
 
     // Clean memory cache
-    _memoryCache.removeWhere((key, entry) => entry.expiresAt.isBefore(DateTime.now()));
+    _memoryCache
+        .removeWhere((key, entry) => entry.expiresAt.isBefore(DateTime.now()));
   }
 
   /// Clean memory cache when it gets too large
@@ -612,10 +627,12 @@ class AdvancedOfflineService {
       );
     }
 
-    final pendingCount = await _database!.rawQuery('SELECT COUNT(*) as count FROM pending_syncs');
-    final failedCount = await _database!
-        .rawQuery('SELECT COUNT(*) as count FROM pending_syncs WHERE retry_count >= max_retries');
-    final cacheCount = await _database!.rawQuery('SELECT COUNT(*) as count FROM cache');
+    final pendingCount = await _database!
+        .rawQuery('SELECT COUNT(*) as count FROM pending_syncs');
+    final failedCount = await _database!.rawQuery(
+        'SELECT COUNT(*) as count FROM pending_syncs WHERE retry_count >= max_retries');
+    final cacheCount =
+        await _database!.rawQuery('SELECT COUNT(*) as count FROM cache');
 
     return SyncStatus(
       isOnline: _isOnline,
@@ -702,7 +719,9 @@ class PendingSync {
       endpoint: map['endpoint'],
       method: map['method'],
       data: map['data'] != null ? jsonDecode(map['data']) : null,
-      headers: map['headers'] != null ? Map<String, String>.from(jsonDecode(map['headers'])) : null,
+      headers: map['headers'] != null
+          ? Map<String, String>.from(jsonDecode(map['headers']))
+          : null,
       priority: map['priority'],
       retryCount: map['retry_count'],
       maxRetries: map['max_retries'],

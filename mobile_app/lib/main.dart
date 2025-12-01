@@ -70,7 +70,8 @@ Future<void> _initFirebase() async {
 
   // SECURITY: Push token registration moved to post-authentication flow
   // Tokens are now only registered after successful user login via SecurePushTokenManager
-  logInfo('Firebase initialized - push token registration deferred to post-authentication',
+  logInfo(
+      'Firebase initialized - push token registration deferred to post-authentication',
       tag: 'MAIN');
 
   await PushNotificationService.initialize(navigatorKey);
@@ -96,7 +97,8 @@ void main() async {
 
       if (!isSecure && !kDebugMode) {
         // Get security recommendations
-        final recommendations = await securityService.getSecurityRecommendations();
+        final recommendations =
+            await securityService.getSecurityRecommendations();
         logWarning(
           'iOS Security check failed: ${recommendations.join(", ")}',
           tag: 'MAIN_SECURITY',
@@ -124,8 +126,10 @@ void main() async {
 
   // Initialize comprehensive Sentry monitoring for financial application
   const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
-  const environment = String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
-  const sentryRelease = String.fromEnvironment('SENTRY_RELEASE', defaultValue: 'mita-mobile@1.0.0');
+  const environment =
+      String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
+  const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
+      defaultValue: 'mita-mobile@1.0.0');
 
   if (sentryDsn.isNotEmpty) {
     await sentryService.initialize(
@@ -133,13 +137,15 @@ void main() async {
       environment: environment,
       release: sentryRelease,
       enableCrashReporting: true,
-      enablePerformanceMonitoring: !kDebugMode, // Disable in debug for performance
+      enablePerformanceMonitoring:
+          !kDebugMode, // Disable in debug for performance
       enableUserInteractionTracing: true,
       tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
     );
   } else {
     if (kDebugMode)
-      dev.log('Sentry DSN not configured - advanced error monitoring disabled', name: 'MitaApp');
+      dev.log('Sentry DSN not configured - advanced error monitoring disabled',
+          name: 'MitaApp');
   }
 
   await _initFirebase();
@@ -325,7 +331,8 @@ class _MITAAppState extends State<MITAApp> {
 
       initialRoute: '/',
       onGenerateRoute: (settings) {
-        logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}', tag: 'NAVIGATION');
+        logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
+            tag: 'NAVIGATION');
         return null; // Let the routes table handle it
       },
       routes: {
@@ -474,7 +481,8 @@ class _MITAAppState extends State<MITAApp> {
                         final status = LoadingService.instance.getStatus();
                         if (status.globalLoadingDuration != null &&
                             status.globalLoadingDuration!.inSeconds >= 10) {
-                          LoadingService.instance.forceHide(reason: 'user_emergency_dismiss');
+                          LoadingService.instance
+                              .forceHide(reason: 'user_emergency_dismiss');
                         }
                       },
                     ),
@@ -514,7 +522,8 @@ class _EnhancedModalBarrier extends StatelessWidget {
 /// Enhanced loading indicator with status and timeout information
 class _EnhancedLoadingIndicator extends StatefulWidget {
   @override
-  State<_EnhancedLoadingIndicator> createState() => _EnhancedLoadingIndicatorState();
+  State<_EnhancedLoadingIndicator> createState() =>
+      _EnhancedLoadingIndicatorState();
 }
 
 class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
@@ -623,7 +632,8 @@ class _EnhancedLoadingIndicatorState extends State<_EnhancedLoadingIndicator>
                 const SizedBox(height: 16),
                 TextButton.icon(
                   onPressed: () {
-                    LoadingService.instance.forceHide(reason: 'user_emergency_dismiss');
+                    LoadingService.instance
+                        .forceHide(reason: 'user_emergency_dismiss');
                   },
                   icon: Icon(
                     Icons.close_rounded,

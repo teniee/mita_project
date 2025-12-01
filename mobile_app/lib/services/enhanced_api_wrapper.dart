@@ -15,7 +15,8 @@ import 'logging_service.dart';
 /// Enhanced API service wrapper with comprehensive error handling
 class EnhancedApiWrapper {
   static EnhancedApiWrapper? _instance;
-  static EnhancedApiWrapper get instance => _instance ??= EnhancedApiWrapper._();
+  static EnhancedApiWrapper get instance =>
+      _instance ??= EnhancedApiWrapper._();
 
   EnhancedApiWrapper._();
 
@@ -40,7 +41,8 @@ class EnhancedApiWrapper {
   }) async {
     // Check circuit breaker
     if (enableCircuitBreaker && _isCircuitOpen(operationName)) {
-      logWarning('Circuit breaker open for $operationName', tag: 'ENHANCED_API');
+      logWarning('Circuit breaker open for $operationName',
+          tag: 'ENHANCED_API');
 
       AppErrorHandler.reportError(
         'Circuit breaker triggered for $operationName',
@@ -66,7 +68,8 @@ class EnhancedApiWrapper {
             _resetCircuitBreaker(operationName);
           }
 
-          logDebug('API operation successful: $operationName', tag: 'ENHANCED_API');
+          logDebug('API operation successful: $operationName',
+              tag: 'ENHANCED_API');
           return result;
         } catch (error) {
           // Update circuit breaker on failure
@@ -160,7 +163,8 @@ class EnhancedApiWrapper {
   }
 
   /// Budget redistribution with careful error handling
-  Future<Map<String, dynamic>?> redistributeBudget(Map<String, dynamic> calendarData) async {
+  Future<Map<String, dynamic>?> redistributeBudget(
+      Map<String, dynamic> calendarData) async {
     return await executeApiCall<Map<String, dynamic>>(
       () async => await _apiService.redistributeCalendarBudget(calendarData),
       operationName: 'Budget Redistribution',
@@ -278,7 +282,8 @@ class EnhancedApiWrapper {
 
     if (currentFailures + 1 >= _maxFailuresBeforeCircuitBreaker) {
       _circuitBreakerRegistry[operationName] = DateTime.now();
-      logWarning('Circuit breaker activated for $operationName', tag: 'CIRCUIT_BREAKER');
+      logWarning('Circuit breaker activated for $operationName',
+          tag: 'CIRCUIT_BREAKER');
     }
   }
 
@@ -288,7 +293,8 @@ class EnhancedApiWrapper {
   }
 
   /// Enhanced error reporting with API-specific context
-  void _reportApiError(dynamic error, String operationName, ErrorCategory category) {
+  void _reportApiError(
+      dynamic error, String operationName, ErrorCategory category) {
     Map<String, dynamic> context = {
       'operation': operationName,
       'timestamp': DateTime.now().toIso8601String(),
@@ -310,7 +316,8 @@ class EnhancedApiWrapper {
         severity = ErrorSeverity.high; // Network connectivity issues
       } else if (error.response!.statusCode! >= 500) {
         severity = ErrorSeverity.high; // Server errors
-      } else if (error.response!.statusCode! == 401 || error.response!.statusCode! == 403) {
+      } else if (error.response!.statusCode! == 401 ||
+          error.response!.statusCode! == 403) {
         severity = ErrorSeverity.high; // Auth issues
       }
     } else if (error is TimeoutException) {
@@ -362,17 +369,23 @@ class EnhancedApiWrapper {
         'response_time_ms': DateTime.now().difference(startTime).inMilliseconds
       };
     } catch (e) {
-      healthResults['dashboard_api'] = {'status': 'unhealthy', 'error': e.toString()};
+      healthResults['dashboard_api'] = {
+        'status': 'unhealthy',
+        'error': e.toString()
+      };
     }
 
     // Add circuit breaker status
     healthResults['circuit_breakers'] = getCircuitBreakerStats();
 
     // Add overall health score
-    final healthyApis =
-        healthResults.values.where((v) => v is Map && v['status'] == 'healthy').length;
-    final totalApis = healthResults.length - 1; // Excluding circuit_breakers entry
-    healthResults['overall_health_score'] = totalApis > 0 ? (healthyApis / totalApis) : 0.0;
+    final healthyApis = healthResults.values
+        .where((v) => v is Map && v['status'] == 'healthy')
+        .length;
+    final totalApis =
+        healthResults.length - 1; // Excluding circuit_breakers entry
+    healthResults['overall_health_score'] =
+        totalApis > 0 ? (healthyApis / totalApis) : 0.0;
 
     return healthResults;
   }
@@ -412,7 +425,8 @@ extension ApiConvenience on EnhancedApiWrapper {
 
     results['refresh_timestamp'] = DateTime.now().toIso8601String();
     results['success_count'] =
-        results.values.where((v) => v != null && v != false).length - 1; // Excluding timestamp
+        results.values.where((v) => v != null && v != false).length -
+            1; // Excluding timestamp
 
     return results;
   }

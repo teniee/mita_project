@@ -3,7 +3,8 @@ import 'api_service.dart';
 
 /// Social comparison intelligence service for peer-based insights
 class SocialComparisonService {
-  static final SocialComparisonService _instance = SocialComparisonService._internal();
+  static final SocialComparisonService _instance =
+      SocialComparisonService._internal();
   factory SocialComparisonService() => _instance;
   SocialComparisonService._internal();
 
@@ -30,9 +31,11 @@ class SocialComparisonService {
     final peerData = _extractPeerData(peerComparisonData);
 
     // Spending comparison
-    final userSpending = (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
+    final userSpending =
+        (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
     final peerAverageSpending = peerData['averageSpending']!;
-    final spendingPercentile = _calculatePercentile(userSpending, peerAverageSpending);
+    final spendingPercentile =
+        _calculatePercentile(userSpending, peerAverageSpending);
 
     insights.add(SocialComparisonInsight(
       insightId: 'spending_comparison_${DateTime.now().millisecondsSinceEpoch}',
@@ -52,9 +55,11 @@ class SocialComparisonService {
     ));
 
     // Savings rate comparison
-    final userSavingsRate = (userMetrics['savingsRate'] as num?)?.toDouble() ?? 0.0;
+    final userSavingsRate =
+        (userMetrics['savingsRate'] as num?)?.toDouble() ?? 0.0;
     final peerAverageSavingsRate = peerData['averageSavingsRate']!;
-    final savingsPercentile = _calculatePercentile(userSavingsRate, peerAverageSavingsRate);
+    final savingsPercentile =
+        _calculatePercentile(userSavingsRate, peerAverageSavingsRate);
 
     insights.add(SocialComparisonInsight(
       insightId: 'savings_comparison_${DateTime.now().millisecondsSinceEpoch}',
@@ -63,9 +68,10 @@ class SocialComparisonService {
       userValue: userSavingsRate,
       peerAverage: peerAverageSavingsRate,
       percentile: savingsPercentile,
-      comparisonText: _generateComparisonText(
-          'savings_rate', savingsPercentile, userSavingsRate, peerAverageSavingsRate),
-      recommendation: _generateRecommendation('savings_rate', savingsPercentile),
+      comparisonText: _generateComparisonText('savings_rate', savingsPercentile,
+          userSavingsRate, peerAverageSavingsRate),
+      recommendation:
+          _generateRecommendation('savings_rate', savingsPercentile),
       confidenceLevel: 0.8,
       metadata: {
         'sampleSize': peerData['sampleSize'],
@@ -79,8 +85,10 @@ class SocialComparisonService {
   /// Extract peer data from API response
   Map<String, double> _extractPeerData(Map<String, dynamic> apiResponse) {
     return {
-      'averageSpending': (apiResponse['peer_average'] as num?)?.toDouble() ?? 0.0,
-      'averageSavingsRate': (apiResponse['peer_savings_rate'] as num?)?.toDouble() ?? 0.15,
+      'averageSpending':
+          (apiResponse['peer_average'] as num?)?.toDouble() ?? 0.0,
+      'averageSavingsRate':
+          (apiResponse['peer_savings_rate'] as num?)?.toDouble() ?? 0.15,
       'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble() ?? 1000.0,
     };
   }
@@ -92,9 +100,11 @@ class SocialComparisonService {
   ) {
     final insights = <SocialComparisonInsight>[];
 
-    final userSpending = (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
+    final userSpending =
+        (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
     final peerAverageSpending = peerData['averageSpending']!;
-    final spendingPercentile = _calculatePercentile(userSpending, peerAverageSpending);
+    final spendingPercentile =
+        _calculatePercentile(userSpending, peerAverageSpending);
 
     insights.add(SocialComparisonInsight(
       insightId: 'spending_comparison_${DateTime.now().millisecondsSinceEpoch}',

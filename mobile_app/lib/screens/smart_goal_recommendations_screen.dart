@@ -11,10 +11,12 @@ class SmartGoalRecommendationsScreen extends StatefulWidget {
   const SmartGoalRecommendationsScreen({super.key});
 
   @override
-  State<SmartGoalRecommendationsScreen> createState() => _SmartGoalRecommendationsScreenState();
+  State<SmartGoalRecommendationsScreen> createState() =>
+      _SmartGoalRecommendationsScreenState();
 }
 
-class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendationsScreen> {
+class _SmartGoalRecommendationsScreenState
+    extends State<SmartGoalRecommendationsScreen> {
   @override
   void initState() {
     super.initState();
@@ -24,7 +26,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     });
   }
 
-  Future<void> _createGoalFromRecommendation(Map<String, dynamic> recommendation) async {
+  Future<void> _createGoalFromRecommendation(
+      Map<String, dynamic> recommendation) async {
     final provider = context.read<GoalsProvider>();
     final success = await provider.createGoalFromRecommendation(recommendation);
 
@@ -33,7 +36,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Goal "${recommendation['title']}" created successfully!'),
+          content:
+              Text('Goal "${recommendation['title']}" created successfully!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -41,7 +45,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${provider.errorMessage ?? "Failed to create goal"}'),
+          content: Text(
+              'Error: ${provider.errorMessage ?? "Failed to create goal"}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -97,7 +102,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     if (recommendations.isNotEmpty) ...[
                       _buildSectionTitle('AI Recommendations for You'),
                       const SizedBox(height: 12),
-                      ...recommendations.map((rec) => _buildRecommendationCard(rec)),
+                      ...recommendations
+                          .map((rec) => _buildRecommendationCard(rec)),
                       const SizedBox(height: 24),
                     ],
 
@@ -118,7 +124,9 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     ],
 
                     // Empty state
-                    if (recommendations.isEmpty && opportunities.isEmpty && adjustments.isEmpty)
+                    if (recommendations.isEmpty &&
+                        opportunities.isEmpty &&
+                        adjustments.isEmpty)
                       _buildEmptyState(),
                   ],
                 ),
@@ -149,7 +157,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.auto_awesome, color: AppColors.primary, size: 32),
+              child: const Icon(Icons.auto_awesome,
+                  color: AppColors.primary, size: 32),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -235,7 +244,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: priorityColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -325,7 +335,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                     color: Colors.amber,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.lightbulb, color: Colors.white, size: 20),
+                  child: const Icon(Icons.lightbulb,
+                      color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -367,7 +378,8 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                   Icons.trending_up,
                 ),
                 if (opp['category'] != null)
-                  _buildInfoChip('Category', (opp['category'] ?? '') as String, Icons.category),
+                  _buildInfoChip('Category', (opp['category'] ?? '') as String,
+                      Icons.category),
               ],
             ),
           ],
@@ -643,22 +655,27 @@ class _SmartGoalRecommendationsScreenState extends State<SmartGoalRecommendation
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailRow('Description',
-                        (rec['description'] ?? rec['reasoning'] ?? 'No description') as String),
-                    const SizedBox(height: 16),
-                    _buildDetailRow('Category', (rec['category'] ?? 'General') as String),
+                    _buildDetailRow(
+                        'Description',
+                        (rec['description'] ??
+                            rec['reasoning'] ??
+                            'No description') as String),
                     const SizedBox(height: 16),
                     _buildDetailRow(
-                        'Target Amount', '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
+                        'Category', (rec['category'] ?? 'General') as String),
+                    const SizedBox(height: 16),
+                    _buildDetailRow('Target Amount',
+                        '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
                     _buildDetailRow('Monthly Contribution',
                         '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Priority', (rec['priority'] ?? 'medium') as String),
+                    _buildDetailRow(
+                        'Priority', (rec['priority'] ?? 'medium') as String),
                     if (rec['suggested_deadline'] != null) ...[
                       const SizedBox(height: 16),
-                      _buildDetailRow(
-                          'Suggested Deadline', (rec['suggested_deadline'] ?? '') as String),
+                      _buildDetailRow('Suggested Deadline',
+                          (rec['suggested_deadline'] ?? '') as String),
                     ],
                   ],
                 ),

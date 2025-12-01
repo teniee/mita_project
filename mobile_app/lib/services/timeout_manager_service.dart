@@ -5,7 +5,8 @@ import 'loading_service.dart';
 
 /// Robust timeout manager with exponential backoff and intelligent retry logic
 class TimeoutManagerService {
-  static final TimeoutManagerService _instance = TimeoutManagerService._internal();
+  static final TimeoutManagerService _instance =
+      TimeoutManagerService._internal();
   factory TimeoutManagerService() => _instance;
   TimeoutManagerService._internal();
 
@@ -86,7 +87,8 @@ class TimeoutManagerService {
           operationName: operationName,
         );
       } catch (e) {
-        final shouldRetry = attempt < maxRetries && _shouldRetryException(e, retryOnExceptions);
+        final shouldRetry =
+            attempt < maxRetries && _shouldRetryException(e, retryOnExceptions);
 
         if (shouldRetry) {
           logWarning(
@@ -102,7 +104,8 @@ class TimeoutManagerService {
 
           await Future.delayed(currentDelay);
           currentDelay = Duration(
-            milliseconds: (currentDelay.inMilliseconds * _backoffMultiplier).round(),
+            milliseconds:
+                (currentDelay.inMilliseconds * _backoffMultiplier).round(),
           );
           attempt++;
         } else {
@@ -238,7 +241,8 @@ class TimeoutManagerService {
     return executeWithTimeout<T>(
       operation: operation,
       timeout: getRecommendedTimeout(OperationType.authentication),
-      maxRetries: 1, // Reduced retries for slow server to avoid extremely long wait times
+      maxRetries:
+          1, // Reduced retries for slow server to avoid extremely long wait times
       operationName: operationName ?? 'Authentication Operation',
     );
   }
@@ -362,7 +366,8 @@ class TimeoutException implements Exception {
   TimeoutException(this.message, this.timeout) : occurredAt = DateTime.now();
 
   @override
-  String toString() => 'TimeoutException: $message (timeout: ${timeout.inSeconds}s)';
+  String toString() =>
+      'TimeoutException: $message (timeout: ${timeout.inSeconds}s)';
 }
 
 /// Timeout configuration for specific operations

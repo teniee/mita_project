@@ -4,7 +4,8 @@ import 'country_profiles_service.dart';
 
 /// Enhanced income classification with smooth tier transitions and intelligent blending
 class EnhancedIncomeService {
-  static final EnhancedIncomeService _instance = EnhancedIncomeService._internal();
+  static final EnhancedIncomeService _instance =
+      EnhancedIncomeService._internal();
   factory EnhancedIncomeService() => _instance;
   EnhancedIncomeService._internal();
 
@@ -24,10 +25,12 @@ class EnhancedIncomeService {
       final regionalData = await _getRegionalIncomeData(countryCode, stateCode);
 
       // Use regional thresholds if available, otherwise default
-      final tierThresholds = regionalData?.tierThresholds ?? _getDefaultTierThresholds();
+      final tierThresholds =
+          regionalData?.tierThresholds ?? _getDefaultTierThresholds();
 
       // Classify with smooth transitions
-      return _classifyWithTransitions(monthlyIncome, tierThresholds, regionalData);
+      return _classifyWithTransitions(
+          monthlyIncome, tierThresholds, regionalData);
     } catch (e) {
       // Fallback to basic classification
       return _createFallbackClassification(monthlyIncome);
@@ -35,24 +38,31 @@ class EnhancedIncomeService {
   }
 
   /// Calculate blended budget parameters based on classification
-  Map<String, double> calculateBlendedBudgetParameters(IncomeClassificationResult classification) {
+  Map<String, double> calculateBlendedBudgetParameters(
+      IncomeClassificationResult classification) {
     if (!classification.isInTransition) {
       return _getBudgetParametersForTier(classification.primaryTier);
     }
 
     // Blend parameters from both tiers
-    final primaryParams = _getBudgetParametersForTier(classification.primaryTier);
-    final secondaryParams = _getBudgetParametersForTier(classification.secondaryTier!);
+    final primaryParams =
+        _getBudgetParametersForTier(classification.primaryTier);
+    final secondaryParams =
+        _getBudgetParametersForTier(classification.secondaryTier!);
 
     return {
-      'fixedCommitmentRatio':
-          primaryParams['fixedCommitmentRatio']! * classification.primaryWeight +
-              secondaryParams['fixedCommitmentRatio']! * classification.secondaryWeight,
-      'savingsTargetRatio': primaryParams['savingsTargetRatio']! * classification.primaryWeight +
-          secondaryParams['savingsTargetRatio']! * classification.secondaryWeight,
-      'redistributionBuffer':
-          primaryParams['redistributionBuffer']! * classification.primaryWeight +
-              secondaryParams['redistributionBuffer']! * classification.secondaryWeight,
+      'fixedCommitmentRatio': primaryParams['fixedCommitmentRatio']! *
+              classification.primaryWeight +
+          secondaryParams['fixedCommitmentRatio']! *
+              classification.secondaryWeight,
+      'savingsTargetRatio':
+          primaryParams['savingsTargetRatio']! * classification.primaryWeight +
+              secondaryParams['savingsTargetRatio']! *
+                  classification.secondaryWeight,
+      'redistributionBuffer': primaryParams['redistributionBuffer']! *
+              classification.primaryWeight +
+          secondaryParams['redistributionBuffer']! *
+              classification.secondaryWeight,
     };
   }
 
@@ -95,7 +105,8 @@ class EnhancedIncomeService {
 
       if (monthlyIncome >= lowerBound && monthlyIncome <= upperBound) {
         // In transition zone
-        final transitionFactor = (monthlyIncome - lowerBound) / (upperBound - lowerBound);
+        final transitionFactor =
+            (monthlyIncome - lowerBound) / (upperBound - lowerBound);
         final smoothFactor = _sigmoidTransition(transitionFactor);
 
         final lowerTier = i > 0 ? sortedThresholds[i - 1].key : IncomeTier.low;
@@ -105,13 +116,15 @@ class EnhancedIncomeService {
           primaryTier: smoothFactor > 0.5 ? upperTier : lowerTier,
           secondaryTier: smoothFactor > 0.5 ? lowerTier : upperTier,
           primaryWeight: smoothFactor > 0.5 ? smoothFactor : 1.0 - smoothFactor,
-          secondaryWeight: smoothFactor > 0.5 ? 1.0 - smoothFactor : smoothFactor,
+          secondaryWeight:
+              smoothFactor > 0.5 ? 1.0 - smoothFactor : smoothFactor,
           transitionFactor: smoothFactor,
           isInTransition: true,
           metadata: {
             'monthlyIncome': monthlyIncome,
             'threshold': threshold,
-            'transitionZone': '${_tierToString(lowerTier)}_to_${_tierToString(upperTier)}',
+            'transitionZone':
+                '${_tierToString(lowerTier)}_to_${_tierToString(upperTier)}',
             'regionalData': regionalData?.regionId ?? 'default',
           },
         );
@@ -134,7 +147,8 @@ class EnhancedIncomeService {
   }
 
   /// Create fallback classification for error cases
-  IncomeClassificationResult _createFallbackClassification(double monthlyIncome) {
+  IncomeClassificationResult _createFallbackClassification(
+      double monthlyIncome) {
     // Simple tier classification without transitions
     IncomeTier tier;
     if (monthlyIncome < 3000) {
@@ -163,7 +177,8 @@ class EnhancedIncomeService {
   }
 
   /// Get regional income data from CountryProfilesService
-  Future<RegionalIncomeData?> _getRegionalIncomeData(String? countryCode, String? stateCode) async {
+  Future<RegionalIncomeData?> _getRegionalIncomeData(
+      String? countryCode, String? stateCode) async {
     if (countryCode == null) return null;
 
     try {
@@ -176,14 +191,14 @@ class EnhancedIncomeService {
       // Convert string keys to IncomeTier enum
       final tierThresholds = <IncomeTier, double>{
         IncomeTier.low: 0.0,
-        IncomeTier.lowerMiddle:
-            _countryProfilesService.annualToMonthly(thresholdsMap['low'] ?? 36000.0),
-        IncomeTier.middle:
-            _countryProfilesService.annualToMonthly(thresholdsMap['lower_middle'] ?? 57600.0),
-        IncomeTier.upperMiddle:
-            _countryProfilesService.annualToMonthly(thresholdsMap['middle'] ?? 86400.0),
-        IncomeTier.high:
-            _countryProfilesService.annualToMonthly(thresholdsMap['upper_middle'] ?? 144000.0),
+        IncomeTier.lowerMiddle: _countryProfilesService
+            .annualToMonthly(thresholdsMap['low'] ?? 36000.0),
+        IncomeTier.middle: _countryProfilesService
+            .annualToMonthly(thresholdsMap['lower_middle'] ?? 57600.0),
+        IncomeTier.upperMiddle: _countryProfilesService
+            .annualToMonthly(thresholdsMap['middle'] ?? 86400.0),
+        IncomeTier.high: _countryProfilesService
+            .annualToMonthly(thresholdsMap['upper_middle'] ?? 144000.0),
       };
 
       // Calculate median income from thresholds

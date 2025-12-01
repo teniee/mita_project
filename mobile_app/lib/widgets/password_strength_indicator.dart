@@ -50,11 +50,12 @@ class PasswordStrengthIndicator extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.1),
+                  color: _getStrengthColor(validation.strength, colorScheme)
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color:
-                        _getStrengthColor(validation.strength, colorScheme).withValues(alpha: 0.3),
+                    color: _getStrengthColor(validation.strength, colorScheme)
+                        .withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -94,7 +95,8 @@ class PasswordStrengthIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildStrengthMeter(PasswordValidationResult validation, ColorScheme colorScheme) {
+  Widget _buildStrengthMeter(
+      PasswordValidationResult validation, ColorScheme colorScheme) {
     final strengthColor = _getStrengthColor(validation.strength, colorScheme);
 
     return Column(
@@ -131,14 +133,15 @@ class PasswordStrengthIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildRequirementsChecklist(PasswordValidationResult validation, ThemeData theme) {
+  Widget _buildRequirementsChecklist(
+      PasswordValidationResult validation, ThemeData theme) {
     final requirements = [
       _ChecklistItem('At least 8 characters', password.length >= 8),
       _ChecklistItem('Uppercase letter', password.contains(RegExp(r'[A-Z]'))),
       _ChecklistItem('Lowercase letter', password.contains(RegExp(r'[a-z]'))),
       _ChecklistItem('Number', password.contains(RegExp(r'\d'))),
-      _ChecklistItem(
-          'Special character', password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))),
+      _ChecklistItem('Special character',
+          password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))),
       _ChecklistItem('Strong password', validation.isStrong),
     ];
 
@@ -158,8 +161,9 @@ class PasswordStrengthIndicator extends StatelessWidget {
   }
 
   Widget _buildChecklistItem(_ChecklistItem item, ThemeData theme) {
-    final color =
-        item.isComplete ? Colors.green : theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    final color = item.isComplete
+        ? Colors.green
+        : theme.colorScheme.onSurface.withValues(alpha: 0.6);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),

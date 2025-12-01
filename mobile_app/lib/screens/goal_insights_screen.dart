@@ -173,7 +173,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
         if (recommendations.isEmpty)
           _buildEmptyRecommendations()
         else
-          ...recommendations.map((rec) => _buildRecommendationCard(rec.toString())),
+          ...recommendations
+              .map((rec) => _buildRecommendationCard(rec.toString())),
       ],
     );
   }
@@ -256,7 +257,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                   ),
                 ],
               ),
-              Icon(scoreIcon, size: 64, color: Colors.white.withValues(alpha: 0.7)),
+              Icon(scoreIcon,
+                  size: 64, color: Colors.white.withValues(alpha: 0.7)),
             ],
           ),
           const SizedBox(height: 16),
@@ -301,12 +303,14 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
           children: [
             _buildOverviewRow('Title', widget.goal.title, Icons.flag),
             const Divider(height: 24),
-            _buildOverviewRow('Target', widget.goal.formattedTargetAmount, Icons.savings),
+            _buildOverviewRow(
+                'Target', widget.goal.formattedTargetAmount, Icons.savings),
+            const Divider(height: 24),
+            _buildOverviewRow('Saved', widget.goal.formattedSavedAmount,
+                Icons.account_balance_wallet),
             const Divider(height: 24),
             _buildOverviewRow(
-                'Saved', widget.goal.formattedSavedAmount, Icons.account_balance_wallet),
-            const Divider(height: 24),
-            _buildOverviewRow('Progress', widget.goal.progressPercentage, Icons.show_chart),
+                'Progress', widget.goal.progressPercentage, Icons.show_chart),
             if (widget.goal.targetDate != null) ...[
               const Divider(height: 24),
               _buildOverviewRow(
@@ -376,7 +380,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                     style: TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontSize: 12,
-                      color: isLate ? Colors.red.shade700 : Colors.green.shade700,
+                      color:
+                          isLate ? Colors.red.shade700 : Colors.green.shade700,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -386,7 +391,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                       fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isLate ? Colors.red.shade800 : Colors.green.shade800,
+                      color:
+                          isLate ? Colors.red.shade800 : Colors.green.shade800,
                     ),
                   ),
                   if (isLate && target != null) ...[
@@ -446,7 +452,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
               child: LinearProgressIndicator(
                 value: progress.clamp(0.0, 1.0),
                 backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation(_getProgressColor(widget.goal.progress)),
+                valueColor: AlwaysStoppedAnimation(
+                    _getProgressColor(widget.goal.progress)),
                 minHeight: 24,
               ),
             ),
@@ -490,7 +497,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
 
   Widget _buildInsightCard(String insight) {
     // Parse emoji from insight
-    final hasEmoji = insight.contains(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true));
+    final hasEmoji =
+        insight.contains(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -507,7 +515,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                 color: AppColors.secondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.lightbulb, color: AppColors.textPrimary, size: 20),
+              child: const Icon(Icons.lightbulb,
+                  color: AppColors.textPrimary, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -543,7 +552,8 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                 color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.tips_and_updates, color: Colors.green, size: 20),
+              child: const Icon(Icons.tips_and_updates,
+                  color: Colors.green, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(

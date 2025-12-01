@@ -79,22 +79,24 @@ class PasswordValidationService {
       double strength = 0.0;
       bool isStrong = true;
 
-      logDebug('Starting comprehensive password validation', tag: 'PASSWORD_VALIDATION');
+      logDebug('Starting comprehensive password validation',
+          tag: 'PASSWORD_VALIDATION');
 
       // Basic length check
       if (password.length < _minLength) {
         issues.add('Password must be at least $_minLength characters long');
         isStrong = false;
       } else if (password.length < _recommendedMinLength) {
-        warnings
-            .add('Consider using at least $_recommendedMinLength characters for better security');
+        warnings.add(
+            'Consider using at least $_recommendedMinLength characters for better security');
       }
 
       // Character variety requirements
       bool hasLower = password.contains(RegExp(r'[a-z]'));
       bool hasUpper = password.contains(RegExp(r'[A-Z]'));
       bool hasDigits = password.contains(RegExp(r'\d'));
-      bool hasSpecial = password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'));
+      bool hasSpecial =
+          password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'));
 
       if (!hasLower) {
         issues.add('Password must contain at least one lowercase letter');
@@ -112,14 +114,16 @@ class PasswordValidationService {
       }
 
       if (!hasSpecial) {
-        issues.add('Password must contain at least one special character (!@#\$%^&*...)');
+        issues.add(
+            'Password must contain at least one special character (!@#\$%^&*...)');
         isStrong = false;
       }
 
       // Check for common weak passwords
       final lowerPassword = password.toLowerCase();
       if (_commonPasswords.contains(lowerPassword)) {
-        issues.add('This is a commonly used password. Choose something more unique');
+        issues.add(
+            'This is a commonly used password. Choose something more unique');
         isStrong = false;
       }
 
@@ -172,7 +176,8 @@ class PasswordValidationService {
       }
 
       // Generate security score
-      final securityScore = _calculateSecurityScore(password, entropy, issues.isEmpty);
+      final securityScore =
+          _calculateSecurityScore(password, entropy, issues.isEmpty);
 
       final result = PasswordValidationResult(
         isValid: issues.isEmpty,
@@ -185,14 +190,16 @@ class PasswordValidationService {
         suggestions: _generateSuggestions(password, issues),
       );
 
-      logInfo('Password validation completed', tag: 'PASSWORD_VALIDATION', extra: {
-        'is_valid': result.isValid,
-        'is_strong': result.isStrong,
-        'entropy': entropy,
-        'security_score': securityScore,
-        'issues_count': issues.length,
-        'warnings_count': warnings.length,
-      });
+      logInfo('Password validation completed',
+          tag: 'PASSWORD_VALIDATION',
+          extra: {
+            'is_valid': result.isValid,
+            'is_strong': result.isStrong,
+            'entropy': entropy,
+            'security_score': securityScore,
+            'issues_count': issues.length,
+            'warnings_count': warnings.length,
+          });
 
       return result;
     } catch (e, stackTrace) {
@@ -222,7 +229,8 @@ class PasswordValidationService {
     bool hasLower = password.contains(RegExp(r'[a-z]'));
     bool hasUpper = password.contains(RegExp(r'[A-Z]'));
     bool hasDigits = password.contains(RegExp(r'\d'));
-    bool hasSpecial = password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'));
+    bool hasSpecial =
+        password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'));
 
     if (hasLower) charsetSize += 26;
     if (hasUpper) charsetSize += 26;
@@ -252,7 +260,8 @@ class PasswordValidationService {
     if (password.contains(RegExp(r'[a-z]'))) varietyCount++;
     if (password.contains(RegExp(r'[A-Z]'))) varietyCount++;
     if (password.contains(RegExp(r'\d'))) varietyCount++;
-    if (password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))) varietyCount++;
+    if (password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]')))
+      varietyCount++;
 
     final varietyScore = varietyCount / 4.0;
     strength += varietyScore * 0.2;
@@ -261,7 +270,8 @@ class PasswordValidationService {
   }
 
   /// Calculate security score (0-100)
-  static int _calculateSecurityScore(String password, double entropy, bool hasNoIssues) {
+  static int _calculateSecurityScore(
+      String password, double entropy, bool hasNoIssues) {
     double score = 0.0;
 
     // Base score from entropy
@@ -277,7 +287,8 @@ class PasswordValidationService {
     if (password.contains(RegExp(r'[a-z]'))) varietyBonus += 2;
     if (password.contains(RegExp(r'[A-Z]'))) varietyBonus += 2;
     if (password.contains(RegExp(r'\d'))) varietyBonus += 3;
-    if (password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))) varietyBonus += 5;
+    if (password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]')))
+      varietyBonus += 5;
     score += varietyBonus;
 
     // Penalty for issues
@@ -304,7 +315,8 @@ class PasswordValidationService {
         final pattern = password.substring(i, i + patternLength);
         final nextOccurrence = password.indexOf(pattern, i + patternLength);
         if (nextOccurrence == i + patternLength) {
-          final thirdOccurrence = password.indexOf(pattern, nextOccurrence + patternLength);
+          final thirdOccurrence =
+              password.indexOf(pattern, nextOccurrence + patternLength);
           if (thirdOccurrence == nextOccurrence + patternLength) {
             return pattern * 3;
           }
@@ -324,13 +336,15 @@ class PasswordValidationService {
     for (int i = 0; i <= lowerPassword.length - 3; i++) {
       bool isSequential = true;
       for (int j = i + 1; j < i + 3 && j < lowerPassword.length; j++) {
-        if (lowerPassword.codeUnitAt(j) != lowerPassword.codeUnitAt(j - 1) + 1) {
+        if (lowerPassword.codeUnitAt(j) !=
+            lowerPassword.codeUnitAt(j - 1) + 1) {
           isSequential = false;
           break;
         }
       }
       if (isSequential) {
-        issues.add('Avoid sequential characters like "${lowerPassword.substring(i, i + 3)}"');
+        issues.add(
+            'Avoid sequential characters like "${lowerPassword.substring(i, i + 3)}"');
         break;
       }
     }
@@ -339,14 +353,15 @@ class PasswordValidationService {
     for (int i = 0; i <= lowerPassword.length - 3; i++) {
       bool isSequential = true;
       for (int j = i + 1; j < i + 3 && j < lowerPassword.length; j++) {
-        if (lowerPassword.codeUnitAt(j) != lowerPassword.codeUnitAt(j - 1) - 1) {
+        if (lowerPassword.codeUnitAt(j) !=
+            lowerPassword.codeUnitAt(j - 1) - 1) {
           isSequential = false;
           break;
         }
       }
       if (isSequential) {
-        issues
-            .add('Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 3)}"');
+        issues.add(
+            'Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 3)}"');
         break;
       }
     }
@@ -381,7 +396,8 @@ class PasswordValidationService {
     ];
     final lowerPassword = password.toLowerCase();
     for (final month in monthNames) {
-      if (lowerPassword.contains(month.substring(0, 3)) || lowerPassword.contains(month)) {
+      if (lowerPassword.contains(month.substring(0, 3)) ||
+          lowerPassword.contains(month)) {
         warnings.add('Avoid using month names in passwords');
         break;
       }
@@ -469,14 +485,17 @@ class PasswordValidationService {
   }
 
   /// Generate improvement suggestions
-  static List<String> _generateSuggestions(String password, List<String> issues) {
+  static List<String> _generateSuggestions(
+      String password, List<String> issues) {
     final suggestions = <String>[];
 
     if (password.length < _recommendedMinLength) {
-      suggestions.add('Use at least $_recommendedMinLength characters for better security');
+      suggestions.add(
+          'Use at least $_recommendedMinLength characters for better security');
     }
 
-    if (!password.contains(RegExp(r'[A-Z]')) || !password.contains(RegExp(r'[a-z]'))) {
+    if (!password.contains(RegExp(r'[A-Z]')) ||
+        !password.contains(RegExp(r'[a-z]'))) {
       suggestions.add('Mix uppercase and lowercase letters');
     }
 
@@ -485,10 +504,12 @@ class PasswordValidationService {
     }
 
     if (!password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]'))) {
-      suggestions.add('Add special characters (!@#\$%^&*...) to strengthen your password');
+      suggestions.add(
+          'Add special characters (!@#\$%^&*...) to strengthen your password');
     }
 
-    if (issues.any((issue) => issue.contains('common') || issue.contains('pattern'))) {
+    if (issues.any(
+        (issue) => issue.contains('common') || issue.contains('pattern'))) {
       suggestions.add('Avoid predictable patterns and common passwords');
       suggestions.add('Consider using a passphrase with random words instead');
     }
@@ -549,7 +570,8 @@ class PasswordValidationResult {
     required this.suggestions,
   });
 
-  String get strengthDescription => PasswordValidationService.getStrengthDescription(strength);
+  String get strengthDescription =>
+      PasswordValidationService.getStrengthDescription(strength);
   String get securityScoreDescription =>
       PasswordValidationService.getSecurityScoreDescription(securityScore);
 

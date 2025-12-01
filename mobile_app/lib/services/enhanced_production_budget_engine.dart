@@ -96,12 +96,15 @@ class EnhancedProductionBudgetEngine {
 
   // Individual service instances for direct access
   final EnhancedIncomeService _incomeService = EnhancedIncomeService();
-  final AdvancedHabitRecognitionService _habitService = AdvancedHabitRecognitionService();
+  final AdvancedHabitRecognitionService _habitService =
+      AdvancedHabitRecognitionService();
   final ContextualNudgeService _nudgeService = ContextualNudgeService();
   final SocialComparisonService _socialService = SocialComparisonService();
   final PredictiveBudgetService _predictiveService = PredictiveBudgetService();
-  final CategoryIntelligenceService _categoryService = CategoryIntelligenceService();
-  final ExplanationEngineService _explanationService = ExplanationEngineService();
+  final CategoryIntelligenceService _categoryService =
+      CategoryIntelligenceService();
+  final ExplanationEngineService _explanationService =
+      ExplanationEngineService();
 
   /// Main enhanced budget calculation method
   Future<EnhancedDailyBudgetCalculation> calculateDailyBudget({
@@ -113,15 +116,19 @@ class EnhancedProductionBudgetEngine {
     bool useEnhancedFeatures = true,
   }) async {
     try {
-      logInfo('Calculating enhanced daily budget with full intelligence integration',
+      logInfo(
+          'Calculating enhanced daily budget with full intelligence integration',
           tag: 'ENHANCED_BUDGET_ENGINE');
 
       final actualTargetDate = targetDate ?? DateTime.now();
-      final actualUserId = userId ?? 'anonymous_${DateTime.now().millisecondsSinceEpoch}';
-      final actualTransactionHistory = transactionHistory ?? <Map<String, dynamic>>[];
+      final actualUserId =
+          userId ?? 'anonymous_${DateTime.now().millisecondsSinceEpoch}';
+      final actualTransactionHistory =
+          transactionHistory ?? <Map<String, dynamic>>[];
 
       // Convert onboarding data to enhanced user profile
-      final userProfile = _convertOnboardingToProfile(onboardingData, additionalContext);
+      final userProfile =
+          _convertOnboardingToProfile(onboardingData, additionalContext);
 
       if (useEnhancedFeatures && actualTransactionHistory.isNotEmpty) {
         // Use full enhanced intelligence system
@@ -142,14 +149,16 @@ class EnhancedProductionBudgetEngine {
         );
       }
     } catch (e) {
-      logError('Error in enhanced budget calculation: $e', tag: 'ENHANCED_BUDGET_ENGINE');
+      logError('Error in enhanced budget calculation: $e',
+          tag: 'ENHANCED_BUDGET_ENGINE');
 
       // Fallback to legacy calculation
       return await _calculateLegacyCompatibleBudget(
         onboardingData: onboardingData,
         targetDate: targetDate ?? DateTime.now(),
         userId: userId ?? 'fallback_user',
-        userProfile: _convertOnboardingToProfile(onboardingData, additionalContext),
+        userProfile:
+            _convertOnboardingToProfile(onboardingData, additionalContext),
       );
     }
   }
@@ -175,9 +184,12 @@ class EnhancedProductionBudgetEngine {
     final confidence = enhancedResult.confidence;
 
     // Calculate legacy format values for backward compatibility
-    final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    const fixedCommitmentRatio = 0.55; // Default, would be calculated by enhanced system
-    const savingsTargetRatio = 0.15; // Default, would be calculated by enhanced system
+    final monthlyIncome =
+        (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    const fixedCommitmentRatio =
+        0.55; // Default, would be calculated by enhanced system
+    const savingsTargetRatio =
+        0.15; // Default, would be calculated by enhanced system
 
     final fixedCommitments = monthlyIncome * fixedCommitmentRatio;
     final savingsTarget = monthlyIncome * savingsTargetRatio;
@@ -226,10 +238,12 @@ class EnhancedProductionBudgetEngine {
     );
 
     // Get budget parameters from enhanced classification
-    final budgetParams = _incomeService.calculateBlendedBudgetParameters(incomeClassification);
+    final budgetParams =
+        _incomeService.calculateBlendedBudgetParameters(incomeClassification);
 
     final monthlyIncome = onboardingData.income ?? 0.0;
-    final fixedCommitments = monthlyIncome * budgetParams['fixedCommitmentRatio']!;
+    final fixedCommitments =
+        monthlyIncome * budgetParams['fixedCommitmentRatio']!;
     final savingsTarget = monthlyIncome * budgetParams['savingsTargetRatio']!;
     final availableSpending = monthlyIncome - fixedCommitments - savingsTarget;
     final baseDailyBudget = availableSpending / 30;
@@ -248,7 +262,8 @@ class EnhancedProductionBudgetEngine {
     }
 
     final totalDailyBudget = baseDailyBudget * temporalMultiplier;
-    final redistributionBuffer = totalDailyBudget * budgetParams['redistributionBuffer']!;
+    final redistributionBuffer =
+        totalDailyBudget * budgetParams['redistributionBuffer']!;
 
     // Generate basic explanation
     final explanation = await _explanationService.explainBudgetCalculation(
@@ -326,7 +341,8 @@ class EnhancedProductionBudgetEngine {
       'incomeTier': onboardingData.incomeTier?.toString() ?? 'middle',
       'countryCode': onboardingData.countryCode ?? 'US',
       'stateCode': onboardingData.stateCode,
-      'location': '${onboardingData.countryCode ?? 'US'}-${onboardingData.stateCode ?? 'CA'}',
+      'location':
+          '${onboardingData.countryCode ?? 'US'}-${onboardingData.stateCode ?? 'CA'}',
       'goals': onboardingData.goals,
       'habits': onboardingData.habits,
       'habitsComment': onboardingData.habitsComment,
@@ -349,7 +365,8 @@ class EnhancedProductionBudgetEngine {
     DateTime? targetDate,
     Map<String, dynamic>? additionalContext,
   }) async {
-    final userProfile = _convertOnboardingToProfile(onboardingData, additionalContext);
+    final userProfile =
+        _convertOnboardingToProfile(onboardingData, additionalContext);
 
     return await _masterEngine.generateBudgetIntelligence(
       userId: userId,
@@ -389,7 +406,8 @@ class EnhancedProductionBudgetEngine {
       spendingPersonality: <String, dynamic>{},
     );
 
-    return await _socialService.generateSocialInsights(userId, userProfile, userMetrics);
+    return await _socialService.generateSocialInsights(
+        userId, userProfile, userMetrics);
   }
 
   /// Analyze spending habits

@@ -13,7 +13,11 @@ class OnboardingGoalScreen extends StatefulWidget {
 
 class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
   final List<Map<String, dynamic>> goals = [
-    {'id': 'save_more', 'label': 'Build an emergency fund', 'icon': Icons.savings},
+    {
+      'id': 'save_more',
+      'label': 'Build an emergency fund',
+      'icon': Icons.savings
+    },
     {'id': 'pay_off_debt', 'label': 'Pay off debt', 'icon': Icons.credit_card},
     {'id': 'budgeting', 'label': 'Learn budgeting', 'icon': Icons.bar_chart},
     {'id': 'investing', 'label': 'Start investing', 'icon': Icons.show_chart},
@@ -101,12 +105,15 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: isSelected ? AppColors.textPrimary : Colors.transparent,
+                            color: isSelected
+                                ? AppColors.textPrimary
+                                : Colors.transparent,
                             width: 1.5,
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 20, horizontal: 16),
                           child: Row(
                             children: [
                               Icon(goal['icon'], color: AppColors.textPrimary),
@@ -123,7 +130,8 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check_circle, color: AppColors.textPrimary),
+                                const Icon(Icons.check_circle,
+                                    color: AppColors.textPrimary),
                             ],
                           ),
                         ),
@@ -145,7 +153,8 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _savingsAmountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   hintText: 'How much do you want to save per month?',
                   prefixText: '\$ ',
@@ -155,7 +164,8 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(color: AppColors.textPrimary),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 ),
               ),
               const SizedBox(height: 20),
@@ -187,11 +197,14 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     // Skip goals - set empty list
                     OnboardingState.instance.goals = [];
                     OnboardingState.instance.savingsGoalAmount = 0.0;
-                    Navigator.pushNamed(context, '/onboarding_spending_frequency');
+                    Navigator.pushNamed(
+                        context, '/onboarding_spending_frequency');
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
+                    style: TextStyle(
+                        fontFamily: AppTypography.fontHeading,
+                        color: Colors.grey),
                   ),
                 ),
               ),

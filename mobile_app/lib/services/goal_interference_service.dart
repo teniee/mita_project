@@ -2,7 +2,8 @@ import '../models/budget_intelligence_models.dart';
 
 /// Goal interference detection and conflict resolution service
 class GoalInterferenceService {
-  static final GoalInterferenceService _instance = GoalInterferenceService._internal();
+  static final GoalInterferenceService _instance =
+      GoalInterferenceService._internal();
   factory GoalInterferenceService() => _instance;
   GoalInterferenceService._internal();
 
@@ -24,7 +25,8 @@ class GoalInterferenceService {
     }
 
     // 1. Resource competition analysis
-    final resourceInterferences = await _analyzeResourceCompetition(goals, currentFinancialState);
+    final resourceInterferences =
+        await _analyzeResourceCompetition(goals, currentFinancialState);
     interferences.addAll(resourceInterferences);
 
     // 2. Timeline conflict analysis
@@ -61,18 +63,21 @@ class GoalInterferenceService {
 
     for (final interference in interferences) {
       // Get relevant goals for this interference
-      final relevantGoals =
-          goals.where((g) => interference.conflictingGoalIds.contains(g.goalId)).toList();
+      final relevantGoals = goals
+          .where((g) => interference.conflictingGoalIds.contains(g.goalId))
+          .toList();
 
       if (relevantGoals.isEmpty) continue;
 
       // Generate strategy based on interference type
-      final strategyList = await _generateStrategiesForInterference(interference, relevantGoals);
+      final strategyList =
+          await _generateStrategiesForInterference(interference, relevantGoals);
       strategies.addAll(strategyList);
     }
 
     // Sort strategies by effectiveness
-    strategies.sort((a, b) => b.expectedEffectiveness.compareTo(a.expectedEffectiveness));
+    strategies.sort(
+        (a, b) => b.expectedEffectiveness.compareTo(a.expectedEffectiveness));
 
     _strategies.clear();
     _strategies.addAll(strategies);
@@ -85,24 +90,28 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) async {
     // 1. Detect all interferences
-    final interferences = await detectGoalInterferences(goals, currentFinancialState);
+    final interferences =
+        await detectGoalInterferences(goals, currentFinancialState);
 
     // 2. Generate resolution strategies
     final strategies = await generateResolutionStrategies(interferences, goals);
 
     // 3. Apply optimization
-    final optimizedGoals = await _applyOptimization(goals, strategies, currentFinancialState);
+    final optimizedGoals =
+        await _applyOptimization(goals, strategies, currentFinancialState);
 
     // 4. Calculate resource allocation
-    final resourceAllocation =
-        _calculateOptimalResourceAllocation(optimizedGoals, currentFinancialState);
+    final resourceAllocation = _calculateOptimalResourceAllocation(
+        optimizedGoals, currentFinancialState);
 
     // 5. Calculate feasibility score
-    final feasibilityScore = _calculateFeasibilityScore(optimizedGoals, currentFinancialState);
+    final feasibilityScore =
+        _calculateFeasibilityScore(optimizedGoals, currentFinancialState);
 
     // 6. Generate warnings and opportunities
     final warnings = _generateWarnings(optimizedGoals, interferences);
-    final opportunities = _generateOpportunities(optimizedGoals, currentFinancialState);
+    final opportunities =
+        _generateOpportunities(optimizedGoals, currentFinancialState);
 
     return GoalOptimizationResult(
       optimizedGoals: optimizedGoals,
@@ -121,8 +130,10 @@ class GoalInterferenceService {
     Map<String, dynamic> currentFinancialState,
   ) async {
     final interferences = <GoalInterference>[];
-    final monthlyIncome = (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final fixedExpenses = (currentFinancialState['fixedExpenses'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final fixedExpenses =
+        (currentFinancialState['fixedExpenses'] as num?)?.toDouble() ?? 0.0;
     final availableForGoals = monthlyIncome - fixedExpenses;
 
     final totalRequiredContribution = goals.fold<double>(
@@ -165,7 +176,8 @@ class GoalInterferenceService {
   }
 
   /// Analyze timeline conflicts between goals
-  Future<List<GoalInterference>> _analyzeTimelineConflicts(List<FinancialGoal> goals) async {
+  Future<List<GoalInterference>> _analyzeTimelineConflicts(
+      List<FinancialGoal> goals) async {
     final interferences = <GoalInterference>[];
 
     // Group goals by target timeframe
@@ -190,8 +202,12 @@ class GoalInterferenceService {
 
             if (highPriorityGoal.priority > lowPriorityGoal.priority) {
               interferences.add(GoalInterference(
-                interferenceId: 'timeline_${highPriorityGoal.goalId}_${lowPriorityGoal.goalId}',
-                conflictingGoalIds: [highPriorityGoal.goalId, lowPriorityGoal.goalId],
+                interferenceId:
+                    'timeline_${highPriorityGoal.goalId}_${lowPriorityGoal.goalId}',
+                conflictingGoalIds: [
+                  highPriorityGoal.goalId,
+                  lowPriorityGoal.goalId
+                ],
                 interferenceType: 'timeline_conflict',
                 severity: 0.6,
                 probability: 0.7,
@@ -211,7 +227,8 @@ class GoalInterferenceService {
   }
 
   /// Analyze priority conflicts
-  Future<List<GoalInterference>> _analyzePriorityConflicts(List<FinancialGoal> goals) async {
+  Future<List<GoalInterference>> _analyzePriorityConflicts(
+      List<FinancialGoal> goals) async {
     final interferences = <GoalInterference>[];
 
     // Check for goals with similar priority but different resource requirements
@@ -224,18 +241,22 @@ class GoalInterferenceService {
     for (final priorityGoals in goalsByPriority.values) {
       if (priorityGoals.length > 1) {
         // Check resource requirements variance
-        final contributions = priorityGoals.map((g) => g.monthlyRequiredContribution).toList();
-        final avgContribution = contributions.reduce((a, b) => a + b) / contributions.length;
+        final contributions =
+            priorityGoals.map((g) => g.monthlyRequiredContribution).toList();
+        final avgContribution =
+            contributions.reduce((a, b) => a + b) / contributions.length;
 
         for (final goal in priorityGoals) {
-          if ((goal.monthlyRequiredContribution - avgContribution).abs() > avgContribution * 0.5) {
+          if ((goal.monthlyRequiredContribution - avgContribution).abs() >
+              avgContribution * 0.5) {
             interferences.add(GoalInterference(
               interferenceId: 'priority_${goal.goalId}',
               conflictingGoalIds: priorityGoals.map((g) => g.goalId).toList(),
               interferenceType: 'priority_conflict',
               severity: 0.4,
               probability: 0.6,
-              description: 'Goal ${goal.name} has misaligned priority vs resource requirements',
+              description:
+                  'Goal ${goal.name} has misaligned priority vs resource requirements',
               rootCauses: ['priority_resource_mismatch'],
               resourceCompetition: {},
               detectedAt: DateTime.now(),
@@ -261,7 +282,8 @@ class GoalInterferenceService {
       // Check budget constraints
       if (constraints.containsKey('max_monthly_contribution')) {
         final maxContribution =
-            (constraints['max_monthly_contribution'] as num?)?.toDouble() ?? double.infinity;
+            (constraints['max_monthly_contribution'] as num?)?.toDouble() ??
+                double.infinity;
         if (goal.monthlyRequiredContribution > maxContribution) {
           interferences.add(GoalInterference(
             interferenceId: 'constraint_${goal.goalId}',
@@ -269,7 +291,8 @@ class GoalInterferenceService {
             interferenceType: 'constraint_violation',
             severity: 0.8,
             probability: 0.9,
-            description: 'Goal ${goal.name} exceeds maximum monthly contribution constraint',
+            description:
+                'Goal ${goal.name} exceeds maximum monthly contribution constraint',
             rootCauses: ['budget_constraint_violation'],
             resourceCompetition: {},
             detectedAt: DateTime.now(),
@@ -287,7 +310,8 @@ class GoalInterferenceService {
             interferenceType: 'timeline_constraint_violation',
             severity: 0.7,
             probability: 0.8,
-            description: 'Goal ${goal.name} target date violates minimum completion constraint',
+            description:
+                'Goal ${goal.name} target date violates minimum completion constraint',
             rootCauses: ['timeline_constraint_violation'],
             resourceCompetition: {},
             detectedAt: DateTime.now(),
@@ -308,16 +332,20 @@ class GoalInterferenceService {
 
     switch (interference.interferenceType) {
       case 'resource_competition':
-        strategies.addAll(_generateResourceCompetitionStrategies(interference, goals));
+        strategies.addAll(
+            _generateResourceCompetitionStrategies(interference, goals));
         break;
       case 'timeline_conflict':
-        strategies.addAll(_generateTimelineConflictStrategies(interference, goals));
+        strategies
+            .addAll(_generateTimelineConflictStrategies(interference, goals));
         break;
       case 'priority_conflict':
-        strategies.addAll(_generatePriorityConflictStrategies(interference, goals));
+        strategies
+            .addAll(_generatePriorityConflictStrategies(interference, goals));
         break;
       case 'constraint_violation':
-        strategies.addAll(_generateConstraintViolationStrategies(interference, goals));
+        strategies.addAll(
+            _generateConstraintViolationStrategies(interference, goals));
         break;
     }
 
@@ -335,7 +363,8 @@ class GoalInterferenceService {
     strategies.add(GoalResolutionStrategy(
       strategyId: 'reduce_contributions_${interference.interferenceId}',
       strategyType: 'contribution_reduction',
-      description: 'Reduce monthly contributions to competing goals proportionally',
+      description:
+          'Reduce monthly contributions to competing goals proportionally',
       adjustments: {},
       expectedEffectiveness: 0.7,
       tradeoffs: ['Extended timeline', 'Reduced goal amounts'],
@@ -351,7 +380,8 @@ class GoalInterferenceService {
     strategies.add(GoalResolutionStrategy(
       strategyId: 'extend_timelines_${interference.interferenceId}',
       strategyType: 'timeline_extension',
-      description: 'Extend target dates to reduce monthly contribution pressure',
+      description:
+          'Extend target dates to reduce monthly contribution pressure',
       adjustments: {},
       expectedEffectiveness: 0.8,
       tradeoffs: ['Delayed goal achievement'],
@@ -490,8 +520,10 @@ class GoalInterferenceService {
     List<FinancialGoal> goals,
     Map<String, dynamic> currentFinancialState,
   ) {
-    final monthlyIncome = (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final fixedExpenses = (currentFinancialState['fixedExpenses'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final fixedExpenses =
+        (currentFinancialState['fixedExpenses'] as num?)?.toDouble() ?? 0.0;
     final availableForGoals = monthlyIncome - fixedExpenses;
 
     final totalRequired = goals.fold<double>(
@@ -514,7 +546,8 @@ class GoalInterferenceService {
 
     for (final interference in interferences) {
       if (interference.severity > 0.7) {
-        warnings.add('High severity interference detected: ${interference.description}');
+        warnings.add(
+            'High severity interference detected: ${interference.description}');
       }
     }
 
@@ -529,9 +562,10 @@ class GoalInterferenceService {
     final opportunities = <String>[];
 
     // Check for income increase opportunities
-    final monthlyIncome = (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final totalRequired =
-        goals.fold<double>(0.0, (sum, goal) => sum + goal.monthlyRequiredContribution);
+    final monthlyIncome =
+        (currentFinancialState['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final totalRequired = goals.fold<double>(
+        0.0, (sum, goal) => sum + goal.monthlyRequiredContribution);
 
     if (totalRequired > monthlyIncome * 0.3) {
       opportunities.add('Consider increasing income to achieve goals faster');
@@ -546,7 +580,8 @@ class GoalInterferenceService {
     FinancialGoal goal2,
     double availableResources,
   ) {
-    final combined = goal1.monthlyRequiredContribution + goal2.monthlyRequiredContribution;
+    final combined =
+        goal1.monthlyRequiredContribution + goal2.monthlyRequiredContribution;
     if (availableResources <= 0) return 1.0;
 
     final overAllocation = (combined - availableResources) / availableResources;

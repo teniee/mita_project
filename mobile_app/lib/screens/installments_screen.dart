@@ -38,12 +38,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.successMessage ?? 'Payment marked as made')),
+          SnackBar(
+              content:
+                  Text(provider.successMessage ?? 'Payment marked as made')),
         );
         provider.clearSuccess();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.errorMessage ?? 'Failed to update payment')),
+          SnackBar(
+              content:
+                  Text(provider.errorMessage ?? 'Failed to update payment')),
         );
         provider.clearError();
       }
@@ -55,7 +59,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancel Installment'),
-        content: Text('Are you sure you want to cancel "${installment.itemName}"?'),
+        content:
+            Text('Are you sure you want to cancel "${installment.itemName}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -77,12 +82,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.successMessage ?? 'Installment cancelled')),
+            SnackBar(
+                content:
+                    Text(provider.successMessage ?? 'Installment cancelled')),
           );
           provider.clearSuccess();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.errorMessage ?? 'Failed to cancel installment')),
+            SnackBar(
+                content: Text(
+                    provider.errorMessage ?? 'Failed to cancel installment')),
           );
           provider.clearError();
         }
@@ -119,12 +128,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.successMessage ?? 'Installment deleted')),
+            SnackBar(
+                content:
+                    Text(provider.successMessage ?? 'Installment deleted')),
           );
           provider.clearSuccess();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.errorMessage ?? 'Failed to delete installment')),
+            SnackBar(
+                content: Text(
+                    provider.errorMessage ?? 'Failed to delete installment')),
           );
           provider.clearError();
         }
@@ -311,7 +324,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   Widget _buildMainContent(InstallmentsProvider provider) {
     final installments = provider.filteredInstallments;
     final currentSummary = provider.summary;
-    final isEmpty = installments.isEmpty && (currentSummary?.totalInstallments ?? 0) == 0;
+    final isEmpty =
+        installments.isEmpty && (currentSummary?.totalInstallments ?? 0) == 0;
 
     if (isEmpty) {
       return _buildEmptyState();
@@ -541,7 +555,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
           const SizedBox(height: 16),
 
           // Next Payment Info
-          if (summary.nextPaymentDate != null && summary.nextPaymentAmount != null)
+          if (summary.nextPaymentDate != null &&
+              summary.nextPaymentAmount != null)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -715,7 +730,9 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: _getStatusColor(installment.status).withOpacity(0.2),
+                                        color:
+                                            _getStatusColor(installment.status)
+                                                .withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -754,7 +771,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 PopupMenuItem(
                                   child: const Row(
                                     children: [
-                                      Icon(Icons.check_circle_outline, size: 18),
+                                      Icon(Icons.check_circle_outline,
+                                          size: 18),
                                       SizedBox(width: 8),
                                       Text('Mark Payment Made'),
                                     ],
@@ -875,7 +893,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 ),
                               ),
                               Text(
-                                DateFormat.MMMMd().format(installment.nextPaymentDate),
+                                DateFormat.MMMMd()
+                                    .format(installment.nextPaymentDate),
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontFamily: AppTypography.fontHeading,
@@ -933,7 +952,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             icon: const Icon(Icons.check, size: 18),
                             label: const Text(
                               'Mark Paid',
-                              style: TextStyle(fontFamily: AppTypography.fontHeading),
+                              style: TextStyle(
+                                  fontFamily: AppTypography.fontHeading),
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.successLight,
@@ -952,7 +972,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                             icon: const Icon(Icons.close, size: 18),
                             label: const Text(
                               'Cancel',
-                              style: TextStyle(fontFamily: AppTypography.fontHeading),
+                              style: TextStyle(
+                                  fontFamily: AppTypography.fontHeading),
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.red,
@@ -1155,7 +1176,8 @@ class _ShimmerLoader extends StatefulWidget {
   State<_ShimmerLoader> createState() => _ShimmerLoaderState();
 }
 
-class _ShimmerLoaderState extends State<_ShimmerLoader> with SingleTickerProviderStateMixin {
+class _ShimmerLoaderState extends State<_ShimmerLoader>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 

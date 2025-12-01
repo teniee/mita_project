@@ -28,8 +28,8 @@ class ApiService {
   ApiService._internal() {
     // Create timeout-aware Dio instance with extended timeouts for slow backend
     _dio = TimeoutManagerService().createTimeoutAwareDio(
-      connectTimeout:
-          const Duration(seconds: 30), // Increased for slow backend (up to 90s response)
+      connectTimeout: const Duration(
+          seconds: 30), // Increased for slow backend (up to 90s response)
       receiveTimeout: const Duration(seconds: 90), // Increased for slow backend
       sendTimeout: const Duration(seconds: 30), // Increased for slow backend
     );
@@ -39,7 +39,8 @@ class ApiService {
 
     // SECURITY: Apply certificate pinning to prevent MITM attacks
     _dio = CertificatePinningService().configureDioWithPinning(_dio);
-    logInfo('Certificate pinning configured for API service', tag: 'API_SECURITY');
+    logInfo('Certificate pinning configured for API service',
+        tag: 'API_SECURITY');
 
     // Initialize secure storage asynchronously
     _initializeSecureStorage();
@@ -51,12 +52,14 @@ class ApiService {
           // This prevents double-counting and ensures proper timeout handling
 
           // Structured logging
-          logDebug('API Request: ${options.method} ${options.uri}', tag: 'API', extra: {
-            'method': options.method,
-            'url': options.uri.toString(),
-            'headers': options.headers,
-            'hasData': options.data != null,
-          });
+          logDebug('API Request: ${options.method} ${options.uri}',
+              tag: 'API',
+              extra: {
+                'method': options.method,
+                'url': options.uri.toString(),
+                'headers': options.headers,
+                'hasData': options.data != null,
+              });
 
           final token = await getToken();
           if (token != null) {
@@ -68,7 +71,8 @@ class ApiService {
           // Note: Loading is stopped by TimeoutManagerService automatically
 
           // Structured logging
-          logDebug('API Response: ${response.statusCode} ${response.requestOptions.uri}',
+          logDebug(
+              'API Response: ${response.statusCode} ${response.requestOptions.uri}',
               tag: 'API',
               extra: {
                 'statusCode': response.statusCode,
@@ -108,14 +112,17 @@ class ApiService {
             } else {
               // НЕ показываем сразу диалог - может быть временная проблема
               // Особенно на главном экране где много одновременных API вызовов
-              logWarning('Auth token refresh failed for ${e.requestOptions.path}', tag: 'API_AUTH');
+              logWarning(
+                  'Auth token refresh failed for ${e.requestOptions.path}',
+                  tag: 'API_AUTH');
 
               // Показываем диалог только если это критический endpoint
               final path = e.requestOptions.path ?? '';
               if (path.contains('/auth/') ||
                   path.contains('/login') ||
                   path.contains('/register')) {
-                MessageService.instance.showError('Session expired. Please log in.');
+                MessageService.instance
+                    .showError('Session expired. Please log in.');
               }
             }
           } else if (e.response?.statusCode == 429) {
@@ -123,14 +130,20 @@ class ApiService {
           } else if (e.response?.statusCode == 404) {
             // Don't show error messages for missing endpoints (404)
             // These will be handled gracefully by individual screens
-            logWarning('API endpoint not found: ${e.requestOptions.path}', tag: 'API');
-          } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+            logWarning('API endpoint not found: ${e.requestOptions.path}',
+                tag: 'API');
+          } else if (e.response?.statusCode != null &&
+              e.response!.statusCode! >= 500) {
             // Only show error messages for server errors (5xx)
-            MessageService.instance.showError('Server error. Please try again later.');
-            logError('Server error: ${e.response?.statusCode}', tag: 'API', error: e);
+            MessageService.instance
+                .showError('Server error. Please try again later.');
+            logError('Server error: ${e.response?.statusCode}',
+                tag: 'API', error: e);
           } else {
             // For other errors (400, etc), extract specific message but don't always show
-            logWarning('API error ${e.response?.statusCode}: ${e.requestOptions.path}', tag: 'API');
+            logWarning(
+                'API error ${e.response?.statusCode}: ${e.requestOptions.path}',
+                tag: 'API');
           }
 
           handler.next(e);
@@ -172,8 +185,10 @@ class ApiService {
       _secureStorage = await SecureTokenStorage.getInstance();
       logInfo('Secure token storage initialized', tag: 'API_SECURITY');
     } catch (e) {
-      logError('Failed to initialize secure storage, falling back to basic storage: $e',
-          tag: 'API_SECURITY', error: e);
+      logError(
+          'Failed to initialize secure storage, falling back to basic storage: $e',
+          tag: 'API_SECURITY',
+          error: e);
       // Continue with legacy storage as fallback
     }
   }
@@ -208,7 +223,8 @@ class ApiService {
       try {
         return await secureStorage.getRefreshToken();
       } catch (e) {
-        logWarning('Failed to get refresh token from secure storage, falling back: $e',
+        logWarning(
+            'Failed to get refresh token from secure storage, falling back: $e',
             tag: 'API_SECURITY');
       }
     }
@@ -232,7 +248,8 @@ class ApiService {
             await secureStorage.storeUserId(userId);
           }
         } catch (e) {
-          logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
+          logError('Failed to extract user ID from token',
+              tag: 'AUTH', error: e);
         }
 
         logInfo('Tokens saved securely', tag: 'API_SECURITY');
@@ -243,13 +260,16 @@ class ApiService {
 
         return;
       } catch (e) {
-        logError('Failed to save tokens securely, falling back to legacy storage: $e',
-            tag: 'API_SECURITY', error: e);
+        logError(
+            'Failed to save tokens securely, falling back to legacy storage: $e',
+            tag: 'API_SECURITY',
+            error: e);
       }
     }
 
     // Fallback to legacy storage
-    logWarning('Using legacy token storage - consider upgrading security', tag: 'API_SECURITY');
+    logWarning('Using legacy token storage - consider upgrading security',
+        tag: 'API_SECURITY');
     await _storage.write(key: 'access_token', value: access);
     await _storage.write(key: 'refresh_token', value: refresh);
 
@@ -298,7 +318,8 @@ class ApiService {
         await _storage.delete(key: 'user_id');
         return;
       } catch (e) {
-        logWarning('Failed to save user ID securely, using fallback: $e', tag: 'API_SECURITY');
+        logWarning('Failed to save user ID securely, using fallback: $e',
+            tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
@@ -313,7 +334,8 @@ class ApiService {
         final userId = await secureStorage.getUserId();
         if (userId != null) return userId;
       } catch (e) {
-        logWarning('Failed to get user ID from secure storage, using fallback: $e',
+        logWarning(
+            'Failed to get user ID from secure storage, using fallback: $e',
             tag: 'API_SECURITY');
       }
     }
@@ -330,7 +352,8 @@ class ApiService {
         await secureStorage.clearAllUserData();
         logInfo('Tokens cleared securely', tag: 'API_SECURITY');
       } catch (e) {
-        logError('Failed to clear tokens securely: $e', tag: 'API_SECURITY', error: e);
+        logError('Failed to clear tokens securely: $e',
+            tag: 'API_SECURITY', error: e);
       }
     }
 
@@ -341,7 +364,8 @@ class ApiService {
       await _storage.delete(key: 'user_id');
       logDebug('Legacy tokens cleared', tag: 'API_SECURITY');
     } catch (e) {
-      logError('Failed to clear legacy tokens: $e', tag: 'API_SECURITY', error: e);
+      logError('Failed to clear legacy tokens: $e',
+          tag: 'API_SECURITY', error: e);
     }
   }
 
@@ -359,7 +383,8 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
-      logInfo('Token refresh response received: ${response.statusCode}', tag: 'TOKEN_REFRESH');
+      logInfo('Token refresh response received: ${response.statusCode}',
+          tag: 'TOKEN_REFRESH');
 
       final data = response.data as Map<String, dynamic>?;
       if (data == null) {
@@ -370,7 +395,8 @@ class ApiService {
       final newRefresh = data['refresh_token'] as String?;
 
       if (newAccess == null || newRefresh == null) {
-        logError('Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
+        logError(
+            'Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
             tag: 'TOKEN_REFRESH');
         throw Exception('Missing tokens in refresh response');
       }
@@ -381,10 +407,12 @@ class ApiService {
       if (secureStorage != null) {
         try {
           await secureStorage.storeTokens(newAccess, newRefresh);
-          logInfo('✅ Tokens refreshed and stored securely', tag: 'TOKEN_REFRESH');
+          logInfo('✅ Tokens refreshed and stored securely',
+              tag: 'TOKEN_REFRESH');
           return true;
         } catch (e) {
-          logError('Failed to store refreshed tokens securely: $e', tag: 'TOKEN_REFRESH', error: e);
+          logError('Failed to store refreshed tokens securely: $e',
+              tag: 'TOKEN_REFRESH', error: e);
           // Continue with fallback below
         }
       }
@@ -407,26 +435,31 @@ class ApiService {
 
   Future<Response> loginWithGoogle(String idToken) async {
     return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async => await _dio.post('/auth/google', data: {'id_token': idToken}),
+      operation: () async =>
+          await _dio.post('/auth/google', data: {'id_token': idToken}),
       operationName: 'Google Login',
     );
   }
 
   Future<Response> register(String email, String password) async {
     return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async =>
-          await _dio.post('/auth/register', data: {'email': email, 'password': password}),
+      operation: () async => await _dio
+          .post('/auth/register', data: {'email': email, 'password': password}),
       operationName: 'User Registration',
     );
   }
 
   // Proper FastAPI registration using standard POST endpoint
   Future<Response> registerWithDetails(String email, String password,
-      {String country = 'US', int annualIncome = 0, String timezone = 'UTC'}) async {
+      {String country = 'US',
+      int annualIncome = 0,
+      String timezone = 'UTC'}) async {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('Starting FastAPI registration for ${email.substring(0, 3)}***', tag: 'AUTH');
+          logDebug(
+              'Starting FastAPI registration for ${email.substring(0, 3)}***',
+              tag: 'AUTH');
 
           final response = await _dio.post(
             '/auth/register',
@@ -439,12 +472,16 @@ class ApiService {
             },
           );
 
-          logInfo('FastAPI registration SUCCESS for ${email.substring(0, 3)}***', tag: 'AUTH');
+          logInfo(
+              'FastAPI registration SUCCESS for ${email.substring(0, 3)}***',
+              tag: 'AUTH');
 
           return response;
         } catch (e) {
-          logError('FastAPI registration FAILED for ${email.substring(0, 3)}***',
-              tag: 'AUTH', error: e);
+          logError(
+              'FastAPI registration FAILED for ${email.substring(0, 3)}***',
+              tag: 'AUTH',
+              error: e);
           rethrow;
         }
       },
@@ -457,7 +494,8 @@ class ApiService {
     return await _timeoutManager.executeAuthentication<Response>(
       operation: () async {
         try {
-          logDebug('Starting FastAPI login for ${email.substring(0, 3)}***', tag: 'AUTH');
+          logDebug('Starting FastAPI login for ${email.substring(0, 3)}***',
+              tag: 'AUTH');
 
           final response = await _dio.post(
             '/auth/login',
@@ -467,11 +505,13 @@ class ApiService {
             },
           );
 
-          logInfo('FastAPI login SUCCESS for ${email.substring(0, 3)}***', tag: 'AUTH');
+          logInfo('FastAPI login SUCCESS for ${email.substring(0, 3)}***',
+              tag: 'AUTH');
 
           return response;
         } catch (e) {
-          logError('FastAPI login FAILED for ${email.substring(0, 3)}***', tag: 'AUTH', error: e);
+          logError('FastAPI login FAILED for ${email.substring(0, 3)}***',
+              tag: 'AUTH', error: e);
           rethrow;
         }
       },
@@ -481,8 +521,8 @@ class ApiService {
 
   Future<Response> login(String email, String password) async {
     return await _timeoutManager.executeAuthentication<Response>(
-      operation: () async =>
-          await _dio.post('/auth/login', data: {'email': email, 'password': password}),
+      operation: () async => await _dio
+          .post('/auth/login', data: {'email': email, 'password': password}),
       operationName: 'User Login',
     );
   }
@@ -500,7 +540,9 @@ class ApiService {
   // Add the missing emergencyRegister method that was being called
   Future<Response> emergencyRegister(String email, String password) async {
     // Now just redirect to the standard registration since emergency endpoints are removed
-    logInfo('Redirecting emergency registration to standard FastAPI registration', tag: 'AUTH');
+    logInfo(
+        'Redirecting emergency registration to standard FastAPI registration',
+        tag: 'AUTH');
     return await register(email, password);
   }
 
@@ -526,7 +568,8 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   /// Generic POST method for API calls
-  Future<Response> post(String path, {Map<String, dynamic>? data, Options? options}) async {
+  Future<Response> post(String path,
+      {Map<String, dynamic>? data, Options? options}) async {
     final token = await getToken();
     final headers = {'Authorization': 'Bearer $token'};
     if (options?.headers != null) {
@@ -557,7 +600,8 @@ class ApiService {
   }
 
   /// Generic PUT method for API calls
-  Future<Response> put(String path, {Map<String, dynamic>? data, Options? options}) async {
+  Future<Response> put(String path,
+      {Map<String, dynamic>? data, Options? options}) async {
     final token = await getToken();
     final headers = {'Authorization': 'Bearer $token'};
     if (options?.headers != null) {
@@ -572,7 +616,8 @@ class ApiService {
   }
 
   /// Generic DELETE method for API calls
-  Future<Response> delete(String path, {Map<String, dynamic>? data, Options? options}) async {
+  Future<Response> delete(String path,
+      {Map<String, dynamic>? data, Options? options}) async {
     final token = await getToken();
     final headers = {'Authorization': 'Bearer $token'};
     if (options?.headers != null) {
@@ -614,7 +659,8 @@ class ApiService {
       return false;
     } catch (e) {
       // If there's an error checking the API, we should be conservative
-      logWarning('Error checking onboarding status via API: $e', tag: 'ONBOARDING');
+      logWarning('Error checking onboarding status via API: $e',
+          tag: 'ONBOARDING');
 
       // Don't assume onboarding is complete if API check fails
       // Let the calling code (like UserDataManager) handle fallback logic
@@ -652,7 +698,8 @@ class ApiService {
           // Transform response to expected format
           final data = response.data['data'] as Map<String, dynamic>?;
           if (data != null) {
-            logInfo('Dashboard data fetched successfully from new endpoint', tag: 'DASHBOARD');
+            logInfo('Dashboard data fetched successfully from new endpoint',
+                tag: 'DASHBOARD');
 
             // Transform icons and colors from strings to proper Flutter objects
             final targets = (data['daily_targets'] as List?)?.map((target) {
@@ -699,7 +746,8 @@ class ApiService {
             };
           }
         } catch (e) {
-          logWarning('New dashboard endpoint failed, using fallback: $e', tag: 'DASHBOARD');
+          logWarning('New dashboard endpoint failed, using fallback: $e',
+              tag: 'DASHBOARD');
         }
 
         // Fallback to legacy approach if new endpoint fails
@@ -711,14 +759,17 @@ class ApiService {
               operation: () => getUserProfile(),
               operationName: 'Get User Profile for Dashboard',
             );
-            final incomeValue = (profile['data']?['income'] as num?)?.toDouble();
+            final incomeValue =
+                (profile['data']?['income'] as num?)?.toDouble();
             if (incomeValue == null || incomeValue <= 0) {
-              throw Exception('Income data required for dashboard. Please complete onboarding.');
+              throw Exception(
+                  'Income data required for dashboard. Please complete onboarding.');
             }
             actualIncome = incomeValue;
           } catch (e) {
             logError('Failed to get user profile: $e', tag: 'DASHBOARD');
-            throw Exception('Income data required for dashboard. Please complete onboarding.');
+            throw Exception(
+                'Income data required for dashboard. Please complete onboarding.');
           }
         }
 
@@ -753,17 +804,23 @@ class ApiService {
 
           calendarData = response.data['data']['calendar'] ?? {};
         } catch (e) {
-          logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'DASHBOARD');
+          logWarning(
+              'Backend calendar fetch failed, using intelligent fallback',
+              tag: 'DASHBOARD');
           // Provide fallback calendar data based on the shell configuration
           final income = actualIncome;
           final weights = shellConfig['weights'] as Map<String, dynamic>? ?? {};
           calendarData = {
             'flexible': {
               'food': income * ((weights['food'] as num?)?.toDouble() ?? 0.12),
-              'transportation': income * ((weights['transportation'] as num?)?.toDouble() ?? 0.10),
-              'entertainment': income * ((weights['entertainment'] as num?)?.toDouble() ?? 0.08),
-              'shopping': income * ((weights['shopping'] as num?)?.toDouble() ?? 0.08),
-              'healthcare': income * ((weights['healthcare'] as num?)?.toDouble() ?? 0.05),
+              'transportation': income *
+                  ((weights['transportation'] as num?)?.toDouble() ?? 0.10),
+              'entertainment': income *
+                  ((weights['entertainment'] as num?)?.toDouble() ?? 0.08),
+              'shopping':
+                  income * ((weights['shopping'] as num?)?.toDouble() ?? 0.08),
+              'healthcare': income *
+                  ((weights['healthcare'] as num?)?.toDouble() ?? 0.05),
             },
             'fixed': shellConfig['fixed'] ?? 0,
             'savings': shellConfig['savings_target'] ?? 0,
@@ -780,21 +837,24 @@ class ApiService {
         };
 
         if (calendarData.containsKey('flexible')) {
-          final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
-          final totalDaily = flexible.values
-              .fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
+          final flexible =
+              calendarData['flexible'] as Map<String, dynamic>? ?? {};
+          final totalDaily = flexible.values.fold<double>(0.0,
+              (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
 
           dashboardData['today_budget'] = totalDaily;
           dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
           dashboardData['today_spent'] = totalDaily * 0.7; // Simulated spending
-          dashboardData['monthly_spent'] = totalDaily * DateTime.now().day * 0.7;
+          dashboardData['monthly_spent'] =
+              totalDaily * DateTime.now().day * 0.7;
         }
 
         return dashboardData;
       },
       fallbackValue: userIncome != null
           ? _getDefaultDashboardFallback(userIncome)
-          : throw Exception('Income data required for dashboard. Please complete onboarding.'),
+          : throw Exception(
+              'Income data required for dashboard. Please complete onboarding.'),
       timeout: const Duration(seconds: 8),
       operationName: 'Dashboard Data',
     );
@@ -834,7 +894,8 @@ class ApiService {
     try {
       final token = await getToken();
 
-      logDebug('Attempting to retrieve saved calendar for $year-$month', tag: 'CALENDAR_SAVED');
+      logDebug('Attempting to retrieve saved calendar for $year-$month',
+          tag: 'CALENDAR_SAVED');
 
       final response = await _dio.get(
         '/calendar/saved/$year/$month',
@@ -848,15 +909,18 @@ class ApiService {
       final calendarData = response.data['data']['calendar'];
 
       if (calendarData == null || (calendarData as List).isEmpty) {
-        logInfo('No saved calendar data found for $year-$month', tag: 'CALENDAR_SAVED');
+        logInfo('No saved calendar data found for $year-$month',
+            tag: 'CALENDAR_SAVED');
         return null;
       }
 
-      logInfo('Successfully retrieved ${(calendarData as List).length} saved calendar days',
+      logInfo(
+          'Successfully retrieved ${(calendarData as List).length} saved calendar days',
           tag: 'CALENDAR_SAVED');
       return calendarData as List<dynamic>;
     } catch (e) {
-      logWarning('Failed to retrieve saved calendar: $e', tag: 'CALENDAR_SAVED');
+      logWarning('Failed to retrieve saved calendar: $e',
+          tag: 'CALENDAR_SAVED');
       return null;
     }
   }
@@ -876,20 +940,25 @@ class ApiService {
               operation: () => getUserProfile(),
               operationName: 'Get User Profile for Calendar',
             );
-            final incomeValue = (profile['data']?['income'] as num?)?.toDouble();
+            final incomeValue =
+                (profile['data']?['income'] as num?)?.toDouble();
             if (incomeValue == null || incomeValue <= 0) {
-              throw Exception('Income data required for calendar. Please complete onboarding.');
+              throw Exception(
+                  'Income data required for calendar. Please complete onboarding.');
             }
             actualIncome = incomeValue;
             userLocation = profile['data']?['location'] as String?;
           } catch (e) {
-            logError('Failed to get user profile for calendar: $e', tag: 'CALENDAR');
-            throw Exception('Income data required for calendar. Please complete onboarding.');
+            logError('Failed to get user profile for calendar: $e',
+                tag: 'CALENDAR');
+            throw Exception(
+                'Income data required for calendar. Please complete onboarding.');
           }
         }
 
         // Try to get cached calendar data first
-        final cacheKey = 'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
+        final cacheKey =
+            'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
         try {
           final cachedData = await _getCachedCalendarData(cacheKey);
           if (cachedData != null) {
@@ -934,20 +1003,25 @@ class ApiService {
           );
 
           final calendarData = response.data['data']['calendar'] ?? {};
-          final calendarDays = _transformCalendarData(calendarData, actualIncome);
+          final calendarDays =
+              _transformCalendarData(calendarData, actualIncome);
 
           // Cache the successful response
           await _cacheCalendarData(cacheKey, calendarDays);
 
-          logDebug('Successfully fetched calendar data from backend', tag: 'CALENDAR');
+          logDebug('Successfully fetched calendar data from backend',
+              tag: 'CALENDAR');
           return calendarDays;
         } catch (e) {
-          logWarning('Backend calendar fetch failed, using intelligent fallback', tag: 'CALENDAR');
+          logWarning(
+              'Backend calendar fetch failed, using intelligent fallback',
+              tag: 'CALENDAR');
 
           // Use intelligent fallback service
           try {
             final fallbackService = CalendarFallbackService();
-            final fallbackData = await fallbackService.generateFallbackCalendarData(
+            final fallbackData =
+                await fallbackService.generateFallbackCalendarData(
               monthlyIncome: actualIncome,
               location: userLocation,
               year: DateTime.now().year,
@@ -955,17 +1029,21 @@ class ApiService {
             );
 
             // Cache the fallback data with shorter expiry
-            await _cacheCalendarData(cacheKey, fallbackData, const Duration(minutes: 30));
+            await _cacheCalendarData(
+                cacheKey, fallbackData, const Duration(minutes: 30));
 
-            logInfo('Using intelligent fallback calendar data', tag: 'CALENDAR', extra: {
-              'income': actualIncome,
-              'location': userLocation,
-              'days_generated': fallbackData.length,
-            });
+            logInfo('Using intelligent fallback calendar data',
+                tag: 'CALENDAR',
+                extra: {
+                  'income': actualIncome,
+                  'location': userLocation,
+                  'days_generated': fallbackData.length,
+                });
 
             return fallbackData;
           } catch (fallbackError) {
-            logError('Fallback calendar generation failed', tag: 'CALENDAR', error: fallbackError);
+            logError('Fallback calendar generation failed',
+                tag: 'CALENDAR', error: fallbackError);
 
             // Last resort: basic fallback
             return _generateBasicFallbackCalendar(actualIncome);
@@ -974,7 +1052,8 @@ class ApiService {
       },
       fallbackValue: userIncome != null
           ? _generateBasicFallbackCalendar(userIncome)
-          : throw Exception('Income data required for calendar. Please complete onboarding.'),
+          : throw Exception(
+              'Income data required for calendar. Please complete onboarding.'),
       timeout: const Duration(seconds: 10),
       operationName: 'Calendar Data',
     );
@@ -1009,20 +1088,22 @@ class ApiService {
         return cachedData;
       }
     } catch (e) {
-      logWarning('Failed to retrieve cached calendar data: $e', tag: 'CALENDAR');
+      logWarning('Failed to retrieve cached calendar data: $e',
+          tag: 'CALENDAR');
     }
     return null;
   }
 
   /// Transform backend calendar data to standard format
-  List<dynamic> _transformCalendarData(Map<String, dynamic> calendarData, double actualIncome) {
+  List<dynamic> _transformCalendarData(
+      Map<String, dynamic> calendarData, double actualIncome) {
     List<dynamic> calendarDays = [];
 
     if (calendarData.containsKey('flexible')) {
       // Transform flexible budget format to daily calendar
       final flexible = calendarData['flexible'] as Map<String, dynamic>? ?? {};
-      final totalDaily = flexible.values
-          .fold<double>(0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
+      final totalDaily = flexible.values.fold<double>(
+          0.0, (sum, amount) => sum + ((amount as num?)?.toDouble() ?? 0.0));
 
       // Generate days for current month
       final now = DateTime.now();
@@ -1036,7 +1117,8 @@ class ApiService {
         // Calculate realistic spending for past days
         int spent = 0;
         if (isPastDay) {
-          spent = _calculateRealisticSpentAmount(totalDaily.round(), day, currentDate.weekday);
+          spent = _calculateRealisticSpentAmount(
+              totalDaily.round(), day, currentDate.weekday);
         } else if (isToday) {
           spent = _calculateTodaySpending(totalDaily.round());
         }
@@ -1125,11 +1207,12 @@ class ApiService {
   Map<String, int> _generateCategoryBreakdown(Map<String, dynamic> flexible) {
     final breakdown = <String, int>{};
     final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day; // Days in current month
+    final daysInMonth =
+        DateTime(now.year, now.month + 1, 0).day; // Days in current month
 
     flexible.forEach((category, monthlyAmount) {
-      final dailyAmount =
-          ((monthlyAmount as num) / daysInMonth).round(); // Use actual days in month
+      final dailyAmount = ((monthlyAmount as num) / daysInMonth)
+          .round(); // Use actual days in month
       breakdown[category] = dailyAmount;
     });
 
@@ -1218,7 +1301,8 @@ class ApiService {
   }
 
   /// Update an existing goal
-  Future<Map<String, dynamic>> updateGoal(String id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateGoal(
+      String id, Map<String, dynamic> data) async {
     final token = await getToken();
     final response = await _dio.patch(
       '/goals/$id',
@@ -1248,7 +1332,8 @@ class ApiService {
   }
 
   /// Add savings to a goal
-  Future<Map<String, dynamic>> addSavingsToGoal(String goalId, double amount) async {
+  Future<Map<String, dynamic>> addSavingsToGoal(
+      String goalId, double amount) async {
     final token = await getToken();
     final response = await _dio.post(
       '/goals/$goalId/add_savings',
@@ -1416,8 +1501,14 @@ class ApiService {
 
       final token = await getToken();
       if (token == null) {
-        logWarning('No auth token available for notifications', tag: 'API_NOTIFICATIONS');
-        return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+        logWarning('No auth token available for notifications',
+            tag: 'API_NOTIFICATIONS');
+        return {
+          'notifications': [],
+          'total': 0,
+          'unread_count': 0,
+          'has_more': false
+        };
       }
 
       final queryParams = {
@@ -1439,19 +1530,32 @@ class ApiService {
         logInfo('Notifications fetched successfully', tag: 'API_NOTIFICATIONS');
         return response.data as Map<String, dynamic>;
       } else {
-        logError('Failed to fetch notifications: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
-        return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+        logError('Failed to fetch notifications: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
+        return {
+          'notifications': [],
+          'total': 0,
+          'unread_count': 0,
+          'has_more': false
+        };
       }
     } catch (e) {
-      logError('Exception fetching notifications: $e', tag: 'API_NOTIFICATIONS');
-      return {'notifications': [], 'total': 0, 'unread_count': 0, 'has_more': false};
+      logError('Exception fetching notifications: $e',
+          tag: 'API_NOTIFICATIONS');
+      return {
+        'notifications': [],
+        'total': 0,
+        'unread_count': 0,
+        'has_more': false
+      };
     }
   }
 
   /// Get a specific notification by ID
   Future<Map<String, dynamic>?> getNotification(String notificationId) async {
     try {
-      logInfo('Fetching notification $notificationId', tag: 'API_NOTIFICATIONS');
+      logInfo('Fetching notification $notificationId',
+          tag: 'API_NOTIFICATIONS');
 
       final token = await getToken();
       if (token == null) {
@@ -1465,7 +1569,8 @@ class ApiService {
         logInfo('Notification fetched successfully', tag: 'API_NOTIFICATIONS');
         return response.data as Map<String, dynamic>;
       } else {
-        logError('Failed to fetch notification: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to fetch notification: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return null;
       }
     } catch (e) {
@@ -1477,7 +1582,8 @@ class ApiService {
   /// Mark notification as read
   Future<bool> markNotificationRead(String notificationId) async {
     try {
-      logInfo('Marking notification $notificationId as read', tag: 'API_NOTIFICATIONS');
+      logInfo('Marking notification $notificationId as read',
+          tag: 'API_NOTIFICATIONS');
 
       final token = await getToken();
       if (token == null) {
@@ -1485,7 +1591,8 @@ class ApiService {
         return false;
       }
 
-      final response = await _dio.post('/notifications/$notificationId/mark-read');
+      final response =
+          await _dio.post('/notifications/$notificationId/mark-read');
 
       if (response.statusCode == 200) {
         logInfo('Notification marked as read', tag: 'API_NOTIFICATIONS');
@@ -1496,7 +1603,8 @@ class ApiService {
         return false;
       }
     } catch (e) {
-      logError('Exception marking notification as read: $e', tag: 'API_NOTIFICATIONS');
+      logError('Exception marking notification as read: $e',
+          tag: 'API_NOTIFICATIONS');
       return false;
     }
   }
@@ -1518,12 +1626,14 @@ class ApiService {
         logInfo('All notifications marked as read', tag: 'API_NOTIFICATIONS');
         return true;
       } else {
-        logError('Failed to mark all notifications as read: ${response.statusCode}',
+        logError(
+            'Failed to mark all notifications as read: ${response.statusCode}',
             tag: 'API_NOTIFICATIONS');
         return false;
       }
     } catch (e) {
-      logError('Exception marking all notifications as read: $e', tag: 'API_NOTIFICATIONS');
+      logError('Exception marking all notifications as read: $e',
+          tag: 'API_NOTIFICATIONS');
       return false;
     }
   }
@@ -1531,7 +1641,8 @@ class ApiService {
   /// Delete a notification
   Future<bool> deleteNotification(String notificationId) async {
     try {
-      logInfo('Deleting notification $notificationId', tag: 'API_NOTIFICATIONS');
+      logInfo('Deleting notification $notificationId',
+          tag: 'API_NOTIFICATIONS');
 
       final token = await getToken();
       if (token == null) {
@@ -1545,7 +1656,8 @@ class ApiService {
         logInfo('Notification deleted', tag: 'API_NOTIFICATIONS');
         return true;
       } else {
-        logError('Failed to delete notification: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to delete notification: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return false;
       }
     } catch (e) {
@@ -1574,7 +1686,8 @@ class ApiService {
         }
         return 0;
       } else {
-        logError('Failed to fetch unread count: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to fetch unread count: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return 0;
       }
     } catch (e) {
@@ -1600,7 +1713,8 @@ class ApiService {
         logInfo('Notification preferences fetched', tag: 'API_NOTIFICATIONS');
         return response.data as Map<String, dynamic>;
       } else {
-        logError('Failed to fetch preferences: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to fetch preferences: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return null;
       }
     } catch (e) {
@@ -1610,7 +1724,8 @@ class ApiService {
   }
 
   /// Update notification preferences
-  Future<bool> updateNotificationPreferences(Map<String, dynamic> preferences) async {
+  Future<bool> updateNotificationPreferences(
+      Map<String, dynamic> preferences) async {
     try {
       logInfo('Updating notification preferences', tag: 'API_NOTIFICATIONS');
 
@@ -1629,7 +1744,8 @@ class ApiService {
         logInfo('Notification preferences updated', tag: 'API_NOTIFICATIONS');
         return true;
       } else {
-        logError('Failed to update preferences: ${response.statusCode}', tag: 'API_NOTIFICATIONS');
+        logError('Failed to update preferences: ${response.statusCode}',
+            tag: 'API_NOTIFICATIONS');
         return false;
       }
     } catch (e) {
@@ -1771,7 +1887,8 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  Future<Map<String, dynamic>> getBudgetRemaining({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getBudgetRemaining(
+      {int? year, int? month}) async {
     final token = await getToken();
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
@@ -1790,7 +1907,8 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   /// Redistribute budget across calendar days using the backend algorithm
-  Future<Map<String, dynamic>> redistributeCalendarBudget(Map<String, dynamic> calendar,
+  Future<Map<String, dynamic>> redistributeCalendarBudget(
+      Map<String, dynamic> calendar,
       {String strategy = 'balance'}) async {
     final token = await getToken();
     final response = await _dio.post(
@@ -1805,7 +1923,8 @@ class ApiService {
   }
 
   /// Get AI-powered budget suggestions based on behavioral patterns
-  Future<Map<String, dynamic>> getBudgetSuggestions({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getBudgetSuggestions(
+      {int? year, int? month}) async {
     final token = await getToken();
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
@@ -1891,7 +2010,8 @@ class ApiService {
   }
 
   /// Get budget redistribution history and transfers
-  Future<List<dynamic>> getBudgetRedistributionHistory({int? year, int? month}) async {
+  Future<List<dynamic>> getBudgetRedistributionHistory(
+      {int? year, int? month}) async {
     final token = await getToken();
     final queryParams = <String, dynamic>{};
     if (year != null) queryParams['year'] = year;
@@ -1916,7 +2036,8 @@ class ApiService {
   }
 
   /// Update budget automation preferences
-  Future<void> updateBudgetAutomationSettings(Map<String, dynamic> settings) async {
+  Future<void> updateBudgetAutomationSettings(
+      Map<String, dynamic> settings) async {
     final token = await getToken();
     await _dio.patch(
       '/budget/automation_settings',
@@ -1981,7 +2102,9 @@ class ApiService {
   }) async {
     final token = await getToken();
     final formData = FormData.fromMap({
-      'files': receiptFiles.map((file) async => await MultipartFile.fromFile(file.path)).toList(),
+      'files': receiptFiles
+          .map((file) async => await MultipartFile.fromFile(file.path))
+          .toList(),
       'use_premium': usePremiumOCR.toString(),
     });
 
@@ -2015,7 +2138,8 @@ class ApiService {
   }
 
   /// Validate and correct OCR results using AI
-  Future<Map<String, dynamic>> validateOCRResult(Map<String, dynamic> ocrData) async {
+  Future<Map<String, dynamic>> validateOCRResult(
+      Map<String, dynamic> ocrData) async {
     final token = await getToken();
     final response = await _dio.post(
       '/transactions/receipt/validate',
@@ -2148,7 +2272,9 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     final data = response.data['data'] as List?;
-    return data?.isNotEmpty == true ? data!.first as Map<String, dynamic>? : null;
+    return data?.isNotEmpty == true
+        ? data!.first as Map<String, dynamic>?
+        : null;
   }
 
   /// Create a new AI snapshot analysis for a specific month
@@ -2167,7 +2293,8 @@ class ApiService {
   }
 
   /// Get comprehensive AI financial profile with behavioral patterns
-  Future<Map<String, dynamic>> getAIFinancialProfile({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getAIFinancialProfile(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2194,11 +2321,13 @@ class ApiService {
       },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return response.data['data']['explanation'] as String? ?? 'Status explanation not available';
+    return response.data['data']['explanation'] as String? ??
+        'Status explanation not available';
   }
 
   /// Get AI-powered spending behavior insights and patterns
-  Future<Map<String, dynamic>> getSpendingPatterns({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getSpendingPatterns(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2213,7 +2342,8 @@ class ApiService {
   }
 
   /// Get personalized AI feedback based on recent spending behavior
-  Future<Map<String, dynamic>> getAIPersonalizedFeedback({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getAIPersonalizedFeedback(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2243,7 +2373,8 @@ class ApiService {
   }
 
   /// Get AI category suggestions for transaction categorization
-  Future<List<Map<String, dynamic>>> getAICategorySuggestions(String transactionDescription,
+  Future<List<Map<String, dynamic>>> getAICategorySuggestions(
+      String transactionDescription,
       {double? amount}) async {
     final token = await getToken();
     final response = await _dio.post(
@@ -2258,7 +2389,8 @@ class ApiService {
   }
 
   /// Ask the AI assistant a financial question
-  Future<String> askAIAssistant(String question, {Map<String, dynamic>? context}) async {
+  Future<String> askAIAssistant(String question,
+      {Map<String, dynamic>? context}) async {
     final token = await getToken();
     final response = await _dio.post(
       '/ai/assistant',
@@ -2273,7 +2405,8 @@ class ApiService {
   }
 
   /// Get AI-powered anomaly detection in spending patterns
-  Future<List<Map<String, dynamic>>> getSpendingAnomalies({int? year, int? month}) async {
+  Future<List<Map<String, dynamic>>> getSpendingAnomalies(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2341,7 +2474,8 @@ class ApiService {
   }
 
   /// Get AI-powered monthly financial report with insights
-  Future<Map<String, dynamic>> getAIMonthlyReport({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getAIMonthlyReport(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2360,7 +2494,8 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   /// Get comprehensive behavioral analysis for the user
-  Future<Map<String, dynamic>> getBehavioralAnalysis({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getBehavioralAnalysis(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2375,7 +2510,8 @@ class ApiService {
   }
 
   /// Get spending pattern analysis (time-based, category-based, emotional triggers)
-  Future<Map<String, dynamic>> getSpendingPatternAnalysis({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getSpendingPatternAnalysis(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2400,7 +2536,8 @@ class ApiService {
   }
 
   /// Get anomaly detection with explanations
-  Future<Map<String, dynamic>> getBehavioralAnomalies({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getBehavioralAnomalies(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2425,7 +2562,8 @@ class ApiService {
   }
 
   /// Get spending triggers and habit formation insights
-  Future<Map<String, dynamic>> getSpendingTriggers({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getSpendingTriggers(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2475,7 +2613,8 @@ class ApiService {
   }
 
   /// Update behavioral learning preferences
-  Future<void> updateBehavioralPreferences(Map<String, dynamic> preferences) async {
+  Future<void> updateBehavioralPreferences(
+      Map<String, dynamic> preferences) async {
     final token = await getToken();
     await _dio.patch(
       '/behavior/preferences',
@@ -2524,7 +2663,8 @@ class ApiService {
   }
 
   /// Get behavioral warnings for calendar days
-  Future<Map<String, dynamic>> getBehavioralWarnings({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getBehavioralWarnings(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     final response = await _dio.get(
@@ -2725,7 +2865,8 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  Future<List<String>> getCategorySuggestions(String description, double amount) async {
+  Future<List<String>> getCategorySuggestions(
+      String description, double amount) async {
     final token = await getToken();
 
     try {
@@ -2740,12 +2881,14 @@ class ApiService {
       return List<String>.from(response.data['data']['suggestions'] ?? []);
     } catch (e) {
       // Return basic category fallback when AI categorization is unavailable
-      logError('Category suggestion service unavailable: $e', tag: 'CATEGORIZATION');
+      logError('Category suggestion service unavailable: $e',
+          tag: 'CATEGORIZATION');
       return ['General', 'Other'];
     }
   }
 
-  Future<Map<String, dynamic>> enhanceReceiptData(Map<String, dynamic> ocrData) async {
+  Future<Map<String, dynamic>> enhanceReceiptData(
+      Map<String, dynamic> ocrData) async {
     final token = await getToken();
 
     try {
@@ -2760,17 +2903,21 @@ class ApiService {
       final enhanced = Map<String, dynamic>.from(ocrData);
       enhanced['enhanced'] = true;
       enhanced['merchant_type'] = _getMerchantType(ocrData['merchant'] ?? '');
-      enhanced['spending_category'] = _getSpendingCategory(ocrData['category'] ?? '');
+      enhanced['spending_category'] =
+          _getSpendingCategory(ocrData['category'] ?? '');
       return enhanced;
     }
   }
 
   String _getMerchantType(String merchant) {
     final lower = merchant.toLowerCase();
-    if (lower.contains('starbucks') || lower.contains('coffee')) return 'Coffee Shop';
-    if (lower.contains('restaurant') || lower.contains('pizza')) return 'Restaurant';
+    if (lower.contains('starbucks') || lower.contains('coffee'))
+      return 'Coffee Shop';
+    if (lower.contains('restaurant') || lower.contains('pizza'))
+      return 'Restaurant';
     if (lower.contains('gas') || lower.contains('shell')) return 'Gas Station';
-    if (lower.contains('store') || lower.contains('mart')) return 'Retail Store';
+    if (lower.contains('store') || lower.contains('mart'))
+      return 'Retail Store';
     return 'General';
   }
 
@@ -2861,7 +3008,8 @@ class ApiService {
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       // Return error when gamification stats service is unavailable
-      logError('Gamification stats service unavailable: $e', tag: 'GAMIFICATION');
+      logError('Gamification stats service unavailable: $e',
+          tag: 'GAMIFICATION');
       return {
         'error': 'Gamification service is currently unavailable',
         'total_points': 0,
@@ -2909,7 +3057,8 @@ class ApiService {
         {
           'id': '5',
           'title': 'No-Spend Weekend',
-          'description': 'Complete a weekend without any non-essential spending',
+          'description':
+              'Complete a weekend without any non-essential spending',
           'type': 'spending_freeze',
           'target_value': 1,
           'reward_points': 150,
@@ -3032,7 +3181,8 @@ class ApiService {
   }
 
   /// Get peer comparison data for user's income tier
-  Future<Map<String, dynamic>> getPeerComparison({int? year, int? month}) async {
+  Future<Map<String, dynamic>> getPeerComparison(
+      {int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
     try {
@@ -3047,7 +3197,8 @@ class ApiService {
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       // Return error when peer comparison service is unavailable
-      logError('Peer comparison service unavailable: $e', tag: 'PEER_COMPARISON');
+      logError('Peer comparison service unavailable: $e',
+          tag: 'PEER_COMPARISON');
       return {
         'error': 'Peer comparison service is currently unavailable',
         'your_spending': null,
@@ -3061,7 +3212,8 @@ class ApiService {
   }
 
   /// Get income-specific budget recommendations
-  Future<Map<String, dynamic>> getIncomeBasedBudgetRecommendations(double monthlyIncome) async {
+  Future<Map<String, dynamic>> getIncomeBasedBudgetRecommendations(
+      double monthlyIncome) async {
     final token = await getToken();
     try {
       final response = await _dio.post(
@@ -3160,7 +3312,8 @@ class ApiService {
   }
 
   /// Get income-appropriate goal suggestions
-  Future<List<Map<String, dynamic>>> getIncomeBasedGoals(double monthlyIncome) async {
+  Future<List<Map<String, dynamic>>> getIncomeBasedGoals(
+      double monthlyIncome) async {
     final token = await getToken();
     try {
       final response = await _dio.post(
@@ -3306,17 +3459,20 @@ class ApiService {
     try {
       logInfo('Fetching transactions for date: $date', tag: 'API_TRANSACTIONS');
 
-      final response = await _dio.get('/transactions/by-date', queryParameters: {
+      final response =
+          await _dio.get('/transactions/by-date', queryParameters: {
         'date': date,
       });
 
       if (response.statusCode == 200 && response.data is List) {
         final transactions = List<Map<String, dynamic>>.from(response.data);
-        logInfo('Successfully fetched ${transactions.length} transactions for $date',
+        logInfo(
+            'Successfully fetched ${transactions.length} transactions for $date',
             tag: 'API_TRANSACTIONS');
         return transactions;
       } else {
-        logWarning('Unexpected response format for transactions by date', tag: 'API_TRANSACTIONS');
+        logWarning('Unexpected response format for transactions by date',
+            tag: 'API_TRANSACTIONS');
         return <Map<String, dynamic>>[];
       }
     } catch (e) {
@@ -3338,11 +3494,13 @@ class ApiService {
         logInfo('Successfully fetched seasonal patterns', tag: 'API_SEASONAL');
         return patterns;
       } else {
-        logWarning('Unexpected response format for seasonal patterns', tag: 'API_SEASONAL');
+        logWarning('Unexpected response format for seasonal patterns',
+            tag: 'API_SEASONAL');
         return <String, dynamic>{};
       }
     } catch (e) {
-      logError('Failed to fetch seasonal patterns: $e', tag: 'API_SEASONAL', error: e);
+      logError('Failed to fetch seasonal patterns: $e',
+          tag: 'API_SEASONAL', error: e);
       return <String, dynamic>{};
     }
   }
@@ -3356,14 +3514,17 @@ class ApiService {
 
       if (response.statusCode == 200 && response.data is Map) {
         final insights = Map<String, dynamic>.from(response.data);
-        logInfo('Successfully fetched behavioral insights', tag: 'API_BEHAVIORAL');
+        logInfo('Successfully fetched behavioral insights',
+            tag: 'API_BEHAVIORAL');
         return insights;
       } else {
-        logWarning('Unexpected response format for behavioral insights', tag: 'API_BEHAVIORAL');
+        logWarning('Unexpected response format for behavioral insights',
+            tag: 'API_BEHAVIORAL');
         return <String, dynamic>{};
       }
     } catch (e) {
-      logError('Failed to fetch behavioral insights: $e', tag: 'API_BEHAVIORAL', error: e);
+      logError('Failed to fetch behavioral insights: $e',
+          tag: 'API_BEHAVIORAL', error: e);
       return <String, dynamic>{};
     }
   }
@@ -3403,11 +3564,13 @@ class ApiService {
         logDebug('Feature usage logged successfully', tag: 'API_ANALYTICS');
         return true;
       } else {
-        logWarning('Failed to log feature usage: ${response.statusCode}', tag: 'API_ANALYTICS');
+        logWarning('Failed to log feature usage: ${response.statusCode}',
+            tag: 'API_ANALYTICS');
         return false;
       }
     } catch (e) {
-      logError('Exception logging feature usage: $e', tag: 'API_ANALYTICS', error: e);
+      logError('Exception logging feature usage: $e',
+          tag: 'API_ANALYTICS', error: e);
       // Don't fail the app if analytics logging fails
       return false;
     }
@@ -3422,7 +3585,8 @@ class ApiService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      logDebug('Logging feature access attempt: $feature', tag: 'API_ANALYTICS');
+      logDebug('Logging feature access attempt: $feature',
+          tag: 'API_ANALYTICS');
 
       final response = await _dio.post(
         '/analytics/feature-access-attempt',
@@ -3439,11 +3603,13 @@ class ApiService {
         logDebug('Feature access logged successfully', tag: 'API_ANALYTICS');
         return true;
       } else {
-        logWarning('Failed to log feature access: ${response.statusCode}', tag: 'API_ANALYTICS');
+        logWarning('Failed to log feature access: ${response.statusCode}',
+            tag: 'API_ANALYTICS');
         return false;
       }
     } catch (e) {
-      logError('Exception logging feature access: $e', tag: 'API_ANALYTICS', error: e);
+      logError('Exception logging feature access: $e',
+          tag: 'API_ANALYTICS', error: e);
       // Don't fail the app if analytics logging fails
       return false;
     }
@@ -3471,7 +3637,8 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        logDebug('Paywall impression logged successfully', tag: 'API_ANALYTICS');
+        logDebug('Paywall impression logged successfully',
+            tag: 'API_ANALYTICS');
         return true;
       } else {
         logWarning('Failed to log paywall impression: ${response.statusCode}',
@@ -3479,7 +3646,8 @@ class ApiService {
         return false;
       }
     } catch (e) {
-      logError('Exception logging paywall impression: $e', tag: 'API_ANALYTICS', error: e);
+      logError('Exception logging paywall impression: $e',
+          tag: 'API_ANALYTICS', error: e);
       // Don't fail the app if analytics logging fails
       return false;
     }
@@ -3504,10 +3672,12 @@ class ApiService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 202) {
-        logInfo('Password reset email sent successfully', tag: 'API_PASSWORD_RESET');
+        logInfo('Password reset email sent successfully',
+            tag: 'API_PASSWORD_RESET');
         return true;
       } else if (response.statusCode == 404) {
-        logWarning('Email not found for password reset', tag: 'API_PASSWORD_RESET');
+        logWarning('Email not found for password reset',
+            tag: 'API_PASSWORD_RESET');
         // Return true to avoid revealing which emails exist in the system
         return true;
       } else {
@@ -3516,7 +3686,8 @@ class ApiService {
         return false;
       }
     } catch (e) {
-      logError('Exception sending password reset email: $e', tag: 'API_PASSWORD_RESET');
+      logError('Exception sending password reset email: $e',
+          tag: 'API_PASSWORD_RESET');
       return false;
     }
   }
@@ -3537,11 +3708,13 @@ class ApiService {
         logInfo('Password reset token is valid', tag: 'API_PASSWORD_RESET');
         return true;
       } else {
-        logWarning('Invalid or expired password reset token', tag: 'API_PASSWORD_RESET');
+        logWarning('Invalid or expired password reset token',
+            tag: 'API_PASSWORD_RESET');
         return false;
       }
     } catch (e) {
-      logError('Exception verifying password reset token: $e', tag: 'API_PASSWORD_RESET');
+      logError('Exception verifying password reset token: $e',
+          tag: 'API_PASSWORD_RESET');
       return false;
     }
   }
@@ -3563,7 +3736,8 @@ class ApiService {
         logInfo('Password reset successfully', tag: 'API_PASSWORD_RESET');
         return true;
       } else {
-        logError('Failed to reset password: ${response.statusCode}', tag: 'API_PASSWORD_RESET');
+        logError('Failed to reset password: ${response.statusCode}',
+            tag: 'API_PASSWORD_RESET');
         return false;
       }
     } catch (e) {
@@ -3583,7 +3757,8 @@ class ApiService {
 
       final token = await getToken();
       if (token == null) {
-        logWarning('No auth token available for push token registration', tag: 'API_PUSH_TOKEN');
+        logWarning('No auth token available for push token registration',
+            tag: 'API_PUSH_TOKEN');
         return false;
       }
 
@@ -3602,7 +3777,8 @@ class ApiService {
         logInfo('Push token registered successfully', tag: 'API_PUSH_TOKEN');
         return true;
       } else {
-        logError('Failed to register push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        logError('Failed to register push token: ${response.statusCode}',
+            tag: 'API_PUSH_TOKEN');
         return false;
       }
     } catch (e) {
@@ -3618,7 +3794,8 @@ class ApiService {
 
       final token = await getToken();
       if (token == null) {
-        logWarning('No auth token available for push token update', tag: 'API_PUSH_TOKEN');
+        logWarning('No auth token available for push token update',
+            tag: 'API_PUSH_TOKEN');
         return false;
       }
 
@@ -3636,7 +3813,8 @@ class ApiService {
         logInfo('Push token updated successfully', tag: 'API_PUSH_TOKEN');
         return true;
       } else {
-        logError('Failed to update push token: ${response.statusCode}', tag: 'API_PUSH_TOKEN');
+        logError('Failed to update push token: ${response.statusCode}',
+            tag: 'API_PUSH_TOKEN');
         return false;
       }
     } catch (e) {
@@ -3652,7 +3830,8 @@ class ApiService {
 
       final token = await getToken();
       if (token == null) {
-        logDebug('No auth token available for push token unregistration', tag: 'API_PUSH_TOKEN');
+        logDebug('No auth token available for push token unregistration',
+            tag: 'API_PUSH_TOKEN');
         return true; // Consider success if user already logged out
       }
 
@@ -3695,7 +3874,8 @@ class ApiService {
       // Fallback to secure random generation instead of predictable timestamp
       final secureRandom = Random.secure();
       final randomBytes = List.generate(16, (i) => secureRandom.nextInt(256));
-      final fallbackId = 'mita_fallback_${base64Encode(randomBytes).substring(0, 16)}';
+      final fallbackId =
+          'mita_fallback_${base64Encode(randomBytes).substring(0, 16)}';
 
       logWarning('Using fallback device ID: ${fallbackId.substring(0, 12)}...',
           tag: 'API_PUSH_TOKEN');
@@ -3776,7 +3956,8 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      logDebug('Tracked feature usage: $feature (success: $success)', tag: 'API_PREMIUM');
+      logDebug('Tracked feature usage: $feature (success: $success)',
+          tag: 'API_PREMIUM');
     } catch (e) {
       logError('Failed to track feature usage: $e', tag: 'API_PREMIUM');
       // Don't rethrow - analytics failures shouldn't break user experience
@@ -3829,9 +4010,11 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      logDebug('Tracked feature access attempt: $feature (success: $success)', tag: 'API_PREMIUM');
+      logDebug('Tracked feature access attempt: $feature (success: $success)',
+          tag: 'API_PREMIUM');
     } catch (e) {
-      logError('Failed to track feature access attempt: $e', tag: 'API_PREMIUM');
+      logError('Failed to track feature access attempt: $e',
+          tag: 'API_PREMIUM');
       // Don't rethrow - analytics failures shouldn't break user experience
     }
   }
@@ -3878,7 +4061,8 @@ class ApiService {
         throw Exception('Authentication token not available');
       }
 
-      logInfo('Updating subscription status: $subscriptionId -> $status', tag: 'API_PREMIUM');
+      logInfo('Updating subscription status: $subscriptionId -> $status',
+          tag: 'API_PREMIUM');
 
       await _dio.put(
         '/subscriptions/$subscriptionId/status',
@@ -3900,7 +4084,8 @@ class ApiService {
   }
 
   /// Get subscription history for audit purposes
-  Future<List<Map<String, dynamic>>> getSubscriptionHistory(String userId) async {
+  Future<List<Map<String, dynamic>>> getSubscriptionHistory(
+      String userId) async {
     try {
       final token = await getToken();
       if (token == null) {
@@ -3925,7 +4110,8 @@ class ApiService {
 
   Future<void> logout() async {
     try {
-      logInfo('Performing secure logout with push token cleanup', tag: 'API_LOGOUT');
+      logInfo('Performing secure logout with push token cleanup',
+          tag: 'API_LOGOUT');
 
       // SECURITY: Clean up push tokens before clearing auth tokens
       await SecurePushTokenManager.instance.cleanupOnLogout();
@@ -3935,13 +4121,15 @@ class ApiService {
 
       logInfo('Secure logout completed successfully', tag: 'API_LOGOUT');
     } catch (e, stackTrace) {
-      logError('Error during logout: $e', tag: 'API_LOGOUT', stackTrace: stackTrace);
+      logError('Error during logout: $e',
+          tag: 'API_LOGOUT', stackTrace: stackTrace);
 
       // Still clear tokens even if push token cleanup fails
       try {
         await clearTokens();
       } catch (e2) {
-        logError('Failed to clear tokens during error recovery: $e2', tag: 'API_LOGOUT');
+        logError('Failed to clear tokens during error recovery: $e2',
+            tag: 'API_LOGOUT');
       }
 
       rethrow;

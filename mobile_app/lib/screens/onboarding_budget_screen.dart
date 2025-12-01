@@ -31,17 +31,20 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
     super.initState();
 
     // Get income data from onboarding state
-    if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
+    if (OnboardingState.instance.income == null ||
+        OnboardingState.instance.income! <= 0) {
       throw Exception(
           'Income must be provided before budget screen. Please go back and complete income entry.');
     }
     _monthlyIncome = OnboardingState.instance.income!;
-    _incomeTier =
-        OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
+    _incomeTier = OnboardingState.instance.incomeTier ??
+        _incomeService.classifyIncome(_monthlyIncome);
 
     // Generate budget template
-    _budgetTemplate = _incomeService.getBudgetTemplate(_incomeTier, _monthlyIncome);
-    _customAllocations = Map<String, double>.from(_budgetTemplate['allocations']);
+    _budgetTemplate =
+        _incomeService.getBudgetTemplate(_incomeTier, _monthlyIncome);
+    _customAllocations =
+        Map<String, double>.from(_budgetTemplate['allocations']);
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -63,7 +66,8 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
 
   void _resetToRecommended() {
     setState(() {
-      _customAllocations = Map<String, double>.from(_budgetTemplate['allocations']);
+      _customAllocations =
+          Map<String, double>.from(_budgetTemplate['allocations']);
       _useCustomBudget = false;
     });
   }
@@ -81,7 +85,8 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
     Navigator.pushNamed(context, '/onboarding_goal');
   }
 
-  double get _totalAllocated => _customAllocations.values.fold(0.0, (sum, amount) => sum + amount);
+  double get _totalAllocated =>
+      _customAllocations.values.fold(0.0, (sum, amount) => sum + amount);
   double get _remainingBudget => _monthlyIncome - _totalAllocated;
 
   @override
@@ -202,8 +207,10 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
               ...(_customAllocations.entries.map((entry) {
                 final category = entry.key;
                 final amount = entry.value;
-                final percentage = _incomeService.getIncomePercentage(amount, _monthlyIncome);
-                final categoryColor = categoryColors[category] ?? Colors.grey.shade600;
+                final percentage =
+                    _incomeService.getIncomePercentage(amount, _monthlyIncome);
+                final categoryColor =
+                    categoryColors[category] ?? Colors.grey.shade600;
 
                 return Card(
                   elevation: 1,
@@ -257,8 +264,10 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
                                 max: _monthlyIncome * 0.5, // Max 50% of income
                                 divisions: 50,
                                 activeColor: categoryColor,
-                                inactiveColor: categoryColor.withValues(alpha: 0.2),
-                                onChanged: (value) => _onAllocationChanged(category, value),
+                                inactiveColor:
+                                    categoryColor.withValues(alpha: 0.2),
+                                onChanged: (value) =>
+                                    _onAllocationChanged(category, value),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -409,7 +418,8 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
                   if (_useCustomBudget) const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _remainingBudget >= 0 ? _continueToBudgetSetup : null,
+                      onPressed:
+                          _remainingBudget >= 0 ? _continueToBudgetSetup : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,

@@ -12,7 +12,8 @@ class ChallengesScreen extends StatefulWidget {
   State<ChallengesScreen> createState() => _ChallengesScreenState();
 }
 
-class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerProviderStateMixin {
+class _ChallengesScreenState extends State<ChallengesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -47,7 +48,9 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to join challenge: ${challengesProvider.errorMessage}')),
+        SnackBar(
+            content: Text(
+                'Failed to join challenge: ${challengesProvider.errorMessage}')),
       );
     }
   }
@@ -84,7 +87,9 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to leave challenge: ${challengesProvider.errorMessage}')),
+          SnackBar(
+              content: Text(
+                  'Failed to leave challenge: ${challengesProvider.errorMessage}')),
         );
       }
     }
@@ -94,8 +99,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     // Use context.watch for reactive state updates
     final challengesProvider = context.watch<ChallengesProvider>();
-    final isLoading =
-        challengesProvider.isLoading || challengesProvider.state == ChallengesState.loading;
+    final isLoading = challengesProvider.isLoading ||
+        challengesProvider.state == ChallengesState.loading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -223,7 +228,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
   Widget _buildActiveChallengeCard(Map<String, dynamic> challenge) {
     final progress = (challenge['current_progress'] ?? 0).toDouble();
     final target = (challenge['target_value'] ?? 1).toDouble();
-    final progressPercentage = target > 0 ? (progress / target).clamp(0.0, 1.0) : 0.0;
+    final progressPercentage =
+        target > 0 ? (progress / target).clamp(0.0, 1.0) : 0.0;
 
     final endDate = DateTime.parse(challenge['end_date']);
     final daysLeft = endDate.difference(DateTime.now()).inDays;
@@ -267,7 +273,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: difficultyColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -343,7 +350,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.stars, color: Colors.amber, size: 16),
+                            const Icon(Icons.stars,
+                                color: Colors.amber, size: 16),
                             const SizedBox(width: 4),
                             Text(
                               '${challenge['reward_points']} points',
@@ -358,7 +366,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.attach_money, color: Colors.green, size: 16),
+                            const Icon(Icons.attach_money,
+                                color: Colors.green, size: 16),
                             Text(
                               '\$${challenge['reward_amount']} reward',
                               style: const TextStyle(
@@ -458,7 +467,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: difficultyColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -545,7 +555,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                   ),
                   Row(
                     children: [
-                      const Icon(Icons.attach_money, color: Colors.green, size: 20),
+                      const Icon(Icons.attach_money,
+                          color: Colors.green, size: 20),
                       Text(
                         '\$${challenge['reward_amount']}',
                         style: const TextStyle(
@@ -624,21 +635,26 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
     final totalPoints = challengesProvider.totalPoints;
     final nextLevelPoints = challengesProvider.nextLevelPoints;
     final pointsToNext = challengesProvider.pointsToNextLevel;
-    final levelProgress =
-        nextLevelPoints > 0 ? (totalPoints / nextLevelPoints).clamp(0.0, 1.0) : 0.0;
+    final levelProgress = nextLevelPoints > 0
+        ? (totalPoints / nextLevelPoints).clamp(0.0, 1.0)
+        : 0.0;
     final gamificationStats = challengesProvider.gamificationStats;
 
     return Column(
       children: [
         // Level card
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 3,
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
-                colors: [AppColors.slatePurple, AppColors.slatePurple.withValues(alpha: 0.7)],
+                colors: [
+                  AppColors.slatePurple,
+                  AppColors.slatePurple.withValues(alpha: 0.7)
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -727,7 +743,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                     LinearProgressIndicator(
                       value: levelProgress,
                       backgroundColor: Colors.white24,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(Colors.white),
                       minHeight: 6,
                     ),
                   ],
@@ -774,7 +791,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildQuickStat(String label, String value, IconData icon, Color color) {
+  Widget _buildQuickStat(
+      String label, String value, IconData icon, Color color) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
@@ -831,7 +849,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.military_tech, size: 48, color: Colors.grey[400]),
+                    Icon(Icons.military_tech,
+                        size: 48, color: Colors.grey[400]),
                     const SizedBox(height: 8),
                     Text(
                       'No badges earned yet',
@@ -933,7 +952,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
         ),
         const SizedBox(height: 12),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 2,
           child: Column(
             children: leaderboard.take(5).map<Widget>((entry) {
@@ -955,8 +975,11 @@ class _ChallengesScreenState extends State<ChallengesScreen> with SingleTickerPr
                   entry['username'] ?? 'User',
                   style: TextStyle(
                     fontFamily: AppTypography.fontHeading,
-                    fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w600,
-                    color: isCurrentUser ? AppColors.secondary : AppColors.textPrimary,
+                    fontWeight:
+                        isCurrentUser ? FontWeight.bold : FontWeight.w600,
+                    color: isCurrentUser
+                        ? AppColors.secondary
+                        : AppColors.textPrimary,
                   ),
                 ),
                 subtitle: Text(

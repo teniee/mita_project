@@ -9,7 +9,8 @@ import 'timeout_manager_service.dart';
 /// Offline-first data provider that ensures instant app loading
 /// with immediate fallback data and background sync
 class OfflineFirstProvider {
-  static final OfflineFirstProvider _instance = OfflineFirstProvider._internal();
+  static final OfflineFirstProvider _instance =
+      OfflineFirstProvider._internal();
   factory OfflineFirstProvider() => _instance;
   OfflineFirstProvider._internal();
 
@@ -56,7 +57,8 @@ class OfflineFirstProvider {
           'Offline-first provider initialized (background sync disabled - using LiveUpdatesService)',
           tag: 'OFFLINE_FIRST');
     } catch (e) {
-      logError('Failed to initialize offline-first provider', tag: 'OFFLINE_FIRST', error: e);
+      logError('Failed to initialize offline-first provider',
+          tag: 'OFFLINE_FIRST', error: e);
 
       // Still mark as initialized with fallback data
       await _generateFallbackData();
@@ -69,23 +71,28 @@ class OfflineFirstProvider {
   Future<void> _loadCachedData() async {
     try {
       // Try to load cached dashboard
-      final dashboardCache = await _offlineService.getCachedResponse('dashboard_data');
+      final dashboardCache =
+          await _offlineService.getCachedResponse('dashboard_data');
       if (dashboardCache != null && !dashboardCache.isExpired) {
-        _cachedDashboard = jsonDecode(dashboardCache.data) as Map<String, dynamic>;
+        _cachedDashboard =
+            jsonDecode(dashboardCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached dashboard data', tag: 'OFFLINE_FIRST');
       }
 
       // Try to load cached calendar
-      final calendarCache = await _offlineService.getCachedResponse('calendar_data');
+      final calendarCache =
+          await _offlineService.getCachedResponse('calendar_data');
       if (calendarCache != null && !calendarCache.isExpired) {
         _cachedCalendar = jsonDecode(calendarCache.data) as List<dynamic>;
         logDebug('Loaded cached calendar data', tag: 'OFFLINE_FIRST');
       }
 
       // Try to load cached user profile
-      final profileCache = await _offlineService.getCachedResponse('user_profile');
+      final profileCache =
+          await _offlineService.getCachedResponse('user_profile');
       if (profileCache != null && !profileCache.isExpired) {
-        _cachedUserProfile = jsonDecode(profileCache.data) as Map<String, dynamic>;
+        _cachedUserProfile =
+            jsonDecode(profileCache.data) as Map<String, dynamic>;
         logDebug('Loaded cached user profile', tag: 'OFFLINE_FIRST');
       }
 
@@ -94,7 +101,8 @@ class OfflineFirstProvider {
         await _generateFallbackData();
       }
     } catch (e) {
-      logWarning('Error loading cached data, using fallback', tag: 'OFFLINE_FIRST');
+      logWarning('Error loading cached data, using fallback',
+          tag: 'OFFLINE_FIRST');
       await _generateFallbackData();
     }
   }
@@ -102,7 +110,8 @@ class OfflineFirstProvider {
   /// Generate fallback data when no cache is available
   Future<void> _generateFallbackData() async {
     try {
-      logInfo('Generating safe fallback data for offline-first provider', tag: 'OFFLINE_FIRST');
+      logInfo('Generating safe fallback data for offline-first provider',
+          tag: 'OFFLINE_FIRST');
 
       // Generate safe default dashboard data
       _cachedDashboard = _generateDefaultDashboard();
@@ -113,7 +122,8 @@ class OfflineFirstProvider {
       // Generate safe default user profile (minimal data)
       _cachedUserProfile = _generateDefaultUserProfile();
 
-      logInfo('Safe fallback data generated successfully', tag: 'OFFLINE_FIRST');
+      logInfo('Safe fallback data generated successfully',
+          tag: 'OFFLINE_FIRST');
     } catch (e) {
       logError('Failed to generate fallback data: $e', tag: 'OFFLINE_FIRST');
 
@@ -141,8 +151,9 @@ class OfflineFirstProvider {
       return {
         'day': day,
         'limit': dailyBudget.round(),
-        'spent':
-            isPastDay ? (dailyBudget * 0.7).round() : (isToday ? (dailyBudget * 0.5).round() : 0),
+        'spent': isPastDay
+            ? (dailyBudget * 0.7).round()
+            : (isToday ? (dailyBudget * 0.5).round() : 0),
         'status': 'good',
         'is_today': isToday,
         'is_weekend': currentDate.weekday >= 6,
@@ -234,7 +245,8 @@ class OfflineFirstProvider {
   /// Get user profile (instant from cache)
   Map<String, dynamic> getUserProfile() {
     if (_cachedUserProfile == null) {
-      logWarning('User profile not cached, generating default profile', tag: 'OFFLINE_FIRST');
+      logWarning('User profile not cached, generating default profile',
+          tag: 'OFFLINE_FIRST');
       _cachedUserProfile = _generateDefaultUserProfile();
     }
     return _cachedUserProfile!;
@@ -274,9 +286,11 @@ class OfflineFirstProvider {
               expiry: const Duration(hours: 2),
             );
 
-            logDebug('Dashboard data synced in background', tag: 'OFFLINE_FIRST');
+            logDebug('Dashboard data synced in background',
+                tag: 'OFFLINE_FIRST');
           } catch (e) {
-            logDebug('Background dashboard sync failed (expected)', tag: 'OFFLINE_FIRST');
+            logDebug('Background dashboard sync failed (expected)',
+                tag: 'OFFLINE_FIRST');
           }
         },
         timeout: const Duration(seconds: 8),
@@ -297,9 +311,11 @@ class OfflineFirstProvider {
               expiry: const Duration(hours: 2),
             );
 
-            logDebug('Calendar data synced in background', tag: 'OFFLINE_FIRST');
+            logDebug('Calendar data synced in background',
+                tag: 'OFFLINE_FIRST');
           } catch (e) {
-            logDebug('Background calendar sync failed (expected)', tag: 'OFFLINE_FIRST');
+            logDebug('Background calendar sync failed (expected)',
+                tag: 'OFFLINE_FIRST');
           }
         },
         timeout: const Duration(seconds: 8),
@@ -322,7 +338,8 @@ class OfflineFirstProvider {
 
             logDebug('User profile synced in background', tag: 'OFFLINE_FIRST');
           } catch (e) {
-            logDebug('Background profile sync failed (expected)', tag: 'OFFLINE_FIRST');
+            logDebug('Background profile sync failed (expected)',
+                tag: 'OFFLINE_FIRST');
           }
         },
         timeout: const Duration(seconds: 5),
@@ -339,7 +356,8 @@ class OfflineFirstProvider {
       logDebug('User-initiated data refresh', tag: 'OFFLINE_FIRST');
 
       // Try to get fresh data with timeout
-      final dashboardFuture = _timeoutManager.executeWithFallback<Map<String, dynamic>>(
+      final dashboardFuture =
+          _timeoutManager.executeWithFallback<Map<String, dynamic>>(
         operation: () => _apiService.getDashboard(),
         fallbackValue: _cachedDashboard ?? {},
         timeout: const Duration(seconds: 8),
@@ -377,7 +395,8 @@ class OfflineFirstProvider {
 
       logDebug('Data refresh completed successfully', tag: 'OFFLINE_FIRST');
     } catch (e) {
-      logWarning('Data refresh partially failed, keeping cached data', tag: 'OFFLINE_FIRST');
+      logWarning('Data refresh partially failed, keeping cached data',
+          tag: 'OFFLINE_FIRST');
     }
   }
 
@@ -433,7 +452,8 @@ class OfflineFirstStatus {
     required this.hasCachedProfile,
   });
 
-  bool get hasAllCachedData => hasCachedDashboard && hasCachedCalendar && hasCachedProfile;
+  bool get hasAllCachedData =>
+      hasCachedDashboard && hasCachedCalendar && hasCachedProfile;
 
   @override
   String toString() {

@@ -39,16 +39,20 @@ class LiveUpdatesService {
   Duration _currentUpdateInterval = _defaultUpdateInterval;
 
   /// Stream of dashboard updates
-  Stream<Map<String, dynamic>> get dashboardUpdates => _dashboardUpdatesController.stream;
+  Stream<Map<String, dynamic>> get dashboardUpdates =>
+      _dashboardUpdatesController.stream;
 
   /// Stream of transaction updates
-  Stream<Map<String, dynamic>> get transactionUpdates => _transactionUpdatesController.stream;
+  Stream<Map<String, dynamic>> get transactionUpdates =>
+      _transactionUpdatesController.stream;
 
   /// Stream of budget updates
-  Stream<Map<String, dynamic>> get budgetUpdates => _budgetUpdatesController.stream;
+  Stream<Map<String, dynamic>> get budgetUpdates =>
+      _budgetUpdatesController.stream;
 
   /// Stream of profile updates
-  Stream<Map<String, dynamic>> get profileUpdates => _profileUpdatesController.stream;
+  Stream<Map<String, dynamic>> get profileUpdates =>
+      _profileUpdatesController.stream;
 
   /// Whether live updates are currently enabled
   bool get isEnabled => _isEnabled;
@@ -66,7 +70,8 @@ class LiveUpdatesService {
     _currentUpdateInterval = interval ?? _defaultUpdateInterval;
     _isEnabled = true;
 
-    logInfo('Enabling live updates with ${_currentUpdateInterval.inMinutes} minute intervals',
+    logInfo(
+        'Enabling live updates with ${_currentUpdateInterval.inMinutes} minute intervals',
         tag: 'LIVE_UPDATES');
 
     await _startLiveUpdates();
@@ -135,8 +140,10 @@ class LiveUpdatesService {
     try {
       final dashboardData = await _apiService.getDashboard();
 
-      if (_lastDashboardData == null || _hasDataChanged(_lastDashboardData!, dashboardData)) {
-        logDebug('Dashboard data changed, notifying listeners', tag: 'LIVE_UPDATES');
+      if (_lastDashboardData == null ||
+          _hasDataChanged(_lastDashboardData!, dashboardData)) {
+        logDebug('Dashboard data changed, notifying listeners',
+            tag: 'LIVE_UPDATES');
         _lastDashboardData = Map.from(dashboardData);
         _dashboardUpdatesController.add(dashboardData);
       }
@@ -150,8 +157,10 @@ class LiveUpdatesService {
     try {
       final profileData = await _userDataManager.getUserProfile();
 
-      if (_lastProfileData == null || _hasDataChanged(_lastProfileData!, profileData)) {
-        logDebug('Profile data changed, notifying listeners', tag: 'LIVE_UPDATES');
+      if (_lastProfileData == null ||
+          _hasDataChanged(_lastProfileData!, profileData)) {
+        logDebug('Profile data changed, notifying listeners',
+            tag: 'LIVE_UPDATES');
         _lastProfileData = Map.from(profileData);
         _profileUpdatesController.add(profileData);
       }
@@ -172,7 +181,8 @@ class LiveUpdatesService {
       final currentCount = transactions.length;
 
       if (_lastTransactionCount != currentCount) {
-        logDebug('New transaction detected, notifying listeners', tag: 'LIVE_UPDATES');
+        logDebug('New transaction detected, notifying listeners',
+            tag: 'LIVE_UPDATES');
         _lastTransactionCount = currentCount;
 
         _transactionUpdatesController.add({
@@ -183,7 +193,8 @@ class LiveUpdatesService {
         });
       }
     } catch (e) {
-      logWarning('Failed to check transaction updates: $e', tag: 'LIVE_UPDATES');
+      logWarning('Failed to check transaction updates: $e',
+          tag: 'LIVE_UPDATES');
     }
   }
 
@@ -198,7 +209,8 @@ class LiveUpdatesService {
           'source': 'live_updates_service',
           'dashboard_changed': true,
         });
-        logDebug('Budget update notification sent to subscribers', tag: 'LIVE_UPDATES');
+        logDebug('Budget update notification sent to subscribers',
+            tag: 'LIVE_UPDATES');
       }
     } catch (e) {
       logWarning('Failed to check budget updates: $e', tag: 'LIVE_UPDATES');
@@ -206,7 +218,8 @@ class LiveUpdatesService {
   }
 
   /// Helper method to detect if data has meaningfully changed
-  bool _hasDataChanged(Map<String, dynamic> oldData, Map<String, dynamic> newData) {
+  bool _hasDataChanged(
+      Map<String, dynamic> oldData, Map<String, dynamic> newData) {
     // Simple comparison - in production, you might want more sophisticated diffing
     try {
       // Compare key fields that indicate meaningful changes

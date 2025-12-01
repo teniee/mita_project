@@ -9,7 +9,8 @@ import 'logging_service.dart';
 /// Advanced predictive analytics service that forecasts future spending,
 /// identifies upcoming financial challenges, and provides proactive recommendations.
 class PredictiveAnalyticsService extends ChangeNotifier {
-  static final PredictiveAnalyticsService _instance = PredictiveAnalyticsService._internal();
+  static final PredictiveAnalyticsService _instance =
+      PredictiveAnalyticsService._internal();
   factory PredictiveAnalyticsService() => _instance;
   PredictiveAnalyticsService._internal();
 
@@ -37,7 +38,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   Map<String, FinancialPrediction> get predictions => _predictions;
   List<FutureRisk> get risks => _risks;
   List<FutureOpportunity> get opportunities => _opportunities;
-  Map<String, CashFlowProjection> get cashFlowProjections => _cashFlowProjections;
+  Map<String, CashFlowProjection> get cashFlowProjections =>
+      _cashFlowProjections;
   SeasonalAnalysis? get seasonalAnalysis => _seasonalAnalysis;
 
   /// Initialize the predictive analytics service
@@ -60,17 +62,21 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       // Start periodic updates
       _startPeriodicUpdates();
 
-      logInfo('Predictive analytics initialized successfully', tag: 'PREDICTIVE');
+      logInfo('Predictive analytics initialized successfully',
+          tag: 'PREDICTIVE');
       notifyListeners();
     } catch (e) {
-      logError('Failed to initialize predictive analytics: $e', tag: 'PREDICTIVE', error: e);
+      logError('Failed to initialize predictive analytics: $e',
+          tag: 'PREDICTIVE', error: e);
     }
   }
 
   /// Generate comprehensive financial predictions
-  Future<void> generatePredictions({int daysAhead = DEFAULT_PREDICTION_DAYS}) async {
+  Future<void> generatePredictions(
+      {int daysAhead = DEFAULT_PREDICTION_DAYS}) async {
     try {
-      logInfo('Generating financial predictions for $daysAhead days', tag: 'PREDICTIVE');
+      logInfo('Generating financial predictions for $daysAhead days',
+          tag: 'PREDICTIVE');
 
       _predictions = {};
 
@@ -97,7 +103,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   }
 
   /// Predict spending for a specific category
-  Future<CategoryPrediction> predictCategorySpending(String category, {int daysAhead = 30}) async {
+  Future<CategoryPrediction> predictCategorySpending(String category,
+      {int daysAhead = 30}) async {
     try {
       // Get category patterns
       final patterns = _patternAnalyzer.patterns;
@@ -114,7 +121,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       }
 
       // Apply multiple prediction models
-      final scenarios = await _generatePredictionScenarios(categoryPattern, daysAhead);
+      final scenarios =
+          await _generatePredictionScenarios(categoryPattern, daysAhead);
 
       // Calculate weighted prediction
       final weightedPrediction = _calculateWeightedPrediction(scenarios);
@@ -132,7 +140,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
         riskLevel: _assessPredictionRisk(weightedPrediction, categoryPattern),
       );
     } catch (e) {
-      logError('Category prediction failed for $category: $e', tag: 'PREDICTIVE', error: e);
+      logError('Category prediction failed for $category: $e',
+          tag: 'PREDICTIVE', error: e);
       return CategoryPrediction(
         category: category,
         predictedAmount: 0.0,
@@ -149,7 +158,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       logInfo('Analyzing seasonal patterns', tag: 'PREDICTIVE');
 
       // Get seasonal analysis from backend
-      final backendSeasonality = await _apiService.getSeasonalSpendingPatterns();
+      final backendSeasonality =
+          await _apiService.getSeasonalSpendingPatterns();
 
       // Process seasonal data
       final monthlyPatterns = <int, double>{};
@@ -157,14 +167,16 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       final holidayImpact = <String, double>{};
 
       if (backendSeasonality['monthly_patterns'] != null) {
-        final monthly = backendSeasonality['monthly_patterns'] as Map<String, dynamic>;
+        final monthly =
+            backendSeasonality['monthly_patterns'] as Map<String, dynamic>;
         monthly.forEach((month, factor) {
           monthlyPatterns[int.parse(month)] = (factor as num).toDouble();
         });
       }
 
       if (backendSeasonality['category_seasonality'] != null) {
-        final categories = backendSeasonality['category_seasonality'] as Map<String, dynamic>;
+        final categories =
+            backendSeasonality['category_seasonality'] as Map<String, dynamic>;
         categories.forEach((category, data) {
           if (data is Map<String, dynamic>) {
             final patterns = <int, double>{};
@@ -177,7 +189,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       }
 
       if (backendSeasonality['holiday_impact'] != null) {
-        final holidays = backendSeasonality['holiday_impact'] as Map<String, dynamic>;
+        final holidays =
+            backendSeasonality['holiday_impact'] as Map<String, dynamic>;
         holidays.forEach((holiday, impact) {
           holidayImpact[holiday] = (impact as num).toDouble();
         });
@@ -187,8 +200,10 @@ class PredictiveAnalyticsService extends ChangeNotifier {
         monthlyPatterns: monthlyPatterns,
         categorySeasonality: categorySeasonality,
         holidayImpact: holidayImpact,
-        yearOverYearGrowth: (backendSeasonality['yoy_growth'] as num?)?.toDouble() ?? 0.0,
-        confidence: (backendSeasonality['confidence'] as num?)?.toDouble() ?? 0.7,
+        yearOverYearGrowth:
+            (backendSeasonality['yoy_growth'] as num?)?.toDouble() ?? 0.0,
+        confidence:
+            (backendSeasonality['confidence'] as num?)?.toDouble() ?? 0.7,
       );
 
       notifyListeners();
@@ -212,7 +227,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
 
       // Filter by categories if specified
       final relevantPredictions = categories != null
-          ? Map.fromEntries(_predictions.entries.where((e) => categories.contains(e.key)))
+          ? Map.fromEntries(
+              _predictions.entries.where((e) => categories.contains(e.key)))
           : _predictions;
 
       // Calculate total forecast
@@ -269,7 +285,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
         final dailyBurnRate = daysElapsed > 0 ? spent / daysElapsed : 0.0;
         final projectedSpending = dailyBurnRate * 30;
 
-        final burnRate = budgetAmount > 0 ? projectedSpending / budgetAmount : 0.0;
+        final burnRate =
+            budgetAmount > 0 ? projectedSpending / budgetAmount : 0.0;
 
         analysis[category] = CategoryBurnRate(
           category: category,
@@ -279,8 +296,9 @@ class PredictiveAnalyticsService extends ChangeNotifier {
           dailyBurnRate: dailyBurnRate,
           projectedTotalSpending: projectedSpending,
           burnRateRatio: burnRate,
-          daysToExhaustion:
-              remaining > 0 && dailyBurnRate > 0 ? (remaining / dailyBurnRate).round() : null,
+          daysToExhaustion: remaining > 0 && dailyBurnRate > 0
+              ? (remaining / dailyBurnRate).round()
+              : null,
           riskLevel: _assessBurnRateRisk(burnRate),
         );
       });
@@ -376,11 +394,13 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   }
 
   /// Get AI-powered predictions from backend
-  Future<Map<String, FinancialPrediction>> _getAIPredictions(int daysAhead) async {
+  Future<Map<String, FinancialPrediction>> _getAIPredictions(
+      int daysAhead) async {
     try {
       final predictions = <String, FinancialPrediction>{};
 
-      final aiResult = await _apiService.getAISpendingPrediction(daysAhead: daysAhead);
+      final aiResult =
+          await _apiService.getAISpendingPrediction(daysAhead: daysAhead);
 
       if (aiResult['predictions'] != null) {
         final predictionsData = aiResult['predictions'] as Map<String, dynamic>;
@@ -407,7 +427,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   }
 
   /// Generate local model predictions
-  Future<Map<String, FinancialPrediction>> _generateLocalPredictions(int daysAhead) async {
+  Future<Map<String, FinancialPrediction>> _generateLocalPredictions(
+      int daysAhead) async {
     final predictions = <String, FinancialPrediction>{};
 
     final patterns = _patternAnalyzer.patterns;
@@ -466,7 +487,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
 
         if (totalWeight > 0) {
           final mergedAmount =
-              (aiPred.amount * aiWeight + localPred.amount * localWeight) / totalWeight;
+              (aiPred.amount * aiWeight + localPred.amount * localWeight) /
+                  totalWeight;
           final mergedConfidence = math.min(1.0, (aiWeight + localWeight) / 2);
 
           merged[category] = FinancialPrediction(
@@ -494,7 +516,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
 
     // This would generate detailed cash flow projections
     // For now, we'll create a simple projection
-    final totalPredicted = _predictions.values.fold<double>(0, (sum, pred) => sum + pred.amount);
+    final totalPredicted =
+        _predictions.values.fold<double>(0, (sum, pred) => sum + pred.amount);
 
     _cashFlowProjections['total'] = CashFlowProjection(
       period: 'monthly',
@@ -503,7 +526,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
       netFlow: -totalPredicted,
       confidence: _predictions.values.isEmpty
           ? 0.0
-          : _predictions.values.fold<double>(0, (sum, pred) => sum + pred.confidence) /
+          : _predictions.values
+                  .fold<double>(0, (sum, pred) => sum + pred.confidence) /
               _predictions.length,
     );
   }
@@ -545,7 +569,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
           id: 'savings_$category',
           type: OpportunityType.savings,
           title: 'Potential savings in $category',
-          description: 'Low predicted spending could free up budget for other goals',
+          description:
+              'Low predicted spending could free up budget for other goals',
           category: category,
           confidence: 1.0 - pred.confidence,
           impact: ImpactLevel.medium,
@@ -606,10 +631,14 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   }
 
   /// Calculate weighted prediction from scenarios
-  PredictionScenario _calculateWeightedPrediction(List<PredictionScenario> scenarios) {
+  PredictionScenario _calculateWeightedPrediction(
+      List<PredictionScenario> scenarios) {
     if (scenarios.isEmpty) {
       return PredictionScenario(
-          name: 'Default', probability: 0.0, amount: 0.0, description: 'No data');
+          name: 'Default',
+          probability: 0.0,
+          amount: 0.0,
+          description: 'No data');
     }
 
     double weightedAmount = 0.0;
@@ -653,7 +682,8 @@ class PredictiveAnalyticsService extends ChangeNotifier {
     final futureDate = DateTime.now().add(Duration(days: daysAhead));
     final month = futureDate.month;
 
-    final categorySeasonality = _seasonalAnalysis!.categorySeasonality[category];
+    final categorySeasonality =
+        _seasonalAnalysis!.categorySeasonality[category];
     if (categorySeasonality != null && categorySeasonality.containsKey(month)) {
       return categorySeasonality[month]!;
     }
@@ -673,22 +703,30 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   }
 
   // Placeholder implementations for complex methods
-  List<String> _identifyInfluencingFactors(SpendingPattern pattern, int daysAhead) => [];
-  PredictionRisk _assessPredictionRisk(PredictionScenario prediction, SpendingPattern pattern) =>
+  List<String> _identifyInfluencingFactors(
+          SpendingPattern pattern, int daysAhead) =>
+      [];
+  PredictionRisk _assessPredictionRisk(
+          PredictionScenario prediction, SpendingPattern pattern) =>
       PredictionRisk.low;
   Future<List<ForecastScenario>> _generateForecastScenarios(
           Map<String, FinancialPrediction> predictions) async =>
       [];
-  Future<List<String>> _identifyForecastRisks(Map<String, FinancialPrediction> predictions) async =>
+  Future<List<String>> _identifyForecastRisks(
+          Map<String, FinancialPrediction> predictions) async =>
       [];
   BurnRateRisk _assessBurnRateRisk(double burnRate) => burnRate > 1.2
       ? BurnRateRisk.high
       : burnRate > 1.0
           ? BurnRateRisk.medium
           : BurnRateRisk.low;
-  double _calculateOverallBurnRate(Map<String, CategoryBurnRate> analysis) => 1.0;
-  double _calculateProjectedOverspend(Map<String, CategoryBurnRate> analysis) => 0.0;
-  List<String> _generateBurnRateRecommendations(Map<String, CategoryBurnRate> analysis) => [];
+  double _calculateOverallBurnRate(Map<String, CategoryBurnRate> analysis) =>
+      1.0;
+  double _calculateProjectedOverspend(Map<String, CategoryBurnRate> analysis) =>
+      0.0;
+  List<String> _generateBurnRateRecommendations(
+          Map<String, CategoryBurnRate> analysis) =>
+      [];
   double _calculateRiskImpact(double amount) => amount / 1000.0;
 }
 

@@ -46,15 +46,17 @@ class OnboardingState {
           );
         }
 
-        expenses = (data['expenses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        expenses =
+            (data['expenses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
         goals = (data['goals'] as List?)?.cast<String>() ?? [];
         savingsGoalAmount = (data['savingsGoalAmount'] as num?)?.toDouble();
         habits = (data['habits'] as List?)?.cast<String>() ?? [];
         habitsComment = data['habitsComment'] as String?;
 
         if (data['spendingFrequencies'] != null) {
-          spendingFrequencies = (data['spendingFrequencies'] as Map<String, dynamic>)
-              .map((key, value) => MapEntry(key, value as int));
+          spendingFrequencies =
+              (data['spendingFrequencies'] as Map<String, dynamic>)
+                  .map((key, value) => MapEntry(key, value as int));
         }
       }
 

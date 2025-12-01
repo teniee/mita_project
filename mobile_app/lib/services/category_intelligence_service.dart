@@ -4,7 +4,8 @@ import 'api_service.dart';
 
 /// Advanced category intelligence with dynamic optimization and life event detection
 class CategoryIntelligenceService {
-  static final CategoryIntelligenceService _instance = CategoryIntelligenceService._internal();
+  static final CategoryIntelligenceService _instance =
+      CategoryIntelligenceService._internal();
   factory CategoryIntelligenceService() => _instance;
   CategoryIntelligenceService._internal();
 
@@ -107,8 +108,10 @@ class CategoryIntelligenceService {
 
     // Sort by confidence and recency
     events.sort((a, b) {
-      final scoreA = a.confidence * (1.0 - DateTime.now().difference(a.detectedAt).inDays / 365.0);
-      final scoreB = b.confidence * (1.0 - DateTime.now().difference(b.detectedAt).inDays / 365.0);
+      final scoreA = a.confidence *
+          (1.0 - DateTime.now().difference(a.detectedAt).inDays / 365.0);
+      final scoreB = b.confidence *
+          (1.0 - DateTime.now().difference(b.detectedAt).inDays / 365.0);
       return scoreB.compareTo(scoreA);
     });
 
@@ -131,22 +134,28 @@ class CategoryIntelligenceService {
       final categoryData = categoryEntry.value;
 
       // Analyze category-specific patterns
-      final categorySpending =
-          spendingHistory.where((transaction) => transaction['category'] == categoryId).toList();
+      final categorySpending = spendingHistory
+          .where((transaction) => transaction['category'] == categoryId)
+          .toList();
 
       if (categorySpending.isNotEmpty) {
         // Generate various types of insights
-        insights.addAll(await _generateSpendingTrendInsights(categoryData, categorySpending));
-        insights.addAll(await _generateVolatilityInsights(categoryData, categorySpending));
-        insights.addAll(await _generateSeasonalInsights(categoryData, categorySpending));
+        insights.addAll(await _generateSpendingTrendInsights(
+            categoryData, categorySpending));
         insights.addAll(
-            await _generateGoalAlignmentInsights(categoryData, categorySpending, userGoals));
-        insights.addAll(await _generateOptimizationInsights(categoryData, categorySpending));
+            await _generateVolatilityInsights(categoryData, categorySpending));
+        insights.addAll(
+            await _generateSeasonalInsights(categoryData, categorySpending));
+        insights.addAll(await _generateGoalAlignmentInsights(
+            categoryData, categorySpending, userGoals));
+        insights.addAll(await _generateOptimizationInsights(
+            categoryData, categorySpending));
       }
     }
 
     // Sort by impact score
-    insights.sort((a, b) => (b['impactScore'] as double).compareTo(a['impactScore'] as double));
+    insights.sort((a, b) =>
+        (b['impactScore'] as double).compareTo(a['impactScore'] as double));
 
     return insights.take(10).toList(); // Return top 10 insights
   }
@@ -162,13 +171,14 @@ class CategoryIntelligenceService {
 
     // Analyze recent spending patterns
     final recentCategoryTotals = <String, double>{};
-    final totalSpent =
-        recentTransactions.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+    final totalSpent = recentTransactions.fold(
+        0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
     for (final transaction in recentTransactions) {
       final category = transaction['category']?.toString() ?? 'other';
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      recentCategoryTotals[category] = (recentCategoryTotals[category] ?? 0.0) + amount;
+      recentCategoryTotals[category] =
+          (recentCategoryTotals[category] ?? 0.0) + amount;
     }
 
     // Calculate actual spending ratios
@@ -189,7 +199,8 @@ class CategoryIntelligenceService {
 
     // Apply user feedback adjustments
     if (userFeedback['categoryPreferences'] != null) {
-      final preferences = userFeedback['categoryPreferences'] as Map<String, dynamic>;
+      final preferences =
+          userFeedback['categoryPreferences'] as Map<String, dynamic>;
       for (final entry in preferences.entries) {
         final category = entry.key;
         final preference = entry.value as String;
@@ -197,10 +208,12 @@ class CategoryIntelligenceService {
         if (adaptedWeights.containsKey(category)) {
           switch (preference) {
             case 'increase':
-              adaptedWeights[category] = (adaptedWeights[category]! * 1.1).clamp(0.0, 1.0);
+              adaptedWeights[category] =
+                  (adaptedWeights[category]! * 1.1).clamp(0.0, 1.0);
               break;
             case 'decrease':
-              adaptedWeights[category] = (adaptedWeights[category]! * 0.9).clamp(0.0, 1.0);
+              adaptedWeights[category] =
+                  (adaptedWeights[category]! * 0.9).clamp(0.0, 1.0);
               break;
           }
         }
@@ -208,7 +221,8 @@ class CategoryIntelligenceService {
     }
 
     // Normalize weights to ensure they sum to 1.0
-    final totalWeight = adaptedWeights.values.fold(0.0, (sum, weight) => sum + weight);
+    final totalWeight =
+        adaptedWeights.values.fold(0.0, (sum, weight) => sum + weight);
     if (totalWeight > 0) {
       for (final category in adaptedWeights.keys) {
         adaptedWeights[category] = adaptedWeights[category]! / totalWeight;
@@ -224,7 +238,8 @@ class CategoryIntelligenceService {
     final events = <LifeEventDetection>[];
 
     // Look for sudden changes in commuting/transportation costs
-    final transportationSpending = _getCategorySpending(spendingHistory, 'transportation');
+    final transportationSpending =
+        _getCategorySpending(spendingHistory, 'transportation');
     if (transportationSpending.length >= 60) {
       // Need at least 2 months of data
       final recent = transportationSpending.take(30).toList();
@@ -267,12 +282,14 @@ class CategoryIntelligenceService {
   }
 
   /// Detect moving from spending patterns
-  Future<List<LifeEventDetection>> _detectMoving(List<Map<String, dynamic>> spendingHistory) async {
+  Future<List<LifeEventDetection>> _detectMoving(
+      List<Map<String, dynamic>> spendingHistory) async {
     final events = <LifeEventDetection>[];
 
     // Look for home improvement, moving services, or utility setup costs
     final movingIndicators = spendingHistory.where((transaction) {
-      final description = (transaction['description'] ?? '').toString().toLowerCase();
+      final description =
+          (transaction['description'] ?? '').toString().toLowerCase();
       final category = (transaction['category'] ?? '').toString().toLowerCase();
 
       return description.contains('moving') ||
@@ -285,8 +302,8 @@ class CategoryIntelligenceService {
 
     if (movingIndicators.length >= 3) {
       // Multiple moving-related transactions
-      final totalMovingCost =
-          movingIndicators.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+      final totalMovingCost = movingIndicators.fold(
+          0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
       if (totalMovingCost > 500) {
         // Significant moving expenses
@@ -326,7 +343,8 @@ class CategoryIntelligenceService {
 
     // Look for baby/child-related purchases
     final familyIndicators = spendingHistory.where((transaction) {
-      final description = (transaction['description'] ?? '').toString().toLowerCase();
+      final description =
+          (transaction['description'] ?? '').toString().toLowerCase();
       final merchant = (transaction['merchant'] ?? '').toString().toLowerCase();
 
       return description.contains('baby') ||
@@ -371,11 +389,12 @@ class CategoryIntelligenceService {
       List<Map<String, dynamic>> spendingHistory) async {
     final events = <LifeEventDetection>[];
 
-    final healthcareSpending = _getCategorySpending(spendingHistory, 'healthcare');
+    final healthcareSpending =
+        _getCategorySpending(spendingHistory, 'healthcare');
     if (healthcareSpending.length >= 30) {
       final recent = healthcareSpending.take(30).toList();
-      final totalRecent =
-          recent.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+      final totalRecent = recent.fold(
+          0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
       if (totalRecent > 1000) {
         // Significant healthcare expenses
@@ -411,7 +430,8 @@ class CategoryIntelligenceService {
 
     final recentLarge = spendingHistory.where((transaction) {
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
-      final dateStr = transaction['date']?.toString() ?? DateTime.now().toIso8601String();
+      final dateStr =
+          transaction['date']?.toString() ?? DateTime.now().toIso8601String();
       final date = DateTime.tryParse(dateStr) ?? DateTime.now();
       return amount > 2000 && DateTime.now().difference(date).inDays <= 30;
     }).toList();
@@ -419,7 +439,8 @@ class CategoryIntelligenceService {
     for (final transaction in recentLarge) {
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
       final category = transaction['category']?.toString() ?? 'other';
-      final dateStr = transaction['date']?.toString() ?? DateTime.now().toIso8601String();
+      final dateStr =
+          transaction['date']?.toString() ?? DateTime.now().toIso8601String();
       final date = DateTime.tryParse(dateStr) ?? DateTime.now();
 
       events.add(LifeEventDetection(
@@ -432,7 +453,8 @@ class CategoryIntelligenceService {
           'Category: $category',
         ],
         categoryImpacts: {
-          category.toString(): 0.7, // Reduced spending in same category temporarily
+          category.toString():
+              0.7, // Reduced spending in same category temporarily
         },
         recommendedAdjustments: [
           'Temporarily reduce $category spending',
@@ -451,7 +473,8 @@ class CategoryIntelligenceService {
     final events = <LifeEventDetection>[];
 
     final travelIndicators = spendingHistory.where((transaction) {
-      final description = (transaction['description'] ?? '').toString().toLowerCase();
+      final description =
+          (transaction['description'] ?? '').toString().toLowerCase();
       final category = (transaction['category'] ?? '').toString().toLowerCase();
 
       return description.contains('airline') ||
@@ -462,8 +485,8 @@ class CategoryIntelligenceService {
     }).toList();
 
     if (travelIndicators.length >= 3) {
-      final totalTravel =
-          travelIndicators.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+      final totalTravel = travelIndicators.fold(
+          0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
       events.add(LifeEventDetection(
         eventId: 'travel_${DateTime.now().millisecondsSinceEpoch}',
@@ -495,7 +518,8 @@ class CategoryIntelligenceService {
     final events = <LifeEventDetection>[];
 
     final educationIndicators = spendingHistory.where((transaction) {
-      final description = (transaction['description'] ?? '').toString().toLowerCase();
+      final description =
+          (transaction['description'] ?? '').toString().toLowerCase();
       return description.contains('tuition') ||
           description.contains('university') ||
           description.contains('college') ||
@@ -545,30 +569,54 @@ class CategoryIntelligenceService {
         return [
           {'id': 'housing', 'name': 'Housing', 'defaultWeight': 0.40},
           {'id': 'food', 'name': 'Food', 'defaultWeight': 0.15},
-          {'id': 'transportation', 'name': 'Transportation', 'defaultWeight': 0.15},
+          {
+            'id': 'transportation',
+            'name': 'Transportation',
+            'defaultWeight': 0.15
+          },
           {'id': 'utilities', 'name': 'Utilities', 'defaultWeight': 0.10},
           {'id': 'healthcare', 'name': 'Healthcare', 'defaultWeight': 0.08},
-          {'id': 'entertainment', 'name': 'Entertainment', 'defaultWeight': 0.05},
+          {
+            'id': 'entertainment',
+            'name': 'Entertainment',
+            'defaultWeight': 0.05
+          },
           {'id': 'savings', 'name': 'Savings', 'defaultWeight': 0.07},
         ];
       case 'high':
         return [
           {'id': 'housing', 'name': 'Housing', 'defaultWeight': 0.30},
           {'id': 'food', 'name': 'Food', 'defaultWeight': 0.10},
-          {'id': 'transportation', 'name': 'Transportation', 'defaultWeight': 0.12},
+          {
+            'id': 'transportation',
+            'name': 'Transportation',
+            'defaultWeight': 0.12
+          },
           {'id': 'utilities', 'name': 'Utilities', 'defaultWeight': 0.05},
           {'id': 'healthcare', 'name': 'Healthcare', 'defaultWeight': 0.05},
-          {'id': 'entertainment', 'name': 'Entertainment', 'defaultWeight': 0.10},
+          {
+            'id': 'entertainment',
+            'name': 'Entertainment',
+            'defaultWeight': 0.10
+          },
           {'id': 'savings', 'name': 'Savings', 'defaultWeight': 0.28},
         ];
       default: // middle tier
         return [
           {'id': 'housing', 'name': 'Housing', 'defaultWeight': 0.35},
           {'id': 'food', 'name': 'Food', 'defaultWeight': 0.12},
-          {'id': 'transportation', 'name': 'Transportation', 'defaultWeight': 0.13},
+          {
+            'id': 'transportation',
+            'name': 'Transportation',
+            'defaultWeight': 0.13
+          },
           {'id': 'utilities', 'name': 'Utilities', 'defaultWeight': 0.08},
           {'id': 'healthcare', 'name': 'Healthcare', 'defaultWeight': 0.06},
-          {'id': 'entertainment', 'name': 'Entertainment', 'defaultWeight': 0.08},
+          {
+            'id': 'entertainment',
+            'name': 'Entertainment',
+            'defaultWeight': 0.08
+          },
           {'id': 'savings', 'name': 'Savings', 'defaultWeight': 0.18},
         ];
     }
@@ -581,14 +629,17 @@ class CategoryIntelligenceService {
 
     for (final categoryEntry in _categoryData.entries) {
       final categoryId = categoryEntry.key;
-      final categorySpending = _getCategorySpending(spendingHistory, categoryId);
+      final categorySpending =
+          _getCategorySpending(spendingHistory, categoryId);
 
       if (categorySpending.isNotEmpty) {
-        final amounts =
-            categorySpending.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+        final amounts = categorySpending
+            .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+            .toList();
         final mean = amounts.reduce((a, b) => a + b) / amounts.length;
         final variance =
-            amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / amounts.length;
+            amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) /
+                amounts.length;
 
         analysis[categoryId] = {
           'mean': mean,
@@ -620,7 +671,8 @@ class CategoryIntelligenceService {
         if (event.categoryImpacts.containsKey(categoryId)) {
           final impact = event.categoryImpacts[categoryId]!;
           final currentWeight = categoryData['currentWeight'] as double;
-          categoryData['recommendedWeight'] = (currentWeight * impact).clamp(0.0, 1.0);
+          categoryData['recommendedWeight'] =
+              (currentWeight * impact).clamp(0.0, 1.0);
         }
       }
 
@@ -647,7 +699,8 @@ class CategoryIntelligenceService {
     final reasons = <String>[];
 
     if (lifeEvents.isNotEmpty) {
-      reasons.add('Life event adjustments: ${lifeEvents.length} events detected');
+      reasons
+          .add('Life event adjustments: ${lifeEvents.length} events detected');
     }
 
     reasons.add('Historical spending pattern optimization');
@@ -678,8 +731,9 @@ class CategoryIntelligenceService {
     final insights = <Map<String, dynamic>>[];
 
     if (categorySpending.length >= 10) {
-      final amounts =
-          categorySpending.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+      final amounts = categorySpending
+          .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+          .toList();
       final recent = amounts.take(5).toList();
       final older = amounts.skip(5).take(5).toList();
 
@@ -709,11 +763,13 @@ class CategoryIntelligenceService {
     final insights = <Map<String, dynamic>>[];
 
     if (categorySpending.length >= 5) {
-      final amounts =
-          categorySpending.map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0).toList();
+      final amounts = categorySpending
+          .map((t) => (t['amount'] as num?)?.toDouble() ?? 0.0)
+          .toList();
       final mean = amounts.reduce((a, b) => a + b) / amounts.length;
       final variance =
-          amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / amounts.length;
+          amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) /
+              amounts.length;
       final volatility = sqrt(variance) / mean;
 
       if (volatility > 0.5) {
@@ -745,14 +801,17 @@ class CategoryIntelligenceService {
 
       final categoryId = categoryData['categoryId'] as String?;
       if (categoryId != null && seasonalData[categoryId] != null) {
-        final categorySeasonalData = seasonalData[categoryId] as Map<String, dynamic>;
+        final categorySeasonalData =
+            seasonalData[categoryId] as Map<String, dynamic>;
 
         insights.add({
           'categoryId': categoryId,
           'insightType': 'seasonal_pattern',
           'insight': 'Seasonal spending pattern detected',
-          'impactScore': (categorySeasonalData['impact_score'] as num?)?.toDouble() ?? 0.6,
-          'actionableRecommendations': categorySeasonalData['recommendations'] ?? [],
+          'impactScore':
+              (categorySeasonalData['impact_score'] as num?)?.toDouble() ?? 0.6,
+          'actionableRecommendations':
+              categorySeasonalData['recommendations'] ?? [],
           'supportingData': categorySeasonalData,
         });
       }
@@ -773,17 +832,21 @@ class CategoryIntelligenceService {
       if (categoryId == null) return [];
 
       // Get category behavioral insights from API
-      final behavioralInsights = await _apiService.getCategoryBehavioralInsights(categoryId);
+      final behavioralInsights =
+          await _apiService.getCategoryBehavioralInsights(categoryId);
       final insights = <Map<String, dynamic>>[];
 
       if (behavioralInsights['goal_alignment'] != null) {
-        final alignmentData = behavioralInsights['goal_alignment'] as Map<String, dynamic>;
+        final alignmentData =
+            behavioralInsights['goal_alignment'] as Map<String, dynamic>;
 
         insights.add({
           'categoryId': categoryId,
           'insightType': 'goal_alignment',
-          'insight': alignmentData['message'] ?? 'Category aligned with financial goals',
-          'impactScore': (alignmentData['alignment_score'] as num?)?.toDouble() ?? 0.7,
+          'insight': alignmentData['message'] ??
+              'Category aligned with financial goals',
+          'impactScore':
+              (alignmentData['alignment_score'] as num?)?.toDouble() ?? 0.7,
           'actionableRecommendations': alignmentData['recommendations'] ?? [],
           'supportingData': alignmentData,
         });
@@ -807,8 +870,9 @@ class CategoryIntelligenceService {
       final categoryId = categoryData['categoryId'] as String?;
       if (categoryId != null) {
         // Filter anomalies for this category
-        final categoryAnomalies =
-            anomalies.where((anomaly) => anomaly['category'] == categoryId).toList();
+        final categoryAnomalies = anomalies
+            .where((anomaly) => anomaly['category'] == categoryId)
+            .toList();
 
         if (categoryAnomalies.isNotEmpty) {
           insights.add({

@@ -188,7 +188,8 @@ class ErrorHandler {
 
       _deviceInfo = deviceDetails;
     } catch (e) {
-      developer.log('Failed to initialize system info: $e', name: 'ErrorHandler');
+      developer.log('Failed to initialize system info: $e',
+          name: 'ErrorHandler');
       _appVersion = 'Unknown';
       _deviceInfo = 'Unknown';
     }
@@ -225,7 +226,9 @@ class ErrorHandler {
       'Error reported: ${report.error}',
       name: 'ErrorHandler',
       error: report.error,
-      stackTrace: report.stackTrace != null ? StackTrace.fromString(report.stackTrace!) : null,
+      stackTrace: report.stackTrace != null
+          ? StackTrace.fromString(report.stackTrace!)
+          : null,
     );
 
     // Check connectivity - simplified without connectivity_plus
@@ -275,10 +278,12 @@ class ErrorHandler {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        developer.log('Error report sent successfully: ${report.id}', name: 'ErrorHandler');
+        developer.log('Error report sent successfully: ${report.id}',
+            name: 'ErrorHandler');
         return true;
       } else {
-        developer.log('Failed to send error report: ${response.statusCode}', name: 'ErrorHandler');
+        developer.log('Failed to send error report: ${response.statusCode}',
+            name: 'ErrorHandler');
         return false;
       }
     } catch (e) {
@@ -303,7 +308,8 @@ class ErrorHandler {
 
       await _prefs.setStringList('pending_error_reports', reports);
 
-      developer.log('Error report stored for later: ${report.id}', name: 'ErrorHandler');
+      developer.log('Error report stored for later: ${report.id}',
+          name: 'ErrorHandler');
     } catch (e) {
       developer.log('Failed to store error report: $e', name: 'ErrorHandler');
     }
@@ -338,7 +344,8 @@ class ErrorHandler {
         ));
       }
 
-      developer.log('Loaded ${_pendingReports.length} pending error reports', name: 'ErrorHandler');
+      developer.log('Loaded ${_pendingReports.length} pending error reports',
+          name: 'ErrorHandler');
     } catch (e) {
       developer.log('Failed to load pending reports: $e', name: 'ErrorHandler');
     }
@@ -346,7 +353,8 @@ class ErrorHandler {
 
   // Start periodic reporting of pending errors - RE-ENABLED for stable backend
   void _startPeriodicReporting() {
-    developer.log('Starting periodic error reporting for stable backend', name: 'ERROR_HANDLER');
+    developer.log('Starting periodic error reporting for stable backend',
+        name: 'ERROR_HANDLER');
 
     // Periodic timer to process pending reports
     Timer.periodic(const Duration(minutes: 2), (timer) async {
@@ -381,14 +389,16 @@ class ErrorHandler {
           }
         } catch (e) {
           // Continue with other reports if one fails
-          developer.log('Failed to send error report: $e', name: 'ErrorHandler');
+          developer.log('Failed to send error report: $e',
+              name: 'ErrorHandler');
         }
       }
 
       // Update the original list safely - remove successfully sent reports
       if (successfulReports.isNotEmpty) {
         // Remove from original list
-        _pendingReports.removeWhere((report) => successfulReports.contains(report));
+        _pendingReports
+            .removeWhere((report) => successfulReports.contains(report));
 
         // Update stored reports
         final remainingReports = <String>[];
@@ -397,7 +407,8 @@ class ErrorHandler {
             remainingReports.add(jsonEncode(report.toJson()));
           } catch (e) {
             // Skip corrupted reports
-            developer.log('Skipping corrupted report: $e', name: 'ErrorHandler');
+            developer.log('Skipping corrupted report: $e',
+                name: 'ErrorHandler');
           }
         }
 
@@ -505,7 +516,8 @@ class ErrorHandler {
 // Error boundary widget
 class ErrorBoundary extends StatefulWidget {
   final Widget child;
-  final Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
+  final Widget Function(
+      BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
   final void Function(Object error, StackTrace? stackTrace)? onError;
 
   const ErrorBoundary({
@@ -549,7 +561,8 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
     );
   }
 
-  Widget _defaultErrorWidget(BuildContext context, Object error, StackTrace? stackTrace) {
+  Widget _defaultErrorWidget(
+      BuildContext context, Object error, StackTrace? stackTrace) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Something went wrong'),

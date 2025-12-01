@@ -22,7 +22,8 @@ import 'security_monitor.dart';
 /// - Key rotation and versioning
 class SecureTokenStorage {
   static SecureTokenStorage? _instance;
-  static final Completer<SecureTokenStorage> _completer = Completer<SecureTokenStorage>();
+  static final Completer<SecureTokenStorage> _completer =
+      Completer<SecureTokenStorage>();
 
   late final FlutterSecureStorage _refreshTokenStorage;
   late final FlutterSecureStorage _accessTokenStorage;
@@ -65,7 +66,8 @@ class SecureTokenStorage {
       final accessTokenOptions = await _getAccessTokenStorageOptions();
       final metadataOptions = await _getMetadataStorageOptions();
 
-      _refreshTokenStorage = FlutterSecureStorage(aOptions: refreshTokenOptions);
+      _refreshTokenStorage =
+          FlutterSecureStorage(aOptions: refreshTokenOptions);
       _accessTokenStorage = FlutterSecureStorage(aOptions: accessTokenOptions);
       _metadataStorage = FlutterSecureStorage(aOptions: metadataOptions);
 
@@ -74,7 +76,8 @@ class SecureTokenStorage {
       await _migrateIfNeeded();
       await _updateDeviceFingerprint();
 
-      logInfo('Secure token storage initialized successfully', tag: 'SECURE_STORAGE');
+      logInfo('Secure token storage initialized successfully',
+          tag: 'SECURE_STORAGE');
 
       // Initialize security monitoring
       await SecurityMonitor.instance.initialize();
@@ -84,7 +87,8 @@ class SecureTokenStorage {
         severity: SecuritySeverity.info,
       );
     } catch (e) {
-      logError('Failed to initialize secure token storage: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to initialize secure token storage: $e',
+          tag: 'SECURE_STORAGE', error: e);
       rethrow;
     }
   }
@@ -96,7 +100,8 @@ class SecureTokenStorage {
       sharedPreferencesName: 'mita_refresh_tokens',
       preferencesKeyPrefix: 'mita_rt_',
       // Use strongest available encryption
-      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      keyCipherAlgorithm:
+          KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
       storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
     );
   }
@@ -107,7 +112,8 @@ class SecureTokenStorage {
       encryptedSharedPreferences: true,
       sharedPreferencesName: 'mita_access_tokens',
       preferencesKeyPrefix: 'mita_at_',
-      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      keyCipherAlgorithm:
+          KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
       storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
     );
   }
@@ -127,11 +133,14 @@ class SecureTokenStorage {
   Future<void> _performSecurityChecks() async {
     try {
       // Check if device fingerprint has changed (potential security risk)
-      final storedFingerprint = await _metadataStorage.read(key: _deviceFingerprintKey);
+      final storedFingerprint =
+          await _metadataStorage.read(key: _deviceFingerprintKey);
       final currentFingerprint = await _generateDeviceFingerprint();
 
-      if (storedFingerprint != null && storedFingerprint != currentFingerprint) {
-        logWarning('Device fingerprint mismatch detected - clearing tokens for security',
+      if (storedFingerprint != null &&
+          storedFingerprint != currentFingerprint) {
+        logWarning(
+            'Device fingerprint mismatch detected - clearing tokens for security',
             tag: 'SECURE_STORAGE');
 
         await SecurityMonitor.instance.logSecurityEvent(
@@ -145,7 +154,8 @@ class SecureTokenStorage {
         );
 
         await _clearAllTokensSecurely();
-        await _metadataStorage.write(key: _deviceFingerprintKey, value: currentFingerprint);
+        await _metadataStorage.write(
+            key: _deviceFingerprintKey, value: currentFingerprint);
       }
 
       // Check for potential tampering by verifying security metadata
@@ -178,10 +188,12 @@ class SecureTokenStorage {
 
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
-        fingerprint = '${androidInfo.model}_${androidInfo.id}_${androidInfo.bootloader}';
+        fingerprint =
+            '${androidInfo.model}_${androidInfo.id}_${androidInfo.bootloader}';
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
-        fingerprint = '${iosInfo.model}_${iosInfo.identifierForVendor}_${iosInfo.systemVersion}';
+        fingerprint =
+            '${iosInfo.model}_${iosInfo.identifierForVendor}_${iosInfo.systemVersion}';
       }
 
       // Hash the fingerprint for security
@@ -189,7 +201,8 @@ class SecureTokenStorage {
       final digest = sha256.convert(bytes);
       return digest.toString();
     } catch (e) {
-      logError('Failed to generate device fingerprint: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to generate device fingerprint: $e',
+          tag: 'SECURE_STORAGE', error: e);
       // Return a constant value to ensure functionality continues
       return 'fallback_fingerprint';
     }
@@ -199,9 +212,11 @@ class SecureTokenStorage {
   Future<void> _updateDeviceFingerprint() async {
     try {
       final fingerprint = await _generateDeviceFingerprint();
-      await _metadataStorage.write(key: _deviceFingerprintKey, value: fingerprint);
+      await _metadataStorage.write(
+          key: _deviceFingerprintKey, value: fingerprint);
     } catch (e) {
-      logError('Failed to update device fingerprint: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to update device fingerprint: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
@@ -212,7 +227,8 @@ class SecureTokenStorage {
       final currentVersion = int.tryParse(versionString ?? '0') ?? 0;
 
       if (currentVersion < _currentStorageVersion) {
-        logInfo('Migrating token storage from version $currentVersion to $_currentStorageVersion',
+        logInfo(
+            'Migrating token storage from version $currentVersion to $_currentStorageVersion',
             tag: 'SECURE_STORAGE');
 
         await _performMigration(currentVersion);
@@ -242,10 +258,12 @@ class SecureTokenStorage {
 
         // Write to new secure storage if they exist
         if (oldAccessToken != null) {
-          await _accessTokenStorage.write(key: _accessTokenKey, value: oldAccessToken);
+          await _accessTokenStorage.write(
+              key: _accessTokenKey, value: oldAccessToken);
         }
         if (oldRefreshToken != null) {
-          await _refreshTokenStorage.write(key: _refreshTokenKey, value: oldRefreshToken);
+          await _refreshTokenStorage.write(
+              key: _refreshTokenKey, value: oldRefreshToken);
         }
         if (oldUserId != null) {
           await _metadataStorage.write(key: _userIdKey, value: oldUserId);
@@ -256,9 +274,11 @@ class SecureTokenStorage {
         await oldStorage.delete(key: 'refresh_token');
         await oldStorage.delete(key: 'user_id');
 
-        logInfo('Successfully migrated tokens from v1 to v2', tag: 'SECURE_STORAGE');
+        logInfo('Successfully migrated tokens from v1 to v2',
+            tag: 'SECURE_STORAGE');
       } catch (e) {
-        logError('Failed to migrate from v1 to v2: $e', tag: 'SECURE_STORAGE', error: e);
+        logError('Failed to migrate from v1 to v2: $e',
+            tag: 'SECURE_STORAGE', error: e);
         rethrow;
       }
     }
@@ -275,11 +295,13 @@ class SecureTokenStorage {
         'Refresh token stored securely',
         severity: SecuritySeverity.info,
       );
-      await SecurityMonitor.instance.recordMetric(SecurityMetricType.tokenOperations, 1);
+      await SecurityMonitor.instance
+          .recordMetric(SecurityMetricType.tokenOperations, 1);
 
       logDebug('Refresh token stored securely', tag: 'SECURE_STORAGE');
     } catch (e) {
-      logError('Failed to store refresh token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to store refresh token: $e',
+          tag: 'SECURE_STORAGE', error: e);
 
       await SecurityMonitor.instance.logSecurityEvent(
         SecurityEventType.tokenOperationFailed,
@@ -303,11 +325,13 @@ class SecureTokenStorage {
         'Access token stored securely',
         severity: SecuritySeverity.info,
       );
-      await SecurityMonitor.instance.recordMetric(SecurityMetricType.tokenOperations, 1);
+      await SecurityMonitor.instance
+          .recordMetric(SecurityMetricType.tokenOperations, 1);
 
       logDebug('Access token stored securely', tag: 'SECURE_STORAGE');
     } catch (e) {
-      logError('Failed to store access token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to store access token: $e',
+          tag: 'SECURE_STORAGE', error: e);
 
       await SecurityMonitor.instance.logSecurityEvent(
         SecurityEventType.tokenOperationFailed,
@@ -341,12 +365,14 @@ class SecureTokenStorage {
           'Refresh token retrieved successfully',
           severity: SecuritySeverity.info,
         );
-        await SecurityMonitor.instance.recordMetric(SecurityMetricType.tokenOperations, 1);
+        await SecurityMonitor.instance
+            .recordMetric(SecurityMetricType.tokenOperations, 1);
         logDebug('Refresh token retrieved', tag: 'SECURE_STORAGE');
       }
       return token;
     } catch (e) {
-      logError('Failed to retrieve refresh token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to retrieve refresh token: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return null;
     }
   }
@@ -361,12 +387,14 @@ class SecureTokenStorage {
           'Access token retrieved successfully',
           severity: SecuritySeverity.info,
         );
-        await SecurityMonitor.instance.recordMetric(SecurityMetricType.tokenOperations, 1);
+        await SecurityMonitor.instance
+            .recordMetric(SecurityMetricType.tokenOperations, 1);
         logDebug('Access token retrieved', tag: 'SECURE_STORAGE');
       }
       return token;
     } catch (e) {
-      logError('Failed to retrieve access token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to retrieve access token: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return null;
     }
   }
@@ -376,7 +404,8 @@ class SecureTokenStorage {
     try {
       return await _metadataStorage.read(key: _userIdKey);
     } catch (e) {
-      logError('Failed to retrieve user ID: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to retrieve user ID: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return null;
     }
   }
@@ -413,7 +442,8 @@ class SecureTokenStorage {
 
       logInfo('Refresh token cleared securely', tag: 'SECURE_STORAGE');
     } catch (e) {
-      logError('Failed to clear refresh token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to clear refresh token: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
@@ -430,7 +460,8 @@ class SecureTokenStorage {
 
       logInfo('Access token cleared securely', tag: 'SECURE_STORAGE');
     } catch (e) {
-      logError('Failed to clear access token: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to clear access token: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
@@ -455,7 +486,8 @@ class SecureTokenStorage {
       await _metadataStorage.delete(key: _userIdKey);
       // Keep device fingerprint and security metadata for next session
     } catch (e) {
-      logError('Failed to clear user metadata: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to clear user metadata: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
@@ -466,7 +498,8 @@ class SecureTokenStorage {
       final accessToken = await getAccessToken();
       return refreshToken != null && accessToken != null;
     } catch (e) {
-      logError('Failed to check token validity: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to check token validity: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return false;
     }
   }
@@ -481,21 +514,25 @@ class SecureTokenStorage {
         'version': _currentStorageVersion,
       };
 
-      await _metadataStorage.write(key: _securityMetadataKey, value: jsonEncode(metadata));
+      await _metadataStorage.write(
+          key: _securityMetadataKey, value: jsonEncode(metadata));
     } catch (e) {
-      logError('Failed to update security metadata: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to update security metadata: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
   /// Get security metadata
   Future<Map<String, dynamic>> _getSecurityMetadata() async {
     try {
-      final metadataString = await _metadataStorage.read(key: _securityMetadataKey);
+      final metadataString =
+          await _metadataStorage.read(key: _securityMetadataKey);
       if (metadataString != null) {
         return Map<String, dynamic>.from(jsonDecode(metadataString));
       }
     } catch (e) {
-      logError('Failed to get security metadata: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to get security metadata: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
     return {};
   }
@@ -515,16 +552,19 @@ class SecureTokenStorage {
   Future<void> _updateLastRotationTime() async {
     try {
       await _metadataStorage.write(
-          key: _lastRotationKey, value: DateTime.now().millisecondsSinceEpoch.toString());
+          key: _lastRotationKey,
+          value: DateTime.now().millisecondsSinceEpoch.toString());
     } catch (e) {
-      logError('Failed to update rotation time: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to update rotation time: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
   }
 
   /// Get last token rotation time
   Future<DateTime?> getLastRotationTime() async {
     try {
-      final timestampString = await _metadataStorage.read(key: _lastRotationKey);
+      final timestampString =
+          await _metadataStorage.read(key: _lastRotationKey);
       if (timestampString != null) {
         final timestamp = int.tryParse(timestampString);
         if (timestamp != null) {
@@ -532,7 +572,8 @@ class SecureTokenStorage {
         }
       }
     } catch (e) {
-      logError('Failed to get rotation time: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to get rotation time: $e',
+          tag: 'SECURE_STORAGE', error: e);
     }
     return null;
   }
@@ -546,7 +587,8 @@ class SecureTokenStorage {
       final daysSinceRotation = DateTime.now().difference(lastRotation).inDays;
       return daysSinceRotation > 30; // Rotate every 30 days
     } catch (e) {
-      logError('Failed to check token rotation: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to check token rotation: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return true; // Safe default
     }
   }
@@ -569,7 +611,8 @@ class SecureTokenStorage {
         'tampered': metadata['tampered'] ?? false,
       };
     } catch (e) {
-      logError('Failed to get security health status: $e', tag: 'SECURE_STORAGE', error: e);
+      logError('Failed to get security health status: $e',
+          tag: 'SECURE_STORAGE', error: e);
       return {'error': 'Unable to get security status'};
     }
   }

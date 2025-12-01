@@ -14,7 +14,8 @@ class OnboardingSpendingFrequencyScreen extends StatefulWidget {
       _OnboardingSpendingFrequencyScreenState();
 }
 
-class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFrequencyScreen> {
+class _OnboardingSpendingFrequencyScreenState
+    extends State<OnboardingSpendingFrequencyScreen> {
   // Simplified to 3 categories with sliders (1-5 scale)
   double _lifestyleFrequency = 3.0; // Dining, coffee, entertainment
   double _shoppingFrequency = 3.0; // Clothing, online shopping
@@ -32,13 +33,17 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
     // Convert simplified categories back to detailed format for backend
     final frequencies = {
       // Lifestyle (dining, coffee, entertainment)
-      'dining_out_per_month': (_lifestyleFrequency * 3).round(), // 3-15 times/month
-      'coffee_per_week': (_lifestyleFrequency * 1.5).round(), // 1.5-7.5 times/week
-      'entertainment_per_month': (_lifestyleFrequency * 2).round(), // 2-10 times/month
+      'dining_out_per_month':
+          (_lifestyleFrequency * 3).round(), // 3-15 times/month
+      'coffee_per_week':
+          (_lifestyleFrequency * 1.5).round(), // 1.5-7.5 times/week
+      'entertainment_per_month':
+          (_lifestyleFrequency * 2).round(), // 2-10 times/month
 
       // Shopping (clothing, online)
       'clothing_per_month': (_shoppingFrequency).round(), // 1-5 times/month
-      'transport_per_month': (_shoppingFrequency * 4).round(), // 4-20 times/month
+      'transport_per_month':
+          (_shoppingFrequency * 4).round(), // 4-20 times/month
 
       // Travel
       'travel_per_year': (_travelFrequency).round(), // 1-5 times/year
@@ -111,7 +116,8 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
             // Frequency label
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -226,7 +232,8 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 subtitle: 'Dining out, coffee, entertainment',
                 icon: Icons.restaurant_menu,
                 value: _lifestyleFrequency,
-                onChanged: (value) => setState(() => _lifestyleFrequency = value),
+                onChanged: (value) =>
+                    setState(() => _lifestyleFrequency = value),
                 accentColor: AppColors.danger,
               ),
               const SizedBox(height: 16),
@@ -237,7 +244,8 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                 subtitle: 'Clothing, online shopping, personal items',
                 icon: Icons.shopping_bag,
                 value: _shoppingFrequency,
-                onChanged: (value) => setState(() => _shoppingFrequency = value),
+                onChanged: (value) =>
+                    setState(() => _shoppingFrequency = value),
                 accentColor: AppColors.chart7,
               ),
               const SizedBox(height: 16),
@@ -289,7 +297,9 @@ class _OnboardingSpendingFrequencyScreenState extends State<OnboardingSpendingFr
                   },
                   child: const Text(
                     "Skip for now",
-                    style: TextStyle(fontFamily: AppTypography.fontHeading, color: Colors.grey),
+                    style: TextStyle(
+                        fontFamily: AppTypography.fontHeading,
+                        color: Colors.grey),
                   ),
                 ),
               ),

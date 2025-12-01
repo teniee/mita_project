@@ -48,7 +48,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isSaving = true);
 
     final userProvider = context.read<UserProvider>();
-    final success = await userProvider.updateUserProfile({'name': _nameController.text});
+    final success =
+        await userProvider.updateUserProfile({'name': _nameController.text});
 
     if (!mounted) return;
 
@@ -59,8 +60,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content:
-                Text('Error updating profile: ${userProvider.errorMessage ?? 'Unknown error'}')),
+            content: Text(
+                'Error updating profile: ${userProvider.errorMessage ?? 'Unknown error'}')),
       );
     }
 
@@ -101,8 +102,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         labelText: 'Name',
                         prefixIcon: Icon(Icons.person),
                       ),
-                      style: const TextStyle(fontFamily: AppTypography.fontBody),
-                      validator: (val) => val == null || val.isEmpty ? 'Enter name' : null,
+                      style:
+                          const TextStyle(fontFamily: AppTypography.fontBody),
+                      validator: (val) =>
+                          val == null || val.isEmpty ? 'Enter name' : null,
                     ),
                     const SizedBox(height: 20),
                     TextFormField(

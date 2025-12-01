@@ -22,7 +22,8 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStateMixin {
+class _CalendarScreenState extends State<CalendarScreen>
+    with TickerProviderStateMixin {
   final BudgetAdapterService _budgetService = BudgetAdapterService();
   DateTime currentMonth = DateTime.now();
   late AnimationController _redistributionAnimationController;
@@ -116,7 +117,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -163,7 +165,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               icon: const Icon(Icons.settings_rounded),
               label: const Text('Setup Budget'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -266,7 +269,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Center(
-                          child: Text('?', style: TextStyle(color: Colors.grey)),
+                          child:
+                              Text('?', style: TextStyle(color: Colors.grey)),
                         ),
                       );
                     }
@@ -324,7 +328,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         boxShadow: [
           if (isToday || status == 'over')
             BoxShadow(
-              color: (isToday ? colorScheme.primary : Colors.red).withValues(alpha: 0.3),
+              color: (isToday ? colorScheme.primary : Colors.red)
+                  .withValues(alpha: 0.3),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -334,7 +339,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: dayNumber > 0 ? () => _showSimpleDayModal(dayNumber, limit, spent, status) : null,
+          onTap: dayNumber > 0
+              ? () => _showSimpleDayModal(dayNumber, limit, spent, status)
+              : null,
           child: Padding(
             padding: const EdgeInsets.all(6.0),
             child: LayoutBuilder(
@@ -351,9 +358,12 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                             child: Text(
                               dayNumber > 0 ? dayNumber.toString() : '',
                               style: TextStyle(
-                                fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                                fontWeight:
+                                    isToday ? FontWeight.bold : FontWeight.w600,
                                 color: textColor,
-                                fontSize: constraints.maxWidth > 45 ? (isToday ? 16 : 14) : 12,
+                                fontSize: constraints.maxWidth > 45
+                                    ? (isToday ? 16 : 14)
+                                    : 12,
                                 fontFamily: AppTypography.fontHeading,
                               ),
                               maxLines: 1,
@@ -369,7 +379,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                                 shape: BoxShape.circle,
                               ),
                             )
-                          else if (status == 'over' && constraints.maxWidth > 35)
+                          else if (status == 'over' &&
+                              constraints.maxWidth > 35)
                             Icon(
                               Icons.warning,
                               size: 10,
@@ -379,7 +390,9 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                       ),
                     ),
 
-                    if (dayNumber > 0 && limit > 0 && constraints.maxHeight > 60) ...[
+                    if (dayNumber > 0 &&
+                        limit > 0 &&
+                        constraints.maxHeight > 60) ...[
                       const SizedBox(height: 2),
 
                       // Enhanced progress indicator - only show if there's room
@@ -409,7 +422,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                       if (constraints.maxHeight > 80)
                         Flexible(
                           child: Text(
-                            _getSimpleStatusText(status, spent, spentPercentage),
+                            _getSimpleStatusText(
+                                status, spent, spentPercentage),
                             style: TextStyle(
                               color: textColor.withValues(alpha: 0.8),
                               fontSize: constraints.maxWidth > 45 ? 8 : 7,
@@ -432,7 +446,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     );
   }
 
-  String _getSimpleStatusText(String status, int spent, double spentPercentage) {
+  String _getSimpleStatusText(
+      String status, int spent, double spentPercentage) {
     if (spent > 0) {
       if (spentPercentage > 1.0) return 'Over';
       if (spentPercentage > 0.8) return 'High';
@@ -482,7 +497,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
     final calendarData = budgetProvider.calendarData;
     final dayDate = DateTime(currentMonth.year, currentMonth.month, dayNumber);
     final dayData = calendarData.isNotEmpty
-        ? calendarData.firstWhere((day) => day['day'] == dayNumber, orElse: () => null)
+        ? calendarData.firstWhere((day) => day['day'] == dayNumber,
+            orElse: () => null)
         : null;
 
     showModalBottomSheet(
@@ -497,7 +513,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         status: status,
         date: dayDate,
         dayData: dayData,
-        budgetService: _budgetService, // Pass budget service for enhanced details
+        budgetService:
+            _budgetService, // Pass budget service for enhanced details
       ),
     );
   }
@@ -553,13 +570,15 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Month summary card
-                if (!isLoading && calendarData.isNotEmpty) _buildMonthSummaryCard(calendarData),
+                if (!isLoading && calendarData.isNotEmpty)
+                  _buildMonthSummaryCard(calendarData),
 
                 // Status legend
                 Card(
                   elevation: 1,
                   margin: const EdgeInsets.only(bottom: 24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -577,9 +596,12 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildStatusIndicator('On Track', Colors.green, Colors.white),
-                            _buildStatusIndicator('Warning', Colors.orange, Colors.white),
-                            _buildStatusIndicator('Over Budget', Colors.red, Colors.white),
+                            _buildStatusIndicator(
+                                'On Track', Colors.green, Colors.white),
+                            _buildStatusIndicator(
+                                'Warning', Colors.orange, Colors.white),
+                            _buildStatusIndicator(
+                                'Over Budget', Colors.red, Colors.white),
                           ],
                         ),
                       ],
@@ -591,7 +613,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 if (isLoading)
                   Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     child: const Padding(
                       padding: EdgeInsets.all(32.0),
                       child: Column(
@@ -704,7 +727,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -841,7 +865,8 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
                 children: [
                   _buildStatusSummary('On Track', onTrackDays, Colors.green),
                   _buildStatusSummary('Warning', warningDays, Colors.orange),
-                  _buildStatusSummary('Over Budget', overBudgetDays, Colors.red),
+                  _buildStatusSummary(
+                      'Over Budget', overBudgetDays, Colors.red),
                 ],
               ),
             ],
@@ -899,7 +924,10 @@ class _CalendarScreenState extends State<CalendarScreen> with TickerProviderStat
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.7),
               ),
         ),
       ],

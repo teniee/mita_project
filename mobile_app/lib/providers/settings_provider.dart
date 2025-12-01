@@ -80,9 +80,11 @@ class SettingsProvider extends ChangeNotifier {
       _defaultCurrency = prefs.getString(_currencyKey) ?? 'USD';
 
       _isInitialized = true;
-      logInfo('SettingsProvider initialized successfully', tag: 'SETTINGS_PROVIDER');
+      logInfo('SettingsProvider initialized successfully',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
-      logError('Failed to initialize SettingsProvider: $e', tag: 'SETTINGS_PROVIDER');
+      logError('Failed to initialize SettingsProvider: $e',
+          tag: 'SETTINGS_PROVIDER');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -125,7 +127,8 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_localeKey, locale.languageCode);
-      logInfo('Locale set to: ${locale.languageCode}', tag: 'SETTINGS_PROVIDER');
+      logInfo('Locale set to: ${locale.languageCode}',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
       logError('Failed to save locale: $e', tag: 'SETTINGS_PROVIDER');
     }
@@ -141,9 +144,11 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_notificationsKey, enabled);
-      logInfo('Notifications ${enabled ? 'enabled' : 'disabled'}', tag: 'SETTINGS_PROVIDER');
+      logInfo('Notifications ${enabled ? 'enabled' : 'disabled'}',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
-      logError('Failed to save notifications setting: $e', tag: 'SETTINGS_PROVIDER');
+      logError('Failed to save notifications setting: $e',
+          tag: 'SETTINGS_PROVIDER');
     }
   }
 
@@ -157,9 +162,11 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_biometricsKey, enabled);
-      logInfo('Biometrics ${enabled ? 'enabled' : 'disabled'}', tag: 'SETTINGS_PROVIDER');
+      logInfo('Biometrics ${enabled ? 'enabled' : 'disabled'}',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
-      logError('Failed to save biometrics setting: $e', tag: 'SETTINGS_PROVIDER');
+      logError('Failed to save biometrics setting: $e',
+          tag: 'SETTINGS_PROVIDER');
     }
   }
 
@@ -189,9 +196,11 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_budgetReminderKey, enabled);
-      logInfo('Budget reminder ${enabled ? 'enabled' : 'disabled'}', tag: 'SETTINGS_PROVIDER');
+      logInfo('Budget reminder ${enabled ? 'enabled' : 'disabled'}',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
-      logError('Failed to save budget reminder setting: $e', tag: 'SETTINGS_PROVIDER');
+      logError('Failed to save budget reminder setting: $e',
+          tag: 'SETTINGS_PROVIDER');
     }
   }
 
@@ -205,9 +214,11 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_weeklyReportKey, enabled);
-      logInfo('Weekly report ${enabled ? 'enabled' : 'disabled'}', tag: 'SETTINGS_PROVIDER');
+      logInfo('Weekly report ${enabled ? 'enabled' : 'disabled'}',
+          tag: 'SETTINGS_PROVIDER');
     } catch (e) {
-      logError('Failed to save weekly report setting: $e', tag: 'SETTINGS_PROVIDER');
+      logError('Failed to save weekly report setting: $e',
+          tag: 'SETTINGS_PROVIDER');
     }
   }
 
@@ -239,7 +250,18 @@ class SettingsProvider extends ChangeNotifier {
 
   /// Get available currencies
   List<String> getAvailableCurrencies() {
-    return ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR', 'BGN', 'RUB'];
+    return [
+      'USD',
+      'EUR',
+      'GBP',
+      'CAD',
+      'AUD',
+      'JPY',
+      'CNY',
+      'INR',
+      'BGN',
+      'RUB'
+    ];
   }
 
   /// Get available locales

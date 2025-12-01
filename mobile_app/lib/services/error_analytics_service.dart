@@ -12,7 +12,8 @@ import 'logging_service.dart';
 /// Advanced error analytics service for tracking and analyzing errors
 class ErrorAnalyticsService {
   static ErrorAnalyticsService? _instance;
-  static ErrorAnalyticsService get instance => _instance ??= ErrorAnalyticsService._();
+  static ErrorAnalyticsService get instance =>
+      _instance ??= ErrorAnalyticsService._();
 
   ErrorAnalyticsService._();
 
@@ -34,7 +35,8 @@ class ErrorAnalyticsService {
 
       logInfo('Error Analytics Service initialized', tag: 'ERROR_ANALYTICS');
     } catch (e) {
-      logError('Failed to initialize Error Analytics Service: $e', tag: 'ERROR_ANALYTICS');
+      logError('Failed to initialize Error Analytics Service: $e',
+          tag: 'ERROR_ANALYTICS');
     }
   }
 
@@ -92,12 +94,16 @@ class ErrorAnalyticsService {
   /// Get error analytics summary
   ErrorAnalyticsSummary getAnalyticsSummary({Duration? period}) {
     final now = DateTime.now();
-    final since = period != null ? now.subtract(period) : DateTime.fromMillisecondsSinceEpoch(0);
+    final since = period != null
+        ? now.subtract(period)
+        : DateTime.fromMillisecondsSinceEpoch(0);
 
-    final relevantMetrics =
-        _errorMetrics.values.where((metrics) => metrics.lastOccurrence.isAfter(since)).toList();
+    final relevantMetrics = _errorMetrics.values
+        .where((metrics) => metrics.lastOccurrence.isAfter(since))
+        .toList();
 
-    final totalErrors = relevantMetrics.fold<int>(0, (sum, metrics) => sum + metrics.totalCount);
+    final totalErrors = relevantMetrics.fold<int>(
+        0, (sum, metrics) => sum + metrics.totalCount);
     final categoryCounts = <ErrorCategory, int>{};
     final severityCounts = <ErrorSeverity, int>{};
     final topErrors = <ErrorMetrics>[];
@@ -106,8 +112,10 @@ class ErrorAnalyticsService {
       // Count by category
       for (final occurrence in metrics.occurrences) {
         if (occurrence.timestamp.isAfter(since)) {
-          categoryCounts[occurrence.category] = (categoryCounts[occurrence.category] ?? 0) + 1;
-          severityCounts[occurrence.severity] = (severityCounts[occurrence.severity] ?? 0) + 1;
+          categoryCounts[occurrence.category] =
+              (categoryCounts[occurrence.category] ?? 0) + 1;
+          severityCounts[occurrence.severity] =
+              (severityCounts[occurrence.severity] ?? 0) + 1;
         }
       }
     }
@@ -144,7 +152,8 @@ class ErrorAnalyticsService {
       for (final metrics in _errorMetrics.values) {
         errorCount += metrics.occurrences
             .where((occurrence) =>
-                occurrence.timestamp.isAfter(current) && occurrence.timestamp.isBefore(next))
+                occurrence.timestamp.isAfter(current) &&
+                occurrence.timestamp.isBefore(next))
             .length;
       }
 
@@ -230,7 +239,8 @@ class ErrorAnalyticsService {
     impactScore += (metrics.totalCount.clamp(0, 40)).toDouble();
 
     // Recency factor (0-20 points)
-    final hoursSinceLastOccurrence = DateTime.now().difference(metrics.lastOccurrence).inHours;
+    final hoursSinceLastOccurrence =
+        DateTime.now().difference(metrics.lastOccurrence).inHours;
     if (hoursSinceLastOccurrence < 1) {
       impactScore += 20;
     } else if (hoursSinceLastOccurrence < 24) {
@@ -243,15 +253,20 @@ class ErrorAnalyticsService {
     }
 
     // Severity factor (0-30 points)
-    final criticalCount =
-        metrics.occurrences.where((o) => o.severity == ErrorSeverity.critical).length;
-    final highCount = metrics.occurrences.where((o) => o.severity == ErrorSeverity.high).length;
+    final criticalCount = metrics.occurrences
+        .where((o) => o.severity == ErrorSeverity.critical)
+        .length;
+    final highCount = metrics.occurrences
+        .where((o) => o.severity == ErrorSeverity.high)
+        .length;
     impactScore += (criticalCount * 3 + highCount * 2).clamp(0, 30).toDouble();
 
     // User facing factor (0-10 points)
-    final uiCount = metrics.occurrences.where((o) => o.category == ErrorCategory.ui).length;
-    final authCount =
-        metrics.occurrences.where((o) => o.category == ErrorCategory.authentication).length;
+    final uiCount =
+        metrics.occurrences.where((o) => o.category == ErrorCategory.ui).length;
+    final authCount = metrics.occurrences
+        .where((o) => o.category == ErrorCategory.authentication)
+        .length;
     impactScore += ((uiCount + authCount) * 2).clamp(0, 10).toDouble();
 
     // Determine impact level
@@ -285,13 +300,16 @@ class ErrorAnalyticsService {
     final errorMessage = error.toString();
 
     // Create a stable key based on error type and core message
-    String coreMessage = errorMessage.length > 100 ? errorMessage.substring(0, 100) : errorMessage;
+    String coreMessage = errorMessage.length > 100
+        ? errorMessage.substring(0, 100)
+        : errorMessage;
 
     // Remove variable parts like timestamps, IDs, etc.
     coreMessage = coreMessage.replaceAll(RegExp(r'\d{4}-\d{2}-\d{2}'), 'DATE');
     coreMessage = coreMessage.replaceAll(RegExp(r'\d{2}:\d{2}:\d{2}'), 'TIME');
     coreMessage = coreMessage.replaceAll(
-        RegExp(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), 'UUID');
+        RegExp(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'),
+        'UUID');
 
     final operationPrefix = operationName != null ? '${operationName}_' : '';
     return '${operationPrefix}${errorType}_${coreMessage.hashCode.abs()}';
@@ -315,7 +333,8 @@ class ErrorAnalyticsService {
       }
 
       await _prefs.setString('error_metrics', jsonEncode(metricsJson));
-      logDebug('Persisted ${_errorMetrics.length} error metrics', tag: 'ERROR_ANALYTICS');
+      logDebug('Persisted ${_errorMetrics.length} error metrics',
+          tag: 'ERROR_ANALYTICS');
     } catch (e) {
       logError('Failed to persist error metrics: $e', tag: 'ERROR_ANALYTICS');
     }
@@ -330,13 +349,15 @@ class ErrorAnalyticsService {
 
         for (final entry in metricsJson.entries) {
           try {
-            final metrics = ErrorMetrics.fromJson(entry.value as Map<String, dynamic>);
+            final metrics =
+                ErrorMetrics.fromJson(entry.value as Map<String, dynamic>);
             _errorMetrics[entry.key] = metrics;
 
             // Populate recent errors
             _recentErrors[entry.key] = metrics.occurrences.take(50).toList();
           } catch (e) {
-            logWarning('Failed to load metrics for ${entry.key}: $e', tag: 'ERROR_ANALYTICS');
+            logWarning('Failed to load metrics for ${entry.key}: $e',
+                tag: 'ERROR_ANALYTICS');
           }
         }
 
@@ -344,7 +365,8 @@ class ErrorAnalyticsService {
             tag: 'ERROR_ANALYTICS');
       }
     } catch (e) {
-      logError('Failed to load stored error metrics: $e', tag: 'ERROR_ANALYTICS');
+      logError('Failed to load stored error metrics: $e',
+          tag: 'ERROR_ANALYTICS');
     }
   }
 
@@ -364,12 +386,14 @@ class ErrorAnalyticsService {
 
     // Clean up recent errors
     for (final entry in _recentErrors.entries) {
-      entry.value.removeWhere((occurrence) => occurrence.timestamp.isBefore(cutoff));
+      entry.value
+          .removeWhere((occurrence) => occurrence.timestamp.isBefore(cutoff));
     }
     _recentErrors.removeWhere((key, occurrences) => occurrences.isEmpty);
 
     if (removedCount > 0) {
-      logInfo('Cleaned up $removedCount old error metrics', tag: 'ERROR_ANALYTICS');
+      logInfo('Cleaned up $removedCount old error metrics',
+          tag: 'ERROR_ANALYTICS');
     }
   }
 
@@ -443,7 +467,8 @@ class ErrorMetrics {
     final occurrencesList = json['occurrences'] as List<dynamic>;
     for (final occurrenceJson in occurrencesList) {
       try {
-        metrics.occurrences.add(ErrorOccurrence.fromJson(occurrenceJson as Map<String, dynamic>));
+        metrics.occurrences.add(
+            ErrorOccurrence.fromJson(occurrenceJson as Map<String, dynamic>));
       } catch (e) {
         // Skip corrupted occurrences
       }

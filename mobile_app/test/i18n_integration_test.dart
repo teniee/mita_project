@@ -10,7 +10,8 @@ import 'package:mita/screens/welcome_screen.dart';
 
 void main() {
   group('MITA i18n Integration Tests', () {
-    testWidgets('Login screen displays English strings correctly', (tester) async {
+    testWidgets('Login screen displays English strings correctly',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           locale: Locale('en'),
@@ -29,7 +30,8 @@ void main() {
 
       // Check for English strings
       expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.text('Sign in to continue managing your finances'), findsOneWidget);
+      expect(find.text('Sign in to continue managing your finances'),
+          findsOneWidget);
       expect(find.text('Email address'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Remember me'), findsOneWidget);
@@ -37,7 +39,8 @@ void main() {
       expect(find.text('Sign In'), findsOneWidget);
     });
 
-    testWidgets('Login screen displays Spanish strings correctly', (tester) async {
+    testWidgets('Login screen displays Spanish strings correctly',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           locale: Locale('es'),
@@ -56,7 +59,8 @@ void main() {
 
       // Check for Spanish strings
       expect(find.text('Bienvenido de nuevo'), findsOneWidget);
-      expect(find.text('Inicia sesión para continuar gestionando tus finanzas'), findsOneWidget);
+      expect(find.text('Inicia sesión para continuar gestionando tus finanzas'),
+          findsOneWidget);
       expect(find.text('Dirección de correo electrónico'), findsOneWidget);
       expect(find.text('Contraseña'), findsOneWidget);
       expect(find.text('Recordarme'), findsOneWidget);
@@ -64,7 +68,8 @@ void main() {
       expect(find.text('Iniciar Sesión'), findsOneWidget);
     });
 
-    testWidgets('Welcome screen displays localized status messages', (tester) async {
+    testWidgets('Welcome screen displays localized status messages',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           locale: Locale('en'),
@@ -85,17 +90,18 @@ void main() {
       expect(find.text('Initializing...'), findsOneWidget);
     });
 
-    test('LocalizationService formats currency correctly for different locales', () {
+    test('LocalizationService formats currency correctly for different locales',
+        () {
       // Test USD formatting
       LocalizationService.instance.setLocale(const Locale('en', 'US'));
-      
+
       String formatted = LocalizationService.instance.formatCurrency(1234.56);
       expect(formatted, contains('\$'));
       expect(formatted, contains('1,234.56'));
 
       // Test EUR formatting (Spanish locale)
       LocalizationService.instance.setLocale(const Locale('es', 'ES'));
-      
+
       formatted = LocalizationService.instance.formatCurrency(1234.56);
       expect(formatted, contains('€'));
       // Note: Exact formatting may vary based on system locale support
@@ -105,7 +111,7 @@ void main() {
       // Create a test widget to provide context
       testWidgets('Currency formatting with context', (tester) async {
         late BuildContext testContext;
-        
+
         await tester.pumpWidget(
           MaterialApp(
             locale: const Locale('en', 'US'),
@@ -128,16 +134,19 @@ void main() {
         await tester.pump();
 
         // Test currency formatting
-        final currencyFormatted = FinancialFormatters.formatCurrency(testContext, 1234.56);
+        final currencyFormatted =
+            FinancialFormatters.formatCurrency(testContext, 1234.56);
         expect(currencyFormatted, contains('\$'));
         expect(currencyFormatted, contains('1,234.56'));
 
         // Test compact formatting
-        final compactFormatted = FinancialFormatters.formatCompactCurrency(testContext, 1234567);
+        final compactFormatted =
+            FinancialFormatters.formatCompactCurrency(testContext, 1234567);
         expect(compactFormatted, contains('1.2M'));
 
         // Test category formatting
-        final categoryFormatted = FinancialFormatters.formatCategory(testContext, 'food');
+        final categoryFormatted =
+            FinancialFormatters.formatCategory(testContext, 'food');
         expect(categoryFormatted, 'Food');
       });
     });
@@ -162,7 +171,7 @@ void main() {
     test('LocalizationService handles number parsing correctly', () {
       // Test US format parsing
       LocalizationService.instance.setLocale(const Locale('en', 'US'));
-      
+
       double? parsed = LocalizationService.instance.parseCurrency('\$1,234.56');
       expect(parsed, 1234.56);
 
@@ -194,7 +203,7 @@ void main() {
 
     test('LocalizationService handles percentage formatting', () {
       LocalizationService.instance.setLocale(const Locale('en', 'US'));
-      
+
       String percentage = LocalizationService.instance.formatPercentage(0.1256);
       expect(percentage, contains('12.6'));
       expect(percentage, contains('%'));
@@ -238,7 +247,7 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      
+
       // App should not crash and should default to English
       expect(find.text('Test'), findsOneWidget);
     });
@@ -246,7 +255,7 @@ void main() {
     test('FinancialFormatters budget status formatting works', () {
       testWidgets('Budget status with context', (tester) async {
         late BuildContext testContext;
-        
+
         await tester.pumpWidget(
           MaterialApp(
             locale: const Locale('en'),
@@ -269,22 +278,25 @@ void main() {
         await tester.pump();
 
         // Test over budget
-        String status = FinancialFormatters.formatBudgetStatus(testContext, 1200.0, 1000.0);
+        String status =
+            FinancialFormatters.formatBudgetStatus(testContext, 1200.0, 1000.0);
         expect(status, contains('Over Budget'));
 
         // Test under budget
-        status = FinancialFormatters.formatBudgetStatus(testContext, 800.0, 1000.0);
+        status =
+            FinancialFormatters.formatBudgetStatus(testContext, 800.0, 1000.0);
         expect(status, contains('Under Budget'));
 
         // Test on track
-        status = FinancialFormatters.formatBudgetStatus(testContext, 950.0, 1000.0);
+        status =
+            FinancialFormatters.formatBudgetStatus(testContext, 950.0, 1000.0);
         expect(status, contains('On Track'));
       });
     });
 
     test('Large amount detection works correctly', () {
       LocalizationService.instance.setLocale(const Locale('en', 'US'));
-      
+
       // Test USD thresholds
       expect(FinancialFormatters.isLargeAmount(500.0), false);
       expect(FinancialFormatters.isLargeAmount(1000.0), true);
@@ -308,7 +320,7 @@ void main() {
     test('LocalizationService handles missing locale gracefully', () {
       // Set an unsupported locale
       LocalizationService.instance.setLocale(const Locale('xx', 'XX'));
-      
+
       // Should fall back to default formatting
       String formatted = LocalizationService.instance.formatCurrency(1234.56);
       expect(formatted, isNotNull);
@@ -318,7 +330,7 @@ void main() {
     test('FinancialFormatters handle edge cases', () {
       testWidgets('Edge case handling', (tester) async {
         late BuildContext testContext;
-        
+
         await tester.pumpWidget(
           MaterialApp(
             locale: const Locale('en'),
@@ -349,7 +361,8 @@ void main() {
         expect(result, contains('-'));
 
         // Test very large amounts
-        result = FinancialFormatters.formatCompactCurrency(testContext, 1000000000);
+        result =
+            FinancialFormatters.formatCompactCurrency(testContext, 1000000000);
         expect(result, contains('1.0B'));
       });
     });

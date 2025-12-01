@@ -139,15 +139,19 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             _offlineModeEnabled = settings['offline_mode'] ?? true;
             _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
             _budgetAlertThreshold =
-                (settings['budget_alert_threshold'] as num?)?.toDouble() ?? 80.0;
+                (settings['budget_alert_threshold'] as num?)?.toDouble() ??
+                    80.0;
           }
 
           // Behavioral notification settings
           if (behavioralNotifications.isNotEmpty) {
             _patternAlerts = behavioralNotifications['pattern_alerts'] ?? true;
-            _anomalyDetection = behavioralNotifications['anomaly_detection'] ?? true;
-            _budgetAdaptation = behavioralNotifications['budget_adaptation'] ?? true;
-            _weeklyInsights = behavioralNotifications['weekly_insights'] ?? true;
+            _anomalyDetection =
+                behavioralNotifications['anomaly_detection'] ?? true;
+            _budgetAdaptation =
+                behavioralNotifications['budget_adaptation'] ?? true;
+            _weeklyInsights =
+                behavioralNotifications['weekly_insights'] ?? true;
           }
 
           // Behavioral preferences
@@ -193,7 +197,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             )
             .timeout(
               const Duration(seconds: 5),
-              onTimeout: () => throw Exception('Behavioral settings save timeout'),
+              onTimeout: () =>
+                  throw Exception('Behavioral settings save timeout'),
             ),
       ]);
 
@@ -278,14 +283,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading settings...', style: TextStyle(fontFamily: AppTypography.fontBody)),
+          Text('Loading settings...',
+              style: TextStyle(fontFamily: AppTypography.fontBody)),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsContent(
-      ColorScheme colorScheme, TextTheme textTheme, SettingsProvider settingsProvider) {
+  Widget _buildSettingsContent(ColorScheme colorScheme, TextTheme textTheme,
+      SettingsProvider settingsProvider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -301,7 +307,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 'Use dark theme throughout the app',
                 Icons.dark_mode,
                 settingsProvider.themeMode == ThemeMode.dark,
-                (value) => settingsProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
+                (value) => settingsProvider
+                    .setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
               ),
               _buildDropdownTile(
                 'Language',
@@ -309,7 +316,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                 Icons.language,
                 _getLanguageDisplayName(settingsProvider.languageCode),
                 _languages,
-                (value) => settingsProvider.setLocale(Locale(_getLanguageCode(value!))),
+                (value) => settingsProvider
+                    .setLocale(Locale(_getLanguageCode(value!))),
               ),
               _buildDropdownTile(
                 'Date Format',
@@ -556,7 +564,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+        style: const TextStyle(
+            fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
@@ -582,7 +591,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+        style: const TextStyle(
+            fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
@@ -615,8 +625,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           leading: Icon(icon),
           title: Text(
             title,
-            style:
-                const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+            style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontFamily: AppTypography.fontHeading),
           ),
           subtitle: Text(
             subtitle,
@@ -649,7 +660,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+        style: const TextStyle(
+            fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       subtitle: Text(
         subtitle,
@@ -670,7 +682,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       leading: Icon(icon),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
+        style: const TextStyle(
+            fontWeight: FontWeight.w500, fontFamily: AppTypography.fontHeading),
       ),
       trailing: Text(
         value,
@@ -742,7 +755,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Change Password'),
-        content: const Text('This feature will redirect you to account settings.'),
+        content:
+            const Text('This feature will redirect you to account settings.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -765,7 +779,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Export Data'),
-        content: const Text('Your financial data will be exported as a CSV file.'),
+        content:
+            const Text('Your financial data will be exported as a CSV file.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -807,7 +822,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Privacy Policy'),
-        content: const Text('This will open the privacy policy in your browser.'),
+        content:
+            const Text('This will open the privacy policy in your browser.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -830,7 +846,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Terms of Service'),
-        content: const Text('This will open the terms of service in your browser.'),
+        content:
+            const Text('This will open the terms of service in your browser.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1101,7 +1118,9 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureCurrentPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -1128,7 +1147,9 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureNewPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -1158,7 +1179,9 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                      _obscureConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -1185,8 +1208,9 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child:
-                    _isLoading ? const CircularProgressIndicator() : const Text('Change Password'),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Change Password'),
               ),
             ],
           ),

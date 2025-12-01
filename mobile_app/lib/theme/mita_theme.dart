@@ -192,7 +192,8 @@ class MitaTheme {
       // Input Decoration Theme with Material 3 styling
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor:
+            _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
@@ -237,7 +238,8 @@ class MitaTheme {
           fontFamily: 'Manrope',
           color: _lightColorScheme.onSurface.withValues(alpha: 0.6),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
 
       // Checkbox Theme
@@ -258,7 +260,8 @@ class MitaTheme {
       chipTheme: ChipThemeData(
         backgroundColor: _lightColorScheme.surfaceContainerHighest,
         selectedColor: _lightColorScheme.secondaryContainer,
-        disabledColor: _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.12),
+        disabledColor:
+            _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.12),
         labelStyle: const TextStyle(
           fontFamily: 'Manrope',
           fontWeight: FontWeight.w500,
@@ -292,8 +295,10 @@ class MitaTheme {
 
       // Search Bar Theme
       searchBarTheme: SearchBarThemeData(
-        backgroundColor: WidgetStateProperty.all(_lightColorScheme.surfaceContainer),
-        surfaceTintColor: WidgetStateProperty.all(_lightColorScheme.surfaceTint),
+        backgroundColor:
+            WidgetStateProperty.all(_lightColorScheme.surfaceContainer),
+        surfaceTintColor:
+            WidgetStateProperty.all(_lightColorScheme.surfaceTint),
         overlayColor: WidgetStateProperty.all(
             _lightColorScheme.surfaceContainerHighest.withValues(alpha: 0.8)),
         shape: WidgetStateProperty.all(

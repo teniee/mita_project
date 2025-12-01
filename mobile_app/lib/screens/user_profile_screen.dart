@@ -13,7 +13,8 @@ class UserProfileScreen extends StatefulWidget {
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> with TickerProviderStateMixin {
+class _UserProfileScreenState extends State<UserProfileScreen>
+    with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<double> _slideAnimation;
   late AnimationController _fadeController;
@@ -43,10 +44,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
       vsync: this,
     );
 
-    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0)
-        .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
+    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
+        CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
 
     _slideController.forward();
     _fadeController.forward();
@@ -80,7 +81,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text('Loading your profile...', style: TextStyle(fontFamily: AppTypography.fontBody)),
+          Text('Loading your profile...',
+              style: TextStyle(fontFamily: AppTypography.fontBody)),
         ],
       ),
     );
@@ -149,7 +151,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                     const SizedBox(height: 24),
 
                     // Financial Overview Cards
-                    _buildFinancialOverview(colorScheme, textTheme, userProvider),
+                    _buildFinancialOverview(
+                        colorScheme, textTheme, userProvider),
                     const SizedBox(height: 24),
 
                     // Account Details
@@ -172,10 +175,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
   Widget _buildProfileHeader(
       ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     final name = userProvider.userName;
-    final email = userProvider.userEmail.isNotEmpty ? userProvider.userEmail : 'user@mita.finance';
+    final email = userProvider.userEmail.isNotEmpty
+        ? userProvider.userEmail
+        : 'user@mita.finance';
     final memberSince = userProvider.userProfile['member_since'] as String?;
-    final completion = userProvider.userProfile['profile_completion'] as int? ?? 85;
-    final verified = userProvider.userProfile['verified_email'] as bool? ?? false;
+    final completion =
+        userProvider.userProfile['profile_completion'] as int? ?? 85;
+    final verified =
+        userProvider.userProfile['verified_email'] as bool? ?? false;
 
     DateTime? joinDate;
     if (memberSince != null) {
@@ -260,16 +267,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                           ),
                           if (verified)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.green.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                    color: Colors.green.withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.verified, color: Colors.green, size: 16),
+                                  const Icon(Icons.verified,
+                                      color: Colors.green, size: 16),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Verified',
@@ -337,7 +347,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                 LinearProgressIndicator(
                   value: completion / 100,
                   backgroundColor: colorScheme.surfaceContainer,
-                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(colorScheme.primary),
                   minHeight: 8,
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -483,7 +494,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             const SizedBox(height: 16),
             _buildDetailRow(
               'Budget Method',
-              userProvider.userProfile['budget_method'] as String? ?? '50/30/20 Rule',
+              userProvider.userProfile['budget_method'] as String? ??
+                  '50/30/20 Rule',
               Icons.pie_chart,
               colorScheme,
               textTheme,
@@ -497,7 +509,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             ),
             _buildDetailRow(
               'Region',
-              userProvider.userRegion.isNotEmpty ? userProvider.userRegion : 'US',
+              userProvider.userRegion.isNotEmpty
+                  ? userProvider.userRegion
+                  : 'US',
               Icons.location_on,
               colorScheme,
               textTheme,
@@ -522,8 +536,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildDetailRow(
-      String label, String value, IconData icon, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildDetailRow(String label, String value, IconData icon,
+      ColorScheme colorScheme, TextTheme textTheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -638,8 +652,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap, Color color,
-      ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap,
+      Color color, ColorScheme colorScheme, TextTheme textTheme) {
     return Material(
       color: color.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(12),

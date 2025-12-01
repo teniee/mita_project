@@ -122,7 +122,8 @@ class MitaWidgets {
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: colorScheme.errorContainer.withValues(alpha: 0.3),
+                        color:
+                            colorScheme.errorContainer.withValues(alpha: 0.3),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -181,9 +182,10 @@ class MitaWidgets {
                       child: OutlinedButton.icon(
                         onPressed: onGoHome ??
                             () {
-                              if (context != null && Navigator.of(context).canPop()) {
-                                Navigator.of(context)
-                                    .pushNamedAndRemoveUntil('/', (route) => false);
+                              if (context != null &&
+                                  Navigator.of(context).canPop()) {
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                    '/', (route) => false);
                               }
                             },
                         icon: const Icon(Icons.home_rounded),
@@ -350,7 +352,9 @@ class MitaWidgets {
                 Semantics(
                   label: accessibilityService.createFinancialSemanticLabel(
                     label: 'Amount',
-                    amount: double.tryParse(amount.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0,
+                    amount: double.tryParse(
+                            amount.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                        0.0,
                     category: label,
                   ),
                   child: Text(
@@ -395,7 +399,8 @@ class MitaWidgets {
     final accessibilityService = AccessibilityService.instance;
     final cardColor = color ?? AppColors.primary;
 
-    final numericValue = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+    final numericValue =
+        double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
     final semanticLabel = accessibilityService.createFinancialSemanticLabel(
       label: title,
       amount: numericValue,
@@ -403,7 +408,9 @@ class MitaWidgets {
     );
 
     return Semantics(
-      label: onTap != null ? '$semanticLabel. Tap for more details.' : semanticLabel,
+      label: onTap != null
+          ? '$semanticLabel. Tap for more details.'
+          : semanticLabel,
       button: onTap != null,
       child: MitaTheme.createElevatedCard(
         onTap: onTap,
@@ -494,7 +501,8 @@ class MitaWidgets {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isTablet = constraints.maxWidth > 600;
-        final adjustedCrossAxisCount = isTablet ? crossAxisCount * 2 : crossAxisCount;
+        final adjustedCrossAxisCount =
+            isTablet ? crossAxisCount * 2 : crossAxisCount;
 
         return GridView.count(
           shrinkWrap: true,
@@ -634,7 +642,8 @@ class MitaWidgets {
                   onPressed: onRetry,
                   style: TextButton.styleFrom(
                     foregroundColor: foregroundColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   child: const Text('Retry'),
                 ),
@@ -647,7 +656,8 @@ class MitaWidgets {
                   iconSize: 18,
                   color: foregroundColor,
                   padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
                 ),
               ],
             ],
@@ -762,21 +772,26 @@ class MitaWidgets {
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          color: isConnected ? colorScheme.primaryContainer : colorScheme.errorContainer,
+          color: isConnected
+              ? colorScheme.primaryContainer
+              : colorScheme.errorContainer,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
                 size: 16,
-                color: isConnected ? colorScheme.onPrimaryContainer : colorScheme.onErrorContainer,
+                color: isConnected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onErrorContainer,
               ),
               const SizedBox(width: 8),
               Text(
                 isConnected ? 'Connected' : 'No internet connection',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color:
-                      isConnected ? colorScheme.onPrimaryContainer : colorScheme.onErrorContainer,
+                  color: isConnected
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onErrorContainer,
                   fontWeight: FontWeight.w500,
                 ),
               ),

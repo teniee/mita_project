@@ -258,7 +258,8 @@ class _OCRDataFieldState extends State<OCRDataField> {
           decoration: InputDecoration(
             labelText: widget.label,
             helperText: widget.helperText,
-            prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
+            prefixIcon:
+                widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
             suffixIcon: ConfidenceIndicator(
               confidence: widget.confidence,
               label: widget.confidence.name,
@@ -273,19 +274,23 @@ class _OCRDataFieldState extends State<OCRDataField> {
                 : null,
           ),
         ),
-        if (_showSuggestions && widget.suggestions != null && widget.suggestions!.isNotEmpty)
+        if (_showSuggestions &&
+            widget.suggestions != null &&
+            widget.suggestions!.isNotEmpty)
           Container(
             margin: const EdgeInsets.only(top: 4.0),
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: widget.suggestions!
-                  .where((suggestion) =>
-                      suggestion.toLowerCase().contains(_controller.text.toLowerCase()))
+                  .where((suggestion) => suggestion
+                      .toLowerCase()
+                      .contains(_controller.text.toLowerCase()))
                   .take(5)
                   .map((suggestion) => InkWell(
                         onTap: () {
@@ -482,30 +487,35 @@ class ReceiptScanOverlay extends StatelessWidget {
       Positioned(
         left: centerX - frameWidth / 2,
         top: centerY - frameHeight / 2,
-        child: _buildCornerGuide(colorScheme.primary, guideLength, guideWidth, true, true),
+        child: _buildCornerGuide(
+            colorScheme.primary, guideLength, guideWidth, true, true),
       ),
       // Top-right corner
       Positioned(
         right: centerX - frameWidth / 2,
         top: centerY - frameHeight / 2,
-        child: _buildCornerGuide(colorScheme.primary, guideLength, guideWidth, false, true),
+        child: _buildCornerGuide(
+            colorScheme.primary, guideLength, guideWidth, false, true),
       ),
       // Bottom-left corner
       Positioned(
         left: centerX - frameWidth / 2,
         bottom: centerY - frameHeight / 2,
-        child: _buildCornerGuide(colorScheme.primary, guideLength, guideWidth, true, false),
+        child: _buildCornerGuide(
+            colorScheme.primary, guideLength, guideWidth, true, false),
       ),
       // Bottom-right corner
       Positioned(
         right: centerX - frameWidth / 2,
         bottom: centerY - frameHeight / 2,
-        child: _buildCornerGuide(colorScheme.primary, guideLength, guideWidth, false, false),
+        child: _buildCornerGuide(
+            colorScheme.primary, guideLength, guideWidth, false, false),
       ),
     ];
   }
 
-  Widget _buildCornerGuide(Color color, double length, double width, bool isLeft, bool isTop) {
+  Widget _buildCornerGuide(
+      Color color, double length, double width, bool isLeft, bool isTop) {
     return SizedBox(
       width: length,
       height: length,
@@ -659,7 +669,8 @@ class OCRReceiptItemsList extends StatelessWidget {
                 label: 'Price',
                 value: item.price.toStringAsFixed(2),
                 confidence: item.confidence,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 onChanged: (value) {
                   final price = double.tryParse(value) ?? item.price;
                   final updatedItem = ReceiptItem(

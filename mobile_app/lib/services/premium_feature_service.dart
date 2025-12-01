@@ -24,7 +24,8 @@ class PremiumFeatureService {
       StreamController<Map<PremiumFeature, bool>>.broadcast();
 
   /// Stream of feature availability changes
-  Stream<Map<PremiumFeature, bool>> get featureUpdatesStream => _featureUpdateController.stream;
+  Stream<Map<PremiumFeature, bool>> get featureUpdatesStream =>
+      _featureUpdateController.stream;
 
   PremiumFeatureService(this._iapService);
 
@@ -123,7 +124,8 @@ class PremiumFeatureService {
   }
 
   /// Enforce premium feature access (throws exception if not available)
-  Future<void> enforceFeatureAccess(PremiumFeature feature, {String? context}) async {
+  Future<void> enforceFeatureAccess(PremiumFeature feature,
+      {String? context}) async {
     final hasAccess = await isFeatureAvailable(feature);
 
     if (!hasAccess) {
@@ -146,14 +148,16 @@ class PremiumFeatureService {
   }
 
   /// Get feature usage limits
-  Future<FeatureUsageLimits> getFeatureUsageLimits(PremiumFeature feature) async {
+  Future<FeatureUsageLimits> getFeatureUsageLimits(
+      PremiumFeature feature) async {
     try {
       final isPremium = await _iapService.isPremiumUser();
 
       switch (feature) {
         case PremiumFeature.advancedOcr:
           return FeatureUsageLimits(
-            dailyLimit: isPremium ? null : 5, // Unlimited for premium, 5 for free
+            dailyLimit:
+                isPremium ? null : 5, // Unlimited for premium, 5 for free
             monthlyLimit: isPremium ? null : 50,
             concurrentLimit: isPremium ? 10 : 1,
           );
@@ -169,7 +173,8 @@ class PremiumFeatureService {
           return FeatureUsageLimits(
             dailyLimit: isPremium ? null : 1,
             monthlyLimit: isPremium ? null : 3,
-            formatRestrictions: isPremium ? [] : ['csv'], // Premium gets all formats
+            formatRestrictions:
+                isPremium ? [] : ['csv'], // Premium gets all formats
           );
 
         case PremiumFeature.premiumInsights:
@@ -196,7 +201,9 @@ class PremiumFeatureService {
 
         case PremiumFeature.prioritySupport:
           return FeatureUsageLimits(
-            responseTime: isPremium ? const Duration(hours: 4) : const Duration(hours: 48),
+            responseTime: isPremium
+                ? const Duration(hours: 4)
+                : const Duration(hours: 48),
             supportChannels: isPremium ? ['chat', 'email', 'phone'] : ['email'],
           );
       }
@@ -268,7 +275,8 @@ class PremiumFeatureService {
   }
 
   /// Get feature usage statistics
-  Future<Map<String, dynamic>> getFeatureUsageStats(PremiumFeature feature) async {
+  Future<Map<String, dynamic>> getFeatureUsageStats(
+      PremiumFeature feature) async {
     try {
       final userId = await _apiService.getUserId();
       if (userId == null) return {};
@@ -325,19 +333,22 @@ class PremiumFeatureService {
 
   bool _isFeatureCacheValid() {
     if (_lastFeatureUpdate == null) return false;
-    return DateTime.now().difference(_lastFeatureUpdate!) < _featureCacheValidDuration;
+    return DateTime.now().difference(_lastFeatureUpdate!) <
+        _featureCacheValidDuration;
   }
 
   Future<void> _saveFeaturesCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cacheData = {
-        'features': _featureCache.map((key, value) => MapEntry(_featureToString(key), value)),
+        'features': _featureCache
+            .map((key, value) => MapEntry(_featureToString(key), value)),
         'last_update': _lastFeatureUpdate?.millisecondsSinceEpoch,
       };
 
       await prefs.setString(_featureCacheKey, jsonEncode(cacheData));
-      await prefs.setInt(_lastFeatureCheckKey, DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+          _lastFeatureCheckKey, DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
       _logger.error('Failed to save features cache: $e');
     }
@@ -390,7 +401,8 @@ class PremiumFeatureService {
     }
   }
 
-  Future<void> _trackPaywallImpression(PremiumFeature feature, String? context) async {
+  Future<void> _trackPaywallImpression(
+      PremiumFeature feature, String? context) async {
     try {
       final userId = await _apiService.getUserId();
       if (userId == null) return;

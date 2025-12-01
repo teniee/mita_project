@@ -13,7 +13,8 @@ import 'logging_service.dart';
 /// - Compliance reporting for financial regulations
 class SecurityMonitor {
   static SecurityMonitor? _instance;
-  static SecurityMonitor get instance => _instance ??= SecurityMonitor._internal();
+  static SecurityMonitor get instance =>
+      _instance ??= SecurityMonitor._internal();
 
   SecurityMonitor._internal();
 
@@ -51,9 +52,11 @@ class SecurityMonitor {
       _startPeriodicMonitoring();
 
       _isInitialized = true;
-      logInfo('Security monitoring initialized successfully', tag: 'SECURITY_MONITOR');
+      logInfo('Security monitoring initialized successfully',
+          tag: 'SECURITY_MONITOR');
     } catch (e) {
-      logError('Failed to initialize security monitoring: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Failed to initialize security monitoring: $e',
+          tag: 'SECURITY_MONITOR', error: e);
       rethrow;
     }
   }
@@ -63,7 +66,8 @@ class SecurityMonitor {
     _monitoringTimer?.cancel();
     _monitoringTimer = Timer.periodic(_monitoringInterval, (_) {
       _performMonitoringCycle().catchError((e) {
-        logError('Monitoring cycle failed: $e', tag: 'SECURITY_MONITOR', error: e);
+        logError('Monitoring cycle failed: $e',
+            tag: 'SECURITY_MONITOR', error: e);
       });
     });
   }
@@ -82,7 +86,8 @@ class SecurityMonitor {
       // Record monitoring metric
       await recordMetric(SecurityMetricType.monitoringCycle, 1);
     } catch (e) {
-      logError('Security monitoring cycle failed: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Security monitoring cycle failed: $e',
+          tag: 'SECURITY_MONITOR', error: e);
 
       await logSecurityEvent(
         SecurityEventType.systemError,
@@ -140,7 +145,8 @@ class SecurityMonitor {
         await _handleCriticalSecurityEvent(event);
       }
     } catch (e) {
-      logError('Failed to log security event: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Failed to log security event: $e',
+          tag: 'SECURITY_MONITOR', error: e);
     }
   }
 
@@ -160,9 +166,11 @@ class SecurityMonitor {
 
       _metrics.add(metric);
 
-      logDebug('Security metric recorded: ${metricType.name} = $value', tag: 'SECURITY_METRIC');
+      logDebug('Security metric recorded: ${metricType.name} = $value',
+          tag: 'SECURITY_METRIC');
     } catch (e) {
-      logError('Failed to record security metric: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Failed to record security metric: $e',
+          tag: 'SECURITY_MONITOR', error: e);
     }
   }
 
@@ -173,8 +181,9 @@ class SecurityMonitor {
       final windowStart = now.subtract(_anomalyWindow);
 
       // Get events in the detection window
-      final recentEvents =
-          _securityEvents.where((event) => event.timestamp.isAfter(windowStart)).toList();
+      final recentEvents = _securityEvents
+          .where((event) => event.timestamp.isAfter(windowStart))
+          .toList();
 
       // Check for authentication anomalies
       await _checkAuthenticationAnomalies(recentEvents);
@@ -185,12 +194,14 @@ class SecurityMonitor {
       // Check for system error anomalies
       await _checkSystemErrorAnomalies(recentEvents);
     } catch (e) {
-      logError('Anomaly detection failed: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Anomaly detection failed: $e',
+          tag: 'SECURITY_MONITOR', error: e);
     }
   }
 
   /// Check for authentication-related anomalies
-  Future<void> _checkAuthenticationAnomalies(List<SecurityEvent> recentEvents) async {
+  Future<void> _checkAuthenticationAnomalies(
+      List<SecurityEvent> recentEvents) async {
     final authEvents = recentEvents
         .where((e) =>
             e.type == SecurityEventType.authenticationFailed ||
@@ -212,7 +223,8 @@ class SecurityMonitor {
   }
 
   /// Check for token operation anomalies
-  Future<void> _checkTokenOperationAnomalies(List<SecurityEvent> recentEvents) async {
+  Future<void> _checkTokenOperationAnomalies(
+      List<SecurityEvent> recentEvents) async {
     final tokenEvents = recentEvents
         .where((e) =>
             e.type == SecurityEventType.tokenOperationFailed ||
@@ -234,8 +246,11 @@ class SecurityMonitor {
   }
 
   /// Check for system error anomalies
-  Future<void> _checkSystemErrorAnomalies(List<SecurityEvent> recentEvents) async {
-    final errorEvents = recentEvents.where((e) => e.type == SecurityEventType.systemError).length;
+  Future<void> _checkSystemErrorAnomalies(
+      List<SecurityEvent> recentEvents) async {
+    final errorEvents = recentEvents
+        .where((e) => e.type == SecurityEventType.systemError)
+        .length;
 
     if (errorEvents >= _anomalyThreshold) {
       await logSecurityEvent(
@@ -254,7 +269,8 @@ class SecurityMonitor {
   /// Handle critical security events
   Future<void> _handleCriticalSecurityEvent(SecurityEvent event) async {
     try {
-      logError('HANDLING CRITICAL SECURITY EVENT: ${event.description}', tag: 'SECURITY_CRITICAL');
+      logError('HANDLING CRITICAL SECURITY EVENT: ${event.description}',
+          tag: 'SECURITY_CRITICAL');
 
       // Force token cleanup for critical security events
       if (event.type == SecurityEventType.tokenTampering ||
@@ -273,7 +289,8 @@ class SecurityMonitor {
       // - Increase monitoring frequency
       // - Send push notification to user
     } catch (e) {
-      logError('Failed to handle critical security event: $e', tag: 'SECURITY_MONITOR', error: e);
+      logError('Failed to handle critical security event: $e',
+          tag: 'SECURITY_MONITOR', error: e);
     }
   }
 
@@ -300,7 +317,8 @@ class SecurityMonitor {
   }) {
     return _securityEvents.where((event) {
       if (since != null && event.timestamp.isBefore(since)) return false;
-      if (minSeverity != null && event.severity.index < minSeverity.index) return false;
+      if (minSeverity != null && event.severity.index < minSeverity.index)
+        return false;
       if (eventType != null && event.type != eventType) return false;
       return true;
     }).toList();
@@ -338,7 +356,8 @@ class SecurityMonitor {
     // Calculate event type distribution
     final eventTypeDistribution = <String, int>{};
     for (final event in events) {
-      eventTypeDistribution[event.type.name] = (eventTypeDistribution[event.type.name] ?? 0) + 1;
+      eventTypeDistribution[event.type.name] =
+          (eventTypeDistribution[event.type.name] ?? 0) + 1;
     }
 
     // Calculate metric summaries
@@ -366,8 +385,10 @@ class SecurityMonitor {
       'summary': {
         'totalEvents': events.length,
         'totalMetrics': metrics.length,
-        'criticalEvents': events.where((e) => e.severity == SecuritySeverity.critical).length,
-        'highSeverityEvents': events.where((e) => e.severity == SecuritySeverity.high).length,
+        'criticalEvents':
+            events.where((e) => e.severity == SecuritySeverity.critical).length,
+        'highSeverityEvents':
+            events.where((e) => e.severity == SecuritySeverity.high).length,
         'lastMonitoringCycle': _lastMonitoringCycle?.millisecondsSinceEpoch,
       },
       'severityDistribution': severityDistribution,

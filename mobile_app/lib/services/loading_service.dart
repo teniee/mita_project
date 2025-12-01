@@ -14,7 +14,8 @@ class LoadingService {
   // Track loading operations with unique IDs and timeouts
   final Map<String, LoadingOperation> _operations = {};
   final Duration _defaultTimeout = const Duration(seconds: 15);
-  final Duration _maxLoadingTime = const Duration(seconds: 20); // Reduced for fast backend
+  final Duration _maxLoadingTime =
+      const Duration(seconds: 20); // Reduced for fast backend
 
   Timer? _timeoutWatchdog;
   DateTime? _firstLoadingStart;
@@ -51,7 +52,10 @@ class LoadingService {
         logWarning(
           'Loading operation timed out: $description (${timeoutDuration.inSeconds}s)',
           tag: 'LOADING_TIMEOUT',
-          extra: {'operation_id': id, 'timeout_seconds': timeoutDuration.inSeconds},
+          extra: {
+            'operation_id': id,
+            'timeout_seconds': timeoutDuration.inSeconds
+          },
         );
         _forceStopOperation(id, reason: 'timeout');
       }
@@ -78,7 +82,10 @@ class LoadingService {
       logDebug(
         'Loading completed: ${operation.description} (${duration.inMilliseconds}ms)',
         tag: 'LOADING',
-        extra: {'operation_id': operationId, 'duration_ms': duration.inMilliseconds},
+        extra: {
+          'operation_id': operationId,
+          'duration_ms': duration.inMilliseconds
+        },
       );
 
       _operations.remove(operationId);
@@ -149,7 +156,10 @@ class LoadingService {
     logWarning(
       'Loading overlay force hidden: $reason',
       tag: 'LOADING_FORCE_HIDE',
-      extra: {'active_counter': _counter.value, 'active_operations': _operations.length},
+      extra: {
+        'active_counter': _counter.value,
+        'active_operations': _operations.length
+      },
     );
 
     // Auto-restore after a delay
@@ -183,7 +193,8 @@ class LoadingService {
       // Check individual operation timeouts
       final timedOutOperations = <String>[];
       _operations.forEach((id, operation) {
-        if (now.difference(operation.startTime).compareTo(operation.timeout) > 0) {
+        if (now.difference(operation.startTime).compareTo(operation.timeout) >
+            0) {
           timedOutOperations.add(id);
         }
       });
@@ -232,8 +243,9 @@ class LoadingService {
       activeOperations: _operations.length,
       counterValue: _counter.value,
       operations: List.from(_operations.values),
-      globalLoadingDuration:
-          _firstLoadingStart != null ? DateTime.now().difference(_firstLoadingStart!) : null,
+      globalLoadingDuration: _firstLoadingStart != null
+          ? DateTime.now().difference(_firstLoadingStart!)
+          : null,
     );
   }
 
@@ -286,7 +298,8 @@ class LoadingStatus {
   });
 
   bool get hasInconsistentState =>
-      (counterValue > 0 && activeOperations == 0) || (counterValue == 0 && activeOperations > 0);
+      (counterValue > 0 && activeOperations == 0) ||
+      (counterValue == 0 && activeOperations > 0);
 
   @override
   String toString() {

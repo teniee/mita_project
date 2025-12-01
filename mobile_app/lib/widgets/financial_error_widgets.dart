@@ -25,7 +25,8 @@ class FinancialErrorDialog extends StatefulWidget {
   State<FinancialErrorDialog> createState() => _FinancialErrorDialogState();
 }
 
-class _FinancialErrorDialogState extends State<FinancialErrorDialog> with TickerProviderStateMixin {
+class _FinancialErrorDialogState extends State<FinancialErrorDialog>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -99,7 +100,9 @@ class _FinancialErrorDialogState extends State<FinancialErrorDialog> with Ticker
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: widget.errorInfo.getColor(colorScheme).withValues(alpha: 0.1),
+                      color: widget.errorInfo
+                          .getColor(colorScheme)
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -136,7 +139,8 @@ class _FinancialErrorDialogState extends State<FinancialErrorDialog> with Ticker
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                          color: colorScheme.primaryContainer
+                              .withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: colorScheme.primary.withValues(alpha: 0.2),
@@ -290,7 +294,8 @@ class FinancialErrorBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<FinancialErrorBottomSheet> createState() => _FinancialErrorBottomSheetState();
+  State<FinancialErrorBottomSheet> createState() =>
+      _FinancialErrorBottomSheetState();
 }
 
 class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
@@ -374,7 +379,9 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: widget.errorInfo.getColor(colorScheme).withValues(alpha: 0.1),
+                      color: widget.errorInfo
+                          .getColor(colorScheme)
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -509,7 +516,8 @@ class _FinancialErrorBottomSheetState extends State<FinancialErrorBottomSheet>
                       .map((action) => FilledButton(
                             onPressed: () => _handleAction(context, action),
                             style: FilledButton.styleFrom(
-                              backgroundColor: widget.errorInfo.getColor(colorScheme),
+                              backgroundColor:
+                                  widget.errorInfo.getColor(colorScheme),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 12,
@@ -592,7 +600,8 @@ class FinancialErrorSnackBar {
                   Text(
                     errorInfo.message,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onErrorContainer.withValues(alpha: 0.9),
+                      color:
+                          colorScheme.onErrorContainer.withValues(alpha: 0.9),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -836,7 +845,9 @@ class FinancialEmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: (hasError ? colorScheme.errorContainer : colorScheme.primaryContainer)
+                color: (hasError
+                        ? colorScheme.errorContainer
+                        : colorScheme.primaryContainer)
                     .withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
@@ -871,8 +882,10 @@ class FinancialEmptyState extends StatelessWidget {
                 icon: Icon(hasError ? Icons.refresh : Icons.add),
                 label: Text(actionLabel!),
                 style: FilledButton.styleFrom(
-                  backgroundColor: hasError ? colorScheme.error : colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  backgroundColor:
+                      hasError ? colorScheme.error : colorScheme.primary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 ),
               ),
             ],

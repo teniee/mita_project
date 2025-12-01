@@ -18,7 +18,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _tokenController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isLoading = false;
   bool _isTokenVerified = false;
@@ -51,7 +52,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      final isValid = await _api.verifyPasswordResetToken(_tokenController.text);
+      final isValid =
+          await _api.verifyPasswordResetToken(_tokenController.text);
 
       if (isValid) {
         setState(() {
@@ -60,7 +62,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         logInfo('Password reset token verified', tag: 'RESET_PASSWORD');
       } else {
         setState(() {
-          _errorMessage = 'Invalid or expired reset token. Please request a new one.';
+          _errorMessage =
+              'Invalid or expired reset token. Please request a new one.';
         });
       }
     } catch (e) {
@@ -167,7 +170,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         const SizedBox(height: 12),
         Text(
           'Please enter the reset token sent to your email',
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style:
+              AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
@@ -234,7 +238,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 )
               : Text(
                   'Verify Token',
-                  style: AppTypography.labelLarge.copyWith(color: AppColors.textLight),
+                  style: AppTypography.labelLarge
+                      .copyWith(color: AppColors.textLight),
                 ),
         ),
       ],
@@ -261,7 +266,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 12),
           Text(
             'Enter your new password below',
-            style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium
+                .copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -309,7 +315,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                  _obscureConfirmPassword
+                      ? Icons.visibility
+                      : Icons.visibility_off,
                 ),
                 onPressed: () {
                   setState(() {
@@ -374,7 +382,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   )
                 : Text(
                     'Reset Password',
-                    style: AppTypography.labelLarge.copyWith(color: AppColors.textLight),
+                    style: AppTypography.labelLarge
+                        .copyWith(color: AppColors.textLight),
                   ),
           ),
         ],
@@ -407,7 +416,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         const SizedBox(height: 12),
         Text(
           'Your password has been successfully reset.\nRedirecting you to login...',
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style:
+              AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],

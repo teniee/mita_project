@@ -108,9 +108,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final input = TransactionInput(
       amount: double.parse(_amountController.text),
       category: _selectedCategory,
-      description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
-      merchant: _merchantController.text.isEmpty ? null : _merchantController.text,
-      location: _locationController.text.isEmpty ? null : _locationController.text,
+      description: _descriptionController.text.isEmpty
+          ? null
+          : _descriptionController.text,
+      merchant:
+          _merchantController.text.isEmpty ? null : _merchantController.text,
+      location:
+          _locationController.text.isEmpty ? null : _locationController.text,
       isRecurring: _isRecurring,
       spentAt: _selectedDate,
     );
@@ -122,7 +126,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         result = await transactionProvider.createTransaction(input);
       } else {
         // Update existing transaction
-        result = await transactionProvider.updateTransaction(widget.transaction!.id, input);
+        result = await transactionProvider.updateTransaction(
+            widget.transaction!.id, input);
       }
 
       if (!mounted) return;
@@ -140,7 +145,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(transactionProvider.errorMessage ?? 'Failed to save transaction'),
+            content: Text(transactionProvider.errorMessage ??
+                'Failed to save transaction'),
             backgroundColor: Colors.red,
           ),
         );
@@ -188,7 +194,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               // Amount field
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(
                   fontSize: 32,
                   fontFamily: AppTypography.fontHeading,
@@ -278,7 +285,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today, color: AppColors.textPrimary),
+                      const Icon(Icons.calendar_today,
+                          color: AppColors.textPrimary),
                       const SizedBox(width: 12),
                       Text(
                         DateFormat('MMM d, yyyy').format(_selectedDate),
@@ -318,7 +326,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   child: provider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
-                          widget.transaction == null ? 'Add Transaction' : 'Update Transaction',
+                          widget.transaction == null
+                              ? 'Add Transaction'
+                              : 'Update Transaction',
                           style: const TextStyle(
                             fontSize: 16,
                             fontFamily: AppTypography.fontHeading,

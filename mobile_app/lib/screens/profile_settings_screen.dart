@@ -28,8 +28,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _isSaving = false;
   bool _hasInitialized = false;
 
-  final List<String> _currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY'];
-  final List<String> _regions = ['US', 'Canada', 'UK', 'Europe', 'Australia', 'Asia'];
+  final List<String> _currencies = [
+    'USD',
+    'EUR',
+    'GBP',
+    'CAD',
+    'AUD',
+    'JPY',
+    'CNY'
+  ];
+  final List<String> _regions = [
+    'US',
+    'Canada',
+    'UK',
+    'Europe',
+    'Australia',
+    'Asia'
+  ];
   final List<String> _budgetMethods = [
     '50/30/20 Rule',
     '60/20/20',
@@ -109,7 +124,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         throw Exception('Valid income is required');
       }
 
-      final parsedSavingsGoal = double.tryParse(_savingsGoalController.text) ?? 0.0;
+      final parsedSavingsGoal =
+          double.tryParse(_savingsGoalController.text) ?? 0.0;
       if (parsedSavingsGoal <= 0) {
         throw Exception('Valid savings goal is required');
       }
@@ -186,7 +202,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile Settings',
-            style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                fontFamily: AppTypography.fontHeading,
+                fontWeight: FontWeight.w600)),
         backgroundColor: colorScheme.surface,
         elevation: 0,
         actions: [
@@ -195,12 +213,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               padding: EdgeInsets.only(right: 16),
               child: Center(
                   child: SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))),
             )
           else
             TextButton(
               onPressed: _saveProfile,
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+              child: const Text('Save',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -220,8 +241,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: colorScheme.primaryContainer,
-                            child:
-                                Icon(Icons.person, size: 50, color: colorScheme.onPrimaryContainer),
+                            child: Icon(Icons.person,
+                                size: 50,
+                                color: colorScheme.onPrimaryContainer),
                           ),
                           Positioned(
                             bottom: 0,
@@ -232,7 +254,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 shape: BoxShape.circle,
                               ),
                               padding: const EdgeInsets.all(8),
-                              child: Icon(Icons.camera_alt, size: 20, color: colorScheme.onPrimary),
+                              child: Icon(Icons.camera_alt,
+                                  size: 20, color: colorScheme.onPrimary),
                             ),
                           ),
                         ],
@@ -248,8 +271,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       controller: _nameController,
                       label: 'Full Name',
                       icon: Icons.person_outline,
-                      validator: (value) =>
-                          value?.isEmpty ?? true ? 'Please enter your name' : null,
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Please enter your name'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -259,9 +283,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       icon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Please enter your email';
+                        if (value?.isEmpty ?? true)
+                          return 'Please enter your email';
                         // Use centralized email validation
-                        return FormErrorHandler.validateEmail(value, reportError: false);
+                        return FormErrorHandler.validateEmail(value,
+                            reportError: false);
                       },
                     ),
                     const SizedBox(height: 32),
@@ -277,8 +303,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       keyboardType: TextInputType.number,
                       prefix: const Text('\$'),
                       validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Please enter your income';
-                        if (double.tryParse(value!) == null) return 'Please enter a valid amount';
+                        if (value?.isEmpty ?? true)
+                          return 'Please enter your income';
+                        if (double.tryParse(value!) == null)
+                          return 'Please enter a valid amount';
                         return null;
                       },
                     ),
@@ -291,8 +319,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       keyboardType: TextInputType.number,
                       prefix: const Text('\$'),
                       validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Please enter your savings goal';
-                        if (double.tryParse(value!) == null) return 'Please enter a valid amount';
+                        if (value?.isEmpty ?? true)
+                          return 'Please enter your savings goal';
+                        if (double.tryParse(value!) == null)
+                          return 'Please enter a valid amount';
                         return null;
                       },
                     ),
@@ -303,7 +333,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       label: 'Currency',
                       icon: Icons.monetization_on_outlined,
                       items: _currencies,
-                      onChanged: (value) => setState(() => _selectedCurrency = value!),
+                      onChanged: (value) =>
+                          setState(() => _selectedCurrency = value!),
                     ),
                     const SizedBox(height: 16),
 
@@ -312,7 +343,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       label: 'Region',
                       icon: Icons.location_on_outlined,
                       items: _regions,
-                      onChanged: (value) => setState(() => _selectedRegion = value!),
+                      onChanged: (value) =>
+                          setState(() => _selectedRegion = value!),
                     ),
                     const SizedBox(height: 16),
 
@@ -321,7 +353,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       label: 'Budget Method',
                       icon: Icons.pie_chart_outline,
                       items: _budgetMethods,
-                      onChanged: (value) => setState(() => _budgetMethod = value!),
+                      onChanged: (value) =>
+                          setState(() => _budgetMethod = value!),
                     ),
                     const SizedBox(height: 32),
 
@@ -334,7 +367,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       subtitle: 'Receive spending alerts and tips',
                       icon: Icons.notifications_outlined,
                       value: settingsProvider.notificationsEnabled,
-                      onChanged: (value) => settingsProvider.setNotificationsEnabled(value),
+                      onChanged: (value) =>
+                          settingsProvider.setNotificationsEnabled(value),
                     ),
 
                     _buildSwitchTile(
@@ -342,8 +376,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       subtitle: 'Use dark theme for the app',
                       icon: Icons.dark_mode_outlined,
                       value: settingsProvider.isDarkMode,
-                      onChanged: (value) =>
-                          settingsProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
+                      onChanged: (value) => settingsProvider.setThemeMode(
+                          value ? ThemeMode.dark : ThemeMode.light),
                     ),
 
                     const SizedBox(height: 32),
@@ -372,9 +406,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                                 ? const SizedBox(
                                     width: 16,
                                     height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2))
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
                                 : const Icon(Icons.save),
-                            label: Text(_isSaving ? 'Saving...' : 'Save Profile'),
+                            label:
+                                Text(_isSaving ? 'Saving...' : 'Save Profile'),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
@@ -422,7 +458,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.3),
       ),
     );
   }
@@ -444,7 +483,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.3),
       ),
       items: items
           .map((item) => DropdownMenuItem(

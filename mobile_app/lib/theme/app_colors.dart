@@ -326,7 +326,16 @@ class AppColors {
 
   /// Get chart color by index (cycles through available colors)
   static Color getChartColor(int index) {
-    final colors = [chart1, chart2, chart3, chart4, chart5, chart6, chart7, chart8];
+    final colors = [
+      chart1,
+      chart2,
+      chart3,
+      chart4,
+      chart5,
+      chart6,
+      chart7,
+      chart8
+    ];
     return colors[index % colors.length];
   }
 

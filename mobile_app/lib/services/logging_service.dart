@@ -77,7 +77,8 @@ class LoggingService {
     _minimumLevel = minimumLevel;
 
     if (kDebugMode) {
-      log('Logging service initialized (PII Masking: $enablePIIMasking)', level: LogLevel.info);
+      log('Logging service initialized (PII Masking: $enablePIIMasking)',
+          level: LogLevel.info);
     }
   }
 
@@ -233,19 +234,29 @@ class LoggingService {
 
   /// Log an error message
   void error(String message,
-      {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.error, message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+      {String? tag,
+      Map<String, dynamic>? extra,
+      Object? error,
+      StackTrace? stackTrace}) {
+    _log(LogLevel.error, message,
+        tag: tag, extra: extra, error: error, stackTrace: stackTrace);
   }
 
   /// Log a critical error
   void critical(String message,
-      {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.critical, message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+      {String? tag,
+      Map<String, dynamic>? extra,
+      Object? error,
+      StackTrace? stackTrace}) {
+    _log(LogLevel.critical, message,
+        tag: tag, extra: extra, error: error, stackTrace: stackTrace);
   }
 
   /// Generic log method
   void log(String message,
-      {LogLevel level = LogLevel.info, String? tag, Map<String, dynamic>? extra}) {
+      {LogLevel level = LogLevel.info,
+      String? tag,
+      Map<String, dynamic>? extra}) {
     _log(level, message, tag: tag, extra: extra);
   }
 
@@ -290,7 +301,8 @@ class LoggingService {
     }
 
     // Send to crash reporting in production for errors
-    if (!kDebugMode && (level == LogLevel.error || level == LogLevel.critical)) {
+    if (!kDebugMode &&
+        (level == LogLevel.error || level == LogLevel.critical)) {
       _reportToCrashlytics(entry);
     }
   }
@@ -314,7 +326,8 @@ class LoggingService {
   void _logToConsole(LogEntry entry) {
     final levelIcon = _getLevelIcon(entry.level);
     final tag = entry.tag != null ? '[${entry.tag}] ' : '';
-    final timestamp = entry.timestamp.toIso8601String().substring(11, 23); // HH:MM:SS.mmm
+    final timestamp =
+        entry.timestamp.toIso8601String().substring(11, 23); // HH:MM:SS.mmm
 
     String logMessage = '$levelIcon $timestamp $tag${entry.message}';
 
@@ -452,8 +465,10 @@ class LoggingService {
 
       // Add custom keys for context
       await crashlytics.setCustomKey('log_tag', entry.tag ?? 'UNKNOWN');
-      await crashlytics.setCustomKey('log_level', entry.level.name.toUpperCase());
-      await crashlytics.setCustomKey('timestamp', DateTime.now().toIso8601String());
+      await crashlytics.setCustomKey(
+          'log_level', entry.level.name.toUpperCase());
+      await crashlytics.setCustomKey(
+          'timestamp', DateTime.now().toIso8601String());
 
       // Add extra context data
       if (entry.extra != null) {
@@ -596,13 +611,19 @@ void logWarning(String message, {String? tag, Map<String, dynamic>? extra}) {
 }
 
 void logError(String message,
-    {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-  LoggingService.instance
-      .error(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+    {String? tag,
+    Map<String, dynamic>? extra,
+    Object? error,
+    StackTrace? stackTrace}) {
+  LoggingService.instance.error(message,
+      tag: tag, extra: extra, error: error, stackTrace: stackTrace);
 }
 
 void logCritical(String message,
-    {String? tag, Map<String, dynamic>? extra, Object? error, StackTrace? stackTrace}) {
-  LoggingService.instance
-      .critical(message, tag: tag, extra: extra, error: error, stackTrace: stackTrace);
+    {String? tag,
+    Map<String, dynamic>? extra,
+    Object? error,
+    StackTrace? stackTrace}) {
+  LoggingService.instance.critical(message,
+      tag: tag, extra: extra, error: error, stackTrace: stackTrace);
 }

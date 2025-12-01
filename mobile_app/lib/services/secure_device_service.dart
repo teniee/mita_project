@@ -53,7 +53,8 @@ class SecureDeviceService {
 
       // Store securely
       await _secureStorage.write(key: 'secure_device_id', value: deviceId);
-      await _secureStorage.write(key: 'device_created_at', value: DateTime.now().toIso8601String());
+      await _secureStorage.write(
+          key: 'device_created_at', value: DateTime.now().toIso8601String());
 
       _cachedDeviceId = deviceId;
       logInfo('Generated new secure device ID', tag: 'SECURE_DEVICE');
@@ -101,7 +102,8 @@ class SecureDeviceService {
       // Create device ID with prefix for identification
       final deviceId = 'mita_device_${digest.toString()}';
 
-      logDebug('Device ID generated with ${entropy.length} entropy sources', tag: 'SECURE_DEVICE');
+      logDebug('Device ID generated with ${entropy.length} entropy sources',
+          tag: 'SECURE_DEVICE');
 
       return deviceId;
     } catch (e) {
@@ -169,7 +171,10 @@ class SecureDeviceService {
       return fingerprint;
     } catch (e) {
       logError('Failed to get device fingerprint: $e', tag: 'SECURE_DEVICE');
-      return {'error': 'fingerprint_failed', 'timestamp': DateTime.now().toIso8601String()};
+      return {
+        'error': 'fingerprint_failed',
+        'timestamp': DateTime.now().toIso8601String()
+      };
     }
   }
 
@@ -183,14 +188,16 @@ class SecureDeviceService {
       }
 
       // Check device age for security
-      final createdAtString = await _secureStorage.read(key: 'device_created_at');
+      final createdAtString =
+          await _secureStorage.read(key: 'device_created_at');
       if (createdAtString != null) {
         final createdAt = DateTime.parse(createdAtString);
         final deviceAge = DateTime.now().difference(createdAt);
 
         // Regenerate ID if older than 365 days for security
         if (deviceAge.inDays > 365) {
-          logInfo('Device ID expired after ${deviceAge.inDays} days, regenerating',
+          logInfo(
+              'Device ID expired after ${deviceAge.inDays} days, regenerating',
               tag: 'SECURE_DEVICE');
           return false;
         }
@@ -228,7 +235,8 @@ class SecureDeviceService {
     try {
       final deviceId = await getSecureDeviceId();
       final fingerprint = _cachedFingerprint ?? await _getDeviceFingerprint();
-      final createdAtString = await _secureStorage.read(key: 'device_created_at');
+      final createdAtString =
+          await _secureStorage.read(key: 'device_created_at');
 
       return {
         'device_id': deviceId,
@@ -237,11 +245,13 @@ class SecureDeviceService {
         'platform_version': Platform.operatingSystemVersion,
         'device_created_at': createdAtString,
         'fingerprint_entropy_sources': fingerprint.keys.length,
-        'security_level': deviceId.startsWith('mita_device_') ? 'secure' : 'fallback',
+        'security_level':
+            deviceId.startsWith('mita_device_') ? 'secure' : 'fallback',
         'cache_status': _isValidCache() ? 'valid' : 'expired',
       };
     } catch (e) {
-      logError('Failed to get device security metadata: $e', tag: 'SECURE_DEVICE');
+      logError('Failed to get device security metadata: $e',
+          tag: 'SECURE_DEVICE');
       return {
         'error': 'metadata_failed',
         'timestamp': DateTime.now().toIso8601String(),
@@ -279,10 +289,12 @@ class SecureDeviceService {
 
       for (final field in criticalFields) {
         if (_cachedFingerprint![field] != currentFingerprint[field]) {
-          logWarning('Device tampering detected in field: $field', tag: 'SECURE_DEVICE', extra: {
-            'expected': _cachedFingerprint![field],
-            'actual': currentFingerprint[field],
-          });
+          logWarning('Device tampering detected in field: $field',
+              tag: 'SECURE_DEVICE',
+              extra: {
+                'expected': _cachedFingerprint![field],
+                'actual': currentFingerprint[field],
+              });
           return true;
         }
       }

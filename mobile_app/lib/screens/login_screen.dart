@@ -31,7 +31,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin, RobustErrorHandlingMixin {
   final ApiService _api = ApiService();
-  final AccessibilityService _accessibilityService = AccessibilityService.instance;
+  final AccessibilityService _accessibilityService =
+      AccessibilityService.instance;
   bool _loading = false;
   bool _slowConnectionDetected = false;
   Timer? _slowConnectionTimer;
@@ -90,9 +91,11 @@ class _LoginScreenState extends State<LoginScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(
+        parent: _animationController, curve: Curves.easeOutCubic));
     _errorShakeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _errorAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+          parent: _errorAnimationController, curve: Curves.elasticOut),
     );
 
     // Add listeners for real-time validation
@@ -117,7 +120,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _validateEmail() {
     final email = _emailController.text;
-    final isValid = email.isNotEmpty && email.contains('@') && email.contains('.');
+    final isValid =
+        email.isNotEmpty && email.contains('@') && email.contains('.');
     if (_isEmailValid != isValid) {
       setState(() {
         _isEmailValid = isValid;
@@ -163,7 +167,8 @@ class _LoginScreenState extends State<LoginScreen>
           label: AppLocalizations.of(context).dismiss,
           onPressed: () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            _accessibilityService.announceToScreenReader('Error message dismissed');
+            _accessibilityService
+                .announceToScreenReader('Error message dismissed');
           },
         ),
         behavior: SnackBarBehavior.floating,
@@ -177,10 +182,12 @@ class _LoginScreenState extends State<LoginScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.wifi_off,
+                  color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               const Text('Connection Timeout'),
             ],
@@ -239,7 +246,8 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     try {
-      if (kDebugMode) dev.log('Starting Google sign-in process', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Starting Google sign-in process', name: 'LoginScreen');
 
       final googleUser = await GoogleSignIn().signIn();
 
@@ -249,11 +257,14 @@ class _LoginScreenState extends State<LoginScreen>
           _loading = false;
           _slowConnectionDetected = false;
         });
-        if (kDebugMode) dev.log('Google sign-in cancelled by user', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Google sign-in cancelled by user', name: 'LoginScreen');
         return;
       }
 
-      if (kDebugMode) dev.log('Google user obtained, getting authentication', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Google user obtained, getting authentication',
+            name: 'LoginScreen');
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
@@ -266,17 +277,22 @@ class _LoginScreenState extends State<LoginScreen>
         throw AuthenticationException('Missing Google authentication token');
       }
 
-      if (kDebugMode) dev.log('Google ID token obtained, calling backend', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Google ID token obtained, calling backend',
+            name: 'LoginScreen');
       final response = await _api.loginWithGoogle(idToken);
 
       if (kDebugMode)
-        dev.log('Google login API response received: ${response.statusCode}', name: 'LoginScreen');
+        dev.log('Google login API response received: ${response.statusCode}',
+            name: 'LoginScreen');
       if (kDebugMode)
-        dev.log('Google login response data keys: ${response.data?.keys?.toList()}',
+        dev.log(
+            'Google login response data keys: ${response.data?.keys?.toList()}',
             name: 'LoginScreen');
 
       if (response.statusCode != 200) {
-        throw AuthenticationException('Google login failed with status: ${response.statusCode}');
+        throw AuthenticationException(
+            'Google login failed with status: ${response.statusCode}');
       }
 
       // Enhanced token extraction with multiple fallback patterns (same as email login)
@@ -298,9 +314,11 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Pattern 3: Different key names
         if (accessToken == null) {
-          accessToken =
-              responseData['accessToken'] ?? responseData['access_token'] ?? responseData['token'];
-          refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+          accessToken = responseData['accessToken'] ??
+              responseData['access_token'] ??
+              responseData['token'];
+          refreshToken =
+              responseData['refreshToken'] ?? responseData['refresh_token'];
         }
 
         if (kDebugMode)
@@ -311,13 +329,16 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (accessToken == null) {
         if (kDebugMode)
-          dev.log('No access token found in Google login response: $responseData',
+          dev.log(
+              'No access token found in Google login response: $responseData',
               name: 'LoginScreen');
-        throw AuthenticationException('Google login successful but no access token received');
+        throw AuthenticationException(
+            'Google login successful but no access token received');
       }
 
       // ALWAYS save tokens - they're required for API calls
-      if (kDebugMode) dev.log('Saving Google login tokens to storage', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Saving Google login tokens to storage', name: 'LoginScreen');
       await _api.saveTokens(accessToken, refreshToken ?? '');
 
       // Verify token storage
@@ -329,7 +350,8 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (!mounted) {
         if (kDebugMode)
-          dev.log('Widget unmounted during Google login process', name: 'LoginScreen');
+          dev.log('Widget unmounted during Google login process',
+              name: 'LoginScreen');
         return;
       }
 
@@ -338,7 +360,8 @@ class _LoginScreenState extends State<LoginScreen>
         await SecurePushTokenManager.instance.initializePostAuthentication();
       } catch (e) {
         if (kDebugMode)
-          dev.log('Google login push token initialization failed: $e', name: 'LoginScreen');
+          dev.log('Google login push token initialization failed: $e',
+              name: 'LoginScreen');
         AppErrorHandler.reportError(
           e,
           severity: ErrorSeverity.low,
@@ -348,18 +371,23 @@ class _LoginScreenState extends State<LoginScreen>
       }
 
       // Set authentication state using UserProvider
-      if (kDebugMode) dev.log('Setting authentication state in UserProvider', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Setting authentication state in UserProvider',
+            name: 'LoginScreen');
       final userProvider = context.read<UserProvider>();
       userProvider.setAuthenticated();
       await userProvider.initialize();
 
       // Check if user has completed onboarding
-      if (kDebugMode) dev.log('Checking onboarding status after Google login', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Checking onboarding status after Google login',
+            name: 'LoginScreen');
       final hasOnboarded = userProvider.hasCompletedOnboarding;
 
       if (!mounted) {
         if (kDebugMode)
-          dev.log('Widget unmounted during Google login onboarding check', name: 'LoginScreen');
+          dev.log('Widget unmounted during Google login onboarding check',
+              name: 'LoginScreen');
         return;
       }
 
@@ -370,7 +398,8 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       if (kDebugMode)
-        dev.log('Google login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
+        dev.log(
+            'Google login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
 
       // Force navigation with explicit error handling
@@ -389,30 +418,36 @@ class _LoginScreenState extends State<LoginScreen>
           await Navigator.pushReplacementNamed(context, '/onboarding_location');
         }
         if (kDebugMode)
-          dev.log('Google login navigation completed successfully', name: 'LoginScreen');
+          dev.log('Google login navigation completed successfully',
+              name: 'LoginScreen');
       } catch (navigationError) {
         if (kDebugMode)
-          dev.log('Google login navigation failed: $navigationError', name: 'LoginScreen');
+          dev.log('Google login navigation failed: $navigationError',
+              name: 'LoginScreen');
 
         // Fallback navigation mechanism for Google login
         try {
           if (kDebugMode)
-            dev.log('Attempting fallback navigation for Google login', name: 'LoginScreen');
+            dev.log('Attempting fallback navigation for Google login',
+                name: 'LoginScreen');
           await Future.delayed(const Duration(milliseconds: 100));
 
           if (mounted) {
             if (hasOnboarded) {
-              Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
-            } else {
               Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/onboarding_location', (route) => false);
+                  .pushNamedAndRemoveUntil('/main', (route) => false);
+            } else {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/onboarding_location', (route) => false);
             }
             if (kDebugMode)
-              dev.log('Google login fallback navigation successful', name: 'LoginScreen');
+              dev.log('Google login fallback navigation successful',
+                  name: 'LoginScreen');
           }
         } catch (fallbackError) {
           if (kDebugMode)
-            dev.log('Google login fallback navigation also failed: $fallbackError',
+            dev.log(
+                'Google login fallback navigation also failed: $fallbackError',
                 name: 'LoginScreen');
           // Show manual navigation instruction
           if (mounted) {
@@ -436,7 +471,9 @@ class _LoginScreenState extends State<LoginScreen>
         }
       }
     } catch (e, stackTrace) {
-      if (kDebugMode) dev.log('Google sign-in process failed: $e', name: 'LoginScreen', error: e);
+      if (kDebugMode)
+        dev.log('Google sign-in process failed: $e',
+            name: 'LoginScreen', error: e);
 
       _slowConnectionTimer?.cancel();
       setState(() {
@@ -445,14 +482,16 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       if (mounted) {
-        String errorMsg = 'Google sign-in failed. Please try again or use email login.';
+        String errorMsg =
+            'Google sign-in failed. Please try again or use email login.';
 
         if (e.toString().contains('cancelled')) {
           errorMsg = 'Sign-in was cancelled. Please try again when ready.';
         } else if (e is DioException) {
           final statusCode = e.response?.statusCode;
           if (statusCode != null) {
-            errorMsg = 'Google sign-in failed (${statusCode}). Please try again.';
+            errorMsg =
+                'Google sign-in failed (${statusCode}). Please try again.';
           }
         }
 
@@ -480,7 +519,8 @@ class _LoginScreenState extends State<LoginScreen>
     FormErrorHandler.clearAllErrors();
 
     final emailError = FormErrorHandler.validateEmail(_emailController.text);
-    final passwordError = FormErrorHandler.validatePassword(_passwordController.text);
+    final passwordError =
+        FormErrorHandler.validatePassword(_passwordController.text);
 
     if (emailError != null || passwordError != null) {
       List<String> errors = [];
@@ -515,7 +555,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     try {
       if (kDebugMode)
-        dev.log('Starting login process for ${_emailController.text.substring(0, 3)}***',
+        dev.log(
+            'Starting login process for ${_emailController.text.substring(0, 3)}***',
             name: 'LoginScreen');
 
       final response = await _api.reliableLogin(
@@ -524,12 +565,15 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (kDebugMode)
-        dev.log('Login API response received: ${response.statusCode}', name: 'LoginScreen');
+        dev.log('Login API response received: ${response.statusCode}',
+            name: 'LoginScreen');
       if (kDebugMode)
-        dev.log('Login response data keys: ${response.data?.keys?.toList()}', name: 'LoginScreen');
+        dev.log('Login response data keys: ${response.data?.keys?.toList()}',
+            name: 'LoginScreen');
 
       if (response.statusCode != 200) {
-        throw AuthenticationException('Login failed with status: ${response.statusCode}');
+        throw AuthenticationException(
+            'Login failed with status: ${response.statusCode}');
       }
 
       // Enhanced token extraction with multiple fallback patterns
@@ -552,9 +596,11 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Pattern 3: Different key names
         if (accessToken == null) {
-          accessToken =
-              responseData['accessToken'] ?? responseData['access_token'] ?? responseData['token'];
-          refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+          accessToken = responseData['accessToken'] ??
+              responseData['access_token'] ??
+              responseData['token'];
+          refreshToken =
+              responseData['refreshToken'] ?? responseData['refresh_token'];
         }
 
         if (kDebugMode)
@@ -565,8 +611,10 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (accessToken == null) {
         if (kDebugMode)
-          dev.log('No access token found in response: $responseData', name: 'LoginScreen');
-        throw AuthenticationException('Login successful but no access token received');
+          dev.log('No access token found in response: $responseData',
+              name: 'LoginScreen');
+        throw AuthenticationException(
+            'Login successful but no access token received');
       }
 
       // ALWAYS save tokens - they're required for API calls
@@ -576,11 +624,13 @@ class _LoginScreenState extends State<LoginScreen>
       // Verify token storage
       final storedToken = await _api.getToken();
       if (kDebugMode)
-        dev.log('Token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}',
+        dev.log(
+            'Token storage verification: ${storedToken != null ? "SUCCESS" : "FAILED"}',
             name: 'LoginScreen');
 
       if (!mounted) {
-        if (kDebugMode) dev.log('Widget unmounted during login process', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Widget unmounted during login process', name: 'LoginScreen');
         return;
       }
 
@@ -589,7 +639,8 @@ class _LoginScreenState extends State<LoginScreen>
         await SecurePushTokenManager.instance.initializePostAuthentication();
       } catch (e) {
         // Log but don't block login for push token issues
-        if (kDebugMode) dev.log('Push token initialization failed: $e', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Push token initialization failed: $e', name: 'LoginScreen');
         AppErrorHandler.reportError(
           e,
           severity: ErrorSeverity.low,
@@ -599,17 +650,22 @@ class _LoginScreenState extends State<LoginScreen>
       }
 
       // Set authentication state using UserProvider
-      if (kDebugMode) dev.log('Setting authentication state in UserProvider', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Setting authentication state in UserProvider',
+            name: 'LoginScreen');
       final userProvider = context.read<UserProvider>();
       userProvider.setAuthenticated();
       await userProvider.initialize();
 
       // Check if user has completed onboarding
-      if (kDebugMode) dev.log('Checking onboarding status', name: 'LoginScreen');
+      if (kDebugMode)
+        dev.log('Checking onboarding status', name: 'LoginScreen');
       final hasOnboarded = userProvider.hasCompletedOnboarding;
 
       if (!mounted) {
-        if (kDebugMode) dev.log('Widget unmounted during onboarding check', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Widget unmounted during onboarding check',
+              name: 'LoginScreen');
         return;
       }
 
@@ -620,7 +676,8 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       if (kDebugMode)
-        dev.log('Login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
+        dev.log(
+            'Login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
 
       // Force navigation with explicit error handling
@@ -638,27 +695,33 @@ class _LoginScreenState extends State<LoginScreen>
           );
           await Navigator.pushReplacementNamed(context, '/onboarding_location');
         }
-        if (kDebugMode) dev.log('Navigation completed successfully', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
-        if (kDebugMode) dev.log('Navigation failed: $navigationError', name: 'LoginScreen');
+        if (kDebugMode)
+          dev.log('Navigation failed: $navigationError', name: 'LoginScreen');
 
         // Fallback navigation mechanism
         try {
-          if (kDebugMode) dev.log('Attempting fallback navigation', name: 'LoginScreen');
+          if (kDebugMode)
+            dev.log('Attempting fallback navigation', name: 'LoginScreen');
           await Future.delayed(const Duration(milliseconds: 100));
 
           if (mounted) {
             if (hasOnboarded) {
-              Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
-            } else {
               Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/onboarding_location', (route) => false);
+                  .pushNamedAndRemoveUntil('/main', (route) => false);
+            } else {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/onboarding_location', (route) => false);
             }
-            if (kDebugMode) dev.log('Fallback navigation successful', name: 'LoginScreen');
+            if (kDebugMode)
+              dev.log('Fallback navigation successful', name: 'LoginScreen');
           }
         } catch (fallbackError) {
           if (kDebugMode)
-            dev.log('Fallback navigation also failed: $fallbackError', name: 'LoginScreen');
+            dev.log('Fallback navigation also failed: $fallbackError',
+                name: 'LoginScreen');
           // Show manual navigation instruction
           if (mounted) {
             showDialog(
@@ -681,7 +744,8 @@ class _LoginScreenState extends State<LoginScreen>
         }
       }
     } catch (e, stackTrace) {
-      if (kDebugMode) dev.log('Login process failed: $e', name: 'LoginScreen', error: e);
+      if (kDebugMode)
+        dev.log('Login process failed: $e', name: 'LoginScreen', error: e);
 
       _slowConnectionTimer?.cancel();
       setState(() {
@@ -690,7 +754,8 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       if (mounted) {
-        String errorMsg = 'Unable to sign in. Please check your credentials and try again.';
+        String errorMsg =
+            'Unable to sign in. Please check your credentials and try again.';
 
         if (e is DioException) {
           final statusCode = e.response?.statusCode;
@@ -699,12 +764,15 @@ class _LoginScreenState extends State<LoginScreen>
           } else if (statusCode == 422) {
             errorMsg = 'Invalid credentials format. Please check your input.';
           } else if (statusCode == 429) {
-            errorMsg = 'Too many login attempts. Please try again in a few minutes.';
+            errorMsg =
+                'Too many login attempts. Please try again in a few minutes.';
           } else if (statusCode != null) {
             errorMsg = 'Login failed (${statusCode}). Please try again.';
           }
-        } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
-          errorMsg = 'Login request timed out. Please check your connection and try again.';
+        } else if (e.toString().contains('timeout') ||
+            e.toString().contains('TimeoutException')) {
+          errorMsg =
+              'Login request timed out. Please check your connection and try again.';
         }
 
         showEnhancedErrorDialog(
@@ -798,7 +866,8 @@ class _LoginScreenState extends State<LoginScreen>
                               l10n.signInToContinue,
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -831,10 +900,12 @@ class _LoginScreenState extends State<LoginScreen>
                               children: [
                                 // Email field with validation
                                 Semantics(
-                                  label: _accessibilityService.createTextFieldSemanticLabel(
+                                  label: _accessibilityService
+                                      .createTextFieldSemanticLabel(
                                     label: 'Email address',
                                     isRequired: true,
-                                    helperText: 'Enter your email to sign in to MITA',
+                                    helperText:
+                                        'Enter your email to sign in to MITA',
                                   ),
                                   child: TextFormField(
                                     controller: _emailController,
@@ -850,15 +921,18 @@ class _LoginScreenState extends State<LoginScreen>
                                           Icons.email_rounded,
                                           color: _isEmailValid
                                               ? colorScheme.primary
-                                              : colorScheme.onSurface.withValues(alpha: 0.6),
+                                              : colorScheme.onSurface
+                                                  .withValues(alpha: 0.6),
                                         ),
                                       ),
                                       suffixIcon: _isEmailValid
                                           ? Semantics(
-                                              label: 'Valid email address entered',
+                                              label:
+                                                  'Valid email address entered',
                                               child: Icon(
                                                 Icons.check_circle,
-                                                color: MitaTheme.statusColors['success'],
+                                                color: MitaTheme
+                                                    .statusColors['success'],
                                               ),
                                             )
                                           : null,
@@ -867,7 +941,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       if (value == null || value.isEmpty) {
                                         return l10n.pleaseEnterEmail;
                                       }
-                                      if (!value.contains('@') || !value.contains('.')) {
+                                      if (!value.contains('@') ||
+                                          !value.contains('.')) {
                                         return l10n.pleaseEnterValidEmail;
                                       }
                                       return null;
@@ -882,10 +957,12 @@ class _LoginScreenState extends State<LoginScreen>
 
                                 // Password field with show/hide toggle
                                 Semantics(
-                                  label: _accessibilityService.createTextFieldSemanticLabel(
+                                  label: _accessibilityService
+                                      .createTextFieldSemanticLabel(
                                     label: 'Password',
                                     isRequired: true,
-                                    helperText: 'Enter your password to sign in',
+                                    helperText:
+                                        'Enter your password to sign in',
                                   ),
                                   child: TextFormField(
                                     controller: _passwordController,
@@ -901,7 +978,8 @@ class _LoginScreenState extends State<LoginScreen>
                                           Icons.lock_rounded,
                                           color: _isPasswordValid
                                               ? colorScheme.primary
-                                              : colorScheme.onSurface.withValues(alpha: 0.6),
+                                              : colorScheme.onSurface
+                                                  .withValues(alpha: 0.6),
                                         ),
                                       ),
                                       suffixIcon: Row(
@@ -912,7 +990,8 @@ class _LoginScreenState extends State<LoginScreen>
                                               label: 'Valid password entered',
                                               child: Icon(
                                                 Icons.check_circle,
-                                                color: MitaTheme.statusColors['success'],
+                                                color: MitaTheme
+                                                    .statusColors['success'],
                                               ),
                                             ),
                                           Semantics(
@@ -924,14 +1003,17 @@ class _LoginScreenState extends State<LoginScreen>
                                               icon: Icon(
                                                 _obscurePassword
                                                     ? Icons.visibility_rounded
-                                                    : Icons.visibility_off_rounded,
+                                                    : Icons
+                                                        .visibility_off_rounded,
                                               ),
                                               onPressed: () {
                                                 setState(() {
-                                                  _obscurePassword = !_obscurePassword;
+                                                  _obscurePassword =
+                                                      !_obscurePassword;
                                                 });
                                                 HapticFeedback.selectionClick();
-                                                _accessibilityService.announceToScreenReader(
+                                                _accessibilityService
+                                                    .announceToScreenReader(
                                                   _obscurePassword
                                                       ? l10n.passwordHidden
                                                       : l10n.passwordShown,
@@ -948,8 +1030,10 @@ class _LoginScreenState extends State<LoginScreen>
                                       }
 
                                       final validation =
-                                          PasswordValidationService.validatePassword(value);
-                                      if (!validation.isValid && validation.issues.isNotEmpty) {
+                                          PasswordValidationService
+                                              .validatePassword(value);
+                                      if (!validation.isValid &&
+                                          validation.issues.isNotEmpty) {
                                         // Return first critical issue for login screen
                                         return validation.issues.first;
                                       }
@@ -984,11 +1068,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                   setState(() {
                                                     _rememberMe = value ?? true;
                                                   });
-                                                  HapticFeedback.selectionClick();
-                                                  _accessibilityService.announceToScreenReader(
+                                                  HapticFeedback
+                                                      .selectionClick();
+                                                  _accessibilityService
+                                                      .announceToScreenReader(
                                                     _rememberMe
                                                         ? l10n.rememberMeEnabled
-                                                        : l10n.rememberMeDisabled,
+                                                        : l10n
+                                                            .rememberMeDisabled,
                                                   );
                                                 },
                                               ),
@@ -1002,18 +1089,22 @@ class _LoginScreenState extends State<LoginScreen>
                                                   _rememberMe = !_rememberMe;
                                                 });
                                                 HapticFeedback.selectionClick();
-                                                _accessibilityService.announceToScreenReader(
+                                                _accessibilityService
+                                                    .announceToScreenReader(
                                                   _rememberMe
                                                       ? l10n.rememberMeEnabled
                                                       : l10n.rememberMeDisabled,
                                                 );
                                               },
                                               child: Semantics(
-                                                label: 'Remember me checkbox label. Tap to toggle',
+                                                label:
+                                                    'Remember me checkbox label. Tap to toggle',
                                                 button: true,
                                                 child: Text(
                                                   l10n.rememberMe,
-                                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                                  style: theme
+                                                      .textTheme.bodyMedium
+                                                      ?.copyWith(
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
@@ -1024,19 +1115,24 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                     ),
                                     Semantics(
-                                      label: 'Forgot password. Navigate to password reset',
+                                      label:
+                                          'Forgot password. Navigate to password reset',
                                       button: true,
                                       child: TextButton(
                                         onPressed: () {
-                                          Navigator.of(context).pushNamed('/forgot-password');
-                                          _accessibilityService.announceNavigation(
+                                          Navigator.of(context)
+                                              .pushNamed('/forgot-password');
+                                          _accessibilityService
+                                              .announceNavigation(
                                             'Forgot Password',
-                                            description: 'Reset your password screen',
+                                            description:
+                                                'Reset your password screen',
                                           );
                                         },
                                         child: Text(
                                           l10n.forgot,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
                                             color: colorScheme.primary,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1050,7 +1146,8 @@ class _LoginScreenState extends State<LoginScreen>
 
                                 // Sign in button
                                 AnimatedContainer(
-                                  duration: _accessibilityService.getAnimationDuration(
+                                  duration: _accessibilityService
+                                      .getAnimationDuration(
                                     const Duration(milliseconds: 200),
                                   ),
                                   child: _loading
@@ -1063,34 +1160,47 @@ class _LoginScreenState extends State<LoginScreen>
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                MitaTheme.createLoadingIndicator(
+                                                MitaTheme
+                                                    .createLoadingIndicator(
                                                   message: l10n.signingIn,
                                                 ),
                                                 if (_slowConnectionDetected) ...[
                                                   const SizedBox(height: 16),
                                                   Container(
-                                                    padding: const EdgeInsets.all(12),
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            12),
                                                     decoration: BoxDecoration(
-                                                      color: colorScheme.surfaceContainerHighest,
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      color: colorScheme
+                                                          .surfaceContainerHighest,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
                                                     ),
                                                     child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
                                                       children: [
                                                         Icon(
                                                           Icons.info_outline,
                                                           size: 16,
-                                                          color: colorScheme.primary,
+                                                          color: colorScheme
+                                                              .primary,
                                                         ),
-                                                        const SizedBox(width: 8),
+                                                        const SizedBox(
+                                                            width: 8),
                                                         Flexible(
                                                           child: Text(
                                                             'Server is responding slowly. Please wait...',
-                                                            style:
-                                                                theme.textTheme.bodySmall?.copyWith(
-                                                              color: colorScheme.onSurface,
+                                                            style: theme
+                                                                .textTheme
+                                                                .bodySmall
+                                                                ?.copyWith(
+                                                              color: colorScheme
+                                                                  .onSurface,
                                                             ),
-                                                            textAlign: TextAlign.center,
+                                                            textAlign: TextAlign
+                                                                .center,
                                                           ),
                                                         ),
                                                       ],
@@ -1102,27 +1212,36 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                         )
                                       : Semantics(
-                                          label: _accessibilityService.createButtonSemanticLabel(
+                                          label: _accessibilityService
+                                              .createButtonSemanticLabel(
                                             action: 'Sign in to MITA',
-                                            context: (_isEmailValid && _isPasswordValid)
+                                            context: (_isEmailValid &&
+                                                    _isPasswordValid)
                                                 ? 'Ready to sign in with email and password'
                                                 : 'Enter valid email and password to enable',
-                                            isDisabled: !(_isEmailValid && _isPasswordValid),
+                                            isDisabled: !(_isEmailValid &&
+                                                _isPasswordValid),
                                           ),
                                           button: true,
                                           child: FilledButton(
                                             focusNode: _signInButtonFocusNode,
-                                            onPressed: (_isEmailValid && _isPasswordValid)
+                                            onPressed: (_isEmailValid &&
+                                                    _isPasswordValid)
                                                 ? _handleEmailLogin
                                                 : null,
                                             style: FilledButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(vertical: 20),
-                                              textStyle: theme.textTheme.titleLarge?.copyWith(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 20),
+                                              textStyle: theme
+                                                  .textTheme.titleLarge
+                                                  ?.copyWith(
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
                                             child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
                                               children: [
                                                 Text(l10n.signIn),
                                                 const SizedBox(width: 8),
@@ -1143,21 +1262,26 @@ class _LoginScreenState extends State<LoginScreen>
                                   children: [
                                     Expanded(
                                       child: Divider(
-                                        color: colorScheme.outline.withValues(alpha: 0.5),
+                                        color: colorScheme.outline
+                                            .withValues(alpha: 0.5),
                                       ),
                                     ),
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16),
                                       child: Text(
                                         l10n.or,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurface
+                                              .withValues(alpha: 0.6),
                                         ),
                                       ),
                                     ),
                                     Expanded(
                                       child: Divider(
-                                        color: colorScheme.outline.withValues(alpha: 0.5),
+                                        color: colorScheme.outline
+                                            .withValues(alpha: 0.5),
                                       ),
                                     ),
                                   ],
@@ -1167,28 +1291,33 @@ class _LoginScreenState extends State<LoginScreen>
 
                                 // Google sign-in button
                                 Semantics(
-                                  label: _accessibilityService.createButtonSemanticLabel(
+                                  label: _accessibilityService
+                                      .createButtonSemanticLabel(
                                     action: 'Continue with Google',
-                                    context: 'Alternative sign in method using your Google account',
+                                    context:
+                                        'Alternative sign in method using your Google account',
                                     isDisabled: _loading,
                                   ),
                                   button: true,
                                   child: OutlinedButton.icon(
-                                    onPressed: _loading ? null : _handleGoogleSignIn,
+                                    onPressed:
+                                        _loading ? null : _handleGoogleSignIn,
                                     icon: Semantics(
                                       label: 'Google logo',
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Image.asset(
                                           'assets/logo/mitalogo.png',
                                           width: 20,
                                           height: 20,
                                           semanticLabel: 'Google logo',
-                                          errorBuilder: (context, error, stackTrace) {
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
                                             return Icon(
                                               Icons.g_mobiledata,
                                               size: 20,
@@ -1200,12 +1329,14 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                                     label: Text(l10n.continueWithGoogle),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
                                       side: BorderSide(
                                         color: colorScheme.outline,
                                         width: 1,
                                       ),
-                                      textStyle: theme.textTheme.titleMedium?.copyWith(
+                                      textStyle:
+                                          theme.textTheme.titleMedium?.copyWith(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1228,7 +1359,8 @@ class _LoginScreenState extends State<LoginScreen>
                             Text(
                               l10n.dontHaveAccountQuestion,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.8),
+                                color: colorScheme.onSurface
+                                    .withValues(alpha: 0.8),
                               ),
                             ),
                             Semantics(

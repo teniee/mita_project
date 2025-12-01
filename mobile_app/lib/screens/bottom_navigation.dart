@@ -20,7 +20,8 @@ class BottomNavigation extends StatefulWidget {
   State<BottomNavigation> createState() => _BottomNavigationState();
 }
 
-class _BottomNavigationState extends State<BottomNavigation> with TickerProviderStateMixin {
+class _BottomNavigationState extends State<BottomNavigation>
+    with TickerProviderStateMixin {
   int _currentIndex = 0;
   final ExpenseStateService _expenseStateService = ExpenseStateService();
   StreamSubscription<Map<String, dynamic>>? _expenseAddedSubscription;
@@ -44,10 +45,12 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) dev.log('BottomNavigation initState called', name: 'BottomNavigation');
+    if (kDebugMode)
+      dev.log('BottomNavigation initState called', name: 'BottomNavigation');
     _initializeAnimations();
     _subscribeToExpenseUpdates();
-    if (kDebugMode) dev.log('BottomNavigation initState completed', name: 'BottomNavigation');
+    if (kDebugMode)
+      dev.log('BottomNavigation initState completed', name: 'BottomNavigation');
   }
 
   void _initializeAnimations() {
@@ -105,10 +108,12 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
           });
         }
 
-        logDebug('Navigation received expense update', tag: 'BOTTOM_NAV', extra: {
-          'currentIndex': _currentIndex,
-          'expenseAmount': expenseData['amount'],
-        });
+        logDebug('Navigation received expense update',
+            tag: 'BOTTOM_NAV',
+            extra: {
+              'currentIndex': _currentIndex,
+              'expenseAmount': expenseData['amount'],
+            });
       },
     );
   }
@@ -219,7 +224,8 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
                       icon: AnimatedBuilder(
                         animation: _pulseAnimation,
                         builder: (context, child) {
-                          final scale = isSelected && (_currentIndex == 0 || _currentIndex == 1)
+                          final scale = isSelected &&
+                                  (_currentIndex == 0 || _currentIndex == 1)
                               ? _pulseAnimation.value
                               : 1.0;
 
@@ -227,14 +233,17 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
                             animation: _tabSwitchAnimation,
                             builder: (context, child) {
                               return Transform.scale(
-                                scale: scale * (1.0 + (_tabSwitchAnimation.value * 0.1)),
+                                scale: scale *
+                                    (1.0 + (_tabSwitchAnimation.value * 0.1)),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
                                   decoration: isSelected
                                       ? BoxDecoration(
-                                          borderRadius: BorderRadius.circular(12),
-                                          color:
-                                              colorScheme.primaryContainer.withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          color: colorScheme.primaryContainer
+                                              .withValues(alpha: 0.1),
                                         )
                                       : null,
                                   child: Icon(
@@ -357,13 +366,16 @@ class _BottomNavigationState extends State<BottomNavigation> with TickerProvider
 
   void _ensureCalendarDataFreshness() {
     // Check if calendar data is stale (older than 20 seconds)
-    final timeSinceUpdate = DateTime.now().difference(_expenseStateService.lastUpdated);
+    final timeSinceUpdate =
+        DateTime.now().difference(_expenseStateService.lastUpdated);
 
     if (timeSinceUpdate.inSeconds > 20) {
       // Reduced for fast backend
-      logDebug('Calendar data is stale, triggering refresh', tag: 'BOTTOM_NAV', extra: {
-        'timeSinceUpdate': timeSinceUpdate.inSeconds,
-      });
+      logDebug('Calendar data is stale, triggering refresh',
+          tag: 'BOTTOM_NAV',
+          extra: {
+            'timeSinceUpdate': timeSinceUpdate.inSeconds,
+          });
 
       // Trigger a gentle refresh
       Timer(const Duration(milliseconds: 500), () {

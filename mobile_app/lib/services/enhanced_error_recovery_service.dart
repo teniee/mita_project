@@ -27,7 +27,8 @@ class EnhancedErrorRecoveryService {
   /// Initialize the error recovery service
   void initialize() {
     _setupDefaultRecoveryStrategies();
-    logInfo('Enhanced Error Recovery Service initialized', tag: 'ERROR_RECOVERY');
+    logInfo('Enhanced Error Recovery Service initialized',
+        tag: 'ERROR_RECOVERY');
   }
 
   /// Set up default recovery strategies for common error types
@@ -86,7 +87,8 @@ class EnhancedErrorRecoveryService {
     try {
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          logDebug('Executing ${context.operationName} - Attempt $attempt/$maxRetries',
+          logDebug(
+              'Executing ${context.operationName} - Attempt $attempt/$maxRetries',
               tag: 'ERROR_RECOVERY');
 
           final result = await operation();
@@ -95,13 +97,15 @@ class EnhancedErrorRecoveryService {
           _cleanupRecoveryContext(operationId);
           onSuccess?.call(result);
 
-          logInfo('Operation ${context.operationName} succeeded on attempt $attempt',
+          logInfo(
+              'Operation ${context.operationName} succeeded on attempt $attempt',
               tag: 'ERROR_RECOVERY');
           return result;
         } catch (error, stackTrace) {
           context.addAttempt(error, stackTrace);
 
-          bool shouldRetry = attempt < maxRetries && _shouldRetry(error, retryableExceptions);
+          bool shouldRetry =
+              attempt < maxRetries && _shouldRetry(error, retryableExceptions);
 
           logWarning(
             'Error in ${context.operationName} - Attempt $attempt/$maxRetries: $error',
@@ -134,7 +138,8 @@ class EnhancedErrorRecoveryService {
               Duration delay = exponentialBackoff
                   ? Duration(
                       milliseconds:
-                          (initialDelay.inMilliseconds * (attempt * attempt)).clamp(1000, 30000))
+                          (initialDelay.inMilliseconds * (attempt * attempt))
+                              .clamp(1000, 30000))
                   : initialDelay;
 
               logDebug(
@@ -143,12 +148,14 @@ class EnhancedErrorRecoveryService {
               await Future<void>.delayed(delay);
             } else {
               // Recovery failed, stop retrying
-              logError('Recovery failed for ${context.operationName}, stopping retries',
+              logError(
+                  'Recovery failed for ${context.operationName}, stopping retries',
                   tag: 'ERROR_RECOVERY');
               break;
             }
           } else {
-            logError('Final failure for ${context.operationName} after $attempt attempts',
+            logError(
+                'Final failure for ${context.operationName} after $attempt attempts',
                 tag: 'ERROR_RECOVERY');
             break;
           }
@@ -182,24 +189,28 @@ class EnhancedErrorRecoveryService {
   }
 
   /// Attempt to recover from an error
-  Future<RecoveryResult> _attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> _attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     try {
       // Use custom recovery if available
       if (context.customRecovery != null) {
-        logDebug('Attempting custom recovery for ${context.operationName}', tag: 'ERROR_RECOVERY');
+        logDebug('Attempting custom recovery for ${context.operationName}',
+            tag: 'ERROR_RECOVERY');
         return await context.customRecovery!.attemptRecovery(error, context);
       }
 
       // Find appropriate recovery strategy
       final strategy = _findRecoveryStrategy(error);
       if (strategy != null) {
-        logDebug('Attempting ${strategy.runtimeType} recovery for ${context.operationName}',
+        logDebug(
+            'Attempting ${strategy.runtimeType} recovery for ${context.operationName}',
             tag: 'ERROR_RECOVERY');
         return await strategy.attemptRecovery(error, context);
       }
 
       // No recovery strategy available
-      logDebug('No recovery strategy available for ${error.runtimeType}', tag: 'ERROR_RECOVERY');
+      logDebug('No recovery strategy available for ${error.runtimeType}',
+          tag: 'ERROR_RECOVERY');
       return RecoveryResult.proceed();
     } catch (recoveryError, stackTrace) {
       logError('Recovery attempt failed: $recoveryError',
@@ -251,7 +262,9 @@ class EnhancedErrorRecoveryService {
 
   /// Categorize error for proper handling
   ErrorCategory _categorizeError(dynamic error) {
-    if (error is DioException || error is SocketException || error is TimeoutException) {
+    if (error is DioException ||
+        error is SocketException ||
+        error is TimeoutException) {
       return ErrorCategory.network;
     } else if (error is AuthenticationException) {
       return ErrorCategory.authentication;
@@ -266,7 +279,8 @@ class EnhancedErrorRecoveryService {
 
   /// Check if error should trigger retry
   bool _shouldRetry(dynamic error, List<Type> retryableExceptions) {
-    return retryableExceptions.any((type) => error.runtimeType == type || error is DioException);
+    return retryableExceptions
+        .any((type) => error.runtimeType == type || error is DioException);
   }
 
   /// Clean up recovery context
@@ -282,14 +296,16 @@ class EnhancedErrorRecoveryService {
       'activeRecoveries': _recoveryContexts.length,
       'registeredStrategies': _recoveryStrategies.length,
       'activeTimers': _recoveryTimers.length,
-      'recoveryContexts': _recoveryContexts.map((key, value) => MapEntry(key, value.toJson())),
+      'recoveryContexts':
+          _recoveryContexts.map((key, value) => MapEntry(key, value.toJson())),
     };
   }
 
   /// Register custom recovery strategy
   void registerRecoveryStrategy(Type errorType, RecoveryStrategy strategy) {
     _recoveryStrategies[errorType] = strategy;
-    logInfo('Registered recovery strategy for ${errorType.toString()}', tag: 'ERROR_RECOVERY');
+    logInfo('Registered recovery strategy for ${errorType.toString()}',
+        tag: 'ERROR_RECOVERY');
   }
 
   /// Dispose resources
@@ -384,7 +400,8 @@ class RecoveryResult {
     this.context,
   });
 
-  factory RecoveryResult.proceed({Duration? delay, Map<String, dynamic>? context}) {
+  factory RecoveryResult.proceed(
+      {Duration? delay, Map<String, dynamic>? context}) {
     return RecoveryResult(
       shouldProceed: true,
       suggestedDelay: delay,
@@ -403,18 +420,21 @@ class RecoveryResult {
 
 /// Abstract recovery strategy
 abstract class RecoveryStrategy {
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context);
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context);
 }
 
 /// Custom recovery options interface
 abstract class RecoveryOptions {
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context);
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context);
 }
 
 /// Network error recovery strategy
 class NetworkRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     if (error is DioException) {
       switch (error.type) {
         case DioExceptionType.connectionTimeout:
@@ -467,7 +487,8 @@ class NetworkRecoveryStrategy extends RecoveryStrategy {
 /// Authentication error recovery strategy
 class AuthRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     // This could attempt token refresh, re-authentication, etc.
     // For now, we'll just suggest stopping for auth errors
     return RecoveryResult.stop(
@@ -480,7 +501,8 @@ class AuthRecoveryStrategy extends RecoveryStrategy {
 /// Storage error recovery strategy
 class StorageRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     // Could attempt to clear cache, check disk space, etc.
     return RecoveryResult.proceed(
       delay: Duration(seconds: 2),
@@ -492,7 +514,8 @@ class StorageRecoveryStrategy extends RecoveryStrategy {
 /// Validation error recovery strategy
 class ValidationRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     // Validation errors typically shouldn't be retried
     return RecoveryResult.stop(
       'Validation error requires data correction',
@@ -504,7 +527,8 @@ class ValidationRecoveryStrategy extends RecoveryStrategy {
 /// Generic error recovery strategy
 class GenericRecoveryStrategy extends RecoveryStrategy {
   @override
-  Future<RecoveryResult> attemptRecovery(dynamic error, RecoveryContext context) async {
+  Future<RecoveryResult> attemptRecovery(
+      dynamic error, RecoveryContext context) async {
     // Generic retry with simple backoff
     return RecoveryResult.proceed(
       delay: Duration(seconds: 1 + context.attempts.length),

@@ -4,7 +4,8 @@ import 'income_service.dart';
 
 /// Service that provides realistic fallback calendar data when backend is unavailable
 class CalendarFallbackService {
-  static final CalendarFallbackService _instance = CalendarFallbackService._internal();
+  static final CalendarFallbackService _instance =
+      CalendarFallbackService._internal();
   factory CalendarFallbackService() => _instance;
   CalendarFallbackService._internal();
 
@@ -23,12 +24,12 @@ class CalendarFallbackService {
       // Calculate income tier and appropriate allocations
       final incomeTier = _getIncomeTier(monthlyIncome);
       final locationMultiplier = _getLocationMultiplier(location);
-      final categoryAllocations =
-          _getCategoryAllocations(incomeTier, monthlyIncome, locationMultiplier);
+      final categoryAllocations = _getCategoryAllocations(
+          incomeTier, monthlyIncome, locationMultiplier);
 
       // Calculate daily flexible budget
-      final totalFlexibleBudget =
-          categoryAllocations.values.fold<double>(0.0, (sum, amount) => sum + amount);
+      final totalFlexibleBudget = categoryAllocations.values
+          .fold<double>(0.0, (sum, amount) => sum + amount);
 
       // Get number of days in the month
       final daysInMonth = DateTime(currentYear, currentMonth + 1, 0).day;
@@ -77,14 +78,16 @@ class CalendarFallbackService {
           'limit': dailyLimit,
           'spent': spent,
           'status': status,
-          'categories': _generateDailyCategoryBreakdown(dailyLimit, categoryAllocations),
+          'categories':
+              _generateDailyCategoryBreakdown(dailyLimit, categoryAllocations),
           'is_today': isToday,
           'is_weekend': currentDate.weekday >= 6,
           'day_of_week': currentDate.weekday,
         });
       }
 
-      logDebug('Generated fallback calendar data for $currentMonth/$currentYear',
+      logDebug(
+          'Generated fallback calendar data for $currentMonth/$currentYear',
           tag: 'CALENDAR_FALLBACK',
           extra: {
             'monthly_income': monthlyIncome,
@@ -97,7 +100,8 @@ class CalendarFallbackService {
 
       return calendarDays;
     } catch (e) {
-      logError('Failed to generate fallback calendar data', tag: 'CALENDAR_FALLBACK', error: e);
+      logError('Failed to generate fallback calendar data',
+          tag: 'CALENDAR_FALLBACK', error: e);
       return _generateMinimalFallbackData();
     }
   }
@@ -218,7 +222,8 @@ class CalendarFallbackService {
         multiplier = 1.0 + ((locationMultiplier - 1.0) * 0.5); // 50% impact
       }
 
-      allocations[category] = (monthlyIncome * weight * multiplier).roundToDouble();
+      allocations[category] =
+          (monthlyIncome * weight * multiplier).roundToDouble();
     });
 
     return allocations;
@@ -252,7 +257,8 @@ class CalendarFallbackService {
 
     // End of month tightening
     if (day > 25) {
-      final dayFromEnd = DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day - day;
+      final dayFromEnd =
+          DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day - day;
       if (dayFromEnd < 3) {
         variation *= 0.7; // Tighten budget near month end
       }

@@ -36,9 +36,12 @@ class InstallmentsProvider extends ChangeNotifier {
 
   // Convenience getters
   List<Installment> get installments => _summary?.installments ?? [];
-  List<Installment> get activeInstallments => _summary?.activeInstallments ?? [];
-  List<Installment> get completedInstallments => _summary?.completedInstallments ?? [];
-  List<Installment> get overdueInstallments => _summary?.overdueInstallments ?? [];
+  List<Installment> get activeInstallments =>
+      _summary?.activeInstallments ?? [];
+  List<Installment> get completedInstallments =>
+      _summary?.completedInstallments ?? [];
+  List<Installment> get overdueInstallments =>
+      _summary?.overdueInstallments ?? [];
   int get totalActive => _summary?.totalActive ?? 0;
   int get totalCompleted => _summary?.totalCompleted ?? 0;
   int get totalInstallments => _summary?.totalInstallments ?? 0;
@@ -122,7 +125,8 @@ class InstallmentsProvider extends ChangeNotifier {
     if (_selectedFilter == status) return;
 
     _selectedFilter = status;
-    logDebug('Filter changed to: ${status?.name ?? "all"}', tag: 'INSTALLMENTS_PROVIDER');
+    logDebug('Filter changed to: ${status?.name ?? "all"}',
+        tag: 'INSTALLMENTS_PROVIDER');
     notifyListeners();
 
     await loadInstallments(status: status);
@@ -144,7 +148,8 @@ class InstallmentsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      logError('Error marking payment as made: $e', tag: 'INSTALLMENTS_PROVIDER');
+      logError('Error marking payment as made: $e',
+          tag: 'INSTALLMENTS_PROVIDER');
       _errorMessage = 'Failed to update payment: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -154,7 +159,8 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Cancel an installment
   Future<bool> cancelInstallment(String installmentId) async {
     try {
-      logInfo('Cancelling installment: $installmentId', tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Cancelling installment: $installmentId',
+          tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.cancelInstallment(installmentId);
       _successMessage = 'Installment cancelled';
@@ -162,11 +168,13 @@ class InstallmentsProvider extends ChangeNotifier {
       // Refresh data
       await refresh();
 
-      logInfo('Installment cancelled successfully', tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Installment cancelled successfully',
+          tag: 'INSTALLMENTS_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {
-      logError('Error cancelling installment: $e', tag: 'INSTALLMENTS_PROVIDER');
+      logError('Error cancelling installment: $e',
+          tag: 'INSTALLMENTS_PROVIDER');
       _errorMessage = 'Failed to cancel installment: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -176,7 +184,8 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Delete an installment
   Future<bool> deleteInstallment(String installmentId) async {
     try {
-      logInfo('Deleting installment: $installmentId', tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Deleting installment: $installmentId',
+          tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.deleteInstallment(installmentId);
       _successMessage = 'Installment deleted';
@@ -198,7 +207,8 @@ class InstallmentsProvider extends ChangeNotifier {
   /// Create a new installment
   Future<Installment?> createInstallment(Installment installment) async {
     try {
-      logInfo('Creating new installment: ${installment.itemName}', tag: 'INSTALLMENTS_PROVIDER');
+      logInfo('Creating new installment: ${installment.itemName}',
+          tag: 'INSTALLMENTS_PROVIDER');
 
       final created = await _installmentService.createInstallment(installment);
       _successMessage = 'Installment created successfully';

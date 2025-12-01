@@ -105,7 +105,8 @@ class PerformanceMetric {
 
 /// Comprehensive performance monitoring service for mobile
 class MobilePerformanceMonitor {
-  static final MobilePerformanceMonitor _instance = MobilePerformanceMonitor._internal();
+  static final MobilePerformanceMonitor _instance =
+      MobilePerformanceMonitor._internal();
   factory MobilePerformanceMonitor() => _instance;
   MobilePerformanceMonitor._internal();
 
@@ -178,7 +179,8 @@ class MobilePerformanceMonitor {
       ));
 
       // Check threshold
-      final threshold = MobilePerformanceThresholds.getScreenThreshold(screenName);
+      final threshold =
+          MobilePerformanceThresholds.getScreenThreshold(screenName);
       if (durationMs > threshold) {
         await _handlePerformanceAlert(
           operationName: 'Screen: $screenName',
@@ -407,7 +409,8 @@ class MobilePerformanceMonitor {
       ));
 
       // Check threshold
-      final threshold = MobilePerformanceThresholds.getFinancialThreshold(operation);
+      final threshold =
+          MobilePerformanceThresholds.getFinancialThreshold(operation);
       if (durationMs > threshold) {
         await _handlePerformanceAlert(
           operationName: 'Financial: $operation',
@@ -534,19 +537,24 @@ class MobilePerformanceMonitor {
 
     // Log performance issues in debug mode
     if (kDebugMode) {
-      if (metric.category == MobilePerformanceCategory.screenRender && metric.durationMs > 1000) {
+      if (metric.category == MobilePerformanceCategory.screenRender &&
+          metric.durationMs > 1000) {
         if (kDebugMode)
-          dev.log('Slow screen render: ${metric.operationName} took ${metric.durationMs}ms',
+          dev.log(
+              'Slow screen render: ${metric.operationName} took ${metric.durationMs}ms',
               name: 'PerformanceMonitor');
       } else if (metric.category == MobilePerformanceCategory.apiRequest &&
           metric.durationMs > 2000) {
         if (kDebugMode)
-          dev.log('Slow API request: ${metric.operationName} took ${metric.durationMs}ms',
+          dev.log(
+              'Slow API request: ${metric.operationName} took ${metric.durationMs}ms',
               name: 'PerformanceMonitor');
-      } else if (metric.category == MobilePerformanceCategory.financialCalculation &&
+      } else if (metric.category ==
+              MobilePerformanceCategory.financialCalculation &&
           metric.durationMs > 1500) {
         if (kDebugMode)
-          dev.log('Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms',
+          dev.log(
+              'Slow financial operation: ${metric.operationName} took ${metric.durationMs}ms',
               name: 'PerformanceMonitor');
       }
     }
@@ -617,7 +625,8 @@ class MobilePerformanceMonitor {
       }
     } catch (e) {
       if (kDebugMode) {
-        if (kDebugMode) dev.log('Failed to send performance alert to Sentry: $e');
+        if (kDebugMode)
+          dev.log('Failed to send performance alert to Sentry: $e');
       }
     }
   }

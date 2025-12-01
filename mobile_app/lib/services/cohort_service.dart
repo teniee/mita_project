@@ -22,10 +22,12 @@ class CohortService {
     try {
       // Try to get real peer comparison data
       final peerData = await _apiService.getPeerComparison();
-      return _generateRecommendationsFromPeerData(tier, monthlyIncome, peerData, currentSpending);
+      return _generateRecommendationsFromPeerData(
+          tier, monthlyIncome, peerData, currentSpending);
     } catch (e) {
       // Fallback to tier-based recommendations
-      return _generateTierBasedRecommendations(tier, monthlyIncome, currentSpending);
+      return _generateTierBasedRecommendations(
+          tier, monthlyIncome, currentSpending);
     }
   }
 
@@ -38,19 +40,25 @@ class CohortService {
     final suggestions = _incomeService.getGoalSuggestions(tier, monthlyIncome);
 
     // Filter out existing goals and add cohort context
-    final existingTitles = existingGoals?.map((g) => g['title']).toSet() ?? <String>{};
+    final existingTitles =
+        existingGoals?.map((g) => g['title']).toSet() ?? <String>{};
 
-    return suggestions.where((goal) => !existingTitles.contains(goal['title'])).map((goal) {
+    return suggestions
+        .where((goal) => !existingTitles.contains(goal['title']))
+        .map((goal) {
       return {
         ...goal,
-        'cohort_context': _getGoalCohortContext(tier, goal['category'] as String? ?? 'general'),
-        'peer_adoption': _getGoalPeerAdoption(tier, goal['category'] as String? ?? 'general'),
+        'cohort_context': _getGoalCohortContext(
+            tier, goal['category'] as String? ?? 'general'),
+        'peer_adoption': _getGoalPeerAdoption(
+            tier, goal['category'] as String? ?? 'general'),
       };
     }).toList();
   }
 
   /// Get cohort-based habit recommendations
-  List<Map<String, dynamic>> getCohortHabitRecommendations(double monthlyIncome) {
+  List<Map<String, dynamic>> getCohortHabitRecommendations(
+      double monthlyIncome) {
     final tier = _incomeService.classifyIncome(monthlyIncome);
 
     switch (tier) {
@@ -223,7 +231,8 @@ class CohortService {
 
     // Add spending-based insights if available
     if (userSpending != null) {
-      insights.addAll(_getSpendingBasedInsights(tier, monthlyIncome, userSpending));
+      insights
+          .addAll(_getSpendingBasedInsights(tier, monthlyIncome, userSpending));
     }
 
     // Add behavioral insights if available
@@ -260,10 +269,11 @@ class CohortService {
             'current': currentAmount,
             'recommended': recommendedAmount,
             'difference': difference,
-            'suggestion': _getOverspendingSuggestion(tier, category, difference),
+            'suggestion':
+                _getOverspendingSuggestion(tier, category, difference),
           };
-          suggestions
-              .add('Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
+          suggestions.add(
+              'Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
         } else {
           // Underspending in this category
           optimizations[category] = {
@@ -271,7 +281,8 @@ class CohortService {
             'current': currentAmount,
             'recommended': recommendedAmount,
             'difference': difference.abs(),
-            'suggestion': _getUnderspendingSuggestion(tier, category, difference.abs()),
+            'suggestion':
+                _getUnderspendingSuggestion(tier, category, difference.abs()),
           };
           suggestions.add(
               'You have room to increase $category spending by \$${difference.abs().toStringAsFixed(0)}');
@@ -283,7 +294,8 @@ class CohortService {
       'optimizations': optimizations,
       'suggestions': suggestions,
       'overall_score': _calculateOptimizationScore(optimizations),
-      'peer_comparison': _getPeerBudgetComparison(tier, currentAllocations, monthlyIncome),
+      'peer_comparison':
+          _getPeerBudgetComparison(tier, currentAllocations, monthlyIncome),
     };
   }
 
@@ -338,8 +350,8 @@ class CohortService {
         if (difference > monthlyIncome * 0.05) {
           // If difference is > 5% of income
           if (current > recommended) {
-            recommendations
-                .add('Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
+            recommendations.add(
+                'Consider reducing $category spending by \$${difference.toStringAsFixed(0)}');
           } else {
             recommendations.add(
                 'You have room to allocate \$${difference.toStringAsFixed(0)} more to $category');
@@ -455,7 +467,8 @@ class CohortService {
     final weights = _incomeService.getDefaultBudgetWeights(tier);
 
     userSpending.forEach((category, amount) {
-      final percentage = _incomeService.getIncomePercentage(amount, monthlyIncome);
+      final percentage =
+          _incomeService.getIncomePercentage(amount, monthlyIncome);
       final recommendedPercentage = (weights[category] ?? 0.1) * 100;
 
       if (percentage > recommendedPercentage * 1.3) {
@@ -490,7 +503,8 @@ class CohortService {
     return insights;
   }
 
-  String _getOverspendingSuggestion(IncomeTier tier, String category, double amount) {
+  String _getOverspendingSuggestion(
+      IncomeTier tier, String category, double amount) {
     switch (category) {
       case 'food':
         return tier == IncomeTier.low
@@ -505,7 +519,8 @@ class CohortService {
     }
   }
 
-  String _getUnderspendingSuggestion(IncomeTier tier, String category, double amount) {
+  String _getUnderspendingSuggestion(
+      IncomeTier tier, String category, double amount) {
     switch (category) {
       case 'savings':
         return 'Consider increasing your savings rate for better financial security';
@@ -539,11 +554,14 @@ class CohortService {
     final comparison = <String, dynamic>{};
 
     currentAllocations.forEach((category, amount) {
-      final percentage = _incomeService.getIncomePercentage(amount, monthlyIncome);
+      final percentage =
+          _incomeService.getIncomePercentage(amount, monthlyIncome);
       comparison[category] = {
         'your_percentage': percentage,
         'peer_average': _getPeerAveragePercentage(tier, category),
-        'comparison': percentage > _getPeerAveragePercentage(tier, category) ? 'above' : 'below',
+        'comparison': percentage > _getPeerAveragePercentage(tier, category)
+            ? 'above'
+            : 'below',
       };
     });
 
@@ -560,7 +578,8 @@ class CohortService {
   }
 
   String _getOverallPeerComparison(Map<String, dynamic> comparison) {
-    final aboveCount = comparison.values.where((c) => c['comparison'] == 'above').length;
+    final aboveCount =
+        comparison.values.where((c) => c['comparison'] == 'above').length;
     final totalCount = comparison.length;
     final percentage = (aboveCount / totalCount * 100).round();
 

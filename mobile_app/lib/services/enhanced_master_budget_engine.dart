@@ -14,20 +14,25 @@ import 'explanation_engine_service.dart';
 
 /// Master budget engine integrating all enhanced intelligence services
 class EnhancedMasterBudgetEngine {
-  static final EnhancedMasterBudgetEngine _instance = EnhancedMasterBudgetEngine._internal();
+  static final EnhancedMasterBudgetEngine _instance =
+      EnhancedMasterBudgetEngine._internal();
   factory EnhancedMasterBudgetEngine() => _instance;
   EnhancedMasterBudgetEngine._internal();
 
   // Service instances
   final EnhancedIncomeService _incomeService = EnhancedIncomeService();
-  final TemporalIntelligenceService _temporalService = TemporalIntelligenceService();
+  final TemporalIntelligenceService _temporalService =
+      TemporalIntelligenceService();
   final SpendingVelocityService _velocityService = SpendingVelocityService();
-  final AdvancedHabitRecognitionService _habitService = AdvancedHabitRecognitionService();
+  final AdvancedHabitRecognitionService _habitService =
+      AdvancedHabitRecognitionService();
   final ContextualNudgeService _nudgeService = ContextualNudgeService();
   final SocialComparisonService _socialService = SocialComparisonService();
   final PredictiveBudgetService _predictiveService = PredictiveBudgetService();
-  final CategoryIntelligenceService _categoryService = CategoryIntelligenceService();
-  final ExplanationEngineService _explanationService = ExplanationEngineService();
+  final CategoryIntelligenceService _categoryService =
+      CategoryIntelligenceService();
+  final ExplanationEngineService _explanationService =
+      ExplanationEngineService();
 
   /// Calculate enhanced daily budget with full intelligence integration
   Future<EnhancedBudgetResult> calculateEnhancedDailyBudget({
@@ -47,16 +52,20 @@ class EnhancedMasterBudgetEngine {
       countryCode: userProfile['countryCode']?.toString(),
       stateCode: userProfile['stateCode']?.toString(),
     );
-    calculationSteps['incomeClassification'] = _mapIncomeClassificationToMap(incomeClassification);
+    calculationSteps['incomeClassification'] =
+        _mapIncomeClassificationToMap(incomeClassification);
 
     // Step 2: Learn and Apply Temporal Intelligence
-    final spendingPattern = await _temporalService.learnSpendingPatterns(transactionHistory);
-    final temporalAdjustment = await _temporalService.calculateTemporalAdjustment(
+    final spendingPattern =
+        await _temporalService.learnSpendingPatterns(transactionHistory);
+    final temporalAdjustment =
+        await _temporalService.calculateTemporalAdjustment(
       0.0, // Will be set after base calculation
       targetDate,
       spendingPattern,
     );
-    calculationSteps['temporalIntelligence'] = _mapTemporalBudgetToMap(temporalAdjustment);
+    calculationSteps['temporalIntelligence'] =
+        _mapTemporalBudgetToMap(temporalAdjustment);
 
     // Step 3: Spending Velocity Analysis
     AdaptiveBudgetAllocation? velocityAdjustment;
@@ -64,29 +73,35 @@ class EnhancedMasterBudgetEngine {
       final velocityAnalysis = await _velocityService.analyzeSpendingVelocity(
         recentTransactions: transactionHistory.take(30).toList(),
         historicalTransactions: transactionHistory,
-        currentDailyBudget: (userProfile['dailyBudget'] as num?)?.toDouble() ?? 50.0,
+        currentDailyBudget:
+            (userProfile['dailyBudget'] as num?)?.toDouble() ?? 50.0,
         analysisDate: targetDate,
       );
 
-      velocityAdjustment = await _velocityService.createAdaptiveBudgetAllocation(
+      velocityAdjustment =
+          await _velocityService.createAdaptiveBudgetAllocation(
         velocityAnalysis: velocityAnalysis,
-        monthlyBudget: (userProfile['monthlyBudget'] as num?)?.toDouble() ?? 1500.0,
+        monthlyBudget:
+            (userProfile['monthlyBudget'] as num?)?.toDouble() ?? 1500.0,
         startDate: targetDate,
         daysAhead: 30,
       );
-      calculationSteps['velocityAnalysis'] = _mapAdaptiveBudgetToMap(velocityAdjustment);
+      calculationSteps['velocityAnalysis'] =
+          _mapAdaptiveBudgetToMap(velocityAdjustment);
     }
 
     // Step 4: Advanced Habit Recognition and Correction
-    final habitAnalysis = await _habitService.analyzeSpendingHabits(transactionHistory);
-    final behavioralCorrections =
-        await _habitService.generateBehavioralCorrections(habitAnalysis.detectedHabits);
+    final habitAnalysis =
+        await _habitService.analyzeSpendingHabits(transactionHistory);
+    final behavioralCorrections = await _habitService
+        .generateBehavioralCorrections(habitAnalysis.detectedHabits);
     calculationSteps['habitAnalysis'] = _mapHabitAnalysisToMap(habitAnalysis);
     calculationSteps['behavioralCorrections'] =
         _mapBehavioralCorrectionsToMap(behavioralCorrections);
 
     // Step 5: Category Intelligence Optimization
-    final lifeEvents = await _categoryService.detectLifeEvents(transactionHistory);
+    final lifeEvents =
+        await _categoryService.detectLifeEvents(transactionHistory);
     final categoryOptimization = await _categoryService.optimizeCategories(
       userId: userId,
       spendingHistory: transactionHistory,
@@ -107,7 +122,8 @@ class EnhancedMasterBudgetEngine {
     var adjustedBudget = baseDailyBudget;
 
     // Apply temporal adjustment
-    adjustedBudget = _applyTemporalAdjustment(adjustedBudget, temporalAdjustment);
+    adjustedBudget =
+        _applyTemporalAdjustment(adjustedBudget, temporalAdjustment);
 
     // Apply velocity adjustment
     if (velocityAdjustment != null) {
@@ -115,7 +131,8 @@ class EnhancedMasterBudgetEngine {
     }
 
     // Apply behavioral corrections
-    adjustedBudget = _applyBehavioralCorrections(adjustedBudget, behavioralCorrections);
+    adjustedBudget =
+        _applyBehavioralCorrections(adjustedBudget, behavioralCorrections);
 
     // Step 8: Generate Personalized Nudge
     try {
@@ -130,7 +147,8 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle nudge generation failure gracefully
-      logError('Nudge generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
+      logError('Nudge generation failed',
+          tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 9: Generate Tomorrow's Forecast
@@ -141,7 +159,8 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle forecast generation failure gracefully
-      logError('Forecast generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
+      logError('Forecast generation failed',
+          tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 10: Generate Social Insights
@@ -150,9 +169,12 @@ class EnhancedMasterBudgetEngine {
       final userDemo = UserDemographicProfile(
         userId: userId,
         incomeTier: incomeClassification.primaryTier,
-        interests:
-            (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-        spendingPersonality: userProfile['spendingPersonality'] as Map<String, dynamic>? ?? {},
+        interests: (userProfile['interests'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        spendingPersonality:
+            userProfile['spendingPersonality'] as Map<String, dynamic>? ?? {},
       );
 
       socialInsights = await _socialService.generateSocialInsights(
@@ -165,18 +187,23 @@ class EnhancedMasterBudgetEngine {
       );
     } catch (e) {
       // Handle social insights failure gracefully
-      logError('Social insights generation failed', tag: 'MASTER_BUDGET_ENGINE', error: e);
+      logError('Social insights generation failed',
+          tag: 'MASTER_BUDGET_ENGINE', error: e);
     }
 
     // Step 11: Generate Explanation
     final explanationContext = ExplanationContext(
       userId: userId,
       userLevel: userProfile['experienceLevel']?.toString() ?? 'intermediate',
-      userInterests:
-          (userProfile['interests'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      preferVisualExplanations: userProfile['preferVisualExplanations'] as bool? ?? false,
+      userInterests: (userProfile['interests'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      preferVisualExplanations:
+          userProfile['preferVisualExplanations'] as bool? ?? false,
       preferDetailedMath: userProfile['preferDetailedMath'] as bool? ?? false,
-      communicationStyle: userProfile['communicationStyle']?.toString() ?? 'simple',
+      communicationStyle:
+          userProfile['communicationStyle']?.toString() ?? 'simple',
     );
 
     await _explanationService.generateSimpleExplanation(
@@ -186,8 +213,10 @@ class EnhancedMasterBudgetEngine {
     );
 
     // Step 12: Calculate Confidence and Risk Score
-    final confidence = _calculateOverallConfidence(calculationSteps, transactionHistory.length);
-    final riskScore = _calculateRiskScore(habitAnalysis, velocityAdjustment, lifeEvents);
+    final confidence = _calculateOverallConfidence(
+        calculationSteps, transactionHistory.length);
+    final riskScore =
+        _calculateRiskScore(habitAnalysis, velocityAdjustment, lifeEvents);
 
     // Step 13: Generate Final Insights and Recommendations
     insights.addAll(_generatePersonalizedInsights(
@@ -256,7 +285,8 @@ class EnhancedMasterBudgetEngine {
     );
 
     // Generate additional intelligence analysis
-    final predictiveAnalysis = await _predictiveService.generateBudgetPredictions(
+    final predictiveAnalysis =
+        await _predictiveService.generateBudgetPredictions(
       historicalData: transactionHistory,
       currentFinancialState: userProfile,
       externalFactors: [],
@@ -304,7 +334,8 @@ class EnhancedMasterBudgetEngine {
     Map<String, dynamic> userProfile,
     Map<String, dynamic> categoryOptimization,
   ) {
-    final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
 
     // Base percentage for flexible spending based on income tier
     double flexibleSpendingRatio;
@@ -327,10 +358,13 @@ class EnhancedMasterBudgetEngine {
     }
 
     // Apply tier blending if in transition
-    if (incomeClassification.isInTransition && incomeClassification.secondaryTier != null) {
-      final secondaryRatio = _getFlexibleSpendingRatio(incomeClassification.secondaryTier!);
-      flexibleSpendingRatio = (flexibleSpendingRatio * incomeClassification.primaryWeight) +
-          (secondaryRatio * incomeClassification.secondaryWeight);
+    if (incomeClassification.isInTransition &&
+        incomeClassification.secondaryTier != null) {
+      final secondaryRatio =
+          _getFlexibleSpendingRatio(incomeClassification.secondaryTier!);
+      flexibleSpendingRatio =
+          (flexibleSpendingRatio * incomeClassification.primaryWeight) +
+              (secondaryRatio * incomeClassification.secondaryWeight);
     }
 
     final monthlyFlexibleBudget = monthlyIncome * flexibleSpendingRatio;
@@ -352,11 +386,13 @@ class EnhancedMasterBudgetEngine {
     }
   }
 
-  double _applyTemporalAdjustment(double baseBudget, TemporalBudgetResult temporalResult) {
+  double _applyTemporalAdjustment(
+      double baseBudget, TemporalBudgetResult temporalResult) {
     return temporalResult.adjustedDailyBudget;
   }
 
-  double _applyBehavioralCorrections(double baseBudget, List<BehavioralCorrection> corrections) {
+  double _applyBehavioralCorrections(
+      double baseBudget, List<BehavioralCorrection> corrections) {
     double adjustedBudget = baseBudget;
 
     for (final correction in corrections) {
@@ -366,7 +402,8 @@ class EnhancedMasterBudgetEngine {
     return adjustedBudget;
   }
 
-  double _calculateOverallConfidence(Map<String, dynamic> calculationSteps, int dataPoints) {
+  double _calculateOverallConfidence(
+      Map<String, dynamic> calculationSteps, int dataPoints) {
     double confidence = 0.5; // Base confidence
 
     // Higher confidence with more data
@@ -414,14 +451,17 @@ class EnhancedMasterBudgetEngine {
     final monthStart = DateTime(now.year, now.month, 1);
 
     return transactions.where((t) {
-      final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+      final date =
+          DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
       return date.isAfter(monthStart);
     }).fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
   }
 
   double _calculateSavingsRate(Map<String, dynamic> userProfile) {
-    final monthlyIncome = (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final monthlySavings = (userProfile['monthlySavings'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (userProfile['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final monthlySavings =
+        (userProfile['monthlySavings'] as num?)?.toDouble() ?? 0.0;
 
     return monthlyIncome > 0 ? monthlySavings / monthlyIncome : 0.0;
   }
@@ -526,7 +566,8 @@ class EnhancedMasterBudgetEngine {
     }
 
     // Convert percentages to actual amounts
-    return allocations.map((category, percentage) => MapEntry(category, dailyBudget * percentage));
+    return allocations.map(
+        (category, percentage) => MapEntry(category, dailyBudget * percentage));
   }
 
   double _calculateOverallHealthScore(
@@ -557,12 +598,13 @@ class EnhancedMasterBudgetEngine {
 
     // Budget insights
     if (currentBudget.confidence > 0.8) {
-      insights
-          .add('High confidence in budget calculation - your spending patterns are predictable');
+      insights.add(
+          'High confidence in budget calculation - your spending patterns are predictable');
     }
 
     if (currentBudget.riskScore > 0.6) {
-      insights.add('Elevated spending risk detected - consider implementing protective measures');
+      insights.add(
+          'Elevated spending risk detected - consider implementing protective measures');
     }
 
     // Predictive insights
@@ -603,7 +645,8 @@ class EnhancedMasterBudgetEngine {
 
     // Check data completeness
     final completeTransactions = transactions
-        .where((t) => t['amount'] != null && t['date'] != null && t['category'] != null)
+        .where((t) =>
+            t['amount'] != null && t['date'] != null && t['category'] != null)
         .length;
 
     final completenessRatio = completeTransactions / transactions.length;
@@ -629,7 +672,8 @@ class EnhancedMasterBudgetEngine {
 
   // Mapping methods to convert service results to basic Maps for serialization
 
-  Map<String, dynamic> _mapIncomeClassificationToMap(IncomeClassificationResult result) {
+  Map<String, dynamic> _mapIncomeClassificationToMap(
+      IncomeClassificationResult result) {
     return {
       'primaryTier': result.primaryTier.toString(),
       'secondaryTier': result.secondaryTier?.toString(),
@@ -653,7 +697,8 @@ class EnhancedMasterBudgetEngine {
     };
   }
 
-  Map<String, dynamic> _mapAdaptiveBudgetToMap(AdaptiveBudgetAllocation allocation) {
+  Map<String, dynamic> _mapAdaptiveBudgetToMap(
+      AdaptiveBudgetAllocation allocation) {
     return {
       'originalDailyBudget': allocation.originalDailyBudget,
       'adjustedDailyBudget': allocation.adjustedDailyBudget,
@@ -674,12 +719,16 @@ class EnhancedMasterBudgetEngine {
     };
   }
 
-  Map<String, dynamic> _mapBehavioralCorrectionsToMap(List<BehavioralCorrection> corrections) {
+  Map<String, dynamic> _mapBehavioralCorrectionsToMap(
+      List<BehavioralCorrection> corrections) {
     return {
       'correctionCount': corrections.length,
-      'totalBudgetMultiplier': corrections.fold(1.0, (product, c) => product * c.budgetMultiplier),
-      'totalBufferMultiplier': corrections.fold(1.0, (product, c) => product * c.bufferMultiplier),
-      'expectedImpact': corrections.fold(0.0, (sum, c) => sum + c.expectedImpact),
+      'totalBudgetMultiplier':
+          corrections.fold(1.0, (product, c) => product * c.budgetMultiplier),
+      'totalBufferMultiplier':
+          corrections.fold(1.0, (product, c) => product * c.bufferMultiplier),
+      'expectedImpact':
+          corrections.fold(0.0, (sum, c) => sum + c.expectedImpact),
     };
   }
 

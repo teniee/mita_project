@@ -18,7 +18,8 @@ class OfflineQueueService {
 
   void _init() {
     _connectivity.onConnectivityChanged.listen((results) {
-      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       final online = result != ConnectivityResult.none;
       if (online && !_isOnline) {
         _flushQueue();
@@ -40,7 +41,8 @@ class OfflineQueueService {
 
   /// Queue a registration attempt for when connection is restored
   Future<void> queueRegistration(String email, String password) async {
-    logInfo('Queueing registration for when connection is restored', tag: 'OFFLINE_QUEUE');
+    logInfo('Queueing registration for when connection is restored',
+        tag: 'OFFLINE_QUEUE');
 
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList('queued_registrations') ?? [];
@@ -55,7 +57,8 @@ class OfflineQueueService {
     list.add(jsonEncode(registrationData));
     await prefs.setStringList('queued_registrations', list);
 
-    logInfo('Registration queued for ${email.substring(0, 3)}***', tag: 'OFFLINE_QUEUE');
+    logInfo('Registration queued for ${email.substring(0, 3)}***',
+        tag: 'OFFLINE_QUEUE');
   }
 
   /// Check if there are queued registrations
@@ -125,7 +128,8 @@ class OfflineQueueService {
     final list = prefs.getStringList('queued_registrations') ?? [];
     final remaining = <String>[];
 
-    logInfo('Processing ${list.length} queued registrations', tag: 'OFFLINE_QUEUE');
+    logInfo('Processing ${list.length} queued registrations',
+        tag: 'OFFLINE_QUEUE');
 
     for (final item in list) {
       try {
@@ -133,15 +137,18 @@ class OfflineQueueService {
         final email = data['email'] as String;
         final password = data['password'] as String;
 
-        logInfo('Attempting queued registration for ${email.substring(0, 3)}***',
+        logInfo(
+            'Attempting queued registration for ${email.substring(0, 3)}***',
             tag: 'OFFLINE_QUEUE');
 
         // Use standard FastAPI registration (emergency methods removed)
         await ApiService().register(email, password);
-        logInfo('Queued FastAPI registration successful for ${email.substring(0, 3)}***',
+        logInfo(
+            'Queued FastAPI registration successful for ${email.substring(0, 3)}***',
             tag: 'OFFLINE_QUEUE');
       } catch (e) {
-        logWarning('Queued registration failed, keeping in queue: $e', tag: 'OFFLINE_QUEUE');
+        logWarning('Queued registration failed, keeping in queue: $e',
+            tag: 'OFFLINE_QUEUE');
         remaining.add(item);
       }
     }
@@ -149,7 +156,8 @@ class OfflineQueueService {
     await prefs.setStringList('queued_registrations', remaining);
 
     if (remaining.length < list.length) {
-      logInfo('Successfully processed ${list.length - remaining.length} queued registrations',
+      logInfo(
+          'Successfully processed ${list.length - remaining.length} queued registrations',
           tag: 'OFFLINE_QUEUE');
     }
   }
@@ -158,7 +166,8 @@ class OfflineQueueService {
     try {
       await ApiService().getDashboard();
     } catch (e) {
-      logWarning('Failed to refresh budget after sync: $e', tag: 'OFFLINE_QUEUE');
+      logWarning('Failed to refresh budget after sync: $e',
+          tag: 'OFFLINE_QUEUE');
       // Non-critical - dashboard will refresh on next navigation
     }
   }

@@ -168,7 +168,8 @@ class BudgetWarningDialog extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber.shade700),
+                        Icon(Icons.lightbulb_outline,
+                            size: 16, color: Colors.amber.shade700),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -187,7 +188,8 @@ class BudgetWarningDialog extends StatelessWidget {
             ],
 
             // Alternative categories chips
-            if (alternativeCategories.isNotEmpty && onUseAlternative != null) ...[
+            if (alternativeCategories.isNotEmpty &&
+                onUseAlternative != null) ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -234,7 +236,8 @@ class BudgetWarningDialog extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      Navigator.of(context).pop(false); // Return false to indicate cancellation
+                      Navigator.of(context)
+                          .pop(false); // Return false to indicate cancellation
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -260,7 +263,9 @@ class BudgetWarningDialog extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: warningLevel == 'blocked' ? Colors.red : AppColors.primary,
+                      backgroundColor: warningLevel == 'blocked'
+                          ? Colors.red
+                          : AppColors.primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -363,16 +368,20 @@ Future<bool?> showBudgetWarningDialog({
     barrierDismissible: false,
     builder: (BuildContext context) {
       return BudgetWarningDialog(
-        warningLevel: (affordabilityCheck['warning_level'] ?? 'caution') as String,
+        warningLevel:
+            (affordabilityCheck['warning_level'] ?? 'caution') as String,
         category: (affordabilityCheck['category'] ?? '') as String,
         amount: ((affordabilityCheck['amount'] ?? 0.0) as num).toDouble(),
-        dailyBudget: ((affordabilityCheck['daily_budget'] ?? 0.0) as num).toDouble(),
-        remaining: ((affordabilityCheck['remaining_budget'] ?? 0.0) as num).toDouble(),
+        dailyBudget:
+            ((affordabilityCheck['daily_budget'] ?? 0.0) as num).toDouble(),
+        remaining:
+            ((affordabilityCheck['remaining_budget'] ?? 0.0) as num).toDouble(),
         overage: ((affordabilityCheck['overage'] ?? 0.0) as num).toDouble(),
-        percentageUsed: ((affordabilityCheck['percentage_used'] ?? 0.0) as num).toDouble(),
+        percentageUsed:
+            ((affordabilityCheck['percentage_used'] ?? 0.0) as num).toDouble(),
         impactMessage: (affordabilityCheck['impact_message'] ?? '') as String,
-        alternativeCategories:
-            (affordabilityCheck['alternative_categories'] ?? []) as List<dynamic>,
+        alternativeCategories: (affordabilityCheck['alternative_categories'] ??
+            []) as List<dynamic>,
         suggestions: (affordabilityCheck['suggestions'] ?? []) as List<dynamic>,
         onProceed: onProceed,
         onUseAlternative: onUseAlternative,

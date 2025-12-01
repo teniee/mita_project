@@ -71,7 +71,8 @@ class TransactionProvider extends ChangeNotifier {
       _calculateTotalSpending();
       _state = TransactionState.loaded;
 
-      logInfo('Transactions loaded: ${_transactions.length} items', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Transactions loaded: ${_transactions.length} items',
+          tag: 'TRANSACTION_PROVIDER');
     } catch (e) {
       logError('Error loading transactions: $e', tag: 'TRANSACTION_PROVIDER');
       _transactions = [];
@@ -124,7 +125,8 @@ class TransactionProvider extends ChangeNotifier {
       logInfo('Recent transactions loaded: ${_transactions.length} items',
           tag: 'TRANSACTION_PROVIDER');
     } catch (e) {
-      logError('Error loading recent transactions: $e', tag: 'TRANSACTION_PROVIDER');
+      logError('Error loading recent transactions: $e',
+          tag: 'TRANSACTION_PROVIDER');
       _errorMessage = e.toString();
     } finally {
       _setLoading(false);
@@ -142,7 +144,8 @@ class TransactionProvider extends ChangeNotifier {
       _transactions.insert(0, transaction);
       _calculateTotalSpending();
 
-      logInfo('Transaction created: ${transaction.id}', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Transaction created: ${transaction.id}',
+          tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
 
       return transaction;
@@ -175,7 +178,8 @@ class TransactionProvider extends ChangeNotifier {
         _calculateTotalSpending();
       }
 
-      logInfo('Transaction updated: $transactionId', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Transaction updated: $transactionId',
+          tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
 
       return updatedTransaction;
@@ -199,7 +203,8 @@ class TransactionProvider extends ChangeNotifier {
       _transactions.removeWhere((t) => t.id == transactionId);
       _calculateTotalSpending();
 
-      logInfo('Transaction deleted: $transactionId', tag: 'TRANSACTION_PROVIDER');
+      logInfo('Transaction deleted: $transactionId',
+          tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
 
       return true;
@@ -224,11 +229,13 @@ class TransactionProvider extends ChangeNotifier {
       );
       _spendingByCategory = categoryTotals;
 
-      logInfo('Spending by category loaded: ${_spendingByCategory.length} categories',
+      logInfo(
+          'Spending by category loaded: ${_spendingByCategory.length} categories',
           tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
     } catch (e) {
-      logError('Error loading spending by category: $e', tag: 'TRANSACTION_PROVIDER');
+      logError('Error loading spending by category: $e',
+          tag: 'TRANSACTION_PROVIDER');
     }
   }
 
@@ -260,7 +267,8 @@ class TransactionProvider extends ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return _transactions.where((t) {
-      final transactionDate = DateTime(t.spentAt.year, t.spentAt.month, t.spentAt.day);
+      final transactionDate =
+          DateTime(t.spentAt.year, t.spentAt.month, t.spentAt.day);
       return transactionDate == today;
     }).toList();
   }
@@ -269,7 +277,8 @@ class TransactionProvider extends ChangeNotifier {
   List<TransactionModel> getThisWeekTransactions() {
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeek = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final startOfWeek =
+        DateTime(weekStart.year, weekStart.month, weekStart.day);
     return _transactions.where((t) => t.spentAt.isAfter(startOfWeek)).toList();
   }
 
@@ -295,7 +304,8 @@ class TransactionProvider extends ChangeNotifier {
     _spendingByCategory = {};
     for (final transaction in _transactions) {
       _spendingByCategory[transaction.category] =
-          (_spendingByCategory[transaction.category] ?? 0.0) + transaction.amount;
+          (_spendingByCategory[transaction.category] ?? 0.0) +
+              transaction.amount;
     }
   }
 

@@ -67,7 +67,8 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
 
                     // Using FinancialFormatters for proper locale formatting
                     Text(
-                      FinancialFormatters.formatCurrency(context, _sampleBudget),
+                      FinancialFormatters.formatCurrency(
+                          context, _sampleBudget),
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,
@@ -82,7 +83,8 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                       children: [
                         Text(l10n.spent),
                         Text(
-                          FinancialFormatters.formatCurrency(context, _sampleSpent),
+                          FinancialFormatters.formatCurrency(
+                              context, _sampleSpent),
                           style: TextStyle(
                             color: FinancialFormatters.getAmountColor(
                               context,
@@ -131,7 +133,8 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                     const SizedBox(height: 8),
 
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: FinancialFormatters.getBudgetStatusColor(
                           context,
@@ -170,7 +173,8 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                     // Progress indicator
                     LinearProgressIndicator(
                       value: (_sampleSpent / _sampleBudget).clamp(0.0, 1.0),
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         FinancialFormatters.getBudgetStatusColor(
                           context,
@@ -230,7 +234,8 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                             });
                           },
                           selectedColor: theme.colorScheme.primaryContainer,
-                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
                         );
                       }).toList(),
                     ),
@@ -254,11 +259,12 @@ class _I18nExampleScreenState extends State<I18nExampleScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildDateExample(context, l10n.today, DateTime.now()),
+                    _buildDateExample(context, l10n.yesterday,
+                        DateTime.now().subtract(const Duration(days: 1))),
+                    _buildDateExample(context, 'Last Week',
+                        DateTime.now().subtract(const Duration(days: 7))),
                     _buildDateExample(
-                        context, l10n.yesterday, DateTime.now().subtract(const Duration(days: 1))),
-                    _buildDateExample(
-                        context, 'Last Week', DateTime.now().subtract(const Duration(days: 7))),
-                    _buildDateExample(context, 'Last Month', DateTime(2024, 11, 15)),
+                        context, 'Last Month', DateTime(2024, 11, 15)),
                   ],
                 ),
               ),

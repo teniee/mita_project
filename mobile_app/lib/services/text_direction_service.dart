@@ -35,7 +35,8 @@ class TextDirectionService {
   /// Get appropriate alignment for UI elements
   Alignment getAlignment({Alignment? ltrAlignment, Alignment? rtlAlignment}) {
     if (isRTL) {
-      return rtlAlignment ?? _mirrorAlignment(ltrAlignment ?? Alignment.centerLeft);
+      return rtlAlignment ??
+          _mirrorAlignment(ltrAlignment ?? Alignment.centerLeft);
     } else {
       return ltrAlignment ?? Alignment.centerLeft;
     }
@@ -45,7 +46,8 @@ class TextDirectionService {
   MainAxisAlignment getMainAxisAlignment(
       {MainAxisAlignment? ltrAlignment, MainAxisAlignment? rtlAlignment}) {
     if (isRTL) {
-      return rtlAlignment ?? _mirrorMainAxisAlignment(ltrAlignment ?? MainAxisAlignment.start);
+      return rtlAlignment ??
+          _mirrorMainAxisAlignment(ltrAlignment ?? MainAxisAlignment.start);
     } else {
       return ltrAlignment ?? MainAxisAlignment.start;
     }
@@ -55,7 +57,8 @@ class TextDirectionService {
   CrossAxisAlignment getCrossAxisAlignment(
       {CrossAxisAlignment? ltrAlignment, CrossAxisAlignment? rtlAlignment}) {
     if (isRTL) {
-      return rtlAlignment ?? _mirrorCrossAxisAlignment(ltrAlignment ?? CrossAxisAlignment.start);
+      return rtlAlignment ??
+          _mirrorCrossAxisAlignment(ltrAlignment ?? CrossAxisAlignment.start);
     } else {
       return ltrAlignment ?? CrossAxisAlignment.start;
     }
@@ -163,7 +166,8 @@ class TextDirectionService {
     return Row(
       textDirection: textDirection,
       mainAxisAlignment: getMainAxisAlignment(ltrAlignment: mainAxisAlignment),
-      crossAxisAlignment: getCrossAxisAlignment(ltrAlignment: crossAxisAlignment),
+      crossAxisAlignment:
+          getCrossAxisAlignment(ltrAlignment: crossAxisAlignment),
       mainAxisSize: mainAxisSize,
       children: children,
     );

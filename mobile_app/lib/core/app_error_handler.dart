@@ -182,7 +182,8 @@ class AppErrorBoundary extends StatelessWidget {
         if (kDebugMode)
           dev.log('ERROR CAUGHT IN ${screenName ?? "Unknown"}: $error',
               name: 'AppErrorHandler', error: error);
-        if (kDebugMode) dev.log('STACK TRACE: $stackTrace', name: 'AppErrorHandler');
+        if (kDebugMode)
+          dev.log('STACK TRACE: $stackTrace', name: 'AppErrorHandler');
         AppErrorHandler.reportUIError(
           error,
           screenName: screenName,
@@ -199,7 +200,8 @@ class AppErrorBoundary extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorScreen(BuildContext context, Object error, StackTrace? stackTrace) {
+  Widget _buildErrorScreen(
+      BuildContext context, Object error, StackTrace? stackTrace) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
@@ -277,7 +279,9 @@ class AppErrorBoundary extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: SingleChildScrollView(
@@ -291,7 +295,10 @@ class AppErrorBoundary extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               error.toString(),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                     fontFamily: 'monospace',
                                   ),
                             ),
@@ -304,7 +311,10 @@ class AppErrorBoundary extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 stackTrace.toString(),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
                                       fontFamily: 'monospace',
                                     ),
                               ),
@@ -458,7 +468,8 @@ class ErrorMessageUtils {
         errorString.contains('session expired') ||
         errorString.contains('unauthorized')) {
       return 'Your session has expired. Please log in again.';
-    } else if (error is ValidationException || errorString.contains('validation')) {
+    } else if (error is ValidationException ||
+        errorString.contains('validation')) {
       return 'Please check your input and try again.';
     } else if (error is StorageException || errorString.contains('storage')) {
       return 'Unable to save your data. Please try again.';

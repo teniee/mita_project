@@ -12,7 +12,8 @@ enum PredictionModel {
 
 /// Advanced predictive budget forecasting with ML-based models
 class PredictiveBudgetService {
-  static final PredictiveBudgetService _instance = PredictiveBudgetService._internal();
+  static final PredictiveBudgetService _instance =
+      PredictiveBudgetService._internal();
   factory PredictiveBudgetService() => _instance;
   PredictiveBudgetService._internal();
 
@@ -52,7 +53,8 @@ class PredictiveBudgetService {
     );
 
     // Identify risks and opportunities
-    final riskWarnings = await _identifyRiskAlerts(dailyForecasts, currentFinancialState);
+    final riskWarnings =
+        await _identifyRiskAlerts(dailyForecasts, currentFinancialState);
 
     // Calculate overall confidence
     final overallConfidence = _calculateOverallConfidence(
@@ -62,8 +64,8 @@ class PredictiveBudgetService {
     );
 
     // Generate trend analysis
-    final trendAnalysis =
-        await _generateTrendAnalysis(dailyForecasts, weeklyForecasts, monthlyForecasts);
+    final trendAnalysis = await _generateTrendAnalysis(
+        dailyForecasts, weeklyForecasts, monthlyForecasts);
 
     return PredictiveBudgetAnalysis(
       forecasts: dailyForecasts,
@@ -92,7 +94,8 @@ class PredictiveBudgetService {
       forecastedDailyBudget: (prediction['amount'] as num).toDouble(),
       confidence: (prediction['confidence'] as num).toDouble(),
       primaryFactor: 'historical_trend',
-      contributingFactors: Map<String, double>.from(prediction['factors'] as Map),
+      contributingFactors:
+          Map<String, double>.from(prediction['factors'] as Map),
       forecastDate: forecastDate,
     );
   }
@@ -110,7 +113,8 @@ class PredictiveBudgetService {
       final forecastDate = baseDate.add(Duration(days: i));
 
       // Apply velocity-based adjustments
-      final velocityAdjustment = _calculateVelocityAdjustment(recentTransactions, forecastDate);
+      final velocityAdjustment =
+          _calculateVelocityAdjustment(recentTransactions, forecastDate);
       final adjustedBudget = currentDailyBudget * velocityAdjustment;
 
       // Apply temporal factors
@@ -134,7 +138,8 @@ class PredictiveBudgetService {
   }
 
   /// Select optimal prediction model based on data characteristics
-  Future<PredictionModel> _selectOptimalModel(List<Map<String, dynamic>> historicalData) async {
+  Future<PredictionModel> _selectOptimalModel(
+      List<Map<String, dynamic>> historicalData) async {
     if (historicalData.length < 30) {
       return PredictionModel.linearRegression; // Simple model for limited data
     }
@@ -145,7 +150,8 @@ class PredictiveBudgetService {
     final dataQuality = _assessDataQuality(historicalData);
 
     if (dataQuality > 0.8 && historicalData.length > 180) {
-      return PredictionModel.ensemble; // Best model for high-quality, abundant data
+      return PredictionModel
+          .ensemble; // Best model for high-quality, abundant data
     } else if (hasSeasonality && historicalData.length > 90) {
       return PredictionModel.seasonalDecomposition;
     } else if (hasVolatility) {
@@ -179,7 +185,8 @@ class PredictiveBudgetService {
         forecastedDailyBudget: (prediction['amount'] as num).toDouble(),
         confidence: (prediction['confidence'] as num).toDouble(),
         primaryFactor: _getPrimaryFactor(model),
-        contributingFactors: Map<String, double>.from(prediction['factors'] as Map),
+        contributingFactors:
+            Map<String, double>.from(prediction['factors'] as Map),
         forecastDate: forecastDate,
       ));
     }
@@ -208,10 +215,12 @@ class PredictiveBudgetService {
       );
 
       forecasts.add(BudgetForecast(
-        forecastedDailyBudget: (prediction['amount'] as num).toDouble() * 7, // Convert to weekly
+        forecastedDailyBudget:
+            (prediction['amount'] as num).toDouble() * 7, // Convert to weekly
         confidence: (prediction['confidence'] as num).toDouble(),
         primaryFactor: _getPrimaryFactor(model),
-        contributingFactors: Map<String, double>.from(prediction['factors'] as Map),
+        contributingFactors:
+            Map<String, double>.from(prediction['factors'] as Map),
         forecastDate: forecastDate,
       ));
     }
@@ -240,10 +249,12 @@ class PredictiveBudgetService {
       );
 
       forecasts.add(BudgetForecast(
-        forecastedDailyBudget: (prediction['amount'] as num).toDouble() * 30, // Convert to monthly
+        forecastedDailyBudget:
+            (prediction['amount'] as num).toDouble() * 30, // Convert to monthly
         confidence: (prediction['confidence'] as num).toDouble(),
         primaryFactor: _getPrimaryFactor(model),
-        contributingFactors: Map<String, double>.from(prediction['factors'] as Map),
+        contributingFactors:
+            Map<String, double>.from(prediction['factors'] as Map),
         forecastDate: forecastDate,
       ));
     }
@@ -263,13 +274,17 @@ class PredictiveBudgetService {
       case PredictionModel.linearRegression:
         return _applyLinearRegression(historicalData, forecastDate, timeframe);
       case PredictionModel.exponentialSmoothing:
-        return _applyExponentialSmoothing(historicalData, forecastDate, timeframe);
+        return _applyExponentialSmoothing(
+            historicalData, forecastDate, timeframe);
       case PredictionModel.seasonalDecomposition:
-        return _applySeasonalDecomposition(historicalData, forecastDate, timeframe);
+        return _applySeasonalDecomposition(
+            historicalData, forecastDate, timeframe);
       case PredictionModel.neuralNetwork:
-        return _applyNeuralNetwork(historicalData, currentState, forecastDate, timeframe);
+        return _applyNeuralNetwork(
+            historicalData, currentState, forecastDate, timeframe);
       case PredictionModel.ensemble:
-        return _applyEnsembleModel(historicalData, currentState, forecastDate, timeframe);
+        return _applyEnsembleModel(
+            historicalData, currentState, forecastDate, timeframe);
     }
   }
 
@@ -284,14 +299,17 @@ class PredictiveBudgetService {
     }
 
     // Extract amounts and calculate trend
-    final amounts = data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final amounts =
+        data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
     final mean = amounts.reduce((a, b) => a + b) / amounts.length;
 
     // Simple trend calculation
-    final trend = amounts.length > 1 ? (amounts.last - amounts.first) / amounts.length : 0.0;
+    final trend = amounts.length > 1
+        ? (amounts.last - amounts.first) / amounts.length
+        : 0.0;
     final daysDiff = forecastDate
-        .difference(
-            DateTime.parse(data.last['date']?.toString() ?? DateTime.now().toIso8601String()))
+        .difference(DateTime.parse(
+            data.last['date']?.toString() ?? DateTime.now().toIso8601String()))
         .inDays;
 
     final predictedAmount = mean + (trend * daysDiff);
@@ -321,7 +339,8 @@ class PredictiveBudgetService {
       return _getDefaultPrediction(forecastDate);
     }
 
-    final amounts = data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final amounts =
+        data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
     const alpha = 0.3; // Smoothing parameter
 
     double smoothedValue = amounts.first;
@@ -352,10 +371,12 @@ class PredictiveBudgetService {
     String timeframe,
   ) {
     // Simplified seasonal adjustment
-    final basePredicition = _applyExponentialSmoothing(data, forecastDate, timeframe);
+    final basePredicition =
+        _applyExponentialSmoothing(data, forecastDate, timeframe);
     final seasonalMultiplier = _getSeasonalMultiplier(forecastDate, timeframe);
 
-    final adjustedAmount = (basePredicition['amount'] as double) * seasonalMultiplier;
+    final adjustedAmount =
+        (basePredicition['amount'] as double) * seasonalMultiplier;
 
     return {
       'amount': max(0, adjustedAmount),
@@ -379,10 +400,13 @@ class PredictiveBudgetService {
     String timeframe,
   ) {
     // Simplified neural network simulation
-    final basePredicition = _applySeasonalDecomposition(data, forecastDate, timeframe);
-    final adjustmentFactor = 1.0 + (Random().nextDouble() * 0.1 - 0.05); // ±5% adjustment
+    final basePredicition =
+        _applySeasonalDecomposition(data, forecastDate, timeframe);
+    final adjustmentFactor =
+        1.0 + (Random().nextDouble() * 0.1 - 0.05); // ±5% adjustment
 
-    final adjustedAmount = (basePredicition['amount'] as double) * adjustmentFactor;
+    final adjustedAmount =
+        (basePredicition['amount'] as double) * adjustmentFactor;
 
     return {
       'amount': max(0, adjustedAmount),
@@ -407,8 +431,10 @@ class PredictiveBudgetService {
   ) {
     // Combine multiple models
     final linearPred = _applyLinearRegression(data, forecastDate, timeframe);
-    final exponentialPred = _applyExponentialSmoothing(data, forecastDate, timeframe);
-    final seasonalPred = _applySeasonalDecomposition(data, forecastDate, timeframe);
+    final exponentialPred =
+        _applyExponentialSmoothing(data, forecastDate, timeframe);
+    final seasonalPred =
+        _applySeasonalDecomposition(data, forecastDate, timeframe);
 
     // Weighted average
     const weights = [0.2, 0.3, 0.5]; // Favor seasonal decomposition
@@ -479,7 +505,8 @@ class PredictiveBudgetService {
     if (amounts.length <= 1) return mean * 0.2;
 
     final variance =
-        amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / (amounts.length - 1);
+        amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) /
+            (amounts.length - 1);
     return sqrt(variance / amounts.length);
   }
 
@@ -518,10 +545,12 @@ class PredictiveBudgetService {
   bool _detectVolatility(List<Map<String, dynamic>> data) {
     if (data.length < 10) return false;
 
-    final amounts = data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final amounts =
+        data.map((d) => (d['amount'] as num?)?.toDouble() ?? 0.0).toList();
     final mean = amounts.reduce((a, b) => a + b) / amounts.length;
-    final standardDeviation =
-        sqrt(amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) / amounts.length);
+    final standardDeviation = sqrt(
+        amounts.map((x) => pow(x - mean, 2)).reduce((a, b) => a + b) /
+            amounts.length);
 
     return (standardDeviation / mean) > 0.3; // High volatility if CV > 30%
   }
@@ -539,7 +568,8 @@ class PredictiveBudgetService {
     else if (data.length >= 30) qualityScore += 0.1;
 
     // Consistency check
-    final nonZeroCount = data.where((d) => (d['amount'] as num?)?.toDouble() != 0.0).length;
+    final nonZeroCount =
+        data.where((d) => (d['amount'] as num?)?.toDouble() != 0.0).length;
     final consistencyRatio = nonZeroCount / data.length;
     qualityScore += consistencyRatio * 0.2;
 
@@ -554,7 +584,8 @@ class PredictiveBudgetService {
     if (forecasts.isEmpty) return 0.0;
 
     final avgConfidence =
-        forecasts.map((f) => f.confidence).reduce((a, b) => a + b) / forecasts.length;
+        forecasts.map((f) => f.confidence).reduce((a, b) => a + b) /
+            forecasts.length;
 
     // Adjust based on data quantity and model sophistication
     double adjustment = 0.0;
@@ -572,7 +603,8 @@ class PredictiveBudgetService {
 
     // Check for increasing spending trends
     if (forecasts.length >= 7) {
-      final weekTrend = forecasts.take(7).map((f) => f.forecastedDailyBudget).toList();
+      final weekTrend =
+          forecasts.take(7).map((f) => f.forecastedDailyBudget).toList();
       final isIncreasing = weekTrend.last > weekTrend.first * 1.2;
       if (isIncreasing) {
         alerts.add('Spending trend is increasing - consider budget review');
@@ -580,10 +612,13 @@ class PredictiveBudgetService {
     }
 
     // Check for potential budget overruns
-    final currentBudget = (currentState['monthlyBudget'] as num?)?.toDouble() ?? 0.0;
+    final currentBudget =
+        (currentState['monthlyBudget'] as num?)?.toDouble() ?? 0.0;
     if (forecasts.length >= 30) {
-      final projectedMonthly =
-          forecasts.take(30).map((f) => f.forecastedDailyBudget).reduce((a, b) => a + b);
+      final projectedMonthly = forecasts
+          .take(30)
+          .map((f) => f.forecastedDailyBudget)
+          .reduce((a, b) => a + b);
       if (projectedMonthly > currentBudget * 1.1) {
         alerts.add(
             'Risk of exceeding monthly budget by ${((projectedMonthly / currentBudget - 1) * 100).toStringAsFixed(0)}%');
@@ -600,20 +635,25 @@ class PredictiveBudgetService {
     final opportunities = <String>[];
 
     // Check for potential savings
-    final currentBudget = (currentState['monthlyBudget'] as num?)?.toDouble() ?? 0.0;
+    final currentBudget =
+        (currentState['monthlyBudget'] as num?)?.toDouble() ?? 0.0;
     if (forecasts.length >= 30) {
-      final projectedMonthly =
-          forecasts.take(30).map((f) => f.forecastedDailyBudget).reduce((a, b) => a + b);
+      final projectedMonthly = forecasts
+          .take(30)
+          .map((f) => f.forecastedDailyBudget)
+          .reduce((a, b) => a + b);
       if (projectedMonthly < currentBudget * 0.9) {
         final savings = currentBudget - projectedMonthly;
-        opportunities.add('Opportunity to save \$${savings.toStringAsFixed(0)} this month');
+        opportunities.add(
+            'Opportunity to save \$${savings.toStringAsFixed(0)} this month');
       }
     }
 
     // Check for consistent under-forecasting
     final consistentUnder = forecasts.take(7).every((f) => f.confidence > 0.8);
     if (consistentUnder) {
-      opportunities.add('High confidence predictions - consider increasing savings goals');
+      opportunities.add(
+          'High confidence predictions - consider increasing savings goals');
     }
 
     return opportunities;
@@ -628,8 +668,11 @@ class PredictiveBudgetService {
 
     // Daily trend
     if (dailyForecasts.length >= 7) {
-      final earlyWeek =
-          dailyForecasts.take(7).map((f) => f.forecastedDailyBudget).reduce((a, b) => a + b) / 7;
+      final earlyWeek = dailyForecasts
+              .take(7)
+              .map((f) => f.forecastedDailyBudget)
+              .reduce((a, b) => a + b) /
+          7;
       final lateWeek = dailyForecasts.length >= 14
           ? dailyForecasts
                   .skip(7)
@@ -643,17 +686,17 @@ class PredictiveBudgetService {
 
     // Weekly trend
     if (weeklyForecasts.length >= 2) {
-      final trend =
-          (weeklyForecasts[1].forecastedDailyBudget - weeklyForecasts[0].forecastedDailyBudget) /
-              weeklyForecasts[0].forecastedDailyBudget;
+      final trend = (weeklyForecasts[1].forecastedDailyBudget -
+              weeklyForecasts[0].forecastedDailyBudget) /
+          weeklyForecasts[0].forecastedDailyBudget;
       trends['weekly_trend'] = trend;
     }
 
     // Monthly trend
     if (monthlyForecasts.length >= 2) {
-      final trend =
-          (monthlyForecasts[1].forecastedDailyBudget - monthlyForecasts[0].forecastedDailyBudget) /
-              monthlyForecasts[0].forecastedDailyBudget;
+      final trend = (monthlyForecasts[1].forecastedDailyBudget -
+              monthlyForecasts[0].forecastedDailyBudget) /
+          monthlyForecasts[0].forecastedDailyBudget;
       trends['monthly_trend'] = trend;
     }
 

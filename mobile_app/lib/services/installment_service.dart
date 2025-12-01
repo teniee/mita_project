@@ -108,7 +108,8 @@ class InstallmentService {
         }
       } catch (e) {
         // For other errors, don't retry
-        logError('Non-retryable error for $operation', tag: 'INSTALLMENT_SERVICE', error: e);
+        logError('Non-retryable error for $operation',
+            tag: 'INSTALLMENT_SERVICE', error: e);
         rethrow;
       }
     }
@@ -155,12 +156,15 @@ class InstallmentService {
         return InstallmentCalculatorOutput.fromJson(data);
       } else {
         _handleHttpError(response, 'calculateInstallmentRisk');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error calculating installment risk', tag: 'INSTALLMENT_SERVICE', error: e);
-      throw InstallmentServiceException('Failed to calculate installment risk: $e', 0);
+      logError('Error calculating installment risk',
+          tag: 'INSTALLMENT_SERVICE', error: e);
+      throw InstallmentServiceException(
+          'Failed to calculate installment risk: $e', 0);
     }
   }
 
@@ -188,12 +192,15 @@ class InstallmentService {
         return UserFinancialProfile.fromJson(data);
       } else {
         _handleHttpError(response, 'createFinancialProfile');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error creating financial profile', tag: 'INSTALLMENT_SERVICE', error: e);
-      throw InstallmentServiceException('Failed to create financial profile: $e', 0);
+      logError('Error creating financial profile',
+          tag: 'INSTALLMENT_SERVICE', error: e);
+      throw InstallmentServiceException(
+          'Failed to create financial profile: $e', 0);
     }
   }
 
@@ -222,12 +229,15 @@ class InstallmentService {
         return null;
       } else {
         _handleHttpError(response, 'getFinancialProfile');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching financial profile', tag: 'INSTALLMENT_SERVICE', error: e);
-      throw InstallmentServiceException('Failed to fetch financial profile: $e', 0);
+      logError('Error fetching financial profile',
+          tag: 'INSTALLMENT_SERVICE', error: e);
+      throw InstallmentServiceException(
+          'Failed to fetch financial profile: $e', 0);
     }
   }
 
@@ -260,18 +270,21 @@ class InstallmentService {
         return Installment.fromJson(data);
       } else {
         _handleHttpError(response, 'createInstallment');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error creating installment', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error creating installment',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to create installment: $e', 0);
     }
   }
 
   /// Get all installments with optional status filter
   /// GET /api/installments?status=active
-  Future<InstallmentsSummary> getInstallments({InstallmentStatus? status}) async {
+  Future<InstallmentsSummary> getInstallments(
+      {InstallmentStatus? status}) async {
     try {
       logDebug(
         'Fetching installments',
@@ -284,8 +297,8 @@ class InstallmentService {
         queryParams['status'] = status.toJson();
       }
 
-      final uri = Uri.parse('$defaultApiBaseUrl/installments')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final uri = Uri.parse('$defaultApiBaseUrl/installments').replace(
+          queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await _executeWithRetry(() async {
         final headers = await _getHeaders();
@@ -297,11 +310,13 @@ class InstallmentService {
         return InstallmentsSummary.fromJson(data);
       } else {
         _handleHttpError(response, 'getInstallments');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching installments', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching installments',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch installments: $e', 0);
     }
   }
@@ -333,11 +348,13 @@ class InstallmentService {
         throw InstallmentServiceException('Installment not found', 404);
       } else {
         _handleHttpError(response, 'getInstallment');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching installment', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching installment',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch installment: $e', 0);
     }
   }
@@ -376,11 +393,13 @@ class InstallmentService {
         throw InstallmentServiceException('Installment not found', 404);
       } else {
         _handleHttpError(response, 'updateInstallment');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error updating installment', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error updating installment',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to update installment: $e', 0);
     }
   }
@@ -418,7 +437,8 @@ class InstallmentService {
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error deleting installment', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error deleting installment',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to delete installment: $e', 0);
     }
   }
@@ -437,7 +457,8 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .get(
-              Uri.parse('$defaultApiBaseUrl/installments/calendar/$year/$month'),
+              Uri.parse(
+                  '$defaultApiBaseUrl/installments/calendar/$year/$month'),
               headers: headers,
             )
             .timeout(_defaultTimeout);
@@ -448,12 +469,15 @@ class InstallmentService {
         return data as Map<String, dynamic>;
       } else {
         _handleHttpError(response, 'getMonthlyCalendar');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching monthly calendar', tag: 'INSTALLMENT_SERVICE', error: e);
-      throw InstallmentServiceException('Failed to fetch monthly calendar: $e', 0);
+      logError('Error fetching monthly calendar',
+          tag: 'INSTALLMENT_SERVICE', error: e);
+      throw InstallmentServiceException(
+          'Failed to fetch monthly calendar: $e', 0);
     }
   }
 
@@ -478,11 +502,13 @@ class InstallmentService {
         return InstallmentAchievement.fromJson(data);
       } else {
         _handleHttpError(response, 'getAchievements');
-        throw InstallmentServiceException('Unexpected error', response.statusCode);
+        throw InstallmentServiceException(
+            'Unexpected error', response.statusCode);
       }
     } catch (e) {
       if (e is InstallmentServiceException) rethrow;
-      logError('Error fetching achievements', tag: 'INSTALLMENT_SERVICE', error: e);
+      logError('Error fetching achievements',
+          tag: 'INSTALLMENT_SERVICE', error: e);
       throw InstallmentServiceException('Failed to fetch achievements: $e', 0);
     }
   }
@@ -531,7 +557,8 @@ class InstallmentService {
         return profile;
       }
     } catch (e) {
-      logDebug('No existing profile found, creating new one', tag: 'INSTALLMENT_SERVICE');
+      logDebug('No existing profile found, creating new one',
+          tag: 'INSTALLMENT_SERVICE');
     }
 
     // Create new profile
@@ -604,7 +631,8 @@ class InstallmentServiceException implements Exception {
   InstallmentServiceException(this.message, this.statusCode);
 
   @override
-  String toString() => 'InstallmentServiceException: $message (Status: $statusCode)';
+  String toString() =>
+      'InstallmentServiceException: $message (Status: $statusCode)';
 
   /// Check if error is due to authentication
   bool get isAuthError => statusCode == 401;

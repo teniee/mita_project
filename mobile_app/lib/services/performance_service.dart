@@ -248,7 +248,8 @@ class PerformanceService {
       _droppedFrames++;
 
       if (frameTimeMs > SLOW_FRAME_THRESHOLD * 2) {
-        logWarning('Slow frame detected: ${frameTimeMs.toStringAsFixed(2)}ms', tag: 'PERFORMANCE');
+        logWarning('Slow frame detected: ${frameTimeMs.toStringAsFixed(2)}ms',
+            tag: 'PERFORMANCE');
       }
     }
 
@@ -262,8 +263,10 @@ class PerformanceService {
   void _generateFrameMetrics() {
     if (_frameTimes.isEmpty) return;
 
-    final frameTimes = _frameTimes.map((d) => d.inMicroseconds / 1000.0).toList();
-    final averageFrameTime = frameTimes.reduce((a, b) => a + b) / frameTimes.length;
+    final frameTimes =
+        _frameTimes.map((d) => d.inMicroseconds / 1000.0).toList();
+    final averageFrameTime =
+        frameTimes.reduce((a, b) => a + b) / frameTimes.length;
     final worstFrame = frameTimes.reduce((a, b) => a > b ? a : b);
     final averageFPS = 1000.0 / averageFrameTime;
 
@@ -329,7 +332,8 @@ class PerformanceService {
       // Check for memory warnings
       if (memoryInfo.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
         _memoryWarningCount++;
-        logWarning('High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%',
+        logWarning(
+            'High memory usage: ${memoryInfo.memoryUsagePercent.toStringAsFixed(1)}%',
             tag: 'PERFORMANCE');
 
         // Suggest garbage collection
@@ -404,7 +408,8 @@ class PerformanceService {
     // Force garbage collection
     // Note: This is generally not recommended in production
     // but can be useful for performance monitoring
-    logDebug('Suggesting garbage collection due to high memory usage', tag: 'PERFORMANCE');
+    logDebug('Suggesting garbage collection due to high memory usage',
+        tag: 'PERFORMANCE');
   }
 
   /// Start periodic monitoring
@@ -421,7 +426,10 @@ class PerformanceService {
     // Add app lifecycle metrics
     _addMetric(PerformanceMetric(
       name: 'app_lifecycle_state',
-      value: SchedulerBinding.instance.lifecycleState == AppLifecycleState.resumed ? 1.0 : 0.0,
+      value:
+          SchedulerBinding.instance.lifecycleState == AppLifecycleState.resumed
+              ? 1.0
+              : 0.0,
       timestamp: now,
       tags: {'state': SchedulerBinding.instance.lifecycleState.toString()},
     ));
@@ -478,7 +486,8 @@ class PerformanceService {
 
     // Log slow requests
     if (responseTimeMs > 2000) {
-      logWarning('Slow network request: $method $endpoint - ${responseTimeMs}ms',
+      logWarning(
+          'Slow network request: $method $endpoint - ${responseTimeMs}ms',
           tag: 'PERFORMANCE');
     }
   }
@@ -546,8 +555,10 @@ class PerformanceService {
     }
 
     final successfulRequests = _networkMetrics.where((m) => m.isSuccess).length;
-    final totalResponseTime = _networkMetrics.fold<int>(0, (sum, m) => sum + m.responseTimeMs);
-    final slowRequests = _networkMetrics.where((m) => m.responseTimeMs > 2000).length;
+    final totalResponseTime =
+        _networkMetrics.fold<int>(0, (sum, m) => sum + m.responseTimeMs);
+    final slowRequests =
+        _networkMetrics.where((m) => m.responseTimeMs > 2000).length;
 
     return {
       'totalRequests': _networkMetrics.length,
@@ -600,7 +611,8 @@ class PerformanceService {
 
     // Memory recommendations
     final currentMemory = getCurrentMemoryInfo();
-    if (currentMemory != null && currentMemory.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
+    if (currentMemory != null &&
+        currentMemory.memoryUsagePercent > MEMORY_WARNING_THRESHOLD) {
       recommendations.add(
           'High memory usage (${currentMemory.memoryUsagePercent.toStringAsFixed(1)}%). Consider optimizing image caching and disposing unused resources.');
     }
@@ -649,7 +661,8 @@ class PerformanceService {
     // Network performance impact (20% of score)
     final networkSummary = getNetworkPerformanceSummary();
     if (networkSummary['totalRequests'] > 0) {
-      final networkScore = (networkSummary['successRate'] / 100.0).clamp(0.0, 1.0);
+      final networkScore =
+          (networkSummary['successRate'] / 100.0).clamp(0.0, 1.0);
       score -= (1.0 - networkScore) * 20;
     }
 
@@ -657,7 +670,8 @@ class PerformanceService {
     final cacheSummary = getCachePerformanceSummary();
     if (cacheSummary.isNotEmpty) {
       final avgHitRate =
-          cacheSummary.values.map((c) => c.hitRate).reduce((a, b) => a + b) / cacheSummary.length;
+          cacheSummary.values.map((c) => c.hitRate).reduce((a, b) => a + b) /
+              cacheSummary.length;
       final cacheScore = (avgHitRate / 100.0).clamp(0.0, 1.0);
       score -= (1.0 - cacheScore) * 10;
     }

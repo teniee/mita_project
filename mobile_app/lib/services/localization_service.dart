@@ -36,7 +36,8 @@ class LocalizationService {
 
   /// Get currency data for current locale
   Map<String, String> get currentCurrencyData {
-    final localeKey = '${_currentLocale.languageCode}_${_currentLocale.countryCode ?? 'US'}';
+    final localeKey =
+        '${_currentLocale.languageCode}_${_currentLocale.countryCode ?? 'US'}';
     return _currencyData[localeKey] ?? _currencyData['en_US']!;
   }
 
@@ -75,7 +76,8 @@ class LocalizationService {
       return formatter.format(amount);
     } catch (e) {
       // Fallback to basic formatting if locale is not supported
-      return _formatCurrencyFallback(amount, showSymbol: showSymbol, decimalDigits: decimalDigits);
+      return _formatCurrencyFallback(amount,
+          showSymbol: showSymbol, decimalDigits: decimalDigits);
     }
   }
 
@@ -97,7 +99,8 @@ class LocalizationService {
   }
 
   /// Fallback currency formatting when locale is not supported
-  String _formatCurrencyFallback(double amount, {bool showSymbol = true, int decimalDigits = 2}) {
+  String _formatCurrencyFallback(double amount,
+      {bool showSymbol = true, int decimalDigits = 2}) {
     final symbol = showSymbol ? currencySymbol : '';
     final absAmount = amount.abs();
     final sign = amount < 0 ? '-' : '';
@@ -114,7 +117,8 @@ class LocalizationService {
   /// - ES: formatNumber(1234.56) → "1.234,56"
   String formatNumber(double number, {int decimalDigits = 2}) {
     try {
-      final formatter = NumberFormat('#,##0.${'0' * decimalDigits}', _currentLocale.toString());
+      final formatter = NumberFormat(
+          '#,##0.${'0' * decimalDigits}', _currentLocale.toString());
       return formatter.format(number);
     } catch (e) {
       // Fallback to US formatting
@@ -150,7 +154,8 @@ class LocalizationService {
   /// - ES: formatDate(date) → "31/12/2024"
   String formatDate(DateTime date, {DateFormat? customFormat}) {
     try {
-      final formatter = customFormat ?? DateFormat.yMd(_currentLocale.toString());
+      final formatter =
+          customFormat ?? DateFormat.yMd(_currentLocale.toString());
       return formatter.format(date);
     } catch (e) {
       // Fallback to ISO format
@@ -170,7 +175,8 @@ class LocalizationService {
   }
 
   /// Format date in a user-friendly way (Today, Yesterday, etc.)
-  String formatRelativeDate(DateTime date, String todayLabel, String yesterdayLabel) {
+  String formatRelativeDate(
+      DateTime date, String todayLabel, String yesterdayLabel) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dateOnly = DateTime(date.year, date.month, date.day);
@@ -228,7 +234,10 @@ class LocalizationService {
   double? parseCurrency(String currencyString) {
     try {
       // Remove currency symbols and spaces
-      String cleanString = currencyString.replaceAll(currencySymbol, '').replaceAll(' ', '').trim();
+      String cleanString = currencyString
+          .replaceAll(currencySymbol, '')
+          .replaceAll(' ', '')
+          .trim();
 
       // Handle different decimal separators
       if (_currentLocale.toString().startsWith('es')) {
@@ -249,7 +258,8 @@ class LocalizationService {
 
   /// Check if a currency is supported
   bool isCurrencySupported(String currencyCode) {
-    return _currencyData.values.any((currency) => currency['code'] == currencyCode);
+    return _currencyData.values
+        .any((currency) => currency['code'] == currencyCode);
   }
 
   /// Format budget progress percentage with visual context

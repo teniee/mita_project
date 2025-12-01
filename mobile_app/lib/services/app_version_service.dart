@@ -3,7 +3,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Service for retrieving application version information
 class AppVersionService {
   static AppVersionService? _instance;
-  static AppVersionService get instance => _instance ??= AppVersionService._internal();
+  static AppVersionService get instance =>
+      _instance ??= AppVersionService._internal();
   AppVersionService._internal();
 
   PackageInfo? _packageInfo;

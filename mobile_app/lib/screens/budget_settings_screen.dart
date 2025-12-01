@@ -30,7 +30,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'description': 'Traditional budget tracking with basic redistribution',
       'icon': Icons.account_balance_wallet,
       'color': Colors.grey,
-      'features': ['Basic tracking', 'Manual redistribution', 'Standard alerts'],
+      'features': [
+        'Basic tracking',
+        'Manual redistribution',
+        'Standard alerts'
+      ],
     },
     {
       'id': 'flexible',
@@ -38,7 +42,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'description': 'Adaptive budget that adjusts to your spending patterns',
       'icon': Icons.auto_fix_high,
       'color': AppColors.successLight,
-      'features': ['Auto-adjustment', 'Smart redistribution', 'Flexible limits'],
+      'features': [
+        'Auto-adjustment',
+        'Smart redistribution',
+        'Flexible limits'
+      ],
     },
     {
       'id': 'strict',
@@ -54,7 +62,11 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       'description': 'AI-powered budget that learns from your behavior',
       'icon': Icons.psychology,
       'color': AppColors.accent,
-      'features': ['AI learning', 'Behavioral insights', 'Predictive adjustments'],
+      'features': [
+        'AI learning',
+        'Behavioral insights',
+        'Predictive adjustments'
+      ],
     },
     {
       'id': 'goal',
@@ -83,7 +95,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     final income = userProvider.userIncome;
 
     if (income <= 0) {
-      logError('Income data required for budget settings. Please complete onboarding.',
+      logError(
+          'Income data required for budget settings. Please complete onboarding.',
           tag: 'BUDGET_SETTINGS');
       return;
     }
@@ -121,7 +134,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Budget mode updated to ${_getBudgetModeByIdName(newMode)}'),
+                Text(
+                    'Budget mode updated to ${_getBudgetModeByIdName(newMode)}'),
               ],
             ),
             backgroundColor: Theme.of(context).colorScheme.primary,
@@ -146,7 +160,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     }
   }
 
-  Future<void> _updateAutomationSettings(Map<String, dynamic> newSettings) async {
+  Future<void> _updateAutomationSettings(
+      Map<String, dynamic> newSettings) async {
     final budgetProvider = context.read<BudgetProvider>();
 
     final success = await budgetProvider.updateAutomationSettings(newSettings);
@@ -193,7 +208,9 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: isSelected ? BorderSide(color: mode['color'], width: 2) : BorderSide.none,
+        side: isSelected
+            ? BorderSide(color: mode['color'], width: 2)
+            : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -236,7 +253,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                             if (isSelected) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: mode['color'],
                                   borderRadius: BorderRadius.circular(8),
@@ -285,11 +303,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 children: (mode['features'] as List<String>)
                     .map<Widget>(
                       (feature) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: mode['color'].withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: mode['color'].withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           feature,
@@ -318,10 +338,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : colorScheme.primary;
 
-    final totalBudget = (budgetRemaining['total_budget'] as num?)?.toDouble() ?? 0.0;
-    final totalSpent = (budgetRemaining['total_spent'] as num?)?.toDouble() ?? 0.0;
+    final totalBudget =
+        (budgetRemaining['total_budget'] as num?)?.toDouble() ?? 0.0;
+    final totalSpent =
+        (budgetRemaining['total_spent'] as num?)?.toDouble() ?? 0.0;
     final remaining = (budgetRemaining['remaining'] as num?)?.toDouble() ?? 0.0;
-    final percentageUsed = totalBudget > 0 ? (totalSpent / totalBudget * 100) : 0.0;
+    final percentageUsed =
+        totalBudget > 0 ? (totalSpent / totalBudget * 100) : 0.0;
 
     return Card(
       elevation: 2,
@@ -608,7 +631,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     if (budgetRecommendations != null)
                       Card(
                         elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         child: Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
@@ -634,34 +658,40 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              ...(budgetRecommendations['allocations'] as Map<String, dynamic>?)
+                              ...(budgetRecommendations['allocations']
+                                          as Map<String, dynamic>?)
                                       ?.entries
                                       .map((entry) {
                                     final category = entry.key;
                                     final amount = entry.value as double;
                                     final percentage =
-                                        _incomeService.getIncomePercentage(amount, _monthlyIncome);
+                                        _incomeService.getIncomePercentage(
+                                            amount, _monthlyIncome);
 
                                     return Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             category.toUpperCase(),
                                             style: const TextStyle(
-                                              fontFamily: AppTypography.fontHeading,
+                                              fontFamily:
+                                                  AppTypography.fontHeading,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
                                             ),
                                           ),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
                                             children: [
                                               Text(
                                                 '\$${amount.toStringAsFixed(0)}',
                                                 style: TextStyle(
-                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontFamily:
+                                                      AppTypography.fontHeading,
                                                   fontWeight: FontWeight.bold,
                                                   color: primaryColor,
                                                 ),
@@ -669,7 +699,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                               Text(
                                                 '${percentage.toStringAsFixed(1)}% of income',
                                                 style: TextStyle(
-                                                  fontFamily: AppTypography.fontBody,
+                                                  fontFamily:
+                                                      AppTypography.fontBody,
                                                   fontSize: 11,
                                                   color: Colors.grey[600],
                                                 ),
@@ -686,13 +717,16 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         ),
                       ),
 
-                    if (budgetRecommendations != null) const SizedBox(height: 16),
+                    if (budgetRecommendations != null)
+                      const SizedBox(height: 16),
 
                     // Behavioral Budget Allocation (AI-powered)
-                    if (behavioralAllocation != null && behavioralAllocation['allocations'] != null)
+                    if (behavioralAllocation != null &&
+                        behavioralAllocation['allocations'] != null)
                       Card(
                         elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         child: Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
@@ -722,31 +756,42 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 'Budget allocation based on your behavioral patterns',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              ...(behavioralAllocation['allocations'] as Map<String, dynamic>?)
+                              ...(behavioralAllocation['allocations']
+                                          as Map<String, dynamic>?)
                                       ?.entries
                                       .map((entry) {
                                     final category = entry.key;
-                                    final data = entry.value as Map<String, dynamic>;
-                                    final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                                    final data =
+                                        entry.value as Map<String, dynamic>;
+                                    final amount =
+                                        (data['amount'] as num?)?.toDouble() ??
+                                            0.0;
                                     final confidence =
-                                        (data['confidence'] as num?)?.toDouble() ?? 0.0;
+                                        (data['confidence'] as num?)
+                                                ?.toDouble() ??
+                                            0.0;
 
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
                                                 category.toUpperCase(),
                                                 style: const TextStyle(
-                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontFamily:
+                                                      AppTypography.fontHeading,
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 13,
                                                 ),
@@ -754,7 +799,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                               Text(
                                                 '\$${amount.toStringAsFixed(0)}',
                                                 style: const TextStyle(
-                                                  fontFamily: AppTypography.fontHeading,
+                                                  fontFamily:
+                                                      AppTypography.fontHeading,
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 15,
                                                 ),
@@ -766,12 +812,17 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                             children: [
                                               Expanded(
                                                 child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  child: LinearProgressIndicator(
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                  child:
+                                                      LinearProgressIndicator(
                                                     value: confidence / 100,
                                                     minHeight: 6,
-                                                    backgroundColor: Colors.grey[200],
-                                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                                    backgroundColor:
+                                                        Colors.grey[200],
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                            Color>(
                                                       AppColors.accent,
                                                     ),
                                                   ),
@@ -797,13 +848,15 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         ),
                       ),
 
-                    if (behavioralAllocation != null) const SizedBox(height: 24),
+                    if (behavioralAllocation != null)
+                      const SizedBox(height: 24),
 
                     // Current Mode Display
                     Card(
                       elevation: 4,
                       margin: const EdgeInsets.only(bottom: 24),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -811,7 +864,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                           gradient: LinearGradient(
                             colors: [
                               _getBudgetModeById(currentBudgetMode)['color'],
-                              _getBudgetModeById(currentBudgetMode)['color'].withValues(alpha: 0.8),
+                              _getBudgetModeById(currentBudgetMode)['color']
+                                  .withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -838,7 +892,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    _getBudgetModeById(currentBudgetMode)['name'],
+                                    _getBudgetModeById(
+                                        currentBudgetMode)['name'],
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -875,8 +930,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                     const SizedBox(height: 20),
 
                     // Budget mode cards
-                    ..._budgetModes
-                        .map((mode) => _buildBudgetModeCard(mode, currentBudgetMode, isUpdating)),
+                    ..._budgetModes.map((mode) => _buildBudgetModeCard(
+                        mode, currentBudgetMode, isUpdating)),
 
                     const SizedBox(height: 24),
 

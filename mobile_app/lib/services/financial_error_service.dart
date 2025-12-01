@@ -13,7 +13,8 @@ import 'logging_service.dart';
 /// Centralized service for managing financial error messages
 class FinancialErrorService {
   static FinancialErrorService? _instance;
-  static FinancialErrorService get instance => _instance ??= FinancialErrorService._();
+  static FinancialErrorService get instance =>
+      _instance ??= FinancialErrorService._();
 
   FinancialErrorService._();
 
@@ -59,9 +60,11 @@ class FinancialErrorService {
 
     // Show error with appropriate UI
     if (forceDialog || errorInfo.severity == FinancialErrorSeverity.critical) {
-      await _showErrorDialog(context, errorInfo, onRetry: onRetry, onDismiss: onDismiss);
+      await _showErrorDialog(context, errorInfo,
+          onRetry: onRetry, onDismiss: onDismiss);
     } else if (errorInfo.severity == FinancialErrorSeverity.high) {
-      await _showErrorBottomSheet(context, errorInfo, onRetry: onRetry, onDismiss: onDismiss);
+      await _showErrorBottomSheet(context, errorInfo,
+          onRetry: onRetry, onDismiss: onDismiss);
     } else {
       _showErrorSnackBar(context, errorInfo, onRetry: onRetry);
     }
@@ -291,7 +294,8 @@ class FinancialErrorService {
     );
   }
 
-  void _provideHapticFeedback(FinancialErrorSeverity severity, {bool isSuccess = false}) {
+  void _provideHapticFeedback(FinancialErrorSeverity severity,
+      {bool isSuccess = false}) {
     if (isSuccess) {
       HapticFeedback.lightImpact();
     } else {
@@ -454,7 +458,8 @@ mixin FinancialErrorHandling<T extends StatefulWidget> on State<T> {
     String? financialContext,
   }) {
     if (!mounted) return;
-    errorService.showSuccess(context, message, financialContext: financialContext);
+    errorService.showSuccess(context, message,
+        financialContext: financialContext);
   }
 
   /// Show warning
@@ -551,22 +556,29 @@ class GlobalFinancialErrorHandler {
 
 /// Error message constants for consistent messaging
 class FinancialErrorMessages {
-  static const String genericNetworkError = 'Please check your internet connection and try again.';
-  static const String sessionExpiredError = 'Your session has expired. Please sign in again.';
+  static const String genericNetworkError =
+      'Please check your internet connection and try again.';
+  static const String sessionExpiredError =
+      'Your session has expired. Please sign in again.';
   static const String invalidAmountError = 'Please enter a valid amount.';
-  static const String budgetExceededError = 'This transaction would exceed your budget.';
-  static const String duplicateTransactionError = 'A similar transaction was already recorded.';
-  static const String permissionDeniedError = 'Permission is required to continue.';
+  static const String budgetExceededError =
+      'This transaction would exceed your budget.';
+  static const String duplicateTransactionError =
+      'A similar transaction was already recorded.';
+  static const String permissionDeniedError =
+      'Permission is required to continue.';
   static const String serverMaintenanceError =
       'Service temporarily unavailable. Please try again later.';
 
   // Success messages
-  static const String transactionSavedSuccess = 'Transaction saved successfully!';
+  static const String transactionSavedSuccess =
+      'Transaction saved successfully!';
   static const String budgetUpdatedSuccess = 'Budget updated successfully!';
   static const String profileUpdatedSuccess = 'Profile updated successfully!';
 
   // Financial context messages
-  static const String dataSecurityContext = 'Your financial data remains secure and private.';
+  static const String dataSecurityContext =
+      'Your financial data remains secure and private.';
   static const String budgetHelpContext =
       'Staying within budget helps achieve your financial goals.';
   static const String accuracyContext =

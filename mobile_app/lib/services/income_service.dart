@@ -52,13 +52,15 @@ class IncomeService {
     final countryCode = location['country'] ?? 'US';
     final stateCode = location['state'];
 
-    return classifyIncomeForLocation(monthlyIncome, countryCode, stateCode: stateCode);
+    return classifyIncomeForLocation(monthlyIncome, countryCode,
+        stateCode: stateCode);
   }
 
   /// Classify income for specific location
   IncomeTier classifyIncomeForLocation(double monthlyIncome, String countryCode,
       {String? stateCode}) {
-    final thresholds = _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
+    final thresholds =
+        _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
     final annualIncome = monthlyIncome * 12;
 
     if (annualIncome <= thresholds['low']!) {
@@ -108,7 +110,8 @@ class IncomeService {
   }
 
   /// Get income tier description (Enhanced with behavioral insights)
-  String getIncomeTierDescription(IncomeTier tier, {bool useOptimizedDescriptions = true}) {
+  String getIncomeTierDescription(IncomeTier tier,
+      {bool useOptimizedDescriptions = true}) {
     if (useOptimizedDescriptions) {
       // Optimized descriptions based on behavioral analysis
       switch (tier) {
@@ -162,12 +165,15 @@ class IncomeService {
     final countryCode = location['country'] ?? 'US';
     final stateCode = location['state'];
 
-    return getIncomeRangeStringForLocation(tier, countryCode, stateCode: stateCode);
+    return getIncomeRangeStringForLocation(tier, countryCode,
+        stateCode: stateCode);
   }
 
   /// Get income range string for specific location
-  String getIncomeRangeStringForLocation(IncomeTier tier, String countryCode, {String? stateCode}) {
-    final thresholds = _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
+  String getIncomeRangeStringForLocation(IncomeTier tier, String countryCode,
+      {String? stateCode}) {
+    final thresholds =
+        _countryService.getIncomeThresholds(countryCode, stateCode: stateCode);
     final currency = _countryService.getCurrency(countryCode);
 
     final lowMonthly = (thresholds['low']! / 12).round();
@@ -191,8 +197,9 @@ class IncomeService {
 
   /// Format currency for display
   String _formatCurrency(double amount, String currency) {
-    final formattedAmount =
-        amount >= 1000 ? '${(amount / 1000).toStringAsFixed(0)}K' : amount.toStringAsFixed(0);
+    final formattedAmount = amount >= 1000
+        ? '${(amount / 1000).toStringAsFixed(0)}K'
+        : amount.toStringAsFixed(0);
 
     switch (currency) {
       case 'USD':
@@ -213,7 +220,8 @@ class IncomeService {
   }
 
   /// Get primary color for income tier (Enhanced with behavioral color psychology)
-  Color getIncomeTierPrimaryColor(IncomeTier tier, {bool useBehavioralColors = true}) {
+  Color getIncomeTierPrimaryColor(IncomeTier tier,
+      {bool useBehavioralColors = true}) {
     if (useBehavioralColors) {
       // Behavioral color psychology optimized colors
       switch (tier) {
@@ -222,7 +230,8 @@ class IncomeService {
         case IncomeTier.lowerMiddle:
           return AppColors.info; // Blue - Trust, progress, reliability
         case IncomeTier.middle:
-          return AppColors.categoryEntertainment; // Purple - Sophistication, strategy
+          return AppColors
+              .categoryEntertainment; // Purple - Sophistication, strategy
         case IncomeTier.upperMiddle:
           return AppColors.warning; // Gold - Achievement, value, success
         case IncomeTier.high:
@@ -255,9 +264,11 @@ class IncomeService {
       case IncomeTier.middle:
         return AppColors.info.withValues(alpha: 0.15); // Light blue
       case IncomeTier.upperMiddle:
-        return AppColors.categoryEducation.withValues(alpha: 0.1); // Light deep purple
+        return AppColors.categoryEducation
+            .withValues(alpha: 0.1); // Light deep purple
       case IncomeTier.high:
-        return AppColors.categoryEntertainment.withValues(alpha: 0.1); // Light purple
+        return AppColors.categoryEntertainment
+            .withValues(alpha: 0.1); // Light purple
     }
   }
 
@@ -349,8 +360,8 @@ class IncomeService {
   }
 
   /// Get peer comparison message
-  String getPeerComparisonMessage(
-      IncomeTier tier, String category, double userSpending, double peerAverage) {
+  String getPeerComparisonMessage(IncomeTier tier, String category,
+      double userSpending, double peerAverage) {
     final tierName = getIncomeTierName(tier);
     final difference = ((userSpending - peerAverage) / peerAverage * 100).abs();
     final isHigher = userSpending > peerAverage;
@@ -416,7 +427,8 @@ class IncomeService {
   }
 
   /// Get goal suggestions based on income tier
-  List<Map<String, dynamic>> getGoalSuggestions(IncomeTier tier, double monthlyIncome) {
+  List<Map<String, dynamic>> getGoalSuggestions(
+      IncomeTier tier, double monthlyIncome) {
     switch (tier) {
       case IncomeTier.low:
         return [
@@ -557,7 +569,8 @@ class IncomeService {
   }
 
   /// Get budget template based on income tier
-  Map<String, dynamic> getBudgetTemplate(IncomeTier tier, double monthlyIncome) {
+  Map<String, dynamic> getBudgetTemplate(
+      IncomeTier tier, double monthlyIncome) {
     final weights = getDefaultBudgetWeights(tier);
     final template = <String, dynamic>{};
 
@@ -569,8 +582,10 @@ class IncomeService {
       'monthly_income': monthlyIncome,
       'income_tier': tier.toString(),
       'allocations': template,
-      'total_allocated': template.values.fold<double>(0, (sum, amount) => sum + amount),
-      'remaining': monthlyIncome - template.values.fold<double>(0, (sum, amount) => sum + amount),
+      'total_allocated':
+          template.values.fold<double>(0, (sum, amount) => sum + amount),
+      'remaining': monthlyIncome -
+          template.values.fold<double>(0, (sum, amount) => sum + amount),
     };
   }
 
@@ -591,11 +606,13 @@ class IncomeService {
   }
 
   /// Get spending insights based on income context
-  Map<String, dynamic> getSpendingInsights(double amount, String category, double monthlyIncome) {
+  Map<String, dynamic> getSpendingInsights(
+      double amount, String category, double monthlyIncome) {
     final tier = classifyIncome(monthlyIncome);
     final percentage = getIncomePercentage(amount, monthlyIncome);
     final weights = getDefaultBudgetWeights(tier);
-    final recommendedAmount = monthlyIncome * (weights[category.toLowerCase()] ?? 0.1);
+    final recommendedAmount =
+        monthlyIncome * (weights[category.toLowerCase()] ?? 0.1);
 
     return {
       'amount': amount,
@@ -641,8 +658,17 @@ class IncomeService {
           'decision_time': 'hours_to_days',
           'risk_tolerance': 'low_moderate',
           'planning_horizon': 'monthly_to_quarterly',
-          'primary_stressors': ['lifestyle_inflation', 'emergency_fund_anxiety'],
-          'mental_accounting_buckets': ['needs', 'wants', 'emergency', 'goals', 'future'],
+          'primary_stressors': [
+            'lifestyle_inflation',
+            'emergency_fund_anxiety'
+          ],
+          'mental_accounting_buckets': [
+            'needs',
+            'wants',
+            'emergency',
+            'goals',
+            'future'
+          ],
           'nudge_responsiveness': {
             'progress_tracking': 0.8,
             'peer_comparison': 0.7,
@@ -738,8 +764,8 @@ class IncomeService {
   }
 
   /// Get tier-specific behavioral nudges
-  List<Map<String, dynamic>> getTierSpecificNudges(
-      IncomeTier tier, Map<String, double>? currentSpending, double monthlyIncome) {
+  List<Map<String, dynamic>> getTierSpecificNudges(IncomeTier tier,
+      Map<String, double>? currentSpending, double monthlyIncome) {
     final patterns = getBehavioralSpendingPatterns(tier);
     final nudges = <Map<String, dynamic>>[];
 
@@ -755,14 +781,17 @@ class IncomeService {
           },
           {
             'type': 'social_proof',
-            'message': '73% of Foundation Builders cook dinner at home to save money',
+            'message':
+                '73% of Foundation Builders cook dinner at home to save money',
             'effectiveness': patterns['nudge_responsiveness']['social_proof'],
             'frequency': 'weekly',
           },
           {
             'type': 'micro_savings',
-            'message': 'Save your spare change automatically - every \$5 counts!',
-            'effectiveness': patterns['nudge_responsiveness']['automated_savings'],
+            'message':
+                'Save your spare change automatically - every \$5 counts!',
+            'effectiveness': patterns['nudge_responsiveness']
+                ['automated_savings'],
             'frequency': 'daily',
           },
         ]);
@@ -773,14 +802,16 @@ class IncomeService {
             'type': 'progress_framing',
             'message':
                 'You\'re ${_calculateEmergencyFundProgress(currentSpending, monthlyIncome).toStringAsFixed(0)}% to your \$1,000 safety net',
-            'effectiveness': patterns['nudge_responsiveness']['progress_tracking'],
+            'effectiveness': patterns['nudge_responsiveness']
+                ['progress_tracking'],
             'frequency': 'weekly',
           },
           {
             'type': 'peer_comparison',
             'message':
                 'Others at your level save \$${_calculatePeerAverageSavings(tier, monthlyIncome).toStringAsFixed(0)}/month on average',
-            'effectiveness': patterns['nudge_responsiveness']['peer_comparison'],
+            'effectiveness': patterns['nudge_responsiveness']
+                ['peer_comparison'],
             'frequency': 'monthly',
           },
         ]);
@@ -789,15 +820,18 @@ class IncomeService {
         nudges.addAll([
           {
             'type': 'opportunity_cost',
-            'message': 'That \$200 dinner could be \$600 in your investment account in 10 years',
-            'effectiveness': patterns['nudge_responsiveness']['opportunity_cost'],
+            'message':
+                'That \$200 dinner could be \$600 in your investment account in 10 years',
+            'effectiveness': patterns['nudge_responsiveness']
+                ['opportunity_cost'],
             'frequency': 'contextual',
           },
           {
             'type': 'status_enhancement',
             'message':
                 'Smart strategists max their 401k match - don\'t leave free money on the table',
-            'effectiveness': patterns['nudge_responsiveness']['status_enhancement'],
+            'effectiveness': patterns['nudge_responsiveness']
+                ['status_enhancement'],
             'frequency': 'quarterly',
           },
         ]);
@@ -813,7 +847,8 @@ class IncomeService {
           },
           {
             'type': 'legacy_framing',
-            'message': 'Build generational wealth systematically with your current income level',
+            'message':
+                'Build generational wealth systematically with your current income level',
             'effectiveness': patterns['nudge_responsiveness']['legacy_framing'],
             'frequency': 'annually',
           },
@@ -823,14 +858,17 @@ class IncomeService {
         nudges.addAll([
           {
             'type': 'impact_framing',
-            'message': 'Your wealth can change lives for generations - make it count',
+            'message':
+                'Your wealth can change lives for generations - make it count',
             'effectiveness': patterns['nudge_responsiveness']['impact_framing'],
             'frequency': 'quarterly',
           },
           {
             'type': 'legacy_protection',
-            'message': 'Preserve and grow what you\'ve built through strategic planning',
-            'effectiveness': patterns['nudge_responsiveness']['legacy_protection'],
+            'message':
+                'Preserve and grow what you\'ve built through strategic planning',
+            'effectiveness': patterns['nudge_responsiveness']
+                ['legacy_protection'],
             'frequency': 'annually',
           },
         ]);
@@ -847,7 +885,8 @@ class IncomeService {
     switch (currentTier) {
       case IncomeTier.low:
         const nextThreshold = 3000 * 12; // $36K annual
-        return (nextThreshold - annualIncome) / nextThreshold < 0.05; // Within 5%
+        return (nextThreshold - annualIncome) / nextThreshold <
+            0.05; // Within 5%
       case IncomeTier.lowerMiddle:
         const nextThreshold = 4800 * 12; // $57.6K annual (CORRECTED)
         return (nextThreshold - annualIncome) / nextThreshold < 0.05;
@@ -863,7 +902,8 @@ class IncomeService {
   }
 
   /// Get next tier information for motivation
-  Map<String, dynamic>? getNextTierInfo(IncomeTier currentTier, double monthlyIncome) {
+  Map<String, dynamic>? getNextTierInfo(
+      IncomeTier currentTier, double monthlyIncome) {
     if (currentTier == IncomeTier.high) return null;
 
     final nextTier = IncomeTier.values[currentTier.index + 1];
@@ -888,7 +928,8 @@ class IncomeService {
     }
 
     final amountNeeded = nextThreshold - monthlyIncome;
-    final percentageComplete = (monthlyIncome / nextThreshold * 100).clamp(0.0, 100.0);
+    final percentageComplete =
+        (monthlyIncome / nextThreshold * 100).clamp(0.0, 100.0);
 
     return {
       'next_tier': nextTier,
@@ -902,14 +943,16 @@ class IncomeService {
   }
 
   // Private helper methods for behavioral calculations
-  double _calculateWeeklyProgress(Map<String, double>? spending, double monthlyIncome) {
+  double _calculateWeeklyProgress(
+      Map<String, double>? spending, double monthlyIncome) {
     if (spending == null) return 0.0;
     final totalSpent = spending.values.fold(0.0, (sum, amount) => sum + amount);
     final weeklyBudget = monthlyIncome / 4.33; // Average weeks per month
     return (weeklyBudget - (totalSpent / 4.33)).clamp(0.0, double.infinity);
   }
 
-  double _calculateEmergencyFundProgress(Map<String, double>? spending, double monthlyIncome) {
+  double _calculateEmergencyFundProgress(
+      Map<String, double>? spending, double monthlyIncome) {
     // Simulate emergency fund progress - in real app, this would come from user data
     final savingsAmount = spending?['savings'] ?? (monthlyIncome * 0.05);
     const targetEmergencyFund = 1000.0; // Target for lower-middle tier

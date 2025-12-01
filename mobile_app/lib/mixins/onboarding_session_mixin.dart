@@ -32,7 +32,8 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
       setState(() {
         _sessionValidated = true;
       });
-      logDebug('Session gently validated for onboarding', tag: 'ONBOARDING_SESSION');
+      logDebug('Session gently validated for onboarding',
+          tag: 'ONBOARDING_SESSION');
     } catch (e) {
       logWarning('Gentle session validation failed: $e - будем проверять позже',
           tag: 'ONBOARDING_SESSION');
@@ -60,7 +61,8 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
         });
         logDebug('Session validated for onboarding', tag: 'ONBOARDING_SESSION');
       } catch (e) {
-        logError('Token refresh failed during onboarding: $e', tag: 'ONBOARDING_SESSION');
+        logError('Token refresh failed during onboarding: $e',
+            tag: 'ONBOARDING_SESSION');
         _handleSessionExpired();
       }
     } catch (e) {
@@ -107,7 +109,8 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
     // User just logged in, token should be fresh for 2 hours
     final token = await _apiService.getToken();
     if (token == null) {
-      logWarning('No token found - cannot proceed with onboarding', tag: 'ONBOARDING_SESSION');
+      logWarning('No token found - cannot proceed with onboarding',
+          tag: 'ONBOARDING_SESSION');
       _handleSessionExpired();
       return false;
     }

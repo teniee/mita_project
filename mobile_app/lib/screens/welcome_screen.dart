@@ -28,7 +28,8 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateMixin {
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with TickerProviderStateMixin {
   // Animation controllers for smooth transitions (local UI state)
   late AnimationController _logoController;
   late AnimationController _textController;
@@ -46,7 +47,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
   // Local UI state - kept as setState since these are transient splash screen states
   // that don't need to persist or be shared across the app
-  String _statusText = 'Initializing...'; // Will be updated with localized text in initState
+  String _statusText =
+      'Initializing...'; // Will be updated with localized text in initState
   bool _hasError = false;
 
   @override
@@ -142,7 +144,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
       // Check authentication status
       await _checkAuthenticationStatus();
     } catch (e) {
-      logError('Welcome screen initialization failed: $e', tag: 'WELCOME_SCREEN');
+      logError('Welcome screen initialization failed: $e',
+          tag: 'WELCOME_SCREEN');
 
       setState(() {
         _hasError = true;
@@ -170,7 +173,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
       // Initialize SettingsProvider first for theme/locale preferences
       if (!settingsProvider.isInitialized) {
         await settingsProvider.initialize();
-        logInfo('SettingsProvider initialized successfully', tag: 'WELCOME_SCREEN');
+        logInfo('SettingsProvider initialized successfully',
+            tag: 'WELCOME_SCREEN');
       }
 
       setState(() => _statusText = l10n.checkingAuthentication);
@@ -181,7 +185,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
       if (token == null) {
         // No token - new user, go to login
-        logInfo('No authentication token found - redirecting to login', tag: 'WELCOME_SCREEN');
+        logInfo('No authentication token found - redirecting to login',
+            tag: 'WELCOME_SCREEN');
         setState(() => _statusText = l10n.welcomeToMita);
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToLogin();
@@ -197,7 +202,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
 
       // Check if user has completed onboarding using provider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
-      logInfo('Onboarding status from UserProvider: $hasOnboarded', tag: 'WELCOME_SCREEN');
+      logInfo('Onboarding status from UserProvider: $hasOnboarded',
+          tag: 'WELCOME_SCREEN');
 
       if (hasOnboarded) {
         setState(() => _statusText = l10n.loadingDashboard);
@@ -310,7 +316,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+                                        color: theme.colorScheme.secondary
+                                            .withValues(alpha: 0.3),
                                         blurRadius: 20,
                                         spreadRadius: 5,
                                       ),
@@ -320,7 +327,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                                     child: Image.asset(
                                       'assets/logo/mitalogo.png',
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
                                         return Container(
                                           decoration: BoxDecoration(
                                             color: theme.colorScheme.secondary,
@@ -363,7 +371,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                                         letterSpacing: 3,
                                         height: 1.2,
                                       ),
-                                      semanticsLabel: 'MITA - Money Intelligence Task Assistant',
+                                      semanticsLabel:
+                                          'MITA - Money Intelligence Task Assistant',
                                     ),
                                     SizedBox(height: isLargeScreen ? 16 : 12),
                                     Text(
@@ -373,7 +382,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                                         fontFamily: AppTypography.fontBody,
                                         fontWeight: FontWeight.w400,
                                         fontSize: isLargeScreen ? 20 : 18,
-                                        color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
+                                        color: theme.colorScheme.onPrimary
+                                            .withValues(alpha: 0.9),
                                         letterSpacing: 0.5,
                                         height: 1.4,
                                       ),
@@ -410,7 +420,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                           fontSize: 16,
                           color: _hasError
                               ? theme.colorScheme.error
-                              : theme.colorScheme.onPrimary.withValues(alpha: 0.8),
+                              : theme.colorScheme.onPrimary
+                                  .withValues(alpha: 0.8),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -426,9 +437,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
                           width: 200,
                           child: LinearProgressIndicator(
                             value: _hasError ? 1.0 : _progressValue.value,
-                            backgroundColor: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
+                            backgroundColor: theme.colorScheme.onPrimary
+                                .withValues(alpha: 0.2),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              _hasError ? theme.colorScheme.error : theme.colorScheme.secondary,
+                              _hasError
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.secondary,
                             ),
                             borderRadius: BorderRadius.circular(2),
                           ),

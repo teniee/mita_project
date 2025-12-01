@@ -25,7 +25,8 @@ class PredictiveAnalyticsWidget extends StatefulWidget {
   });
 
   @override
-  State<PredictiveAnalyticsWidget> createState() => _PredictiveAnalyticsWidgetState();
+  State<PredictiveAnalyticsWidget> createState() =>
+      _PredictiveAnalyticsWidgetState();
 }
 
 class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
@@ -114,8 +115,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       setState(() {
         _predictiveAnalytics = {
           'spending_prediction': spendingPrediction,
-          'behavior_predictions':
-              <String, dynamic>{}, // Can be populated with getBehavioralPredictions
+          'behavior_predictions': <String,
+              dynamic>{}, // Can be populated with getBehavioralPredictions
         };
 
         _riskAssessment = {
@@ -133,7 +134,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
       _chartAnimationController.forward();
       _riskAnimationController.forward();
     } catch (e) {
-      logError('Failed to load predictive analytics: $e', tag: 'PREDICTIVE_WIDGET');
+      logError('Failed to load predictive analytics: $e',
+          tag: 'PREDICTIVE_WIDGET');
       setState(() {
         _predictiveAnalytics = null;
         _riskAssessment = null;
@@ -229,14 +231,16 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                 _buildRiskAssessmentSection(),
 
               // Spending Prediction Section
-              if (widget.showSpendingPrediction && _predictiveAnalytics != null) ...[
+              if (widget.showSpendingPrediction &&
+                  _predictiveAnalytics != null) ...[
                 if (widget.showRiskAssessment && _riskAssessment != null)
                   const SizedBox(height: 20),
                 _buildSpendingPredictionSection(),
               ],
 
               // Behavioral Predictions Section
-              if (widget.showBehavioralPredictions && _predictiveAnalytics != null) ...[
+              if (widget.showBehavioralPredictions &&
+                  _predictiveAnalytics != null) ...[
                 const SizedBox(height: 20),
                 _buildBehavioralPredictionsSection(),
               ],
@@ -278,7 +282,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   fontFamily: AppTypography.fontBody,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? AppColors.indigo : AppColors.textLightMuted,
+                  color:
+                      isSelected ? AppColors.indigo : AppColors.textLightMuted,
                 ),
               ),
             ),
@@ -289,9 +294,11 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   }
 
   Widget _buildRiskAssessmentSection() {
-    final riskScore = (_riskAssessment!['risk_score'] as num?)?.toDouble() ?? 0.0;
+    final riskScore =
+        (_riskAssessment!['risk_score'] as num?)?.toDouble() ?? 0.0;
     final riskLevel = _riskAssessment!['risk_level'] as String? ?? 'moderate';
-    final recommendations = _riskAssessment!['recommendations'] as List<dynamic>? ?? [];
+    final recommendations =
+        _riskAssessment!['recommendations'] as List<dynamic>? ?? [];
 
     return AnimatedBuilder(
       animation: _riskAnimation,
@@ -470,9 +477,12 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
 
   Widget _buildSpendingPredictionSection() {
     final spendingPrediction =
-        _predictiveAnalytics!['spending_prediction'] as Map<String, dynamic>? ?? {};
-    final predictedAmount = (spendingPrediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
-    final confidence = (spendingPrediction['confidence'] as num?)?.toDouble() ?? 0.0;
+        _predictiveAnalytics!['spending_prediction'] as Map<String, dynamic>? ??
+            {};
+    final predictedAmount =
+        (spendingPrediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
+    final confidence =
+        (spendingPrediction['confidence'] as num?)?.toDouble() ?? 0.0;
 
     return AnimatedBuilder(
       animation: _chartAnimation,
@@ -542,7 +552,8 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceLight20,
                     borderRadius: BorderRadius.circular(12),
@@ -568,8 +579,9 @@ class _PredictiveAnalyticsWidgetState extends State<PredictiveAnalyticsWidget>
   Widget _buildBehavioralPredictionsSection() {
     // TODO: Use behaviorPredictions when backend provides data
     // ignore: unused_local_variable
-    final behaviorPredictions =
-        _predictiveAnalytics!['behavior_predictions'] as Map<String, dynamic>? ?? {};
+    final behaviorPredictions = _predictiveAnalytics!['behavior_predictions']
+            as Map<String, dynamic>? ??
+        {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,7 +723,8 @@ class SpendingChartPainter extends CustomPainter {
       final baseY = size.height * 0.7;
       final variationY = (math.sin(i * 0.3) * 15) + (i * 2);
       final y = baseY - variationY;
-      points.add(Offset(x, y * animationProgress + size.height * (1 - animationProgress)));
+      points.add(Offset(
+          x, y * animationProgress + size.height * (1 - animationProgress)));
     }
 
     // Draw the path

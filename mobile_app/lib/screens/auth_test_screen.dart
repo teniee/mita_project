@@ -97,7 +97,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       dio.options.connectTimeout = const Duration(seconds: 8);
       dio.options.receiveTimeout = const Duration(seconds: 8);
 
-      final response = await dio.get<Map<String, dynamic>>('$defaultApiBaseUrl/../health');
+      final response =
+          await dio.get<Map<String, dynamic>>('$defaultApiBaseUrl/../health');
 
       if (response.statusCode == 200) {
         final data = response.data ?? <String, dynamic>{};
@@ -107,7 +108,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         _addTestResult('Backend Connectivity', true,
             'Backend online (status: $status, DB: ${dbConnected ? 'connected' : 'disconnected'})');
       } else {
-        _addTestResult('Backend Connectivity', false, 'Unexpected status: ${response.statusCode}');
+        _addTestResult('Backend Connectivity', false,
+            'Unexpected status: ${response.statusCode}');
       }
     } catch (e) {
       _addTestResult('Backend Connectivity', false, 'Failed to connect: $e');
@@ -132,11 +134,13 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       }
 
       if (!baseUrl.contains('mita-docker-ready-project-manus.onrender.com')) {
-        _addTestResult('API Configuration', false, 'Base URL does not match expected backend');
+        _addTestResult('API Configuration', false,
+            'Base URL does not match expected backend');
         return;
       }
 
-      _addTestResult('API Configuration', true, 'API configured correctly: $baseUrl');
+      _addTestResult(
+          'API Configuration', true, 'API configured correctly: $baseUrl');
     } catch (e) {
       _addTestResult('API Configuration', false, 'Configuration error: $e');
     }
@@ -150,14 +154,17 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       await _api.login('invalid@test.com', 'wrongpassword');
 
       // If we get here, something is wrong (should have thrown 401)
-      _addTestResult('Login Endpoint', false, 'Login succeeded with invalid credentials');
+      _addTestResult(
+          'Login Endpoint', false, 'Login succeeded with invalid credentials');
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
-        _addTestResult('Login Endpoint', true, 'Endpoint accessible (401 as expected)');
-      } else if (e is DioException && e.response?.statusCode != null) {
         _addTestResult(
-            'Login Endpoint', true, 'Endpoint accessible (status: ${e.response?.statusCode})');
-      } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
+            'Login Endpoint', true, 'Endpoint accessible (401 as expected)');
+      } else if (e is DioException && e.response?.statusCode != null) {
+        _addTestResult('Login Endpoint', true,
+            'Endpoint accessible (status: ${e.response?.statusCode})');
+      } else if (e.toString().contains('timeout') ||
+          e.toString().contains('TimeoutException')) {
         _addTestResult('Login Endpoint', false, 'Endpoint timeout: $e');
       } else {
         _addTestResult('Login Endpoint', false, 'Connection failed: $e');
@@ -170,25 +177,31 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
 
     try {
       // Use test email to test endpoint (expect 409 if already exists)
-      final randomEmail = 'test${DateTime.now().millisecondsSinceEpoch}@mita.test';
+      final randomEmail =
+          'test${DateTime.now().millisecondsSinceEpoch}@mita.test';
       await _api.register(randomEmail, _testPassword);
 
-      _addTestResult('Registration Endpoint', true, 'Registration endpoint accessible and working');
+      _addTestResult('Registration Endpoint', true,
+          'Registration endpoint accessible and working');
     } catch (e) {
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
         if (statusCode == 409 || statusCode == 422) {
-          _addTestResult(
-              'Registration Endpoint', true, 'Endpoint accessible (conflict as expected)');
+          _addTestResult('Registration Endpoint', true,
+              'Endpoint accessible (conflict as expected)');
         } else if (statusCode == 400) {
-          _addTestResult('Registration Endpoint', true, 'Endpoint accessible (validation working)');
+          _addTestResult('Registration Endpoint', true,
+              'Endpoint accessible (validation working)');
         } else if (statusCode != null) {
+          _addTestResult('Registration Endpoint', true,
+              'Endpoint accessible (status: $statusCode)');
+        } else if (e.toString().contains('timeout') ||
+            e.toString().contains('TimeoutException')) {
           _addTestResult(
-              'Registration Endpoint', true, 'Endpoint accessible (status: $statusCode)');
-        } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
-          _addTestResult('Registration Endpoint', false, 'Endpoint timeout: $e');
+              'Registration Endpoint', false, 'Endpoint timeout: $e');
         } else {
-          _addTestResult('Registration Endpoint', false, 'Connection failed: $e');
+          _addTestResult(
+              'Registration Endpoint', false, 'Connection failed: $e');
         }
       } else {
         _addTestResult('Registration Endpoint', false, 'Unexpected error: $e');
@@ -201,11 +214,12 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
 
     try {
       // Test FastAPI registration endpoint with random email
-      final randomEmail = 'fastapi${DateTime.now().millisecondsSinceEpoch}@mita.test';
+      final randomEmail =
+          'fastapi${DateTime.now().millisecondsSinceEpoch}@mita.test';
       await _api.register(randomEmail, _testPassword);
 
-      _addTestResult(
-          'FastAPI Registration', true, 'FastAPI registration endpoint accessible and working');
+      _addTestResult('FastAPI Registration', true,
+          'FastAPI registration endpoint accessible and working');
     } catch (e) {
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
@@ -213,16 +227,18 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
           _addTestResult('FastAPI Registration', true,
               'FastAPI registration endpoint accessible (conflict expected)');
         } else if (statusCode == 404) {
-          _addTestResult(
-              'FastAPI Registration', false, 'FastAPI registration endpoint not found (404)');
+          _addTestResult('FastAPI Registration', false,
+              'FastAPI registration endpoint not found (404)');
         } else if (statusCode != null) {
           _addTestResult('FastAPI Registration', true,
               'FastAPI registration endpoint accessible (status: $statusCode)');
-        } else if (e.toString().contains('timeout') || e.toString().contains('TimeoutException')) {
-          _addTestResult(
-              'FastAPI Registration', false, 'FastAPI registration endpoint timeout: $e');
+        } else if (e.toString().contains('timeout') ||
+            e.toString().contains('TimeoutException')) {
+          _addTestResult('FastAPI Registration', false,
+              'FastAPI registration endpoint timeout: $e');
         } else {
-          _addTestResult('FastAPI Registration', false, 'Connection failed: $e');
+          _addTestResult(
+              'FastAPI Registration', false, 'Connection failed: $e');
         }
       } else {
         _addTestResult('FastAPI Registration', false, 'Unexpected error: $e');
@@ -237,22 +253,25 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       // Create a custom dio instance with very short timeout to test timeout handling
       final testDio = Dio();
       testDio.options.baseUrl = defaultApiBaseUrl;
-      testDio.options.connectTimeout = const Duration(milliseconds: 1); // Very short timeout
+      testDio.options.connectTimeout =
+          const Duration(milliseconds: 1); // Very short timeout
       testDio.options.receiveTimeout = const Duration(milliseconds: 1);
 
-      await testDio
-          .post<Map<String, dynamic>>('/auth/login', data: {'email': 'test', 'password': 'test'});
+      await testDio.post<Map<String, dynamic>>('/auth/login',
+          data: {'email': 'test', 'password': 'test'});
 
-      _addTestResult('Timeout Handling', false, 'Expected timeout did not occur');
+      _addTestResult(
+          'Timeout Handling', false, 'Expected timeout did not occur');
     } catch (e) {
       if (e is DioException &&
           (e.type == DioExceptionType.connectionTimeout ||
               e.type == DioExceptionType.receiveTimeout ||
               e.type == DioExceptionType.sendTimeout)) {
-        _addTestResult('Timeout Handling', true, 'Timeout handling working correctly');
-      } else {
         _addTestResult(
-            'Timeout Handling', true, 'Error handling working (different error: ${e.runtimeType})');
+            'Timeout Handling', true, 'Timeout handling working correctly');
+      } else {
+        _addTestResult('Timeout Handling', true,
+            'Error handling working (different error: ${e.runtimeType})');
       }
     }
   }
@@ -268,12 +287,15 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
 
       await testDio.get<Map<String, dynamic>>('/test');
 
-      _addTestResult('Error Handling', false, 'Expected connection error did not occur');
+      _addTestResult(
+          'Error Handling', false, 'Expected connection error did not occur');
     } catch (e) {
       if (e is DioException && e.type == DioExceptionType.connectionError) {
-        _addTestResult('Error Handling', true, 'Connection error handling working');
+        _addTestResult(
+            'Error Handling', true, 'Connection error handling working');
       } else {
-        _addTestResult('Error Handling', true, 'Error handling working (error: ${e.runtimeType})');
+        _addTestResult('Error Handling', true,
+            'Error handling working (error: ${e.runtimeType})');
       }
     }
   }
@@ -285,13 +307,15 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       // Check if we have stored tokens first
       final token = await _api.getToken();
       if (token == null) {
-        _addTestResult('Onboarding Check', true, 'No stored tokens (expected without login)');
+        _addTestResult('Onboarding Check', true,
+            'No stored tokens (expected without login)');
         return;
       }
 
       // Try onboarding check with stored tokens
       final hasOnboarded = await _api.hasCompletedOnboarding();
-      _addTestResult('Onboarding Check', true, 'Onboarding check successful: $hasOnboarded');
+      _addTestResult('Onboarding Check', true,
+          'Onboarding check successful: $hasOnboarded');
     } catch (e) {
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
@@ -299,13 +323,15 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
           _addTestResult('Onboarding Check', true,
               'Onboarding endpoint working (401 for invalid/missing token)');
         } else if (statusCode == 404) {
-          _addTestResult('Onboarding Check', false, 'Onboarding endpoint not found (404)');
-        } else {
           _addTestResult(
-              'Onboarding Check', true, 'Onboarding endpoint accessible (status: $statusCode)');
+              'Onboarding Check', false, 'Onboarding endpoint not found (404)');
+        } else {
+          _addTestResult('Onboarding Check', true,
+              'Onboarding endpoint accessible (status: $statusCode)');
         }
       } else {
-        _addTestResult('Onboarding Check', false, 'Onboarding check failed: $e');
+        _addTestResult(
+            'Onboarding Check', false, 'Onboarding check failed: $e');
       }
     }
   }
@@ -356,23 +382,28 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         responseDetails += '\nKeys: ${data.keys.toList()}';
 
         // Check for tokens
-        final accessToken = data['access_token'] ?? data['data']?['access_token'];
-        final refreshToken = data['refresh_token'] ?? data['data']?['refresh_token'];
+        final accessToken =
+            data['access_token'] ?? data['data']?['access_token'];
+        final refreshToken =
+            data['refresh_token'] ?? data['data']?['refresh_token'];
 
         if (accessToken != null) {
-          responseDetails += '\nAccess token: Present (${accessToken.toString().length} chars)';
+          responseDetails +=
+              '\nAccess token: Present (${accessToken.toString().length} chars)';
         } else {
           responseDetails += '\nAccess token: MISSING';
         }
 
         if (refreshToken != null) {
-          responseDetails += '\nRefresh token: Present (${refreshToken.toString().length} chars)';
+          responseDetails +=
+              '\nRefresh token: Present (${refreshToken.toString().length} chars)';
         } else {
           responseDetails += '\nRefresh token: MISSING';
         }
       }
 
-      _addTestResult('Manual Login', true, 'Login successful: $responseDetails');
+      _addTestResult(
+          'Manual Login', true, 'Login successful: $responseDetails');
 
       // Show success message
       if (mounted) {
@@ -385,8 +416,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
       }
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 401) {
-        _addTestResult(
-            'Manual Login', true, 'Login endpoint working (401 for invalid credentials)');
+        _addTestResult('Manual Login', true,
+            'Login endpoint working (401 for invalid credentials)');
       } else {
         _addTestResult('Manual Login', false, 'Login failed: $e');
       }
@@ -428,10 +459,11 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
 
     try {
       // Add timestamp to make email unique
-      final uniqueEmail = email.replaceFirst('@', '+${DateTime.now().millisecondsSinceEpoch}@');
+      final uniqueEmail =
+          email.replaceFirst('@', '+${DateTime.now().millisecondsSinceEpoch}@');
       final response = await _api.register(uniqueEmail, password);
-      _addTestResult(
-          'Manual Registration', true, 'Registration successful: ${response.statusCode}');
+      _addTestResult('Manual Registration', true,
+          'Registration successful: ${response.statusCode}');
 
       // Show success message
       if (mounted) {
@@ -443,9 +475,10 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
         );
       }
     } catch (e) {
-      if (e is DioException && (e.response?.statusCode == 409 || e.response?.statusCode == 422)) {
-        _addTestResult(
-            'Manual Registration', true, 'Registration endpoint working (conflict expected)');
+      if (e is DioException &&
+          (e.response?.statusCode == 409 || e.response?.statusCode == 422)) {
+        _addTestResult('Manual Registration', true,
+            'Registration endpoint working (conflict expected)');
       } else {
         _addTestResult('Manual Registration', false, 'Registration failed: $e');
       }
@@ -612,8 +645,11 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                     // Run tests button
                     FilledButton.icon(
                       onPressed: _testingInProgress ? null : _runAllTests,
-                      icon: Icon(_testingInProgress ? Icons.hourglass_top : Icons.play_arrow),
-                      label: Text(_testingInProgress ? 'Testing...' : 'Run All Tests'),
+                      icon: Icon(_testingInProgress
+                          ? Icons.hourglass_top
+                          : Icons.play_arrow),
+                      label: Text(
+                          _testingInProgress ? 'Testing...' : 'Run All Tests'),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -677,7 +713,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _testingInProgress ? null : _testManualLogin,
+                            onPressed:
+                                _testingInProgress ? null : _testManualLogin,
                             icon: const Icon(Icons.login),
                             label: const Text('Test Login'),
                           ),
@@ -685,7 +722,9 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _testingInProgress ? null : _testManualRegistration,
+                            onPressed: _testingInProgress
+                                ? null
+                                : _testManualRegistration,
                             icon: const Icon(Icons.person_add),
                             label: const Text('Test Register'),
                           ),
@@ -725,7 +764,8 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                               icon: const Icon(Icons.clear_all, size: 16),
                               label: const Text('Clear'),
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                               ),
                             ),
                         ],
@@ -740,20 +780,23 @@ class _AuthTestScreenState extends State<AuthTestScreen> {
                                 Icon(
                                   Icons.science_outlined,
                                   size: 48,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.3),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No test results yet',
                                   style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Run tests to see results here',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
                                   ),
                                 ),
                               ],

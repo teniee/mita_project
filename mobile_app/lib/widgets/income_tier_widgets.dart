@@ -74,7 +74,10 @@ class IncomeTierCard extends StatelessWidget {
                           children: [
                             Text(
                               tierName,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: primaryColor,
                                     fontFamily: AppTypography.fontHeading,
@@ -83,7 +86,10 @@ class IncomeTierCard extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               rangeString,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
                                     color: primaryColor.withValues(alpha: 0.8),
                                     fontFamily: AppTypography.fontBody,
                                   ),
@@ -143,19 +149,21 @@ class IncomeTierCard extends StatelessWidget {
                       children: [
                         Text(
                           'Income Tier',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '\$${monthlyIncome.toStringAsFixed(0)} monthly',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.blue.withValues(alpha: 0.8),
-                                fontFamily: AppTypography.fontBody,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.blue.withValues(alpha: 0.8),
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
                         ),
                       ],
                     ),
@@ -363,8 +371,9 @@ class PeerComparisonCard extends StatelessWidget {
       final insights = List<String>.from(comparisonData['insights'] ?? []);
 
       final isAboveAverage = yourSpending > peerAverage;
-      final difference =
-          peerAverage > 0 ? ((yourSpending - peerAverage) / peerAverage * 100).abs() : 0.0;
+      final difference = peerAverage > 0
+          ? ((yourSpending - peerAverage) / peerAverage * 100).abs()
+          : 0.0;
 
       return Card(
         elevation: 3,
@@ -391,17 +400,19 @@ class PeerComparisonCard extends StatelessWidget {
                       children: [
                         Text(
                           'Compare with $tierName Peers',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                         ),
                         Text(
                           'You\'re in the ${percentile}th percentile',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: primaryColor,
-                                fontFamily: AppTypography.fontBody,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: primaryColor,
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
                         ),
                       ],
                     ),
@@ -425,14 +436,18 @@ class PeerComparisonCard extends StatelessWidget {
                         children: [
                           Text(
                             'Your Spending',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontFamily: AppTypography.fontBody,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                      fontFamily: AppTypography.fontBody,
+                                    ),
                           ),
                           Text(
                             '\$${yourSpending.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontFamily: AppTypography.fontHeading,
                                 ),
@@ -441,15 +456,20 @@ class PeerComparisonCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isAboveAverage ? Colors.red.shade100 : Colors.green.shade100,
+                        color: isAboveAverage
+                            ? Colors.red.shade100
+                            : Colors.green.shade100,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '${isAboveAverage ? '+' : '-'}${difference.toStringAsFixed(0)}%',
                         style: TextStyle(
-                          color: isAboveAverage ? Colors.red.shade700 : Colors.green.shade700,
+                          color: isAboveAverage
+                              ? Colors.red.shade700
+                              : Colors.green.shade700,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                           fontFamily: AppTypography.fontHeading,
@@ -463,14 +483,18 @@ class PeerComparisonCard extends StatelessWidget {
                         children: [
                           Text(
                             'Peer Average',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontFamily: AppTypography.fontBody,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                      fontFamily: AppTypography.fontBody,
+                                    ),
                           ),
                           Text(
                             '\$${peerAverage.toStringAsFixed(0)}',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
                                   color: Colors.grey.shade700,
                                   fontWeight: FontWeight.bold,
                                   fontFamily: AppTypography.fontHeading,
@@ -511,7 +535,10 @@ class PeerComparisonCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               insight,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
                                     fontFamily: AppTypography.fontBody,
                                   ),
                             ),
@@ -551,17 +578,19 @@ class PeerComparisonCard extends StatelessWidget {
                       children: [
                         Text(
                           'Peer Comparison',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                         ),
                         Text(
                           'Data will be available after more transactions',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[600],
-                                fontFamily: AppTypography.fontBody,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
                         ),
                       ],
                     ),
@@ -649,14 +678,18 @@ class IncomeBasedGoalCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   fontFamily: AppTypography.fontHeading,
                                 ),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: getPriorityColor().withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
@@ -702,10 +735,11 @@ class IncomeBasedGoalCard extends StatelessWidget {
                       ),
                       Text(
                         '\$${targetAmount.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontFamily: AppTypography.fontHeading,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
                       ),
                     ],
                   ),
@@ -723,11 +757,12 @@ class IncomeBasedGoalCard extends StatelessWidget {
                       ),
                       Text(
                         '\$${monthlyTarget.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: primaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: AppTypography.fontHeading,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
                       ),
                     ],
                   ),
@@ -808,7 +843,8 @@ class IncomeCategoryBreakdown extends StatelessWidget {
             ...categorySpending.entries.map((entry) {
               final category = entry.key;
               final amount = entry.value;
-              final percentage = incomeService.getIncomePercentage(amount, monthlyIncome);
+              final percentage =
+                  incomeService.getIncomePercentage(amount, monthlyIncome);
               final recommendedPercentage =
                   (recommendedWeights[category.toLowerCase()] ?? 0.1) * 100;
               final isOverRecommended = percentage > recommendedPercentage;
@@ -823,24 +859,29 @@ class IncomeCategoryBreakdown extends StatelessWidget {
                       children: [
                         Text(
                           category.toUpperCase(),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                         ),
                         Text(
                           '${percentage.toStringAsFixed(1)}% of income',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: isOverRecommended ? Colors.red.shade600 : primaryColor,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: isOverRecommended
+                                        ? Colors.red.shade600
+                                        : primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: AppTypography.fontHeading,
+                                  ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     LinearProgressIndicator(
-                      value: (percentage / 50).clamp(0.0, 1.0), // Max 50% for visualization
+                      value: (percentage / 50)
+                          .clamp(0.0, 1.0), // Max 50% for visualization
                       backgroundColor: Colors.grey.shade200,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         isOverRecommended ? Colors.red.shade400 : primaryColor,
@@ -853,7 +894,9 @@ class IncomeCategoryBreakdown extends StatelessWidget {
                           ? '${(percentage - recommendedPercentage).toStringAsFixed(1)}% above recommended'
                           : '${(recommendedPercentage - percentage).toStringAsFixed(1)}% below recommended',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isOverRecommended ? Colors.red.shade600 : Colors.green.shade600,
+                            color: isOverRecommended
+                                ? Colors.red.shade600
+                                : Colors.green.shade600,
                             fontFamily: AppTypography.fontBody,
                           ),
                     ),

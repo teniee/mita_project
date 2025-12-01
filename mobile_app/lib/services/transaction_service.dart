@@ -40,8 +40,8 @@ class TransactionService {
         queryParams['category'] = category;
       }
 
-      final uri =
-          Uri.parse('${AppConfig.fullApiUrl}/transactions').replace(queryParameters: queryParams);
+      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions')
+          .replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,
@@ -59,7 +59,8 @@ class TransactionService {
         if (data is Map && data.containsKey('data')) {
           if (data['data'] is List) {
             transactionList = data['data'] as List<dynamic>;
-          } else if (data['data'] is Map && data['data']['transactions'] != null) {
+          } else if (data['data'] is Map &&
+              data['data']['transactions'] != null) {
             transactionList = data['data']['transactions'] as List<dynamic>;
           } else {
             transactionList = [];
@@ -71,7 +72,8 @@ class TransactionService {
         }
 
         return transactionList
-            .map((json) => TransactionModel.fromJson(json as Map<String, dynamic>))
+            .map((json) =>
+                TransactionModel.fromJson(json as Map<String, dynamic>))
             .toList();
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - please log in again');
@@ -104,9 +106,11 @@ class TransactionService {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
+        final transactionData =
+            data is Map && data.containsKey('data') ? data['data'] : data;
 
-        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
+        return TransactionModel.fromJson(
+            transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw Exception('Transaction not found');
       } else if (response.statusCode == 401) {
@@ -143,9 +147,11 @@ class TransactionService {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
+        final transactionData =
+            data is Map && data.containsKey('data') ? data['data'] : data;
 
-        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
+        return TransactionModel.fromJson(
+            transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - please log in again');
       } else if (response.statusCode == 400) {
@@ -186,9 +192,11 @@ class TransactionService {
         final data = json.decode(response.body);
 
         // Handle wrapped response
-        final transactionData = data is Map && data.containsKey('data') ? data['data'] : data;
+        final transactionData =
+            data is Map && data.containsKey('data') ? data['data'] : data;
 
-        return TransactionModel.fromJson(transactionData as Map<String, dynamic>);
+        return TransactionModel.fromJson(
+            transactionData as Map<String, dynamic>);
       } else if (response.statusCode == 404) {
         throw Exception('Transaction not found');
       } else if (response.statusCode == 401) {

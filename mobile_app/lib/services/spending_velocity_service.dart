@@ -3,7 +3,8 @@ import '../models/budget_intelligence_models.dart';
 
 /// Advanced spending velocity intelligence for adaptive budget allocation
 class SpendingVelocityService {
-  static final SpendingVelocityService _instance = SpendingVelocityService._internal();
+  static final SpendingVelocityService _instance =
+      SpendingVelocityService._internal();
   factory SpendingVelocityService() => _instance;
   SpendingVelocityService._internal();
 
@@ -15,13 +16,15 @@ class SpendingVelocityService {
     required DateTime analysisDate,
   }) async {
     // Calculate current spending velocity (spending per day)
-    final currentVelocity = _calculateCurrentVelocity(recentTransactions, analysisDate);
+    final currentVelocity =
+        _calculateCurrentVelocity(recentTransactions, analysisDate);
 
     // Calculate normal/historical velocity
     final normalVelocity = _calculateNormalVelocity(historicalTransactions);
 
     // Calculate velocity ratio
-    final velocityRatio = normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
+    final velocityRatio =
+        normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
 
     // Categorize velocity
     final velocityCategory = _categorizeVelocity(velocityRatio);
@@ -38,11 +41,12 @@ class SpendingVelocityService {
     final redistributionAmount = remainingBudgetOptimal - currentDailyBudget;
 
     // Generate insights
-    final insights =
-        _generateVelocityInsights(velocityRatio, velocityCategory, currentVelocity, normalVelocity);
+    final insights = _generateVelocityInsights(
+        velocityRatio, velocityCategory, currentVelocity, normalVelocity);
 
     // Calculate confidence based on data quality
-    final confidence = _calculateAnalysisConfidence(recentTransactions, historicalTransactions);
+    final confidence = _calculateAnalysisConfidence(
+        recentTransactions, historicalTransactions);
 
     return SpendingVelocityAnalysis(
       currentVelocity: currentVelocity,
@@ -87,14 +91,16 @@ class SpendingVelocityService {
     }
 
     // Calculate total remaining budget
-    final totalRemainingBudget = futureBudgetAllocations.values.reduce((a, b) => a + b);
+    final totalRemainingBudget =
+        futureBudgetAllocations.values.reduce((a, b) => a + b);
 
     // Generate recommendations
-    final recommendations = _generateAllocationRecommendations(velocityAnalysis, strategy);
+    final recommendations =
+        _generateAllocationRecommendations(velocityAnalysis, strategy);
 
     // Calculate system confidence
-    final systemConfidence =
-        velocityAnalysis.confidence * 0.9; // Slightly lower for allocation predictions
+    final systemConfidence = velocityAnalysis.confidence *
+        0.9; // Slightly lower for allocation predictions
 
     return AdaptiveBudgetAllocation(
       originalDailyBudget: dailyBaseAllocation,
@@ -123,7 +129,8 @@ class SpendingVelocityService {
     final spendingVariance = _calculateVariance(dailySpending.values.toList());
 
     if (spendingVariance > 50) {
-      patterns.add('High spending variability detected - consider more consistent budgeting');
+      patterns.add(
+          'High spending variability detected - consider more consistent budgeting');
     } else if (spendingVariance < 10) {
       patterns.add('Very consistent spending pattern - good budget discipline');
     }
@@ -152,14 +159,16 @@ class SpendingVelocityService {
     // Calculate spending over the last 7 days
     final cutoffDate = analysisDate.subtract(const Duration(days: 7));
     final recentSpending = recentTransactions.where((t) {
-      final date = DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
+      final date =
+          DateTime.tryParse(t['date']?.toString() ?? '') ?? DateTime.now();
       return date.isAfter(cutoffDate);
     }).fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
 
     return recentSpending / 7; // Daily average over last 7 days
   }
 
-  double _calculateNormalVelocity(List<Map<String, dynamic>> historicalTransactions) {
+  double _calculateNormalVelocity(
+      List<Map<String, dynamic>> historicalTransactions) {
     if (historicalTransactions.isEmpty) return 0.0;
 
     final totalSpending = historicalTransactions.fold(
@@ -197,7 +206,8 @@ class SpendingVelocityService {
     DateTime analysisDate,
   ) {
     // Base calculation on velocity ratio
-    final velocityRatio = normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
+    final velocityRatio =
+        normalVelocity > 0 ? currentVelocity / normalVelocity : 1.0;
 
     // Apply velocity-based adjustment
     var adjustmentFactor = 1.0;
@@ -254,8 +264,10 @@ class SpendingVelocityService {
         insights.add('Good budget adherence - maintain current patterns');
         break;
       case 'low':
-        insights.add('Spending velocity is ${((1 - velocityRatio) * 100).round()}% below normal');
-        insights.add('Opportunity to increase flexible spending or boost savings');
+        insights.add(
+            'Spending velocity is ${((1 - velocityRatio) * 100).round()}% below normal');
+        insights
+            .add('Opportunity to increase flexible spending or boost savings');
         break;
       case 'very_low':
         insights.add(
@@ -376,7 +388,8 @@ class SpendingVelocityService {
     final dailySpending = <String, double>{};
 
     for (final transaction in transactions) {
-      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ??
+          DateTime.now();
       final dateKey = '${date.year}-${date.month}-${date.day}';
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
 
@@ -399,7 +412,8 @@ class SpendingVelocityService {
     final weekendSpending = <double>[];
 
     for (final transaction in transactions) {
-      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final date = DateTime.tryParse(transaction['date']?.toString() ?? '') ??
+          DateTime.now();
       final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
 
       if (date.weekday >= 6) {
@@ -411,8 +425,10 @@ class SpendingVelocityService {
 
     if (weekdaySpending.isEmpty || weekendSpending.isEmpty) return '';
 
-    final weekdayAvg = weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
-    final weekendAvg = weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
+    final weekdayAvg =
+        weekdaySpending.reduce((a, b) => a + b) / weekdaySpending.length;
+    final weekendAvg =
+        weekendSpending.reduce((a, b) => a + b) / weekendSpending.length;
 
     if (weekendAvg > weekdayAvg * 1.2) {
       return 'Weekend spending is ${((weekendAvg / weekdayAvg - 1) * 100).round()}% higher than weekdays';
@@ -429,8 +445,10 @@ class SpendingVelocityService {
     // Sort transactions by date
     final sortedTransactions = List<Map<String, dynamic>>.from(transactions);
     sortedTransactions.sort((a, b) {
-      final dateA = DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime.now();
-      final dateB = DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime.now();
+      final dateA =
+          DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime.now();
+      final dateB =
+          DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime.now();
       return dateA.compareTo(dateB);
     });
 
@@ -441,11 +459,13 @@ class SpendingVelocityService {
 
     final firstHalfAvg = firstHalf.isEmpty
         ? 0.0
-        : firstHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
+        : firstHalf.fold(0.0,
+                (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
             firstHalf.length;
     final secondHalfAvg = secondHalf.isEmpty
         ? 0.0
-        : secondHalf.fold(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
+        : secondHalf.fold(0.0,
+                (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0)) /
             secondHalf.length;
 
     if (secondHalfAvg > firstHalfAvg * 1.15) {

@@ -4,32 +4,37 @@ import 'package:mita/screens/calendar_screen.dart';
 
 void main() {
   group('Calendar Screen Tests', () {
-    testWidgets('Calendar shows loading indicator initially', (WidgetTester tester) async {
+    testWidgets('Calendar shows loading indicator initially',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('Calendar shows app bar with correct title', (WidgetTester tester) async {
+    testWidgets('Calendar shows app bar with correct title',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.textContaining('Calendar'), findsOneWidget);
     });
 
-    testWidgets('Calendar shows refresh button in app bar', (WidgetTester tester) async {
+    testWidgets('Calendar shows refresh button in app bar',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
     });
 
-    testWidgets('Calendar shows settings button in app bar', (WidgetTester tester) async {
+    testWidgets('Calendar shows settings button in app bar',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       expect(find.byIcon(Icons.settings), findsOneWidget);
     });
 
-    testWidgets('Calendar shows floating action button', (WidgetTester tester) async {
+    testWidgets('Calendar shows floating action button',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -62,7 +67,8 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('Calendar shows weekday headers when data loads', (WidgetTester tester) async {
+    testWidgets('Calendar shows weekday headers when data loads',
+        (WidgetTester tester) async {
       await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
       // Wait for initial load and potential data
@@ -75,7 +81,8 @@ void main() {
     });
 
     group('Error State Tests', () {
-      testWidgets('Calendar shows error state with retry button', (WidgetTester tester) async {
+      testWidgets('Calendar shows error state with retry button',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Wait for loading to complete
@@ -84,14 +91,19 @@ void main() {
 
         // Should either show error state or calendar data
         // If error state is shown, verify it has retry functionality
-        if (find.textContaining('Unable to load calendar').evaluate().isNotEmpty) {
-          expect(find.textContaining('Unable to load calendar'), findsOneWidget);
+        if (find
+            .textContaining('Unable to load calendar')
+            .evaluate()
+            .isNotEmpty) {
+          expect(
+              find.textContaining('Unable to load calendar'), findsOneWidget);
           expect(find.textContaining('Retry'), findsOneWidget);
           expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
         }
       });
 
-      testWidgets('Calendar shows empty state when no data', (WidgetTester tester) async {
+      testWidgets('Calendar shows empty state when no data',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Wait for loading to complete
@@ -99,8 +111,12 @@ void main() {
         await tester.pumpAndSettle();
 
         // Should either show empty state or calendar data
-        if (find.textContaining('No calendar data available').evaluate().isNotEmpty) {
-          expect(find.textContaining('No calendar data available'), findsOneWidget);
+        if (find
+            .textContaining('No calendar data available')
+            .evaluate()
+            .isNotEmpty) {
+          expect(find.textContaining('No calendar data available'),
+              findsOneWidget);
           expect(find.textContaining('Setup Budget'), findsOneWidget);
           expect(find.byIcon(Icons.calendar_month_rounded), findsOneWidget);
         }
@@ -108,7 +124,8 @@ void main() {
     });
 
     group('Accessibility Tests', () {
-      testWidgets('Calendar has proper semantic labels', (WidgetTester tester) async {
+      testWidgets('Calendar has proper semantic labels',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Check for semantic labels on key elements
@@ -116,7 +133,8 @@ void main() {
         expect(find.bySemanticsLabel('Add new expense'), findsOneWidget);
       });
 
-      testWidgets('Calendar buttons have tooltips', (WidgetTester tester) async {
+      testWidgets('Calendar buttons have tooltips',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Verify tooltips exist for icon buttons
@@ -133,11 +151,13 @@ void main() {
     });
 
     group('Navigation Tests', () {
-      testWidgets('Settings button navigates correctly', (WidgetTester tester) async {
+      testWidgets('Settings button navigates correctly',
+          (WidgetTester tester) async {
         await tester.pumpWidget(MaterialApp(
           home: const CalendarScreen(),
           routes: {
-            '/budget_settings': (context) => const Scaffold(body: Text('Budget Settings')),
+            '/budget_settings': (context) =>
+                const Scaffold(body: Text('Budget Settings')),
           },
         ));
 
@@ -149,11 +169,13 @@ void main() {
         expect(find.textContaining('Budget Settings'), findsOneWidget);
       });
 
-      testWidgets('Add expense button navigates correctly', (WidgetTester tester) async {
+      testWidgets('Add expense button navigates correctly',
+          (WidgetTester tester) async {
         await tester.pumpWidget(MaterialApp(
           home: const CalendarScreen(),
           routes: {
-            '/add_expense': (context) => const Scaffold(body: Text('Add Expense')),
+            '/add_expense': (context) =>
+                const Scaffold(body: Text('Add Expense')),
           },
         ));
 
@@ -167,7 +189,8 @@ void main() {
     });
 
     group('Performance Tests', () {
-      testWidgets('Calendar renders without performance issues', (WidgetTester tester) async {
+      testWidgets('Calendar renders without performance issues',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Measure render time
@@ -179,7 +202,8 @@ void main() {
         expect(stopwatch.elapsedMilliseconds, lessThan(100));
       });
 
-      testWidgets('Calendar handles rapid refresh without issues', (WidgetTester tester) async {
+      testWidgets('Calendar handles rapid refresh without issues',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Rapidly tap refresh multiple times
@@ -194,7 +218,8 @@ void main() {
     });
 
     group('Widget State Tests', () {
-      testWidgets('Calendar maintains state during rebuild', (WidgetTester tester) async {
+      testWidgets('Calendar maintains state during rebuild',
+          (WidgetTester tester) async {
         await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
 
         // Wait for initial state

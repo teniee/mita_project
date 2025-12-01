@@ -55,8 +55,10 @@ class GoalsProvider extends ChangeNotifier {
   int get totalGoals => _statistics['total_goals'] as int? ?? 0;
   int get activeGoals => _statistics['active_goals'] as int? ?? 0;
   int get completedGoals => _statistics['completed_goals'] as int? ?? 0;
-  double get completionRate => (_statistics['completion_rate'] as num?)?.toDouble() ?? 0.0;
-  double get averageProgress => (_statistics['average_progress'] as num?)?.toDouble() ?? 0.0;
+  double get completionRate =>
+      (_statistics['completion_rate'] as num?)?.toDouble() ?? 0.0;
+  double get averageProgress =>
+      (_statistics['average_progress'] as num?)?.toDouble() ?? 0.0;
 
   // Smart recommendations getters
   List<Map<String, dynamic>> get recommendations => _recommendations;
@@ -64,13 +66,17 @@ class GoalsProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get adjustments => _adjustments;
   bool get isLoadingRecommendations => _isLoadingRecommendations;
   bool get hasRecommendations =>
-      _recommendations.isNotEmpty || _opportunities.isNotEmpty || _adjustments.isNotEmpty;
+      _recommendations.isNotEmpty ||
+      _opportunities.isNotEmpty ||
+      _adjustments.isNotEmpty;
 
   /// Get health data for a specific goal
-  Map<String, dynamic>? getGoalHealthData(String goalId) => _goalHealthData[goalId];
+  Map<String, dynamic>? getGoalHealthData(String goalId) =>
+      _goalHealthData[goalId];
 
   /// Check if health data is loading for a specific goal
-  bool isHealthDataLoading(String goalId) => _healthDataLoading[goalId] ?? false;
+  bool isHealthDataLoading(String goalId) =>
+      _healthDataLoading[goalId] ?? false;
 
   /// Check if health data exists for a specific goal
   bool hasHealthData(String goalId) => _goalHealthData.containsKey(goalId);
@@ -112,7 +118,9 @@ class GoalsProvider extends ChangeNotifier {
         category: _selectedCategory,
       );
 
-      _goals = data.map((json) => Goal.fromJson(json as Map<String, dynamic>)).toList();
+      _goals = data
+          .map((json) => Goal.fromJson(json as Map<String, dynamic>))
+          .toList();
       logInfo('Loaded ${_goals.length} goals', tag: 'GOALS_PROVIDER');
       notifyListeners();
     } catch (e) {
@@ -151,17 +159,19 @@ class GoalsProvider extends ChangeNotifier {
         _apiService.getGoalAdjustmentSuggestions(),
       ]);
 
-      _recommendations =
-          List<Map<String, dynamic>>.from(results[0]['recommendations'] as Iterable? ?? []);
-      _opportunities =
-          List<Map<String, dynamic>>.from(results[1]['opportunities'] as Iterable? ?? []);
-      _adjustments = List<Map<String, dynamic>>.from(results[2]['adjustments'] as Iterable? ?? []);
+      _recommendations = List<Map<String, dynamic>>.from(
+          results[0]['recommendations'] as Iterable? ?? []);
+      _opportunities = List<Map<String, dynamic>>.from(
+          results[1]['opportunities'] as Iterable? ?? []);
+      _adjustments = List<Map<String, dynamic>>.from(
+          results[2]['adjustments'] as Iterable? ?? []);
 
       logInfo(
           'Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments',
           tag: 'GOALS_PROVIDER');
     } catch (e) {
-      logError('Failed to load smart recommendations: $e', tag: 'GOALS_PROVIDER');
+      logError('Failed to load smart recommendations: $e',
+          tag: 'GOALS_PROVIDER');
       _errorMessage = 'Failed to load recommendations';
     } finally {
       _isLoadingRecommendations = false;
@@ -170,10 +180,12 @@ class GoalsProvider extends ChangeNotifier {
   }
 
   /// Create goal from recommendation
-  Future<bool> createGoalFromRecommendation(Map<String, dynamic> recommendation) async {
+  Future<bool> createGoalFromRecommendation(
+      Map<String, dynamic> recommendation) async {
     final data = {
       'title': recommendation['title'],
-      'description': recommendation['description'] ?? recommendation['reasoning'],
+      'description':
+          recommendation['description'] ?? recommendation['reasoning'],
       'category': recommendation['category'],
       'target_amount': recommendation['target_amount'],
       'saved_amount': 0,

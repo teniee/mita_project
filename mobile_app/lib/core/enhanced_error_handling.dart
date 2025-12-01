@@ -38,7 +38,8 @@ class EnhancedErrorHandling {
         return await operation();
       } catch (error, stackTrace) {
         bool shouldRetry = attempt < maxRetries &&
-            retryableExceptions.any((type) => error.runtimeType == type || error is DioException);
+            retryableExceptions.any(
+                (type) => error.runtimeType == type || error is DioException);
 
         logWarning(
           'Error in $opName - Attempt $attempt/$maxRetries: $error',
@@ -49,7 +50,8 @@ class EnhancedErrorHandling {
         AppErrorHandler.reportError(
           error,
           stackTrace: stackTrace,
-          severity: attempt == maxRetries ? ErrorSeverity.high : ErrorSeverity.medium,
+          severity:
+              attempt == maxRetries ? ErrorSeverity.high : ErrorSeverity.medium,
           category: category,
           context: {
             'operation': opName,
@@ -64,10 +66,12 @@ class EnhancedErrorHandling {
           Duration delay = exponentialBackoff
               ? Duration(
                   milliseconds:
-                      (retryDelay.inMilliseconds * (attempt * attempt)).clamp(1000, 30000))
+                      (retryDelay.inMilliseconds * (attempt * attempt))
+                          .clamp(1000, 30000))
               : retryDelay;
 
-          logDebug('Retrying $opName in ${delay.inSeconds}s', tag: 'ENHANCED_ERROR_HANDLING');
+          logDebug('Retrying $opName in ${delay.inSeconds}s',
+              tag: 'ENHANCED_ERROR_HANDLING');
           await Future<void>.delayed(delay);
         } else {
           logError('Final failure for $opName after $attempt attempts',
@@ -91,11 +95,13 @@ class EnhancedErrorHandling {
     String opName = operationName ?? 'Circuit Breaker Operation';
 
     try {
-      logDebug('Executing $opName with ${timeout.inSeconds}s timeout', tag: 'CIRCUIT_BREAKER');
+      logDebug('Executing $opName with ${timeout.inSeconds}s timeout',
+          tag: 'CIRCUIT_BREAKER');
 
       return await operation().timeout(timeout);
     } on TimeoutException catch (error, stackTrace) {
-      logError('Timeout in $opName after ${timeout.inSeconds}s', tag: 'CIRCUIT_BREAKER');
+      logError('Timeout in $opName after ${timeout.inSeconds}s',
+          tag: 'CIRCUIT_BREAKER');
 
       AppErrorHandler.reportError(
         error,
@@ -111,7 +117,8 @@ class EnhancedErrorHandling {
 
       return fallbackValue;
     } catch (error, stackTrace) {
-      logError('Error in $opName: $error', tag: 'CIRCUIT_BREAKER', error: error);
+      logError('Error in $opName: $error',
+          tag: 'CIRCUIT_BREAKER', error: error);
 
       AppErrorHandler.reportError(
         error,
@@ -140,7 +147,8 @@ class EnhancedErrorHandling {
     } catch (error, stackTrace) {
       String name = widgetName ?? 'Unknown Widget';
 
-      logError('Widget rendering error in $name: $error', tag: 'SAFE_WIDGET_BUILDER', error: error);
+      logError('Widget rendering error in $name: $error',
+          tag: 'SAFE_WIDGET_BUILDER', error: error);
 
       AppErrorHandler.reportUIError(
         error,
@@ -215,7 +223,8 @@ class EnhancedErrorHandling {
 class RobustErrorBoundary extends StatelessWidget {
   final Widget child;
   final String? name;
-  final Widget Function(BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
+  final Widget Function(
+      BuildContext context, Object error, StackTrace? stackTrace)? errorBuilder;
   final VoidCallback? onRetry;
   final bool showRetryButton;
   final ErrorCategory category;
@@ -290,7 +299,8 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
 
       return result;
     } catch (error, stackTrace) {
-      logError('Robust operation failed: $opName - $error', tag: 'ROBUST_MIXIN', error: error);
+      logError('Robust operation failed: $opName - $error',
+          tag: 'ROBUST_MIXIN', error: error);
 
       AppErrorHandler.reportError(
         error,
@@ -380,7 +390,9 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
             ),
             const SizedBox(height: 8),
             Text(
-              message ?? _errorMessage ?? 'An unexpected error occurred. Please try again.',
+              message ??
+                  _errorMessage ??
+                  'An unexpected error occurred. Please try again.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -393,7 +405,8 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
               ),
           ],

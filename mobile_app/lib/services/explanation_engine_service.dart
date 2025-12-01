@@ -2,7 +2,8 @@ import '../models/budget_intelligence_models.dart';
 
 /// Transparent explanation engine for budget algorithm reasoning
 class ExplanationEngineService {
-  static final ExplanationEngineService _instance = ExplanationEngineService._internal();
+  static final ExplanationEngineService _instance =
+      ExplanationEngineService._internal();
   factory ExplanationEngineService() => _instance;
   ExplanationEngineService._internal();
 
@@ -18,62 +19,81 @@ class ExplanationEngineService {
     final keyInsights = <String>[];
 
     // Step 1: Income Analysis
-    final incomeAnalysis = _explainIncomeAnalysis(inputData, calculationResults);
+    final incomeAnalysis =
+        _explainIncomeAnalysis(inputData, calculationResults);
     steps.add(incomeAnalysis['description'] as String);
     factorContributions['income'] = incomeAnalysis['impactWeight'] as double;
 
     // Step 2: Income Tier Classification
-    final tierAnalysis = _explainIncomeTierClassification(inputData, calculationResults);
+    final tierAnalysis =
+        _explainIncomeTierClassification(inputData, calculationResults);
     steps.add(tierAnalysis['description'] as String);
     factorContributions['incomeTier'] = tierAnalysis['impactWeight'] as double;
 
     // Step 3: Fixed Commitments Calculation
-    final fixedAnalysis = _explainFixedCommitmentsCalculation(inputData, calculationResults);
+    final fixedAnalysis =
+        _explainFixedCommitmentsCalculation(inputData, calculationResults);
     steps.add(fixedAnalysis['description'] as String);
-    factorContributions['fixedCommitments'] = fixedAnalysis['impactWeight'] as double;
+    factorContributions['fixedCommitments'] =
+        fixedAnalysis['impactWeight'] as double;
 
     // Step 4: Savings Target Calculation
-    final savingsAnalysis = _explainSavingsTargetCalculation(inputData, calculationResults);
+    final savingsAnalysis =
+        _explainSavingsTargetCalculation(inputData, calculationResults);
     steps.add(savingsAnalysis['description'] as String);
-    factorContributions['savingsTarget'] = savingsAnalysis['impactWeight'] as double;
+    factorContributions['savingsTarget'] =
+        savingsAnalysis['impactWeight'] as double;
 
     // Step 5: Available Spending Calculation
-    final availableAnalysis = _explainAvailableSpendingCalculation(inputData, calculationResults);
+    final availableAnalysis =
+        _explainAvailableSpendingCalculation(inputData, calculationResults);
     steps.add(availableAnalysis['description'] as String);
-    factorContributions['availableSpending'] = availableAnalysis['impactWeight'] as double;
+    factorContributions['availableSpending'] =
+        availableAnalysis['impactWeight'] as double;
 
     // Step 6: Daily Budget Derivation
-    final dailyAnalysis = _explainDailyBudgetDerivation(inputData, calculationResults);
+    final dailyAnalysis =
+        _explainDailyBudgetDerivation(inputData, calculationResults);
     steps.add(dailyAnalysis['description'] as String);
-    factorContributions['dailyCalculation'] = dailyAnalysis['impactWeight'] as double;
+    factorContributions['dailyCalculation'] =
+        dailyAnalysis['impactWeight'] as double;
 
     // Additional steps for location, goals, habits, temporal adjustments
     if (inputData['location'] != null) {
-      final locationAnalysis = _explainLocationAdjustments(inputData, calculationResults);
+      final locationAnalysis =
+          _explainLocationAdjustments(inputData, calculationResults);
       steps.add(locationAnalysis['description'] as String);
-      factorContributions['locationAdjustment'] = locationAnalysis['impactWeight'] as double;
+      factorContributions['locationAdjustment'] =
+          locationAnalysis['impactWeight'] as double;
     }
 
     if (inputData['goals'] != null) {
-      final goalsAnalysis = _explainGoalAdjustments(inputData, calculationResults);
+      final goalsAnalysis =
+          _explainGoalAdjustments(inputData, calculationResults);
       steps.add(goalsAnalysis['description'] as String);
-      factorContributions['goalAdjustments'] = goalsAnalysis['impactWeight'] as double;
+      factorContributions['goalAdjustments'] =
+          goalsAnalysis['impactWeight'] as double;
     }
 
     if (inputData['habits'] != null) {
-      final habitsAnalysis = _explainHabitCorrections(inputData, calculationResults);
+      final habitsAnalysis =
+          _explainHabitCorrections(inputData, calculationResults);
       steps.add(habitsAnalysis['description'] as String);
-      factorContributions['habitCorrections'] = habitsAnalysis['impactWeight'] as double;
+      factorContributions['habitCorrections'] =
+          habitsAnalysis['impactWeight'] as double;
     }
 
     if (inputData['temporalFactors'] != null) {
-      final temporalAnalysis = _explainTemporalAdjustments(inputData, calculationResults);
+      final temporalAnalysis =
+          _explainTemporalAdjustments(inputData, calculationResults);
       steps.add(temporalAnalysis['description'] as String);
-      factorContributions['temporalAdjustments'] = temporalAnalysis['impactWeight'] as double;
+      factorContributions['temporalAdjustments'] =
+          temporalAnalysis['impactWeight'] as double;
     }
 
     // Generate key insights
-    keyInsights.addAll(_generateKeyInsights(steps, factorContributions, context));
+    keyInsights
+        .addAll(_generateKeyInsights(steps, factorContributions, context));
 
     // Create summary explanation
     final summaryExplanation = _generateSummaryExplanation(
@@ -84,11 +104,16 @@ class ExplanationEngineService {
     );
 
     return BudgetExplanation(
-      explanationId: 'budget_explanation_${DateTime.now().millisecondsSinceEpoch}',
+      explanationId:
+          'budget_explanation_${DateTime.now().millisecondsSinceEpoch}',
       primaryExplanation: summaryExplanation,
       detailedSteps: steps,
       calculations: calculationResults,
-      assumptions: ['Income stability', 'Fixed expense estimates', 'Standard month length'],
+      assumptions: [
+        'Income stability',
+        'Fixed expense estimates',
+        'Standard month length'
+      ],
       userLevel: context.userLevel,
     );
   }
@@ -99,7 +124,8 @@ class ExplanationEngineService {
     required double monthlyIncome,
     required String userLevel,
   }) async {
-    final spendingRatio = monthlyIncome > 0 ? (dailyBudget * 30) / monthlyIncome : 0.0;
+    final spendingRatio =
+        monthlyIncome > 0 ? (dailyBudget * 30) / monthlyIncome : 0.0;
 
     String explanation;
     switch (userLevel) {
@@ -117,7 +143,8 @@ class ExplanationEngineService {
     }
 
     return BudgetExplanation(
-      explanationId: 'simple_explanation_${DateTime.now().millisecondsSinceEpoch}',
+      explanationId:
+          'simple_explanation_${DateTime.now().millisecondsSinceEpoch}',
       primaryExplanation: explanation,
       detailedSteps: [explanation],
       calculations: {
@@ -138,7 +165,8 @@ class ExplanationEngineService {
     required Map<String, dynamic> adjustmentData,
   }) async {
     final difference = adjustedBudget - originalBudget;
-    final percentChange = originalBudget > 0 ? (difference / originalBudget * 100) : 0.0;
+    final percentChange =
+        originalBudget > 0 ? (difference / originalBudget * 100) : 0.0;
 
     final explanation =
         'Your budget was ${difference > 0 ? 'increased' : 'decreased'} by \$${difference.abs().toStringAsFixed(0)} (${percentChange.abs().toStringAsFixed(0)}%) due to $adjustmentReason.';
@@ -151,7 +179,8 @@ class ExplanationEngineService {
     ];
 
     return BudgetExplanation(
-      explanationId: 'adjustment_explanation_${DateTime.now().millisecondsSinceEpoch}',
+      explanationId:
+          'adjustment_explanation_${DateTime.now().millisecondsSinceEpoch}',
       primaryExplanation: explanation,
       detailedSteps: detailedSteps,
       calculations: {
@@ -161,13 +190,17 @@ class ExplanationEngineService {
         'percentChange': percentChange,
         ...adjustmentData,
       },
-      assumptions: ['Adjustment factors are temporary', 'Budget will normalize over time'],
+      assumptions: [
+        'Adjustment factors are temporary',
+        'Budget will normalize over time'
+      ],
       userLevel: 'intermediate',
     );
   }
 
   /// Personalize explanation based on user context
-  String personalizeExplanation(String baseExplanation, ExplanationContext context) {
+  String personalizeExplanation(
+      String baseExplanation, ExplanationContext context) {
     String personalized = baseExplanation;
 
     // Adjust complexity based on user level
@@ -199,8 +232,10 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final monthlyIncome = (inputData['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
-    final adjustedIncome = (results['adjustedIncome'] as num?)?.toDouble() ?? monthlyIncome;
+    final monthlyIncome =
+        (inputData['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final adjustedIncome =
+        (results['adjustedIncome'] as num?)?.toDouble() ?? monthlyIncome;
 
     return {
       'stepNumber': 1,
@@ -220,7 +255,8 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final monthlyIncome = (inputData['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (inputData['monthlyIncome'] as num?)?.toDouble() ?? 0.0;
     final incomeTier = results['incomeTier']?.toString() ?? 'middle';
     final tierName = _getTierDisplayName(incomeTier);
 
@@ -231,7 +267,8 @@ class ExplanationEngineService {
           'Your income places you in the $tierName category, which determines your budget parameters and spending ratios.',
       'inputValue': monthlyIncome,
       'outputValue': _getTierNumericValue(incomeTier),
-      'formula': 'Income Tier = Classification(Monthly Income, Location Adjustments)',
+      'formula':
+          'Income Tier = Classification(Monthly Income, Location Adjustments)',
       'reasoning':
           'Income tiers help us apply research-based budget ratios that work best for people in similar financial situations.',
       'impactWeight': 0.25,
@@ -242,8 +279,10 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final adjustedIncome = (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
-    final fixedCommitmentRatio = (results['fixedCommitmentRatio'] as num?)?.toDouble() ?? 0.5;
+    final adjustedIncome =
+        (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
+    final fixedCommitmentRatio =
+        (results['fixedCommitmentRatio'] as num?)?.toDouble() ?? 0.5;
     final fixedCommitments = adjustedIncome * fixedCommitmentRatio;
 
     return {
@@ -264,8 +303,10 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final adjustedIncome = (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
-    final savingsTargetRatio = (results['savingsTargetRatio'] as num?)?.toDouble() ?? 0.15;
+    final adjustedIncome =
+        (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
+    final savingsTargetRatio =
+        (results['savingsTargetRatio'] as num?)?.toDouble() ?? 0.15;
     final savingsTarget = adjustedIncome * savingsTargetRatio;
 
     return {
@@ -286,8 +327,10 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final adjustedIncome = (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
-    final fixedCommitments = (results['fixedCommitments'] as num?)?.toDouble() ?? 0.0;
+    final adjustedIncome =
+        (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
+    final fixedCommitments =
+        (results['fixedCommitments'] as num?)?.toDouble() ?? 0.0;
     final savingsTarget = (results['savingsTarget'] as num?)?.toDouble() ?? 0.0;
     final availableSpending = adjustedIncome - fixedCommitments - savingsTarget;
 
@@ -298,7 +341,8 @@ class ExplanationEngineService {
           'After fixed costs (\$${fixedCommitments.toStringAsFixed(0)}) and savings (\$${savingsTarget.toStringAsFixed(0)}), you have \$${availableSpending.toStringAsFixed(0)} available for flexible spending.',
       'inputValue': adjustedIncome,
       'outputValue': availableSpending,
-      'formula': 'Available Spending = Income - Fixed Commitments - Savings Target',
+      'formula':
+          'Available Spending = Income - Fixed Commitments - Savings Target',
       'reasoning':
           'This represents the money available for discretionary spending like food, entertainment, and shopping.',
       'impactWeight': 0.15,
@@ -309,7 +353,8 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final availableSpending = (results['availableSpending'] as num?)?.toDouble() ?? 0.0;
+    final availableSpending =
+        (results['availableSpending'] as num?)?.toDouble() ?? 0.0;
     final dailyBudget = availableSpending / 30; // Assuming 30 days per month
 
     return {
@@ -331,7 +376,8 @@ class ExplanationEngineService {
     Map<String, dynamic> results,
   ) {
     final baseBudget = (results['baseDailyBudget'] as num?)?.toDouble() ?? 0.0;
-    final locationMultiplier = (results['locationMultiplier'] as num?)?.toDouble() ?? 1.0;
+    final locationMultiplier =
+        (results['locationMultiplier'] as num?)?.toDouble() ?? 1.0;
     final adjustedBudget = baseBudget * locationMultiplier;
     final location = inputData['location']?.toString() ?? 'Unknown';
 
@@ -353,8 +399,10 @@ class ExplanationEngineService {
     Map<String, dynamic> inputData,
     Map<String, dynamic> results,
   ) {
-    final baseBudget = (results['baseAfterLocation'] as num?)?.toDouble() ?? 0.0;
-    final goalAdjustment = (results['goalAdjustment'] as num?)?.toDouble() ?? 0.0;
+    final baseBudget =
+        (results['baseAfterLocation'] as num?)?.toDouble() ?? 0.0;
+    final goalAdjustment =
+        (results['goalAdjustment'] as num?)?.toDouble() ?? 0.0;
     final adjustedBudget = baseBudget + goalAdjustment;
     final goals = inputData['goals'] as List<dynamic>? ?? [];
     final goalNames = goals.map((g) => g.toString()).toList();
@@ -378,7 +426,8 @@ class ExplanationEngineService {
     Map<String, dynamic> results,
   ) {
     final baseBudget = (results['baseAfterGoals'] as num?)?.toDouble() ?? 0.0;
-    final habitAdjustment = (results['habitAdjustment'] as num?)?.toDouble() ?? 0.0;
+    final habitAdjustment =
+        (results['habitAdjustment'] as num?)?.toDouble() ?? 0.0;
     final adjustedBudget = baseBudget + habitAdjustment;
     final habits = inputData['habits'] as List<dynamic>? ?? [];
     final habitNames = habits.map((h) => h.toString()).toList();
@@ -390,7 +439,8 @@ class ExplanationEngineService {
           'Your budget accounts for spending habits: ${habitNames.join(', ')}. We apply a ${habitAdjustment > 0 ? 'protective buffer' : 'spending encouragement'} of \$${habitAdjustment.abs().toStringAsFixed(0)}.',
       'inputValue': baseBudget,
       'outputValue': adjustedBudget,
-      'formula': 'Habit-Corrected Budget = Goal-Adjusted Budget + Habit Corrections',
+      'formula':
+          'Habit-Corrected Budget = Goal-Adjusted Budget + Habit Corrections',
       'reasoning':
           'We apply research-based adjustments to help counteract common spending habits and improve your success rate.',
       'impactWeight': 0.07,
@@ -402,7 +452,8 @@ class ExplanationEngineService {
     Map<String, dynamic> results,
   ) {
     final baseBudget = (results['baseAfterHabits'] as num?)?.toDouble() ?? 0.0;
-    final temporalAdjustment = (results['temporalAdjustment'] as num?)?.toDouble() ?? 0.0;
+    final temporalAdjustment =
+        (results['temporalAdjustment'] as num?)?.toDouble() ?? 0.0;
     final finalBudget = baseBudget + temporalAdjustment;
 
     return {
@@ -436,7 +487,8 @@ class ExplanationEngineService {
 
   String _makeConversational(String explanation) {
     return explanation
-        .replaceAll('Your budget is calculated', 'Here\'s how we figure out your budget')
+        .replaceAll('Your budget is calculated',
+            'Here\'s how we figure out your budget')
         .replaceAll('We apply', 'We add in')
         .replaceAll('The result is', 'This gives you');
   }
@@ -477,7 +529,8 @@ class ExplanationEngineService {
             'The algorithm uses multi-factor optimization with behavioral economics principles');
         break;
       default:
-        insights.add('Your budget balances immediate needs with long-term financial health');
+        insights.add(
+            'Your budget balances immediate needs with long-term financial health');
     }
 
     return insights.take(3).toList();
@@ -489,11 +542,15 @@ class ExplanationEngineService {
     Map<String, dynamic> results,
     ExplanationContext context,
   ) {
-    final finalAmount = (results['finalDailyBudget'] as num?)?.toDouble() ?? 0.0;
-    final monthlyIncome = (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
-    final spendingRatio = monthlyIncome > 0 ? (finalAmount * 30) / monthlyIncome : 0.0;
+    final finalAmount =
+        (results['finalDailyBudget'] as num?)?.toDouble() ?? 0.0;
+    final monthlyIncome =
+        (results['adjustedIncome'] as num?)?.toDouble() ?? 0.0;
+    final spendingRatio =
+        monthlyIncome > 0 ? (finalAmount * 30) / monthlyIncome : 0.0;
 
-    String summary = 'Your daily budget of \$${finalAmount.toStringAsFixed(0)} is calculated ';
+    String summary =
+        'Your daily budget of \$${finalAmount.toStringAsFixed(0)} is calculated ';
 
     switch (context.userLevel) {
       case 'beginner':
@@ -509,7 +566,8 @@ class ExplanationEngineService {
             'The final amount represents ${(spendingRatio * 100).toStringAsFixed(1)}% of your adjusted monthly income allocated to discretionary spending.';
         break;
       default:
-        summary += 'by analyzing your income, expenses, goals, and spending patterns. ';
+        summary +=
+            'by analyzing your income, expenses, goals, and spending patterns. ';
         summary +=
             'This amount (${(spendingRatio * 100).toStringAsFixed(0)}% of your income) gives you flexibility while ensuring your essential needs and savings goals are met.';
     }

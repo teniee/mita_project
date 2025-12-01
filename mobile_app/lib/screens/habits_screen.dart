@@ -12,7 +12,8 @@ class HabitsScreen extends StatefulWidget {
   State<HabitsScreen> createState() => _HabitsScreenState();
 }
 
-class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMixin {
+class _HabitsScreenState extends State<HabitsScreen>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
 
   @override
@@ -57,11 +58,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            wasCompleted ? 'Habit unmarked for today' : 'Great job! Habit completed for today',
+            wasCompleted
+                ? 'Habit unmarked for today'
+                : 'Great job! Habit completed for today',
           ),
           backgroundColor: wasCompleted ? Colors.orange : Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } else {
@@ -70,7 +74,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
           content: Text('Failed to update habit: ${provider.errorMessage}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       provider.clearError();
@@ -79,7 +84,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
 
   Future<void> _showHabitForm({Habit? habit}) async {
     final titleController = TextEditingController(text: habit?.title ?? '');
-    final descController = TextEditingController(text: habit?.description ?? '');
+    final descController =
+        TextEditingController(text: habit?.description ?? '');
     String selectedFrequency = habit?.targetFrequency ?? 'daily';
     final isEditing = habit != null;
 
@@ -88,7 +94,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: AppColors.background,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             isEditing ? 'Edit Habit' : 'Create New Habit',
             style: const TextStyle(
@@ -113,7 +120,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppColors.secondary, width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -133,7 +141,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppColors.secondary, width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -143,7 +152,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                 DropdownButtonFormField<String>(
                   value: selectedFrequency,
                   style: const TextStyle(
-                      fontFamily: AppTypography.fontBody, color: AppColors.textPrimary),
+                      fontFamily: AppTypography.fontBody,
+                      color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'Target Frequency',
                     labelStyle: const TextStyle(color: AppColors.textPrimary),
@@ -153,7 +163,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppColors.secondary, width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -177,7 +188,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               onPressed: () => Navigator.pop(context, false),
               child: const Text(
                 'Cancel',
-                style: TextStyle(color: Colors.grey, fontFamily: AppTypography.fontBody),
+                style: TextStyle(
+                    color: Colors.grey, fontFamily: AppTypography.fontBody),
               ),
             ),
             ElevatedButton(
@@ -216,7 +228,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to save habit: ${provider.errorMessage}'),
+                      content: Text(
+                          'Failed to save habit: ${provider.errorMessage}'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -226,12 +239,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(
                 isEditing ? 'Update' : 'Create',
                 style: const TextStyle(
-                    fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.bold),
+                    fontFamily: AppTypography.fontHeading,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -268,7 +283,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: Colors.grey, fontFamily: AppTypography.fontBody),
+              style: TextStyle(
+                  color: Colors.grey, fontFamily: AppTypography.fontBody),
             ),
           ),
           ElevatedButton(
@@ -276,11 +292,14 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text(
               'Delete',
-              style: TextStyle(fontFamily: AppTypography.fontHeading, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontFamily: AppTypography.fontHeading,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -299,7 +318,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             content: Text('"${habit.title}" deleted successfully'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       } else {
@@ -308,7 +328,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             content: Text('Failed to delete habit: ${provider.errorMessage}'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         provider.clearError();
@@ -415,37 +436,50 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: habit.isCompletedToday ? AppColors.secondary : Colors.grey.shade200,
+                        color: habit.isCompletedToday
+                            ? AppColors.secondary
+                            : Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color:
-                              habit.isCompletedToday ? AppColors.secondary : Colors.grey.shade300,
+                          color: habit.isCompletedToday
+                              ? AppColors.secondary
+                              : Colors.grey.shade300,
                           width: 2,
                         ),
                       ),
                       child: Icon(
-                        habit.isCompletedToday ? Icons.check_rounded : Icons.add,
-                        color: habit.isCompletedToday ? Colors.black : Colors.grey.shade600,
+                        habit.isCompletedToday
+                            ? Icons.check_rounded
+                            : Icons.add,
+                        color: habit.isCompletedToday
+                            ? Colors.black
+                            : Colors.grey.shade600,
                         size: 20,
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    habit.isCompletedToday ? 'Completed today!' : 'Mark as done',
+                    habit.isCompletedToday
+                        ? 'Completed today!'
+                        : 'Mark as done',
                     style: TextStyle(
                       fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.w600,
-                      color: habit.isCompletedToday ? AppColors.textPrimary : Colors.grey.shade600,
+                      color: habit.isCompletedToday
+                          ? AppColors.textPrimary
+                          : Colors.grey.shade600,
                     ),
                   ),
                   const Spacer(),
                   // Streak counter
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color:
-                          habit.currentStreak > 0 ? Colors.orange.shade100 : Colors.grey.shade100,
+                      color: habit.currentStreak > 0
+                          ? Colors.orange.shade100
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -600,7 +634,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.secondary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               elevation: 4,
             ),
           ),
@@ -648,7 +683,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.secondary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -717,7 +753,8 @@ class _HabitsScreenState extends State<HabitsScreen> with TickerProviderStateMix
             child: isLoading && habits.isEmpty
                 ? const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.secondary),
                     ),
                   )
                 : errorMessage != null && habits.isEmpty

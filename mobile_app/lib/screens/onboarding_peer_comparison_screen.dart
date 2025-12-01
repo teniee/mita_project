@@ -13,10 +13,12 @@ class OnboardingPeerComparisonScreen extends StatefulWidget {
   const OnboardingPeerComparisonScreen({super.key});
 
   @override
-  State<OnboardingPeerComparisonScreen> createState() => _OnboardingPeerComparisonScreenState();
+  State<OnboardingPeerComparisonScreen> createState() =>
+      _OnboardingPeerComparisonScreenState();
 }
 
-class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerComparisonScreen>
+class _OnboardingPeerComparisonScreenState
+    extends State<OnboardingPeerComparisonScreen>
     with TickerProviderStateMixin {
   final _incomeService = IncomeService();
   final _apiService = ApiService();
@@ -36,13 +38,14 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
     super.initState();
 
     // Get income data from onboarding state
-    if (OnboardingState.instance.income == null || OnboardingState.instance.income! <= 0) {
+    if (OnboardingState.instance.income == null ||
+        OnboardingState.instance.income! <= 0) {
       throw Exception(
           'Income must be provided before peer comparison. Please go back and complete income entry.');
     }
     _monthlyIncome = OnboardingState.instance.income!;
-    _incomeTier =
-        OnboardingState.instance.incomeTier ?? _incomeService.classifyIncome(_monthlyIncome);
+    _incomeTier = OnboardingState.instance.incomeTier ??
+        _incomeService.classifyIncome(_monthlyIncome);
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -54,7 +57,8 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(
+        parent: _animationController, curve: Curves.easeOutCubic));
 
     _loadPeerData();
   }
@@ -261,7 +265,9 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                         const SizedBox(height: 16),
 
                         // Top insights
-                        ...(_cohortInsights?['top_insights'] as List<String>? ?? []).map(
+                        ...(_cohortInsights?['top_insights'] as List<String>? ??
+                                [])
+                            .map(
                           (insight) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
@@ -330,7 +336,10 @@ class _OnboardingPeerComparisonScreenState extends State<OnboardingPeerCompariso
                         const SizedBox(height: 16),
 
                         // Recommendations
-                        ...(_cohortInsights?['recommendations'] as List<String>? ?? []).map(
+                        ...(_cohortInsights?['recommendations']
+                                    as List<String>? ??
+                                [])
+                            .map(
                           (recommendation) => Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(12),

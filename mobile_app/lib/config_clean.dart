@@ -2,7 +2,8 @@
 /// Separated configuration to prevent emergency/production mixing
 class AppConfig {
   // Environment detection
-  static const String environment = String.fromEnvironment('ENV', defaultValue: 'development');
+  static const String environment =
+      String.fromEnvironment('ENV', defaultValue: 'development');
 
   // Environment-specific configurations
   static const Map<String, Map<String, String>> _environments = {
@@ -48,9 +49,12 @@ class AppConfig {
   static String get websocketUrl => _currentConfig['websocketUrl']!;
 
   // Feature flags
-  static bool get enableDebugLogs => _currentConfig['enableDebugLogs'] == 'true';
-  static bool get enableAnalytics => _currentConfig['enableAnalytics'] == 'true';
-  static bool get enableCrashReporting => _currentConfig['enableCrashReporting'] == 'true';
+  static bool get enableDebugLogs =>
+      _currentConfig['enableDebugLogs'] == 'true';
+  static bool get enableAnalytics =>
+      _currentConfig['enableAnalytics'] == 'true';
+  static bool get enableCrashReporting =>
+      _currentConfig['enableCrashReporting'] == 'true';
 
   // Performance settings
   static int get apiTimeoutMs => int.parse(_currentConfig['apiTimeout']!);
@@ -74,7 +78,9 @@ class AppConfig {
 
   // Validation
   static bool get isValidConfiguration {
-    return baseUrl.isNotEmpty && apiPath.isNotEmpty && _environments.containsKey(environment);
+    return baseUrl.isNotEmpty &&
+        apiPath.isNotEmpty &&
+        _environments.containsKey(environment);
   }
 
   // Debug information (development only)

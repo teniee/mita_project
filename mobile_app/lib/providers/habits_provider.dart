@@ -32,7 +32,8 @@ class Habit {
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       targetFrequency: json['target_frequency'] as String? ?? 'daily',
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+          DateTime.now(),
       completedDates: (json['completed_dates'] as List<dynamic>? ?? [])
           .map((date) => DateTime.tryParse(date.toString()) ?? DateTime.now())
           .toList(),
@@ -44,8 +45,10 @@ class Habit {
 
   bool get isCompletedToday {
     final today = DateTime.now();
-    return completedDates.any(
-        (date) => date.year == today.year && date.month == today.month && date.day == today.day);
+    return completedDates.any((date) =>
+        date.year == today.year &&
+        date.month == today.month &&
+        date.day == today.day);
   }
 }
 
@@ -79,10 +82,12 @@ class HabitsProvider extends ChangeNotifier {
   int get habitCount => _habits.length;
 
   // Statistics convenience getters
-  int get completedTodayCount => _habits.where((h) => h.isCompletedToday).length;
+  int get completedTodayCount =>
+      _habits.where((h) => h.isCompletedToday).length;
   double get overallCompletionRate {
     if (_habits.isEmpty) return 0.0;
-    return _habits.map((h) => h.completionRate).reduce((a, b) => a + b) / _habits.length;
+    return _habits.map((h) => h.completionRate).reduce((a, b) => a + b) /
+        _habits.length;
   }
 
   int get totalCurrentStreak {
@@ -104,9 +109,11 @@ class HabitsProvider extends ChangeNotifier {
       await loadHabits();
 
       _state = HabitsState.loaded;
-      logInfo('HabitsProvider initialized successfully', tag: 'HABITS_PROVIDER');
+      logInfo('HabitsProvider initialized successfully',
+          tag: 'HABITS_PROVIDER');
     } catch (e) {
-      logError('Failed to initialize HabitsProvider: $e', tag: 'HABITS_PROVIDER');
+      logError('Failed to initialize HabitsProvider: $e',
+          tag: 'HABITS_PROVIDER');
       _errorMessage = e.toString();
       _state = HabitsState.error;
     } finally {
@@ -121,7 +128,9 @@ class HabitsProvider extends ChangeNotifier {
       _errorMessage = null;
 
       final data = await _apiService.getHabits();
-      _habits = data.map((json) => Habit.fromJson(json as Map<String, dynamic>)).toList();
+      _habits = data
+          .map((json) => Habit.fromJson(json as Map<String, dynamic>))
+          .toList();
 
       logInfo('Loaded ${_habits.length} habits', tag: 'HABITS_PROVIDER');
 
@@ -149,7 +158,8 @@ class HabitsProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       // Silently fail - progress not critical for display
-      logError('Failed to load habit progress for $habitId: $e', tag: 'HABITS_PROVIDER');
+      logError('Failed to load habit progress for $habitId: $e',
+          tag: 'HABITS_PROVIDER');
     }
   }
 
@@ -163,7 +173,8 @@ class HabitsProvider extends ChangeNotifier {
         logInfo('Habit ${habit.id} unmarked for today', tag: 'HABITS_PROVIDER');
       } else {
         await _apiService.completeHabit(habit.id, today);
-        logInfo('Habit ${habit.id} completed for today', tag: 'HABITS_PROVIDER');
+        logInfo('Habit ${habit.id} completed for today',
+            tag: 'HABITS_PROVIDER');
       }
 
       // Refresh habits list to get updated data

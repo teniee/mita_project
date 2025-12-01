@@ -13,7 +13,8 @@ import 'advanced_financial_engine.dart';
 /// - Lifestyle inflation risk assessment
 /// - Overall safety scoring with actionable recommendations
 class FinancialSafetyValidator {
-  static final FinancialSafetyValidator _instance = FinancialSafetyValidator._internal();
+  static final FinancialSafetyValidator _instance =
+      FinancialSafetyValidator._internal();
   factory FinancialSafetyValidator() => _instance;
   FinancialSafetyValidator._internal();
 
@@ -32,40 +33,47 @@ class FinancialSafetyValidator {
 
     try {
       // Check 1: Income Validation
-      safetyCheck.incomeValidation = _validateIncomeClassification(monthlyIncome, incomeTier);
+      safetyCheck.incomeValidation =
+          _validateIncomeClassification(monthlyIncome, incomeTier);
 
       // Check 2: Budget Allocation Safety
-      safetyCheck.budgetSafety =
-          _validateBudgetAllocations(plannedSpending, monthlyIncome, incomeTier);
+      safetyCheck.budgetSafety = _validateBudgetAllocations(
+          plannedSpending, monthlyIncome, incomeTier);
 
       // Check 3: Debt Safety Levels
-      safetyCheck.debtSafety = _validateDebtLevels(totalDebt, monthlyIncome, incomeTier);
+      safetyCheck.debtSafety =
+          _validateDebtLevels(totalDebt, monthlyIncome, incomeTier);
 
       // Check 4: Emergency Fund Adequacy
       safetyCheck.emergencyFundSafety =
           _validateEmergencyFund(emergencyFund, monthlyIncome, incomeTier);
 
       // Check 5: Goal Feasibility
-      safetyCheck.goalFeasibility = _validateGoalFeasibility(goals, monthlyIncome, plannedSpending);
+      safetyCheck.goalFeasibility =
+          _validateGoalFeasibility(goals, monthlyIncome, plannedSpending);
 
       // Check 6: Lifestyle Inflation Risk
-      safetyCheck.lifestyleInflationRisk =
-          _assessLifestyleInflationRisk(plannedSpending, monthlyIncome, incomeTier);
+      safetyCheck.lifestyleInflationRisk = _assessLifestyleInflationRisk(
+          plannedSpending, monthlyIncome, incomeTier);
 
       // Overall safety score
-      safetyCheck.overallSafetyScore = _calculateOverallSafetyScore(safetyCheck);
+      safetyCheck.overallSafetyScore =
+          _calculateOverallSafetyScore(safetyCheck);
 
       // Generate warnings and recommendations
       safetyCheck.warnings = _generateSafetyWarnings(safetyCheck);
-      safetyCheck.recommendations = _generateSafetyRecommendations(safetyCheck, incomeTier);
+      safetyCheck.recommendations =
+          _generateSafetyRecommendations(safetyCheck, incomeTier);
 
       return safetyCheck;
     } catch (e) {
-      return FinancialSafetyCheck()..overallSafetyScore = 50.0; // Neutral fallback
+      return FinancialSafetyCheck()
+        ..overallSafetyScore = 50.0; // Neutral fallback
     }
   }
 
-  bool _validateIncomeClassification(double monthlyIncome, IncomeTier incomeTier) {
+  bool _validateIncomeClassification(
+      double monthlyIncome, IncomeTier incomeTier) {
     final calculatedTier = _incomeService.classifyIncome(monthlyIncome);
     return calculatedTier == incomeTier;
   }
@@ -75,7 +83,8 @@ class FinancialSafetyValidator {
     double monthlyIncome,
     IncomeTier incomeTier,
   ) {
-    final totalPlanned = plannedSpending.values.fold(0.0, (sum, amount) => sum + amount);
+    final totalPlanned =
+        plannedSpending.values.fold(0.0, (sum, amount) => sum + amount);
 
     // Check 1: Total doesn't exceed income
     if (totalPlanned > monthlyIncome * 1.05) {
@@ -85,7 +94,8 @@ class FinancialSafetyValidator {
 
     // Check 2: Essential categories are adequately funded
     final essentialCategories = ['housing', 'food', 'utilities', 'healthcare'];
-    final recommendedWeights = _incomeService.getDefaultBudgetWeights(incomeTier);
+    final recommendedWeights =
+        _incomeService.getDefaultBudgetWeights(incomeTier);
 
     for (final category in essentialCategories) {
       final planned = plannedSpending[category] ?? 0.0;
@@ -109,7 +119,8 @@ class FinancialSafetyValidator {
     return true;
   }
 
-  bool _validateDebtLevels(double totalDebt, double monthlyIncome, IncomeTier incomeTier) {
+  bool _validateDebtLevels(
+      double totalDebt, double monthlyIncome, IncomeTier incomeTier) {
     if (totalDebt <= 0) return true; // No debt is always safe
     if (monthlyIncome <= 0) return false;
 
@@ -134,7 +145,8 @@ class FinancialSafetyValidator {
     }
   }
 
-  bool _validateEmergencyFund(double emergencyFund, double monthlyIncome, IncomeTier incomeTier) {
+  bool _validateEmergencyFund(
+      double emergencyFund, double monthlyIncome, IncomeTier incomeTier) {
     if (monthlyIncome <= 0) return false;
 
     final monthsOfCoverage = emergencyFund / monthlyIncome;
@@ -165,7 +177,8 @@ class FinancialSafetyValidator {
   ) {
     if (goals == null || goals.isEmpty) return true;
 
-    final totalSpending = plannedSpending.values.fold(0.0, (sum, amount) => sum + amount);
+    final totalSpending =
+        plannedSpending.values.fold(0.0, (sum, amount) => sum + amount);
     final availableForGoals = monthlyIncome - totalSpending;
 
     final totalGoalContributions = goals
@@ -180,7 +193,8 @@ class FinancialSafetyValidator {
     // Check individual goal feasibility
     for (final goal in goals.where((g) => g.isActive)) {
       final remainingAmount = goal.targetAmount - goal.currentAmount;
-      final monthsToTarget = goal.targetDate.difference(DateTime.now()).inDays / 30.44;
+      final monthsToTarget =
+          goal.targetDate.difference(DateTime.now()).inDays / 30.44;
 
       if (monthsToTarget > 0) {
         final requiredMonthlyContribution = remainingAmount / monthsToTarget;
@@ -206,7 +220,8 @@ class FinancialSafetyValidator {
     // Check entertainment spending
     final entertainment = plannedSpending['entertainment'] ?? 0.0;
     final entertainmentPercentage = entertainment / monthlyIncome;
-    if (entertainmentPercentage > _getMaxSafeEntertainmentPercentage(incomeTier)) {
+    if (entertainmentPercentage >
+        _getMaxSafeEntertainmentPercentage(incomeTier)) {
       riskScore += 0.3;
     }
 
@@ -290,37 +305,45 @@ class FinancialSafetyValidator {
     final warnings = <String>[];
 
     if (!safetyCheck.incomeValidation) {
-      warnings.add('Income classification mismatch detected - verify your income tier');
+      warnings.add(
+          'Income classification mismatch detected - verify your income tier');
     }
 
     if (!safetyCheck.budgetSafety) {
-      warnings.add('Budget allocations exceed safe limits - reduce spending or increase income');
+      warnings.add(
+          'Budget allocations exceed safe limits - reduce spending or increase income');
     }
 
     if (!safetyCheck.debtSafety) {
-      warnings.add('Debt levels are above safe thresholds for your income tier');
+      warnings
+          .add('Debt levels are above safe thresholds for your income tier');
     }
 
     if (!safetyCheck.emergencyFundSafety) {
-      warnings.add('Emergency fund is below recommended minimum for your situation');
+      warnings.add(
+          'Emergency fund is below recommended minimum for your situation');
     }
 
     if (!safetyCheck.goalFeasibility) {
-      warnings.add('Current financial goals may not be achievable with planned spending');
+      warnings.add(
+          'Current financial goals may not be achievable with planned spending');
     }
 
     if (safetyCheck.lifestyleInflationRisk > 0.6) {
-      warnings.add('High lifestyle inflation risk detected - monitor discretionary spending');
+      warnings.add(
+          'High lifestyle inflation risk detected - monitor discretionary spending');
     }
 
     return warnings;
   }
 
-  List<String> _generateSafetyRecommendations(FinancialSafetyCheck safetyCheck, IncomeTier tier) {
+  List<String> _generateSafetyRecommendations(
+      FinancialSafetyCheck safetyCheck, IncomeTier tier) {
     final recommendations = <String>[];
 
     if (!safetyCheck.budgetSafety) {
-      recommendations.add('Review and reduce non-essential spending categories by 10-15%');
+      recommendations
+          .add('Review and reduce non-essential spending categories by 10-15%');
     }
 
     if (!safetyCheck.debtSafety) {
@@ -330,21 +353,24 @@ class FinancialSafetyValidator {
 
     if (!safetyCheck.emergencyFundSafety) {
       final minMonths = _getMinEmergencyFundMonths(tier);
-      recommendations.add('Build emergency fund to cover at least $minMonths months of expenses');
+      recommendations.add(
+          'Build emergency fund to cover at least $minMonths months of expenses');
     }
 
     if (!safetyCheck.goalFeasibility) {
-      recommendations
-          .add('Reassess financial goals timeline or reduce goal amounts for feasibility');
+      recommendations.add(
+          'Reassess financial goals timeline or reduce goal amounts for feasibility');
     }
 
     if (safetyCheck.lifestyleInflationRisk > 0.5) {
-      recommendations.add('Implement the 24-hour rule for non-essential purchases over \$50');
+      recommendations.add(
+          'Implement the 24-hour rule for non-essential purchases over \$50');
     }
 
     // General safety recommendations
     if (safetyCheck.overallSafetyScore < 70) {
-      recommendations.add('Consider consulting with a financial advisor for personalized guidance');
+      recommendations.add(
+          'Consider consulting with a financial advisor for personalized guidance');
     }
 
     return recommendations;
