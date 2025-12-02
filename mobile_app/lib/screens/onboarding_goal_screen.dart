@@ -42,7 +42,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
     });
   }
 
-  void _submitGoals() {
+  Future<void> _submitGoals() async {
     if (selectedGoals.isEmpty) return;
 
     // Save selected goals

@@ -3,11 +3,11 @@ import 'package:mockito/mockito.dart';
 import 'dart:io';
 
 // Security Services
-// import 'package:mobile_app/services/ios_security_service.dart';
-// import 'package:mobile_app/services/biometric_auth_service.dart';
-// import 'package:mobile_app/services/certificate_pinning_service.dart';
-// import 'package:mobile_app/services/logging_service.dart';
-// import 'package:mobile_app/services/screenshot_protection_service.dart';
+// import 'package:mita/services/ios_security_service.dart';
+// import 'package:mita/services/biometric_auth_service.dart';
+// import 'package:mita/services/certificate_pinning_service.dart';
+// import 'package:mita/services/logging_service.dart';
+// import 'package:mita/services/screenshot_protection_service.dart';
 
 /// Comprehensive Security Test Suite for MITA iOS Application
 ///

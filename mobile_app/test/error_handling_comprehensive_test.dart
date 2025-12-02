@@ -11,12 +11,12 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:mobile_app/core/error_handling.dart';
-import 'package:mobile_app/core/app_error_handler.dart';
-import 'package:mobile_app/core/enhanced_error_handling.dart';
-import 'package:mobile_app/services/enhanced_error_recovery_service.dart';
-import 'package:mobile_app/services/error_analytics_service.dart';
-import 'package:mobile_app/widgets/mita_widgets.dart';
+import 'package:mita/core/error_handling.dart';
+import 'package:mita/core/app_error_handler.dart';
+import 'package:mita/core/enhanced_error_handling.dart';
+import 'package:mita/services/enhanced_error_recovery_service.dart';
+import 'package:mita/services/error_analytics_service.dart';
+import 'package:mita/widgets/mita_widgets.dart';
 
 // Mocks
 class MockSharedPreferences extends Mock implements SharedPreferences {}
