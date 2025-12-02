@@ -2,6 +2,11 @@ import os
 import sys
 import types
 
+# Set DATABASE_URL for test environment BEFORE any imports
+# This prevents "Could not parse SQLAlchemy URL from string ''" errors
+os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test_mita')
+os.environ.setdefault('SECRET_KEY', 'test_secret_key_for_testing_only')
+os.environ.setdefault('ENVIRONMENT', 'test')
 os.environ.setdefault("FIREBASE_JSON", "{}")
 
 dummy = types.ModuleType("firebase_admin")

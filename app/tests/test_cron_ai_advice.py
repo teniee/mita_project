@@ -1,9 +1,5 @@
-import os
 from datetime import datetime, timezone
 from types import SimpleNamespace
-
-# Set DATABASE_URL for test environment before importing app modules
-os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost/test_mita')
 
 from app.services.core.engine.cron_task_ai_advice import run_ai_advice_batch
 
