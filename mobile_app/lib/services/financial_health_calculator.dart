@@ -479,6 +479,14 @@ class FinancialHealthScore {
     return (totalBudgetHealth + categoryHealth).clamp(0.0, 100.0);
   }
 
+  /// Calculate budget health percentage
+  /// Returns percentage of budget remaining (positive) or overspent (negative)
+  double calculateBudgetHealth(double income, double expenses) {
+    if (income == 0) return 0.0;
+    final remaining = income - expenses;
+    return (remaining / income) * 100;
+  }
+
   double calculateSavingsRate(double savings, double income) {
     return (savings / income) * 100;
   }

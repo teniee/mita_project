@@ -677,9 +677,9 @@ void main() {
           // Perform complex calculations
           final budgetResult = budgetEngine.calculateOptimalBudget(
             monthlyIncome: monthlyIncome,
-            historicalExpenses: expenses,
-            savingsGoal: monthlyIncome * 0.2,
-            riskTolerance: 'moderate',
+            tier: IncomeTier.medium, // Default tier for performance test
+            goals: ['savings', 'investment'],
+            habits: ['regular_saver'],
           );
           
           stopwatch.stop();
@@ -720,18 +720,19 @@ void main() {
           
           final transaction = transactions[i % transactions.length];
           final amount = 10 + (i % 500); // $10-$510
-          
-          final category = categorizationService.categorizeTransaction(
-            description: transaction,
+
+          final category = await categorizationService.categorizeTransaction(
+            merchant: transaction,
             amount: amount.toDouble(),
-            merchantInfo: 'merchant_${i % 50}',
+            date: DateTime.now(),
+            location: 'test_location',
           );
-          
+
           stopwatch.stop();
           metrics.addMeasurement(stopwatch.elapsedMilliseconds.toDouble());
-          
+
           expect(category, isNotNull);
-          expect(category['confidence'], greaterThan(0.5));
+          expect(category, isNotEmpty);
         }
         
         final report = metrics.generateReport();
