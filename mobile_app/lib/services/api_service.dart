@@ -159,7 +159,7 @@ class ApiService {
   // Internal state
   // ---------------------------------------------------------------------------
 
-  late final Dio _dio;
+  late Dio _dio;
   final _timeoutManager = TimeoutManagerService();
 
   // Legacy storage for backward compatibility during transition
