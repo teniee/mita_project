@@ -167,7 +167,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         if (_subscriptionInfo != null && isPremium) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Expires: ${_subscriptionInfo!.expiryDate?.toString().split(' ').first ?? 'N/A'}',
+                            'Expires: ${_subscriptionInfo!.expiresAt.toString().split(' ').first}',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium

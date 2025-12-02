@@ -547,9 +547,10 @@ class SmartCategorizationService {
     String? location,
   }) async {
     final suggestions = await getCategorySuggestions(
-      merchant: merchant,
+      description: merchant,
       amount: amount,
-      date: date,
+      merchantName: merchant,
+      transactionTime: date,
       location: location,
     );
 
