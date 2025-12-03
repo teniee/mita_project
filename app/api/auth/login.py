@@ -84,46 +84,44 @@ async def login_user_standardized(
             ErrorCode.AUTH_INVALID_CREDENTIALS
         )
 
-    # Check if account is locked
-    # TODO: Uncomment after migration 0017 is applied
-    # if user.account_locked_until and user.account_locked_until > datetime.utcnow():
-    #     await log_security_event_async(
-    #         event_type="login_attempt_account_locked",
-    #         user_id=str(user.id),
-    #         request=request,
-    #         details={"email": validated_email, "locked_until": user.account_locked_until.isoformat()}
-    #     )
-    #     raise AuthenticationError(
-    #         "Account temporarily locked due to too many failed login attempts. Please try again later.",
-    #         ErrorCode.AUTH_ACCOUNT_LOCKED
-    #     )
+    # Check if account is locked (migration 0017_add_account_security_fields)
+    if user.account_locked_until and user.account_locked_until > datetime.utcnow():
+        await log_security_event_async(
+            event_type="login_attempt_account_locked",
+            user_id=str(user.id),
+            request=request,
+            details={"email": validated_email, "locked_until": user.account_locked_until.isoformat()}
+        )
+        raise AuthenticationError(
+            "Account temporarily locked due to too many failed login attempts. Please try again later.",
+            ErrorCode.AUTH_ACCOUNT_LOCKED
+        )
 
     # Verify password
     password_valid = await verify_password_async(login_data.password, user.password_hash)
     if not password_valid:
-        # TODO: Uncomment after migration 0017 is applied
-        # # Increment failed login attempts
-        # user.failed_login_attempts += 1
+        # Increment failed login attempts (migration 0017_add_account_security_fields)
+        user.failed_login_attempts += 1
 
-        # # Lock account after 5 failed attempts
-        # if user.failed_login_attempts >= 5:
-        #     from datetime import timedelta
-        #     user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
-        #     await log_security_event_async(
-        #         event_type="account_locked_too_many_attempts",
-        #         user_id=str(user.id),
-        #         request=request,
-        #         details={"email": validated_email, "failed_attempts": user.failed_login_attempts}
-        #     )
+        # Lock account after 5 failed attempts
+        if user.failed_login_attempts >= 5:
+            from datetime import timedelta
+            user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+            await log_security_event_async(
+                event_type="account_locked_too_many_attempts",
+                user_id=str(user.id),
+                request=request,
+                details={"email": validated_email, "failed_attempts": user.failed_login_attempts}
+            )
 
-        # await db.commit()
+        await db.commit()
 
         # Log failed login attempt
         await log_security_event_async(
             event_type="login_attempt_invalid_password",
             user_id=str(user.id),
             request=request,
-            details={"email": validated_email}  # Removed failed_attempts
+            details={"email": validated_email, "failed_attempts": user.failed_login_attempts}
         )
         raise AuthenticationError(
             "Invalid email or password",
@@ -154,11 +152,11 @@ async def login_user_standardized(
 
     tokens = create_token_pair(user_data, user_role=user_role)
 
-    # Reset failed login attempts on successful login
-    # TODO: Uncomment after migration 0017 is applied
-    # if user.failed_login_attempts > 0:
-    #     user.failed_login_attempts = 0
-    #     user.account_locked_until = None
+    # Reset failed login attempts on successful login (migration 0017_add_account_security_fields)
+    if user.failed_login_attempts > 0:
+        user.failed_login_attempts = 0
+        user.account_locked_until = None
+        await db.commit()
 
     # Log successful login
     await log_security_event_async(

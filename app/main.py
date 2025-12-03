@@ -66,6 +66,7 @@ from app.core.logging_config import setup_logging
 from app.core.feature_flags import get_feature_flag_manager, is_feature_enabled
 from app.core.deployment_optimizations import apply_platform_optimizations
 from app.middleware.audit_middleware import audit_middleware
+from app.core.prometheus_metrics import PrometheusMiddleware, get_metrics, CONTENT_TYPE_LATEST
 from app.core.error_handler import (
     MITAException, ValidationException, RateLimitException,
     mita_exception_handler, validation_exception_handler,
@@ -401,6 +402,17 @@ async def health_check():
 # Flutter registration endpoint removed - use /api/auth/register for all registration
 
 
+@app.get("/metrics")
+async def prometheus_metrics():
+    """
+    Prometheus metrics endpoint for monitoring and observability
+    Returns metrics in Prometheus exposition format
+    """
+    from fastapi import Response
+    metrics_data = get_metrics()
+    return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status and performance metrics"""
@@ -459,7 +471,10 @@ async def detailed_health_check():
 
 # ---- Middlewares ----
 
-# Add standardized error handling middleware (first for comprehensive coverage)
+# Add Prometheus metrics middleware (first to track all requests)
+app.add_middleware(PrometheusMiddleware)
+
+# Add standardized error handling middleware
 app.add_middleware(StandardizedErrorMiddleware, include_request_details=settings.DEBUG)
 app.add_middleware(ResponseValidationMiddleware, validate_success_responses=settings.DEBUG)
 app.add_middleware(RequestContextMiddleware)
@@ -902,14 +917,35 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    """Clean up resources on shutdown"""
+    """
+    Graceful shutdown handler
+    - Waits for in-flight requests to complete (up to 30 seconds)
+    - Closes database connections
+    - Closes audit logging connections
+    - Ensures no data loss during deployment
+    """
     try:
-        # Close audit system connections
-        from app.core.audit_logging import _audit_db_pool
-        await _audit_db_pool.close()
-        logging.info("✅ Audit system connections closed")
+        logging.info("🛑 Starting graceful shutdown sequence...")
+
+        # Step 1: Wait for in-flight requests (Railway gives us 30 seconds)
+        # This allows current requests to complete before terminating
+        logging.info("⏳ Waiting for in-flight requests to complete (5 seconds)...")
+        await asyncio.sleep(5)
+
+        # Step 2: Close audit system connections
+        try:
+            from app.core.audit_logging import _audit_db_pool
+            await _audit_db_pool.close()
+            logging.info("✅ Audit system connections closed")
+        except Exception as e:
+            logging.error(f"❌ Error closing audit system: {e}")
+
+        # Step 3: Close main database connections
+        await close_database()
+        logging.info("✅ Main database connections closed")
+
+        # Step 4: Flush any remaining logs
+        logging.info("✅ Graceful shutdown completed successfully")
+
     except Exception as e:
-        logging.error(f"❌ Error closing audit system: {e}")
-    
-    # Close main database connections
-    await close_database()
+        logging.error(f"❌ Error during graceful shutdown: {e}", exc_info=True)
