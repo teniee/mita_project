@@ -374,7 +374,7 @@ async def get_unread_count(
 
 @router.get("/preferences", response_model=NotificationPreferencesResponse)
 async def get_notification_preferences(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Get notification preferences for current user"""
@@ -402,7 +402,7 @@ async def get_notification_preferences(
 @router.put("/preferences", response_model=NotificationPreferencesResponse)
 async def update_notification_preferences(
     payload: NotificationPreferencesUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
 ):
     """Update notification preferences for current user"""
