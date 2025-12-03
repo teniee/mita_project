@@ -677,34 +677,25 @@ class NoOpSentrySpan implements ISentrySpan {
   @override
   bool get finished => true;
 
-  @override
   Map<String, String> get tags => {};
 
-  @override
   Map<String, dynamic> get data => {};
 
   @override
   SpanStatus? get status => SpanStatus.ok();
 
-  @override
   String? get description => null;
 
-  @override
   String get origin => 'manual';
 
-  @override
   SentryId get spanId => const SentryId.empty();
 
-  @override
   SentryId? get parentSpanId => null;
 
-  @override
   SentryId get traceId => const SentryId.empty();
 
-  @override
   void setStatus(SpanStatus status) {}
 
-  @override
   dynamic get localMetricsAggregator => null;
 
   @override

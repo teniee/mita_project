@@ -97,7 +97,7 @@ class BudgetWarningDialog extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               Colors.white,
-              warningColor.withOpacity(0.05),
+              warningColor.withValues(alpha: 0.05),
             ],
           ),
         ),
@@ -127,16 +127,16 @@ class BudgetWarningDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: warningColor.withOpacity(0.1),
+                color: warningColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: warningColor.withOpacity(0.3)),
+                border: Border.all(color: warningColor.withValues(alpha: 0.3)),
               ),
               child: Text(
                 impactMessage,
                 style: TextStyle(
                   fontFamily: AppTypography.fontBody,
                   fontSize: 15,
-                  color: warningColor.withOpacity(0.9),
+                  color: warningColor.withValues(alpha: 0.9),
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,

@@ -102,7 +102,7 @@ class OnboardingTheme {
   // Card decoration
   static BoxDecoration cardDecoration({bool isSelected = false}) {
     return BoxDecoration(
-      color: isSelected ? accentColor.withOpacity(0.2) : cardBackground,
+      color: isSelected ? accentColor.withValues(alpha: 0.2) : cardBackground,
       borderRadius: BorderRadius.circular(cardBorderRadius),
       border: Border.all(
         color: isSelected ? primaryColor : Colors.grey.shade300,
@@ -110,7 +110,7 @@ class OnboardingTheme {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha: 0.05),
           blurRadius: cardElevation * 2,
           offset: const Offset(0, 2),
         ),

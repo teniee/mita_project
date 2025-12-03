@@ -125,11 +125,13 @@ void main() async {
   await AppVersionService.instance.initialize();
 
   // Initialize comprehensive Sentry monitoring for financial application
-  const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN',
+      defaultValue:
+          'https://1d38f70c32d316f5dda5dede268ca85e@o4510468167827456.ingest.us.sentry.io/4510468169334784');
   const environment =
-      String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
+      String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
   const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
-      defaultValue: 'mita-mobile@1.0.0');
+      defaultValue: 'mita-mobile@1.0.0+1');
 
   if (sentryDsn.isNotEmpty) {
     await sentryService.initialize(
