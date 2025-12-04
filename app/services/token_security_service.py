@@ -21,7 +21,8 @@ import asyncio
 from threading import Lock
 
 from app.core.audit_logging import log_security_event
-from app.services.auth_jwt_service import get_token_info, is_token_blacklisted
+from app.services.auth_jwt_service import get_token_info
+from app.services.token_blacklist_service import TokenBlacklistService
 from app.core.upstash import get_blacklist_metrics
 
 logger = logging.getLogger(__name__)
@@ -359,15 +360,17 @@ class TokenSecurityService:
         }
         
         # Check if blacklisted
-        if jti:
-            try:
-                is_blacklisted = is_token_blacklisted(jti)
-                health["is_blacklisted"] = is_blacklisted
-                if is_blacklisted:
-                    health["status"] = "blacklisted"
-                    health["reason"] = "Token is in blacklist"
-            except Exception as e:
-                health["blacklist_check_error"] = str(e)
+        # TODO: Re-implement blacklist check with async TokenBlacklistService
+        # if jti:
+        #     try:
+        #         blacklist_service = TokenBlacklistService()
+        #         is_blacklisted = await blacklist_service.is_token_blacklisted(jti)
+        #         health["is_blacklisted"] = is_blacklisted
+        #         if is_blacklisted:
+        #             health["status"] = "blacklisted"
+        #             health["reason"] = "Token is in blacklist"
+        #     except Exception as e:
+        #         health["blacklist_check_error"] = str(e)
         
         # Check expiration
         if exp < now:

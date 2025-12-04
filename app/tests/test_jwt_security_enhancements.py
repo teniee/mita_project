@@ -33,12 +33,12 @@ from app.middleware.jwt_scope_middleware import (
     require_scopes,
     require_profile_read,
     require_transactions_write,
-    require_admin_system,
-    SecurityAlertLevel
+    require_admin_system
 )
 from app.services.token_security_monitoring import (
     TokenSecurityMonitor,
-    get_security_monitor
+    get_security_monitor,
+    SecurityAlertLevel
 )
 
 

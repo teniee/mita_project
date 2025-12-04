@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from starlette.datastructures import UploadFile
 
-from app.api.transactions.routes import create_transaction, process_receipt
+from app.api.transactions.routes import create_transaction_standardized, process_receipt
 from app.api.transactions.schemas import TxnIn
 
 
@@ -62,7 +62,7 @@ async def test_create_transaction_updates_plan(monkeypatch):
         spent_at=datetime.datetime(2025, 1, 1),
     )
 
-    await create_transaction(data, user=user, db=db)
+    await create_transaction_standardized(data, user=user, db=db)
 
     assert plan.spent_amount == Decimal("12.5")
     assert db.committed

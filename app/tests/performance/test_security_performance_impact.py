@@ -18,7 +18,7 @@ import threading
 # Import security components
 from app.core.security import AdvancedRateLimiter, SecurityConfig, get_security_health_status
 from app.services.token_security_service import TokenSecurityService
-from app.core.audit_logging import log_security_event, log_financial_operation
+from app.core.audit_logging import log_security_event
 from app.middleware.comprehensive_rate_limiter import ComprehensiveRateLimitMiddleware
 from app.services.auth_jwt_service import create_access_token, verify_token
 from app.core.rate_limiter import RateLimiter
@@ -295,12 +295,14 @@ class SecurityPerformanceTests:
             result = amount * 0.85
             
             # Add audit logging
-            log_financial_operation(
-                user_id="12345",
-                operation="budget_calculation",
-                amount=amount,
-                result=result,
-                metadata={"category": "test"}
+            log_security_event(
+                event_type="budget_calculation",
+                details={
+                    "user_id": "12345",
+                    "amount": amount,
+                    "result": result,
+                    "category": "test"
+                }
             )
             return result
         

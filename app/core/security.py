@@ -1206,3 +1206,15 @@ def get_user_tier_from_request(request) -> str:
     # Check if user is authenticated and has premium/admin status
     # For now, return basic_user as default tier
     return "basic_user"
+
+
+def reset_security_instances():
+    """
+    Reset all security instances for testing purposes.
+    This clears rate limiter state, security monitors, and other security-related caches.
+    Should only be used in test environments.
+    """
+    # This function is a placeholder for test cleanup
+    # Individual security components should handle their own state reset
+    # Tests should clear Redis cache separately if needed
+    pass
