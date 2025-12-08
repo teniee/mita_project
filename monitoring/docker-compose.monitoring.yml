@@ -1,0 +1,153 @@
+# Docker Compose for MITA Monitoring Stack
+# Prometheus + Alertmanager + Grafana
+#
+# Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
+
+version: '3.8'
+
+services:
+  # Prometheus - Metrics collection and alerting
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: mita-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./app_alert_rules.yml:/etc/prometheus/app_alert_rules.yml:ro
+      - ./health_alert_rules.yml:/etc/prometheus/health_alert_rules.yml:ro
+      - ./redis_alert_rules.yml:/etc/prometheus/redis_alert_rules.yml:ro
+      - ./postgres_alert_rules.yml:/etc/prometheus/postgres_alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    labels:
+      - "com.mita.service=prometheus"
+
+  # Alertmanager - Alert routing and notifications
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: mita-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://alertmanager:9093'
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./templates:/etc/alertmanager/templates:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - PAGERDUTY_CRITICAL_KEY=${PAGERDUTY_CRITICAL_KEY}
+      - PAGERDUTY_ERROR_KEY=${PAGERDUTY_ERROR_KEY}
+      - ROLLBACK_WEBHOOK_SECRET=${ROLLBACK_WEBHOOK_SECRET}
+    labels:
+      - "com.mita.service=alertmanager"
+
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: mita-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-change-me}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.mita.finance
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    labels:
+      - "com.mita.service=grafana"
+
+  # Node Exporter - System metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: mita-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+    labels:
+      - "com.mita.service=node-exporter"
+
+  # Redis Exporter - Redis metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.52.0
+    container_name: mita-redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=${REDIS_URL:-redis://redis:6379}
+    ports:
+      - "9121:9121"
+    networks:
+      - monitoring
+    labels:
+      - "com.mita.service=redis-exporter"
+
+  # PostgreSQL Exporter - Database metrics
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.13.2
+    container_name: mita-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=${DATABASE_URL}
+    ports:
+      - "9187:9187"
+    networks:
+      - monitoring
+    labels:
+      - "com.mita.service=postgres-exporter"
+
+  # Blackbox Exporter - Endpoint monitoring
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: mita-blackbox-exporter
+    restart: unless-stopped
+    volumes:
+      - ./blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "9115:9115"
+    networks:
+      - monitoring
+    labels:
+      - "com.mita.service=blackbox-exporter"
+
+volumes:
+  prometheus-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  monitoring:
+    driver: bridge
+    name: mita-monitoring

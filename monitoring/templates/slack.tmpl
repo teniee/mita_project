@@ -1,0 +1,25 @@
+{{ define "slack.mita.title" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
+{{ end }}
+
+{{ define "slack.mita.text" }}
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }} - {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+*Details:*
+  • Status: {{ .Status }}
+  • Service: {{ .Labels.service }}
+  • Severity: {{ .Labels.severity }}
+{{ if .Labels.component }}  • Component: {{ .Labels.component }}{{ end }}
+{{ if .Annotations.value }}  • Current Value: {{ .Annotations.value }}{{ end }}
+{{ if .Annotations.runbook_url }}  • Runbook: {{ .Annotations.runbook_url }}{{ end }}
+  • Started: {{ .StartsAt }}
+{{ if .EndsAt }}  • Ended: {{ .EndsAt }}{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "slack.mita.color" }}
+{{ if eq .Status "firing" }}
+  {{ if eq .CommonLabels.severity "critical" }}danger{{ else if eq .CommonLabels.severity "warning" }}warning{{ else }}#439FE0{{ end }}
+{{ else }}good{{ end }}
+{{ end }}

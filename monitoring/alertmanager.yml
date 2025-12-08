@@ -1,0 +1,379 @@
+# Alertmanager Configuration for MITA Finance Production
+# Integrates with automated rollback system for critical alerts
+#
+# Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
+
+global:
+  # Resolve timeout for alerts
+  resolve_timeout: 5m
+
+  # Slack webhook URL from environment variable
+  slack_api_url: "${SLACK_WEBHOOK_URL}"
+
+  # SMTP configuration for email notifications (SendGrid)
+  smtp_smarthost: 'smtp.sendgrid.net:587'
+  smtp_from: 'alerts@mita.finance'
+  smtp_auth_username: 'apikey'
+  smtp_auth_password: '${SENDGRID_API_KEY}'
+  smtp_require_tls: true
+
+  # PagerDuty integration
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+  # HTTP client configuration
+  http_config:
+    follow_redirects: true
+
+# Templates for notification formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree
+route:
+  # Default receiver for all alerts
+  receiver: 'default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'service', 'component']
+
+  # Wait time before sending first notification for a group
+  group_wait: 30s
+
+  # Wait time between notifications for same group
+  group_interval: 5m
+
+  # Time before re-sending unresolved alerts
+  repeat_interval: 4h
+
+  # Child routes for specific severity levels
+  routes:
+    # CRITICAL alerts - trigger automatic rollback
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 30m
+      continue: true  # Also process other routes
+      routes:
+        # Alerts that trigger automatic rollback
+        - match_re:
+            alertname: 'CriticalErrorRate|CriticalP95Latency|MitaSystemUnhealthy|MitaDatabaseConnectionIssues|TransactionProcessingFailure'
+          receiver: 'rollback-trigger'
+          group_wait: 0s
+          repeat_interval: 10m
+          continue: true
+
+    # ERROR severity alerts
+    - match:
+        severity: error
+      receiver: 'error-alerts'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+      continue: true
+
+    # WARNING severity alerts
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 12h
+
+    # Component-specific routing
+    - match:
+        component: database
+      receiver: 'database-alerts'
+      continue: true
+
+    - match:
+        component: authentication
+      receiver: 'security-alerts'
+      continue: true
+
+    - match_re:
+        component: 'payment|transaction|revenue'
+      receiver: 'finance-alerts'
+      continue: true
+
+    # Business hours vs off-hours routing
+    - match:
+        severity: warning
+      time_intervals:
+        - offhours
+      receiver: 'warning-suppressed'
+      # Suppress WARNING alerts during off-hours (18:00-08:00 EET)
+
+# Alert inhibition rules
+inhibit_rules:
+  # Critical alerts inhibit warnings for same component
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['service', 'component']
+
+  # System unhealthy inhibits all component-specific alerts
+  - source_match:
+      alertname: 'MitaSystemUnhealthy'
+    target_match_re:
+      alertname: 'Mita.*'
+    equal: ['service']
+
+  # Database unhealthy inhibits database-specific alerts
+  - source_match:
+      alertname: 'MitaDatabaseUnhealthy'
+    target_match_re:
+      component: 'database'
+
+  # Rollback in progress inhibits other alerts temporarily
+  - source_match:
+      alert_type: 'rollback'
+    target_match:
+      severity: 'warning|error'
+    equal: ['service']
+
+# Time intervals for routing
+time_intervals:
+  - name: offhours
+    time_intervals:
+      # Off-hours: 18:00-08:00 EET (16:00-06:00 UTC)
+      - times:
+        - start_time: '16:00'
+          end_time: '06:00'
+        weekdays: ['monday:friday']
+      # All day on weekends
+      - weekdays: ['saturday', 'sunday']
+
+# Receivers (notification channels)
+receivers:
+  # Default receiver (Slack only)
+  - name: 'default'
+    slack_configs:
+      - channel: '#mita-alerts'
+        username: 'MITA Alertmanager'
+        icon_emoji: ':bell:'
+        title: '{{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          **Service**: {{ .Labels.service }}
+          **Severity**: {{ .Labels.severity }}
+          **Description**: {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+  # CRITICAL alerts - PagerDuty + Slack + Email
+  - name: 'critical-alerts'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_CRITICAL_KEY}'
+        severity: 'critical'
+        description: '{{ .CommonLabels.alertname }} - {{ .CommonAnnotations.summary }}'
+        details:
+          service: '{{ .CommonLabels.service }}'
+          component: '{{ .CommonLabels.component }}'
+          firing_count: '{{ .Alerts.Firing | len }}'
+          resolved_count: '{{ .Alerts.Resolved | len }}'
+          runbook_url: '{{ .CommonAnnotations.runbook_url }}'
+
+    slack_configs:
+      - channel: '#mita-alerts'
+        username: 'MITA Critical Alerts'
+        icon_emoji: ':fire:'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '🔥 CRITICAL: {{ .CommonLabels.alertname }}'
+        title_link: 'https://grafana.mita.finance'
+        text: |
+          <!here> - IMMEDIATE ACTION REQUIRED
+
+          {{ range .Alerts }}
+          **Service**: {{ .Labels.service }}
+          **Component**: {{ .Labels.component }}
+          **Description**: {{ .Annotations.description }}
+          **Value**: {{ .Annotations.value }}
+          {{ if .Annotations.runbook_url }}
+          **Runbook**: {{ .Annotations.runbook_url }}
+          {{ end }}
+          {{ end }}
+
+          **Dashboard**: https://grafana.mita.finance/d/main
+          **Status**: {{ .Status }}
+        actions:
+          - type: button
+            text: 'View Grafana :chart_with_upwards_trend:'
+            url: 'https://grafana.mita.finance'
+          - type: button
+            text: 'View Runbook :book:'
+            url: '{{ .CommonAnnotations.runbook_url }}'
+        send_resolved: true
+
+    email_configs:
+      - to: 'mikhail@mita.finance'
+        from: 'alerts@mita.finance'
+        subject: '🔥 CRITICAL: {{ .CommonLabels.alertname }}'
+        html: |
+          <h2 style="color: #dc3545;">CRITICAL ALERT</h2>
+          <table style="border-collapse: collapse; width: 100%;">
+            <tr>
+              <th style="text-align: left; padding: 8px; background-color: #f8d7da;">Alert Name</th>
+              <td style="padding: 8px;">{{ .CommonLabels.alertname }}</td>
+            </tr>
+            <tr>
+              <th style="text-align: left; padding: 8px; background-color: #f8d7da;">Service</th>
+              <td style="padding: 8px;">{{ .CommonLabels.service }}</td>
+            </tr>
+            <tr>
+              <th style="text-align: left; padding: 8px; background-color: #f8d7da;">Component</th>
+              <td style="padding: 8px;">{{ .CommonLabels.component }}</td>
+            </tr>
+            <tr>
+              <th style="text-align: left; padding: 8px; background-color: #f8d7da;">Status</th>
+              <td style="padding: 8px;">{{ .Status }}</td>
+            </tr>
+          </table>
+          <br>
+          <h3>Alerts:</h3>
+          {{ range .Alerts }}
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          {{ if .Annotations.value }}
+          <p><strong>Current Value:</strong> {{ .Annotations.value }}</p>
+          {{ end }}
+          {{ if .Annotations.runbook_url }}
+          <p><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
+          {{ end }}
+          <hr>
+          {{ end }}
+          <br>
+          <p><a href="https://grafana.mita.finance">View Grafana Dashboard</a></p>
+        send_resolved: true
+
+  # ERROR alerts - PagerDuty (low urgency) + Slack @channel
+  - name: 'error-alerts'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_ERROR_KEY}'
+        severity: 'error'
+        description: '{{ .CommonLabels.alertname }}'
+
+    slack_configs:
+      - channel: '#mita-alerts'
+        username: 'MITA Error Alerts'
+        icon_emoji: ':rotating_light:'
+        color: 'danger'
+        title: '🚨 ERROR: {{ .CommonLabels.alertname }}'
+        text: |
+          <!channel>
+
+          {{ range .Alerts }}
+          **Service**: {{ .Labels.service }}
+          **Component**: {{ .Labels.component }}
+          **Description**: {{ .Annotations.description }}
+          {{ end }}
+
+          **Action Required**: Acknowledge in PagerDuty
+        send_resolved: true
+
+  # WARNING alerts - Slack only
+  - name: 'warning-alerts'
+    slack_configs:
+      - channel: '#mita-alerts'
+        username: 'MITA Warning Alerts'
+        icon_emoji: ':warning:'
+        color: 'warning'
+        title: '⚠️ WARNING: {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          **Service**: {{ .Labels.service }}
+          **Component**: {{ .Labels.component }}
+          **Description**: {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+  # Suppressed warnings (off-hours)
+  - name: 'warning-suppressed'
+    # No configurations - alerts suppressed
+
+  # Rollback trigger - Webhook to automated rollback system
+  - name: 'rollback-trigger'
+    webhook_configs:
+      - url: 'http://mita-backend:8000/api/admin/rollback/trigger'
+        http_config:
+          basic_auth:
+            username: 'alertmanager'
+            password: '${ROLLBACK_WEBHOOK_SECRET}'
+        send_resolved: false  # Only send firing alerts
+
+    slack_configs:
+      - channel: '#mita-deployments'
+        username: 'MITA Automated Rollback'
+        icon_emoji: ':arrows_counterclockwise:'
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+        title: '🔄 AUTOMATED ROLLBACK TRIGGERED'
+        text: |
+          **Alert**: {{ .CommonLabels.alertname }}
+          **Trigger**: {{ .CommonAnnotations.summary }}
+          **Service**: {{ .CommonLabels.service }}
+
+          Automated rollback initiated...
+
+          **Monitor Progress**: https://railway.app/project/mita/deployments
+        send_resolved: true
+
+    slack_configs:
+      - channel: '#mita-alerts'
+        username: 'MITA Automated Rollback'
+        icon_emoji: ':arrows_counterclockwise:'
+        color: 'warning'
+        title: '🔄 ROLLBACK: {{ .CommonLabels.alertname }}'
+        text: |
+          <!here> Automated rollback triggered by alert
+
+          **Reason**: {{ .CommonAnnotations.description }}
+          **ETA**: 4-5 minutes
+        send_resolved: true
+
+  # Database-specific alerts
+  - name: 'database-alerts'
+    slack_configs:
+      - channel: '#mita-database'
+        username: 'MITA Database Alerts'
+        icon_emoji: ':floppy_disk:'
+        title: '{{ .CommonLabels.alertname }}'
+        text: '{{ .CommonAnnotations.description }}'
+        send_resolved: true
+
+  # Security/Authentication alerts
+  - name: 'security-alerts'
+    slack_configs:
+      - channel: '#mita-security'
+        username: 'MITA Security Alerts'
+        icon_emoji: ':lock:'
+        color: 'danger'
+        title: '🔒 SECURITY: {{ .CommonLabels.alertname }}'
+        text: |
+          <!here> Security alert
+
+          {{ .CommonAnnotations.description }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'mikhail@mita.finance'
+        subject: '🔒 SECURITY ALERT: {{ .CommonLabels.alertname }}'
+
+  # Finance/Revenue alerts
+  - name: 'finance-alerts'
+    slack_configs:
+      - channel: '#mita-finance-team'
+        username: 'MITA Finance Alerts'
+        icon_emoji: ':moneybag:'
+        color: 'danger'
+        title: '💰 FINANCIAL ALERT: {{ .CommonLabels.alertname }}'
+        text: |
+          <!channel> Financial operations affected
+
+          {{ .CommonAnnotations.description }}
+        send_resolved: true
+
+    email_configs:
+      - to: 'mikhail@mita.finance'
+        subject: '💰 FINANCIAL: {{ .CommonLabels.alertname }}'
+        html: '<p style="color: red;"><strong>FINANCIAL ALERT:</strong> {{ .CommonAnnotations.description }}</p>'
