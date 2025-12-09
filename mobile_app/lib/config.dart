@@ -1,6 +1,6 @@
-// Production API URL - fully restored backend with <200ms response times
+// Production API URL - Railway backend (healthy, database connected)
 const String defaultApiBaseUrl =
-    'https://mita-docker-ready-project-manus.onrender.com/api';
+    'https://mita-production-production.up.railway.app/api';
 
 // For development: Use local API service
 // const String defaultApiBaseUrl = 'http://localhost:8001/api';
@@ -8,7 +8,7 @@ const String defaultApiBaseUrl =
 /// Configuration for proper FastAPI authentication endpoints
 class ApiConfig {
   static const String baseUrl =
-      'https://mita-docker-ready-project-manus.onrender.com';
+      'https://mita-production-production.up.railway.app';
   static const String apiPath = '/api';
 
   // Standard FastAPI authentication endpoints
