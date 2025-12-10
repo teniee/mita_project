@@ -25,13 +25,28 @@ fileConfig(config.config_file_name)
 # Set your target metadata
 target_metadata = Base.metadata
 
-# Get the database URL - try environment variable first, then config
-url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+# Get the database URL - try migration-specific URL first, then DATABASE_URL, then config
+# MIGRATION_DATABASE_URL can use direct connection (port 5432) for Supabase
+# while DATABASE_URL can use transaction pooler (port 6543) for the app
+url = (
+    os.environ.get("MIGRATION_DATABASE_URL") or
+    os.environ.get("DATABASE_URL") or
+    config.get_main_option("sqlalchemy.url")
+)
 if not url:
     raise ValueError(
         "No database URL found. Set DATABASE_URL environment variable or "
         "configure sqlalchemy.url in alembic.ini"
     )
+
+# Auto-fix Supabase pooler port for migrations
+# Transaction pooler (6543) doesn't support migrations - switch to direct (5432)
+if ":6543/" in url and "MIGRATION_DATABASE_URL" not in os.environ:
+    print("[Alembic] WARNING: Port 6543 detected (Supabase transaction pooler)")
+    print("[Alembic] Transaction pooler doesn't support migrations")
+    print("[Alembic] Switching to port 5432 (direct connection)")
+    url = url.replace(":6543/", ":5432/")
+    print("[Alembic] Set MIGRATION_DATABASE_URL env var to suppress this warning")
 
 # Debug: Log URL structure (without password)
 print(f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***@{url.split('@')[1] if '@' in url else 'no-host'}")
