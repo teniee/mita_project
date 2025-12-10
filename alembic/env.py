@@ -56,15 +56,8 @@ try:
         sync_url = sync_url.set(query=filtered_query)
         print(f"[Alembic] Filtered query params: {list(filtered_query.keys())}")
 
-    # Ensure password is properly URL-encoded
-    if sync_url.password:
-        from urllib.parse import quote_plus
-        # Re-encode password to ensure special characters are handled
-        encoded_password = quote_plus(sync_url.password)
-        if encoded_password != sync_url.password:
-            sync_url = sync_url.set(password=encoded_password)
-            print(f"[Alembic] Password re-encoded for URL safety")
-
+    # Password is already properly handled by SQLAlchemy's make_url()
+    # No need to re-encode - it will cause authentication failures
     print(f"[Alembic] Final connection: {sync_url.host}:{sync_url.port} database={sync_url.database}")
 
 except Exception as e:
