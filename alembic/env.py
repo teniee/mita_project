@@ -40,17 +40,13 @@ if not url:
     )
 
 # Auto-configure Supabase pooler for migrations
-# Session pooler (port 6543 with ?pgbouncer=true) supports long-running migrations
+# Session pooler (port 5432 on pooler host) supports long-running migrations
+# Transaction pooler (port 6543) does NOT support migrations
 if "supabase.com" in url and ":6543/" in url:
-    print("[Alembic] Supabase pooler detected - ensuring Session mode configuration")
-
-    # Ensure pgbouncer=true parameter for Session mode (vs Transaction mode)
-    if "pgbouncer=true" not in url:
-        separator = "&" if "?" in url else "?"
-        url = url + separator + "pgbouncer=true"
-        print("[Alembic] Added ?pgbouncer=true for Session pooler mode")
-
-    print("[Alembic] Session pooler configuration verified")
+    print("[Alembic] Supabase Transaction pooler detected (port 6543)")
+    print("[Alembic] Switching to Session pooler (port 5432) for migrations")
+    url = url.replace(":6543/", ":5432/")
+    print("[Alembic] Session pooler enabled - supports long-running migrations")
     print("[Alembic] Set MIGRATION_DATABASE_URL env var to use direct connection instead")
 
 # Debug: Log URL structure (without password)
@@ -65,16 +61,23 @@ try:
         print(f"[Alembic] Converted driver: asyncpg -> psycopg2")
 
     # Remove Supabase-specific query parameters that psycopg2 doesn't support
-    # psycopg2 uses sslmode instead of ssl, and doesn't support prepared_statement_cache_size
+    # psycopg2 uses sslmode instead of ssl
     if sync_url.query:
         filtered_query = {}
+        # List of params to exclude (not supported by psycopg2)
+        excluded_params = ['prepared_statement_cache_size', 'ssl', 'statement_cache_size',
+                          'server_settings', 'pgbouncer']
+
         for k, v in sync_url.query.items():
             if k == 'ssl' and v == 'require':
-                filtered_query['sslmode'] = 'require'  # Convert to psycopg2 format
-            elif k not in ['prepared_statement_cache_size', 'ssl', 'statement_cache_size', 'server_settings']:
+                # Convert Supabase 'ssl=require' to psycopg2 'sslmode=require'
+                filtered_query['sslmode'] = 'require'
+            elif k not in excluded_params:
+                # Keep all other valid params
                 filtered_query[k] = v
+
         sync_url = sync_url.set(query=filtered_query)
-        print(f"[Alembic] Filtered query params: {list(filtered_query.keys())}")
+        print(f"[Alembic] Query params after filtering: {list(filtered_query.keys())}")
 
     # Password is already properly handled by SQLAlchemy's make_url()
     # No need to re-encode - it will cause authentication failures
