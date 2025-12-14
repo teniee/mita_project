@@ -1,7 +1,7 @@
 """sync models
 
-Revision ID: a0d5ecc53667
-Revises: 0005_push_tokens
+Revision ID: 0016_sync_models
+Revises: 0015_add_installments_module
 Create Date: 2025-07-20 22:56:48.472682
 
 """

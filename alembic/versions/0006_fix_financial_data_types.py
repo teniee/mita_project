@@ -1,7 +1,7 @@
 """fix critical financial data types for compliance
 
 Revision ID: 0006_fix_financial_data_types
-Revises: a0d5ecc53667
+Revises: 0005_push_tokens
 Create Date: 2025-08-11
 
 CRITICAL: This migration fixes financial data integrity issues:

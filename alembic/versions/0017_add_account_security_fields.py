@@ -1,7 +1,7 @@
 """Add account security fields for lockout mechanism
 
 Revision ID: 0017_add_account_security_fields
-Revises: f8e0108e3527
+Revises: 0016_sync_models
 Create Date: 2025-11-17 00:00:00.000000
 
 """

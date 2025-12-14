@@ -1,7 +1,7 @@
 """add_missing_user_fields_updated_at_premium_until_token_version
 
-Revision ID: f8e0108e3527
-Revises: 0007_email_password_reset_fields
+Revision ID: 0019_add_missing_user_fields
+Revises: 0018_add_soft_deletes
 Create Date: 2025-09-07 21:04:30.252625
 
 """
