@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0006_fix_financial_data_types"
-down_revision = "a0d5ecc53667"
+down_revision = "0005_push_tokens"
 branch_labels = None
 depends_on = None
 

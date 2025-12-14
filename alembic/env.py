@@ -40,52 +40,51 @@ if not url:
     )
 
 # Auto-configure Supabase pooler for migrations
-# Session pooler (port 5432 on pooler host) supports long-running migrations
-# Transaction pooler (port 6543) does NOT support migrations
+# Note: Using Transaction pooler (port 6543) for migrations
+# For long-running migrations, set MIGRATION_DATABASE_URL with direct connection
 if "supabase.com" in url and ":6543/" in url:
     print("[Alembic] Supabase Transaction pooler detected (port 6543)")
-    print("[Alembic] Switching to Session pooler (port 5432) for migrations")
-    url = url.replace(":6543/", ":5432/")
-    print("[Alembic] Session pooler enabled - supports long-running migrations")
-    print("[Alembic] Set MIGRATION_DATABASE_URL env var to use direct connection instead")
+    print("[Alembic] Using Transaction pooler for migrations")
+    print("[Alembic] Note: For long-running migrations, set MIGRATION_DATABASE_URL env var")
 
 # Debug: Log URL structure (without password)
 print(f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***@{url.split('@')[1] if '@' in url else 'no-host'}")
 
+# Simple string replacement for asyncpg -> psycopg2 WITHOUT using make_url() to avoid password encoding issues
+final_url = url
+if "+asyncpg://" in url:
+    final_url = url.replace("+asyncpg://", "+psycopg2://", 1)
+    print(f"[Alembic] Converted driver: asyncpg -> psycopg2")
+elif "postgresql://" in url and "+psycopg2://" not in url:
+    final_url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    print(f"[Alembic] Added psycopg2 driver")
+
+# Remove problematic query params for Supabase pooler
+if "?" in final_url:
+    base_url, query_string = final_url.split("?", 1)
+    # Remove pgbouncer parameter as it's not needed for psycopg2
+    params = [p for p in query_string.split("&") if not p.startswith("pgbouncer=")]
+    if params:
+        final_url = f"{base_url}?{'&'.join(params)}"
+    else:
+        final_url = base_url
+    print(f"[Alembic] Cleaned query parameters")
+
+# Extract host and port for logging WITHOUT using make_url()
 try:
-    sync_url = make_url(url)
+    if "@" in final_url:
+        host_part = final_url.split("@")[1].split("/")[0]
+        if ":" in host_part:
+            host, port = host_part.rsplit(":", 1)
+        else:
+            host, port = host_part, "5432"
+        db_name = final_url.split("/")[-1].split("?")[0] if "/" in final_url else "unknown"
+        print(f"[Alembic] Final connection: {host}:{port} database={db_name}")
+except Exception:
+    print(f"[Alembic] Using connection string (parsing failed for logging)")
 
-    # Convert asyncpg to psycopg2 driver
-    if sync_url.drivername.endswith("+asyncpg"):
-        sync_url = sync_url.set(drivername="postgresql+psycopg2")
-        print(f"[Alembic] Converted driver: asyncpg -> psycopg2")
-
-    # Remove Supabase-specific query parameters that psycopg2 doesn't support
-    # psycopg2 uses sslmode instead of ssl
-    if sync_url.query:
-        filtered_query = {}
-        # List of params to exclude (not supported by psycopg2)
-        excluded_params = ['prepared_statement_cache_size', 'ssl', 'statement_cache_size',
-                          'server_settings', 'pgbouncer']
-
-        for k, v in sync_url.query.items():
-            if k == 'ssl' and v == 'require':
-                # Convert Supabase 'ssl=require' to psycopg2 'sslmode=require'
-                filtered_query['sslmode'] = 'require'
-            elif k not in excluded_params:
-                # Keep all other valid params
-                filtered_query[k] = v
-
-        sync_url = sync_url.set(query=filtered_query)
-        print(f"[Alembic] Query params after filtering: {list(filtered_query.keys())}")
-
-    # Password is already properly handled by SQLAlchemy's make_url()
-    # No need to re-encode - it will cause authentication failures
-    print(f"[Alembic] Final connection: {sync_url.host}:{sync_url.port} database={sync_url.database}")
-
-except Exception as e:
-    print(f"[Alembic ERROR] Failed to parse DATABASE_URL: {e}")
-    raise
+# Store as string, not make_url object - we'll create_engine directly with the string
+sync_url = final_url
 
 
 def run_migrations_offline():

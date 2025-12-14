@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 # revision identifiers, used by Alembic.
 revision = '0012_add_challenges'
-down_revision = '0011_add_goal_id_to_transactions'
+down_revision = '0011_add_goal_id'
 branch_labels = None
 depends_on = None
 

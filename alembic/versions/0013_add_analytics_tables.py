@@ -1,7 +1,7 @@
 """add analytics tables
 
 Revision ID: 0013_add_analytics_tables
-Revises: 0012_add_challenges_tables
+Revises: 0012_add_challenges
 Create Date: 2025-10-24 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0013_add_analytics_tables"
-down_revision = "0012_add_challenges_tables"
+down_revision = "0012_add_challenges"
 branch_labels = None
 depends_on = None
 
