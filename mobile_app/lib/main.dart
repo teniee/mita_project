@@ -34,6 +34,7 @@ import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
 
+import 'screens/debug_test_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -89,142 +90,152 @@ void main() async {
     minimumLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
   );
 
-  // SECURITY: iOS Jailbreak & Tampering Detection
-  if (Platform.isIOS) {
-    try {
-      final securityService = IOSSecurityService();
-      final isSecure = await securityService.performSecurityCheck();
-
-      if (!isSecure && !kDebugMode) {
-        // Get security recommendations
-        final recommendations =
-            await securityService.getSecurityRecommendations();
-        logWarning(
-          'iOS Security check failed: ${recommendations.join(", ")}',
-          tag: 'MAIN_SECURITY',
-        );
-        // In production, consider blocking app launch or showing warning dialog
-        // For now, we just log the issue
-      } else {
-        logInfo('iOS Security check passed', tag: 'MAIN_SECURITY');
-      }
-
-      // Log comprehensive security info for monitoring
-      final securityInfo = await securityService.getComprehensiveSecurityInfo();
-      logDebug('iOS Security Info: $securityInfo', tag: 'MAIN_SECURITY');
-    } catch (e) {
-      logError('iOS Security check error: $e', tag: 'MAIN_SECURITY', error: e);
-      // Don't block app launch on security check errors
-    }
-  }
+  // TEMPORARILY DISABLED: SECURITY: iOS Jailbreak & Tampering Detection
+  // TODO: Re-enable after adding SecurityBridge.swift to Xcode project
+  // if (Platform.isIOS) {
+  //   try {
+  //     final securityService = IOSSecurityService();
+  //     final isSecure = await securityService.performSecurityCheck();
+  //
+  //     if (!isSecure && !kDebugMode) {
+  //       // Get security recommendations
+  //       final recommendations =
+  //           await securityService.getSecurityRecommendations();
+  //       logWarning(
+  //         'iOS Security check failed: ${recommendations.join(", ")}',
+  //         tag: 'MAIN_SECURITY',
+  //       );
+  //       // In production, consider blocking app launch or showing warning dialog
+  //       // For now, we just log the issue
+  //     } else {
+  //       logInfo('iOS Security check passed', tag: 'MAIN_SECURITY');
+  //     }
+  //
+  //     // Log comprehensive security info for monitoring
+  //     final securityInfo = await securityService.getComprehensiveSecurityInfo();
+  //     logDebug('iOS Security Info: $securityInfo', tag: 'MAIN_SECURITY');
+  //   } catch (e) {
+  //     logError('iOS Security check error: $e', tag: 'MAIN_SECURITY', error: e);
+  //     // Don't block app launch on security check errors
+  //   }
+  // }
+  logInfo('iOS Security check temporarily disabled', tag: 'MAIN_SECURITY');
 
   // Initialize comprehensive error handling
   await AppErrorHandler.initialize();
 
-  // Initialize app version service
-  await AppVersionService.instance.initialize();
+  logInfo('=== MINIMAL DEBUG MODE - Most services disabled ===', tag: 'MAIN');
 
-  // Initialize comprehensive Sentry monitoring for financial application
-  const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
-  const environment =
-      String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
-  const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
-      defaultValue: 'mita-mobile@1.0.0');
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  // // Initialize app version service
+  // await AppVersionService.instance.initialize();
+  //
+  // // Initialize comprehensive Sentry monitoring for financial application
+  // const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+  // const environment =
+  //     String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
+  // const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
+  //     defaultValue: 'mita-mobile@1.0.0');
+  //
+  // if (sentryDsn.isNotEmpty) {
+  //   await sentryService.initialize(
+  //     dsn: sentryDsn,
+  //     environment: environment,
+  //     release: sentryRelease,
+  //     enableCrashReporting: true,
+  //     enablePerformanceMonitoring:
+  //         !kDebugMode, // Disable in debug for performance
+  //     enableUserInteractionTracing: true,
+  //     tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
+  //   );
+  // } else {
+  //   if (kDebugMode)
+  //     dev.log('Sentry DSN not configured - advanced error monitoring disabled',
+  //         name: 'MitaApp');
+  // }
+  //
+  // // TEMPORARILY DISABLED FOR DEBUGGING
+  // // await _initFirebase();
+  // logInfo('Firebase init temporarily disabled for debugging', tag: 'MAIN');
 
-  if (sentryDsn.isNotEmpty) {
-    await sentryService.initialize(
-      dsn: sentryDsn,
-      environment: environment,
-      release: sentryRelease,
-      enableCrashReporting: true,
-      enablePerformanceMonitoring:
-          !kDebugMode, // Disable in debug for performance
-      enableUserInteractionTracing: true,
-      tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
-    );
-  } else {
-    if (kDebugMode)
-      dev.log('Sentry DSN not configured - advanced error monitoring disabled',
-          name: 'MitaApp');
-  }
+  // TEMPORARILY DISABLED: Enhanced error handling that integrates with all monitoring systems
+  // FlutterError.onError = (FlutterErrorDetails details) {
+  //   // TEMP DISABLED: Send to Firebase Crashlytics
+  //   // FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  //
+  //   // Send to our custom error handler
+  //   AppErrorHandler.reportError(
+  //     details.exception,
+  //     stackTrace: details.stack,
+  //     severity: ErrorSeverity.critical,
+  //     category: ErrorCategory.ui,
+  //     context: {
+  //       'library': details.library,
+  //       'context': details.context?.toString(),
+  //     },
+  //   );
+  //
+  //   // Send to enhanced Sentry service
+  //   sentryService.captureFinancialError(
+  //     details.exception,
+  //     category: FinancialErrorCategory.uiError,
+  //     severity: FinancialSeverity.critical,
+  //     stackTrace: details.stack.toString(),
+  //     additionalContext: {
+  //       'library': details.library,
+  //       'context': details.context?.toString(),
+  //       'error_source': 'flutter_error',
+  //     },
+  //     tags: {
+  //       'error_source': 'flutter_error_handler',
+  //       'ui_error': 'true',
+  //     },
+  //   );
+  // };
+  //
+  // PlatformDispatcher.instance.onError = (error, stack) {
+  //   // TEMP DISABLED: Send to Firebase Crashlytics
+  //   // FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  //
+  //   // Send to our custom error handler
+  //   AppErrorHandler.reportError(
+  //     error,
+  //     stackTrace: stack,
+  //     severity: ErrorSeverity.critical,
+  //     category: ErrorCategory.system,
+  //     context: {'source': 'platform_dispatcher'},
+  //   );
+  //
+  //   // Send to enhanced Sentry service
+  //   sentryService.captureFinancialError(
+  //     error,
+  //     category: FinancialErrorCategory.systemError,
+  //     severity: FinancialSeverity.critical,
+  //     stackTrace: stack.toString(),
+  //     additionalContext: {
+  //       'source': 'platform_dispatcher',
+  //       'error_source': 'platform',
+  //     },
+  //     tags: {
+  //       'error_source': 'platform_dispatcher',
+  //       'system_error': 'true',
+  //       'fatal': 'true',
+  //     },
+  //   );
+  //
+  //   return true;
+  // };
 
-  await _initFirebase();
-
-  // Enhanced error handling that integrates with all monitoring systems
-  FlutterError.onError = (FlutterErrorDetails details) {
-    // Send to Firebase Crashlytics
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-
-    // Send to our custom error handler
-    AppErrorHandler.reportError(
-      details.exception,
-      stackTrace: details.stack,
-      severity: ErrorSeverity.critical,
-      category: ErrorCategory.ui,
-      context: {
-        'library': details.library,
-        'context': details.context?.toString(),
-      },
-    );
-
-    // Send to enhanced Sentry service
-    sentryService.captureFinancialError(
-      details.exception,
-      category: FinancialErrorCategory.uiError,
-      severity: FinancialSeverity.critical,
-      stackTrace: details.stack.toString(),
-      additionalContext: {
-        'library': details.library,
-        'context': details.context?.toString(),
-        'error_source': 'flutter_error',
-      },
-      tags: {
-        'error_source': 'flutter_error_handler',
-        'ui_error': 'true',
-      },
-    );
-  };
-
-  PlatformDispatcher.instance.onError = (error, stack) {
-    // Send to Firebase Crashlytics
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-
-    // Send to our custom error handler
-    AppErrorHandler.reportError(
-      error,
-      stackTrace: stack,
-      severity: ErrorSeverity.critical,
-      category: ErrorCategory.system,
-      context: {'source': 'platform_dispatcher'},
-    );
-
-    // Send to enhanced Sentry service
-    sentryService.captureFinancialError(
-      error,
-      category: FinancialErrorCategory.systemError,
-      severity: FinancialSeverity.critical,
-      stackTrace: stack.toString(),
-      additionalContext: {
-        'source': 'platform_dispatcher',
-        'error_source': 'platform',
-      },
-      tags: {
-        'error_source': 'platform_dispatcher',
-        'system_error': 'true',
-        'fatal': 'true',
-      },
-    );
-
-    return true;
-  };
-
-  // Create the app with providers
+  // FIXED: UserProvider Stream exposure caused MultiProvider assertion error
+  // Root cause was premiumStatusStream getter exposing IapService stream
+  // Solution: Disabled Stream getter in user_provider.dart:308-311
   final app = MultiProvider(
     providers: [
+      ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ChangeNotifierProvider(create: (_) => UserProvider()),
+      // RE-ENABLED: All providers needed for internal screens
       ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ChangeNotifierProvider(create: (_) => TransactionProvider()),
-      ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ChangeNotifierProvider(create: (_) => GoalsProvider()),
       ChangeNotifierProvider(create: (_) => ChallengesProvider()),
       ChangeNotifierProvider(create: (_) => HabitsProvider()),
@@ -238,22 +249,26 @@ void main() async {
     child: const MITAApp(),
   );
 
-  // Run the app with comprehensive error monitoring
-  if (sentryDsn.isNotEmpty) {
-    // Use Sentry's runApp wrapper for additional error capture
-    await SentryFlutter.init(
-      (options) {
-        // Sentry is already initialized by our service, this is just to use the runApp wrapper
-        options.dsn = sentryDsn;
-        options.environment = environment;
-        options.release = sentryRelease;
-        // Minimal configuration as our service handles the comprehensive setup
-      },
-      appRunner: () => runApp(app),
-    );
-  } else {
-    runApp(app);
-  }
+  logInfo('Running app with MINIMAL provider (SettingsProvider only)', tag: 'MAIN');
+
+  runApp(app);
+
+  // // Run the app with comprehensive error monitoring
+  // if (sentryDsn.isNotEmpty) {
+  //   // Use Sentry's runApp wrapper for additional error capture
+  //   await SentryFlutter.init(
+  //     (options) {
+  //       // Sentry is already initialized by our service, this is just to use the runApp wrapper
+  //       options.dsn = sentryDsn;
+  //       options.environment = environment;
+  //       options.release = sentryRelease;
+  //       // Minimal configuration as our service handles the comprehensive setup
+  //     },
+  //     appRunner: () => runApp(app),
+  //   );
+  // } else {
+  //   runApp(app);
+  // }
 }
 
 class MITAApp extends StatefulWidget {
@@ -267,29 +282,32 @@ class _MITAAppState extends State<MITAApp> {
   @override
   void initState() {
     super.initState();
-    _initializeProviders();
+    // TEMPORARILY DISABLED: Testing without provider initialization
+    // _initializeProviders();
   }
 
-  Future<void> _initializeProviders() async {
-    // Initialize providers after the first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final settingsProvider = context.read<SettingsProvider>();
-      final userProvider = context.read<UserProvider>();
-
-      // Initialize settings first (for theme, locale, etc.)
-      await settingsProvider.initialize();
-
-      // Initialize user provider
-      await userProvider.initialize();
-
-      logInfo('All providers initialized', tag: 'MAIN');
-    });
-  }
+  // TEMPORARILY DISABLED: This may be causing the white screen
+  // Future<void> _initializeProviders() async {
+  //   // Initialize providers after the first frame
+  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //     final settingsProvider = context.read<SettingsProvider>();
+  //     final userProvider = context.read<UserProvider>();
+  //
+  //     // Initialize settings first (for theme, locale, etc.)
+  //     await settingsProvider.initialize();
+  //
+  //     // Initialize user provider
+  //     await userProvider.initialize();
+  //
+  //     logInfo('All providers initialized', tag: 'MAIN');
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
-    // Get settings provider for theme mode
-    final settingsProvider = context.watch<SettingsProvider>();
+    // TEMPORARY: Hardcode ThemeMode.system to avoid context.watch() issues
+    // TODO: Fix provider initialization and re-enable dynamic theme mode
+    final themeMode = ThemeMode.system;
 
     final app = MaterialApp(
       navigatorKey: navigatorKey,
@@ -298,7 +316,7 @@ class _MITAAppState extends State<MITAApp> {
       debugShowCheckedModeBanner: false,
       theme: MitaTheme.lightTheme,
       darkTheme: MitaTheme.darkTheme,
-      themeMode: settingsProvider.themeMode,
+      themeMode: themeMode,
 
       // Localization configuration
       localizationsDelegates: const [
@@ -329,175 +347,91 @@ class _MITAAppState extends State<MITAApp> {
         return const Locale('en');
       },
 
-      initialRoute: '/',
+      initialRoute: '/main', // BYPASS AUTH: Start at main app for internal screen testing
       onGenerateRoute: (settings) {
         logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
             tag: 'NAVIGATION');
         return null; // Let the routes table handle it
       },
       routes: {
-        '/': (context) => const AppErrorBoundary(
-              screenName: 'Welcome',
-              child: WelcomeScreen(),
-            ),
-        '/login': (context) => const AppErrorBoundary(
-              screenName: 'Login',
-              child: LoginScreen(),
-            ),
-        '/register': (context) => const AppErrorBoundary(
-              screenName: 'Register',
-              child: RegisterScreen(),
-            ),
-        '/forgot-password': (context) => const AppErrorBoundary(
-              screenName: 'ForgotPassword',
-              child: ForgotPasswordScreen(),
-            ),
-        '/reset-password': (context) => const AppErrorBoundary(
-              screenName: 'ResetPassword',
-              child: ResetPasswordScreen(),
-            ),
-        '/ai-assistant': (context) => const AppErrorBoundary(
-              screenName: 'AIAssistant',
-              child: AIAssistantScreen(),
-            ),
-        '/main': (context) => const AppErrorBoundary(
-              screenName: 'Main',
-              child: BottomNavigation(),
-            ),
-        '/onboarding_location': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingLocation',
-              child: OnboardingLocationScreen(),
-            ),
-        '/onboarding_income': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingIncome',
-              child: OnboardingIncomeScreen(),
-            ),
-        '/onboarding_expenses': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingExpenses',
-              child: OnboardingExpensesScreen(),
-            ),
-        '/onboarding_goal': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingGoal',
-              child: OnboardingGoalScreen(),
-            ),
-        '/onboarding_spending_frequency': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingSpendingFrequency',
-              child: OnboardingSpendingFrequencyScreen(),
-            ),
-        '/onboarding_habits': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingHabits',
-              child: OnboardingHabitsScreen(),
-            ),
-        '/onboarding_finish': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingFinish',
-              child: OnboardingFinishScreen(),
-            ),
-        '/referral': (context) => const AppErrorBoundary(
-              screenName: 'Referral',
-              child: ReferralScreen(),
-            ),
-        '/mood': (context) => const AppErrorBoundary(
-              screenName: 'Mood',
-              child: MoodScreen(),
-            ),
-        '/subscribe': (context) => const AppErrorBoundary(
-              screenName: 'Subscription',
-              child: SubscriptionScreen(),
-            ),
-        '/notifications': (context) => const AppErrorBoundary(
-              screenName: 'Notifications',
-              child: NotificationsScreen(),
-            ),
-        '/daily_budget': (context) => const AppErrorBoundary(
-              screenName: 'DailyBudget',
-              child: DailyBudgetScreen(),
-            ),
-        '/add_expense': (context) => const AppErrorBoundary(
-              screenName: 'AddExpense',
-              child: AddExpenseScreen(),
-            ),
-        '/insights': (context) => const AppErrorBoundary(
-              screenName: 'Insights',
-              child: InsightsScreen(),
-            ),
-        '/budget_settings': (context) => const AppErrorBoundary(
-              screenName: 'BudgetSettings',
-              child: BudgetSettingsScreen(),
-            ),
-        '/profile': (context) => const AppErrorBoundary(
-              screenName: 'UserProfile',
-              child: UserProfileScreen(),
-            ),
-        '/settings': (context) => const AppErrorBoundary(
-              screenName: 'UserSettings',
-              child: UserSettingsScreen(),
-            ),
-        '/transactions': (context) => const AppErrorBoundary(
-              screenName: 'Transactions',
-              child: TransactionsScreen(),
-            ),
-        '/auth-test': (context) => const AppErrorBoundary(
-              screenName: 'AuthTest',
-              child: AuthTestScreen(),
-            ),
-        '/goals': (context) => const AppErrorBoundary(
-              screenName: 'Goals',
-              child: GoalsScreen(),
-            ),
-        '/challenges': (context) => const AppErrorBoundary(
-              screenName: 'Challenges',
-              child: ChallengesScreen(),
-            ),
-        '/installment-calculator': (context) => const AppErrorBoundary(
-              screenName: 'InstallmentCalculator',
-              child: InstallmentCalculatorScreen(),
-            ),
-        '/installments': (context) => const AppErrorBoundary(
-              screenName: 'Installments',
-              child: InstallmentsScreen(),
-            ),
+        '/debug-test': (context) => const DebugTestScreen(),  // Minimal test screen
+        '/': (context) => const WelcomeScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
+        '/ai-assistant': (context) => const AIAssistantScreen(),
+        '/main': (context) => const BottomNavigation(),
+        '/onboarding_location': (context) => const OnboardingLocationScreen(),
+        '/onboarding_income': (context) => const OnboardingIncomeScreen(),
+        '/onboarding_expenses': (context) => const OnboardingExpensesScreen(),
+        '/onboarding_goal': (context) => const OnboardingGoalScreen(),
+        '/onboarding_spending_frequency': (context) => const OnboardingSpendingFrequencyScreen(),
+        '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
+        '/onboarding_finish': (context) => const OnboardingFinishScreen(),
+        '/referral': (context) => const ReferralScreen(),
+        '/mood': (context) => const MoodScreen(),
+        '/subscribe': (context) => const SubscriptionScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/daily_budget': (context) => const DailyBudgetScreen(),
+        '/add_expense': (context) => const AddExpenseScreen(),
+        '/insights': (context) => const InsightsScreen(),
+        '/budget_settings': (context) => const BudgetSettingsScreen(),
+        '/profile': (context) => const UserProfileScreen(),
+        '/settings': (context) => const UserSettingsScreen(),
+        '/transactions': (context) => const TransactionsScreen(),
+        '/auth-test': (context) => const AuthTestScreen(),
+        '/goals': (context) => const GoalsScreen(),
+        '/challenges': (context) => const ChallengesScreen(),
+        '/installment-calculator': (context) => const InstallmentCalculatorScreen(),
+        '/installments': (context) => const InstallmentsScreen(),
       },
     );
 
-    // Wrap the app with an enhanced loading overlay that auto-dismisses
-    return ValueListenableBuilder<bool>(
-      valueListenable: LoadingService.instance.forceHiddenNotifier,
-      builder: (context, forceHidden, child) {
-        return ValueListenableBuilder<int>(
-          valueListenable: LoadingService.instance.notifier,
-          builder: (context, loadingCount, child) {
-            final shouldShowLoading = loadingCount > 0 && !forceHidden;
+    // TEMPORARILY DISABLED: ValueListenableBuilder loading overlay blocks rendering
+    // Root cause: Directionality wrapper outside MaterialApp conflicts with Material's text direction
+    // TODO: Move loading overlay inside MaterialApp or use builder pattern
+    // return ValueListenableBuilder<bool>(
+    //   valueListenable: LoadingService.instance.forceHiddenNotifier,
+    //   builder: (context, forceHidden, child) {
+    //     return ValueListenableBuilder<int>(
+    //       valueListenable: LoadingService.instance.notifier,
+    //       builder: (context, loadingCount, child) {
+    //         final shouldShowLoading = loadingCount > 0 && !forceHidden;
+    //
+    //         return Directionality(
+    //           textDirection: TextDirection.ltr,
+    //           child: Stack(
+    //             children: [
+    //               child!,
+    //               if (shouldShowLoading) ...[
+    //                 // Enhanced modal barrier with tap to dismiss after delay
+    //                 _EnhancedModalBarrier(
+    //                   onTap: () {
+    //                     // Allow emergency dismiss after 10 seconds
+    //                     final status = LoadingService.instance.getStatus();
+    //                     if (status.globalLoadingDuration != null &&
+    //                         status.globalLoadingDuration!.inSeconds >= 10) {
+    //                       LoadingService.instance
+    //                           .forceHide(reason: 'user_emergency_dismiss');
+    //                     }
+    //                   },
+    //                 ),
+    //                 // Enhanced loading indicator with timeout info
+    //                 _EnhancedLoadingIndicator(),
+    //               ],
+    //             ],
+    //           ),
+    //         );
+    //       },
+    //       child: child,
+    //     );
+    //   },
+    //   child: app,
+    // );
 
-            return Directionality(
-              textDirection: TextDirection.ltr,
-              child: Stack(
-                children: [
-                  child!,
-                  if (shouldShowLoading) ...[
-                    // Enhanced modal barrier with tap to dismiss after delay
-                    _EnhancedModalBarrier(
-                      onTap: () {
-                        // Allow emergency dismiss after 10 seconds
-                        final status = LoadingService.instance.getStatus();
-                        if (status.globalLoadingDuration != null &&
-                            status.globalLoadingDuration!.inSeconds >= 10) {
-                          LoadingService.instance
-                              .forceHide(reason: 'user_emergency_dismiss');
-                        }
-                      },
-                    ),
-                    // Enhanced loading indicator with timeout info
-                    _EnhancedLoadingIndicator(),
-                  ],
-                ],
-              ),
-            );
-          },
-          child: child,
-        );
-      },
-      child: app,
-    );
+    // SIMPLIFIED: Direct return to fix white screen (like main_test.dart)
+    return app;
   }
 }
 

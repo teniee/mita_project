@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "flutter": {
+      "command": "/Users/mikhail/.pub-cache/bin/mcp_server",
+      "args": []
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=atdcxppfflmiwjwjuqyl",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer sb_secret_mix5zbwyZPuiWBVtb0LITw_DMNjViRI"
+      }
+    }
+  }
+}

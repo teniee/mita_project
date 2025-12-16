@@ -66,10 +66,23 @@ class BudgetProvider extends ChangeNotifier {
   bool get isUpdatingMode => _isUpdatingMode;
 
   // Budget status convenience getters
-  double get totalBudget =>
-      (_liveBudgetStatus['total_budget'] as num?)?.toDouble() ?? 0.0;
-  double get totalSpent =>
-      (_liveBudgetStatus['total_spent'] as num?)?.toDouble() ?? 0.0;
+  double get totalBudget {
+    final valueData = _liveBudgetStatus['total_budget'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
+
+  double get totalSpent {
+    final valueData = _liveBudgetStatus['total_spent'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
   double get remaining => totalBudget - totalSpent;
   double get spendingPercentage =>
       totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
@@ -410,7 +423,12 @@ class BudgetProvider extends ChangeNotifier {
 
       // Get user income
       final profile = await _apiService.getUserProfile();
-      final income = (profile['data']?['income'] as num?)?.toDouble();
+      final incomeData = profile['data']?['income'];
+      final income = (incomeData == null)
+          ? null
+          : (incomeData is num)
+              ? incomeData.toDouble()
+              : (incomeData is String ? double.tryParse(incomeData) : null);
 
       // Fetch AI optimization
       final optimization = await _apiService.getAIBudgetOptimization(

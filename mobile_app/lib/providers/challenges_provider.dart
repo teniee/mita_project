@@ -36,17 +36,68 @@ class ChallengesProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   // Stats convenience getters
-  int get currentLevel => _gamificationStats['current_level'] as int? ?? 1;
-  int get totalPoints => _gamificationStats['total_points'] as int? ?? 0;
-  int get nextLevelPoints =>
-      _gamificationStats['next_level_points'] as int? ?? 100;
-  int get pointsToNextLevel =>
-      _gamificationStats['points_to_next_level'] as int? ?? 100;
-  int get activeChallengesCount =>
-      _gamificationStats['active_challenges'] as int? ?? 0;
-  int get currentStreak => _gamificationStats['current_streak'] as int? ?? 0;
-  int get completedChallengesCount =>
-      _gamificationStats['completed_challenges'] as int? ?? 0;
+  int get currentLevel {
+    final valueData = _gamificationStats['current_level'];
+    return (valueData == null)
+        ? 1
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 1 : 1);
+  }
+
+  int get totalPoints {
+    final valueData = _gamificationStats['total_points'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  int get nextLevelPoints {
+    final valueData = _gamificationStats['next_level_points'];
+    return (valueData == null)
+        ? 100
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 100 : 100);
+  }
+
+  int get pointsToNextLevel {
+    final valueData = _gamificationStats['points_to_next_level'];
+    return (valueData == null)
+        ? 100
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 100 : 100);
+  }
+
+  int get activeChallengesCount {
+    final valueData = _gamificationStats['active_challenges'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  int get currentStreak {
+    final valueData = _gamificationStats['current_streak'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  int get completedChallengesCount {
+    final valueData = _gamificationStats['completed_challenges'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
   List<dynamic> get badgesEarned =>
       _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
 

@@ -44,7 +44,14 @@ class UserProvider extends ChangeNotifier {
   // User profile convenience getters
   String get userName => _userProfile['name'] as String? ?? 'User';
   String get userEmail => _userProfile['email'] as String? ?? '';
-  double get userIncome => (_userProfile['income'] as num?)?.toDouble() ?? 0.0;
+  double get userIncome {
+    final incomeData = _userProfile['income'];
+    return (incomeData == null)
+        ? 0.0
+        : (incomeData is num)
+            ? incomeData.toDouble()
+            : (incomeData is String ? double.tryParse(incomeData) ?? 0.0 : 0.0);
+  }
   String get userCurrency => _userProfile['currency'] as String? ?? 'USD';
   String get userRegion => _userProfile['region'] as String? ?? '';
   String get userCountryCode => _userProfile['countryCode'] as String? ?? '';
@@ -305,5 +312,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Get premium status stream for reactive updates
-  Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
+  /// TEMPORARILY DISABLED: Stream exposure causes MultiProvider render tree violation
+  /// TODO: Migrate to StreamProvider if stream functionality is needed
+  /// Original: Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
+  // Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
 }

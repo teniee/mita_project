@@ -117,8 +117,11 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
-    // Extract income from financial context
-    final income = (financialContext['income'] as num?)?.toDouble() ?? 0.0;
+    // Extract income from financial context - SAFE type casting
+    final incomeValue = financialContext['income'];
+    final income = (incomeValue is num)
+        ? incomeValue.toDouble()
+        : (incomeValue is String ? double.tryParse(incomeValue) ?? 0.0 : 0.0);
 
     if (income > 0) {
       _monthlyIncome = income;
@@ -130,14 +133,16 @@ class _MainScreenState extends State<MainScreen> {
       cohortInsights = _getDefaultCohortInsights();
       latestAdvice = _getDefaultAdvice();
 
-      // Update financial health score from budget insights
+      // Update financial health score from budget insights - SAFE type casting
       final budgetProvider = context.read<BudgetProvider>();
-      if (budgetProvider.budgetSuggestions['confidence'] != null) {
+      final confidenceValue = budgetProvider.budgetSuggestions['confidence'];
+      if (confidenceValue != null) {
+        final confidence = (confidenceValue is num)
+            ? confidenceValue.toDouble()
+            : (confidenceValue is String ? double.tryParse(confidenceValue) ?? 0.0 : 0.0);
         financialHealthScore = {
-          'score':
-              (budgetProvider.budgetSuggestions['confidence'] * 100).round(),
-          'grade': _getGradeFromConfidence(
-              budgetProvider.budgetSuggestions['confidence']),
+          'score': (confidence * 100).round(),
+          'grade': _getGradeFromConfidence(confidence),
         };
       }
     } else {
@@ -547,8 +552,16 @@ class _MainScreenState extends State<MainScreen> {
         orElse: () => {'spent': 0, 'limit': 0},
       );
 
-      final spent = (dayData['spent'] as num?)?.toDouble() ?? 0;
-      final limit = (dayData['limit'] as num?)?.toDouble() ?? 0;
+      // SAFE type casting for calendar data
+      final spentValue = dayData['spent'];
+      final spent = (spentValue is num)
+          ? spentValue.toDouble()
+          : (spentValue is String ? double.tryParse(spentValue) ?? 0.0 : 0.0);
+
+      final limitValue = dayData['limit'];
+      final limit = (limitValue is num)
+          ? limitValue.toDouble()
+          : (limitValue is String ? double.tryParse(limitValue) ?? 0.0 : 0.0);
 
       String status = 'neutral';
       if (limit > 0) {
@@ -755,10 +768,18 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildBalanceCard(Map<String, dynamic> dashboardData) {
-    final balance = dashboardData['balance'] ?? 0;
-    final spent = dashboardData['spent'] ?? 0;
-    final remaining =
-        (balance is num && spent is num) ? balance - spent : balance;
+    // SAFE type casting for balance card data
+    final balanceValue = dashboardData['balance'] ?? 0;
+    final balance = (balanceValue is num)
+        ? balanceValue.toDouble()
+        : (balanceValue is String ? double.tryParse(balanceValue) ?? 0.0 : 0.0);
+
+    final spentValue = dashboardData['spent'] ?? 0;
+    final spent = (spentValue is num)
+        ? spentValue.toDouble()
+        : (spentValue is String ? double.tryParse(spentValue) ?? 0.0 : 0.0);
+
+    final remaining = balance - spent;
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : const Color(0xFFFFD25F);
@@ -1142,9 +1163,9 @@ class _MainScreenState extends State<MainScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     // Get goals data from dashboard
-    final goalsData = dashboardData['data']?['goals'] as List<dynamic>? ?? [];
-    final goalsSummary =
-        dashboardData['data']?['goals_summary'] as Map<String, dynamic>? ?? {};
+    // FIXED: Safe type casting to handle API response types
+    final goalsData = (dashboardData['data']?['goals'] as List?)?.cast<dynamic>() ?? [];
+    final goalsSummary = (dashboardData['data']?['goals_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
     final totalActive = goalsSummary['total_active'] ?? 0;
     final nearCompletion = goalsSummary['near_completion'] ?? 0;
@@ -1334,10 +1355,21 @@ class _MainScreenState extends State<MainScreen> {
         ...goalsData.take(3).map((goalData) {
           final goal = goalData as Map<String, dynamic>;
           final title = goal['title'] ?? 'Untitled Goal';
-          final progress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
-          final targetAmount =
-              (goal['target_amount'] as num?)?.toDouble() ?? 0.0;
-          final savedAmount = (goal['saved_amount'] as num?)?.toDouble() ?? 0.0;
+          // SAFE type casting for goal data
+          final progressValue = goal['progress'];
+          final progress = (progressValue is num)
+              ? progressValue.toDouble()
+              : (progressValue is String ? double.tryParse(progressValue) ?? 0.0 : 0.0);
+
+          final targetAmountValue = goal['target_amount'];
+          final targetAmount = (targetAmountValue is num)
+              ? targetAmountValue.toDouble()
+              : (targetAmountValue is String ? double.tryParse(targetAmountValue) ?? 0.0 : 0.0);
+
+          final savedAmountValue = goal['saved_amount'];
+          final savedAmount = (savedAmountValue is num)
+              ? savedAmountValue.toDouble()
+              : (savedAmountValue is String ? double.tryParse(savedAmountValue) ?? 0.0 : 0.0);
           final isOverdue = goal['is_overdue'] as bool? ?? false;
           final priority = goal['priority'] ?? 'medium';
           final category = goal['category'] ?? 'Other';
@@ -1538,11 +1570,9 @@ class _MainScreenState extends State<MainScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     // Get challenges data from dashboard
-    final challengesData =
-        dashboardData['data']?['challenges'] as List<dynamic>? ?? [];
-    final challengesSummary =
-        dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ??
-            {};
+    // FIXED: Safe type casting to handle API response types
+    final challengesData = (dashboardData['data']?['challenges'] as List?)?.cast<dynamic>() ?? [];
+    final challengesSummary = (dashboardData['data']?['challenges_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
     final activeChallenges = challengesSummary['active_challenges'] ?? 0;
     final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
@@ -1741,8 +1771,11 @@ class _MainScreenState extends State<MainScreen> {
           final name = challenge['name'] ?? 'Challenge';
           final description = challenge['description'] ?? '';
           final difficulty = challenge['difficulty'] ?? 'medium';
-          final progressPercentage =
-              (challenge['progress_percentage'] as num?)?.toDouble() ?? 0.0;
+          // SAFE type casting for challenge data
+          final progressPercentageValue = challenge['progress_percentage'];
+          final progressPercentage = (progressPercentageValue is num)
+              ? progressPercentageValue.toDouble()
+              : (progressPercentageValue is String ? double.tryParse(progressPercentageValue) ?? 0.0 : 0.0);
           final daysCompleted = challenge['days_completed'] ?? 0;
           final durationDays = challenge['duration_days'] ?? 0;
           final rewardPoints = challenge['reward_points'] ?? 0;
