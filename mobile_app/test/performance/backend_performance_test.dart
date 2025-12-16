@@ -389,7 +389,7 @@ void main() {
         for (int i = 0; i < iterations; i++) {
           final income = random.nextDouble() * 10000 + 3000;
           final expenses = income * (0.7 + random.nextDouble() * 0.2); // 70-90% of income
-          calculator.calculateBudgetHealth(income, expenses);
+          calculator.calculateBudgetHealthByIncome(income, expenses);
         }
         stopwatch.stop();
         
@@ -1008,7 +1008,7 @@ void main() {
         final calculator = FinancialHealthCalculator();
         for (int i = 0; i < 1000; i++) {
           final stopwatch = Stopwatch()..start();
-          calculator.calculateBudgetHealth(5000.0, 3500.0);
+          calculator.calculateBudgetHealthByIncome(5000.0, 3500.0);
           stopwatch.stop();
           financialMetrics.addMeasurement(stopwatch.elapsedMilliseconds.toDouble());
         }
@@ -1090,7 +1090,7 @@ void main() {
           },
           () async {
             final calculator = FinancialHealthCalculator();
-            calculator.calculateBudgetHealth(5000.0, 3500.0);
+            calculator.calculateBudgetHealthByIncome(5000.0, 3500.0);
           },
           () async {
             final passwordService = PasswordValidationService();

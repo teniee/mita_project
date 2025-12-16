@@ -36,10 +36,17 @@ void main() {
         );
 
         expect(result, isNotEmpty);
-        final firstDay = result.first;
-        expect(firstDay['limit'],
+
+        // Check a mid-week day (Tuesday-Thursday) to avoid Monday reduction (0.8x)
+        // and Friday/weekend increases (1.3x-1.5x)
+        final midWeekDay = result.firstWhere((day) {
+          final dayOfWeek = day['day_of_week'] as int;
+          return dayOfWeek >= 2 && dayOfWeek <= 4; // Tuesday-Thursday
+        });
+
+        expect(midWeekDay['limit'],
             greaterThan(100)); // Mid income should have higher daily budgets
-        expect(firstDay['limit'], lessThan(300));
+        expect(midWeekDay['limit'], lessThan(300));
       });
 
       test('should classify high income correctly', () async {
