@@ -677,7 +677,7 @@ void main() {
           // Perform complex calculations
           final budgetResult = budgetEngine.calculateOptimalBudget(
             monthlyIncome: monthlyIncome,
-            tier: IncomeTier.medium, // Default tier for performance test
+            tier: IncomeTier.middle, // Default tier for performance test
             goals: ['savings', 'investment'],
             habits: ['regular_saver'],
           );

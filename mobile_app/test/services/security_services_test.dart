@@ -6,6 +6,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:mita/services/biometric_auth_service.dart';
 import 'package:mita/services/logging_service.dart';
 
+import 'security_services_test.mocks.dart';
+
 /// Comprehensive Unit Tests for MITA Security Services
 ///
 /// Tests:

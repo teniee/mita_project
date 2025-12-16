@@ -426,6 +426,30 @@ class FinancialHealthCalculator {
 
     return riskAreas;
   }
+
+  /// Calculate budget health percentage by income
+  /// Returns percentage of budget remaining (positive) or overspent (negative)
+  double calculateBudgetHealthByIncome(double income, double expenses) {
+    if (income == 0) return 0.0;
+    final remaining = income - expenses;
+    return (remaining / income) * 100;
+  }
+
+  double calculateSavingsRate(double savings, double income) {
+    if (income == 0) return 0.0;
+    return (savings / income) * 100;
+  }
+
+  double calculateDebtToIncomeRatio(double debt, double income) {
+    if (income == 0) return 0.0;
+    return (debt / income) * 100;
+  }
+
+  double calculateEmergencyFundMonths(
+      double emergencyFund, double monthlyExpenses) {
+    if (monthlyExpenses == 0) return 0.0;
+    return emergencyFund / monthlyExpenses;
+  }
 }
 
 /// Financial Health Score data class
@@ -441,7 +465,7 @@ class FinancialHealthScore {
   List<String> recommendations = [];
   List<String> riskAreas = [];
 
-  // Methods for test compatibility
+  // Method for test compatibility
   double calculateBudgetHealth(
       Map<String, double> spending, Map<String, double> budget) {
     if (budget.isEmpty) return 0.0;
@@ -477,26 +501,5 @@ class FinancialHealthScore {
     final categoryHealth = (categoriesWithinBudget / totalCategories) * 40.0;
 
     return (totalBudgetHealth + categoryHealth).clamp(0.0, 100.0);
-  }
-
-  /// Calculate budget health percentage by income
-  /// Returns percentage of budget remaining (positive) or overspent (negative)
-  double calculateBudgetHealthByIncome(double income, double expenses) {
-    if (income == 0) return 0.0;
-    final remaining = income - expenses;
-    return (remaining / income) * 100;
-  }
-
-  double calculateSavingsRate(double savings, double income) {
-    return (savings / income) * 100;
-  }
-
-  double calculateDebtToIncomeRatio(double debt, double income) {
-    return (debt / income) * 100;
-  }
-
-  double calculateEmergencyFundMonths(
-      double emergencyFund, double monthlyExpenses) {
-    return emergencyFund / monthlyExpenses;
   }
 }
