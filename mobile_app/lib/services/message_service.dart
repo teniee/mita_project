@@ -57,4 +57,10 @@ class MessageService {
       ),
     );
   }
+
+  /// Clear all currently displayed messages/snackbars
+  /// Call this after successful login to remove any stale error messages
+  void clearMessages() {
+    messengerKey.currentState?.clearSnackBars();
+  }
 }

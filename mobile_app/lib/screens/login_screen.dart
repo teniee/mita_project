@@ -14,6 +14,7 @@ import '../providers/user_provider.dart';
 import '../services/secure_push_token_manager.dart';
 import '../services/password_validation_service.dart';
 import '../services/accessibility_service.dart';
+import '../services/message_service.dart';
 import '../services/timeout_manager_service.dart';
 import '../theme/mita_theme.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -404,6 +405,9 @@ class _LoginScreenState extends State<LoginScreen>
             'Google login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
 
+      // Clear any stale error messages from previous session expiration
+      MessageService.instance.clearMessages();
+
       // Force navigation with explicit error handling
       try {
         if (hasOnboarded) {
@@ -683,6 +687,9 @@ class _LoginScreenState extends State<LoginScreen>
         dev.log(
             'Login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
+
+      // Clear any stale error messages from previous session expiration
+      MessageService.instance.clearMessages();
 
       // Force navigation with explicit error handling
       try {
