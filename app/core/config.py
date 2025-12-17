@@ -168,7 +168,7 @@ except Exception as e:
         OPENAI_API_KEY = ""
         ENVIRONMENT = "development"
         ALGORITHM = "HS256"
-        ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        ACCESS_TOKEN_EXPIRE_MINUTES = 120  # Match main config - 2 hours for onboarding
         REDIS_URL = ""  # No Redis in development by default - graceful fallback
         OPENAI_MODEL = "gpt-4o-mini"
         GOOGLE_APPLICATION_CREDENTIALS = ""
