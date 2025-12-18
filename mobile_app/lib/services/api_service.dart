@@ -100,6 +100,21 @@ class ApiService {
 
           // Handle auth refresh / errors with grace period
           if (e.response?.statusCode == 401) {
+            // CRITICAL FIX: Prevent infinite refresh loop
+            // Don't try to refresh if the failing request IS the refresh request
+            final path = e.requestOptions.path ?? '';
+            final isRefreshRequest = path.contains('/refresh-token') ||
+                                    path.endsWith('/refresh-token') ||
+                                    path.contains('refresh_token');
+
+            if (isRefreshRequest) {
+              // Refresh token itself failed - cannot retry, just log and fail
+              logError(
+                'Refresh token request failed with 401 - token is invalid/expired',
+                tag: 'TOKEN_REFRESH');
+              return handler.next(e);  // Pass through to error handling
+            }
+
             final refreshed = await _refreshTokens();
             if (refreshed) {
               final req = e.requestOptions;
@@ -116,14 +131,34 @@ class ApiService {
                   'Auth token refresh failed for ${e.requestOptions.path}',
                   tag: 'API_AUTH');
 
-              // Показываем диалог только если это критический endpoint
+              // Показываем диалог ТОЛЬКО для критических auth endpoints
+              // НЕ показываем для обычных authenticated endpoints (user profile, calendar, etc)
+              // CRITICAL FIX: Проверяем _hasActiveSession ПЕРЕД показом "Session expired"
               final path = e.requestOptions.path ?? '';
-              if (path.contains('/auth/') ||
-                  path.contains('/login') ||
-                  path.contains('/register')) {
-                MessageService.instance
-                    .showError('Session expired. Please log in.');
+              if (path.endsWith('/login') ||
+                  path.endsWith('/register') ||
+                  path.contains('/refresh') ||
+                  path.contains('/logout')) {
+                // Показываем "Session expired" ТОЛЬКО если пользователь имеет активную сессию
+                // Это предотвращает показ ошибки для:
+                // 1. Новых пользователей на onboarding (нет токена вообще)
+                // 2. Старых токенов из предыдущих установок (_hasActiveSession = false)
+                final existingToken = await getToken();
+                if (existingToken != null && existingToken.isNotEmpty && _hasActiveSession) {
+                  MessageService.instance
+                      .showError('Session expired. Please log in.');
+                  logWarning(
+                      'Session expired - active session token refresh failed',
+                      tag: 'API_AUTH');
+                } else {
+                  // Нет активной сессии = не показываем ошибку
+                  logDebug(
+                      'Auth failed but no active session (token exists: ${existingToken != null}, active: $_hasActiveSession)',
+                      tag: 'API_AUTH');
+                }
               }
+              // Для остальных endpoints - просто логируем, не показываем пользователю
+              // Они обрабатываются gracefully на уровне UI
             }
           } else if (e.response?.statusCode == 429) {
             MessageService.instance.showRateLimit();
@@ -167,6 +202,11 @@ class ApiService {
 
   // Secure token storage for production-grade security
   SecureTokenStorage? _secureStorage;
+
+  // Session tracking: Distinguishes active session from old persisted tokens
+  // Set to true when saveTokens() called, false when clearTokens() called
+  // Prevents showing "Session expired" for old tokens from previous installs
+  bool _hasActiveSession = false;
 
   final String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
@@ -282,6 +322,10 @@ class ApiService {
     } catch (e) {
       logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
     }
+
+    // Mark as active session - distinguishes from old persisted tokens
+    _hasActiveSession = true;
+    logDebug('Active session established', tag: 'API_AUTH');
   }
 
   String? _extractUserIdFromToken(String token) {
@@ -367,6 +411,10 @@ class ApiService {
       logError('Failed to clear legacy tokens: $e',
           tag: 'API_SECURITY', error: e);
     }
+
+    // Mark as NO active session - user logged out
+    _hasActiveSession = false;
+    logDebug('Active session cleared', tag: 'API_AUTH');
   }
 
   Future<bool> _refreshTokens() async {

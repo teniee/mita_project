@@ -29,6 +29,25 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAuthAndSubmit();
+  }
+
+  Future<void> _checkAuthAndSubmit() async {
+    // First, check if user has a valid token BEFORE attempting submission
+    final currentToken = await _api.getToken();
+
+    if (currentToken == null) {
+      // No token at all - prompt for registration/login
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error =
+            'To save your budget and preferences, please create an account or log in. Your setup will be saved after authentication.';
+      });
+      return;
+    }
+
+    // Token exists, try to submit (will handle token expiration during submission)
     _submitOnboardingData();
   }
 
@@ -411,30 +430,69 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            // Add logout option for session expired errors
-                            if (_error?.contains('session has expired') ==
-                                    true ||
-                                _error?.contains('log in again') == true)
-                              TextButton(
-                                onPressed: () async {
-                                  // Clear all user data and return to login
-                                  await _api.clearTokens();
-                                  OnboardingState.instance.reset();
-                                  if (mounted) {
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/login',
-                                      (route) => false,
-                                    );
-                                  }
-                                },
-                                child: const Text(
-                                  'Back to Login',
-                                  style: TextStyle(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w600,
+                            // Add login/registration options for auth-related errors
+                            if (_error?.contains('session has expired') == true ||
+                                _error?.contains('log in') == true ||
+                                _error?.contains('create an account') == true)
+                              Column(
+                                children: [
+                                  // Primary action: Create Account (for new users)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        // Clear temporary data before registration
+                                        await _api.clearTokens();
+                                        if (mounted) {
+                                          Navigator.pushNamedAndRemoveUntil(
+                                            context,
+                                            '/register',
+                                            (route) => false,
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.textPrimary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16, horizontal: 24),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Create Account',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 12),
+                                  // Secondary action: Login (for existing users)
+                                  TextButton(
+                                    onPressed: () async {
+                                      // Clear tokens and go to login
+                                      await _api.clearTokens();
+                                      OnboardingState.instance.reset();
+                                      if (mounted) {
+                                        Navigator.pushNamedAndRemoveUntil(
+                                          context,
+                                          '/login',
+                                          (route) => false,
+                                        );
+                                      }
+                                    },
+                                    child: const Text(
+                                      'Already have an account? Log In',
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),
