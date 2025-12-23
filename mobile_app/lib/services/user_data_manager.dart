@@ -273,11 +273,16 @@ class UserDataManager {
       }
 
       // Profile has valid income data - return complete financial context
+      // Defensive type checking to handle both Map and List formats
+      final expenses = profile['expenses'];
+      final goals = profile['goals'];
+      final habits = profile['habits'];
+
       return {
         'income': income,
-        'expenses': profile['expenses'] as List<dynamic>? ?? [],
-        'goals': profile['goals'] as List<dynamic>? ?? ['budgeting'],
-        'habits': profile['habits'] as List<dynamic>? ?? [],
+        'expenses': expenses is List ? expenses : [],
+        'goals': goals is List ? goals : (goals is Map ? [goals] : ['budgeting']),
+        'habits': habits is List ? habits : [],
         'region': profile['region'] as String? ?? '',
         'countryCode': profile['countryCode'] as String? ?? '',
         'stateCode': profile['stateCode'] as String? ?? '',

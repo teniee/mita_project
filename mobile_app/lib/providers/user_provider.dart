@@ -55,11 +55,21 @@ class UserProvider extends ChangeNotifier {
   String get userCurrency => _userProfile['currency'] as String? ?? 'USD';
   String get userRegion => _userProfile['region'] as String? ?? '';
   String get userCountryCode => _userProfile['countryCode'] as String? ?? '';
-  List<dynamic> get userExpenses =>
-      _userProfile['expenses'] as List<dynamic>? ?? [];
-  List<dynamic> get userGoals => _userProfile['goals'] as List<dynamic>? ?? [];
-  List<dynamic> get userHabits =>
-      _userProfile['habits'] as List<dynamic>? ?? [];
+  List<dynamic> get userExpenses {
+    final expenses = _userProfile['expenses'];
+    if (expenses is List) return expenses;
+    return [];
+  }
+  List<dynamic> get userGoals {
+    final goals = _userProfile['goals'];
+    if (goals is List) return goals;
+    return [];
+  }
+  List<dynamic> get userHabits {
+    final habits = _userProfile['habits'];
+    if (habits is List) return habits;
+    return [];
+  }
 
   /// Initialize the provider and load user data
   Future<void> initialize() async {
