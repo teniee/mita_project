@@ -19,6 +19,7 @@ import 'secure_push_token_manager.dart';
 import 'secure_token_storage.dart';
 import 'app_version_service.dart';
 import 'certificate_pinning_service.dart';
+import 'user_data_manager.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -935,6 +936,7 @@ class ApiService {
 
   /// Retrieve saved calendar data from onboarding
   /// Returns null if no saved data exists, allowing fallback to generation
+  /// This method attempts to fetch calendar data saved during onboarding
   Future<List<dynamic>?> getSavedCalendar({
     required int year,
     required int month,
@@ -942,34 +944,96 @@ class ApiService {
     try {
       final token = await getToken();
 
-      logDebug('Attempting to retrieve saved calendar for $year-$month',
+      if (token == null || token.isEmpty) {
+        logWarning('No authentication token - cannot fetch saved calendar',
+            tag: 'CALENDAR_SAVED');
+        return null;
+      }
+
+      logInfo(
+          'Fetching saved calendar from /calendar/saved/$year/$month',
           tag: 'CALENDAR_SAVED');
 
       final response = await _dio.get(
         '/calendar/saved/$year/$month',
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
         ),
       );
 
-      final calendarData = response.data['data']['calendar'];
+      // Check response structure carefully
+      if (response.data == null) {
+        logWarning('Saved calendar response is null', tag: 'CALENDAR_SAVED');
+        return null;
+      }
 
-      if (calendarData == null || (calendarData as List).isEmpty) {
-        logInfo('No saved calendar data found for $year-$month',
+      // Handle different response formats
+      final responseData = response.data;
+      dynamic calendarData;
+
+      if (responseData is Map) {
+        // Try nested structure: {data: {calendar: [...]}}
+        if (responseData.containsKey('data')) {
+          final dataSection = responseData['data'];
+          if (dataSection is Map && dataSection.containsKey('calendar')) {
+            calendarData = dataSection['calendar'];
+          } else {
+            calendarData = dataSection;
+          }
+        } else if (responseData.containsKey('calendar')) {
+          // Direct structure: {calendar: [...]}
+          calendarData = responseData['calendar'];
+        } else {
+          logWarning(
+              'Unexpected response structure: ${responseData.keys}',
+              tag: 'CALENDAR_SAVED');
+          return null;
+        }
+      } else if (responseData is List) {
+        // Response is directly a list
+        calendarData = responseData;
+      }
+
+      if (calendarData == null) {
+        logInfo(
+            'No saved calendar data found for $year-$month (user may not have completed onboarding yet)',
+            tag: 'CALENDAR_SAVED');
+        return null;
+      }
+
+      if (calendarData is! List || (calendarData as List).isEmpty) {
+        logInfo(
+            'Saved calendar data is empty for $year-$month',
             tag: 'CALENDAR_SAVED');
         return null;
       }
 
       logInfo(
-          'Successfully retrieved ${(calendarData as List).length} saved calendar days',
+          '✅ Successfully retrieved ${calendarData.length} saved calendar days from onboarding',
           tag: 'CALENDAR_SAVED');
       return calendarData as List<dynamic>;
+
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        logInfo(
+            'No saved calendar found (404) - user likely has not completed onboarding or calendar not yet generated',
+            tag: 'CALENDAR_SAVED');
+      } else if (e.response?.statusCode == 401) {
+        logWarning(
+            'Authentication failed when fetching saved calendar - token may be expired',
+            tag: 'CALENDAR_SAVED');
+      } else {
+        logWarning(
+            'Network error fetching saved calendar: ${e.message}',
+            tag: 'CALENDAR_SAVED');
+      }
+      return null; // Graceful fallback to shell config
     } catch (e) {
-      logWarning('Failed to retrieve saved calendar: $e',
+      logError('Unexpected error retrieving saved calendar: $e',
           tag: 'CALENDAR_SAVED');
-      return null;
+      return null; // Graceful fallback
     }
   }
 
@@ -1017,23 +1081,92 @@ class ApiService {
           logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
         }
 
-        // Prepare shell configuration with user's actual income and location-appropriate allocations
+        // Get cached onboarding data to use REAL user inputs instead of hardcoded percentages
+        Map<String, dynamic>? fixedExpenses;
+        double savingsTarget = actualIncome * 0.2; // Default fallback
+        Map<String, double> weights = {
+          'food': 0.15,
+          'transportation': 0.15,
+          'entertainment': 0.08,
+          'shopping': 0.10,
+          'healthcare': 0.07,
+        }; // Default fallback weights
+
+        try {
+          // Get raw cached onboarding data
+          final cachedData =
+              UserDataManager.instance.getCachedOnboardingData();
+
+          if (cachedData != null) {
+            logInfo(
+                'Using cached onboarding data for shell config: ${cachedData.keys}',
+                tag: 'CALENDAR');
+
+            // Extract fixed_expenses (actual user inputs!)
+            final fixedExpensesData = cachedData['fixed_expenses'];
+            if (fixedExpensesData != null && fixedExpensesData is Map) {
+              fixedExpenses = Map<String, dynamic>.from(fixedExpensesData);
+              logInfo('Loaded REAL fixed expenses from onboarding: $fixedExpenses',
+                  tag: 'CALENDAR');
+            }
+
+            // Extract savings goal (actual user input!)
+            final goalsData = cachedData['goals'];
+            if (goalsData != null && goalsData is Map) {
+              final savingsGoalAmount =
+                  goalsData['savings_goal_amount_per_month'];
+              if (savingsGoalAmount != null) {
+                savingsTarget = (savingsGoalAmount is num)
+                    ? savingsGoalAmount.toDouble()
+                    : savingsTarget;
+                logInfo(
+                    'Loaded REAL savings goal from onboarding: \$${savingsTarget.toStringAsFixed(2)}',
+                    tag: 'CALENDAR');
+              }
+            }
+
+            // Extract spending habits to calculate weights
+            final habitsData = cachedData['spending_habits'];
+            if (habitsData != null && habitsData is Map) {
+              // Calculate weights based on actual spending frequencies
+              // Higher frequency = higher weight
+              final diningOut = (habitsData['dining_out_per_month'] as num?)?.toDouble() ?? 8;
+              final entertainment = (habitsData['entertainment_per_month'] as num?)?.toDouble() ?? 4;
+              final transport = (habitsData['transport_per_month'] as num?)?.toDouble() ?? 20;
+
+              // Normalize frequencies to weights (simple proportion)
+              final totalFreq = diningOut + entertainment + transport + 10; // +10 for other categories
+              weights = {
+                'food': (diningOut / totalFreq).clamp(0.05, 0.25),
+                'transportation': (transport / totalFreq).clamp(0.05, 0.25),
+                'entertainment': (entertainment / totalFreq).clamp(0.03, 0.15),
+                'shopping': 0.10, // Keep default for now
+                'healthcare': 0.07, // Keep default for now
+              };
+              logInfo('Calculated weights from habits: $weights', tag: 'CALENDAR');
+            }
+          } else {
+            logWarning(
+                'No cached onboarding data found - using hardcoded defaults',
+                tag: 'CALENDAR');
+          }
+        } catch (e) {
+          logWarning('Could not load cached onboarding data, using defaults: $e',
+              tag: 'CALENDAR');
+        }
+
+        // Prepare shell configuration with user's ACTUAL data (not hardcoded percentages!)
         final shellConfig = {
-          'savings_target': actualIncome * 0.2, // 20% savings target
+          'savings_target': savingsTarget, // Use actual savings goal from onboarding
           'income': actualIncome,
           'location': userLocation,
-          'fixed': {
-            'rent': actualIncome * 0.3, // 30% for housing
-            'utilities': actualIncome * 0.05, // 5% for utilities
-            'insurance': actualIncome * 0.04, // 4% for insurance
-          },
-          'weights': {
-            'food': 0.15,
-            'transportation': 0.15,
-            'entertainment': 0.08,
-            'shopping': 0.10,
-            'healthcare': 0.07,
-          },
+          'fixed': fixedExpenses ??
+              {
+                'rent': actualIncome * 0.3, // Fallback to 30% only if no cached data
+                'utilities': actualIncome * 0.05,
+                'insurance': actualIncome * 0.04,
+              },
+          'weights': weights, // Use calculated weights from spending habits
           'year': DateTime.now().year,
           'month': DateTime.now().month,
         };

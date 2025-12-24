@@ -158,6 +158,12 @@ class UserDataManager {
     return result;
   }
 
+  /// Get raw cached onboarding data for calendar generation
+  /// Returns null if no cached data available
+  Map<String, dynamic>? getCachedOnboardingData() {
+    return _cachedOnboardingData;
+  }
+
   /// Check if user has completed onboarding
   Future<bool> hasCompletedOnboarding() async {
     try {

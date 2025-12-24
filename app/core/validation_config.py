@@ -69,7 +69,7 @@ class SecurityConfig:
     require_digits: bool = True
     require_symbols: bool = False
     max_login_attempts: int = 5
-    session_timeout_minutes: int = 60
+    session_timeout_minutes: int = 120  # Match ACCESS_TOKEN_EXPIRE_MINUTES for consistent session duration
     suspicious_amount_threshold: Decimal = Decimal('100000')
 
 
@@ -150,7 +150,7 @@ class ValidationConfigManager:
             require_digits=True,
             require_symbols=False,
             max_login_attempts=5,
-            session_timeout_minutes=60,
+            session_timeout_minutes=120,  # Match ACCESS_TOKEN_EXPIRE_MINUTES
             suspicious_amount_threshold=Decimal('100000')
         )
         

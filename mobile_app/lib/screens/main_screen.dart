@@ -498,39 +498,81 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   /// Build daily targets from budget provider
+  /// Uses ACTUAL calendar data from onboarding, not hardcoded percentages!
   List<Map<String, dynamic>> _buildDailyTargets(BudgetProvider budgetProvider) {
     if (_monthlyIncome <= 0) {
+      logDebug('No income data - cannot show daily targets', tag: 'MAIN_SCREEN');
       return [];
     }
 
+    // Try to get TODAY'S actual budget from calendar data (from onboarding)
+    if (budgetProvider.calendarData.isNotEmpty) {
+      final today = DateTime.now();
+
+      // Find today's entry in calendar data
+      final todayEntry = budgetProvider.calendarData.firstWhere(
+        (day) => day['day'] == today.day,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (todayEntry.isNotEmpty && todayEntry['categories'] != null) {
+        final categories = todayEntry['categories'] as Map<String, dynamic>;
+
+        logInfo(
+          'Using REAL calendar data for today (${categories.length} categories)',
+          tag: 'MAIN_SCREEN'
+        );
+
+        // Convert calendar categories to daily targets format
+        return categories.entries.map((entry) {
+          final categoryName = entry.key;
+          final categoryData = entry.value as Map<String, dynamic>;
+
+          return {
+            'category': _formatCategoryName(categoryName),
+            'limit': (categoryData['limit'] as num?)?.toDouble() ?? 0.0,
+            'spent': (categoryData['spent'] as num?)?.toDouble() ?? 0.0,
+            'icon': _getCategoryIcon(categoryName),
+            'color': _getCategoryColor(categoryName),
+          };
+        }).toList();
+      }
+    }
+
+    // Fallback: Use default weights only if no calendar data available
+    logWarning(
+      'No calendar data available - using fallback default weights',
+      tag: 'MAIN_SCREEN'
+    );
+
     final dailyBudget = _monthlyIncome / 30;
-    _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
+    final weights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
 
     return [
       {
         'category': 'Food & Dining',
-        'limit': dailyBudget * 0.35,
+        'limit': dailyBudget * (weights['food'] ?? 0.35),
         'spent': 0.0,
         'icon': Icons.restaurant,
         'color': const Color(0xFF4CAF50),
       },
       {
         'category': 'Transportation',
-        'limit': dailyBudget * 0.25,
+        'limit': dailyBudget * (weights['transportation'] ?? 0.25),
         'spent': 0.0,
         'icon': Icons.directions_car,
         'color': const Color(0xFF2196F3),
       },
       {
         'category': 'Entertainment',
-        'limit': dailyBudget * 0.20,
+        'limit': dailyBudget * (weights['entertainment'] ?? 0.20),
         'spent': 0.0,
         'icon': Icons.movie,
         'color': const Color(0xFF9C27B0),
       },
       {
         'category': 'Shopping',
-        'limit': dailyBudget * 0.20,
+        'limit': dailyBudget * (weights['shopping'] ?? 0.20),
         'spent': 0.0,
         'icon': Icons.shopping_bag,
         'color': const Color(0xFFFF9800),
@@ -580,6 +622,40 @@ class _MainScreenState extends State<MainScreen> {
         'status': status,
       };
     });
+  }
+
+  /// Format category name for display
+  String _formatCategoryName(String category) {
+    // Convert API category names to display-friendly format
+    switch (category.toLowerCase()) {
+      case 'food':
+        return 'Food & Dining';
+      case 'transportation':
+      case 'transport':
+        return 'Transportation';
+      case 'entertainment':
+        return 'Entertainment';
+      case 'shopping':
+        return 'Shopping';
+      case 'healthcare':
+      case 'health':
+        return 'Healthcare';
+      case 'personal':
+        return 'Personal Care';
+      case 'utilities':
+        return 'Utilities';
+      case 'rent':
+      case 'housing':
+        return 'Housing';
+      default:
+        // Capitalize first letter of each word
+        return category
+            .split('_')
+            .map((word) => word.isNotEmpty
+                ? word[0].toUpperCase() + word.substring(1)
+                : '')
+            .join(' ');
+    }
   }
 
   /// Get category icon
