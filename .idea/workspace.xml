@@ -5,7 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="01f20475-8ff3-4e08-bfc8-8b9a2827d6e6" name="Changes" comment="1. AppColors.xxx() → AppColors.xxx - ПРАВИЛЬНО (static const fields)&#10;  2. Config → AppConfig - ПРАВИЛЬНО (новый класс с теми же данными)&#10;  3. Type casts - ПРАВИЛЬНО (исправил dynamic type errors)&#10;  4. AndroidManifest/Info.plist - ПРАВИЛЬНО (конфигурация, не код)">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_19_11_25,_18_32_[Changes]/shelved.patch" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/alembic/env.py" beforeDir="false" afterPath="$PROJECT_DIR$/alembic/env.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
