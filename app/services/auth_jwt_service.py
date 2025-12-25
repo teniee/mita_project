@@ -528,7 +528,13 @@ async def verify_token(
         try:
             # Try to decode JWT with current secret
             try:
-                payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+                payload = jwt.decode(
+                    token,
+                    secret,
+                    algorithms=[ALGORITHM],
+                    audience=JWT_AUDIENCE,
+                    issuer=JWT_ISSUER
+                )
                 logger.debug(f"JWT decode successful with secret {i + 1}")
             except Exception as decode_error:
                 logger.warning(f"JWT decode failed with secret {i + 1}: {type(decode_error).__name__}: {decode_error}")
