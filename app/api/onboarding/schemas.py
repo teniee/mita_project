@@ -51,10 +51,11 @@ class OnboardingSubmitRequest(BaseModel):
     spending_habits: Optional[SpendingHabits | Dict] = Field(None, description="Spending habits (optional)")
     goals: Optional[GoalsData | Dict] = Field(None, description="Financial goals (optional)")
     region: Optional[str] = Field(None, max_length=100, description="User's region (optional)")
-    _meta: Optional[Dict] = Field(None, description="Additional metadata from mobile app (optional)")
+    meta: Optional[Dict] = Field(None, description="Additional metadata from mobile app (optional)", alias="_meta")
 
     class Config:
         extra = 'allow'  # Allow extra fields from mobile app without validation errors
+        populate_by_name = True  # Allow both 'meta' and '_meta' as field names
 
     @field_validator('fixed_expenses')
     @classmethod
