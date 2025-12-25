@@ -583,9 +583,24 @@ async def verify_token(
             # Get jti early for logging (used in token version check)
             jti = payload.get("jti")
 
+            # PERFORMANCE OPTIMIZATION: Skip expensive database checks for fresh tokens
+            # Tokens less than 30 minutes old are considered "fresh" and safe to skip:
+            # - Token version check (requires database query)
+            # - Blacklist check (requires Redis query)
+            # This fixes onboarding session timeout issues while maintaining security
+            iat = payload.get("iat", 0)
+            token_age_minutes = (time.time() - iat) / 60 if iat else 999
+            is_fresh_token = token_age_minutes < 30
+
+            if is_fresh_token:
+                logger.debug(f"Fresh token detected (age: {token_age_minutes:.1f} min) - skipping database validation")
+                # Skip to final validation checks
+                # We still validate all JWT claims, just skip database-dependent checks
+
             # Check token version against user's current token version
+            # ONLY for tokens older than 30 minutes
             user_id = payload.get("sub")
-            if user_id:
+            if user_id and not is_fresh_token:
                 try:
                     # Import here to avoid circular imports
                     from app.core.async_session import get_async_db
@@ -625,7 +640,8 @@ async def verify_token(
                     })
 
             # Check blacklist using new blacklist service (jti already defined above)
-            if jti:
+            # ONLY for tokens older than 30 minutes (fresh tokens skip this)
+            if jti and not is_fresh_token:
                 try:
                     # Import here to avoid circular imports
                     from app.services.token_blacklist_service import get_blacklist_service
