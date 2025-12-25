@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/user_data_manager.dart';
 import '../services/logging_service.dart';
+import '../services/token_lifecycle_manager.dart';
 import '../services/iap_service.dart';
 import '../services/api_service.dart';
 
@@ -246,10 +247,20 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Set authentication state after login
-  void setAuthenticated() {
+  /// Set authentication state after login and start token lifecycle management
+  void setAuthenticated() async {
     _state = UserState.authenticated;
     notifyListeners();
+
+    // Initialize token lifecycle manager for automatic token refresh
+    try {
+      await TokenLifecycleManager.instance.initialize();
+      logInfo('Token lifecycle manager started', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logWarning('Failed to start token lifecycle manager: $e',
+          tag: 'USER_PROVIDER');
+      // Non-critical error - user can still use the app
+    }
   }
 
   /// Clear error message

@@ -578,14 +578,48 @@ class SecureTokenStorage {
     return null;
   }
 
-  /// Check if tokens need rotation (security best practice)
+  /// Check if tokens need rotation (expiry or security best practice)
   Future<bool> shouldRotateTokens() async {
     try {
+      // First check if access token is expiring soon (within 30 minutes)
+      final accessToken = await getAccessToken();
+      if (accessToken != null) {
+        try {
+          // Decode JWT to check expiration
+          final parts = accessToken.split('.');
+          if (parts.length == 3) {
+            final payload = parts[1];
+            final normalized = base64Url.normalize(payload);
+            final decoded = utf8.decode(base64Url.decode(normalized));
+            final Map<String, dynamic> claims = json.decode(decoded);
+
+            if (claims.containsKey('exp')) {
+              final expiry = DateTime.fromMillisecondsSinceEpoch(
+                  (claims['exp'] as int) * 1000);
+              final minutesUntilExpiry =
+                  expiry.difference(DateTime.now()).inMinutes;
+
+              // Refresh if token expires in less than 30 minutes
+              if (minutesUntilExpiry < 30) {
+                logInfo(
+                    'Access token expiring in $minutesUntilExpiry minutes - rotation needed',
+                    tag: 'SECURE_STORAGE');
+                return true;
+              }
+            }
+          }
+        } catch (e) {
+          logWarning('Failed to decode token expiry: $e',
+              tag: 'SECURE_STORAGE');
+        }
+      }
+
+      // Also check for periodic security rotation (every 30 days)
       final lastRotation = await getLastRotationTime();
       if (lastRotation == null) return true;
 
       final daysSinceRotation = DateTime.now().difference(lastRotation).inDays;
-      return daysSinceRotation > 30; // Rotate every 30 days
+      return daysSinceRotation > 30; // Rotate every 30 days for security
     } catch (e) {
       logError('Failed to check token rotation: $e',
           tag: 'SECURE_STORAGE', error: e);
