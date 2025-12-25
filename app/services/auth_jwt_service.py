@@ -526,7 +526,13 @@ async def verify_token(
     last_error = None
     for i, secret in enumerate(secrets):
         try:
-            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+            # Try to decode JWT with current secret
+            try:
+                payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+                logger.debug(f"JWT decode successful with secret {i + 1}")
+            except Exception as decode_error:
+                logger.warning(f"JWT decode failed with secret {i + 1}: {type(decode_error).__name__}: {decode_error}")
+                raise  # Re-raise to be caught by outer try-except
             
             # Validate token type
             if payload.get("token_type") != token_type:
@@ -662,7 +668,9 @@ async def verify_token(
             continue
     
     if last_error:
-        logger.debug(f"Token verification failed: {last_error}")
+        logger.warning(f"Token verification failed: {last_error}")  # Changed from debug to warning for production visibility
+    else:
+        logger.warning(f"Token verification failed with no specific error (possible JWT decode failure)")
     return None
 
 
