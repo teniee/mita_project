@@ -17,24 +17,44 @@ class IncomeData(BaseModel):
 class SpendingHabits(BaseModel):
     """Spending habits schema"""
     dining_out_per_month: Optional[int] = Field(0, ge=0, description="Dining out frequency per month")
-    entertainment_budget: Optional[float] = Field(0, ge=0, description="Entertainment budget")
-    shopping_frequency: Optional[int] = Field(0, ge=0, description="Shopping frequency per month")
+    entertainment_per_month: Optional[int] = Field(0, ge=0, description="Entertainment frequency per month")
+    clothing_per_month: Optional[int] = Field(0, ge=0, description="Clothing shopping frequency per month")
+    travel_per_year: Optional[int] = Field(0, ge=0, description="Travel frequency per year")
+    coffee_per_week: Optional[int] = Field(0, ge=0, description="Coffee purchases per week")
+    transport_per_month: Optional[int] = Field(0, ge=0, description="Transportation frequency per month")
+    # Legacy fields for backward compatibility
+    entertainment_budget: Optional[float] = Field(0, ge=0, description="Entertainment budget (deprecated)")
+    shopping_frequency: Optional[int] = Field(0, ge=0, description="Shopping frequency per month (deprecated)")
+
+    class Config:
+        extra = 'allow'  # Allow extra fields from mobile app without validation errors
 
 
 class GoalsData(BaseModel):
     """Financial goals schema"""
     savings_goal_amount_per_month: Optional[float] = Field(0, ge=0, description="Monthly savings goal")
-    emergency_fund_target: Optional[float] = Field(0, ge=0, description="Emergency fund target")
-    debt_payoff_goal: Optional[float] = Field(0, ge=0, description="Debt payoff goal")
+    savings_goal_type: Optional[str] = Field(None, description="Primary savings goal type")
+    has_emergency_fund: Optional[bool] = Field(False, description="User has emergency fund goal")
+    all_goals: Optional[list] = Field(None, description="All selected financial goals")
+    # Legacy fields for backward compatibility
+    emergency_fund_target: Optional[float] = Field(0, ge=0, description="Emergency fund target (deprecated)")
+    debt_payoff_goal: Optional[float] = Field(0, ge=0, description="Debt payoff goal (deprecated)")
+
+    class Config:
+        extra = 'allow'  # Allow extra fields from mobile app without validation errors
 
 
 class OnboardingSubmitRequest(BaseModel):
     """Request schema for onboarding submission"""
     income: IncomeData = Field(..., description="Income information")
     fixed_expenses: Dict[str, float] = Field(..., description="Fixed expenses by category")
-    spending_habits: Optional[SpendingHabits] = Field(None, description="Spending habits (optional)")
-    goals: Optional[GoalsData] = Field(None, description="Financial goals (optional)")
+    spending_habits: Optional[SpendingHabits | Dict] = Field(None, description="Spending habits (optional)")
+    goals: Optional[GoalsData | Dict] = Field(None, description="Financial goals (optional)")
     region: Optional[str] = Field(None, max_length=100, description="User's region (optional)")
+    _meta: Optional[Dict] = Field(None, description="Additional metadata from mobile app (optional)")
+
+    class Config:
+        extra = 'allow'  # Allow extra fields from mobile app without validation errors
 
     @field_validator('fixed_expenses')
     @classmethod
