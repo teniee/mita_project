@@ -57,7 +57,10 @@ async def submit_onboarding(
     """
     # NOTE: get_current_user dependency handles auth and will raise 401 if unauthorized
     # FastAPI automatically validates request using Pydantic and raises 422 if invalid
-    logger.info(f"Onboarding submission started for user {current_user.id}")
+    logger.info(f"📝 ONBOARDING SUBMISSION RECEIVED for user {current_user.id}")
+    logger.info(f"User email: {current_user.email}")
+    logger.info(f"User has_onboarded: {current_user.has_onboarded}")
+    logger.info(f"Request income: {request.income.monthly_income}")
 
     # Extract validated data (FastAPI has already validated via Pydantic)
     monthly_income = request.income.monthly_income

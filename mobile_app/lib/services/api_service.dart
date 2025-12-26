@@ -426,53 +426,84 @@ class ApiService {
     }
 
     try {
-      logInfo('Attempting token refresh...', tag: 'TOKEN_REFRESH');
+      logInfo('🔄 STARTING TOKEN REFRESH', tag: 'TOKEN_REFRESH');
+      logInfo('Refresh token (first 20 chars): ${refresh.substring(0, min(20, refresh.length))}...',
+          tag: 'TOKEN_REFRESH');
+      logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
+
+      final requestUrl = '/auth/refresh-token?refresh_token=$refresh';
+      logInfo('Making refresh request to: ${requestUrl.substring(0, min(50, requestUrl.length))}...',
+          tag: 'TOKEN_REFRESH');
+
       final response = await _dio.post(
-        '/auth/refresh-token?refresh_token=$refresh',
+        requestUrl,
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
-      logInfo('Token refresh response received: ${response.statusCode}',
+      logInfo('✅ Token refresh response received: ${response.statusCode}',
           tag: 'TOKEN_REFRESH');
+      logInfo('Response headers: ${response.headers.map}', tag: 'TOKEN_REFRESH');
+      logInfo('Response data type: ${response.data.runtimeType}', tag: 'TOKEN_REFRESH');
 
       final data = response.data as Map<String, dynamic>?;
       if (data == null) {
-        logError('Refresh token response data is null', tag: 'TOKEN_REFRESH');
+        logError('❌ Refresh token response data is null', tag: 'TOKEN_REFRESH');
+        logError('Raw response: ${response.data}', tag: 'TOKEN_REFRESH');
         throw Exception('Refresh token response data is null');
       }
+
+      logInfo('Response data keys: ${data.keys.toList()}', tag: 'TOKEN_REFRESH');
+
       final newAccess = data['access_token'] as String?;
       final newRefresh = data['refresh_token'] as String?;
 
       if (newAccess == null || newRefresh == null) {
         logError(
-            'Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
+            '❌ Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
             tag: 'TOKEN_REFRESH');
+        logError('Full response data: $data', tag: 'TOKEN_REFRESH');
         throw Exception('Missing tokens in refresh response');
       }
+
+      logInfo('✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
+          tag: 'TOKEN_REFRESH');
+      logInfo('New access token (first 20 chars): ${newAccess.substring(0, min(20, newAccess.length))}...',
+          tag: 'TOKEN_REFRESH');
 
       // Use secure storage for token refresh when available
       final secureStorage = await _getSecureStorage();
 
       if (secureStorage != null) {
         try {
+          logInfo('📦 Storing tokens in secure storage...', tag: 'TOKEN_REFRESH');
           await secureStorage.storeTokens(newAccess, newRefresh);
-          logInfo('✅ Tokens refreshed and stored securely',
+          logInfo('✅✅✅ Tokens refreshed and stored securely',
               tag: 'TOKEN_REFRESH');
           return true;
         } catch (e) {
-          logError('Failed to store refreshed tokens securely: $e',
+          logError('❌ Failed to store refreshed tokens securely: $e',
               tag: 'TOKEN_REFRESH', error: e);
           // Continue with fallback below
         }
       }
 
       // Fallback to legacy storage
+      logInfo('📦 Storing tokens in legacy storage...', tag: 'TOKEN_REFRESH');
       await _storage.write(key: 'access_token', value: newAccess);
       await _storage.write(key: 'refresh_token', value: newRefresh);
-      logInfo('✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
+      logInfo('✅✅✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
       return true;
-    } catch (e) {
-      logError('❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
+    } catch (e, stackTrace) {
+      logError('❌❌❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
+      logError('Stack trace: $stackTrace', tag: 'TOKEN_REFRESH');
+
+      if (e is DioException) {
+        logError('DioException type: ${e.type}', tag: 'TOKEN_REFRESH');
+        logError('DioException message: ${e.message}', tag: 'TOKEN_REFRESH');
+        logError('DioException response: ${e.response?.data}', tag: 'TOKEN_REFRESH');
+        logError('DioException status code: ${e.response?.statusCode}', tag: 'TOKEN_REFRESH');
+      }
+
       // DON'T clear tokens immediately - might be temporary network issue
       return false;
     }

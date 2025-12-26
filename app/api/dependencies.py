@@ -68,10 +68,14 @@ async def get_current_user(
 
     SECURITY: All authentication failures return 401, never 500.
     """
+    logger.info("🔐 GET_CURRENT_USER CALLED")
     try:
         # Validate token format
+        logger.info(f"Token received - length: {len(token) if token else 0}")
+        logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+
         if not token or token.strip() == "":
-            logger.warning("Empty or invalid token provided")
+            logger.warning("❌ Empty or invalid token provided")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "empty_token",
@@ -87,8 +91,12 @@ async def get_current_user(
 
         # Verify and decode token with comprehensive validation
         # Wrap in try-except to catch ANY exception from verify_token
+        logger.info("📞 Calling verify_token for access_token...")
         try:
             payload = await verify_token(token, token_type="access_token")
+            logger.info(f"✅ verify_token returned - payload is {'None' if payload is None else 'present'}")
+            if payload:
+                logger.info(f"Payload user_id (sub): {payload.get('sub')}")
         except (
             InvalidTokenError,
             ExpiredSignatureError,
@@ -100,7 +108,7 @@ async def get_current_user(
             PyJWTError
         ) as jwt_error:
             # JWT errors should always return 401
-            logger.warning(f"JWT validation error during verify_token: {jwt_error}")
+            logger.warning(f"❌ JWT validation error during verify_token: {jwt_error}")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "jwt_verify_error",
@@ -117,7 +125,7 @@ async def get_current_user(
         except Exception as verify_error:
             # ANY other error from verify_token should also return 401 (not 500)
             # This handles database errors, network errors, etc. during token verification
-            logger.warning(f"Token verification system error: {verify_error}")
+            logger.warning(f"❌ Token verification system error: {verify_error}", exc_info=True)
             try:
                 log_security_event("authentication_failure", {
                     "reason": "verify_system_error",
@@ -133,7 +141,7 @@ async def get_current_user(
             )
 
         if not payload:
-            logger.warning("Token verification failed - returned None")
+            logger.warning("❌ Token verification failed - returned None")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "invalid_token",
@@ -147,9 +155,10 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
+        logger.info("🔍 Extracting user_id from payload...")
         user_id = payload.get("sub")
         if not user_id:
-            logger.warning("Token missing user ID (sub claim)")
+            logger.warning("❌ Token missing user ID (sub claim)")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "missing_user_id",
@@ -163,12 +172,18 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
+        logger.info(f"✅ User ID extracted: {user_id}")
+
         # Query user from cache or database
+        logger.info(f"📊 Querying user from cache/database for user_id={user_id}...")
         try:
             user = await _get_user_from_cache_or_db(user_id, db)
+            logger.info(f"✅ User query completed - user is {'None' if user is None else 'found'}")
+            if user:
+                logger.info(f"User email: {user.email}, has_onboarded: {user.has_onboarded}")
         except Exception as db_error:
             # Database errors during user lookup are system errors (500)
-            logger.error(f"Database error during user lookup: {db_error}")
+            logger.error(f"❌ Database error during user lookup: {db_error}", exc_info=True)
             try:
                 log_security_event("database_error", {
                     "operation": "user_lookup",
@@ -183,7 +198,7 @@ async def get_current_user(
             )
 
         if not user:
-            logger.warning(f"User {user_id} not found in database")
+            logger.warning(f"❌ User {user_id} not found in database")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "user_not_found",
@@ -202,7 +217,7 @@ async def get_current_user(
         user._token_payload = payload
         user._token_scopes = payload.get("scope", "").split()
 
-        logger.debug(f"Successfully authenticated user {user_id} with scopes: {user._token_scopes}")
+        logger.info(f"✅✅✅ Successfully authenticated user {user_id} with scopes: {user._token_scopes}")
         try:
             log_security_event("authentication_success", {
                 "user_id": user_id,
@@ -213,6 +228,7 @@ async def get_current_user(
         except Exception as log_err:
             logger.error(f"Failed to log security event: {log_err}")
 
+        logger.info(f"🎉 RETURNING USER OBJECT for {user_id}")
         return user
 
     except HTTPException:
