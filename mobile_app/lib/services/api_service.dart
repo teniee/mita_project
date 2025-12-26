@@ -295,9 +295,16 @@ class ApiService {
 
         logInfo('Tokens saved securely', tag: 'API_SECURITY');
 
-        // Clean up any legacy tokens
-        await _storage.delete(key: 'access_token');
-        await _storage.delete(key: 'refresh_token');
+        // KEEP legacy tokens as fallback - DON'T delete them
+        // If secure storage read fails (iOS Simulator issues), legacy storage provides fallback
+        // This prevents "session expired" errors during onboarding
+        try {
+          await _storage.write(key: 'access_token', value: access);
+          await _storage.write(key: 'refresh_token', value: refresh);
+          logInfo('Legacy tokens also updated as fallback', tag: 'API_SECURITY');
+        } catch (e) {
+          logWarning('Failed to update legacy fallback tokens: $e', tag: 'API_SECURITY');
+        }
 
         return;
       } catch (e) {
@@ -477,6 +484,17 @@ class ApiService {
         try {
           logInfo('📦 Storing tokens in secure storage...', tag: 'TOKEN_REFRESH');
           await secureStorage.storeTokens(newAccess, newRefresh);
+          logInfo('✅ Tokens stored securely', tag: 'TOKEN_REFRESH');
+
+          // ALSO update legacy storage as fallback
+          try {
+            await _storage.write(key: 'access_token', value: newAccess);
+            await _storage.write(key: 'refresh_token', value: newRefresh);
+            logInfo('✅ Legacy fallback tokens also updated', tag: 'TOKEN_REFRESH');
+          } catch (legacyError) {
+            logWarning('Failed to update legacy fallback: $legacyError', tag: 'TOKEN_REFRESH');
+          }
+
           logInfo('✅✅✅ Tokens refreshed and stored securely',
               tag: 'TOKEN_REFRESH');
           return true;
