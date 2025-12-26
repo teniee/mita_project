@@ -9,7 +9,7 @@ def apply_behavioral_adjustments(user_id: int, config: dict, db):
     if not year or not month:
         return config
 
-    patterns = extract_patterns(user_id, year, month, db=db)
+    patterns = extract_patterns(user_id, year, month)
 
     # Adjust category weights/templates in config['weights']
     weights = config.get("weights", {})
