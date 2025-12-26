@@ -247,14 +247,25 @@ class ApiService {
     final secureStorage = await _getSecureStorage();
     if (secureStorage != null) {
       try {
-        return await secureStorage.getAccessToken();
+        final token = await secureStorage.getAccessToken();
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
+        if (token != null) {
+          return token;
+        }
+        logWarning('Secure storage returned null, falling back to legacy',
+            tag: 'API_SECURITY');
       } catch (e) {
         logWarning('Failed to get token from secure storage, falling back: $e',
             tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
-    return await _storage.read(key: 'access_token');
+    final legacyToken = await _storage.read(key: 'access_token');
+    if (legacyToken != null) {
+      logInfo('✅ Retrieved token from legacy storage fallback', tag: 'API_SECURITY');
+    }
+    return legacyToken;
   }
 
   /// Get refresh token using secure storage when available
@@ -262,7 +273,14 @@ class ApiService {
     final secureStorage = await _getSecureStorage();
     if (secureStorage != null) {
       try {
-        return await secureStorage.getRefreshToken();
+        final token = await secureStorage.getRefreshToken();
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
+        if (token != null) {
+          return token;
+        }
+        logWarning('Secure storage returned null, falling back to legacy',
+            tag: 'API_SECURITY');
       } catch (e) {
         logWarning(
             'Failed to get refresh token from secure storage, falling back: $e',
@@ -270,7 +288,11 @@ class ApiService {
       }
     }
     // Fallback to legacy storage
-    return await _storage.read(key: 'refresh_token');
+    final legacyToken = await _storage.read(key: 'refresh_token');
+    if (legacyToken != null) {
+      logInfo('✅ Retrieved refresh token from legacy storage fallback', tag: 'API_SECURITY');
+    }
+    return legacyToken;
   }
 
   /// Save tokens using secure storage with enhanced security
