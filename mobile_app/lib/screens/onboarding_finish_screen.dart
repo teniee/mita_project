@@ -172,6 +172,29 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         throw Exception('Session expired. Please log in again.');
       }
 
+      // PROACTIVE TOKEN REFRESH: Refresh tokens before submission to prevent 401 errors
+      // This is critical for onboarding since users may take several minutes to complete
+      // the flow, causing their access token to expire
+      logInfo('Proactively refreshing tokens before onboarding submission',
+          tag: 'ONBOARDING_FINISH');
+      try {
+        final refreshResult = await _api.refreshAccessToken();
+        if (refreshResult != null) {
+          logInfo('✅ Tokens refreshed successfully before onboarding submission',
+              tag: 'ONBOARDING_FINISH');
+        } else {
+          logWarning('Token refresh returned null - continuing with existing token',
+              tag: 'ONBOARDING_FINISH');
+          // Continue anyway - the existing token might still be valid
+          // If not, the auto-refresh interceptor will handle it
+        }
+      } catch (refreshError) {
+        logWarning('Proactive token refresh failed: $refreshError - continuing anyway',
+            tag: 'ONBOARDING_FINISH');
+        // Don't fail here - let the submission attempt proceed
+        // The interceptor will handle 401 errors if the token is actually expired
+      }
+
       // Cache onboarding data using UserProvider for centralized state management
       final userProvider = context.read<UserProvider>();
       await userProvider.cacheOnboardingData(onboardingData);
