@@ -47,6 +47,7 @@ class CalendarDay:
         self.actual_spending: Dict[str, float] = {}
         self.recommendations: List[str] = []
         self.status: str = "green"
+        self.total: float = 0.0  # Total planned budget for the day
 
     def _get_day_type(self, date: datetime.date) -> str:
         return "weekend" if date.weekday() >= 5 else "weekday"
@@ -59,6 +60,7 @@ class CalendarDay:
             "actual_spending": self.actual_spending,
             "recommendations": self.recommendations,
             "status": self.status,
+            "total": self.total,
         }
 
 

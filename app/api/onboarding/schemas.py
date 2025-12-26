@@ -4,7 +4,7 @@ Pydantic schemas for onboarding API endpoints.
 Provides comprehensive request/response validation with proper field constraints.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -48,8 +48,8 @@ class OnboardingSubmitRequest(BaseModel):
     """Request schema for onboarding submission"""
     income: IncomeData = Field(..., description="Income information")
     fixed_expenses: Dict[str, float] = Field(..., description="Fixed expenses by category")
-    spending_habits: Optional[SpendingHabits | Dict] = Field(None, description="Spending habits (optional)")
-    goals: Optional[GoalsData | Dict] = Field(None, description="Financial goals (optional)")
+    spending_habits: Optional[Union[SpendingHabits, Dict]] = Field(None, description="Spending habits (optional)")
+    goals: Optional[Union[GoalsData, Dict]] = Field(None, description="Financial goals (optional)")
     region: Optional[str] = Field(None, max_length=100, description="User's region (optional)")
     meta: Optional[Dict] = Field(None, description="Additional metadata from mobile app (optional)", alias="_meta")
 

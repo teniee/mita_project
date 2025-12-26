@@ -559,6 +559,15 @@ Step 5: Return Results
 - `_shortfall(day)`: `limit - total` (positive = underspent)
 - `_apply_transfer(src, dst, amount)`: modifies totals directly
 
+**Public API Method**:
+- **Method Name**: `redistribute_budget()` (NOT `redistribute()`)
+- **Returns**: `Tuple[Dict[str, Dict[str, Decimal]], List[Tuple[str, str, Decimal]]]`
+- **Usage**:
+  ```python
+  redistributor = BudgetRedistributor(calendar_dict)
+  updated_calendar, transfers = redistributor.redistribute_budget()
+  ```
+
 **Example**:
 ```
 Before:
