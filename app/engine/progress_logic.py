@@ -1,4 +1,4 @@
-from app.engine.calendar_store import get_calendar_for_user
+from app.services.calendar_service_real import get_calendar_for_user
 from app.engine.challenge_tracker import ChallengeTracker
 from app.engine.locale_utils import format_currency
 from app.engine.progress_tracker import ProgressTracker

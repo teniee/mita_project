@@ -373,12 +373,12 @@ class TestTokenHealthChecks:
         monkeypatch.setattr(upstash, "is_token_blacklisted", mock_check_blacklist)
         return store
 
-    def test_token_health_check_valid_token(self, mock_redis):
+    async def test_token_health_check_valid_token(self, mock_redis):
         """Test health check for valid token."""
         token = jwt_service.create_access_token({"sub": "user123"})
-        
-        health = token_security_service.check_token_health(token)
-        
+
+        health = await token_security_service.check_token_health(token)
+
         assert health["status"] == "healthy"
         assert health["token_info"]["user_id"] == "user123"
         assert health["token_info"]["scope"] == "access_token"
@@ -386,42 +386,42 @@ class TestTokenHealthChecks:
         assert health["token_info"]["is_expired"] is False
         assert health["is_blacklisted"] is False
 
-    def test_token_health_check_blacklisted_token(self, mock_redis):
+    async def test_token_health_check_blacklisted_token(self, mock_redis):
         """Test health check for blacklisted token."""
         token = jwt_service.create_access_token({"sub": "user123"})
-        
+
         # Blacklist the token
         jwt_service.blacklist_token(token)
-        
-        health = token_security_service.check_token_health(token)
-        
+
+        health = await token_security_service.check_token_health(token)
+
         assert health["status"] == "blacklisted"
         assert health["reason"] == "Token is in blacklist"
         assert health["is_blacklisted"] is True
 
-    def test_token_health_check_expired_token(self, mock_redis):
+    async def test_token_health_check_expired_token(self, mock_redis):
         """Test health check for expired token."""
         # Create expired token
         expired_token = jwt_service._create_token(
-            {"sub": "user123"}, 
+            {"sub": "user123"},
             jwt_service.timedelta(seconds=-100),
             "access_token"
         )
-        
-        health = token_security_service.check_token_health(expired_token)
-        
+
+        health = await token_security_service.check_token_health(expired_token)
+
         assert health["status"] == "expired"
         assert health["reason"] == "Token has expired"
         assert health["token_info"]["is_expired"] is True
         assert health["token_info"]["expires_in"] == 0
 
-    def test_token_health_check_invalid_token(self, mock_redis):
+    async def test_token_health_check_invalid_token(self, mock_redis):
         """Test health check for invalid token."""
         invalid_tokens = ["invalid", "not.a.token", ""]
-        
+
         for invalid_token in invalid_tokens:
-            health = token_security_service.check_token_health(invalid_token)
-            
+            health = await token_security_service.check_token_health(invalid_token)
+
             assert health["status"] == "invalid"
             assert "could not be decoded" in health["reason"].lower()
 

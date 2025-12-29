@@ -371,21 +371,16 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // TEMPORARILY DISABLED: Set authentication state using UserProvider
-      // TODO: Re-enable when MultiProvider issue is fixed
-      if (kDebugMode)
-        dev.log('WORKAROUND: Skipping UserProvider for Google login - providers disabled',
-            name: 'LoginScreen');
-      // final userProvider = context.read<UserProvider>();
-      // userProvider.setAuthenticated();
-      // await userProvider.initialize();
+      // Set authentication state using UserProvider
+      final userProvider = context.read<UserProvider>();
+      userProvider.setAuthenticated();
+      await userProvider.initialize();
 
-      // TEMPORARILY HARDCODED: Check if user has completed onboarding
-      // TODO: Re-enable UserProvider when MultiProvider issue is fixed
+      // Check if user has completed onboarding from UserProvider
+      final hasOnboarded = userProvider.hasOnboarded;
       if (kDebugMode)
-        dev.log('WORKAROUND: Hardcoding hasOnboarded=true after Google login',
+        dev.log('User onboarding status: $hasOnboarded',
             name: 'LoginScreen');
-      final hasOnboarded = true; // HARDCODED - database has has_onboarded=true
 
       if (!mounted) {
         if (kDebugMode)
@@ -655,20 +650,16 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // TEMPORARILY DISABLED: Set authentication state using UserProvider
-      // TODO: Re-enable when MultiProvider issue is fixed
-      if (kDebugMode)
-        dev.log('WORKAROUND: Skipping UserProvider - providers disabled',
-            name: 'LoginScreen');
-      // final userProvider = context.read<UserProvider>();
-      // userProvider.setAuthenticated();
-      // await userProvider.initialize();
+      // Set authentication state using UserProvider
+      final userProvider = context.read<UserProvider>();
+      userProvider.setAuthenticated();
+      await userProvider.initialize();
 
-      // TEMPORARILY HARDCODED: Check if user has completed onboarding
-      // TODO: Re-enable UserProvider when MultiProvider issue is fixed
+      // Check if user has completed onboarding from UserProvider
+      final hasOnboarded = userProvider.hasOnboarded;
       if (kDebugMode)
-        dev.log('WORKAROUND: Hardcoding hasOnboarded=true', name: 'LoginScreen');
-      final hasOnboarded = true; // HARDCODED - database has has_onboarded=true
+        dev.log('User onboarding status: $hasOnboarded',
+            name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode)
@@ -1236,10 +1227,8 @@ class _LoginScreenState extends State<LoginScreen>
                                           button: true,
                                           child: FilledButton(
                                             focusNode: _signInButtonFocusNode,
-                                            // TEMPORARILY BYPASSED: Enable button always for iOS Simulator testing
-                                            // TODO: Restore validation when iOS Simulator text input works properly
-                                            // Original: onPressed: (_isEmailValid && _isPasswordValid) ? _handleEmailLogin : null,
-                                            onPressed: _handleEmailLogin, // WORKAROUND: Always enabled
+                                            // Only enable login when both email and password are valid
+                                            onPressed: (_isEmailValid && _isPasswordValid) ? _handleEmailLogin : null,
                                             style: FilledButton.styleFrom(
                                               padding:
                                                   const EdgeInsets.symmetric(

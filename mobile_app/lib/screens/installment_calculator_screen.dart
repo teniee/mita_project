@@ -1507,14 +1507,8 @@ class _InstallmentCalculatorScreenState
             ),
             child: ElevatedButton.icon(
               onPressed: () {
-                // Navigate to installment creation screen
-                // TODO: Implement navigation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Installment creation coming soon!'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                // Navigate to installments screen to create new installment
+                Navigator.pushNamed(context, '/installments');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,

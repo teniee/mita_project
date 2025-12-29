@@ -90,141 +90,144 @@ void main() async {
     minimumLevel: kDebugMode ? LogLevel.debug : LogLevel.info,
   );
 
-  // TEMPORARILY DISABLED: SECURITY: iOS Jailbreak & Tampering Detection
-  // TODO: Re-enable after adding SecurityBridge.swift to Xcode project
-  // if (Platform.isIOS) {
-  //   try {
-  //     final securityService = IOSSecurityService();
-  //     final isSecure = await securityService.performSecurityCheck();
-  //
-  //     if (!isSecure && !kDebugMode) {
-  //       // Get security recommendations
-  //       final recommendations =
-  //           await securityService.getSecurityRecommendations();
-  //       logWarning(
-  //         'iOS Security check failed: ${recommendations.join(", ")}',
-  //         tag: 'MAIN_SECURITY',
-  //       );
-  //       // In production, consider blocking app launch or showing warning dialog
-  //       // For now, we just log the issue
-  //     } else {
-  //       logInfo('iOS Security check passed', tag: 'MAIN_SECURITY');
-  //     }
-  //
-  //     // Log comprehensive security info for monitoring
-  //     final securityInfo = await securityService.getComprehensiveSecurityInfo();
-  //     logDebug('iOS Security Info: $securityInfo', tag: 'MAIN_SECURITY');
-  //   } catch (e) {
-  //     logError('iOS Security check error: $e', tag: 'MAIN_SECURITY', error: e);
-  //     // Don't block app launch on security check errors
-  //   }
-  // }
-  logInfo('iOS Security check temporarily disabled', tag: 'MAIN_SECURITY');
+  // SECURITY: iOS Jailbreak & Tampering Detection
+  if (Platform.isIOS) {
+    try {
+      final securityService = IOSSecurityService();
+      final isSecure = await securityService.performSecurityCheck();
+
+      if (!isSecure && !kDebugMode) {
+        // Get security recommendations
+        final recommendations =
+            await securityService.getSecurityRecommendations();
+        logWarning(
+          'iOS Security check failed: ${recommendations.join(", ")}',
+          tag: 'MAIN_SECURITY',
+        );
+        // In production, consider blocking app launch or showing warning dialog
+        // For now, we just log the issue
+      } else {
+        logInfo('iOS Security check passed', tag: 'MAIN_SECURITY');
+      }
+
+      // Log comprehensive security info for monitoring
+      final securityInfo = await securityService.getComprehensiveSecurityInfo();
+      logDebug('iOS Security Info: $securityInfo', tag: 'MAIN_SECURITY');
+    } catch (e) {
+      logError('iOS Security check error: $e', tag: 'MAIN_SECURITY', error: e);
+      // Don't block app launch on security check errors
+    }
+  }
 
   // Initialize comprehensive error handling
   await AppErrorHandler.initialize();
 
-  logInfo('=== MINIMAL DEBUG MODE - Most services disabled ===', tag: 'MAIN');
+  logInfo('=== PRODUCTION MODE - All services enabled ===', tag: 'MAIN');
 
-  // TEMPORARILY DISABLED FOR DEBUGGING
-  // // Initialize app version service
-  // await AppVersionService.instance.initialize();
-  //
-  // // Initialize comprehensive Sentry monitoring for financial application
-  // const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
-  // const environment =
-  //     String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
-  // const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
-  //     defaultValue: 'mita-mobile@1.0.0');
-  //
-  // if (sentryDsn.isNotEmpty) {
-  //   await sentryService.initialize(
-  //     dsn: sentryDsn,
-  //     environment: environment,
-  //     release: sentryRelease,
-  //     enableCrashReporting: true,
-  //     enablePerformanceMonitoring:
-  //         !kDebugMode, // Disable in debug for performance
-  //     enableUserInteractionTracing: true,
-  //     tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
-  //   );
-  // } else {
-  //   if (kDebugMode)
-  //     dev.log('Sentry DSN not configured - advanced error monitoring disabled',
-  //         name: 'MitaApp');
-  // }
-  //
-  // // TEMPORARILY DISABLED FOR DEBUGGING
-  // // await _initFirebase();
-  // logInfo('Firebase init temporarily disabled for debugging', tag: 'MAIN');
+  // Initialize app version service
+  await AppVersionService.instance.initialize();
 
-  // TEMPORARILY DISABLED: Enhanced error handling that integrates with all monitoring systems
-  // FlutterError.onError = (FlutterErrorDetails details) {
-  //   // TEMP DISABLED: Send to Firebase Crashlytics
-  //   // FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-  //
-  //   // Send to our custom error handler
-  //   AppErrorHandler.reportError(
-  //     details.exception,
-  //     stackTrace: details.stack,
-  //     severity: ErrorSeverity.critical,
-  //     category: ErrorCategory.ui,
-  //     context: {
-  //       'library': details.library,
-  //       'context': details.context?.toString(),
-  //     },
-  //   );
-  //
-  //   // Send to enhanced Sentry service
-  //   sentryService.captureFinancialError(
-  //     details.exception,
-  //     category: FinancialErrorCategory.uiError,
-  //     severity: FinancialSeverity.critical,
-  //     stackTrace: details.stack.toString(),
-  //     additionalContext: {
-  //       'library': details.library,
-  //       'context': details.context?.toString(),
-  //       'error_source': 'flutter_error',
-  //     },
-  //     tags: {
-  //       'error_source': 'flutter_error_handler',
-  //       'ui_error': 'true',
-  //     },
-  //   );
-  // };
-  //
-  // PlatformDispatcher.instance.onError = (error, stack) {
-  //   // TEMP DISABLED: Send to Firebase Crashlytics
-  //   // FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  //
-  //   // Send to our custom error handler
-  //   AppErrorHandler.reportError(
-  //     error,
-  //     stackTrace: stack,
-  //     severity: ErrorSeverity.critical,
-  //     category: ErrorCategory.system,
-  //     context: {'source': 'platform_dispatcher'},
-  //   );
-  //
-  //   // Send to enhanced Sentry service
-  //   sentryService.captureFinancialError(
-  //     error,
-  //     category: FinancialErrorCategory.systemError,
-  //     severity: FinancialSeverity.critical,
-  //     stackTrace: stack.toString(),
-  //     additionalContext: {
-  //       'source': 'platform_dispatcher',
-  //       'error_source': 'platform',
-  //     },
-  //     tags: {
-  //       'error_source': 'platform_dispatcher',
-  //       'system_error': 'true',
-  //       'fatal': 'true',
-  //     },
-  //   );
-  //
-  //   return true;
-  // };
+  // Initialize comprehensive Sentry monitoring for financial application
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+  const environment =
+      String.fromEnvironment('ENVIRONMENT', defaultValue: 'development');
+  const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
+      defaultValue: 'mita-mobile@1.0.0');
+
+  if (sentryDsn.isNotEmpty) {
+    await sentryService.initialize(
+      dsn: sentryDsn,
+      environment: environment,
+      release: sentryRelease,
+      enableCrashReporting: true,
+      enablePerformanceMonitoring:
+          !kDebugMode, // Disable in debug for performance
+      enableUserInteractionTracing: true,
+      tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
+    );
+    logInfo('Sentry initialized successfully', tag: 'MAIN');
+  } else {
+    if (kDebugMode) {
+      dev.log('Sentry DSN not configured - advanced error monitoring disabled',
+          name: 'MitaApp');
+    }
+  }
+
+  // Initialize Firebase
+  await _initFirebase();
+  logInfo('Firebase initialized successfully', tag: 'MAIN');
+
+  // Enhanced error handling that integrates with all monitoring systems
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // Send to Firebase Crashlytics
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+
+    // Send to our custom error handler
+    AppErrorHandler.reportError(
+      details.exception,
+      stackTrace: details.stack,
+      severity: ErrorSeverity.critical,
+      category: ErrorCategory.ui,
+      context: {
+        'library': details.library,
+        'context': details.context?.toString(),
+      },
+    );
+
+    // Send to enhanced Sentry service (only if initialized)
+    if (sentryDsn.isNotEmpty) {
+      sentryService.captureFinancialError(
+        details.exception,
+        category: FinancialErrorCategory.uiError,
+        severity: FinancialSeverity.critical,
+        stackTrace: details.stack.toString(),
+        additionalContext: {
+          'library': details.library,
+          'context': details.context?.toString(),
+          'error_source': 'flutter_error',
+        },
+        tags: {
+          'error_source': 'flutter_error_handler',
+          'ui_error': 'true',
+        },
+      );
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    // Send to Firebase Crashlytics
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+
+    // Send to our custom error handler
+    AppErrorHandler.reportError(
+      error,
+      stackTrace: stack,
+      severity: ErrorSeverity.critical,
+      category: ErrorCategory.system,
+      context: {'source': 'platform_dispatcher'},
+    );
+
+    // Send to enhanced Sentry service (only if initialized)
+    if (sentryDsn.isNotEmpty) {
+      sentryService.captureFinancialError(
+        error,
+        category: FinancialErrorCategory.systemError,
+        severity: FinancialSeverity.critical,
+        stackTrace: stack.toString(),
+        additionalContext: {
+          'source': 'platform_dispatcher',
+          'error_source': 'platform',
+        },
+        tags: {
+          'error_source': 'platform_dispatcher',
+          'system_error': 'true',
+          'fatal': 'true',
+        },
+      );
+    }
+
+    return true;
+  };
 
   // FIXED: UserProvider Stream exposure caused MultiProvider assertion error
   // Root cause was premiumStatusStream getter exposing IapService stream
@@ -249,26 +252,24 @@ void main() async {
     child: const MITAApp(),
   );
 
-  logInfo('Running app with MINIMAL provider (SettingsProvider only)', tag: 'MAIN');
+  logInfo('Running app with all providers initialized', tag: 'MAIN');
 
-  runApp(app);
-
-  // // Run the app with comprehensive error monitoring
-  // if (sentryDsn.isNotEmpty) {
-  //   // Use Sentry's runApp wrapper for additional error capture
-  //   await SentryFlutter.init(
-  //     (options) {
-  //       // Sentry is already initialized by our service, this is just to use the runApp wrapper
-  //       options.dsn = sentryDsn;
-  //       options.environment = environment;
-  //       options.release = sentryRelease;
-  //       // Minimal configuration as our service handles the comprehensive setup
-  //     },
-  //     appRunner: () => runApp(app),
-  //   );
-  // } else {
-  //   runApp(app);
-  // }
+  // Run the app with comprehensive error monitoring
+  if (sentryDsn.isNotEmpty) {
+    // Use Sentry's runApp wrapper for additional error capture
+    await SentryFlutter.init(
+      (options) {
+        // Sentry is already initialized by our service, this is just to use the runApp wrapper
+        options.dsn = sentryDsn;
+        options.environment = environment;
+        options.release = sentryRelease;
+        // Minimal configuration as our service handles the comprehensive setup
+      },
+      appRunner: () => runApp(app),
+    );
+  } else {
+    runApp(app);
+  }
 }
 
 class MITAApp extends StatefulWidget {
@@ -282,32 +283,29 @@ class _MITAAppState extends State<MITAApp> {
   @override
   void initState() {
     super.initState();
-    // TEMPORARILY DISABLED: Testing without provider initialization
-    // _initializeProviders();
+    _initializeProviders();
   }
 
-  // TEMPORARILY DISABLED: This may be causing the white screen
-  // Future<void> _initializeProviders() async {
-  //   // Initialize providers after the first frame
-  //   WidgetsBinding.instance.addPostFrameCallback((_) async {
-  //     final settingsProvider = context.read<SettingsProvider>();
-  //     final userProvider = context.read<UserProvider>();
-  //
-  //     // Initialize settings first (for theme, locale, etc.)
-  //     await settingsProvider.initialize();
-  //
-  //     // Initialize user provider
-  //     await userProvider.initialize();
-  //
-  //     logInfo('All providers initialized', tag: 'MAIN');
-  //   });
-  // }
+  Future<void> _initializeProviders() async {
+    // Initialize providers after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final settingsProvider = context.read<SettingsProvider>();
+      final userProvider = context.read<UserProvider>();
+
+      // Initialize settings first (for theme, locale, etc.)
+      await settingsProvider.initialize();
+
+      // Initialize user provider
+      await userProvider.initialize();
+
+      logInfo('All providers initialized', tag: 'MAIN');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // TEMPORARY: Hardcode ThemeMode.system to avoid context.watch() issues
-    // TODO: Fix provider initialization and re-enable dynamic theme mode
-    final themeMode = ThemeMode.system;
+    // Get theme mode from SettingsProvider
+    final themeMode = context.watch<SettingsProvider>().themeMode;
 
     final app = MaterialApp(
       navigatorKey: navigatorKey,
@@ -347,7 +345,7 @@ class _MITAAppState extends State<MITAApp> {
         return const Locale('en');
       },
 
-      initialRoute: '/main', // BYPASS AUTH: Start at main app for internal screen testing
+      initialRoute: '/', // Start at welcome screen
       onGenerateRoute: (settings) {
         logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
             tag: 'NAVIGATION');
@@ -388,50 +386,45 @@ class _MITAAppState extends State<MITAApp> {
       },
     );
 
-    // TEMPORARILY DISABLED: ValueListenableBuilder loading overlay blocks rendering
-    // Root cause: Directionality wrapper outside MaterialApp conflicts with Material's text direction
-    // TODO: Move loading overlay inside MaterialApp or use builder pattern
-    // return ValueListenableBuilder<bool>(
-    //   valueListenable: LoadingService.instance.forceHiddenNotifier,
-    //   builder: (context, forceHidden, child) {
-    //     return ValueListenableBuilder<int>(
-    //       valueListenable: LoadingService.instance.notifier,
-    //       builder: (context, loadingCount, child) {
-    //         final shouldShowLoading = loadingCount > 0 && !forceHidden;
-    //
-    //         return Directionality(
-    //           textDirection: TextDirection.ltr,
-    //           child: Stack(
-    //             children: [
-    //               child!,
-    //               if (shouldShowLoading) ...[
-    //                 // Enhanced modal barrier with tap to dismiss after delay
-    //                 _EnhancedModalBarrier(
-    //                   onTap: () {
-    //                     // Allow emergency dismiss after 10 seconds
-    //                     final status = LoadingService.instance.getStatus();
-    //                     if (status.globalLoadingDuration != null &&
-    //                         status.globalLoadingDuration!.inSeconds >= 10) {
-    //                       LoadingService.instance
-    //                           .forceHide(reason: 'user_emergency_dismiss');
-    //                     }
-    //                   },
-    //                 ),
-    //                 // Enhanced loading indicator with timeout info
-    //                 _EnhancedLoadingIndicator(),
-    //               ],
-    //             ],
-    //           ),
-    //         );
-    //       },
-    //       child: child,
-    //     );
-    //   },
-    //   child: app,
-    // );
+    // Enhanced loading overlay with emergency dismiss
+    return ValueListenableBuilder<bool>(
+      valueListenable: LoadingService.instance.forceHiddenNotifier,
+      builder: (context, forceHidden, child) {
+        return ValueListenableBuilder<int>(
+          valueListenable: LoadingService.instance.notifier,
+          builder: (context, loadingCount, child) {
+            final shouldShowLoading = loadingCount > 0 && !forceHidden;
 
-    // SIMPLIFIED: Direct return to fix white screen (like main_test.dart)
-    return app;
+            return Directionality(
+              textDirection: TextDirection.ltr,
+              child: Stack(
+                children: [
+                  child!,
+                  if (shouldShowLoading) ...[
+                    // Enhanced modal barrier with tap to dismiss after delay
+                    _EnhancedModalBarrier(
+                      onTap: () {
+                        // Allow emergency dismiss after 10 seconds
+                        final status = LoadingService.instance.getStatus();
+                        if (status.globalLoadingDuration != null &&
+                            status.globalLoadingDuration!.inSeconds >= 10) {
+                          LoadingService.instance
+                              .forceHide(reason: 'user_emergency_dismiss');
+                        }
+                      },
+                    ),
+                    // Enhanced loading indicator with timeout info
+                    _EnhancedLoadingIndicator(),
+                  ],
+                ],
+              ),
+            );
+          },
+          child: child,
+        );
+      },
+      child: app,
+    );
   }
 }
 
