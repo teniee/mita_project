@@ -20,7 +20,7 @@ class DummyDB:
 def test_evaluate_user_risk_records_advice(monkeypatch):
     db = DummyDB()
 
-    def fake_eval(user_id):
+    def fake_eval(user_id, db):
         return {"risk_level": "high", "reason": "bad"}
 
     monkeypatch.setattr(
@@ -39,7 +39,7 @@ def test_evaluate_user_risk_records_advice(monkeypatch):
 def test_installment_advice_saved_on_fail(monkeypatch):
     db = DummyDB()
 
-    def fake_eval(user_id, price, months):
+    def fake_eval(user_id, price, months, db):
         return {"can_afford": False, "monthly_payment": 10, "reason": "no"}
 
     monkeypatch.setattr(

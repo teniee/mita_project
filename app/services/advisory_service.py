@@ -34,7 +34,8 @@ class AdvisoryService:
 
     def evaluate_user_risk(self, user_id: str) -> dict:
         """Run the risk predictor and save the generated advice."""
-        result = evaluate_user_risk(user_id)
+        # FIX: Pass db parameter to evaluate_user_risk function
+        result = evaluate_user_risk(user_id, self.db)
         self._store_advice(user_id, "risk", result.get("reason", ""))
         return result
 
@@ -42,7 +43,8 @@ class AdvisoryService:
         self, user_id: str, price: float, months: int
     ) -> dict:
         """Check installment affordability and store advice if not."""
-        result = can_user_afford_installment(user_id, price, months)
+        # FIX: Pass db parameter to can_user_afford_installment function
+        result = can_user_afford_installment(user_id, price, months, self.db)
         if not result.get("can_afford"):
             self._store_advice(
                 user_id,
