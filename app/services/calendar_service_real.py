@@ -118,3 +118,20 @@ def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, A
                 )
             )
     db.commit()
+
+
+def get_calendar_for_user(user_id: UUID, year: int, month: int) -> Dict[str, Dict[str, float]]:
+    """
+    Wrapper function for backward compatibility.
+    Creates its own database session to fetch calendar data.
+
+    NOTE: This function is kept for compatibility with legacy code that doesn't pass db session.
+    New code should use fetch_calendar() directly with proper dependency injection.
+    """
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        return fetch_calendar(db, user_id, year, month)
+    finally:
+        db.close()
