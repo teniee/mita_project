@@ -293,7 +293,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: const Text('Register'),
                         ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      // FIX: Handle case where there's no previous route (black screen bug)
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        // No previous route - navigate to login explicitly
+                        Navigator.pushReplacementNamed(context, '/login');
+                      }
+                    },
                     child: const Text('Back to login'),
                   ),
                   if (_error != null) ...[
