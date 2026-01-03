@@ -33,25 +33,36 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 async def _get_user_from_cache_or_db(user_id: str, db: AsyncSession) -> User:
-    """Get user from cache or database with automatic caching"""
-    cache_key = f"user:{user_id}"
-    
-    # Try cache first
-    cached_user = user_cache.get(cache_key)
-    if cached_user is not None:
-        logger.debug(f"User {user_id} found in cache")
-        return cached_user
-    
-    # Query from database
+    """
+    Get user from database (caching DISABLED to prevent DetachedInstanceError).
+
+    CRITICAL: User object caching was causing DetachedInstanceError because:
+    - Cached User objects are detached from SQLAlchemy session
+    - Accessing attributes on detached objects raises DetachedInstanceError
+    - Solution: Always query fresh from database, keep object attached to session
+
+    TODO: Implement data-dict caching (not ORM object caching) for performance
+    """
+    # CACHING DISABLED: ORM objects become detached from session when cached
+    # cache_key = f"user:{user_id}"
+    # cached_user = user_cache.get(cache_key)
+    # if cached_user is not None:
+    #     logger.debug(f"User {user_id} found in cache")
+    #     return cached_user  # ❌ Returns detached object
+
+    # Always query from database to ensure object is attached to current session
     try:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
-        
-        # Cache the result if user exists
+
+        # Don't cache ORM objects - they become detached from session
+        # if user:
+        #     user_cache.set(cache_key, user, ttl=300)
+        #     logger.debug(f"User {user_id} cached for future requests")
+
         if user:
-            user_cache.set(cache_key, user, ttl=300)  # Cache for 5 minutes
-            logger.debug(f"User {user_id} cached for future requests")
-        
+            logger.debug(f"User {user_id} loaded fresh from database (session-attached)")
+
         return user
     except Exception as db_error:
         logger.error(f"Database error during user lookup: {db_error}")
@@ -184,11 +195,13 @@ async def get_current_user(
                 # Accessing these attributes loads them into SQLAlchemy's instance state,
                 # making them available even after the session closes (prevents DetachedInstanceError)
                 # This is necessary because services access these attributes after the DB session ends
+                # NOTE: With caching disabled, object should remain attached to session,
+                # but we still preload for safety and to ensure all attributes are loaded
                 user_id_val = user.id
                 email = user.email
                 has_onboarded = user.has_onboarded
-                timezone = user.timezone
-                currency = user.currency if hasattr(user, 'currency') else None
+                timezone = user.timezone if hasattr(user, 'timezone') else 'UTC'  # Safe access with fallback
+                currency = user.currency if hasattr(user, 'currency') else 'USD'
                 name = user.name if hasattr(user, 'name') else None
                 monthly_income = user.monthly_income if hasattr(user, 'monthly_income') else None
                 budget_method = user.budget_method if hasattr(user, 'budget_method') else None
