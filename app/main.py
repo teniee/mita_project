@@ -478,26 +478,35 @@ async def privacy_policy():
     Privacy Policy for MITA Finance
     Required for App Store submission
     """
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
     import pathlib
+    import os
 
-    # Serve the privacy policy HTML file
-    policy_path = pathlib.Path(__file__).parent.parent / "PRIVACY_POLICY.html"
+    # Try multiple paths for Railway deployment compatibility
+    possible_paths = [
+        pathlib.Path(__file__).parent.parent / "PRIVACY_POLICY.html",  # Standard path
+        pathlib.Path.cwd() / "PRIVACY_POLICY.html",  # Working directory
+        pathlib.Path("/app/PRIVACY_POLICY.html"),  # Docker/Railway absolute path
+    ]
 
-    if policy_path.exists():
-        return FileResponse(
-            path=str(policy_path),
-            media_type="text/html",
-            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
-        )
-    else:
-        from fastapi import Response
-        # Fallback if file doesn't exist
-        return Response(
-            content="<h1>Privacy Policy</h1><p>Privacy Policy will be available soon. Contact privacy@mita.finance</p>",
-            media_type="text/html",
-            status_code=200
-        )
+    for policy_path in possible_paths:
+        if policy_path.exists():
+            try:
+                return FileResponse(
+                    path=str(policy_path),
+                    media_type="text/html",
+                    headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+                )
+            except Exception as e:
+                logger.error(f"Error serving privacy policy from {policy_path}: {e}")
+                continue
+
+    # Fallback if file doesn't exist
+    return Response(
+        content="<h1>Privacy Policy</h1><p>Privacy Policy will be available soon. Contact privacy@mita.finance</p>",
+        media_type="text/html",
+        status_code=200
+    )
 
 
 @app.get("/terms-of-service", include_in_schema=False)
@@ -506,26 +515,35 @@ async def terms_of_service():
     Terms of Service for MITA Finance
     Required for App Store submission
     """
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
     import pathlib
+    import os
 
-    # Serve the terms of service HTML file
-    terms_path = pathlib.Path(__file__).parent.parent / "TERMS_OF_SERVICE.html"
+    # Try multiple paths for Railway deployment compatibility
+    possible_paths = [
+        pathlib.Path(__file__).parent.parent / "TERMS_OF_SERVICE.html",  # Standard path
+        pathlib.Path.cwd() / "TERMS_OF_SERVICE.html",  # Working directory
+        pathlib.Path("/app/TERMS_OF_SERVICE.html"),  # Docker/Railway absolute path
+    ]
 
-    if terms_path.exists():
-        return FileResponse(
-            path=str(terms_path),
-            media_type="text/html",
-            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
-        )
-    else:
-        from fastapi import Response
-        # Fallback if file doesn't exist
-        return Response(
-            content="<h1>Terms of Service</h1><p>Terms of Service will be available soon. Contact legal@mita.finance</p>",
-            media_type="text/html",
-            status_code=200
-        )
+    for terms_path in possible_paths:
+        if terms_path.exists():
+            try:
+                return FileResponse(
+                    path=str(terms_path),
+                    media_type="text/html",
+                    headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+                )
+            except Exception as e:
+                logger.error(f"Error serving terms of service from {terms_path}: {e}")
+                continue
+
+    # Fallback if file doesn't exist
+    return Response(
+        content="<h1>Terms of Service</h1><p>Terms of Service will be available soon. Contact legal@mita.finance</p>",
+        media_type="text/html",
+        status_code=200
+    )
 
 
 # ---- Middlewares ----
