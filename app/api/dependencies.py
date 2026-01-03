@@ -180,10 +180,21 @@ async def get_current_user(
             user = await _get_user_from_cache_or_db(user_id, db)
             logger.info(f"✅ User query completed - user is {'None' if user is None else 'found'}")
             if user:
-                # CRITICAL FIX: Access attributes before session closes to prevent DetachedInstanceError
+                # CRITICAL FIX: Access ALL attributes before session closes to prevent DetachedInstanceError
+                # Accessing these attributes loads them into SQLAlchemy's instance state,
+                # making them available even after the session closes (prevents DetachedInstanceError)
+                # This is necessary because services access these attributes after the DB session ends
+                user_id_val = user.id
                 email = user.email
                 has_onboarded = user.has_onboarded
-                logger.info(f"User email: {email}, has_onboarded: {has_onboarded}")
+                timezone = user.timezone
+                currency = user.currency if hasattr(user, 'currency') else None
+                name = user.name if hasattr(user, 'name') else None
+                monthly_income = user.monthly_income if hasattr(user, 'monthly_income') else None
+                budget_method = user.budget_method if hasattr(user, 'budget_method') else None
+                savings_goal = user.savings_goal if hasattr(user, 'savings_goal') else None
+                is_premium = user.is_premium if hasattr(user, 'is_premium') else False
+                logger.info(f"User preloaded: email={email}, timezone={timezone}, is_premium={is_premium}")
         except Exception as db_error:
             # Database errors during user lookup are system errors (500)
             logger.error(f"❌ Database error during user lookup: {db_error}", exc_info=True)
