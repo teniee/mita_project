@@ -16,23 +16,36 @@ async def init_rate_limiter(app: FastAPI):
     upstash_rest_url = os.getenv("UPSTASH_REDIS_REST_URL")
     upstash_rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
     redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
-    
+
     # Handle empty string Redis URLs gracefully
     if redis_url == "":
         redis_url = None
-    
+
     # Store Redis configuration in app state for lazy initialization
     app.state.redis_config = {
         "upstash_rest_url": upstash_rest_url,
         "upstash_rest_token": upstash_rest_token,
         "redis_url": redis_url
     }
-    
+
     # Initialize state variables
     app.state.redis_available = None  # None = not yet tested, False = failed, True = working
     app.state.redis_client = None
     app.state.fastapi_limiter_initialized = False
-    
+
+    # Try to initialize Redis eagerly (but with timeout to prevent hangs)
+    if redis_url:
+        try:
+            logger.info(f"Attempting eager Redis initialization: {redis_url[:20]}...")
+            redis_client = await get_redis_connection(app)
+            if redis_client:
+                # Also set global redis_client in security.py for AdvancedRateLimiter
+                import app.core.security as security_module
+                security_module.redis_client = redis_client
+                logger.info("✅ Redis initialized successfully on startup")
+        except Exception as e:
+            logger.warning(f"⚠️ Redis eager initialization failed (will use lazy): {e}")
+
     # Don't test connection during startup - use lazy initialization
     if upstash_rest_url and upstash_rest_token:
         logger.info("Redis REST API configuration detected - will initialize on first use")
@@ -41,7 +54,7 @@ async def init_rate_limiter(app: FastAPI):
     else:
         logger.info("No Redis configuration found - will use in-memory fallback")
         app.state.redis_available = False
-    
+
     logger.info("Rate limiter setup complete - using lazy initialization pattern")
 
 
@@ -81,20 +94,18 @@ async def get_redis_connection(app: FastAPI) -> Optional[redis.Redis]:
             return None
         
         # Create Redis connection with short timeout to prevent hangs
-        redis_client = await asyncio.wait_for(
-            redis.from_url(
-                redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                socket_connect_timeout=3,    # Short timeout to prevent hangs
-                socket_timeout=3,            # Short socket timeout
-                retry_on_timeout=False,      # Don't retry on timeout
-                max_connections=10,          # Smaller connection pool
-            ),
-            timeout=5.0  # Total timeout for connection creation
+        # Note: redis.asyncio.from_url() returns client directly (not a coroutine)
+        redis_client = redis.from_url(
+            redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+            socket_connect_timeout=3,    # Short timeout to prevent hangs
+            socket_timeout=3,            # Short socket timeout
+            retry_on_timeout=False,      # Don't retry on timeout
+            max_connections=10,          # Smaller connection pool
         )
-        
-        # Test connection with timeout
+
+        # Test connection with timeout (ping IS async)
         await asyncio.wait_for(redis_client.ping(), timeout=2.0)
         
         # Initialize FastAPI-Limiter only once

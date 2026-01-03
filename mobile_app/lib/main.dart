@@ -34,7 +34,7 @@ import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
 
-import 'screens/debug_test_screen.dart';
+// DEBUG: Only import debug/test screens in debug mode
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -54,7 +54,7 @@ import 'screens/insights_screen.dart';
 import 'screens/budget_settings_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/user_settings_screen.dart';
-import 'screens/auth_test_screen.dart';
+// DEBUG: auth_test_screen.dart removed from production (only for debug builds)
 import 'screens/transactions_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/challenges_screen.dart';
@@ -352,7 +352,8 @@ class _MITAAppState extends State<MITAApp> {
         return null; // Let the routes table handle it
       },
       routes: {
-        '/debug-test': (context) => const DebugTestScreen(),  // Minimal test screen
+        // DEBUG ROUTES REMOVED: /debug-test and /auth-test only available in debug builds
+        // Use Flutter DevTools for debugging in production builds
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
@@ -378,7 +379,7 @@ class _MITAAppState extends State<MITAApp> {
         '/profile': (context) => const UserProfileScreen(),
         '/settings': (context) => const UserSettingsScreen(),
         '/transactions': (context) => const TransactionsScreen(),
-        '/auth-test': (context) => const AuthTestScreen(),
+        // DEBUG: /auth-test route removed for production compliance
         '/goals': (context) => const GoalsScreen(),
         '/challenges': (context) => const ChallengesScreen(),
         '/installment-calculator': (context) => const InstallmentCalculatorScreen(),

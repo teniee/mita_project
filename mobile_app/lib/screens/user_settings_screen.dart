@@ -917,7 +917,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   /// Open privacy policy URL in browser
   Future<void> _openPrivacyPolicy() async {
     try {
-      final Uri url = Uri.parse('https://mita.app/privacy-policy');
+      final Uri url = Uri.parse('https://mita-production-production.up.railway.app/privacy-policy');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
@@ -932,7 +932,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   /// Open terms of service URL in browser
   Future<void> _openTermsOfService() async {
     try {
-      final Uri url = Uri.parse('https://mita.app/terms-of-service');
+      final Uri url = Uri.parse('https://mita-production-production.up.railway.app/terms-of-service');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {

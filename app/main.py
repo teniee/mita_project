@@ -466,8 +466,67 @@ async def detailed_health_check():
     
     if database_error:
         response["database_error"] = database_error
-    
+
     return response
+
+
+# ---- Legal Documents Endpoints (App Store Compliance) ----
+
+@app.get("/privacy-policy", include_in_schema=False)
+async def privacy_policy():
+    """
+    Privacy Policy for MITA Finance
+    Required for App Store submission
+    """
+    from fastapi.responses import FileResponse
+    import pathlib
+
+    # Serve the privacy policy HTML file
+    policy_path = pathlib.Path(__file__).parent.parent / "PRIVACY_POLICY.html"
+
+    if policy_path.exists():
+        return FileResponse(
+            path=str(policy_path),
+            media_type="text/html",
+            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+        )
+    else:
+        from fastapi import Response
+        # Fallback if file doesn't exist
+        return Response(
+            content="<h1>Privacy Policy</h1><p>Privacy Policy will be available soon. Contact privacy@mita.finance</p>",
+            media_type="text/html",
+            status_code=200
+        )
+
+
+@app.get("/terms-of-service", include_in_schema=False)
+async def terms_of_service():
+    """
+    Terms of Service for MITA Finance
+    Required for App Store submission
+    """
+    from fastapi.responses import FileResponse
+    import pathlib
+
+    # Serve the terms of service HTML file
+    terms_path = pathlib.Path(__file__).parent.parent / "TERMS_OF_SERVICE.html"
+
+    if terms_path.exists():
+        return FileResponse(
+            path=str(terms_path),
+            media_type="text/html",
+            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+        )
+    else:
+        from fastapi import Response
+        # Fallback if file doesn't exist
+        return Response(
+            content="<h1>Terms of Service</h1><p>Terms of Service will be available soon. Contact legal@mita.finance</p>",
+            media_type="text/html",
+            status_code=200
+        )
+
 
 # ---- Middlewares ----
 
@@ -583,8 +642,8 @@ async def optimized_audit_middleware(request: Request, call_next):
     from app.core.audit_logging import audit_logger
     import time
     
-    # Skip audit logging for health checks and static content
-    skip_paths = ["/", "/health", "/debug", "/emergency-test", "/docs", "/redoc", "/openapi.json"]
+    # Skip audit logging for health checks, legal documents, and static content
+    skip_paths = ["/", "/health", "/privacy-policy", "/terms-of-service", "/debug", "/emergency-test", "/docs", "/redoc", "/openapi.json"]
     if request.url.path in skip_paths:
         return await call_next(request)
     
