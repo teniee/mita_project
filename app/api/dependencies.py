@@ -180,7 +180,10 @@ async def get_current_user(
             user = await _get_user_from_cache_or_db(user_id, db)
             logger.info(f"✅ User query completed - user is {'None' if user is None else 'found'}")
             if user:
-                logger.info(f"User email: {user.email}, has_onboarded: {user.has_onboarded}")
+                # CRITICAL FIX: Access attributes before session closes to prevent DetachedInstanceError
+                email = user.email
+                has_onboarded = user.has_onboarded
+                logger.info(f"User email: {email}, has_onboarded: {has_onboarded}")
         except Exception as db_error:
             # Database errors during user lookup are system errors (500)
             logger.error(f"❌ Database error during user lookup: {db_error}", exc_info=True)
