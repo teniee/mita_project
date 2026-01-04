@@ -377,7 +377,7 @@ class _LoginScreenState extends State<LoginScreen>
       await userProvider.initialize();
 
       // Check if user has completed onboarding from UserProvider
-      final hasOnboarded = userProvider.hasOnboarded;
+      final hasOnboarded = userProvider.hasCompletedOnboarding;
       if (kDebugMode)
         dev.log('User onboarding status: $hasOnboarded',
             name: 'LoginScreen');
@@ -656,7 +656,7 @@ class _LoginScreenState extends State<LoginScreen>
       await userProvider.initialize();
 
       // Check if user has completed onboarding from UserProvider
-      final hasOnboarded = userProvider.hasOnboarded;
+      final hasOnboarded = userProvider.hasCompletedOnboarding;
       if (kDebugMode)
         dev.log('User onboarding status: $hasOnboarded',
             name: 'LoginScreen');
