@@ -162,8 +162,8 @@ async def get_saved_calendar(
     """
     from sqlalchemy.orm import Session
     from sqlalchemy import extract
-    from app.db.session import get_db
-    from app.db.models import DailyPlan
+    from app.core.session import get_db
+    from app.db.models.daily_plan import DailyPlan
     from collections import defaultdict
 
     try:
