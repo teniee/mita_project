@@ -9,6 +9,7 @@ import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/income_service.dart';
 import '../services/logging_service.dart';
+import '../services/loading_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -43,6 +44,12 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     if (kDebugMode)
       dev.log('initState called - starting initialization', name: 'MainScreen');
+
+    // CRITICAL FIX: Reset LoadingService to clear any stuck loading states
+    // that might be blocking button interactions from previous screens
+    LoadingService.instance.reset(reason: 'main_screen_init');
+    if (kDebugMode)
+      dev.log('LoadingService reset completed', name: 'MainScreen');
 
     // Initialize providers after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -66,8 +66,10 @@ class BudgetProvider extends ChangeNotifier {
   bool get isUpdatingMode => _isUpdatingMode;
 
   // Budget status convenience getters
+  // FIX: Use correct field names from /budget/live_status endpoint
+  // Backend returns 'monthly_budget' not 'total_budget'
   double get totalBudget {
-    final valueData = _liveBudgetStatus['total_budget'];
+    final valueData = _liveBudgetStatus['monthly_budget'];
     return (valueData == null)
         ? 0.0
         : (valueData is num)
@@ -76,7 +78,7 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   double get totalSpent {
-    final valueData = _liveBudgetStatus['total_spent'];
+    final valueData = _liveBudgetStatus['monthly_spent'];
     return (valueData == null)
         ? 0.0
         : (valueData is num)

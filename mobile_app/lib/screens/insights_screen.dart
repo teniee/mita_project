@@ -402,30 +402,42 @@ class _InsightsScreenState extends State<InsightsScreen>
       }
     }
 
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : AppColors.textPrimary;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _incomeTier != null
-          ? IncomeTheme.createTierAppBar(
-              tier: _incomeTier!,
-              title: 'Financial Insights',
-            )
-          : AppBar(
-              title: const Text(
-                'Financial Insights',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              backgroundColor: AppColors.background,
-              elevation: 0,
-              iconTheme: const IconThemeData(color: AppColors.textPrimary),
-              centerTitle: true,
-            ),
+      appBar: AppBar(
+        title: const Text(
+          'Financial Insights',
+          style: TextStyle(
+            fontFamily: AppTypography.fontHeading,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: _incomeTier != null ? Colors.white : AppColors.background,
+        foregroundColor: primaryColor,
+        elevation: 0,
+        iconTheme: IconThemeData(color: primaryColor),
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: primaryColor,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: primaryColor,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'AI Overview'),
+            Tab(text: 'Analytics'),
+            Tab(text: 'Peer Insights'),
+            Tab(text: 'Recommendations'),
+          ],
+        ),
+      ),
       body: isLoading
           ? _buildLoadingState()
-          : _buildTabContent(budgetProvider, transactionProvider),
+          : _buildTabViewBody(budgetProvider, transactionProvider),
     );
   }
 
@@ -452,12 +464,8 @@ class _InsightsScreenState extends State<InsightsScreen>
     );
   }
 
-  Widget _buildTabContent(
+  Widget _buildTabViewBody(
       BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
-    final primaryColor = _incomeTier != null
-        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
-        : AppColors.textPrimary;
-
     return Column(
       children: [
         // Income tier header
@@ -471,22 +479,7 @@ class _InsightsScreenState extends State<InsightsScreen>
             ),
           ),
 
-        // Tab bar
-        TabBar(
-          controller: _tabController,
-          labelColor: primaryColor,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: primaryColor,
-          isScrollable: true,
-          tabs: const [
-            Tab(text: 'AI Overview'),
-            Tab(text: 'Analytics'),
-            Tab(text: 'Peer Insights'),
-            Tab(text: 'Recommendations'),
-          ],
-        ),
-
-        // Tab content
+        // Tab view content
         Expanded(
           child: TabBarView(
             controller: _tabController,
