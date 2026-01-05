@@ -71,5 +71,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Production startup command with optimizations
-CMD ["python", "/app/start_optimized.py"]
+# Production startup command with environment validation and migrations
+# Using start.sh ensures proper validation and error handling
+CMD ["./start.sh"]
