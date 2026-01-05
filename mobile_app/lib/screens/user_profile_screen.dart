@@ -383,7 +383,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.3,
           children: [
             _buildStatCard(
               'Monthly Income',
