@@ -90,12 +90,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: userProvider.isLoading && userProvider.userProfile.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -210,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 40),
                     ElevatedButton(
                       onPressed: _isSaving ? null : saveProfile,
                       style: ElevatedButton.styleFrom(
@@ -232,7 +233,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                     ),
-                  ],
+                    const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),

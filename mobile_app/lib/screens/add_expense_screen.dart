@@ -871,23 +871,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                   ),
                 ),
                 const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ReceiptCaptureScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.inputBackground,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Scan Receipt'),
-                ),
-                const SizedBox(height: 20),
+                // PRIMARY ACTION: Save Expense button (now first)
                 AnimatedBuilder(
                   animation: _submitAnimation,
                   builder: (context, child) {
@@ -948,6 +932,32 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                       ),
                     );
                   },
+                ),
+                const SizedBox(height: 16),
+                // SECONDARY ACTION: Scan Receipt button (now second)
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ReceiptCaptureScreen(),
+                            ),
+                          );
+                        },
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Scan Receipt'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    side: BorderSide(
+                      color: AppColors.textPrimary.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ),
               ],
             ),

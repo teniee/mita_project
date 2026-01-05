@@ -318,128 +318,127 @@ class _CalendarScreenState extends State<CalendarScreen>
     final textColor = _getSimpleTextColor(status, isToday);
     final spentPercentage = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: dayColor,
-        borderRadius: BorderRadius.circular(12),
-        border: isToday
-            ? Border.all(color: colorScheme.primary, width: 3)
-            : Border.all(color: dayColor.darken(0.1), width: 1),
-        boxShadow: [
-          if (isToday || status == 'over')
-            BoxShadow(
-              color: (isToday ? colorScheme.primary : Colors.red)
-                  .withValues(alpha: 0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    return GestureDetector(
+      onTap: dayNumber > 0
+          ? () {
+              logInfo('Calendar day tapped: $dayNumber', tag: 'CALENDAR_TAP');
+              _showSimpleDayModal(dayNumber, limit, spent, status);
+            }
+          : null,
+      child: Container(
+        decoration: BoxDecoration(
+          color: dayColor,
           borderRadius: BorderRadius.circular(12),
-          onTap: dayNumber > 0
-              ? () => _showSimpleDayModal(dayNumber, limit, spent, status)
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Day number with status indicator
-                    Flexible(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              dayNumber > 0 ? dayNumber.toString() : '',
-                              style: TextStyle(
-                                fontWeight:
-                                    isToday ? FontWeight.bold : FontWeight.w600,
-                                color: textColor,
-                                fontSize: constraints.maxWidth > 45
-                                    ? (isToday ? 16 : 14)
-                                    : 12,
-                                fontFamily: AppTypography.fontHeading,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.clip,
-                            ),
-                          ),
-                          if (isToday && constraints.maxWidth > 35)
-                            Container(
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                shape: BoxShape.circle,
-                              ),
-                            )
-                          else if (status == 'over' &&
-                              constraints.maxWidth > 35)
-                            Icon(
-                              Icons.warning,
-                              size: 10,
-                              color: Colors.red.shade700,
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    if (dayNumber > 0 &&
-                        limit > 0 &&
-                        constraints.maxHeight > 60) ...[
-                      const SizedBox(height: 2),
-
-                      // Enhanced progress indicator - only show if there's room
-                      if (constraints.maxHeight > 70)
-                        Flexible(
-                          child: Container(
-                            height: 3,
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              color: textColor.withValues(alpha: 0.2),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: spentPercentage,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(2),
-                                  color: textColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Status text or amount - simplified
-                      if (constraints.maxHeight > 80)
+          border: isToday
+              ? Border.all(color: colorScheme.primary, width: 3)
+              : Border.all(color: dayColor.darken(0.1), width: 1),
+          boxShadow: [
+            if (isToday || status == 'over')
+              BoxShadow(
+                color: (isToday ? colorScheme.primary : Colors.red)
+                    .withValues(alpha: 0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Day number with status indicator
+                  Flexible(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Flexible(
                           child: Text(
-                            _getSimpleStatusText(
-                                status, spent, spentPercentage),
+                            dayNumber > 0 ? dayNumber.toString() : '',
                             style: TextStyle(
-                              color: textColor.withValues(alpha: 0.8),
-                              fontSize: constraints.maxWidth > 45 ? 8 : 7,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: AppTypography.fontBody,
+                              fontWeight:
+                                  isToday ? FontWeight.bold : FontWeight.w600,
+                              color: textColor,
+                              fontSize: constraints.maxWidth > 45
+                                  ? (isToday ? 16 : 14)
+                                  : 12,
+                              fontFamily: AppTypography.fontHeading,
                             ),
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.clip,
                           ),
                         ),
-                    ],
+                        if (isToday && constraints.maxWidth > 35)
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        else if (status == 'over' &&
+                            constraints.maxWidth > 35)
+                          Icon(
+                            Icons.warning,
+                            size: 10,
+                            color: Colors.red.shade700,
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  if (dayNumber > 0 &&
+                      limit > 0 &&
+                      constraints.maxHeight > 60) ...[
+                    const SizedBox(height: 2),
+
+                    // Enhanced progress indicator - only show if there's room
+                    if (constraints.maxHeight > 70)
+                      Flexible(
+                        child: Container(
+                          height: 3,
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(2),
+                            color: textColor.withValues(alpha: 0.2),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: spentPercentage,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(2),
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Status text or amount - simplified
+                    if (constraints.maxHeight > 80)
+                      Flexible(
+                        child: Text(
+                          _getSimpleStatusText(
+                              status, spent, spentPercentage),
+                          style: TextStyle(
+                            color: textColor.withValues(alpha: 0.8),
+                            fontSize: constraints.maxWidth > 45 ? 8 : 7,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: AppTypography.fontBody,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
-                );
-              },
-            ),
+                ],
+              );
+            },
           ),
         ),
       ),
