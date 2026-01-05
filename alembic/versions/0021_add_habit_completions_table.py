@@ -25,24 +25,33 @@ depends_on = None
 
 
 def upgrade():
-    """Create habit_completions table"""
-    op.create_table(
-        'habit_completions',
-        sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('habit_id', UUID(as_uuid=True), sa.ForeignKey('habits.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('completed_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), index=True),
-        sa.Column('notes', sa.Text, nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-    )
+    """Create habit_completions table if it doesn't exist"""
+    from sqlalchemy import inspect
 
-    # Create indexes for performance
-    op.create_index('ix_habit_completions_habit_id', 'habit_completions', ['habit_id'])
-    op.create_index('ix_habit_completions_user_id', 'habit_completions', ['user_id'])
-    op.create_index('ix_habit_completions_completed_at', 'habit_completions', ['completed_at'])
+    # Get connection and check if table exists
+    conn = op.get_bind()
+    inspector = inspect(conn)
 
-    # Composite index for common queries (user habits completed on specific dates)
-    op.create_index('ix_habit_completions_user_date', 'habit_completions', ['user_id', 'completed_at'])
+    if 'habit_completions' not in inspector.get_table_names():
+        op.create_table(
+            'habit_completions',
+            sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()'), nullable=False),
+            sa.Column('habit_id', UUID(as_uuid=True), sa.ForeignKey('habits.id', ondelete='CASCADE'), nullable=False, index=True),
+            sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
+            sa.Column('completed_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now(), index=True),
+            sa.Column('notes', sa.Text, nullable=True),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        )
+
+        # Create indexes for performance
+        op.create_index('ix_habit_completions_habit_id', 'habit_completions', ['habit_id'])
+        op.create_index('ix_habit_completions_user_id', 'habit_completions', ['user_id'])
+        op.create_index('ix_habit_completions_completed_at', 'habit_completions', ['completed_at'])
+
+        # Composite index for common queries (user habits completed on specific dates)
+        op.create_index('ix_habit_completions_user_date', 'habit_completions', ['user_id', 'completed_at'])
+    else:
+        print("⚠️  Table 'habit_completions' already exists, skipping creation")
 
 
 def downgrade():
