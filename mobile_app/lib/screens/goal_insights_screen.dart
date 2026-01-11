@@ -1,5 +1,5 @@
-/// MODULE 5: Goal Insights Screen
-/// AI-powered insights, health analysis, and recommendations for goals
+// MODULE 5: Goal Insights Screen
+// AI-powered insights, health analysis, and recommendations for goals
 
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -395,7 +395,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                           isLate ? Colors.red.shade800 : Colors.green.shade800,
                     ),
                   ),
-                  if (isLate && target != null) ...[
+                  if (isLate) ...[
                     const SizedBox(height: 4),
                     Text(
                       '${predicted.difference(target).inDays} days late',

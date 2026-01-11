@@ -1,5 +1,5 @@
-/// MODULE 5: Smart Goal Recommendations Screen
-/// AI-powered personalized goal recommendations based on user behavior
+// MODULE 5: Smart Goal Recommendations Screen
+// AI-powered personalized goal recommendations based on user behavior
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -250,7 +250,7 @@ class _SmartGoalRecommendationsScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      (priority as String).toUpperCase(),
+                      priority.toUpperCase(),
                       style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,

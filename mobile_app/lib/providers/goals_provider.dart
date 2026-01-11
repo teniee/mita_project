@@ -26,8 +26,8 @@ class GoalsProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   // Goal health analysis state
-  Map<String, Map<String, dynamic>> _goalHealthData = {};
-  Map<String, bool> _healthDataLoading = {};
+  final Map<String, Map<String, dynamic>> _goalHealthData = {};
+  final Map<String, bool> _healthDataLoading = {};
 
   // Smart recommendations state
   List<Map<String, dynamic>> _recommendations = [];

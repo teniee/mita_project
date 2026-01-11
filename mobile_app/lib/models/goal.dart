@@ -1,5 +1,5 @@
-/// MODULE 5: Budgeting Goals - Goal Model
-/// Complete model for budgeting goals with all fields and methods
+// MODULE 5: Budgeting Goals - Goal Model
+// Complete model for budgeting goals with all fields and methods
 
 class Goal {
   final String id;

@@ -77,7 +77,7 @@ class _OnboardingSpendingFrequencyScreenState
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.2),
+                    color: accentColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: accentColor, size: 28),
@@ -117,7 +117,7 @@ class _OnboardingSpendingFrequencyScreenState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.15),
+                  color: accentColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -136,9 +136,9 @@ class _OnboardingSpendingFrequencyScreenState
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: accentColor,
-                inactiveTrackColor: accentColor.withOpacity(0.3),
+                inactiveTrackColor: accentColor.withValues(alpha: 0.3),
                 thumbColor: accentColor,
-                overlayColor: accentColor.withOpacity(0.2),
+                overlayColor: accentColor.withValues(alpha: 0.2),
                 trackHeight: 6,
               ),
               child: Slider(

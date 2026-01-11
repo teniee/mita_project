@@ -312,7 +312,7 @@ class ErrorAnalyticsService {
         'UUID');
 
     final operationPrefix = operationName != null ? '${operationName}_' : '';
-    return '${operationPrefix}${errorType}_${coreMessage.hashCode.abs()}';
+    return '$operationPrefix${errorType}_${coreMessage.hashCode.abs()}';
   }
 
   /// Start analytics collection

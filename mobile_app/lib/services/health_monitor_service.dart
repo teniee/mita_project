@@ -213,7 +213,7 @@ class HealthMonitorService {
   // Health check configuration
   bool _healthMonitoringEnabled = true;
   Duration _healthCheckInterval = const Duration(minutes: 5);
-  Duration _criticalHealthCheckInterval = const Duration(minutes: 1);
+  final Duration _criticalHealthCheckInterval = const Duration(minutes: 1);
   bool _isInCriticalMode = false;
 
   // Stream controllers for reactive updates

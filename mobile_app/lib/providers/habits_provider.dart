@@ -102,7 +102,7 @@ class HabitsProvider extends ChangeNotifier {
   // State
   HabitsState _state = HabitsState.initial;
   List<Habit> _habits = [];
-  Map<int, Map<String, dynamic>> _habitProgress = {};
+  final Map<int, Map<String, dynamic>> _habitProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
 

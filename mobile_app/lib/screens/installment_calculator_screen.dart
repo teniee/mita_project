@@ -1,6 +1,6 @@
-/// Installment Calculator Screen
-/// Smart financial analysis tool to help users make informed installment purchase decisions
-/// Features risk assessment, payment breakdown, and personalized recommendations
+// Installment Calculator Screen
+// Smart financial analysis tool to help users make informed installment purchase decisions
+// Features risk assessment, payment breakdown, and personalized recommendations
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

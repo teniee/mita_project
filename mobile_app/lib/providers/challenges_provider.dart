@@ -21,7 +21,7 @@ class ChallengesProvider extends ChangeNotifier {
   List<dynamic> _availableChallenges = [];
   Map<String, dynamic> _gamificationStats = {};
   List<dynamic> _leaderboard = [];
-  Map<String, Map<String, dynamic>> _challengeProgress = {};
+  final Map<String, Map<String, dynamic>> _challengeProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
 

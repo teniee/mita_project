@@ -402,7 +402,7 @@ class EnhancedProductionBudgetEngine {
               (e) => e.toString() == onboardingData.incomeTier.toString(),
               orElse: () => IncomeTier.middle)
           : IncomeTier.middle,
-      interests: onboardingData.goals ?? <String>[],
+      interests: onboardingData.goals,
       spendingPersonality: <String, dynamic>{},
     );
 

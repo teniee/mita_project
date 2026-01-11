@@ -140,7 +140,7 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadDailyBudgets() async {
     try {
       final data = await _apiService.getDailyBudgets();
-      _dailyBudgets = data ?? [];
+      _dailyBudgets = data;
       logInfo('Daily budgets loaded: ${_dailyBudgets.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
