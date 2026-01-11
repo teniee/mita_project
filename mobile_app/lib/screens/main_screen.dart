@@ -757,13 +757,17 @@ class _MainScreenState extends State<MainScreen> {
                         color: Colors.orange[600],
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Complete your profile for personalized insights',
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          fontSize: 14,
-                          color: Colors.orange[600],
-                          decoration: TextDecoration.underline,
+                      Expanded(
+                        child: Text(
+                          'Complete your profile for personalized insights',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            color: Colors.orange[600],
+                            decoration: TextDecoration.underline,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
@@ -778,12 +782,16 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.red[600],
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      'Connection issue - tap refresh to retry',
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
-                        fontSize: 14,
-                        color: Colors.red[600],
+                    Expanded(
+                      child: Text(
+                        'Connection issue - tap refresh to retry',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 14,
+                          color: Colors.red[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],

@@ -144,7 +144,7 @@ class EnhancedErrorHandling {
   }) {
     try {
       return builder();
-    } catch (error, stackTrace) {
+    } catch (error) {
       String name = widgetName ?? 'Unknown Widget';
 
       logError('Widget rendering error in $name: $error',

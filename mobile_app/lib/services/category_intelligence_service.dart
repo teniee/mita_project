@@ -14,7 +14,6 @@ class CategoryIntelligenceService {
   // Category learning storage
   final Map<String, Map<String, dynamic>> _categoryData = {};
   final List<LifeEventDetection> _detectedEvents = [];
-  final Map<String, List<Map<String, dynamic>>> _categoryHistory = {};
 
   /// Initialize with intelligent category defaults
   void initializeIntelligentCategories(Map<String, dynamic> userProfile) {

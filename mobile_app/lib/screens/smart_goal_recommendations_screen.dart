@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import '../providers/goals_provider.dart';
 
 class SmartGoalRecommendationsScreen extends StatefulWidget {

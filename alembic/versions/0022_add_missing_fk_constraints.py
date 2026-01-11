@@ -25,7 +25,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 # revision identifiers, used by Alembic.
 revision = '0022_add_missing_fk_constraints'
-down_revision = '0021_add_habit_completions_table'
+down_revision = '0021_add_habit_completions'
 branch_labels = None
 depends_on = None
 

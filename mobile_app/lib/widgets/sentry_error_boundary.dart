@@ -29,7 +29,6 @@ class SentryErrorBoundary extends StatefulWidget {
 
 class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
   Object? _error;
-  StackTrace? _stackTrace; // Kept for potential future use
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +50,6 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
   void _handleError(Object error, StackTrace stackTrace) {
     setState(() {
       _error = error;
-      _stackTrace = stackTrace;
     });
 
     // Report to all error monitoring services
@@ -173,7 +171,6 @@ class _SentryErrorBoundaryState extends State<SentryErrorBoundary> {
   void _clearError() {
     setState(() {
       _error = null;
-      _stackTrace = null;
     });
 
     // Add breadcrumb for error recovery

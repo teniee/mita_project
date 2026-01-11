@@ -6,8 +6,6 @@ class DebugTestScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: DebugTestScreen building...');
-
     return Scaffold(
       backgroundColor: Colors.blue,  // Bright color to see if it renders
       appBar: AppBar(
@@ -34,7 +32,7 @@ class DebugTestScreen extends StatelessWidget {
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () {
-                print('DEBUG: Button pressed!');
+                // Button action removed for GDPR compliance
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,

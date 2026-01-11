@@ -20,7 +20,6 @@ class OnboardingProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final primary = activeColor ?? AppColors.primary;
     final inactive = inactiveColor ?? Colors.grey.shade300;
 

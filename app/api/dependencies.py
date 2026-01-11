@@ -29,7 +29,7 @@ from app.core.performance_cache import user_cache, cache_user_data
 
 logger = logging.getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 async def _get_user_from_cache_or_db(user_id: str, db: AsyncSession) -> User:
@@ -78,8 +78,21 @@ async def get_current_user(
     Enhanced with better error handling, logging, and scope information.
 
     SECURITY: All authentication failures return 401, never 500.
+
+    CRITICAL FIX: With auto_error=False, OAuth2PasswordBearer returns None when no token is present.
+    We must explicitly check for None and raise 401 before any other processing.
     """
     logger.info("🔐 GET_CURRENT_USER CALLED")
+
+    # CRITICAL: Check for None token first (when auto_error=False, scheme returns None)
+    if token is None:
+        logger.warning("❌ No token provided (Authorization header missing)")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
     try:
         # Validate token format
         logger.info(f"Token received - length: {len(token) if token else 0}")
@@ -399,17 +412,28 @@ async def require_admin_access(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-oauth2_refresh_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/refresh")
+oauth2_refresh_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/refresh", auto_error=False)
 
 
 async def get_refresh_token_user(
-    token: str = Depends(oauth2_refresh_scheme), 
+    token: str = Depends(oauth2_refresh_scheme),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get user from refresh token
     Enhanced with better error handling and logging
+
+    CRITICAL FIX: With auto_error=False, OAuth2PasswordBearer returns None when no token is present.
     """
+    # CRITICAL: Check for None token first (when auto_error=False, scheme returns None)
+    if token is None:
+        logger.warning("❌ No refresh token provided (Authorization header missing)")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
     try:
         # Validate token format
         if not token or token.strip() == "":

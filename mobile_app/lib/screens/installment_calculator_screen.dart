@@ -3,16 +3,14 @@
 /// Features risk assessment, payment breakdown, and personalized recommendations
 
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../models/installment_models.dart';
 import '../providers/installments_provider.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 class InstallmentCalculatorScreen extends StatefulWidget {
   const InstallmentCalculatorScreen({super.key});
@@ -285,9 +283,6 @@ class _InstallmentCalculatorScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Watch provider for reactive updates
-    final provider = context.watch<InstallmentsProvider>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -985,7 +980,6 @@ class _InstallmentCalculatorScreenState
                   final payment = entry.value;
                   final paymentNumber = payment['payment_number'] ?? index + 1;
                   final amount = payment['amount'] ?? result.monthlyPayment;
-                  final principal = payment['principal'] ?? 0.0;
                   final interest = payment['interest'] ?? 0.0;
 
                   return Container(

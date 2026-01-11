@@ -496,10 +496,6 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
   }
 
   Widget _buildInsightCard(String insight) {
-    // Parse emoji from insight
-    final hasEmoji =
-        insight.contains(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true));
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
