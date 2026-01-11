@@ -497,7 +497,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     final dayDate = DateTime(currentMonth.year, currentMonth.month, dayNumber);
     final dayData = calendarData.isNotEmpty
         ? calendarData.firstWhere((day) => day['day'] == dayNumber,
-            orElse: () => null)
+            orElse: () => <String, dynamic>{})
         : null;
 
     showModalBottomSheet(
