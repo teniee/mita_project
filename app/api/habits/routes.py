@@ -10,6 +10,7 @@ from app.api.dependencies import get_current_user
 from app.core.db import get_db
 from app.db.models import Habit, HabitCompletion
 from app.utils.response_wrapper import success_response
+from app.services.habit_service import get_habit_with_stats
 
 from .schemas import HabitIn, HabitOut, HabitUpdate
 
@@ -26,18 +27,16 @@ async def create_habit(
     habit = Habit(
         user_id=user.id,
         title=data.title,
-        description=data.description
+        description=data.description,
+        target_frequency=data.target_frequency or "daily"
     )
     db.add(habit)
     await db.commit()
     await db.refresh(habit)
 
-    return success_response({
-        "id": habit.id,
-        "title": habit.title,
-        "description": habit.description,
-        "created_at": habit.created_at,
-    })
+    # Return complete habit data with statistics (will be empty for new habit)
+    habit_data = await get_habit_with_stats(habit, user.id, db)
+    return success_response(habit_data)
 
 
 @router.get("/", response_model=List[HabitOut])
@@ -45,21 +44,19 @@ async def list_habits(
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    """List all habits for the authenticated user"""
+    """List all habits for the authenticated user with complete statistics"""
     result = await db.execute(
         select(Habit).where(Habit.user_id == user.id)
     )
     habits = result.scalars().all()
 
-    return success_response([
-        {
-            "id": h.id,
-            "title": h.title,
-            "description": h.description,
-            "created_at": h.created_at,
-        }
-        for h in habits
-    ])
+    # Get complete habit data with statistics for each habit
+    habits_with_stats = []
+    for habit in habits:
+        habit_data = await get_habit_with_stats(habit, user.id, db)
+        habits_with_stats.append(habit_data)
+
+    return success_response(habits_with_stats)
 
 
 @router.patch("/{habit_id}")
@@ -84,9 +81,15 @@ async def update_habit(
         habit.title = data.title
     if data.description is not None:
         habit.description = data.description
+    if data.target_frequency is not None:
+        habit.target_frequency = data.target_frequency
 
     await db.commit()
-    return success_response({"status": "updated"})
+    await db.refresh(habit)
+
+    # Return updated habit with statistics
+    habit_data = await get_habit_with_stats(habit, user.id, db)
+    return success_response(habit_data)
 
 
 @router.delete("/{habit_id}")
