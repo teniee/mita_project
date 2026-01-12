@@ -17,7 +17,7 @@ class BudgetWarningDialog extends StatelessWidget {
   final List<dynamic> alternativeCategories;
   final List<dynamic> suggestions;
   final VoidCallback onProceed;
-  final Function(String)? onUseAlternative;
+  final void Function(String)? onUseAlternative;
 
   const BudgetWarningDialog({
     super.key,
@@ -361,7 +361,7 @@ Future<bool?> showBudgetWarningDialog({
   required BuildContext context,
   required Map<String, dynamic> affordabilityCheck,
   required VoidCallback onProceed,
-  Function(String)? onUseAlternative,
+  void Function(String)? onUseAlternative,
 }) {
   return showDialog<bool>(
     context: context,

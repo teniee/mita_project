@@ -276,9 +276,7 @@ class SentryFinancialService {
   SentryTransaction? _filterSensitiveTransactions(
       SentryTransaction transaction, Hint hint) {
     // Add financial context to transactions
-    final contexts = transaction.contexts != null
-        ? Map<String, dynamic>.from(transaction.contexts!)
-        : <String, dynamic>{};
+    final contexts = Map<String, dynamic>.from(transaction.contexts);
     contexts['financial_operation'] = {
       'type': 'financial_mobile_transaction',
       'compliance_level': 'pci_dss',
