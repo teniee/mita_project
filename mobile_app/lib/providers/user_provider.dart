@@ -83,6 +83,16 @@ class UserProvider extends ChangeNotifier {
     try {
       logInfo('Initializing UserProvider', tag: 'USER_PROVIDER');
 
+      // CRITICAL FIX: Check if user has a valid token before making API calls
+      final token = await _apiService.getToken();
+      if (token == null || token.isEmpty) {
+        logWarning('No authentication token found - user must login first',
+            tag: 'USER_PROVIDER');
+        _state = UserState.unauthenticated;
+        _errorMessage = 'Not authenticated';
+        return;
+      }
+
       // Initialize the underlying user data manager
       await _userDataManager.initialize();
 

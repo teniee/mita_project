@@ -75,6 +75,16 @@ class _MainScreenState extends State<MainScreen> {
       await userProvider.initialize();
       if (kDebugMode) dev.log('UserProvider initialized', name: 'MainScreen');
 
+      // CRITICAL FIX: Check if user is authenticated before proceeding
+      if (userProvider.state == UserState.unauthenticated) {
+        logWarning('User is not authenticated - redirecting to login',
+            tag: 'MAIN_SCREEN');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+          return;
+        }
+      }
+
       // Check if user needs to complete onboarding
       final financialContext = userProvider.financialContext;
       if (financialContext['needs_onboarding'] == true) {

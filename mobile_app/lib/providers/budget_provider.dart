@@ -94,6 +94,18 @@ class BudgetProvider extends ChangeNotifier {
     if (_state != BudgetState.initial) return;
 
     logInfo('Initializing BudgetProvider', tag: 'BUDGET_PROVIDER');
+
+    // CRITICAL FIX: Check if user has a valid token before making API calls
+    final token = await _apiService.getToken();
+    if (token == null || token.isEmpty) {
+      logWarning(
+          'No authentication token found - skipping budget data initialization',
+          tag: 'BUDGET_PROVIDER');
+      _state = BudgetState.error;
+      _errorMessage = 'Not authenticated';
+      return;
+    }
+
     await loadAllBudgetData();
     _subscribeToBudgetUpdates();
   }

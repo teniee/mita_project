@@ -648,6 +648,12 @@ final sentryService = SentryFinancialService();
 /// No-op Sentry span for when Sentry is not initialized
 class NoOpSentrySpan implements ISentrySpan {
   @override
+  SentryId get traceId => SentryId.empty();
+
+  @override
+  SpanId get spanId => SpanId.empty();
+
+  @override
   Future<void> finish({SpanStatus? status, DateTime? endTimestamp}) async {}
 
   @override

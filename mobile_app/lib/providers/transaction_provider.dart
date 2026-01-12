@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
+import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
 /// Transaction state enum for tracking loading states
@@ -15,6 +16,7 @@ enum TransactionState {
 /// Manages transaction list, filtering, and CRUD operations
 class TransactionProvider extends ChangeNotifier {
   final TransactionService _transactionService = TransactionService();
+  final ApiService _apiService = ApiService();
 
   // State
   TransactionState _state = TransactionState.initial;
@@ -50,6 +52,18 @@ class TransactionProvider extends ChangeNotifier {
     if (_state != TransactionState.initial) return;
 
     logInfo('Initializing TransactionProvider', tag: 'TRANSACTION_PROVIDER');
+
+    // CRITICAL FIX: Check if user has a valid token before making API calls
+    final token = await _apiService.getToken();
+    if (token == null || token.isEmpty) {
+      logWarning(
+          'No authentication token found - skipping transactions initialization',
+          tag: 'TRANSACTION_PROVIDER');
+      _state = TransactionState.error;
+      _errorMessage = 'Not authenticated';
+      return;
+    }
+
     await loadTransactions();
   }
 
