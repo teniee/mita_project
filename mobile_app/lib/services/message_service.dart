@@ -44,7 +44,6 @@ class MessageService {
         backgroundColor = Colors.green;
         break;
       case MessageType.info:
-      default:
         backgroundColor = Colors.blue;
         break;
     }

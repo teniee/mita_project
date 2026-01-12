@@ -614,7 +614,7 @@ class _SmartGoalRecommendationsScreenState
   }
 
   void _showRecommendationDetails(Map<String, dynamic> rec) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

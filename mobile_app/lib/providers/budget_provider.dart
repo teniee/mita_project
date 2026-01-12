@@ -44,7 +44,7 @@ class BudgetProvider extends ChangeNotifier {
   bool _isUpdatingMode = false;
 
   // Subscriptions
-  StreamSubscription? _budgetUpdateSubscription;
+  StreamSubscription<void>? _budgetUpdateSubscription;
 
   // Getters
   BudgetState get state => _state;

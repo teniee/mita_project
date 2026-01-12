@@ -220,7 +220,7 @@ class _InstallmentCalculatorScreenState
   }
 
   void _showErrorDialog(String title, String message) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1531,7 +1531,7 @@ class _InstallmentCalculatorScreenState
               child: OutlinedButton.icon(
                 onPressed: () {
                   // Show help dialog or navigate to documentation
-                  showDialog(
+                  showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
                       shape: RoundedRectangleBorder(

@@ -6,7 +6,7 @@ import '../services/logging_service.dart';
 /// Prevents session expiration issues and provides consistent error handling
 mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
   final ApiService _apiService = ApiService();
-  bool _sessionValidated = false;
+  final bool _sessionValidated = false;
 
   @override
   void initState() {

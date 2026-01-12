@@ -442,7 +442,7 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
 
 /// Enhanced error handling for form validation
 class FormErrorHandler {
-  static Map<String, String> _fieldErrors = {};
+  static final Map<String, String> _fieldErrors = {};
 
   /// Add field-specific error
   static void addFieldError(String field, String message) {

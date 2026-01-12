@@ -196,7 +196,7 @@ class MobilePerformanceMonitor {
         );
       }
 
-      transaction?.finish();
+      transaction.finish();
       return result;
     } catch (error, stackTrace) {
       stopwatch.stop();
@@ -304,7 +304,7 @@ class MobilePerformanceMonitor {
         );
       }
 
-      transaction?.finish();
+      transaction.finish();
       return result;
     } catch (error, stackTrace) {
       stopwatch.stop();
@@ -431,7 +431,7 @@ class MobilePerformanceMonitor {
         );
       }
 
-      transaction?.finish();
+      transaction.finish();
       return result;
     } catch (error, stackTrace) {
       stopwatch.stop();

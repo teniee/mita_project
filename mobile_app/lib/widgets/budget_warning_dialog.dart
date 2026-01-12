@@ -381,8 +381,8 @@ Future<bool?> showBudgetWarningDialog({
             ((affordabilityCheck['percentage_used'] ?? 0.0) as num).toDouble(),
         impactMessage: (affordabilityCheck['impact_message'] ?? '') as String,
         alternativeCategories: (affordabilityCheck['alternative_categories'] ??
-            []) as List<dynamic>,
-        suggestions: (affordabilityCheck['suggestions'] ?? []) as List<dynamic>,
+            <dynamic>[]) as List<dynamic>,
+        suggestions: (affordabilityCheck['suggestions'] ?? <dynamic>[]) as List<dynamic>,
         onProceed: onProceed,
         onUseAlternative: onUseAlternative,
       );
