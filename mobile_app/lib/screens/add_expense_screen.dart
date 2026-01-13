@@ -59,6 +59,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   final List<Map<String, dynamic>> _categories = [
     {
       'name': 'Food & Dining',
+      'apiValue': 'food',  // Backend API expects lowercase single word
       'icon': Icons.restaurant,
       'color': Colors.orange,
       'subcategories': [
@@ -71,6 +72,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     },
     {
       'name': 'Transportation',
+      'apiValue': 'transportation',
       'icon': Icons.directions_car,
       'color': Colors.blue,
       'subcategories': [
@@ -83,24 +85,28 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     },
     {
       'name': 'Entertainment',
+      'apiValue': 'entertainment',
       'icon': Icons.movie,
       'color': Colors.purple,
       'subcategories': ['Movies', 'Concerts', 'Streaming', 'Gaming', 'Books']
     },
     {
       'name': 'Health & Fitness',
+      'apiValue': 'healthcare',
       'icon': Icons.fitness_center,
       'color': Colors.green,
       'subcategories': ['Doctor', 'Gym', 'Medicine', 'Supplements', 'Therapy']
     },
     {
       'name': 'Shopping',
+      'apiValue': 'shopping',
       'icon': Icons.shopping_bag,
       'color': Colors.pink,
       'subcategories': ['Clothing', 'Electronics', 'Home', 'Beauty', 'Gifts']
     },
     {
       'name': 'Bills & Utilities',
+      'apiValue': 'utilities',
       'icon': Icons.receipt_long,
       'color': Colors.red,
       'subcategories': [
@@ -113,6 +119,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     },
     {
       'name': 'Education',
+      'apiValue': 'education',
       'icon': Icons.school,
       'color': Colors.indigo,
       'subcategories': [
@@ -125,23 +132,35 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     },
     {
       'name': 'Travel',
+      'apiValue': 'travel',
       'icon': Icons.flight,
       'color': Colors.teal,
       'subcategories': ['Flights', 'Hotels', 'Food', 'Activities', 'Transport']
     },
     {
       'name': 'Personal Care',
+      'apiValue': 'other',  // Backend doesn't have personal_care, map to other
       'icon': Icons.spa,
       'color': Colors.cyan,
       'subcategories': ['Haircut', 'Skincare', 'Massage', 'Nails', 'Dental']
     },
     {
       'name': 'Other',
+      'apiValue': 'other',
       'icon': Icons.more_horiz,
       'color': Colors.grey,
       'subcategories': ['Miscellaneous', 'Fees', 'Donations', 'Pets', 'Hobbies']
     },
   ];
+
+  /// Convert display category name to backend API value
+  String _getCategoryApiValue(String displayName) {
+    final category = _categories.firstWhere(
+      (cat) => cat['name'] == displayName,
+      orElse: () => {'apiValue': 'other'},
+    );
+    return category['apiValue'] as String;
+  }
 
   String? _selectedSubcategory;
 
@@ -309,7 +328,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
     try {
       final affordabilityCheck = await _apiService.checkAffordability(
-        category: _action!,
+        category: _getCategoryApiValue(_action!),
         amount: _amount!,
         date: _selectedDate,
       );
@@ -418,7 +437,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     // Create transaction input for the provider
     final transactionInput = TransactionInput(
       amount: _amount!,
-      category: _action!,
+      category: _getCategoryApiValue(_action!),  // Convert to backend API value
       description: _description,
       spentAt: _selectedDate,
       notes: _selectedSubcategory != null
