@@ -1,19 +1,20 @@
 # 🎉 MITA App - Fixes Completed January 13, 2026
 
 **Fixed By:** Claude Sonnet 4.5
-**Session Duration:** 3+ hours
-**Commits Pushed:** 2 major fixes + documentation
+**Session Duration:** 4+ hours
+**Commits Pushed:** 3 commits (2 features + 1 critical bug fix)
 
 ---
 
 ## ✅ COMPLETED FIXES
 
 ### 1. **Habits Screen Data Loading - FULLY FIXED** 🟢
-**Status:** ✅ BACKEND COMPLETE (pending Railway deployment)
+**Status:** ✅ BACKEND COMPLETE & DEPLOYED TO PRODUCTION
 
 **Problem:**
 - Mobile app expected habit data with: `target_frequency`, `current_streak`, `longest_streak`, `completion_rate`, `completed_dates`
 - Backend API only returned: `id`, `title`, `description`, `created_at`
+- Additional issue: HTTP 500 error due to FastAPI response_model conflict
 - Result: "Failed to load habits" error on mobile
 
 **Solution Implemented:**
@@ -56,16 +57,26 @@
        completed_dates: List[str] = []
    ```
 
+6. **CRITICAL FIX: Removed response_model conflict** (`app/api/habits/routes.py:20,42`)
+   - **Root Cause**: FastAPI `response_model` parameter expected raw data but got wrapped `success_response()`
+   - **Issue**: Routes had `response_model=HabitOut` and `response_model=List[HabitOut]`
+   - **Problem**: `success_response()` wraps data in `{success: true, data: [...]}` format
+   - **Result**: FastAPI validation failed → HTTP 500 errors
+   - **Fix**: Removed `response_model` declarations from POST and GET endpoints
+   - This allows `success_response()` to return wrapped JSONResponse directly
+
 **Files Modified:**
 - `app/db/models/habit.py` - Added target_frequency field
 - `alembic/versions/0023_add_habit_target_frequency.py` - New migration
 - `app/services/habit_service.py` - NEW FILE (118 lines)
-- `app/api/habits/routes.py` - Enhanced endpoints with statistics
+- `app/api/habits/routes.py` - Enhanced endpoints with statistics + removed response_model
 - `app/api/habits/schemas.py` - Updated response schema
 
-**Git Commit:** `58d2ce1` - "feat: Add habit statistics calculation and target_frequency field"
+**Git Commits:**
+- `58d2ce1` - "feat: Add habit statistics calculation and target_frequency field"
+- `a635a30` - "fix: Remove response_model from habits routes to fix 500 error"
 
-**Next Step:** Railway auto-migration will apply changes on next deployment
+**Deployment Status:** ✅ LIVE on Railway (migration auto-applied, both commits deployed)
 
 ---
 
@@ -173,9 +184,13 @@
 - **Runtime:** No crashes
 
 ### Git Activity
-- **Commits:** 2 major feature commits
+- **Commits:** 3 commits total:
+  - `58d2ce1` - Habit statistics & target_frequency (feature)
+  - `f196849` - Insights empty states (feature)
+  - `a635a30` - Remove response_model (critical bug fix)
 - **Branches:** main
-- **Push Status:** ✅ Successfully pushed to GitHub
+- **Push Status:** ✅ All commits successfully pushed to GitHub
+- **Deployment:** ✅ Auto-deployed to Railway production
 
 ---
 
