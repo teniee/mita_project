@@ -17,7 +17,7 @@ from .schemas import HabitIn, HabitOut, HabitUpdate
 router = APIRouter(prefix="/habits", tags=["habits"])
 
 
-@router.post("/", response_model=HabitOut)
+@router.post("/")
 async def create_habit(
     data: HabitIn,
     user=Depends(get_current_user),  # noqa: B008
@@ -39,7 +39,7 @@ async def create_habit(
     return success_response(habit_data)
 
 
-@router.get("/", response_model=List[HabitOut])
+@router.get("/")
 async def list_habits(
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
