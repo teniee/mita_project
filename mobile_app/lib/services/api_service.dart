@@ -654,7 +654,7 @@ class ApiService {
 
   // RELIABLE REGISTER: Use standard FastAPI endpoint (backend now stable)
   Future<Response> reliableRegister(String email, String password) async {
-    return await register(email, password);
+    return await registerWithDetails(email, password);
   }
 
   // Add the missing emergencyRegister method that was being called
@@ -663,7 +663,7 @@ class ApiService {
     logInfo(
         'Redirecting emergency registration to standard FastAPI registration',
         tag: 'AUTH');
-    return await register(email, password);
+    return await registerWithDetails(email, password);
   }
 
   /// Public method to refresh access tokens
