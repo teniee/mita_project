@@ -98,9 +98,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       logInfo('FastAPI registration SUCCESS - initializing user state',
           tag: 'REGISTER');
 
-      // Set authentication state using UserProvider
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
       if (!mounted) return;

@@ -371,9 +371,8 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // Set authentication state using UserProvider
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
       // Check if user has completed onboarding from UserProvider
@@ -650,9 +649,8 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // Set authentication state using UserProvider
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
       // Check if user has completed onboarding from UserProvider
