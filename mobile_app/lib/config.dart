@@ -15,7 +15,7 @@ class ApiConfig {
   static const String registerEndpoint = '/api/auth/register';
   static const String loginEndpoint = '/api/auth/login';
   static const String refreshEndpoint = '/api/auth/refresh';
-  static const String healthEndpoint = '/api/health';
+  static const String healthEndpoint = '/health';
 
   static String get fullApiUrl => '$baseUrl$apiPath';
   static String get fullRegisterUrl => '$baseUrl$registerEndpoint';

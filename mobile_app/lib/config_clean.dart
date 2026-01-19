@@ -69,7 +69,7 @@ class AppConfig {
   static String get registerEndpoint => '/api/auth/register';
   static String get loginEndpoint => '/api/auth/login';
   static String get refreshEndpoint => '/api/auth/refresh';
-  static String get healthEndpoint => '/api/health';
+  static String get healthEndpoint => '/health';
 
   static String get fullRegisterUrl => '$baseUrl$registerEndpoint';
   static String get fullLoginUrl => '$baseUrl$loginEndpoint';
