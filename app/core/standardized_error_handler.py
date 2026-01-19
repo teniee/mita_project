@@ -13,6 +13,7 @@ import logging
 import traceback
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, Request, status
@@ -503,30 +504,33 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -
         )
 
 
-def validate_amount(amount: Union[int, float], min_amount: float = 0.01, max_amount: float = 1000000.0) -> float:
-    """Validate monetary amount with proper error handling"""
-    if not isinstance(amount, (int, float)):
+def validate_amount(amount: Union[int, float, Decimal], min_amount: float = 0.01, max_amount: float = 1000000.0) -> float:
+    """Validate monetary amount with proper error handling - accepts int, float, or Decimal"""
+    if not isinstance(amount, (int, float, Decimal)):
         raise ValidationError(
             "Amount must be a number",
             ErrorCode.VALIDATION_AMOUNT_INVALID,
             details={"provided_type": type(amount).__name__}
         )
-    
-    if amount < min_amount:
+
+    # Convert to float for comparison (Decimal objects support comparison but we standardize on float)
+    amount_float = float(amount)
+
+    if amount_float < min_amount:
         raise ValidationError(
             f"Amount must be at least ${min_amount:.2f}",
             ErrorCode.VALIDATION_OUT_OF_RANGE,
-            details={"min_amount": min_amount, "provided_amount": amount}
+            details={"min_amount": min_amount, "provided_amount": amount_float}
         )
-    
-    if amount > max_amount:
+
+    if amount_float > max_amount:
         raise ValidationError(
             f"Amount cannot exceed ${max_amount:,.2f}",
             ErrorCode.VALIDATION_OUT_OF_RANGE,
-            details={"max_amount": max_amount, "provided_amount": amount}
+            details={"max_amount": max_amount, "provided_amount": amount_float}
         )
-    
-    return round(float(amount), 2)
+
+    return round(amount_float, 2)
 
 
 def validate_email(email: str) -> str:
