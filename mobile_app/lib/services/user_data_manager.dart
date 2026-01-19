@@ -31,8 +31,15 @@ class UserDataManager {
       // Try to load cached data first for immediate UI response
       await _loadCachedData();
 
-      // Then refresh from API in background
-      _refreshFromApiBackground();
+      // CRITICAL FIX: AWAIT the refresh to ensure data is loaded before proceeding
+      // This prevents race conditions and redundant API calls in UserProvider
+      try {
+        await refreshUserData();
+      } catch (e) {
+        logWarning('API refresh failed (will use cached data if available): $e',
+            tag: 'USER_DATA_MANAGER');
+        // Non-fatal for new users - they'll complete onboarding next
+      }
     } catch (e) {
       logError('Failed to initialize UserDataManager: $e',
           tag: 'USER_DATA_MANAGER');
