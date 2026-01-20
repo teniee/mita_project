@@ -162,8 +162,9 @@ class GoalsProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       logError('Failed to load goals: $e', tag: 'GOALS_PROVIDER');
-      // Use sample data on error
-      _goals = _getSampleGoals();
+      // DISABLED: Do not show fake goals - return empty list instead
+      // Showing fake financial data breaks user trust
+      _goals = [];
       notifyListeners();
     } finally {
       _setLoading(false);

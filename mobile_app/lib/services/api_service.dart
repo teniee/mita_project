@@ -1269,33 +1269,13 @@ class ApiService {
               'Backend calendar fetch failed, using intelligent fallback',
               tag: 'CALENDAR');
 
-          // Use intelligent fallback service
-          try {
-            final fallbackService = CalendarFallbackService();
-            final fallbackData =
-                await fallbackService.generateFallbackCalendarData(
-              monthlyIncome: actualIncome,
-              location: userLocation,
-              year: DateTime.now().year,
-              month: DateTime.now().month,
-            );
+          // DISABLED: Fake data fallback - return empty instead of misleading data
+          // DO NOT show fake budget data when API fails - it breaks user trust
+          logWarning('Calendar API failed - returning empty data (no fake fallback)',
+              tag: 'CALENDAR');
 
-            // Cache the fallback data with shorter expiry
-            await _cacheCalendarData(
-                cacheKey, fallbackData, const Duration(minutes: 30));
-
-            logInfo('Using intelligent fallback calendar data',
-                tag: 'CALENDAR',
-                extra: {
-                  'income': actualIncome,
-                  'location': userLocation,
-                  'days_generated': fallbackData.length,
-                });
-
-            return fallbackData;
-          } catch (fallbackError) {
-            logError('Fallback calendar generation failed',
-                tag: 'CALENDAR', error: fallbackError);
+          // Return empty calendar data - UI will show appropriate empty state
+          return [];
 
             // Last resort: basic fallback
             return _generateBasicFallbackCalendar(actualIncome);
