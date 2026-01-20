@@ -1278,10 +1278,7 @@ class ApiService {
           return [];
         }
       },
-      fallbackValue: userIncome != null
-          ? _generateBasicFallbackCalendar(userIncome)
-          : throw Exception(
-              'Income data required for calendar. Please complete onboarding.'),
+      fallbackValue: [], // Return empty list instead of throwing exception
       timeout: const Duration(seconds: 10),
       operationName: 'Calendar Data',
     );
