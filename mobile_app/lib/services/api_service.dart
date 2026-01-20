@@ -1276,10 +1276,6 @@ class ApiService {
 
           // Return empty calendar data - UI will show appropriate empty state
           return [];
-
-            // Last resort: basic fallback
-            return _generateBasicFallbackCalendar(actualIncome);
-          }
         }
       },
       fallbackValue: userIncome != null
