@@ -397,7 +397,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Expenses',
-              '\$${(financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num? ?? 2450).toStringAsFixed(0)}',
+              (financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?) != null
+                  ? '\$${(financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?).toStringAsFixed(0)}'
+                  : '\$0',
               Icons.receipt_long,
               Colors.orange,
               colorScheme,
@@ -405,7 +407,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Savings',
-              '\$${(financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num? ?? 520).toStringAsFixed(0)}',
+              (financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?) != null
+                  ? '\$${(financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?).toStringAsFixed(0)}'
+                  : '\$0',
               Icons.savings,
               Colors.blue,
               colorScheme,
@@ -413,7 +417,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Budget Adherence',
-              '${financialContext['budget_adherence'] ?? 87}%',
+              financialContext['budget_adherence'] != null
+                  ? '${financialContext['budget_adherence']}%'
+                  : '0%',
               Icons.check_circle,
               Colors.purple,
               colorScheme,
