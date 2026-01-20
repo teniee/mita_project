@@ -397,9 +397,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Expenses',
-              (financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?) != null
-                  ? '\$${(financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?).toStringAsFixed(0)}'
-                  : '\$0',
+              () {
+                final expenses = financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?;
+                return expenses != null ? '\$${expenses.toStringAsFixed(0)}' : '\$0';
+              }(),
               Icons.receipt_long,
               Colors.orange,
               colorScheme,
@@ -407,9 +408,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Savings',
-              (financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?) != null
-                  ? '\$${(financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?).toStringAsFixed(0)}'
-                  : '\$0',
+              () {
+                final savings = financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?;
+                return savings != null ? '\$${savings.toStringAsFixed(0)}' : '\$0';
+              }(),
               Icons.savings,
               Colors.blue,
               colorScheme,
