@@ -8,9 +8,9 @@ class AppConfig {
   // Environment-specific configurations
   static const Map<String, Map<String, String>> _environments = {
     'development': {
-      'baseUrl': 'http://localhost:8000',
+      'baseUrl': 'https://mita-production-production.up.railway.app',
       'apiPath': '/api',
-      'websocketUrl': 'ws://localhost:8000/ws',
+      'websocketUrl': 'wss://mita-production-production.up.railway.app/ws',
       'enableDebugLogs': 'true',
       'enableAnalytics': 'false',
       'enableCrashReporting': 'false',
