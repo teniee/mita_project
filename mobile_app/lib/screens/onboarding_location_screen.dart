@@ -142,7 +142,7 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
       Navigator.pushNamed(context, '/onboarding_income');
     } catch (e) {
       // Log error but still allow navigation
-      logError('Failed to save location data: $e', tag: 'ONBOARDING_LOCATION');
+      logError('Failed to save onboarding location: $e', tag: 'ONBOARDING_LOCATION');
 
       // Navigate anyway - data will be re-collected if needed
       if (!mounted) return;
