@@ -764,18 +764,14 @@ class ApiService {
       );
       // Check if user has completed onboarding using the has_onboarded flag
       final userData = response.data['data'];
-      if (userData != null) {
-        // Use has_onboarded flag if available (new approach)
-        if (userData.containsKey('has_onboarded')) {
-          return userData['has_onboarded'] == true;
-        }
-        // Fallback: check if user has income set (legacy approach for backward compatibility)
-        if (userData.containsKey('income') &&
-            userData['income'] != null &&
-            userData['income'] > 0) {
-          return true;
-        }
+      if (userData != null && userData.containsKey('has_onboarded')) {
+        final hasOnboarded = userData['has_onboarded'] == true;
+        logInfo('Onboarding status from backend: $hasOnboarded', tag: 'ONBOARDING');
+        return hasOnboarded;
       }
+
+      // Backend always returns has_onboarded field, so if it's missing something is wrong
+      logWarning('Backend /users/me response missing has_onboarded field', tag: 'ONBOARDING');
       return false;
     } catch (e) {
       // If there's an error checking the API, we should be conservative
