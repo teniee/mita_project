@@ -78,19 +78,25 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # ---- Firebase Admin SDK init ----
 if not firebase_admin._apps:
-    firebase_json = os.environ.get("FIREBASE_JSON")
-    if firebase_json:
-        cred = credentials.Certificate(json.loads(firebase_json))
-    else:
-        cred_path = os.getenv("GOOGLE_SERVICE_ACCOUNT") or os.getenv(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
+    try:
+        firebase_json = os.environ.get("FIREBASE_JSON")
+        if firebase_json:
+            cred = credentials.Certificate(json.loads(firebase_json))
         else:
-            cred = credentials.ApplicationDefault()
+            cred_path = os.getenv("GOOGLE_SERVICE_ACCOUNT") or os.getenv(
+                "GOOGLE_APPLICATION_CREDENTIALS"
+            )
+            if cred_path and os.path.exists(cred_path):
+                cred = credentials.Certificate(cred_path)
+            else:
+                cred = credentials.ApplicationDefault()
 
-    firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase Admin SDK initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Firebase Admin SDK initialization failed: {e}")
+        print("⚠️  Push notifications will be disabled, but app will continue")
+        # App continues without Firebase - push notifications won't work but everything else will
 
 # ---- Sentry setup ----
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
