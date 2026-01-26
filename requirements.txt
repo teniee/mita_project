@@ -45,6 +45,7 @@ requests==2.32.4                    # SECURITY UPDATE: CVE-2024-47081 fixed
 # File Processing and OCR
 pyyaml==6.0.2                       # YAML processing
 pytesseract==0.3.13                 # OCR
+packaging==24.2                     # Required by pytesseract
 Pillow==11.0.0                      # Latest image processing (security fix)
 
 # Google Cloud Services
