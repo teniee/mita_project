@@ -24,21 +24,22 @@ def _initialize_sync_session():
             logger.warning("DATABASE_URL not set - sync database session unavailable")
             return
 
-        # Convert asyncpg URL to psycopg2 and preserve SSL + PgBouncer compatibility
+        # Convert asyncpg URL to psycopg2 and REMOVE ssl= parameter (psycopg2 only supports sslmode in connect_args)
         database_url = settings.DATABASE_URL.strip()
 
-        # Ensure SSL requirement (required by Supabase)
-        if "ssl=" not in database_url and "sslmode=" not in database_url:
-            sep = "&" if "?" in database_url else "?"
-            database_url += f"{sep}ssl=require"
+        # Remove ssl= parameter if present (it's for asyncpg only)
+        # psycopg2 uses sslmode in connect_args instead
+        if "ssl=require" in database_url:
+            database_url = database_url.replace("?ssl=require", "").replace("&ssl=require", "")
 
         sync_url = make_url(database_url)
         if sync_url.drivername.endswith("+asyncpg"):
             sync_url = sync_url.set(drivername="postgresql+psycopg2")
 
         # CRITICAL: PgBouncer compatibility - disable prepared statements
+        # psycopg2 requires sslmode in connect_args, NOT in URL
         connect_args = {
-            "sslmode": "require",  # Force SSL for Supabase
+            "sslmode": "require",  # Force SSL for Supabase (psycopg2 format)
         }
 
         # Add prepared_statement_cache_size=0 for PgBouncer compatibility
