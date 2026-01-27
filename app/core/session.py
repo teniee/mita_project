@@ -24,13 +24,40 @@ def _initialize_sync_session():
             logger.warning("DATABASE_URL not set - sync database session unavailable")
             return
 
-        sync_url = make_url(settings.DATABASE_URL)
+        # Convert asyncpg URL to psycopg2 and preserve SSL + PgBouncer compatibility
+        database_url = settings.DATABASE_URL.strip()
+
+        # Ensure SSL requirement (required by Supabase)
+        if "ssl=" not in database_url and "sslmode=" not in database_url:
+            sep = "&" if "?" in database_url else "?"
+            database_url += f"{sep}ssl=require"
+
+        sync_url = make_url(database_url)
         if sync_url.drivername.endswith("+asyncpg"):
             sync_url = sync_url.set(drivername="postgresql+psycopg2")
 
-        engine = create_engine(str(sync_url), echo=False, pool_pre_ping=True)
+        # CRITICAL: PgBouncer compatibility - disable prepared statements
+        connect_args = {
+            "sslmode": "require",  # Force SSL for Supabase
+        }
+
+        # Add prepared_statement_cache_size=0 for PgBouncer compatibility
+        engine = create_engine(
+            str(sync_url),
+            echo=False,
+            pool_pre_ping=True,
+            connect_args=connect_args,
+            # PgBouncer-safe pool settings
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=1800,
+        )
+        # Note: psycopg2 doesn't support prepared_statement_cache_size parameter
+        # but it's less critical for sync sessions
+
         SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-        logger.info("✅ Sync database session initialized")
+        logger.info("✅ Sync database session initialized with SSL and PgBouncer compatibility")
 
     except Exception as e:
         logger.error(f"Failed to initialize sync database session: {e}")
