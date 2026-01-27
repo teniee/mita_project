@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.api.dependencies import get_current_user
 from app.api.onboarding.schemas import OnboardingSubmitRequest, OnboardingSubmitResponse
 from app.core.session import get_db
+from app.db.models import User
 from app.engine.calendar_engine_behavioral import build_calendar
 from app.services.budget_planner import generate_budget_from_answers
 from app.services.calendar_service_real import save_calendar_for_user
@@ -72,11 +73,20 @@ async def submit_onboarding(
     logger.debug(f"Validated data for user {current_user.id}: monthly_income={monthly_income}")
 
     # Save income to user profile
+    # BUGFIX: Query user fresh in sync session to avoid async/sync session conflict
+    # current_user is attached to async session from get_current_user dependency
     try:
-        current_user.monthly_income = monthly_income
-        db.add(current_user)
+        user = db.query(User).filter(User.id == current_user.id).first()
+        if not user:
+            logger.error(f"User {current_user.id} not found in sync session")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "User not found", "code": "USER_NOT_FOUND"}
+            )
+
+        user.monthly_income = monthly_income
         db.flush()
-        logger.debug(f"Updated monthly_income for user {current_user.id}")
+        logger.debug(f"Updated monthly_income for user {user.id}")
     except HTTPException:
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
@@ -158,12 +168,13 @@ async def submit_onboarding(
 
     # Mark user as having completed onboarding
     try:
-        current_user.has_onboarded = True
-        db.add(current_user)
+        # BUGFIX: Use user object from sync session (not current_user from async session)
+        user.has_onboarded = True
+        # No need to db.add() - user is already in the session from the query above
 
         # Commit all changes including income, calendar, and onboarding flag
         db.commit()
-        logger.info(f"Onboarding completed successfully for user {current_user.id}")
+        logger.info(f"Onboarding completed successfully for user {user.id}")
     except HTTPException:
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
