@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
-from urllib.parse import quote_plus
 import logging
 
 from app.core.config import get_settings
@@ -25,31 +24,22 @@ def _initialize_sync_session():
             logger.warning("DATABASE_URL not set - sync database session unavailable")
             return
 
-        # Parse the asyncpg URL
+        # Convert asyncpg URL to psycopg2 via simple string replacement
+        # This preserves username with dots (e.g., postgres.PROJECT_ID)
         database_url = settings.DATABASE_URL.strip()
 
         # Remove ssl= parameter if present (psycopg2 only supports sslmode in connect_args)
         if "ssl=require" in database_url:
             database_url = database_url.replace("?ssl=require", "").replace("&ssl=require", "")
 
-        # Parse URL to extract components
-        parsed_url = make_url(database_url)
-
-        # Manually construct psycopg2 URL with proper encoding
-        # This ensures username and password are correctly URL-encoded
-        username = quote_plus(parsed_url.username) if parsed_url.username else ""
-        password = quote_plus(parsed_url.password) if parsed_url.password else ""
-        host = parsed_url.host or "localhost"
-        port = parsed_url.port or 5432
-        database = parsed_url.database or ""
-
-        # Build psycopg2 connection string
-        if username and password:
-            sync_database_url = f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
-        elif username:
-            sync_database_url = f"postgresql+psycopg2://{username}@{host}:{port}/{database}"
+        # Simple driver replacement - preserves all credentials exactly as they are
+        # This avoids URL parsing issues with usernames containing dots
+        if "+asyncpg://" in database_url:
+            sync_database_url = database_url.replace("+asyncpg://", "+psycopg2://")
+        elif "postgresql://" in database_url and "+psycopg2://" not in database_url:
+            sync_database_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
         else:
-            sync_database_url = f"postgresql+psycopg2://{host}:{port}/{database}"
+            sync_database_url = database_url
 
         sync_url = make_url(sync_database_url)
 
