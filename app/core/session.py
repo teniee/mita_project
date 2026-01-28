@@ -24,37 +24,40 @@ def _initialize_sync_session():
             logger.warning("DATABASE_URL not set - sync database session unavailable")
             return
 
-        # Convert asyncpg URL to psycopg2 via simple string replacement
-        # This preserves username with dots (e.g., postgres.PROJECT_ID)
+        # Parse asyncpg URL and extract credentials
         database_url = settings.DATABASE_URL.strip()
 
         # Remove ssl= parameter if present (psycopg2 only supports sslmode in connect_args)
         if "ssl=require" in database_url:
             database_url = database_url.replace("?ssl=require", "").replace("&ssl=require", "")
 
-        # Simple driver replacement - preserves all credentials exactly as they are
-        # This avoids URL parsing issues with usernames containing dots
-        if "+asyncpg://" in database_url:
-            sync_database_url = database_url.replace("+asyncpg://", "+psycopg2://")
-        elif "postgresql://" in database_url and "+psycopg2://" not in database_url:
-            sync_database_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
-        else:
-            sync_database_url = database_url
+        # Parse the URL to extract components
+        parsed = make_url(database_url)
+
+        # CRITICAL FIX: Pass username and password via connect_args to bypass psycopg2 URL parsing
+        # psycopg2 truncates usernames with dots when parsed from URL
+        # Solution: Build URL without credentials, pass them separately
+
+        # Build connection URL WITHOUT username/password
+        host = parsed.host or "localhost"
+        port = parsed.port or 5432
+        database = parsed.database or ""
+        sync_database_url = f"postgresql+psycopg2://{host}:{port}/{database}"
+
+        # Pass credentials via connect_args (bypasses psycopg2 URL parsing)
+        connect_args = {
+            "user": parsed.username,      # Username with dot will be preserved
+            "password": parsed.password,  # Password passed separately
+            "sslmode": "require",         # Force SSL for Supabase
+        }
 
         sync_url = make_url(sync_database_url)
 
-        # CRITICAL: PgBouncer compatibility - disable prepared statements
-        # psycopg2 requires sslmode in connect_args, NOT in URL
-        connect_args = {
-            "sslmode": "require",  # Force SSL for Supabase (psycopg2 format)
-        }
+        # Log the connection details for debugging
+        logger.info(f"Sync session connecting to: {host}:{port}/{database}")
+        logger.info(f"Username (via connect_args): {parsed.username}")
 
-        # Log the final connection string for debugging (hide password)
-        safe_url = str(sync_url).replace(sync_url.password or "", "***") if sync_url.password else str(sync_url)
-        logger.info(f"Sync session connecting to: {safe_url}")
-        logger.debug(f"Username: {sync_url.username}, Host: {sync_url.host}, Database: {sync_url.database}")
-
-        # Add prepared_statement_cache_size=0 for PgBouncer compatibility
+        # Create engine with credentials in connect_args
         engine = create_engine(
             str(sync_url),
             echo=False,
