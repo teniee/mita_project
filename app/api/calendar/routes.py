@@ -166,14 +166,10 @@ async def get_saved_calendar(
     from app.db.models.daily_plan import DailyPlan
     from collections import defaultdict
 
-    # BUGFIX: Use proper dependency injection for database session
-    # Issue: next(get_db()) doesn't properly close the session
-    # Solution: Use Depends(get_db) in function signature or manual session management
-
-    # Create a new session with proper cleanup
-    from app.core.session import SessionLocal, _initialize_sync_session
-    _initialize_sync_session()  # Ensure SessionLocal is initialized
-    db = SessionLocal()
+    # BUGFIX: Properly manage database session with context
+    # The get_db() function yields a session, so we need to consume it properly
+    db_gen = get_db()
+    db = next(db_gen)
 
     try:
         # Query DailyPlan entries for the specified month
@@ -243,5 +239,8 @@ async def get_saved_calendar(
         # Return empty calendar on error to allow fallback
         return success_response({"calendar": []})
     finally:
-        # BUGFIX: Ensure session is always closed
-        db.close()
+        # BUGFIX: Properly close the generator to ensure session cleanup
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
