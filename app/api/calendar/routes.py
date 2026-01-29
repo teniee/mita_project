@@ -208,24 +208,25 @@ async def get_saved_calendar(
             day_data['total_planned'] += (row.planned_amount or 0)
             day_data['total_spent'] += (row.spent_amount or 0)
 
-            # Add category details
+            # Add category details (convert Decimal to float for JSON serialization)
             category_name = row.category or 'uncategorized'
             day_data['categories'][category_name] = {
-                'planned': row.planned_amount or 0,
-                'spent': row.spent_amount or 0,
+                'planned': float(row.planned_amount or 0),
+                'spent': float(row.spent_amount or 0),
                 'status': row.status or 'pending'
             }
 
         # Convert to list format matching the shell calendar structure
+        # Convert all Decimal values to float for JSON serialization
         calendar_days = []
         for day_data in days_data.values():
             calendar_days.append({
                 'date': day_data['date'],
                 'day': day_data['day'],
                 'planned_budget': day_data['categories'],  # Dict of {category: {planned, spent, status}}
-                'limit': day_data['total_budget'],
-                'total': day_data['total_planned'],
-                'spent': day_data['total_spent'],
+                'limit': float(day_data['total_budget']),
+                'total': float(day_data['total_planned']),
+                'spent': float(day_data['total_spent']),
                 'status': 'active' if day_data['total_spent'] > 0 else 'pending'
             })
 
