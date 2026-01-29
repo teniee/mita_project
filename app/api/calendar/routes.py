@@ -166,10 +166,16 @@ async def get_saved_calendar(
     from app.db.models.daily_plan import DailyPlan
     from collections import defaultdict
 
-    try:
-        # Get database session
-        db = next(get_db())
+    # BUGFIX: Use proper dependency injection for database session
+    # Issue: next(get_db()) doesn't properly close the session
+    # Solution: Use Depends(get_db) in function signature or manual session management
 
+    # Create a new session with proper cleanup
+    from app.core.session import SessionLocal, _initialize_sync_session
+    _initialize_sync_session()  # Ensure SessionLocal is initialized
+    db = SessionLocal()
+
+    try:
         # Query DailyPlan entries for the specified month
         rows = db.query(DailyPlan).filter(
             DailyPlan.user_id == user.id,
@@ -233,6 +239,9 @@ async def get_saved_calendar(
         return success_response({"calendar": calendar_days})
 
     except Exception as e:
-        logger.error(f"Error retrieving saved calendar: {str(e)}")
+        logger.error(f"Error retrieving saved calendar: {str(e)}", exc_info=True)
         # Return empty calendar on error to allow fallback
         return success_response({"calendar": []})
+    finally:
+        # BUGFIX: Ensure session is always closed
+        db.close()
