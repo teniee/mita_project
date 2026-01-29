@@ -128,7 +128,7 @@ def get_calendar_for_user(user_id: UUID, year: int, month: int) -> Dict[str, Dic
     NOTE: This function is kept for compatibility with legacy code that doesn't pass db session.
     New code should use fetch_calendar() directly with proper dependency injection.
     """
-    from app.core.database import SessionLocal
+    from app.core.session import SessionLocal
 
     db = SessionLocal()
     try:
