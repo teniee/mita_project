@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -131,6 +132,11 @@ async def submit_onboarding(
 
     # Build calendar with error handling
     try:
+        # Get current year and month for calendar generation
+        now = datetime.utcnow()
+        current_year = now.year
+        current_month = now.month
+
         # Prepare calendar config by merging answers and budget_plan
         # Add top-level monthly_income for calendar engine compatibility
         calendar_config = {
@@ -138,6 +144,8 @@ async def submit_onboarding(
             **budget_plan,
             "monthly_income": monthly_income,  # Add top-level for calendar engine
             "user_id": str(current_user.id),  # Required by calendar engine
+            "year": current_year,  # BUGFIX: Add current year to prevent defaulting to 2025
+            "month": current_month,  # BUGFIX: Add current month
         }
         calendar_data = build_calendar(calendar_config)
         save_calendar_for_user(db, current_user.id, calendar_data)
