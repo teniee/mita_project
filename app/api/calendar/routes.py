@@ -147,6 +147,26 @@ async def get_shell(
         })
 
 
+@router.get("/current-month")
+async def get_current_month_calendar(
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """
+    Convenience endpoint to retrieve calendar for the current month.
+
+    This is a wrapper around /saved/{year}/{month} that automatically
+    uses the current year and month based on server time (UTC).
+    """
+    from datetime import datetime
+
+    now = datetime.utcnow()
+    current_year = now.year
+    current_month = now.month
+
+    # Reuse the existing saved calendar logic
+    return await get_saved_calendar(current_year, current_month, user)
+
+
 @router.get("/saved/{year}/{month}")
 async def get_saved_calendar(
     year: int,
