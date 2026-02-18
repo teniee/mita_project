@@ -337,7 +337,7 @@ class FinancialErrorService {
     VoidCallback? onRetry,
     VoidCallback? onDismiss,
   }) async {
-    await showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       isDismissible: errorInfo.severity != FinancialErrorSeverity.critical,

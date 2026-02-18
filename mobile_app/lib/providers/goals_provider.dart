@@ -26,8 +26,8 @@ class GoalsProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   // Goal health analysis state
-  Map<String, Map<String, dynamic>> _goalHealthData = {};
-  Map<String, bool> _healthDataLoading = {};
+  final Map<String, Map<String, dynamic>> _goalHealthData = {};
+  final Map<String, bool> _healthDataLoading = {};
 
   // Smart recommendations state
   List<Map<String, dynamic>> _recommendations = [];
@@ -52,13 +52,50 @@ class GoalsProvider extends ChangeNotifier {
   }
 
   // Statistics convenience getters
-  int get totalGoals => _statistics['total_goals'] as int? ?? 0;
-  int get activeGoals => _statistics['active_goals'] as int? ?? 0;
-  int get completedGoals => _statistics['completed_goals'] as int? ?? 0;
-  double get completionRate =>
-      (_statistics['completion_rate'] as num?)?.toDouble() ?? 0.0;
-  double get averageProgress =>
-      (_statistics['average_progress'] as num?)?.toDouble() ?? 0.0;
+  int get totalGoals {
+    final valueData = _statistics['total_goals'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  int get activeGoals {
+    final valueData = _statistics['active_goals'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  int get completedGoals {
+    final valueData = _statistics['completed_goals'];
+    return (valueData == null)
+        ? 0
+        : (valueData is num)
+            ? valueData.toInt()
+            : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
+  }
+
+  double get completionRate {
+    final valueData = _statistics['completion_rate'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
+
+  double get averageProgress {
+    final valueData = _statistics['average_progress'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
 
   // Smart recommendations getters
   List<Map<String, dynamic>> get recommendations => _recommendations;
@@ -125,8 +162,9 @@ class GoalsProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       logError('Failed to load goals: $e', tag: 'GOALS_PROVIDER');
-      // Use sample data on error
-      _goals = _getSampleGoals();
+      // DISABLED: Do not show fake goals - return empty list instead
+      // Showing fake financial data breaks user trust
+      _goals = [];
       notifyListeners();
     } finally {
       _setLoading(false);

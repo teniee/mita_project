@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "flutter": {
+      "command": "/Users/mikhail/.pub-cache/bin/mcp_server",
+      "args": []
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=atdcxppfflmiwjwjuqyl",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer sb_secret_mix5zbwyZPuiWBVtb0LITw_DMNjViRI"
+      }
+    },
+    "redis": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@liangshanli/mcp-server-redis"
+      ],
+      "env": {
+        "REDIS_URL": "rediss://default:AVunAAIncDFjODYyY2ExNjFjMGE0OTE5OTBlN2U2ZmNiOTU5NzcyY3AxMjM0NjM@integral-jaybird-23463.upstash.io:6379"
+      }
+    }
+  }
+}

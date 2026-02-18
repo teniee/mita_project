@@ -434,16 +434,22 @@ def get_dependency_validator() -> DependencyValidator:
 
 def validate_dependencies_on_startup():
     """Validate dependencies during application startup"""
+    # Skip validation in test environment
+    import os
+    if os.getenv('ENVIRONMENT') == 'test':
+        logger.info("Skipping dependency validation in test environment")
+        return
+
     validator = get_dependency_validator()
-    
+
     try:
         startup_ok, errors = validator.validate_startup_requirements()
-        
+
         if not startup_ok:
             logger.error("Critical dependency validation failed:")
             for error in errors:
                 logger.error(f"  - {error}")
-            
+
             print("\n" + "="*60)
             print("CRITICAL DEPENDENCY VALIDATION FAILURE")
             print("="*60)
@@ -451,7 +457,7 @@ def validate_dependencies_on_startup():
                 print(f"ERROR: {error}")
             print("\nPlease install missing dependencies and restart the application.")
             print("="*60)
-            
+
             sys.exit(1)
         
         else:

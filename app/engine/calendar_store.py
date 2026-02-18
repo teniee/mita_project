@@ -1,36 +1,36 @@
-from typing import Dict, List
+"""
+MIGRATION COMPLETE ✅
 
-# Simple in-memory calendar store used for development
-CALENDAR_DB: Dict[str, List[Dict]] = {}
+All files have been successfully migrated to calendar_service_real.py for
+database-backed calendar storage.
 
+Migrated files (2025-12-29):
+- app/engine/behavior/spending_pattern_extractor.py ✅
+- app/logic/spending_pattern_extractor.py ✅
+- app/engine/progress_api.py ✅
+- app/engine/progress_logic.py ✅
+- app/engine/calendar_state_service.py ✅
+- app/engine/challenge_tracker.py ✅
+- app/engine/day_view_api.py ✅
+- app/api/calendar/services.py ✅
 
-def save_calendar(calendar_id: str, days: List[Dict]) -> Dict:
-    CALENDAR_DB[calendar_id] = days
-    return {"status": "saved", "calendar_id": calendar_id, "days": len(days)}
+This compatibility shim is no longer needed and can be removed.
+The deprecated implementation has been deleted.
 
+All calendar operations now use PostgreSQL-backed storage via:
+- app/services/calendar_service_real.py
+"""
 
-def get_calendar(calendar_id: str) -> List[Dict]:
-    return CALENDAR_DB.get(calendar_id, [])
+# NOTE: This file is kept for reference only.
+# No code imports from here anymore.
+# The deprecated module has been deleted.
 
-
-def update_calendar(calendar_id: str, updated_days: List[Dict]) -> Dict:
-    if calendar_id in CALENDAR_DB:
-        CALENDAR_DB[calendar_id] = updated_days
-        return {"status": "updated", "calendar_id": calendar_id}
-    return {"status": "not_found", "calendar_id": calendar_id}
-
-
-def reset_calendar_store() -> None:
-    CALENDAR_DB.clear()
-
-
-def get_calendar_for_user(user_id: str, year: int, month: int) -> List[Dict]:
-    calendar_id = f"{user_id}-{year}-{month:02d}"
-    return get_calendar(calendar_id)
-
-
-def save_calendar_for_user(
-    user_id: str, year: int, month: int, calendar: List[Dict]
-) -> Dict:
-    calendar_id = f"{user_id}-{year}-{month:02d}"
-    return save_calendar(calendar_id, calendar)
+__all__ = [
+    'CALENDAR_DB',
+    'save_calendar',
+    'get_calendar',
+    'update_calendar',
+    'reset_calendar_store',
+    'get_calendar_for_user',
+    'save_calendar_for_user',
+]

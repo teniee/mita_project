@@ -1,10 +1,10 @@
-/// Dynamic Financial Threshold Service for Mobile App
-///
-/// This service provides access to economically-sound, contextual financial
-/// thresholds by communicating with the MITA backend's dynamic threshold service.
-///
-/// All hardcoded financial thresholds in the mobile app should be replaced
-/// with calls to this service for personalized, income-appropriate values.
+// Dynamic Financial Threshold Service for Mobile App
+//
+// This service provides access to economically-sound, contextual financial
+// thresholds by communicating with the MITA backend's dynamic threshold service.
+//
+// All hardcoded financial thresholds in the mobile app should be replaced
+// with calls to this service for personalized, income-appropriate values.
 
 import 'dart:async';
 import 'package:logging/logging.dart';

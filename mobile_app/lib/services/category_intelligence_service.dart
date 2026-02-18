@@ -14,7 +14,6 @@ class CategoryIntelligenceService {
   // Category learning storage
   final Map<String, Map<String, dynamic>> _categoryData = {};
   final List<LifeEventDetection> _detectedEvents = [];
-  final Map<String, List<Map<String, dynamic>>> _categoryHistory = {};
 
   /// Initialize with intelligent category defaults
   void initializeIntelligentCategories(Map<String, dynamic> userProfile) {
@@ -811,7 +810,7 @@ class CategoryIntelligenceService {
           'impactScore':
               (categorySeasonalData['impact_score'] as num?)?.toDouble() ?? 0.6,
           'actionableRecommendations':
-              categorySeasonalData['recommendations'] ?? [],
+              categorySeasonalData['recommendations'] ?? <dynamic>[],
           'supportingData': categorySeasonalData,
         });
       }
@@ -847,7 +846,7 @@ class CategoryIntelligenceService {
               'Category aligned with financial goals',
           'impactScore':
               (alignmentData['alignment_score'] as num?)?.toDouble() ?? 0.7,
-          'actionableRecommendations': alignmentData['recommendations'] ?? [],
+          'actionableRecommendations': alignmentData['recommendations'] ?? <dynamic>[],
           'supportingData': alignmentData,
         });
       }

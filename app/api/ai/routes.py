@@ -19,7 +19,8 @@ from app.api.ai.schemas import (
     AIAssistantRequest,
     AIAssistantResponse,
     AIFinancialAdviceRequest,
-    AIFinancialAdviceResponse
+    AIFinancialAdviceResponse,
+    CategorySuggestionRequest
 )
 
 logger = logging.getLogger(__name__)
@@ -403,17 +404,16 @@ async def get_budget_optimization(
             })
 
 
-@router.get("/category-suggestions")
+@router.post("/category-suggestions")
 async def get_category_suggestions(
-    description: str = None,
-    amount: float = None,
+    request: CategorySuggestionRequest,
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get AI-powered category suggestions for a transaction"""
     try:
         analyzer = AIFinancialAnalyzer(db, user.id)
-        suggestions = await analyzer.suggest_category(description, amount)
+        suggestions = await analyzer.suggest_category(request.description, request.amount)
         return success_response(suggestions)
     except Exception as e:
         # Fallback response

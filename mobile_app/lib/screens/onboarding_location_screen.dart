@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/location_service.dart';
 import '../services/onboarding_state.dart';
+import '../services/logging_service.dart';
 import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
@@ -121,23 +122,32 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
   Future<void> _continueWithLocation() async {
     if (_selectedState == null) return;
 
-    // Save location to preferences
-    await _locationService.saveUserLocation(
-      _selectedCountry,
-      stateCode: _selectedState,
-      manuallySet: !_isLocationDetected,
-    );
+    try {
+      // Save location to preferences
+      await _locationService.saveUserLocation(
+        _selectedCountry,
+        stateCode: _selectedState,
+        manuallySet: !_isLocationDetected,
+      );
 
-    // Store in onboarding state
-    OnboardingState.instance.countryCode = _selectedCountry;
-    OnboardingState.instance.stateCode = _selectedState;
+      // Store in onboarding state
+      OnboardingState.instance.countryCode = _selectedCountry;
+      OnboardingState.instance.stateCode = _selectedState;
 
-    // Save progress to persistent storage
-    await OnboardingState.instance.save();
+      // Save progress to persistent storage
+      await OnboardingState.instance.save();
 
-    // Navigate to income screen
-    if (!mounted) return;
-    Navigator.pushNamed(context, '/onboarding_income');
+      // Navigate to income screen
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/onboarding_income');
+    } catch (e) {
+      // Log error but still allow navigation
+      logError('Failed to save onboarding location: $e', tag: 'ONBOARDING_LOCATION');
+
+      // Navigate anyway - data will be re-collected if needed
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/onboarding_income');
+    }
   }
 
   @override

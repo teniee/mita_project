@@ -126,5 +126,12 @@
 	<string>UIStatusBarStyleLightContent</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
+	<!-- Export Compliance (Required by US law for App Store) -->
+	<!-- Set to false because app only uses standard Apple encryption (HTTPS/TLS) -->
+	<!-- No custom encryption algorithms implemented -->
+	<!-- See: https://developer.apple.com/documentation/security/complying_with_encryption_export_regulations -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

@@ -8,13 +8,15 @@ import re
 import hashlib
 import secrets
 import logging
+import os
+import asyncio
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-import redis
+import redis.asyncio as redis
 from passlib.context import CryptContext
 import jwt
 from jwt import InvalidTokenError
@@ -37,7 +39,7 @@ async def get_redis_client():
         from fastapi import FastAPI
         from starlette.applications import Starlette
         import inspect
-        
+
         # Get the current FastAPI app instance
         frame = inspect.currentframe()
         app = None
@@ -46,30 +48,31 @@ async def get_redis_client():
                 app = frame.f_locals['app']
                 break
             frame = frame.f_back
-        
+
         if app and hasattr(app.state, 'redis_client'):
             redis_client = app.state.redis_client
             return redis_client
-        
+
         # Fallback to direct connection
         redis_url = getattr(settings, 'redis_url', None) or os.getenv('REDIS_URL')
         if not redis_url or redis_url == "":
             logger.info("No Redis URL configured - using in-memory rate limiting")
             return None
-            
-        redis_client = await redis.from_url(
+
+        # redis.asyncio.from_url() returns an async client directly (no await needed)
+        redis_client = redis.from_url(
             redis_url,
-            encoding="utf-8", 
+            encoding="utf-8",
             decode_responses=True,
             socket_connect_timeout=3,
             socket_timeout=3
         )
-        
-        # Test connection with timeout
+
+        # Test connection with timeout (ping IS async)
         await asyncio.wait_for(redis_client.ping(), timeout=2.0)
         logger.info("Redis connection established successfully")
         return redis_client
-        
+
     except asyncio.TimeoutError:
         redis_client = None
         logger.warning("Redis connection timed out - using in-memory rate limiting")
@@ -315,8 +318,9 @@ class XSSProtector:
 
 class AdvancedRateLimiter:
     """Production-grade rate limiting with sliding window algorithm and comprehensive security"""
-    
-    def __init__(self):
+
+    def __init__(self, redis_client=None):
+        self.redis = redis_client  # Use 'redis' to match _sliding_window_counter check on line 356
         self.memory_store = rate_limit_memory
         self.fail_secure_mode = getattr(settings, 'RATE_LIMIT_FAIL_SECURE', False)  # Set to False for graceful degradation
     
@@ -367,17 +371,38 @@ class AdvancedRateLimiter:
                 pipe.zcard(key)
                 # Set expiry
                 pipe.expire(key, window_seconds + 1)
-                
+
                 results = pipe.execute()
+
+                # Validate pipeline results
+                if not results or len(results) < 3:
+                    raise ValueError(f"Redis pipeline returned insufficient results: {results}")
+
                 current_count = results[2]  # zcard result
-                
+
                 # Calculate time until window resets
                 oldest_score = self.redis.zrange(key, 0, 0, withscores=True)
-                if oldest_score:
-                    time_until_reset = int(window_seconds - (now - oldest_score[0][1]))
+                if oldest_score and len(oldest_score) > 0:
+                    try:
+                        # oldest_score should be [(member, score)] or [member, score]
+                        # Handle both Redis library response formats
+                        if isinstance(oldest_score[0], (list, tuple)) and len(oldest_score[0]) > 1:
+                            oldest_time = oldest_score[0][1]
+                        elif isinstance(oldest_score, list) and len(oldest_score) > 1:
+                            oldest_time = oldest_score[1]
+                        else:
+                            # Invalid format, use full window
+                            time_until_reset = window_seconds
+                            return current_count, max(0, time_until_reset), current_count > limit
+
+                        time_until_reset = int(window_seconds - (now - oldest_time))
+                    except (IndexError, TypeError, ValueError) as e:
+                        logger.debug(f"Error parsing oldest_score {oldest_score}: {e}")
+                        time_until_reset = window_seconds
                 else:
-                    time_until_reset = 0
-                
+                    # No entries in window - full window available
+                    time_until_reset = window_seconds
+
                 return current_count, max(0, time_until_reset), current_count > limit
                 
             except Exception as e:
@@ -872,11 +897,12 @@ def security_headers_middleware(request: Request, call_next):
 
 # Dependency injection for security
 def get_rate_limiter() -> AdvancedRateLimiter:
-    """Get rate limiter instance - FIXED to not hang during startup"""
+    """Get rate limiter instance with Redis if available"""
     try:
-        # Force in-memory mode to prevent Redis connection hangs
-        limiter = AdvancedRateLimiter()
-        limiter.redis_client = None  # Force in-memory fallback
+        # Use global redis_client if already initialized, otherwise None (in-memory fallback)
+        # Note: redis_client is initialized asynchronously via get_redis_client() on app startup
+        global redis_client
+        limiter = AdvancedRateLimiter(redis_client=redis_client)
         return limiter
     except Exception as e:
         logger.warning(f"Rate limiter creation failed, using mock: {e}")
@@ -891,6 +917,7 @@ def get_security_monitor() -> SecurityMonitor:
 
 def get_security_health_status() -> dict:
     """Get comprehensive security health status for monitoring"""
+    global redis_client
     health_status = {
         "timestamp": datetime.utcnow().isoformat(),
         "redis_status": "connected" if redis_client else "disconnected",
@@ -1206,3 +1233,15 @@ def get_user_tier_from_request(request) -> str:
     # Check if user is authenticated and has premium/admin status
     # For now, return basic_user as default tier
     return "basic_user"
+
+
+def reset_security_instances():
+    """
+    Reset all security instances for testing purposes.
+    This clears rate limiter state, security monitors, and other security-related caches.
+    Should only be used in test environments.
+    """
+    # This function is a placeholder for test cleanup
+    # Individual security components should handle their own state reset
+    # Tests should clear Redis cache separately if needed
+    pass

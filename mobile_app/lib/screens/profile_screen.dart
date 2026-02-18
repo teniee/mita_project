@@ -90,12 +90,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: userProvider.isLoading && userProvider.userProfile.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -107,7 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter name' : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     TextFormField(
                       initialValue: userProvider.userEmail,
                       readOnly: true,
@@ -120,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.grey,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/notifications');
@@ -142,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/referral');
@@ -164,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/subscribe');
@@ -186,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () async {
                         await userProvider.logout();
@@ -210,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: _isSaving ? null : saveProfile,
                       style: ElevatedButton.styleFrom(
@@ -232,7 +234,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                     ),
-                  ],
+                    const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),

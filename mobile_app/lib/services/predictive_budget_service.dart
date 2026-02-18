@@ -628,6 +628,7 @@ class PredictiveBudgetService {
     return alerts;
   }
 
+  // ignore: unused_element
   Future<List<String>> _identifyOpportunities(
     List<BudgetForecast> forecasts,
     Map<String, dynamic> currentState,

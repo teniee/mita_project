@@ -1,18 +1,16 @@
-/// Installment Calculator Screen
-/// Smart financial analysis tool to help users make informed installment purchase decisions
-/// Features risk assessment, payment breakdown, and personalized recommendations
+// Installment Calculator Screen
+// Smart financial analysis tool to help users make informed installment purchase decisions
+// Features risk assessment, payment breakdown, and personalized recommendations
 
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../models/installment_models.dart';
 import '../providers/installments_provider.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 class InstallmentCalculatorScreen extends StatefulWidget {
   const InstallmentCalculatorScreen({super.key});
@@ -222,7 +220,7 @@ class _InstallmentCalculatorScreenState
   }
 
   void _showErrorDialog(String title, String message) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -285,9 +283,6 @@ class _InstallmentCalculatorScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Watch provider for reactive updates
-    final provider = context.watch<InstallmentsProvider>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -985,7 +980,6 @@ class _InstallmentCalculatorScreenState
                   final payment = entry.value;
                   final paymentNumber = payment['payment_number'] ?? index + 1;
                   final amount = payment['amount'] ?? result.monthlyPayment;
-                  final principal = payment['principal'] ?? 0.0;
                   final interest = payment['interest'] ?? 0.0;
 
                   return Container(
@@ -1507,14 +1501,8 @@ class _InstallmentCalculatorScreenState
             ),
             child: ElevatedButton.icon(
               onPressed: () {
-                // Navigate to installment creation screen
-                // TODO: Implement navigation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Installment creation coming soon!'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                // Navigate to installments screen to create new installment
+                Navigator.pushNamed(context, '/installments');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
@@ -1543,7 +1531,7 @@ class _InstallmentCalculatorScreenState
               child: OutlinedButton.icon(
                 onPressed: () {
                   // Show help dialog or navigate to documentation
-                  showDialog(
+                  showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
                       shape: RoundedRectangleBorder(

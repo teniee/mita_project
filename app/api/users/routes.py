@@ -27,7 +27,7 @@ async def get_profile(current_user=Depends(get_current_user)):
 
     return success_response(
         {
-            "id": current_user.id,
+            "id": str(current_user.id),  # Convert UUID to string for JSON serialization
             "email": current_user.email,
             "country": current_user.country,
             "created_at": current_user.created_at.isoformat(),
@@ -77,7 +77,7 @@ async def update_profile(
 
     return success_response(
         {
-            "id": user.id,
+            "id": str(user.id),  # Convert UUID to string for JSON serialization
             "email": user.email,
             "country": user.country,
             "created_at": user.created_at.isoformat(),

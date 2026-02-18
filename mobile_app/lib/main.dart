@@ -34,6 +34,7 @@ import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
 
+// DEBUG: Only import debug/test screens in debug mode
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -53,7 +54,7 @@ import 'screens/insights_screen.dart';
 import 'screens/budget_settings_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/user_settings_screen.dart';
-import 'screens/auth_test_screen.dart';
+// DEBUG: auth_test_screen.dart removed from production (only for debug builds)
 import 'screens/transactions_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/challenges_screen.dart';
@@ -121,6 +122,8 @@ void main() async {
   // Initialize comprehensive error handling
   await AppErrorHandler.initialize();
 
+  logInfo('=== PRODUCTION MODE - All services enabled ===', tag: 'MAIN');
+
   // Initialize app version service
   await AppVersionService.instance.initialize();
 
@@ -144,13 +147,17 @@ void main() async {
       enableUserInteractionTracing: true,
       tracesSampleRate: environment == 'production' ? 0.1 : 1.0,
     );
+    logInfo('Sentry initialized successfully', tag: 'MAIN');
   } else {
-    if (kDebugMode)
+    if (kDebugMode) {
       dev.log('Sentry DSN not configured - advanced error monitoring disabled',
           name: 'MitaApp');
+    }
   }
 
+  // Initialize Firebase
   await _initFirebase();
+  logInfo('Firebase initialized successfully', tag: 'MAIN');
 
   // Enhanced error handling that integrates with all monitoring systems
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -169,22 +176,24 @@ void main() async {
       },
     );
 
-    // Send to enhanced Sentry service
-    sentryService.captureFinancialError(
-      details.exception,
-      category: FinancialErrorCategory.uiError,
-      severity: FinancialSeverity.critical,
-      stackTrace: details.stack.toString(),
-      additionalContext: {
-        'library': details.library,
-        'context': details.context?.toString(),
-        'error_source': 'flutter_error',
-      },
-      tags: {
-        'error_source': 'flutter_error_handler',
-        'ui_error': 'true',
-      },
-    );
+    // Send to enhanced Sentry service (only if initialized)
+    if (sentryDsn.isNotEmpty) {
+      sentryService.captureFinancialError(
+        details.exception,
+        category: FinancialErrorCategory.uiError,
+        severity: FinancialSeverity.critical,
+        stackTrace: details.stack.toString(),
+        additionalContext: {
+          'library': details.library,
+          'context': details.context?.toString(),
+          'error_source': 'flutter_error',
+        },
+        tags: {
+          'error_source': 'flutter_error_handler',
+          'ui_error': 'true',
+        },
+      );
+    }
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -200,33 +209,38 @@ void main() async {
       context: {'source': 'platform_dispatcher'},
     );
 
-    // Send to enhanced Sentry service
-    sentryService.captureFinancialError(
-      error,
-      category: FinancialErrorCategory.systemError,
-      severity: FinancialSeverity.critical,
-      stackTrace: stack.toString(),
-      additionalContext: {
-        'source': 'platform_dispatcher',
-        'error_source': 'platform',
-      },
-      tags: {
-        'error_source': 'platform_dispatcher',
-        'system_error': 'true',
-        'fatal': 'true',
-      },
-    );
+    // Send to enhanced Sentry service (only if initialized)
+    if (sentryDsn.isNotEmpty) {
+      sentryService.captureFinancialError(
+        error,
+        category: FinancialErrorCategory.systemError,
+        severity: FinancialSeverity.critical,
+        stackTrace: stack.toString(),
+        additionalContext: {
+          'source': 'platform_dispatcher',
+          'error_source': 'platform',
+        },
+        tags: {
+          'error_source': 'platform_dispatcher',
+          'system_error': 'true',
+          'fatal': 'true',
+        },
+      );
+    }
 
     return true;
   };
 
-  // Create the app with providers
+  // FIXED: UserProvider Stream exposure caused MultiProvider assertion error
+  // Root cause was premiumStatusStream getter exposing IapService stream
+  // Solution: Disabled Stream getter in user_provider.dart:308-311
   final app = MultiProvider(
     providers: [
+      ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ChangeNotifierProvider(create: (_) => UserProvider()),
+      // RE-ENABLED: All providers needed for internal screens
       ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ChangeNotifierProvider(create: (_) => TransactionProvider()),
-      ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ChangeNotifierProvider(create: (_) => GoalsProvider()),
       ChangeNotifierProvider(create: (_) => ChallengesProvider()),
       ChangeNotifierProvider(create: (_) => HabitsProvider()),
@@ -239,6 +253,8 @@ void main() async {
     ],
     child: const MITAApp(),
   );
+
+  logInfo('Running app with all providers initialized', tag: 'MAIN');
 
   // Run the app with comprehensive error monitoring
   if (sentryDsn.isNotEmpty) {
@@ -290,8 +306,8 @@ class _MITAAppState extends State<MITAApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Get settings provider for theme mode
-    final settingsProvider = context.watch<SettingsProvider>();
+    // Get theme mode from SettingsProvider
+    final themeMode = context.watch<SettingsProvider>().themeMode;
 
     final app = MaterialApp(
       navigatorKey: navigatorKey,
@@ -300,7 +316,7 @@ class _MITAAppState extends State<MITAApp> {
       debugShowCheckedModeBanner: false,
       theme: MitaTheme.lightTheme,
       darkTheme: MitaTheme.darkTheme,
-      themeMode: settingsProvider.themeMode,
+      themeMode: themeMode,
 
       // Localization configuration
       localizationsDelegates: const [
@@ -331,137 +347,49 @@ class _MITAAppState extends State<MITAApp> {
         return const Locale('en');
       },
 
-      initialRoute: '/',
+      initialRoute: '/', // Start at welcome screen
       onGenerateRoute: (settings) {
         logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
             tag: 'NAVIGATION');
         return null; // Let the routes table handle it
       },
       routes: {
-        '/': (context) => const AppErrorBoundary(
-              screenName: 'Welcome',
-              child: WelcomeScreen(),
-            ),
-        '/login': (context) => const AppErrorBoundary(
-              screenName: 'Login',
-              child: LoginScreen(),
-            ),
-        '/register': (context) => const AppErrorBoundary(
-              screenName: 'Register',
-              child: RegisterScreen(),
-            ),
-        '/forgot-password': (context) => const AppErrorBoundary(
-              screenName: 'ForgotPassword',
-              child: ForgotPasswordScreen(),
-            ),
-        '/reset-password': (context) => const AppErrorBoundary(
-              screenName: 'ResetPassword',
-              child: ResetPasswordScreen(),
-            ),
-        '/ai-assistant': (context) => const AppErrorBoundary(
-              screenName: 'AIAssistant',
-              child: AIAssistantScreen(),
-            ),
-        '/main': (context) => const AppErrorBoundary(
-              screenName: 'Main',
-              child: BottomNavigation(),
-            ),
-        '/onboarding_location': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingLocation',
-              child: OnboardingLocationScreen(),
-            ),
-        '/onboarding_income': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingIncome',
-              child: OnboardingIncomeScreen(),
-            ),
-        '/onboarding_expenses': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingExpenses',
-              child: OnboardingExpensesScreen(),
-            ),
-        '/onboarding_goal': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingGoal',
-              child: OnboardingGoalScreen(),
-            ),
-        '/onboarding_spending_frequency': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingSpendingFrequency',
-              child: OnboardingSpendingFrequencyScreen(),
-            ),
-        '/onboarding_habits': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingHabits',
-              child: OnboardingHabitsScreen(),
-            ),
-        '/onboarding_finish': (context) => const AppErrorBoundary(
-              screenName: 'OnboardingFinish',
-              child: OnboardingFinishScreen(),
-            ),
-        '/referral': (context) => const AppErrorBoundary(
-              screenName: 'Referral',
-              child: ReferralScreen(),
-            ),
-        '/mood': (context) => const AppErrorBoundary(
-              screenName: 'Mood',
-              child: MoodScreen(),
-            ),
-        '/subscribe': (context) => const AppErrorBoundary(
-              screenName: 'Subscription',
-              child: SubscriptionScreen(),
-            ),
-        '/notifications': (context) => const AppErrorBoundary(
-              screenName: 'Notifications',
-              child: NotificationsScreen(),
-            ),
-        '/daily_budget': (context) => const AppErrorBoundary(
-              screenName: 'DailyBudget',
-              child: DailyBudgetScreen(),
-            ),
-        '/add_expense': (context) => const AppErrorBoundary(
-              screenName: 'AddExpense',
-              child: AddExpenseScreen(),
-            ),
-        '/insights': (context) => const AppErrorBoundary(
-              screenName: 'Insights',
-              child: InsightsScreen(),
-            ),
-        '/budget_settings': (context) => const AppErrorBoundary(
-              screenName: 'BudgetSettings',
-              child: BudgetSettingsScreen(),
-            ),
-        '/profile': (context) => const AppErrorBoundary(
-              screenName: 'UserProfile',
-              child: UserProfileScreen(),
-            ),
-        '/settings': (context) => const AppErrorBoundary(
-              screenName: 'UserSettings',
-              child: UserSettingsScreen(),
-            ),
-        '/transactions': (context) => const AppErrorBoundary(
-              screenName: 'Transactions',
-              child: TransactionsScreen(),
-            ),
-        '/auth-test': (context) => const AppErrorBoundary(
-              screenName: 'AuthTest',
-              child: AuthTestScreen(),
-            ),
-        '/goals': (context) => const AppErrorBoundary(
-              screenName: 'Goals',
-              child: GoalsScreen(),
-            ),
-        '/challenges': (context) => const AppErrorBoundary(
-              screenName: 'Challenges',
-              child: ChallengesScreen(),
-            ),
-        '/installment-calculator': (context) => const AppErrorBoundary(
-              screenName: 'InstallmentCalculator',
-              child: InstallmentCalculatorScreen(),
-            ),
-        '/installments': (context) => const AppErrorBoundary(
-              screenName: 'Installments',
-              child: InstallmentsScreen(),
-            ),
+        // DEBUG ROUTES REMOVED: /debug-test and /auth-test only available in debug builds
+        // Use Flutter DevTools for debugging in production builds
+        '/': (context) => const WelcomeScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
+        '/ai-assistant': (context) => const AIAssistantScreen(),
+        '/main': (context) => const BottomNavigation(),
+        '/onboarding_location': (context) => const OnboardingLocationScreen(),
+        '/onboarding_income': (context) => const OnboardingIncomeScreen(),
+        '/onboarding_expenses': (context) => const OnboardingExpensesScreen(),
+        '/onboarding_goal': (context) => const OnboardingGoalScreen(),
+        '/onboarding_spending_frequency': (context) => const OnboardingSpendingFrequencyScreen(),
+        '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
+        '/onboarding_finish': (context) => const OnboardingFinishScreen(),
+        '/referral': (context) => const ReferralScreen(),
+        '/mood': (context) => const MoodScreen(),
+        '/subscribe': (context) => const SubscriptionScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/daily_budget': (context) => const DailyBudgetScreen(),
+        '/add_expense': (context) => const AddExpenseScreen(),
+        '/insights': (context) => const InsightsScreen(),
+        '/budget_settings': (context) => const BudgetSettingsScreen(),
+        '/profile': (context) => const UserProfileScreen(),
+        '/settings': (context) => const UserSettingsScreen(),
+        '/transactions': (context) => const TransactionsScreen(),
+        // DEBUG: /auth-test route removed for production compliance
+        '/goals': (context) => const GoalsScreen(),
+        '/challenges': (context) => const ChallengesScreen(),
+        '/installment-calculator': (context) => const InstallmentCalculatorScreen(),
+        '/installments': (context) => const InstallmentsScreen(),
       },
     );
 
-    // Wrap the app with an enhanced loading overlay that auto-dismisses
+    // Enhanced loading overlay with emergency dismiss
     return ValueListenableBuilder<bool>(
       valueListenable: LoadingService.instance.forceHiddenNotifier,
       builder: (context, forceHidden, child) {

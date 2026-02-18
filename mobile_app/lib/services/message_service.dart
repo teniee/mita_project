@@ -44,7 +44,6 @@ class MessageService {
         backgroundColor = Colors.green;
         break;
       case MessageType.info:
-      default:
         backgroundColor = Colors.blue;
         break;
     }
@@ -56,5 +55,11 @@ class MessageService {
         duration: duration,
       ),
     );
+  }
+
+  /// Clear all currently displayed messages/snackbars
+  /// Call this after successful login to remove any stale error messages
+  void clearMessages() {
+    messengerKey.currentState?.clearSnackBars();
   }
 }

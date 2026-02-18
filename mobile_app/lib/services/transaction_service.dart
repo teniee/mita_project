@@ -66,7 +66,7 @@ class TransactionService {
             transactionList = [];
           }
         } else if (data is List) {
-          transactionList = data as List<dynamic>;
+          transactionList = data;
         } else {
           transactionList = [];
         }

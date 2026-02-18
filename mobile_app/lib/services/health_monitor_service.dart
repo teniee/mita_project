@@ -133,13 +133,13 @@ class HealthReport {
   });
 
   factory HealthReport.fromJson(Map<String, dynamic> json) {
-    final middlewareData = json['middleware'] ?? {};
-    final metricsData = middlewareData['metrics'] ?? {};
+    final middlewareData = json['middleware'] ?? <String, dynamic>{};
+    final metricsData = middlewareData['metrics'] ?? <String, dynamic>{};
 
-    final Map<String, HealthMetric> metrics = {};
-    metricsData.forEach((key, value) {
+    final Map<String, HealthMetric> metrics = <String, HealthMetric>{};
+    (metricsData as Map<String, dynamic>).forEach((String key, dynamic value) {
       if (value is Map<String, dynamic>) {
-        metrics[key as String] = HealthMetric.fromJson({
+        metrics[key] = HealthMetric.fromJson({
           'name': key,
           ...value,
           'timestamp': json['timestamp'],
@@ -156,12 +156,12 @@ class HealthReport {
           DateTime.now(),
       middlewareMetrics: metrics,
       performanceSummary:
-          (middlewareData['performance_summary'] ?? {}) as Map<String, dynamic>,
-      alerts: List<String>.from((json['alerts'] ?? []) as List),
+          (middlewareData['performance_summary'] ?? <String, dynamic>{}) as Map<String, dynamic>,
+      alerts: List<String>.from((json['alerts'] ?? <dynamic>[]) as List),
       issuesDetected:
-          List<String>.from((json['issues_detected'] ?? []) as List),
+          List<String>.from((json['issues_detected'] ?? <dynamic>[]) as List),
       recommendations:
-          List<String>.from((json['recommendations'] ?? []) as List),
+          List<String>.from((json['recommendations'] ?? <dynamic>[]) as List),
       responseTimeMs:
           (middlewareData['response_time_ms'] as num?)?.toDouble() ?? 0.0,
       message: (json['message'] ?? '') as String,
@@ -213,7 +213,7 @@ class HealthMonitorService {
   // Health check configuration
   bool _healthMonitoringEnabled = true;
   Duration _healthCheckInterval = const Duration(minutes: 5);
-  Duration _criticalHealthCheckInterval = const Duration(minutes: 1);
+  final Duration _criticalHealthCheckInterval = const Duration(minutes: 1);
   bool _isInCriticalMode = false;
 
   // Stream controllers for reactive updates

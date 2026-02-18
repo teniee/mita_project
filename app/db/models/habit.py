@@ -14,6 +14,7 @@ class Habit(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    target_frequency = Column(String, nullable=False, default="daily")  # daily, weekly, monthly
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -44,7 +44,7 @@ class BudgetProvider extends ChangeNotifier {
   bool _isUpdatingMode = false;
 
   // Subscriptions
-  StreamSubscription? _budgetUpdateSubscription;
+  StreamSubscription<void>? _budgetUpdateSubscription;
 
   // Getters
   BudgetState get state => _state;
@@ -66,10 +66,25 @@ class BudgetProvider extends ChangeNotifier {
   bool get isUpdatingMode => _isUpdatingMode;
 
   // Budget status convenience getters
-  double get totalBudget =>
-      (_liveBudgetStatus['total_budget'] as num?)?.toDouble() ?? 0.0;
-  double get totalSpent =>
-      (_liveBudgetStatus['total_spent'] as num?)?.toDouble() ?? 0.0;
+  // FIX: Use correct field names from /budget/live_status endpoint
+  // Backend returns 'monthly_budget' not 'total_budget'
+  double get totalBudget {
+    final valueData = _liveBudgetStatus['monthly_budget'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
+
+  double get totalSpent {
+    final valueData = _liveBudgetStatus['monthly_spent'];
+    return (valueData == null)
+        ? 0.0
+        : (valueData is num)
+            ? valueData.toDouble()
+            : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
+  }
   double get remaining => totalBudget - totalSpent;
   double get spendingPercentage =>
       totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
@@ -79,6 +94,18 @@ class BudgetProvider extends ChangeNotifier {
     if (_state != BudgetState.initial) return;
 
     logInfo('Initializing BudgetProvider', tag: 'BUDGET_PROVIDER');
+
+    // CRITICAL FIX: Check if user has a valid token before making API calls
+    final token = await _apiService.getToken();
+    if (token == null || token.isEmpty) {
+      logWarning(
+          'No authentication token found - skipping budget data initialization',
+          tag: 'BUDGET_PROVIDER');
+      _state = BudgetState.error;
+      _errorMessage = 'Not authenticated';
+      return;
+    }
+
     await loadAllBudgetData();
     _subscribeToBudgetUpdates();
   }
@@ -125,7 +152,7 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadDailyBudgets() async {
     try {
       final data = await _apiService.getDailyBudgets();
-      _dailyBudgets = data ?? [];
+      _dailyBudgets = data;
       logInfo('Daily budgets loaded: ${_dailyBudgets.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
@@ -410,7 +437,12 @@ class BudgetProvider extends ChangeNotifier {
 
       // Get user income
       final profile = await _apiService.getUserProfile();
-      final income = (profile['data']?['income'] as num?)?.toDouble();
+      final incomeData = profile['data']?['income'];
+      final income = (incomeData == null)
+          ? null
+          : (incomeData is num)
+              ? incomeData.toDouble()
+              : (incomeData is String ? double.tryParse(incomeData) : null);
 
       // Fetch AI optimization
       final optimization = await _apiService.getAIBudgetOptimization(

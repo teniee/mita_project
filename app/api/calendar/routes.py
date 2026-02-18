@@ -147,6 +147,26 @@ async def get_shell(
         })
 
 
+@router.get("/current-month")
+async def get_current_month_calendar(
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """
+    Convenience endpoint to retrieve calendar for the current month.
+
+    This is a wrapper around /saved/{year}/{month} that automatically
+    uses the current year and month based on server time (UTC).
+    """
+    from datetime import datetime
+
+    now = datetime.utcnow()
+    current_year = now.year
+    current_month = now.month
+
+    # Reuse the existing saved calendar logic
+    return await get_saved_calendar(current_year, current_month, user)
+
+
 @router.get("/saved/{year}/{month}")
 async def get_saved_calendar(
     year: int,
@@ -162,14 +182,16 @@ async def get_saved_calendar(
     """
     from sqlalchemy.orm import Session
     from sqlalchemy import extract
-    from app.db.session import get_db
-    from app.db.models import DailyPlan
+    from app.core.session import get_db
+    from app.db.models.daily_plan import DailyPlan
     from collections import defaultdict
 
-    try:
-        # Get database session
-        db = next(get_db())
+    # BUGFIX: Properly manage database session with context
+    # The get_db() function yields a session, so we need to consume it properly
+    db_gen = get_db()
+    db = next(db_gen)
 
+    try:
         # Query DailyPlan entries for the specified month
         rows = db.query(DailyPlan).filter(
             DailyPlan.user_id == user.id,
@@ -206,24 +228,25 @@ async def get_saved_calendar(
             day_data['total_planned'] += (row.planned_amount or 0)
             day_data['total_spent'] += (row.spent_amount or 0)
 
-            # Add category details
+            # Add category details (convert Decimal to float for JSON serialization)
             category_name = row.category or 'uncategorized'
             day_data['categories'][category_name] = {
-                'planned': row.planned_amount or 0,
-                'spent': row.spent_amount or 0,
+                'planned': float(row.planned_amount or 0),
+                'spent': float(row.spent_amount or 0),
                 'status': row.status or 'pending'
             }
 
         # Convert to list format matching the shell calendar structure
+        # Convert all Decimal values to float for JSON serialization
         calendar_days = []
         for day_data in days_data.values():
             calendar_days.append({
                 'date': day_data['date'],
                 'day': day_data['day'],
                 'planned_budget': day_data['categories'],  # Dict of {category: {planned, spent, status}}
-                'limit': day_data['total_budget'],
-                'total': day_data['total_planned'],
-                'spent': day_data['total_spent'],
+                'limit': float(day_data['total_budget']),
+                'total': float(day_data['total_planned']),
+                'spent': float(day_data['total_spent']),
                 'status': 'active' if day_data['total_spent'] > 0 else 'pending'
             })
 
@@ -233,6 +256,12 @@ async def get_saved_calendar(
         return success_response({"calendar": calendar_days})
 
     except Exception as e:
-        logger.error(f"Error retrieving saved calendar: {str(e)}")
+        logger.error(f"Error retrieving saved calendar: {str(e)}", exc_info=True)
         # Return empty calendar on error to allow fallback
         return success_response({"calendar": []})
+    finally:
+        # BUGFIX: Properly close the generator to ensure session cleanup
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass

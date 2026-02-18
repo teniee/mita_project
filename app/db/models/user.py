@@ -22,10 +22,9 @@ class User(Base):
     timezone = Column(String, default="UTC")
     token_version = Column(Integer, default=1, nullable=False)
 
-    # Account security fields
-    # TODO: Uncomment after migration 0017 is applied
-    # failed_login_attempts = Column(Integer, default=0, nullable=False)
-    # account_locked_until = Column(DateTime(timezone=True), nullable=True)
+    # Account security fields (migration 0017_add_account_security_fields)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    account_locked_until = Column(DateTime(timezone=True), nullable=True)
 
     # Password reset fields
     password_reset_token = Column(String, nullable=True)

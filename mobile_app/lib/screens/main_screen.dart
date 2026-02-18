@@ -9,6 +9,7 @@ import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/income_service.dart';
 import '../services/logging_service.dart';
+import '../services/loading_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -44,6 +45,12 @@ class _MainScreenState extends State<MainScreen> {
     if (kDebugMode)
       dev.log('initState called - starting initialization', name: 'MainScreen');
 
+    // CRITICAL FIX: Reset LoadingService to clear any stuck loading states
+    // that might be blocking button interactions from previous screens
+    LoadingService.instance.reset(reason: 'main_screen_init');
+    if (kDebugMode)
+      dev.log('LoadingService reset completed', name: 'MainScreen');
+
     // Initialize providers after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
@@ -67,6 +74,16 @@ class _MainScreenState extends State<MainScreen> {
       // Initialize user provider first
       await userProvider.initialize();
       if (kDebugMode) dev.log('UserProvider initialized', name: 'MainScreen');
+
+      // CRITICAL FIX: Check if user is authenticated before proceeding
+      if (userProvider.state == UserState.unauthenticated) {
+        logWarning('User is not authenticated - redirecting to login',
+            tag: 'MAIN_SCREEN');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+          return;
+        }
+      }
 
       // Check if user needs to complete onboarding
       final financialContext = userProvider.financialContext;
@@ -117,8 +134,11 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
-    // Extract income from financial context
-    final income = (financialContext['income'] as num?)?.toDouble() ?? 0.0;
+    // Extract income from financial context - SAFE type casting
+    final incomeValue = financialContext['income'];
+    final income = (incomeValue is num)
+        ? incomeValue.toDouble()
+        : (incomeValue is String ? double.tryParse(incomeValue) ?? 0.0 : 0.0);
 
     if (income > 0) {
       _monthlyIncome = income;
@@ -130,14 +150,16 @@ class _MainScreenState extends State<MainScreen> {
       cohortInsights = _getDefaultCohortInsights();
       latestAdvice = _getDefaultAdvice();
 
-      // Update financial health score from budget insights
+      // Update financial health score from budget insights - SAFE type casting
       final budgetProvider = context.read<BudgetProvider>();
-      if (budgetProvider.budgetSuggestions['confidence'] != null) {
+      final confidenceValue = budgetProvider.budgetSuggestions['confidence'];
+      if (confidenceValue != null) {
+        final confidence = (confidenceValue is num)
+            ? confidenceValue.toDouble()
+            : (confidenceValue is String ? double.tryParse(confidenceValue) ?? 0.0 : 0.0);
         financialHealthScore = {
-          'score':
-              (budgetProvider.budgetSuggestions['confidence'] * 100).round(),
-          'grade': _getGradeFromConfidence(
-              budgetProvider.budgetSuggestions['confidence']),
+          'score': (confidence * 100).round(),
+          'grade': _getGradeFromConfidence(confidence),
         };
       }
     } else {
@@ -493,39 +515,81 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   /// Build daily targets from budget provider
+  /// Uses ACTUAL calendar data from onboarding, not hardcoded percentages!
   List<Map<String, dynamic>> _buildDailyTargets(BudgetProvider budgetProvider) {
     if (_monthlyIncome <= 0) {
+      logDebug('No income data - cannot show daily targets', tag: 'MAIN_SCREEN');
       return [];
     }
 
+    // Try to get TODAY'S actual budget from calendar data (from onboarding)
+    if (budgetProvider.calendarData.isNotEmpty) {
+      final today = DateTime.now();
+
+      // Find today's entry in calendar data
+      final todayEntry = budgetProvider.calendarData.firstWhere(
+        (day) => day['day'] == today.day,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (todayEntry.isNotEmpty && todayEntry['categories'] != null) {
+        final categories = todayEntry['categories'] as Map<String, dynamic>;
+
+        logInfo(
+          'Using REAL calendar data for today (${categories.length} categories)',
+          tag: 'MAIN_SCREEN'
+        );
+
+        // Convert calendar categories to daily targets format
+        return categories.entries.map((entry) {
+          final categoryName = entry.key;
+          final categoryData = entry.value as Map<String, dynamic>;
+
+          return {
+            'category': _formatCategoryName(categoryName),
+            'limit': (categoryData['limit'] as num?)?.toDouble() ?? 0.0,
+            'spent': (categoryData['spent'] as num?)?.toDouble() ?? 0.0,
+            'icon': _getCategoryIcon(categoryName),
+            'color': _getCategoryColor(categoryName),
+          };
+        }).toList();
+      }
+    }
+
+    // Fallback: Use default weights only if no calendar data available
+    logWarning(
+      'No calendar data available - using fallback default weights',
+      tag: 'MAIN_SCREEN'
+    );
+
     final dailyBudget = _monthlyIncome / 30;
-    _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
+    final weights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
 
     return [
       {
         'category': 'Food & Dining',
-        'limit': dailyBudget * 0.35,
+        'limit': dailyBudget * (weights['food'] ?? 0.35),
         'spent': 0.0,
         'icon': Icons.restaurant,
         'color': const Color(0xFF4CAF50),
       },
       {
         'category': 'Transportation',
-        'limit': dailyBudget * 0.25,
+        'limit': dailyBudget * (weights['transportation'] ?? 0.25),
         'spent': 0.0,
         'icon': Icons.directions_car,
         'color': const Color(0xFF2196F3),
       },
       {
         'category': 'Entertainment',
-        'limit': dailyBudget * 0.20,
+        'limit': dailyBudget * (weights['entertainment'] ?? 0.20),
         'spent': 0.0,
         'icon': Icons.movie,
         'color': const Color(0xFF9C27B0),
       },
       {
         'category': 'Shopping',
-        'limit': dailyBudget * 0.20,
+        'limit': dailyBudget * (weights['shopping'] ?? 0.20),
         'spent': 0.0,
         'icon': Icons.shopping_bag,
         'color': const Color(0xFFFF9800),
@@ -547,8 +611,16 @@ class _MainScreenState extends State<MainScreen> {
         orElse: () => {'spent': 0, 'limit': 0},
       );
 
-      final spent = (dayData['spent'] as num?)?.toDouble() ?? 0;
-      final limit = (dayData['limit'] as num?)?.toDouble() ?? 0;
+      // SAFE type casting for calendar data
+      final spentValue = dayData['spent'];
+      final spent = (spentValue is num)
+          ? spentValue.toDouble()
+          : (spentValue is String ? double.tryParse(spentValue) ?? 0.0 : 0.0);
+
+      final limitValue = dayData['limit'];
+      final limit = (limitValue is num)
+          ? limitValue.toDouble()
+          : (limitValue is String ? double.tryParse(limitValue) ?? 0.0 : 0.0);
 
       String status = 'neutral';
       if (limit > 0) {
@@ -567,6 +639,40 @@ class _MainScreenState extends State<MainScreen> {
         'status': status,
       };
     });
+  }
+
+  /// Format category name for display
+  String _formatCategoryName(String category) {
+    // Convert API category names to display-friendly format
+    switch (category.toLowerCase()) {
+      case 'food':
+        return 'Food & Dining';
+      case 'transportation':
+      case 'transport':
+        return 'Transportation';
+      case 'entertainment':
+        return 'Entertainment';
+      case 'shopping':
+        return 'Shopping';
+      case 'healthcare':
+      case 'health':
+        return 'Healthcare';
+      case 'personal':
+        return 'Personal Care';
+      case 'utilities':
+        return 'Utilities';
+      case 'rent':
+      case 'housing':
+        return 'Housing';
+      default:
+        // Capitalize first letter of each word
+        return category
+            .split('_')
+            .map((word) => word.isNotEmpty
+                ? word[0].toUpperCase() + word.substring(1)
+                : '')
+            .join(' ');
+    }
   }
 
   /// Get category icon
@@ -661,13 +767,17 @@ class _MainScreenState extends State<MainScreen> {
                         color: Colors.orange[600],
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Complete your profile for personalized insights',
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          fontSize: 14,
-                          color: Colors.orange[600],
-                          decoration: TextDecoration.underline,
+                      Expanded(
+                        child: Text(
+                          'Complete your profile for personalized insights',
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 14,
+                            color: Colors.orange[600],
+                            decoration: TextDecoration.underline,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
@@ -682,12 +792,16 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.red[600],
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      'Connection issue - tap refresh to retry',
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
-                        fontSize: 14,
-                        color: Colors.red[600],
+                    Expanded(
+                      child: Text(
+                        'Connection issue - tap refresh to retry',
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 14,
+                          color: Colors.red[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -755,10 +869,18 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildBalanceCard(Map<String, dynamic> dashboardData) {
-    final balance = dashboardData['balance'] ?? 0;
-    final spent = dashboardData['spent'] ?? 0;
-    final remaining =
-        (balance is num && spent is num) ? balance - spent : balance;
+    // SAFE type casting for balance card data
+    final balanceValue = dashboardData['balance'] ?? 0;
+    final balance = (balanceValue is num)
+        ? balanceValue.toDouble()
+        : (balanceValue is String ? double.tryParse(balanceValue) ?? 0.0 : 0.0);
+
+    final spentValue = dashboardData['spent'] ?? 0;
+    final spent = (spentValue is num)
+        ? spentValue.toDouble()
+        : (spentValue is String ? double.tryParse(spentValue) ?? 0.0 : 0.0);
+
+    final remaining = balance - spent;
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : const Color(0xFFFFD25F);
@@ -1142,9 +1264,9 @@ class _MainScreenState extends State<MainScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     // Get goals data from dashboard
-    final goalsData = dashboardData['data']?['goals'] as List<dynamic>? ?? [];
-    final goalsSummary =
-        dashboardData['data']?['goals_summary'] as Map<String, dynamic>? ?? {};
+    // FIXED: Safe type casting to handle API response types
+    final goalsData = (dashboardData['data']?['goals'] as List?)?.cast<dynamic>() ?? [];
+    final goalsSummary = (dashboardData['data']?['goals_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
     final totalActive = goalsSummary['total_active'] ?? 0;
     final nearCompletion = goalsSummary['near_completion'] ?? 0;
@@ -1334,10 +1456,21 @@ class _MainScreenState extends State<MainScreen> {
         ...goalsData.take(3).map((goalData) {
           final goal = goalData as Map<String, dynamic>;
           final title = goal['title'] ?? 'Untitled Goal';
-          final progress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
-          final targetAmount =
-              (goal['target_amount'] as num?)?.toDouble() ?? 0.0;
-          final savedAmount = (goal['saved_amount'] as num?)?.toDouble() ?? 0.0;
+          // SAFE type casting for goal data
+          final progressValue = goal['progress'];
+          final progress = (progressValue is num)
+              ? progressValue.toDouble()
+              : (progressValue is String ? double.tryParse(progressValue) ?? 0.0 : 0.0);
+
+          final targetAmountValue = goal['target_amount'];
+          final targetAmount = (targetAmountValue is num)
+              ? targetAmountValue.toDouble()
+              : (targetAmountValue is String ? double.tryParse(targetAmountValue) ?? 0.0 : 0.0);
+
+          final savedAmountValue = goal['saved_amount'];
+          final savedAmount = (savedAmountValue is num)
+              ? savedAmountValue.toDouble()
+              : (savedAmountValue is String ? double.tryParse(savedAmountValue) ?? 0.0 : 0.0);
           final isOverdue = goal['is_overdue'] as bool? ?? false;
           final priority = goal['priority'] ?? 'medium';
           final category = goal['category'] ?? 'Other';
@@ -1538,11 +1671,9 @@ class _MainScreenState extends State<MainScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     // Get challenges data from dashboard
-    final challengesData =
-        dashboardData['data']?['challenges'] as List<dynamic>? ?? [];
-    final challengesSummary =
-        dashboardData['data']?['challenges_summary'] as Map<String, dynamic>? ??
-            {};
+    // FIXED: Safe type casting to handle API response types
+    final challengesData = (dashboardData['data']?['challenges'] as List?)?.cast<dynamic>() ?? [];
+    final challengesSummary = (dashboardData['data']?['challenges_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
     final activeChallenges = challengesSummary['active_challenges'] ?? 0;
     final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
@@ -1741,8 +1872,11 @@ class _MainScreenState extends State<MainScreen> {
           final name = challenge['name'] ?? 'Challenge';
           final description = challenge['description'] ?? '';
           final difficulty = challenge['difficulty'] ?? 'medium';
-          final progressPercentage =
-              (challenge['progress_percentage'] as num?)?.toDouble() ?? 0.0;
+          // SAFE type casting for challenge data
+          final progressPercentageValue = challenge['progress_percentage'];
+          final progressPercentage = (progressPercentageValue is num)
+              ? progressPercentageValue.toDouble()
+              : (progressPercentageValue is String ? double.tryParse(progressPercentageValue) ?? 0.0 : 0.0);
           final daysCompleted = challenge['days_completed'] ?? 0;
           final durationDays = challenge['duration_days'] ?? 0;
           final rewardPoints = challenge['reward_points'] ?? 0;

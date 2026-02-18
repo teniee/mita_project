@@ -198,8 +198,8 @@ async def get_budget_mode(
         user_settings["income_stability"] = "high" if monthly_income > 100000 else "medium" if monthly_income > 50000 else "low"
 
         # Check for aggressive savings preference (could be from user_preferences table)
-        from app.db.models import UserPreferences
-        result = await db.execute(select(UserPreferences).where(UserPreferences.user_id == user.id))
+        from app.db.models import UserPreference
+        result = await db.execute(select(UserPreference).where(UserPreference.user_id == user.id))
         prefs = result.scalar_one_or_none()
         if prefs:
             user_settings["aggressive_savings"] = prefs.behavioral_savings_target and prefs.behavioral_savings_target > 25.0
@@ -399,12 +399,32 @@ async def trigger_budget_adaptation(
 ):
     """Trigger automatic budget adaptation based on spending patterns"""
     try:
-        # Use budget auto-adapter service
-        result = adapt_budget_automatically(
+        # Get user's current budget categories and weights
+        default_weights = {
+            "food": 0.30,
+            "transportation": 0.15,
+            "utilities": 0.10,
+            "entertainment": 0.10,
+            "savings": 0.20,
+            "other": 0.15
+        }
+
+        # Use budget auto-adapter service to adjust weights based on AI analysis
+        adapted_weights = adapt_category_weights(
             user_id=user.id,
+            default_weights=default_weights,
             db=db
         )
-        return success_response(result)
+
+        # Check if weights actually changed
+        weights_changed = adapted_weights != default_weights
+
+        return success_response({
+            "adapted": weights_changed,
+            "reason": "AI-based adaptation applied" if weights_changed else "No adaptation needed",
+            "message": "Budget categories adjusted based on your spending patterns" if weights_changed else "Budget is currently optimal",
+            "adapted_weights": adapted_weights if weights_changed else None
+        })
     except Exception as e:
         return success_response({
             "adapted": False,

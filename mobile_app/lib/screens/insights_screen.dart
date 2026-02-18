@@ -12,6 +12,7 @@ import '../services/income_service.dart';
 import '../services/cohort_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/peer_comparison_widgets.dart';
+import '../widgets/insights_empty_state_widgets.dart';
 import '../theme/income_theme.dart';
 import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
@@ -106,7 +107,8 @@ class _InsightsScreenState extends State<InsightsScreen>
       // First, get user profile for income data
       await _fetchUserProfile();
 
-      // Fetch AI insights in parallel
+      // Fetch AI insights with graceful degradation - each call has its own try-catch
+      // If one fails, others will still succeed
       await Future.wait([
         _createAndFetchAISnapshot(),
         _fetchAIProfile(),
@@ -120,17 +122,16 @@ class _InsightsScreenState extends State<InsightsScreen>
         _fetchAIBudgetOptimization(),
         _fetchAIGoalAnalysis(),
         _fetchIncomeBasedInsights(),
-      ]);
+      ], eagerError: false);
 
       if (mounted) {
         setState(() => _isAILoading = false);
       }
     } catch (e) {
+      // Even if profile fetch fails (income requirement), still show UI
+      logError('Error loading insights: $e');
       if (mounted) {
         setState(() => _isAILoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading insights: $e')),
-        );
       }
     }
   }
@@ -149,15 +150,17 @@ class _InsightsScreenState extends State<InsightsScreen>
       // Get income from UserProvider
       final incomeValue = userProvider.userIncome;
       if (incomeValue <= 0) {
-        throw Exception(
-            'Income data required for insights. Please complete onboarding.');
+        logWarning('Income data not set - user needs to complete profile',
+            tag: 'INSIGHTS_SCREEN');
+        // Don't throw - just leave _monthlyIncome at 0 and _incomeTier as null
+        // This allows the UI to render with empty states
+        return;
       }
       _monthlyIncome = incomeValue;
       _incomeTier = _incomeService.classifyIncome(_monthlyIncome);
     } catch (e) {
       logError('Error fetching user profile: $e');
-      throw Exception(
-          'Income data required for insights. Please complete onboarding.');
+      // Don't throw - just log the error and continue with empty income
     }
   }
 
@@ -402,30 +405,42 @@ class _InsightsScreenState extends State<InsightsScreen>
       }
     }
 
+    final primaryColor = _incomeTier != null
+        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+        : AppColors.textPrimary;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _incomeTier != null
-          ? IncomeTheme.createTierAppBar(
-              tier: _incomeTier!,
-              title: 'Financial Insights',
-            )
-          : AppBar(
-              title: const Text(
-                'Financial Insights',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              backgroundColor: AppColors.background,
-              elevation: 0,
-              iconTheme: const IconThemeData(color: AppColors.textPrimary),
-              centerTitle: true,
-            ),
+      appBar: AppBar(
+        title: const Text(
+          'Financial Insights',
+          style: TextStyle(
+            fontFamily: AppTypography.fontHeading,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: _incomeTier != null ? Colors.white : AppColors.background,
+        foregroundColor: primaryColor,
+        elevation: 0,
+        iconTheme: IconThemeData(color: primaryColor),
+        centerTitle: true,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: primaryColor,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: primaryColor,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'AI Overview'),
+            Tab(text: 'Analytics'),
+            Tab(text: 'Peer Insights'),
+            Tab(text: 'Recommendations'),
+          ],
+        ),
+      ),
       body: isLoading
           ? _buildLoadingState()
-          : _buildTabContent(budgetProvider, transactionProvider),
+          : _buildTabViewBody(budgetProvider, transactionProvider),
     );
   }
 
@@ -452,12 +467,8 @@ class _InsightsScreenState extends State<InsightsScreen>
     );
   }
 
-  Widget _buildTabContent(
+  Widget _buildTabViewBody(
       BudgetProvider budgetProvider, TransactionProvider transactionProvider) {
-    final primaryColor = _incomeTier != null
-        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
-        : AppColors.textPrimary;
-
     return Column(
       children: [
         // Income tier header
@@ -471,22 +482,7 @@ class _InsightsScreenState extends State<InsightsScreen>
             ),
           ),
 
-        // Tab bar
-        TabBar(
-          controller: _tabController,
-          labelColor: primaryColor,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: primaryColor,
-          isScrollable: true,
-          tabs: const [
-            Tab(text: 'AI Overview'),
-            Tab(text: 'Analytics'),
-            Tab(text: 'Peer Insights'),
-            Tab(text: 'Recommendations'),
-          ],
-        ),
-
-        // Tab content
+        // Tab view content
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -504,6 +500,21 @@ class _InsightsScreenState extends State<InsightsScreen>
 
   Widget _buildPeerInsightsTab(TransactionProvider transactionProvider) {
     final categoryTotals = transactionProvider.spendingByCategory;
+
+    // Check if we have any peer data to show
+    final hasPeerData = _peerComparison != null ||
+        _incomeTier != null ||
+        _incomeBasedTips.isNotEmpty ||
+        categoryTotals.isNotEmpty;
+
+    // Show empty state if no income or no peer data
+    if (_monthlyIncome <= 0) {
+      return InsightsEmptyStateWidgets.buildIncomeRequiredState();
+    }
+
+    if (!hasPeerData) {
+      return InsightsEmptyStateWidgets.buildPeerInsightsEmptyState();
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -613,6 +624,24 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildAIOverviewTab() {
+    // Check if we have ANY data to show
+    final hasAnyData = financialHealthScore != null ||
+        aiSnapshot != null ||
+        aiMonthlyReport != null ||
+        spendingPatterns != null ||
+        weeklyInsights != null ||
+        spendingAnomalies.isNotEmpty;
+
+    // Show empty state if no data and income requirement not met
+    if (!hasAnyData && _monthlyIncome <= 0) {
+      return InsightsEmptyStateWidgets.buildIncomeRequiredState();
+    }
+
+    // Show general empty state if no data but income is set
+    if (!hasAnyData) {
+      return InsightsEmptyStateWidgets.buildAIOverviewEmptyState();
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -648,6 +677,13 @@ class _InsightsScreenState extends State<InsightsScreen>
   Widget _buildAnalyticsTab(TransactionProvider transactionProvider) {
     final totalSpending = transactionProvider.totalSpending;
     final categoryTotals = transactionProvider.spendingByCategory;
+
+    // Show empty state if no transactions
+    if (transactionProvider.transactions.isEmpty &&
+        categoryTotals.isEmpty &&
+        totalSpending == 0) {
+      return InsightsEmptyStateWidgets.buildAnalyticsEmptyState();
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -801,6 +837,22 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildRecommendationsTab() {
+    // Check if we have any recommendations to show
+    final hasRecommendations = _budgetOptimization != null ||
+        _incomeTier != null ||
+        personalizedFeedback != null ||
+        savingsOptimization != null;
+
+    // Show income required state if no income
+    if (_monthlyIncome <= 0) {
+      return InsightsEmptyStateWidgets.buildIncomeRequiredState();
+    }
+
+    // Show empty state if no recommendations
+    if (!hasRecommendations) {
+      return InsightsEmptyStateWidgets.buildRecommendationsEmptyState();
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -832,7 +884,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildFinancialHealthCard() {
-    if (financialHealthScore == null) return Container();
+    if (financialHealthScore == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Financial Health Score',
+        icon: Icons.health_and_safety,
+        message: 'Add more transactions to calculate your financial health score',
+        color: AppColors.textPrimary,
+      );
+    }
 
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B+';
@@ -954,7 +1013,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildAISnapshotCard() {
-    if (aiSnapshot == null) return Container();
+    if (aiSnapshot == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'AI Financial Analysis',
+        icon: Icons.psychology,
+        message: 'AI analysis will be generated after you add transactions',
+        color: AppColors.textPrimary,
+      );
+    }
 
     final rating = aiSnapshot!['rating'] ?? 'B';
     final risk = aiSnapshot!['risk'] ?? 'moderate';
@@ -1026,11 +1092,25 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildSpendingPatternsCard() {
-    if (spendingPatterns == null) return Container();
+    if (spendingPatterns == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Spending Patterns',
+        icon: Icons.trending_up,
+        message: 'Patterns will be detected after you track expenses',
+        color: AppColors.textPrimary,
+      );
+    }
 
     final patterns = List<String>.from(spendingPatterns!['patterns'] ?? []);
 
-    if (patterns.isEmpty) return Container();
+    if (patterns.isEmpty) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Spending Patterns',
+        icon: Icons.trending_up,
+        message: 'No patterns detected yet',
+        color: AppColors.textPrimary,
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1104,7 +1184,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildWeeklyInsightsCard() {
-    if (weeklyInsights == null) return Container();
+    if (weeklyInsights == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Weekly Insights',
+        icon: Icons.calendar_view_week,
+        message: 'Track expenses for a week to see weekly insights',
+        color: AppColors.textPrimary,
+      );
+    }
 
     final insights =
         weeklyInsights!['insights'] ?? 'No insights available this week.';
@@ -1170,7 +1257,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildAnomaliesCard() {
-    if (spendingAnomalies.isEmpty) return Container();
+    if (spendingAnomalies.isEmpty) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Spending Anomalies',
+        icon: Icons.warning_amber,
+        message: 'No unusual spending patterns detected',
+        color: Colors.green,
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1245,7 +1339,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildPersonalizedFeedbackCard() {
-    if (personalizedFeedback == null) return Container();
+    if (personalizedFeedback == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Personalized Recommendations',
+        icon: Icons.lightbulb_outline,
+        message: 'AI will generate personalized recommendations based on your spending',
+        color: AppColors.textPrimary,
+      );
+    }
 
     final feedback =
         personalizedFeedback!['feedback'] ?? 'No feedback available';
@@ -1351,7 +1452,14 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildSavingsOptimizationCard() {
-    if (savingsOptimization == null) return Container();
+    if (savingsOptimization == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Savings Optimization',
+        icon: Icons.savings,
+        message: 'AI will suggest ways to optimize your savings',
+        color: Colors.green,
+      );
+    }
 
     final potentialSavings = savingsOptimization!['potential_savings'] ?? 0.0;
     final suggestions =
@@ -1570,7 +1678,16 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildBudgetOptimizationCard() {
-    if (_budgetOptimization == null) return Container();
+    if (_budgetOptimization == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'Budget Optimization',
+        icon: Icons.tune_rounded,
+        message: 'Optimization suggestions will appear after tracking expenses',
+        color: _incomeTier != null
+            ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
+            : AppColors.textPrimary,
+      );
+    }
 
     final suggestions =
         List<String>.from(_budgetOptimization!['suggestions'] ?? []);
@@ -2048,7 +2165,14 @@ class _InsightsScreenState extends State<InsightsScreen>
 
   /// Build AI Monthly Report Card
   Widget _buildAIMonthlyReportCard() {
-    if (aiMonthlyReport == null) return Container();
+    if (aiMonthlyReport == null) {
+      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
+        title: 'AI Monthly Report',
+        icon: Icons.summarize,
+        message: 'Monthly report will be generated at the end of the month',
+        color: AppColors.accent,
+      );
+    }
 
     final summary =
         aiMonthlyReport!['summary'] ?? 'No monthly summary available';

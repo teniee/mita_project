@@ -976,11 +976,11 @@ class IncomeService {
       case IncomeTier.low:
         return 'low';
       case IncomeTier.lowerMiddle:
-        return 'lower_middle';
+        return 'mid_low';
       case IncomeTier.middle:
-        return 'middle';
+        return 'mid';
       case IncomeTier.upperMiddle:
-        return 'upper_middle';
+        return 'mid_high';
       case IncomeTier.high:
         return 'high';
     }

@@ -86,7 +86,20 @@ class Settings(BaseSettings):
                 logging.warning(f"{field_name} not set in production, using generated fallback")
             return secrets.token_urlsafe(32)
         return v
-    
+
+    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
+    @classmethod
+    def validate_token_expiry(cls, v):
+        """Ensure token expiration is minimum 120 minutes for onboarding completion"""
+        if v == "" or v is None:
+            return 120
+        expire_minutes = int(v)
+        if expire_minutes < 120:
+            import logging
+            logging.warning(f"ACCESS_TOKEN_EXPIRE_MINUTES={expire_minutes} is too short, forcing 120 minutes")
+            return 120
+        return expire_minutes
+
     @classmethod
     def _get_environment(cls) -> str:
         """Get environment setting safely"""
@@ -109,6 +122,15 @@ class Settings(BaseSettings):
     # SMTP settings
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
+
+    @field_validator("SMTP_PORT", mode="before")
+    @classmethod
+    def validate_smtp_port(cls, v):
+        """Handle empty SMTP_PORT from Railway"""
+        if v == "" or v is None:
+            return 587  # Default port
+        return int(v)
+
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@mita.finance"
@@ -168,7 +190,7 @@ except Exception as e:
         OPENAI_API_KEY = ""
         ENVIRONMENT = "development"
         ALGORITHM = "HS256"
-        ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        ACCESS_TOKEN_EXPIRE_MINUTES = 120  # Match main config - 2 hours for onboarding
         REDIS_URL = ""  # No Redis in development by default - graceful fallback
         OPENAI_MODEL = "gpt-4o-mini"
         GOOGLE_APPLICATION_CREDENTIALS = ""

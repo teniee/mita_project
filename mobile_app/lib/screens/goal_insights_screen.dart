@@ -1,5 +1,5 @@
-/// MODULE 5: Goal Insights Screen
-/// AI-powered insights, health analysis, and recommendations for goals
+// MODULE 5: Goal Insights Screen
+// AI-powered insights, health analysis, and recommendations for goals
 
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -395,7 +395,7 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
                           isLate ? Colors.red.shade800 : Colors.green.shade800,
                     ),
                   ),
-                  if (isLate && target != null) ...[
+                  if (isLate) ...[
                     const SizedBox(height: 4),
                     Text(
                       '${predicted.difference(target).inDays} days late',
@@ -496,10 +496,6 @@ class _GoalInsightsScreenState extends State<GoalInsightsScreen>
   }
 
   Widget _buildInsightCard(String insight) {
-    // Parse emoji from insight
-    final hasEmoji =
-        insight.contains(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true));
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,

@@ -144,7 +144,7 @@ class EnhancedErrorHandling {
   }) {
     try {
       return builder();
-    } catch (error, stackTrace) {
+    } catch (error) {
       String name = widgetName ?? 'Unknown Widget';
 
       logError('Widget rendering error in $name: $error',
@@ -442,7 +442,7 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
 
 /// Enhanced error handling for form validation
 class FormErrorHandler {
-  static Map<String, String> _fieldErrors = {};
+  static final Map<String, String> _fieldErrors = {};
 
   /// Add field-specific error
   static void addFieldError(String field, String message) {

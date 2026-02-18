@@ -107,9 +107,9 @@ async def create_transaction_standardized(
         )
     
     try:
-        # Create transaction using existing service
-        result = add_transaction(user, txn, db)
-        
+        # Create transaction using existing service (sync function called from async via run_sync)
+        result = await db.run_sync(lambda sync_session: add_transaction(user, txn, sync_session))
+
         if not result:
             raise BusinessLogicError(
                 "Failed to create transaction",

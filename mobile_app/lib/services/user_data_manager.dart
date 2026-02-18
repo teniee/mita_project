@@ -31,8 +31,15 @@ class UserDataManager {
       // Try to load cached data first for immediate UI response
       await _loadCachedData();
 
-      // Then refresh from API in background
-      _refreshFromApiBackground();
+      // CRITICAL FIX: AWAIT the refresh to ensure data is loaded before proceeding
+      // This prevents race conditions and redundant API calls in UserProvider
+      try {
+        await refreshUserData();
+      } catch (e) {
+        logWarning('API refresh failed (will use cached data if available): $e',
+            tag: 'USER_DATA_MANAGER');
+        // Non-fatal for new users - they'll complete onboarding next
+      }
     } catch (e) {
       logError('Failed to initialize UserDataManager: $e',
           tag: 'USER_DATA_MANAGER');
@@ -158,6 +165,12 @@ class UserDataManager {
     return result;
   }
 
+  /// Get raw cached onboarding data for calendar generation
+  /// Returns null if no cached data available
+  Map<String, dynamic>? getCachedOnboardingData() {
+    return _cachedOnboardingData;
+  }
+
   /// Check if user has completed onboarding
   Future<bool> hasCompletedOnboarding() async {
     try {
@@ -273,11 +286,16 @@ class UserDataManager {
       }
 
       // Profile has valid income data - return complete financial context
+      // Defensive type checking to handle both Map and List formats
+      final expenses = profile['expenses'];
+      final goals = profile['goals'];
+      final habits = profile['habits'];
+
       return {
         'income': income,
-        'expenses': profile['expenses'] as List<dynamic>? ?? [],
-        'goals': profile['goals'] as List<dynamic>? ?? ['budgeting'],
-        'habits': profile['habits'] as List<dynamic>? ?? [],
+        'expenses': expenses is List ? expenses : [],
+        'goals': goals is List ? goals : (goals is Map ? [goals] : ['budgeting']),
+        'habits': habits is List ? habits : [],
         'region': profile['region'] as String? ?? '',
         'countryCode': profile['countryCode'] as String? ?? '',
         'stateCode': profile['stateCode'] as String? ?? '',

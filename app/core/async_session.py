@@ -125,6 +125,16 @@ def initialize_database() -> None:
 Base = declarative_base()
 
 
+def get_async_session_factory():
+    """Get the async session factory for direct session creation"""
+    initialize_database()
+
+    if AsyncSessionLocal is None:
+        raise RuntimeError("Database not properly initialized")
+
+    return AsyncSessionLocal
+
+
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """Async database dependency for FastAPI"""
     initialize_database()

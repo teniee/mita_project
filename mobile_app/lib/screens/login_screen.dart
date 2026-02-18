@@ -14,6 +14,7 @@ import '../providers/user_provider.dart';
 import '../services/secure_push_token_manager.dart';
 import '../services/password_validation_service.dart';
 import '../services/accessibility_service.dart';
+import '../services/message_service.dart';
 import '../services/timeout_manager_service.dart';
 import '../theme/mita_theme.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -370,19 +371,15 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // Set authentication state using UserProvider
-      if (kDebugMode)
-        dev.log('Setting authentication state in UserProvider',
-            name: 'LoginScreen');
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
-      // Check if user has completed onboarding
-      if (kDebugMode)
-        dev.log('Checking onboarding status after Google login',
-            name: 'LoginScreen');
+      // Check if user has completed onboarding from UserProvider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
+      if (kDebugMode)
+        dev.log('User onboarding status: $hasOnboarded',
+            name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode)
@@ -401,6 +398,9 @@ class _LoginScreenState extends State<LoginScreen>
         dev.log(
             'Google login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
+
+      // Clear any stale error messages from previous session expiration
+      MessageService.instance.clearMessages();
 
       // Force navigation with explicit error handling
       try {
@@ -649,18 +649,15 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // Set authentication state using UserProvider
-      if (kDebugMode)
-        dev.log('Setting authentication state in UserProvider',
-            name: 'LoginScreen');
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
-      // Check if user has completed onboarding
-      if (kDebugMode)
-        dev.log('Checking onboarding status', name: 'LoginScreen');
+      // Check if user has completed onboarding from UserProvider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
+      if (kDebugMode)
+        dev.log('User onboarding status: $hasOnboarded',
+            name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode)
@@ -679,6 +676,9 @@ class _LoginScreenState extends State<LoginScreen>
         dev.log(
             'Login successful, navigating to ${hasOnboarded ? "main" : "onboarding"}',
             name: 'LoginScreen');
+
+      // Clear any stale error messages from previous session expiration
+      MessageService.instance.clearMessages();
 
       // Force navigation with explicit error handling
       try {
@@ -1225,10 +1225,8 @@ class _LoginScreenState extends State<LoginScreen>
                                           button: true,
                                           child: FilledButton(
                                             focusNode: _signInButtonFocusNode,
-                                            onPressed: (_isEmailValid &&
-                                                    _isPasswordValid)
-                                                ? _handleEmailLogin
-                                                : null,
+                                            // Only enable login when both email and password are valid
+                                            onPressed: (_isEmailValid && _isPasswordValid) ? _handleEmailLogin : null,
                                             style: FilledButton.styleFrom(
                                               padding:
                                                   const EdgeInsets.symmetric(

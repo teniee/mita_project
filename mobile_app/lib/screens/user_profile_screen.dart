@@ -383,7 +383,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.3,
           children: [
             _buildStatCard(
               'Monthly Income',
@@ -397,7 +397,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Expenses',
-              '\$${(financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num? ?? 2450).toStringAsFixed(0)}',
+              () {
+                final expenses = financialContext['total_expenses'] as num? ?? financialContext['total_spent'] as num?;
+                return expenses != null ? '\$${expenses.toStringAsFixed(0)}' : '\$0';
+              }(),
               Icons.receipt_long,
               Colors.orange,
               colorScheme,
@@ -405,7 +408,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Monthly Savings',
-              '\$${(financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num? ?? 520).toStringAsFixed(0)}',
+              () {
+                final savings = financialContext['monthly_savings'] as num? ?? financialContext['savings'] as num?;
+                return savings != null ? '\$${savings.toStringAsFixed(0)}' : '\$0';
+              }(),
               Icons.savings,
               Colors.blue,
               colorScheme,
@@ -413,7 +419,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildStatCard(
               'Budget Adherence',
-              '${financialContext['budget_adherence'] ?? 87}%',
+              financialContext['budget_adherence'] != null
+                  ? '${financialContext['budget_adherence']}%'
+                  : '0%',
               Icons.check_circle,
               Colors.purple,
               colorScheme,

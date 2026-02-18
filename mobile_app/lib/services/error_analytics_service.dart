@@ -312,7 +312,7 @@ class ErrorAnalyticsService {
         'UUID');
 
     final operationPrefix = operationName != null ? '${operationName}_' : '';
-    return '${operationPrefix}${errorType}_${coreMessage.hashCode.abs()}';
+    return '$operationPrefix${errorType}_${coreMessage.hashCode.abs()}';
   }
 
   /// Start analytics collection
@@ -526,7 +526,7 @@ class ErrorOccurrence {
       ),
       operationName: json['operationName'] as String?,
       screenName: json['screenName'] as String?,
-      context: Map<String, dynamic>.from((json['context'] ?? {}) as Map),
+      context: Map<String, dynamic>.from((json['context'] ?? <String, dynamic>{}) as Map),
       stackTrace: json['stackTrace'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );

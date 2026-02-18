@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0015_add_installments_module"
-down_revision = "f8e0108e3527"
+down_revision = "0014_add_notifications_table"
 branch_labels = None
 depends_on = None
 

@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from app.engine.calendar_store import get_calendar_for_user
+from app.services.calendar_service_real import get_calendar_for_user
 
 
 def extract_patterns(user_id: str, year: int, month: int) -> dict:

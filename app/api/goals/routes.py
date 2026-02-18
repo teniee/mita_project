@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, validator
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, and_, func, select
 
 from app.api.dependencies import get_current_user, require_premium_user
@@ -163,10 +163,10 @@ def goal_to_dict(goal: Goal) -> dict:
 # ============================================================================
 
 @router.post("/", response_model=GoalOut)
-def create_goal(
+async def create_goal(
     data: GoalIn,
     user=Depends(require_premium_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Create a new budgeting goal"""
     goal = Goal(
@@ -186,8 +186,8 @@ def create_goal(
     goal.update_progress()
 
     db.add(goal)
-    db.commit()
-    db.refresh(goal)
+    await db.commit()
+    await db.refresh(goal)
 
     # Send notification about goal creation
     try:
@@ -206,72 +206,74 @@ def create_goal(
 
 
 @router.get("/", response_model=List[GoalOut])
-def list_goals(
+async def list_goals(
     status: Optional[str] = Query(None, description="Filter by status: active, completed, paused"),
     category: Optional[str] = Query(None, description="Filter by category"),
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """List all goals for the current user with optional filters"""
-    query = db.query(Goal).filter(Goal.user_id == user.id)
+    query = select(Goal).where(Goal.user_id == user.id)
 
     if status:
-        query = query.filter(Goal.status == status)
+        query = query.where(Goal.status == status)
     if category:
-        query = query.filter(Goal.category == category)
+        query = query.where(Goal.category == category)
 
-    goals = query.order_by(desc(Goal.created_at)).all()
+    query = query.order_by(desc(Goal.created_at))
+    result = await db.execute(query)
+    goals = result.scalars().all()
 
     return success_response([goal_to_dict(g) for g in goals])
 
 
 @router.get("/statistics", response_model=GoalStatistics)
-def get_statistics(
+async def get_statistics(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get comprehensive goal statistics for the user"""
 
     # Count goals by status
-    total_goals = db.query(func.count(Goal.id)).filter(Goal.user_id == user.id).scalar() or 0
-    active_goals = db.query(func.count(Goal.id)).filter(
+    total_goals = (await db.execute(select(func.count(Goal.id)).where(Goal.user_id == user.id))).scalar() or 0
+    active_goals = (await db.execute(select(func.count(Goal.id)).where(
         and_(Goal.user_id == user.id, Goal.status == 'active')
-    ).scalar() or 0
-    completed_goals = db.query(func.count(Goal.id)).filter(
+    ))).scalar() or 0
+    completed_goals = (await db.execute(select(func.count(Goal.id)).where(
         and_(Goal.user_id == user.id, Goal.status == 'completed')
-    ).scalar() or 0
-    paused_goals = db.query(func.count(Goal.id)).filter(
+    ))).scalar() or 0
+    paused_goals = (await db.execute(select(func.count(Goal.id)).where(
         and_(Goal.user_id == user.id, Goal.status == 'paused')
-    ).scalar() or 0
+    ))).scalar() or 0
 
     # Calculate averages
-    avg_progress = db.query(func.avg(Goal.progress)).filter(
+    avg_progress = (await db.execute(select(func.avg(Goal.progress)).where(
         and_(Goal.user_id == user.id, Goal.status == 'active')
-    ).scalar() or 0.0
+    ))).scalar() or 0.0
 
     # Calculate totals
-    total_target = db.query(func.sum(Goal.target_amount)).filter(
+    total_target = (await db.execute(select(func.sum(Goal.target_amount)).where(
         and_(Goal.user_id == user.id, Goal.status == 'active')
-    ).scalar() or 0.0
-    total_saved = db.query(func.sum(Goal.saved_amount)).filter(
+    ))).scalar() or 0.0
+    total_saved = (await db.execute(select(func.sum(Goal.saved_amount)).where(
         and_(Goal.user_id == user.id, Goal.status == 'active')
-    ).scalar() or 0.0
+    ))).scalar() or 0.0
 
     # Count overdue and due soon
     from datetime import date, timedelta
     today = date.today()
     soon_date = today + timedelta(days=7)
 
-    overdue_count = db.query(func.count(Goal.id)).filter(
+    overdue_count = (await db.execute(select(func.count(Goal.id)).where(
         and_(
             Goal.user_id == user.id,
             Goal.status == 'active',
             Goal.target_date < today,
             Goal.target_date.isnot(None)
         )
-    ).scalar() or 0
+    ))).scalar() or 0
 
-    due_soon_count = db.query(func.count(Goal.id)).filter(
+    due_soon_count = (await db.execute(select(func.count(Goal.id)).where(
         and_(
             Goal.user_id == user.id,
             Goal.status == 'active',
@@ -279,7 +281,7 @@ def get_statistics(
             Goal.target_date >= today,
             Goal.target_date.isnot(None)
         )
-    ).scalar() or 0
+    ))).scalar() or 0
 
     completion_rate = (completed_goals / total_goals * 100) if total_goals > 0 else 0.0
 
@@ -297,210 +299,10 @@ def get_statistics(
     })
 
 
-@router.get("/{goal_id}", response_model=GoalOut)
-def get_goal(
-    goal_id: UUID,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Get a specific goal by ID"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-    return success_response(goal_to_dict(goal))
-
-
-@router.patch("/{goal_id}", response_model=GoalOut)
-def update_goal(
-    goal_id: UUID,
-    data: GoalUpdate,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Update an existing goal"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-
-    # Update fields if provided
-    if data.title is not None:
-        goal.title = data.title
-    if data.description is not None:
-        goal.description = data.description
-    if data.category is not None:
-        goal.category = data.category
-    if data.target_amount is not None:
-        goal.target_amount = data.target_amount
-    if data.saved_amount is not None:
-        goal.saved_amount = data.saved_amount
-    if data.monthly_contribution is not None:
-        goal.monthly_contribution = data.monthly_contribution
-    if data.target_date is not None:
-        goal.target_date = data.target_date
-    if data.priority is not None:
-        goal.priority = data.priority
-    if data.status is not None:
-        goal.status = data.status
-
-    # Recalculate progress
-    goal.update_progress()
-
-    db.commit()
-    db.refresh(goal)
-
-    return success_response(goal_to_dict(goal))
-
-
-@router.delete("/{goal_id}")
-def delete_goal(
-    goal_id: UUID,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Delete a goal"""
-    CRUDHelper.delete_user_resource(db, Goal, goal_id, user.id, "Goal not found")
-    return success_response({"status": "deleted", "id": str(goal_id)})
-
-
-# ============================================================================
-# Progress Tracking Endpoints
-# ============================================================================
-
-@router.post("/{goal_id}/add_savings", response_model=GoalOut)
-def add_savings_to_goal(
-    goal_id: UUID,
-    data: AddSavingsRequest,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Add savings to a goal and update progress"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-
-    # Store old progress to check for milestones
-    old_progress = float(goal.progress)
-
-    # Add savings
-    goal.add_savings(Decimal(str(data.amount)))
-
-    db.commit()
-    db.refresh(goal)
-
-    # Send notifications based on progress
-    try:
-        notifier = get_notification_integration(db)
-        new_progress = float(goal.progress)
-
-        # Check if goal was just completed
-        if goal.status == 'completed' and old_progress < 100:
-            # Calculate days taken if created_at is available
-            days_taken = None
-            if goal.created_at and goal.completed_at:
-                days_taken = (goal.completed_at - goal.created_at).days
-
-            notifier.notify_goal_completed(
-                user_id=user.id,
-                goal_title=goal.title,
-                final_amount=float(goal.saved_amount),
-                days_taken=days_taken
-            )
-        else:
-            # Send progress milestone notification
-            notifier.notify_goal_progress(
-                user_id=user.id,
-                goal_title=goal.title,
-                progress=new_progress,
-                saved_amount=float(goal.saved_amount),
-                target_amount=float(goal.target_amount)
-            )
-    except Exception as e:
-        # Don't fail savings addition if notification fails
-        import logging
-        logging.error(f"Failed to send goal progress notification: {e}")
-
-    return success_response(goal_to_dict(goal))
-
-
-@router.post("/{goal_id}/complete", response_model=GoalOut)
-def mark_goal_completed(
-    goal_id: UUID,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Mark a goal as completed"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-
-    goal.status = 'completed'
-    goal.progress = 100
-    goal.completed_at = datetime.utcnow()
-    goal.last_updated = datetime.utcnow()
-
-    db.commit()
-    db.refresh(goal)
-
-    # Send completion notification
-    try:
-        notifier = get_notification_integration(db)
-        days_taken = None
-        if goal.created_at and goal.completed_at:
-            days_taken = (goal.completed_at - goal.created_at).days
-
-        notifier.notify_goal_completed(
-            user_id=user.id,
-            goal_title=goal.title,
-            final_amount=float(goal.saved_amount),
-            days_taken=days_taken
-        )
-    except Exception as e:
-        # Don't fail completion if notification fails
-        import logging
-        logging.error(f"Failed to send goal completion notification: {e}")
-
-    return success_response(goal_to_dict(goal))
-
-
-@router.post("/{goal_id}/pause", response_model=GoalOut)
-def pause_goal(
-    goal_id: UUID,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Pause an active goal"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-
-    goal.status = 'paused'
-    goal.last_updated = datetime.utcnow()
-
-    db.commit()
-    db.refresh(goal)
-
-    return success_response(goal_to_dict(goal))
-
-
-@router.post("/{goal_id}/resume", response_model=GoalOut)
-def resume_goal(
-    goal_id: UUID,
-    user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-):
-    """Resume a paused goal"""
-    goal = CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
-
-    if goal.status != 'paused':
-        raise HTTPException(status_code=400, detail="Only paused goals can be resumed")
-
-    goal.status = 'active'
-    goal.last_updated = datetime.utcnow()
-
-    db.commit()
-    db.refresh(goal)
-
-    return success_response(goal_to_dict(goal))
-
-
-# ============================================================================
-# Goal Suggestions
-# ============================================================================
-
 @router.get("/income_based_suggestions")
-def get_income_based_suggestions(
+async def get_income_based_suggestions(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get goal suggestions based on user's income level (Legacy - use /smart_recommendations instead)"""
     monthly_income = user.monthly_income or 3000.0
@@ -565,9 +367,9 @@ def get_income_based_suggestions(
 # ============================================================================
 
 @router.get("/smart_recommendations")
-def get_smart_recommendations(
+async def get_smart_recommendations(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Get AI-powered personalized goal recommendations based on:
@@ -592,10 +394,10 @@ def get_smart_recommendations(
 
 
 @router.get("/{goal_id}/health")
-def analyze_goal_health(
+async def analyze_goal_health(
     goal_id: UUID,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Analyze the health of a goal and provide AI-powered insights:
@@ -621,9 +423,9 @@ def analyze_goal_health(
 
 
 @router.get("/adjustments/suggestions")
-def suggest_goal_adjustments(
+async def suggest_goal_adjustments(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Get AI-powered suggestions for adjusting existing goals based on:
@@ -647,9 +449,9 @@ def suggest_goal_adjustments(
 
 
 @router.get("/opportunities/detect")
-def detect_goal_opportunities(
+async def detect_goal_opportunities(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Detect opportunities for new goals based on spending patterns:
@@ -677,11 +479,11 @@ def detect_goal_opportunities(
 # ============================================================================
 
 @router.get("/budget/allocate")
-def allocate_budget_for_goals(
+async def allocate_budget_for_goals(
     month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
     year: int = Query(..., ge=2020, le=2100, description="Year"),
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Automatically allocate budget for active goals from monthly income
@@ -698,11 +500,11 @@ def allocate_budget_for_goals(
 
 
 @router.get("/budget/progress")
-def track_goal_progress_from_budget(
+async def track_goal_progress_from_budget(
     month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
     year: int = Query(..., ge=2020, le=2100, description="Year"),
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Track goal progress based on budget allocations and actual spending
@@ -719,9 +521,9 @@ def track_goal_progress_from_budget(
 
 
 @router.get("/budget/adjustment_suggestions")
-def suggest_budget_adjustments(
+async def suggest_budget_adjustments(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Get suggestions for budget adjustments to better support goals
@@ -740,12 +542,212 @@ def suggest_budget_adjustments(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{goal_id}", response_model=GoalOut)
+async def get_goal(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Get a specific goal by ID"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    return success_response(goal_to_dict(goal))
+
+
+@router.patch("/{goal_id}", response_model=GoalOut)
+async def update_goal(
+    goal_id: UUID,
+    data: GoalUpdate,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Update an existing goal"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+
+    # Update fields if provided
+    if data.title is not None:
+        goal.title = data.title
+    if data.description is not None:
+        goal.description = data.description
+    if data.category is not None:
+        goal.category = data.category
+    if data.target_amount is not None:
+        goal.target_amount = data.target_amount
+    if data.saved_amount is not None:
+        goal.saved_amount = data.saved_amount
+    if data.monthly_contribution is not None:
+        goal.monthly_contribution = data.monthly_contribution
+    if data.target_date is not None:
+        goal.target_date = data.target_date
+    if data.priority is not None:
+        goal.priority = data.priority
+    if data.status is not None:
+        goal.status = data.status
+
+    # Recalculate progress
+    goal.update_progress()
+
+    await db.commit()
+    await db.refresh(goal)
+
+    return success_response(goal_to_dict(goal))
+
+
+@router.delete("/{goal_id}")
+async def delete_goal(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Delete a goal"""
+    await CRUDHelper.delete_user_resource(db, Goal, goal_id, user.id, "Goal not found")
+    return success_response({"status": "deleted", "id": str(goal_id)})
+
+
+# ============================================================================
+# Progress Tracking Endpoints
+# ============================================================================
+
+@router.post("/{goal_id}/add_savings", response_model=GoalOut)
+async def add_savings_to_goal(
+    goal_id: UUID,
+    data: AddSavingsRequest,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Add savings to a goal and update progress"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+
+    # Store old progress to check for milestones
+    old_progress = float(goal.progress)
+
+    # Add savings
+    goal.add_savings(Decimal(str(data.amount)))
+
+    await db.commit()
+    await db.refresh(goal)
+
+    # Send notifications based on progress
+    try:
+        notifier = get_notification_integration(db)
+        new_progress = float(goal.progress)
+
+        # Check if goal was just completed
+        if goal.status == 'completed' and old_progress < 100:
+            # Calculate days taken if created_at is available
+            days_taken = None
+            if goal.created_at and goal.completed_at:
+                days_taken = (goal.completed_at - goal.created_at).days
+
+            notifier.notify_goal_completed(
+                user_id=user.id,
+                goal_title=goal.title,
+                final_amount=float(goal.saved_amount),
+                days_taken=days_taken
+            )
+        else:
+            # Send progress milestone notification
+            notifier.notify_goal_progress(
+                user_id=user.id,
+                goal_title=goal.title,
+                progress=new_progress,
+                saved_amount=float(goal.saved_amount),
+                target_amount=float(goal.target_amount)
+            )
+    except Exception as e:
+        # Don't fail savings addition if notification fails
+        import logging
+        logging.error(f"Failed to send goal progress notification: {e}")
+
+    return success_response(goal_to_dict(goal))
+
+
+@router.post("/{goal_id}/complete", response_model=GoalOut)
+async def mark_goal_completed(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Mark a goal as completed"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+
+    goal.status = 'completed'
+    goal.progress = 100
+    goal.completed_at = datetime.utcnow()
+    goal.last_updated = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(goal)
+
+    # Send completion notification
+    try:
+        notifier = get_notification_integration(db)
+        days_taken = None
+        if goal.created_at and goal.completed_at:
+            days_taken = (goal.completed_at - goal.created_at).days
+
+        notifier.notify_goal_completed(
+            user_id=user.id,
+            goal_title=goal.title,
+            final_amount=float(goal.saved_amount),
+            days_taken=days_taken
+        )
+    except Exception as e:
+        # Don't fail completion if notification fails
+        import logging
+        logging.error(f"Failed to send goal completion notification: {e}")
+
+    return success_response(goal_to_dict(goal))
+
+
+@router.post("/{goal_id}/pause", response_model=GoalOut)
+async def pause_goal(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Pause an active goal"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+
+    goal.status = 'paused'
+    goal.last_updated = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(goal)
+
+    return success_response(goal_to_dict(goal))
+
+
+@router.post("/{goal_id}/resume", response_model=GoalOut)
+async def resume_goal(
+    goal_id: UUID,
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Resume a paused goal"""
+    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+
+    if goal.status != 'paused':
+        raise HTTPException(status_code=400, detail="Only paused goals can be resumed")
+
+    goal.status = 'active'
+    goal.last_updated = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(goal)
+
+    return success_response(goal_to_dict(goal))
+
+
+# ============================================================================
+# Goal Suggestions
+# ============================================================================
+
 @router.post("/{goal_id}/auto_transfer")
-def auto_transfer_to_goal(
+async def auto_transfer_to_goal(
     goal_id: UUID,
     data: AutoTransferRequest,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """
     Automatically create a savings transaction for a goal

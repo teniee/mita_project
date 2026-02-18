@@ -123,11 +123,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
-      body: StreamBuilder<bool>(
-        stream: userProvider.premiumStatusStream,
-        initialData: _isPremium,
-        builder: (context, snapshot) {
-          final isPremium = snapshot.data ?? _isPremium;
+      // FIXED: Removed StreamBuilder due to UserProvider Stream exposure issue
+      // Using local state _isPremium instead of reactive stream
+      body: Builder(
+        builder: (context) {
+          final isPremium = _isPremium;
 
           if (_isProcessing || userProvider.isLoading) {
             return const Center(

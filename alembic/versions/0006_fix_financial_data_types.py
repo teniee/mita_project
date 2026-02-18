@@ -1,7 +1,7 @@
 """fix critical financial data types for compliance
 
 Revision ID: 0006_fix_financial_data_types
-Revises: a0d5ecc53667
+Revises: 0005_push_tokens
 Create Date: 2025-08-11
 
 CRITICAL: This migration fixes financial data integrity issues:
@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0006_fix_financial_data_types"
-down_revision = "a0d5ecc53667"
+down_revision = "0005_push_tokens"
 branch_labels = None
 depends_on = None
 

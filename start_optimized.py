@@ -11,13 +11,35 @@ def main():
     """Main startup sequence"""
     print("🚀 MITA Production Startup")
     print("=" * 50)
-    
+
     # Set environment defaults
     port = os.getenv('PORT', '8000')
-    
+
     print(f"Starting on port: {port}")
     print(f"Environment: {os.getenv('ENVIRONMENT', 'production')}")
-    
+
+    # Run database migrations
+    print("\n🔄 Running database migrations...")
+    try:
+        migration_result = subprocess.run(
+            ['alembic', 'upgrade', 'head'],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print("✅ Migrations completed successfully")
+        if migration_result.stdout:
+            print(migration_result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Migration failed: {e}")
+        if e.stderr:
+            print(f"Error output: {e.stderr}")
+        print("⚠️  Continuing anyway - application may not work correctly")
+    except FileNotFoundError:
+        print("⚠️  Alembic not found - skipping migrations")
+
+    print("\n🔄 Starting application...")
+
     # Start uvicorn with production settings
     cmd = [
         'uvicorn',

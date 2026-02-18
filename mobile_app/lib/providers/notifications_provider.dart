@@ -74,8 +74,23 @@ class NotificationsProvider extends ChangeNotifier {
           .toList();
 
       _notifications = notifications;
-      _unreadCount = response['unread_count'] as int? ?? 0;
-      _total = response['total'] as int? ?? 0;
+
+      final unreadCountData = response['unread_count'];
+      _unreadCount = (unreadCountData == null)
+          ? 0
+          : (unreadCountData is num)
+              ? unreadCountData.toInt()
+              : (unreadCountData is String
+                  ? int.tryParse(unreadCountData) ?? 0
+                  : 0);
+
+      final totalData = response['total'];
+      _total = (totalData == null)
+          ? 0
+          : (totalData is num)
+              ? totalData.toInt()
+              : (totalData is String ? int.tryParse(totalData) ?? 0 : 0);
+
       _hasMore = response['has_more'] as bool? ?? false;
       _state = NotificationState.loaded;
       _errorMessage = null;

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/user_data_manager.dart';
 import '../services/logging_service.dart';
+import '../services/token_lifecycle_manager.dart';
 import '../services/iap_service.dart';
 import '../services/api_service.dart';
 
@@ -44,15 +45,32 @@ class UserProvider extends ChangeNotifier {
   // User profile convenience getters
   String get userName => _userProfile['name'] as String? ?? 'User';
   String get userEmail => _userProfile['email'] as String? ?? '';
-  double get userIncome => (_userProfile['income'] as num?)?.toDouble() ?? 0.0;
+  double get userIncome {
+    final incomeData = _userProfile['income'];
+    return (incomeData == null)
+        ? 0.0
+        : (incomeData is num)
+            ? incomeData.toDouble()
+            : (incomeData is String ? double.tryParse(incomeData) ?? 0.0 : 0.0);
+  }
   String get userCurrency => _userProfile['currency'] as String? ?? 'USD';
   String get userRegion => _userProfile['region'] as String? ?? '';
   String get userCountryCode => _userProfile['countryCode'] as String? ?? '';
-  List<dynamic> get userExpenses =>
-      _userProfile['expenses'] as List<dynamic>? ?? [];
-  List<dynamic> get userGoals => _userProfile['goals'] as List<dynamic>? ?? [];
-  List<dynamic> get userHabits =>
-      _userProfile['habits'] as List<dynamic>? ?? [];
+  List<dynamic> get userExpenses {
+    final expenses = _userProfile['expenses'];
+    if (expenses is List) return expenses;
+    return [];
+  }
+  List<dynamic> get userGoals {
+    final goals = _userProfile['goals'];
+    if (goals is List) return goals;
+    return [];
+  }
+  List<dynamic> get userHabits {
+    final habits = _userProfile['habits'];
+    if (habits is List) return habits;
+    return [];
+  }
 
   /// Initialize the provider and load user data
   Future<void> initialize() async {
@@ -64,6 +82,16 @@ class UserProvider extends ChangeNotifier {
 
     try {
       logInfo('Initializing UserProvider', tag: 'USER_PROVIDER');
+
+      // CRITICAL FIX: Check if user has a valid token before making API calls
+      final token = await _apiService.getToken();
+      if (token == null || token.isEmpty) {
+        logWarning('No authentication token found - user must login first',
+            tag: 'USER_PROVIDER');
+        _state = UserState.unauthenticated;
+        _errorMessage = 'Not authenticated';
+        return;
+      }
 
       // Initialize the underlying user data manager
       await _userDataManager.initialize();
@@ -229,10 +257,20 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Set authentication state after login
-  void setAuthenticated() {
+  /// Set authentication state after login and start token lifecycle management
+  void setAuthenticated() async {
     _state = UserState.authenticated;
     notifyListeners();
+
+    // Initialize token lifecycle manager for automatic token refresh
+    try {
+      await TokenLifecycleManager.instance.initialize();
+      logInfo('Token lifecycle manager started', tag: 'USER_PROVIDER');
+    } catch (e) {
+      logWarning('Failed to start token lifecycle manager: $e',
+          tag: 'USER_PROVIDER');
+      // Non-critical error - user can still use the app
+    }
   }
 
   /// Clear error message
@@ -305,5 +343,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Get premium status stream for reactive updates
-  Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
+  /// TEMPORARILY DISABLED: Stream exposure causes MultiProvider render tree violation
+  /// TODO: Migrate to StreamProvider if stream functionality is needed
+  /// Original: Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
+  // Stream<bool> get premiumStatusStream => _iapService.premiumStatusStream;
 }

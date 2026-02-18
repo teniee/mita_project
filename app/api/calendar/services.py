@@ -2,7 +2,7 @@ from datetime import date
 from typing import Dict, List
 
 from app.engine.calendar_engine_behavioral import build_calendar
-from app.engine.calendar_store import get_calendar_for_user, save_calendar_for_user
+from app.services.calendar_service_real import get_calendar_for_user, save_calendar_for_user
 
 
 def generate_calendar(

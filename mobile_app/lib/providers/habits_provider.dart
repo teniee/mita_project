@@ -27,8 +27,42 @@ class Habit {
   });
 
   factory Habit.fromJson(Map<String, dynamic> json) {
+    final idData = json['id'];
+    final id = (idData == null)
+        ? 0
+        : (idData is num)
+            ? idData.toInt()
+            : (idData is String ? int.tryParse(idData) ?? 0 : 0);
+
+    final currentStreakData = json['current_streak'];
+    final currentStreak = (currentStreakData == null)
+        ? 0
+        : (currentStreakData is num)
+            ? currentStreakData.toInt()
+            : (currentStreakData is String
+                ? int.tryParse(currentStreakData) ?? 0
+                : 0);
+
+    final longestStreakData = json['longest_streak'];
+    final longestStreak = (longestStreakData == null)
+        ? 0
+        : (longestStreakData is num)
+            ? longestStreakData.toInt()
+            : (longestStreakData is String
+                ? int.tryParse(longestStreakData) ?? 0
+                : 0);
+
+    final completionRateData = json['completion_rate'];
+    final completionRate = (completionRateData == null)
+        ? 0.0
+        : (completionRateData is num)
+            ? completionRateData.toDouble()
+            : (completionRateData is String
+                ? double.tryParse(completionRateData) ?? 0.0
+                : 0.0);
+
     return Habit(
-      id: json['id'] as int? ?? 0,
+      id: id,
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       targetFrequency: json['target_frequency'] as String? ?? 'daily',
@@ -37,9 +71,9 @@ class Habit {
       completedDates: (json['completed_dates'] as List<dynamic>? ?? [])
           .map((date) => DateTime.tryParse(date.toString()) ?? DateTime.now())
           .toList(),
-      currentStreak: json['current_streak'] as int? ?? 0,
-      longestStreak: json['longest_streak'] as int? ?? 0,
-      completionRate: (json['completion_rate'] as num? ?? 0.0).toDouble(),
+      currentStreak: currentStreak,
+      longestStreak: longestStreak,
+      completionRate: completionRate,
     );
   }
 
@@ -68,7 +102,7 @@ class HabitsProvider extends ChangeNotifier {
   // State
   HabitsState _state = HabitsState.initial;
   List<Habit> _habits = [];
-  Map<int, Map<String, dynamic>> _habitProgress = {};
+  final Map<int, Map<String, dynamic>> _habitProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
 

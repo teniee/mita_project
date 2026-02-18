@@ -24,7 +24,7 @@ class MoodProvider extends ChangeNotifier {
   // Mood data
   double _selectedMood = 3;
   bool _hasSubmittedToday = false;
-  List<Map<String, dynamic>> _moodHistory = [];
+  final List<Map<String, dynamic>> _moodHistory = [];
   DateTime? _lastSubmissionDate;
 
   // Getters

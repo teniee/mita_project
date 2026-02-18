@@ -98,9 +98,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       logInfo('FastAPI registration SUCCESS - initializing user state',
           tag: 'REGISTER');
 
-      // Set authentication state using UserProvider
+      // Initialize user provider (will set authenticated state internally)
       final userProvider = context.read<UserProvider>();
-      userProvider.setAuthenticated();
       await userProvider.initialize();
 
       if (!mounted) return;
@@ -293,7 +292,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: const Text('Register'),
                         ),
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      // FIX: Handle case where there's no previous route (black screen bug)
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        // No previous route - navigate to login explicitly
+                        Navigator.pushReplacementNamed(context, '/login');
+                      }
+                    },
                     child: const Text('Back to login'),
                   ),
                   if (_error != null) ...[

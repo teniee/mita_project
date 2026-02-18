@@ -1,5 +1,5 @@
 from app.engine.analytics_engine import AnalyticsEngine
-from app.engine.calendar_store import get_calendar_for_user
+from app.services.calendar_service_real import get_calendar_for_user
 
 analytics = AnalyticsEngine()
 # challenge_tracker.py - tracks challenge performance for current month

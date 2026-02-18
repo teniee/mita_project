@@ -96,12 +96,12 @@ class EnhancedApiWrapper {
   }
 
   /// Authentication operations with specialized error handling
-  Future<Response?> authenticateUser({
+  Future<Response<dynamic>?> authenticateUser({
     required String email,
     required String password,
     bool isLogin = true,
   }) async {
-    return await executeApiCall<Response>(
+    return await executeApiCall<Response<dynamic>>(
       () async {
         if (isLogin) {
           return await _apiService.reliableLogin(email, password);
@@ -117,8 +117,8 @@ class EnhancedApiWrapper {
   }
 
   /// Google authentication with enhanced error handling
-  Future<Response?> authenticateWithGoogle(String idToken) async {
-    return await executeApiCall<Response>(
+  Future<Response<dynamic>?> authenticateWithGoogle(String idToken) async {
+    return await executeApiCall<Response<dynamic>>(
       () async => await _apiService.loginWithGoogle(idToken),
       operationName: 'Google Authentication',
       maxRetries: 2,
@@ -226,7 +226,7 @@ class EnhancedApiWrapper {
       () async => await _apiService.getBudgetSuggestions(),
       operationName: 'Get Budget Suggestions',
       maxRetries: 2,
-      fallbackValue: {'suggestions': [], 'total_count': 0},
+      fallbackValue: <String, dynamic>{'suggestions': <dynamic>[], 'total_count': 0},
       category: ErrorCategory.network,
     );
   }
@@ -335,9 +335,9 @@ class EnhancedApiWrapper {
 
   /// Get circuit breaker statistics
   Map<String, dynamic> getCircuitBreakerStats() {
-    return {
+    return <String, dynamic>{
       'active_breakers': _circuitBreakerRegistry.keys.toList(),
-      'failure_counts': Map.from(_failureCountRegistry),
+      'failure_counts': Map<String, int>.from(_failureCountRegistry),
       'breaker_timeout_minutes': _circuitBreakerTimeout.inMinutes,
       'max_failures_threshold': _maxFailuresBeforeCircuitBreaker,
     };

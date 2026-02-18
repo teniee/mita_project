@@ -93,13 +93,21 @@ class TokenLifecycleManager {
       final securityStatus = await _secureStorage!.getSecurityHealthStatus();
       healthResult.addAll(securityStatus);
 
-      // Check if token rotation is needed
+      // Check if token rotation is needed and trigger if necessary
       final shouldRotate = await _secureStorage!.shouldRotateTokens();
       healthResult['rotationNeeded'] = shouldRotate;
 
       if (shouldRotate) {
-        logInfo('Token rotation recommended', tag: 'TOKEN_LIFECYCLE');
-        healthResult['rotationRecommended'] = true;
+        logInfo('Token rotation needed - triggering refresh', tag: 'TOKEN_LIFECYCLE');
+        final rotationSuccess = await _triggerTokenRotation();
+        healthResult['rotationTriggered'] = true;
+        healthResult['rotationSuccess'] = rotationSuccess;
+
+        if (rotationSuccess) {
+          logInfo('Token automatically refreshed', tag: 'TOKEN_LIFECYCLE');
+        } else {
+          logWarning('Automatic token refresh failed', tag: 'TOKEN_LIFECYCLE');
+        }
       }
 
       // Check for suspicious activity

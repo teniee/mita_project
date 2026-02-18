@@ -1,6 +1,6 @@
 # day_view_api.py - returns single-day view for UI consumption
 
-from app.engine.calendar_store import get_calendar_for_user
+from app.services.calendar_service_real import get_calendar_for_user
 
 
 def get_day_view(user_id: str, year: int, month: int, day: int):

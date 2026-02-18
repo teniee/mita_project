@@ -1,10 +1,9 @@
-/// MODULE 5: Smart Goal Recommendations Screen
-/// AI-powered personalized goal recommendations based on user behavior
+// MODULE 5: Smart Goal Recommendations Screen
+// AI-powered personalized goal recommendations based on user behavior
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import '../providers/goals_provider.dart';
 
 class SmartGoalRecommendationsScreen extends StatefulWidget {
@@ -251,7 +250,7 @@ class _SmartGoalRecommendationsScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      (priority as String).toUpperCase(),
+                      priority.toUpperCase(),
                       style: TextStyle(
                         fontFamily: 'Manrope',
                         fontSize: 11,
@@ -615,7 +614,7 @@ class _SmartGoalRecommendationsScreenState
   }
 
   void _showRecommendationDetails(Map<String, dynamic> rec) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

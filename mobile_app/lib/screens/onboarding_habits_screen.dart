@@ -55,18 +55,12 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
     final isValid = await validateSessionBeforeNavigation();
     if (!isValid) return;
 
-    // Save habits and optional comment
+    // Save habits and optional comment to temporary state
     OnboardingState.instance.habits = selectedHabits.toList();
     OnboardingState.instance.habitsComment = commentController.text.trim();
     await OnboardingState.instance.save();
 
-    // Cache onboarding data using UserProvider for centralized state management
-    if (mounted) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final onboardingData = OnboardingState.instance.toMap();
-      await userProvider.cacheOnboardingData(onboardingData);
-    }
-
+    // Navigate to finish screen (which will handle backend submission and caching)
     if (!mounted) return;
     Navigator.pushNamed(context, '/onboarding_finish');
   }
@@ -218,14 +212,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                     OnboardingState.instance.habitsComment = null;
                     await OnboardingState.instance.save();
 
-                    // Cache onboarding data using UserProvider for centralized state management
-                    if (mounted) {
-                      final userProvider =
-                          Provider.of<UserProvider>(context, listen: false);
-                      final onboardingData = OnboardingState.instance.toMap();
-                      await userProvider.cacheOnboardingData(onboardingData);
-                    }
-
+                    // Navigate to finish screen (which will handle backend submission and caching)
                     if (!mounted) return;
                     Navigator.pushNamed(context, '/onboarding_finish');
                   },

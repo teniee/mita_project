@@ -327,15 +327,16 @@ class PasswordValidationService {
     return '';
   }
 
-  /// Check for sequential patterns (123, abc, etc.)
+  /// Check for sequential patterns (1234, abcd, etc.)
+  /// Relaxed to 4+ consecutive characters to allow reasonable passwords
   static List<String> _checkSequentialPatterns(String password) {
     final issues = <String>[];
     final lowerPassword = password.toLowerCase();
 
-    // Check for ascending sequences
-    for (int i = 0; i <= lowerPassword.length - 3; i++) {
+    // Check for ascending sequences (4+ characters)
+    for (int i = 0; i <= lowerPassword.length - 4; i++) {
       bool isSequential = true;
-      for (int j = i + 1; j < i + 3 && j < lowerPassword.length; j++) {
+      for (int j = i + 1; j < i + 4 && j < lowerPassword.length; j++) {
         if (lowerPassword.codeUnitAt(j) !=
             lowerPassword.codeUnitAt(j - 1) + 1) {
           isSequential = false;
@@ -344,15 +345,15 @@ class PasswordValidationService {
       }
       if (isSequential) {
         issues.add(
-            'Avoid sequential characters like "${lowerPassword.substring(i, i + 3)}"');
+            'Avoid sequential characters like "${lowerPassword.substring(i, i + 4)}"');
         break;
       }
     }
 
-    // Check for descending sequences
-    for (int i = 0; i <= lowerPassword.length - 3; i++) {
+    // Check for descending sequences (4+ characters)
+    for (int i = 0; i <= lowerPassword.length - 4; i++) {
       bool isSequential = true;
-      for (int j = i + 1; j < i + 3 && j < lowerPassword.length; j++) {
+      for (int j = i + 1; j < i + 4 && j < lowerPassword.length; j++) {
         if (lowerPassword.codeUnitAt(j) !=
             lowerPassword.codeUnitAt(j - 1) - 1) {
           isSequential = false;
@@ -361,7 +362,7 @@ class PasswordValidationService {
       }
       if (isSequential) {
         issues.add(
-            'Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 3)}"');
+            'Avoid reverse sequential characters like "${lowerPassword.substring(i, i + 4)}"');
         break;
       }
     }

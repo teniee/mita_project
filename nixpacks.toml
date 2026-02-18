@@ -1,0 +1,11 @@
+# Railway Nixpacks Configuration for MITA Finance Backend
+# This tells Railway how to build and start the FastAPI application
+
+[phases.setup]
+nixPkgs = ["python39", "postgresql"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "./start.sh"

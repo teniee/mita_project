@@ -104,7 +104,7 @@ class InstallmentService {
         );
 
         if (attempts < _maxRetries) {
-          await Future.delayed(_retryDelay * attempts);
+          await Future<void>.delayed(_retryDelay * attempts);
         }
       } catch (e) {
         // For other errors, don't retry

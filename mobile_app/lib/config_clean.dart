@@ -8,9 +8,9 @@ class AppConfig {
   // Environment-specific configurations
   static const Map<String, Map<String, String>> _environments = {
     'development': {
-      'baseUrl': 'http://localhost:8000',
+      'baseUrl': 'https://mita-production-production.up.railway.app',
       'apiPath': '/api',
-      'websocketUrl': 'ws://localhost:8000/ws',
+      'websocketUrl': 'wss://mita-production-production.up.railway.app/ws',
       'enableDebugLogs': 'true',
       'enableAnalytics': 'false',
       'enableCrashReporting': 'false',
@@ -69,7 +69,7 @@ class AppConfig {
   static String get registerEndpoint => '/api/auth/register';
   static String get loginEndpoint => '/api/auth/login';
   static String get refreshEndpoint => '/api/auth/refresh';
-  static String get healthEndpoint => '/api/health';
+  static String get healthEndpoint => '/health';
 
   static String get fullRegisterUrl => '$baseUrl$registerEndpoint';
   static String get fullLoginUrl => '$baseUrl$loginEndpoint';

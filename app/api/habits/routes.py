@@ -1,113 +1,152 @@
 from typing import List
 from uuid import UUID
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
 
-from app.api.base_crud import CRUDHelper
 from app.api.dependencies import get_current_user
-from app.core.session import get_db
-from app.db.models import Habit
+from app.core.db import get_db
+from app.db.models import Habit, HabitCompletion
 from app.utils.response_wrapper import success_response
+from app.services.habit_service import get_habit_with_stats
 
 from .schemas import HabitIn, HabitOut, HabitUpdate
 
 router = APIRouter(prefix="/habits", tags=["habits"])
 
 
-@router.post("/", response_model=HabitOut)
-def create_habit(
+@router.post("/")
+async def create_habit(
     data: HabitIn,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    habit = CRUDHelper.create_user_resource(
-        db, Habit,
-        {"title": data.title, "description": data.description},
-        user.id
+    """Create a new habit for the authenticated user"""
+    habit = Habit(
+        user_id=user.id,
+        title=data.title,
+        description=data.description,
+        target_frequency=data.target_frequency or "daily"
     )
-    return success_response({
-        "id": habit.id,
-        "title": habit.title,
-        "description": habit.description,
-        "created_at": habit.created_at,
-    })
+    db.add(habit)
+    await db.commit()
+    await db.refresh(habit)
+
+    # Return complete habit data with statistics (will be empty for new habit)
+    habit_data = await get_habit_with_stats(habit, user.id, db)
+    return success_response(habit_data)
 
 
-@router.get("/", response_model=List[HabitOut])
-def list_habits(
+@router.get("/")
+async def list_habits(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    habits = CRUDHelper.get_user_resources(db, Habit, user.id)
-    return success_response([
-        {
-            "id": h.id,
-            "title": h.title,
-            "description": h.description,
-            "created_at": h.created_at,
-        }
-        for h in habits
-    ])
+    """List all habits for the authenticated user with complete statistics"""
+    result = await db.execute(
+        select(Habit).where(Habit.user_id == user.id)
+    )
+    habits = result.scalars().all()
+
+    # Get complete habit data with statistics for each habit
+    habits_with_stats = []
+    for habit in habits:
+        habit_data = await get_habit_with_stats(habit, user.id, db)
+        habits_with_stats.append(habit_data)
+
+    return success_response(habits_with_stats)
 
 
 @router.patch("/{habit_id}")
-def update_habit(
+async def update_habit(
     habit_id: UUID,
     data: HabitUpdate,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    habit = CRUDHelper.get_user_resource_or_404(
-        db, Habit, habit_id, user.id, "Habit not found"
+    """Update an existing habit"""
+    result = await db.execute(
+        select(Habit).where(
+            and_(Habit.id == habit_id, Habit.user_id == user.id)
+        )
     )
-    CRUDHelper.update_resource(
-        db, habit,
-        {"title": data.title, "description": data.description}
-    )
-    return success_response({"status": "updated"})
+    habit = result.scalar_one_or_none()
+
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    if data.title is not None:
+        habit.title = data.title
+    if data.description is not None:
+        habit.description = data.description
+    if data.target_frequency is not None:
+        habit.target_frequency = data.target_frequency
+
+    await db.commit()
+    await db.refresh(habit)
+
+    # Return updated habit with statistics
+    habit_data = await get_habit_with_stats(habit, user.id, db)
+    return success_response(habit_data)
 
 
 @router.delete("/{habit_id}")
-def delete_habit(
+async def delete_habit(
     habit_id: UUID,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    CRUDHelper.delete_user_resource_or_404(
-        db, Habit, habit_id, user.id, "Habit not found"
+    """Delete a habit and all its completions"""
+    result = await db.execute(
+        select(Habit).where(
+            and_(Habit.id == habit_id, Habit.user_id == user.id)
+        )
     )
+    habit = result.scalar_one_or_none()
+
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    await db.delete(habit)
+    await db.commit()
     return success_response({"status": "deleted"})
 
 
 # NEW ENDPOINTS for mobile app integration
 
 @router.post("/{habit_id}/complete")
-def complete_habit(
+async def complete_habit(
     habit_id: UUID,
     date: str = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Mark habit as completed for a specific date"""
-    from datetime import datetime
-
-    habit = CRUDHelper.get_user_resource_or_404(
-        db, Habit, habit_id, user.id, "Habit not found"
+    # Verify habit exists and belongs to user
+    result = await db.execute(
+        select(Habit).where(
+            and_(Habit.id == habit_id, Habit.user_id == user.id)
+        )
     )
+    habit = result.scalar_one_or_none()
+
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
 
     completion_date = datetime.fromisoformat(date.replace('Z', '+00:00')) if date else datetime.utcnow()
 
-    # Store completion in database
-    from app.db.models import HabitCompletion
-
     # Check if already completed for this date
-    existing = db.query(HabitCompletion).filter(
-        HabitCompletion.habit_id == habit_id,
-        HabitCompletion.user_id == user.id,
-        HabitCompletion.completed_at >= completion_date.replace(hour=0, minute=0, second=0),
-        HabitCompletion.completed_at < completion_date.replace(hour=23, minute=59, second=59)
-    ).first()
+    result = await db.execute(
+        select(HabitCompletion).filter(
+            HabitCompletion.habit_id == habit_id,
+            HabitCompletion.user_id == user.id,
+            HabitCompletion.completed_at >= completion_date.replace(hour=0, minute=0, second=0),
+            HabitCompletion.completed_at < completion_date.replace(hour=23, minute=59, second=59)
+        )
+    )
+    existing = result.scalars().first()
 
     if existing:
         return success_response({
@@ -123,7 +162,7 @@ def complete_habit(
         completed_at=completion_date
     )
     db.add(completion)
-    db.commit()
+    await db.commit()
 
     return success_response({
         "status": "completed",
@@ -133,33 +172,39 @@ def complete_habit(
 
 
 @router.get("/{habit_id}/progress")
-def get_habit_progress(
+async def get_habit_progress(
     habit_id: UUID,
     start_date: str = None,
     end_date: str = None,
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get habit completion progress over time"""
-    from datetime import datetime, timedelta
-
-    habit = CRUDHelper.get_user_resource_or_404(
-        db, Habit, habit_id, user.id, "Habit not found"
+    # Verify habit exists and belongs to user
+    result = await db.execute(
+        select(Habit).where(
+            and_(Habit.id == habit_id, Habit.user_id == user.id)
+        )
     )
+    habit = result.scalar_one_or_none()
+
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
 
     # Parse dates
     start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else datetime.utcnow() - timedelta(days=30)
     end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else datetime.utcnow()
 
     # Query completions
-    from app.db.models import HabitCompletion
-
-    completions = db.query(HabitCompletion).filter(
-        HabitCompletion.habit_id == habit_id,
-        HabitCompletion.user_id == user.id,
-        HabitCompletion.completed_at >= start,
-        HabitCompletion.completed_at <= end
-    ).all()
+    result = await db.execute(
+        select(HabitCompletion).filter(
+            HabitCompletion.habit_id == habit_id,
+            HabitCompletion.user_id == user.id,
+            HabitCompletion.completed_at >= start,
+            HabitCompletion.completed_at <= end
+        )
+    )
+    completions = result.scalars().all()
 
     completion_dates = [c.completed_at.date().isoformat() for c in completions]
     total_days = (end - start).days + 1

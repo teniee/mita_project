@@ -21,7 +21,8 @@ import asyncio
 from threading import Lock
 
 from app.core.audit_logging import log_security_event
-from app.services.auth_jwt_service import get_token_info, is_token_blacklisted
+from app.services.auth_jwt_service import get_token_info
+from app.services.token_blacklist_service import TokenBlacklistService
 from app.core.upstash import get_blacklist_metrics
 
 logger = logging.getLogger(__name__)
@@ -332,21 +333,21 @@ class TokenSecurityService:
         
         logger.debug("Token security monitoring data cleanup completed")
     
-    def check_token_health(self, token: str) -> Dict:
-        """Comprehensive token health check."""
+    async def check_token_health(self, token: str) -> Dict:
+        """Comprehensive token health check (async)."""
         token_info = get_token_info(token)
-        
+
         if not token_info:
             return {
                 "status": "invalid",
                 "reason": "Token could not be decoded"
             }
-        
+
         jti = token_info.get("jti")
         user_id = token_info.get("user_id")
         exp = token_info.get("exp", 0)
         now = time.time()
-        
+
         health = {
             "status": "healthy",
             "token_info": {
@@ -357,28 +358,32 @@ class TokenSecurityService:
                 "is_expired": exp < now
             }
         }
-        
+
         # Check if blacklisted
         if jti:
             try:
-                is_blacklisted = is_token_blacklisted(jti)
+                blacklist_service = TokenBlacklistService()
+                is_blacklisted = await blacklist_service.is_token_blacklisted(jti)
                 health["is_blacklisted"] = is_blacklisted
                 if is_blacklisted:
                     health["status"] = "blacklisted"
                     health["reason"] = "Token is in blacklist"
+                    # Record blacklist hit for monitoring
+                    self.record_blacklist_hit(user_id, jti)
             except Exception as e:
+                logger.error(f"Blacklist check error for JTI {jti[:8]}...: {e}")
                 health["blacklist_check_error"] = str(e)
-        
+
         # Check expiration
         if exp < now:
             health["status"] = "expired"
             health["reason"] = "Token has expired"
-        
+
         # Check user activity
         if user_id:
             user_summary = self.get_user_activity_summary(user_id)
             health["user_activity"] = user_summary
-        
+
         return health
 
 

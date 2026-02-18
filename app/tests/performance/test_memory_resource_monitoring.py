@@ -20,7 +20,7 @@ import sys
 
 # Import services for testing
 from app.services.performance_monitor import PerformanceMonitor, get_performance_monitor
-from app.services.advanced_cache_manager import AdvancedCacheManager
+from app.services.advanced_cache_manager import SmartCacheManager
 from app.core.async_session import get_async_session_factory
 from app.api.auth.services import authenticate_user_async, register_user_async
 from app.services.core.engine.budget_logic import generate_budget_from_answers
@@ -300,7 +300,7 @@ class MemoryResourceTests:
         Test memory management of caching systems.
         Cache should have bounded memory usage and proper cleanup.
         """
-        cache_manager = AdvancedCacheManager()
+        cache_manager = SmartCacheManager()
         
         def cache_operations():
             # Add many items to cache

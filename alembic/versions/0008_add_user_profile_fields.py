@@ -21,7 +21,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0008_add_user_profile_fields'
-down_revision = 'f8e0108e3527'
+down_revision = '0007_email_password_reset_fields'
 branch_labels = None
 depends_on = None
 

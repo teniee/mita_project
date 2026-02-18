@@ -1,0 +1,9 @@
+{
+  "events": [],
+  "last_known_good": null,
+  "metadata": {
+    "created_at": "2025-01-15T00:00:00Z",
+    "version": "1.0.0",
+    "description": "Deployment history tracking for automated rollback system"
+  }
+}

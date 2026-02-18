@@ -66,6 +66,7 @@ from app.core.logging_config import setup_logging
 from app.core.feature_flags import get_feature_flag_manager, is_feature_enabled
 from app.core.deployment_optimizations import apply_platform_optimizations
 from app.middleware.audit_middleware import audit_middleware
+from app.core.prometheus_metrics import PrometheusMiddleware, get_metrics, CONTENT_TYPE_LATEST
 from app.core.error_handler import (
     MITAException, ValidationException, RateLimitException,
     mita_exception_handler, validation_exception_handler,
@@ -77,19 +78,25 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # ---- Firebase Admin SDK init ----
 if not firebase_admin._apps:
-    firebase_json = os.environ.get("FIREBASE_JSON")
-    if firebase_json:
-        cred = credentials.Certificate(json.loads(firebase_json))
-    else:
-        cred_path = os.getenv("GOOGLE_SERVICE_ACCOUNT") or os.getenv(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
+    try:
+        firebase_json = os.environ.get("FIREBASE_JSON")
+        if firebase_json:
+            cred = credentials.Certificate(json.loads(firebase_json))
         else:
-            cred = credentials.ApplicationDefault()
+            cred_path = os.getenv("GOOGLE_SERVICE_ACCOUNT") or os.getenv(
+                "GOOGLE_APPLICATION_CREDENTIALS"
+            )
+            if cred_path and os.path.exists(cred_path):
+                cred = credentials.Certificate(cred_path)
+            else:
+                cred = credentials.ApplicationDefault()
 
-    firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred)
+        print("✅ Firebase Admin SDK initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Firebase Admin SDK initialization failed: {e}")
+        print("⚠️  Push notifications will be disabled, but app will continue")
+        # App continues without Firebase - push notifications won't work but everything else will
 
 # ---- Sentry setup ----
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -401,6 +408,17 @@ async def health_check():
 # Flutter registration endpoint removed - use /api/auth/register for all registration
 
 
+@app.get("/metrics")
+async def prometheus_metrics():
+    """
+    Prometheus metrics endpoint for monitoring and observability
+    Returns metrics in Prometheus exposition format
+    """
+    from fastapi import Response
+    metrics_data = get_metrics()
+    return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status and performance metrics"""
@@ -454,12 +472,92 @@ async def detailed_health_check():
     
     if database_error:
         response["database_error"] = database_error
-    
+
     return response
+
+
+# ---- Legal Documents Endpoints (App Store Compliance) ----
+
+@app.get("/privacy-policy", include_in_schema=False)
+async def privacy_policy():
+    """
+    Privacy Policy for MITA Finance
+    Required for App Store submission
+    """
+    from fastapi.responses import FileResponse, Response
+    import pathlib
+    import os
+
+    # Try multiple paths for Railway deployment compatibility
+    possible_paths = [
+        pathlib.Path(__file__).parent.parent / "PRIVACY_POLICY.html",  # Standard path
+        pathlib.Path.cwd() / "PRIVACY_POLICY.html",  # Working directory
+        pathlib.Path("/app/PRIVACY_POLICY.html"),  # Docker/Railway absolute path
+    ]
+
+    for policy_path in possible_paths:
+        if policy_path.exists():
+            try:
+                return FileResponse(
+                    path=str(policy_path),
+                    media_type="text/html",
+                    headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+                )
+            except Exception as e:
+                logger.error(f"Error serving privacy policy from {policy_path}: {e}")
+                continue
+
+    # Fallback if file doesn't exist
+    return Response(
+        content="<h1>Privacy Policy</h1><p>Privacy Policy will be available soon. Contact privacy@mita.finance</p>",
+        media_type="text/html",
+        status_code=200
+    )
+
+
+@app.get("/terms-of-service", include_in_schema=False)
+async def terms_of_service():
+    """
+    Terms of Service for MITA Finance
+    Required for App Store submission
+    """
+    from fastapi.responses import FileResponse, Response
+    import pathlib
+    import os
+
+    # Try multiple paths for Railway deployment compatibility
+    possible_paths = [
+        pathlib.Path(__file__).parent.parent / "TERMS_OF_SERVICE.html",  # Standard path
+        pathlib.Path.cwd() / "TERMS_OF_SERVICE.html",  # Working directory
+        pathlib.Path("/app/TERMS_OF_SERVICE.html"),  # Docker/Railway absolute path
+    ]
+
+    for terms_path in possible_paths:
+        if terms_path.exists():
+            try:
+                return FileResponse(
+                    path=str(terms_path),
+                    media_type="text/html",
+                    headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+                )
+            except Exception as e:
+                logger.error(f"Error serving terms of service from {terms_path}: {e}")
+                continue
+
+    # Fallback if file doesn't exist
+    return Response(
+        content="<h1>Terms of Service</h1><p>Terms of Service will be available soon. Contact legal@mita.finance</p>",
+        media_type="text/html",
+        status_code=200
+    )
+
 
 # ---- Middlewares ----
 
-# Add standardized error handling middleware (first for comprehensive coverage)
+# Add Prometheus metrics middleware (first to track all requests)
+app.add_middleware(PrometheusMiddleware)
+
+# Add standardized error handling middleware
 app.add_middleware(StandardizedErrorMiddleware, include_request_details=settings.DEBUG)
 app.add_middleware(ResponseValidationMiddleware, validate_success_responses=settings.DEBUG)
 app.add_middleware(RequestContextMiddleware)
@@ -568,8 +666,8 @@ async def optimized_audit_middleware(request: Request, call_next):
     from app.core.audit_logging import audit_logger
     import time
     
-    # Skip audit logging for health checks and static content
-    skip_paths = ["/", "/health", "/debug", "/emergency-test", "/docs", "/redoc", "/openapi.json"]
+    # Skip audit logging for health checks, legal documents, and static content
+    skip_paths = ["/", "/health", "/privacy-policy", "/terms-of-service", "/debug", "/emergency-test", "/docs", "/redoc", "/openapi.json"]
     if request.url.path in skip_paths:
         return await call_next(request)
     
@@ -902,14 +1000,35 @@ async def on_startup():
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    """Clean up resources on shutdown"""
+    """
+    Graceful shutdown handler
+    - Waits for in-flight requests to complete (up to 30 seconds)
+    - Closes database connections
+    - Closes audit logging connections
+    - Ensures no data loss during deployment
+    """
     try:
-        # Close audit system connections
-        from app.core.audit_logging import _audit_db_pool
-        await _audit_db_pool.close()
-        logging.info("✅ Audit system connections closed")
+        logging.info("🛑 Starting graceful shutdown sequence...")
+
+        # Step 1: Wait for in-flight requests (Railway gives us 30 seconds)
+        # This allows current requests to complete before terminating
+        logging.info("⏳ Waiting for in-flight requests to complete (5 seconds)...")
+        await asyncio.sleep(5)
+
+        # Step 2: Close audit system connections
+        try:
+            from app.core.audit_logging import _audit_db_pool
+            await _audit_db_pool.close()
+            logging.info("✅ Audit system connections closed")
+        except Exception as e:
+            logging.error(f"❌ Error closing audit system: {e}")
+
+        # Step 3: Close main database connections
+        await close_database()
+        logging.info("✅ Main database connections closed")
+
+        # Step 4: Flush any remaining logs
+        logging.info("✅ Graceful shutdown completed successfully")
+
     except Exception as e:
-        logging.error(f"❌ Error closing audit system: {e}")
-    
-    # Close main database connections
-    await close_database()
+        logging.error(f"❌ Error during graceful shutdown: {e}", exc_info=True)

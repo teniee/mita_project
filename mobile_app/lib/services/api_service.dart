@@ -19,6 +19,7 @@ import 'secure_push_token_manager.dart';
 import 'secure_token_storage.dart';
 import 'app_version_service.dart';
 import 'certificate_pinning_service.dart';
+import 'user_data_manager.dart';
 
 class ApiService {
   // ---------------------------------------------------------------------------
@@ -100,6 +101,21 @@ class ApiService {
 
           // Handle auth refresh / errors with grace period
           if (e.response?.statusCode == 401) {
+            // CRITICAL FIX: Prevent infinite refresh loop
+            // Don't try to refresh if the failing request IS the refresh request
+            final path = e.requestOptions.path ?? '';
+            final isRefreshRequest = path.contains('/refresh-token') ||
+                                    path.endsWith('/refresh-token') ||
+                                    path.contains('refresh_token');
+
+            if (isRefreshRequest) {
+              // Refresh token itself failed - cannot retry, just log and fail
+              logError(
+                'Refresh token request failed with 401 - token is invalid/expired',
+                tag: 'TOKEN_REFRESH');
+              return handler.next(e);  // Pass through to error handling
+            }
+
             final refreshed = await _refreshTokens();
             if (refreshed) {
               final req = e.requestOptions;
@@ -116,14 +132,34 @@ class ApiService {
                   'Auth token refresh failed for ${e.requestOptions.path}',
                   tag: 'API_AUTH');
 
-              // Показываем диалог только если это критический endpoint
+              // Показываем диалог ТОЛЬКО для критических auth endpoints
+              // НЕ показываем для обычных authenticated endpoints (user profile, calendar, etc)
+              // CRITICAL FIX: Проверяем _hasActiveSession ПЕРЕД показом "Session expired"
               final path = e.requestOptions.path ?? '';
-              if (path.contains('/auth/') ||
-                  path.contains('/login') ||
-                  path.contains('/register')) {
-                MessageService.instance
-                    .showError('Session expired. Please log in.');
+              if (path.endsWith('/login') ||
+                  path.endsWith('/register') ||
+                  path.contains('/refresh') ||
+                  path.contains('/logout')) {
+                // Показываем "Session expired" ТОЛЬКО если пользователь имеет активную сессию
+                // Это предотвращает показ ошибки для:
+                // 1. Новых пользователей на onboarding (нет токена вообще)
+                // 2. Старых токенов из предыдущих установок (_hasActiveSession = false)
+                final existingToken = await getToken();
+                if (existingToken != null && existingToken.isNotEmpty && _hasActiveSession) {
+                  MessageService.instance
+                      .showError('Session expired. Please log in.');
+                  logWarning(
+                      'Session expired - active session token refresh failed',
+                      tag: 'API_AUTH');
+                } else {
+                  // Нет активной сессии = не показываем ошибку
+                  logDebug(
+                      'Auth failed but no active session (token exists: ${existingToken != null}, active: $_hasActiveSession)',
+                      tag: 'API_AUTH');
+                }
               }
+              // Для остальных endpoints - просто логируем, не показываем пользователю
+              // Они обрабатываются gracefully на уровне UI
             }
           } else if (e.response?.statusCode == 429) {
             MessageService.instance.showRateLimit();
@@ -168,6 +204,11 @@ class ApiService {
   // Secure token storage for production-grade security
   SecureTokenStorage? _secureStorage;
 
+  // Session tracking: Distinguishes active session from old persisted tokens
+  // Set to true when saveTokens() called, false when clearTokens() called
+  // Prevents showing "Session expired" for old tokens from previous installs
+  bool _hasActiveSession = false;
+
   final String _baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: defaultApiBaseUrl,
@@ -206,14 +247,25 @@ class ApiService {
     final secureStorage = await _getSecureStorage();
     if (secureStorage != null) {
       try {
-        return await secureStorage.getAccessToken();
+        final token = await secureStorage.getAccessToken();
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
+        if (token != null) {
+          return token;
+        }
+        logWarning('Secure storage returned null, falling back to legacy',
+            tag: 'API_SECURITY');
       } catch (e) {
         logWarning('Failed to get token from secure storage, falling back: $e',
             tag: 'API_SECURITY');
       }
     }
     // Fallback to legacy storage
-    return await _storage.read(key: 'access_token');
+    final legacyToken = await _storage.read(key: 'access_token');
+    if (legacyToken != null) {
+      logInfo('✅ Retrieved token from legacy storage fallback', tag: 'API_SECURITY');
+    }
+    return legacyToken;
   }
 
   /// Get refresh token using secure storage when available
@@ -221,7 +273,14 @@ class ApiService {
     final secureStorage = await _getSecureStorage();
     if (secureStorage != null) {
       try {
-        return await secureStorage.getRefreshToken();
+        final token = await secureStorage.getRefreshToken();
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
+        if (token != null) {
+          return token;
+        }
+        logWarning('Secure storage returned null, falling back to legacy',
+            tag: 'API_SECURITY');
       } catch (e) {
         logWarning(
             'Failed to get refresh token from secure storage, falling back: $e',
@@ -229,7 +288,11 @@ class ApiService {
       }
     }
     // Fallback to legacy storage
-    return await _storage.read(key: 'refresh_token');
+    final legacyToken = await _storage.read(key: 'refresh_token');
+    if (legacyToken != null) {
+      logInfo('✅ Retrieved refresh token from legacy storage fallback', tag: 'API_SECURITY');
+    }
+    return legacyToken;
   }
 
   /// Save tokens using secure storage with enhanced security
@@ -254,9 +317,16 @@ class ApiService {
 
         logInfo('Tokens saved securely', tag: 'API_SECURITY');
 
-        // Clean up any legacy tokens
-        await _storage.delete(key: 'access_token');
-        await _storage.delete(key: 'refresh_token');
+        // KEEP legacy tokens as fallback - DON'T delete them
+        // If secure storage read fails (iOS Simulator issues), legacy storage provides fallback
+        // This prevents "session expired" errors during onboarding
+        try {
+          await _storage.write(key: 'access_token', value: access);
+          await _storage.write(key: 'refresh_token', value: refresh);
+          logInfo('Legacy tokens also updated as fallback', tag: 'API_SECURITY');
+        } catch (e) {
+          logWarning('Failed to update legacy fallback tokens: $e', tag: 'API_SECURITY');
+        }
 
         return;
       } catch (e) {
@@ -282,6 +352,10 @@ class ApiService {
     } catch (e) {
       logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
     }
+
+    // Mark as active session - distinguishes from old persisted tokens
+    _hasActiveSession = true;
+    logDebug('Active session established', tag: 'API_AUTH');
   }
 
   String? _extractUserIdFromToken(String token) {
@@ -367,6 +441,10 @@ class ApiService {
       logError('Failed to clear legacy tokens: $e',
           tag: 'API_SECURITY', error: e);
     }
+
+    // Mark as NO active session - user logged out
+    _hasActiveSession = false;
+    logDebug('Active session cleared', tag: 'API_AUTH');
   }
 
   Future<bool> _refreshTokens() async {
@@ -377,53 +455,95 @@ class ApiService {
     }
 
     try {
-      logInfo('Attempting token refresh...', tag: 'TOKEN_REFRESH');
+      logInfo('🔄 STARTING TOKEN REFRESH', tag: 'TOKEN_REFRESH');
+      logInfo('Refresh token (first 20 chars): ${refresh.substring(0, min(20, refresh.length))}...',
+          tag: 'TOKEN_REFRESH');
+      logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
+
+      final requestUrl = '/auth/refresh-token?refresh_token=$refresh';
+      logInfo('Making refresh request to: ${requestUrl.substring(0, min(50, requestUrl.length))}...',
+          tag: 'TOKEN_REFRESH');
+
       final response = await _dio.post(
-        '/auth/refresh-token?refresh_token=$refresh',
+        requestUrl,
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
-      logInfo('Token refresh response received: ${response.statusCode}',
+      logInfo('✅ Token refresh response received: ${response.statusCode}',
           tag: 'TOKEN_REFRESH');
+      logInfo('Response headers: ${response.headers.map}', tag: 'TOKEN_REFRESH');
+      logInfo('Response data type: ${response.data.runtimeType}', tag: 'TOKEN_REFRESH');
 
       final data = response.data as Map<String, dynamic>?;
       if (data == null) {
-        logError('Refresh token response data is null', tag: 'TOKEN_REFRESH');
+        logError('❌ Refresh token response data is null', tag: 'TOKEN_REFRESH');
+        logError('Raw response: ${response.data}', tag: 'TOKEN_REFRESH');
         throw Exception('Refresh token response data is null');
       }
+
+      logInfo('Response data keys: ${data.keys.toList()}', tag: 'TOKEN_REFRESH');
+
       final newAccess = data['access_token'] as String?;
       final newRefresh = data['refresh_token'] as String?;
 
       if (newAccess == null || newRefresh == null) {
         logError(
-            'Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
+            '❌ Refresh response missing tokens: access=$newAccess, refresh=$newRefresh',
             tag: 'TOKEN_REFRESH');
+        logError('Full response data: $data', tag: 'TOKEN_REFRESH');
         throw Exception('Missing tokens in refresh response');
       }
+
+      logInfo('✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
+          tag: 'TOKEN_REFRESH');
+      logInfo('New access token (first 20 chars): ${newAccess.substring(0, min(20, newAccess.length))}...',
+          tag: 'TOKEN_REFRESH');
 
       // Use secure storage for token refresh when available
       final secureStorage = await _getSecureStorage();
 
       if (secureStorage != null) {
         try {
+          logInfo('📦 Storing tokens in secure storage...', tag: 'TOKEN_REFRESH');
           await secureStorage.storeTokens(newAccess, newRefresh);
-          logInfo('✅ Tokens refreshed and stored securely',
+          logInfo('✅ Tokens stored securely', tag: 'TOKEN_REFRESH');
+
+          // ALSO update legacy storage as fallback
+          try {
+            await _storage.write(key: 'access_token', value: newAccess);
+            await _storage.write(key: 'refresh_token', value: newRefresh);
+            logInfo('✅ Legacy fallback tokens also updated', tag: 'TOKEN_REFRESH');
+          } catch (legacyError) {
+            logWarning('Failed to update legacy fallback: $legacyError', tag: 'TOKEN_REFRESH');
+          }
+
+          logInfo('✅✅✅ Tokens refreshed and stored securely',
               tag: 'TOKEN_REFRESH');
           return true;
         } catch (e) {
-          logError('Failed to store refreshed tokens securely: $e',
+          logError('❌ Failed to store refreshed tokens securely: $e',
               tag: 'TOKEN_REFRESH', error: e);
           // Continue with fallback below
         }
       }
 
       // Fallback to legacy storage
+      logInfo('📦 Storing tokens in legacy storage...', tag: 'TOKEN_REFRESH');
       await _storage.write(key: 'access_token', value: newAccess);
       await _storage.write(key: 'refresh_token', value: newRefresh);
-      logInfo('✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
+      logInfo('✅✅✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
       return true;
-    } catch (e) {
-      logError('❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
+    } catch (e, stackTrace) {
+      logError('❌❌❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
+      logError('Stack trace: $stackTrace', tag: 'TOKEN_REFRESH');
+
+      if (e is DioException) {
+        logError('DioException type: ${e.type}', tag: 'TOKEN_REFRESH');
+        logError('DioException message: ${e.message}', tag: 'TOKEN_REFRESH');
+        logError('DioException response: ${e.response?.data}', tag: 'TOKEN_REFRESH');
+        logError('DioException status code: ${e.response?.statusCode}', tag: 'TOKEN_REFRESH');
+      }
+
       // DON'T clear tokens immediately - might be temporary network issue
       return false;
     }
@@ -534,7 +654,7 @@ class ApiService {
 
   // RELIABLE REGISTER: Use standard FastAPI endpoint (backend now stable)
   Future<Response> reliableRegister(String email, String password) async {
-    return await register(email, password);
+    return await registerWithDetails(email, password);
   }
 
   // Add the missing emergencyRegister method that was being called
@@ -543,7 +663,7 @@ class ApiService {
     logInfo(
         'Redirecting emergency registration to standard FastAPI registration',
         tag: 'AUTH');
-    return await register(email, password);
+    return await registerWithDetails(email, password);
   }
 
   /// Public method to refresh access tokens
@@ -644,18 +764,14 @@ class ApiService {
       );
       // Check if user has completed onboarding using the has_onboarded flag
       final userData = response.data['data'];
-      if (userData != null) {
-        // Use has_onboarded flag if available (new approach)
-        if (userData.containsKey('has_onboarded')) {
-          return userData['has_onboarded'] == true;
-        }
-        // Fallback: check if user has income set (legacy approach for backward compatibility)
-        if (userData.containsKey('income') &&
-            userData['income'] != null &&
-            userData['income'] > 0) {
-          return true;
-        }
+      if (userData != null && userData.containsKey('has_onboarded')) {
+        final hasOnboarded = userData['has_onboarded'] == true;
+        logInfo('Onboarding status from backend: $hasOnboarded', tag: 'ONBOARDING');
+        return hasOnboarded;
       }
+
+      // Backend always returns has_onboarded field, so if it's missing something is wrong
+      logWarning('Backend /users/me response missing has_onboarded field', tag: 'ONBOARDING');
       return false;
     } catch (e) {
       // If there's an error checking the API, we should be conservative
@@ -887,6 +1003,7 @@ class ApiService {
 
   /// Retrieve saved calendar data from onboarding
   /// Returns null if no saved data exists, allowing fallback to generation
+  /// This method attempts to fetch calendar data saved during onboarding
   Future<List<dynamic>?> getSavedCalendar({
     required int year,
     required int month,
@@ -894,34 +1011,96 @@ class ApiService {
     try {
       final token = await getToken();
 
-      logDebug('Attempting to retrieve saved calendar for $year-$month',
+      if (token == null || token.isEmpty) {
+        logWarning('No authentication token - cannot fetch saved calendar',
+            tag: 'CALENDAR_SAVED');
+        return null;
+      }
+
+      logInfo(
+          'Fetching saved calendar from /calendar/saved/$year/$month',
           tag: 'CALENDAR_SAVED');
 
       final response = await _dio.get(
         '/calendar/saved/$year/$month',
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
         ),
       );
 
-      final calendarData = response.data['data']['calendar'];
+      // Check response structure carefully
+      if (response.data == null) {
+        logWarning('Saved calendar response is null', tag: 'CALENDAR_SAVED');
+        return null;
+      }
 
-      if (calendarData == null || (calendarData as List).isEmpty) {
-        logInfo('No saved calendar data found for $year-$month',
+      // Handle different response formats
+      final responseData = response.data;
+      dynamic calendarData;
+
+      if (responseData is Map) {
+        // Try nested structure: {data: {calendar: [...]}}
+        if (responseData.containsKey('data')) {
+          final dataSection = responseData['data'];
+          if (dataSection is Map && dataSection.containsKey('calendar')) {
+            calendarData = dataSection['calendar'];
+          } else {
+            calendarData = dataSection;
+          }
+        } else if (responseData.containsKey('calendar')) {
+          // Direct structure: {calendar: [...]}
+          calendarData = responseData['calendar'];
+        } else {
+          logWarning(
+              'Unexpected response structure: ${responseData.keys}',
+              tag: 'CALENDAR_SAVED');
+          return null;
+        }
+      } else if (responseData is List) {
+        // Response is directly a list
+        calendarData = responseData;
+      }
+
+      if (calendarData == null) {
+        logInfo(
+            'No saved calendar data found for $year-$month (user may not have completed onboarding yet)',
+            tag: 'CALENDAR_SAVED');
+        return null;
+      }
+
+      if (calendarData is! List || (calendarData as List).isEmpty) {
+        logInfo(
+            'Saved calendar data is empty for $year-$month',
             tag: 'CALENDAR_SAVED');
         return null;
       }
 
       logInfo(
-          'Successfully retrieved ${(calendarData as List).length} saved calendar days',
+          '✅ Successfully retrieved ${calendarData.length} saved calendar days from onboarding',
           tag: 'CALENDAR_SAVED');
       return calendarData as List<dynamic>;
+
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        logInfo(
+            'No saved calendar found (404) - user likely has not completed onboarding or calendar not yet generated',
+            tag: 'CALENDAR_SAVED');
+      } else if (e.response?.statusCode == 401) {
+        logWarning(
+            'Authentication failed when fetching saved calendar - token may be expired',
+            tag: 'CALENDAR_SAVED');
+      } else {
+        logWarning(
+            'Network error fetching saved calendar: ${e.message}',
+            tag: 'CALENDAR_SAVED');
+      }
+      return null; // Graceful fallback to shell config
     } catch (e) {
-      logWarning('Failed to retrieve saved calendar: $e',
+      logError('Unexpected error retrieving saved calendar: $e',
           tag: 'CALENDAR_SAVED');
-      return null;
+      return null; // Graceful fallback
     }
   }
 
@@ -969,23 +1148,92 @@ class ApiService {
           logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
         }
 
-        // Prepare shell configuration with user's actual income and location-appropriate allocations
+        // Get cached onboarding data to use REAL user inputs instead of hardcoded percentages
+        Map<String, dynamic>? fixedExpenses;
+        double savingsTarget = actualIncome * 0.2; // Default fallback
+        Map<String, double> weights = {
+          'food': 0.15,
+          'transportation': 0.15,
+          'entertainment': 0.08,
+          'shopping': 0.10,
+          'healthcare': 0.07,
+        }; // Default fallback weights
+
+        try {
+          // Get raw cached onboarding data
+          final cachedData =
+              UserDataManager.instance.getCachedOnboardingData();
+
+          if (cachedData != null) {
+            logInfo(
+                'Using cached onboarding data for shell config: ${cachedData.keys}',
+                tag: 'CALENDAR');
+
+            // Extract fixed_expenses (actual user inputs!)
+            final fixedExpensesData = cachedData['fixed_expenses'];
+            if (fixedExpensesData != null && fixedExpensesData is Map) {
+              fixedExpenses = Map<String, dynamic>.from(fixedExpensesData);
+              logInfo('Loaded REAL fixed expenses from onboarding: $fixedExpenses',
+                  tag: 'CALENDAR');
+            }
+
+            // Extract savings goal (actual user input!)
+            final goalsData = cachedData['goals'];
+            if (goalsData != null && goalsData is Map) {
+              final savingsGoalAmount =
+                  goalsData['savings_goal_amount_per_month'];
+              if (savingsGoalAmount != null) {
+                savingsTarget = (savingsGoalAmount is num)
+                    ? savingsGoalAmount.toDouble()
+                    : savingsTarget;
+                logInfo(
+                    'Loaded REAL savings goal from onboarding: \$${savingsTarget.toStringAsFixed(2)}',
+                    tag: 'CALENDAR');
+              }
+            }
+
+            // Extract spending habits to calculate weights
+            final habitsData = cachedData['spending_habits'];
+            if (habitsData != null && habitsData is Map) {
+              // Calculate weights based on actual spending frequencies
+              // Higher frequency = higher weight
+              final diningOut = (habitsData['dining_out_per_month'] as num?)?.toDouble() ?? 8;
+              final entertainment = (habitsData['entertainment_per_month'] as num?)?.toDouble() ?? 4;
+              final transport = (habitsData['transport_per_month'] as num?)?.toDouble() ?? 20;
+
+              // Normalize frequencies to weights (simple proportion)
+              final totalFreq = diningOut + entertainment + transport + 10; // +10 for other categories
+              weights = {
+                'food': (diningOut / totalFreq).clamp(0.05, 0.25),
+                'transportation': (transport / totalFreq).clamp(0.05, 0.25),
+                'entertainment': (entertainment / totalFreq).clamp(0.03, 0.15),
+                'shopping': 0.10, // Keep default for now
+                'healthcare': 0.07, // Keep default for now
+              };
+              logInfo('Calculated weights from habits: $weights', tag: 'CALENDAR');
+            }
+          } else {
+            logWarning(
+                'No cached onboarding data found - using hardcoded defaults',
+                tag: 'CALENDAR');
+          }
+        } catch (e) {
+          logWarning('Could not load cached onboarding data, using defaults: $e',
+              tag: 'CALENDAR');
+        }
+
+        // Prepare shell configuration with user's ACTUAL data (not hardcoded percentages!)
         final shellConfig = {
-          'savings_target': actualIncome * 0.2, // 20% savings target
+          'savings_target': savingsTarget, // Use actual savings goal from onboarding
           'income': actualIncome,
           'location': userLocation,
-          'fixed': {
-            'rent': actualIncome * 0.3, // 30% for housing
-            'utilities': actualIncome * 0.05, // 5% for utilities
-            'insurance': actualIncome * 0.04, // 4% for insurance
-          },
-          'weights': {
-            'food': 0.15,
-            'transportation': 0.15,
-            'entertainment': 0.08,
-            'shopping': 0.10,
-            'healthcare': 0.07,
-          },
+          'fixed': fixedExpenses ??
+              {
+                'rent': actualIncome * 0.3, // Fallback to 30% only if no cached data
+                'utilities': actualIncome * 0.05,
+                'insurance': actualIncome * 0.04,
+              },
+          'weights': weights, // Use calculated weights from spending habits
           'year': DateTime.now().year,
           'month': DateTime.now().month,
         };
@@ -1017,43 +1265,16 @@ class ApiService {
               'Backend calendar fetch failed, using intelligent fallback',
               tag: 'CALENDAR');
 
-          // Use intelligent fallback service
-          try {
-            final fallbackService = CalendarFallbackService();
-            final fallbackData =
-                await fallbackService.generateFallbackCalendarData(
-              monthlyIncome: actualIncome,
-              location: userLocation,
-              year: DateTime.now().year,
-              month: DateTime.now().month,
-            );
+          // DISABLED: Fake data fallback - return empty instead of misleading data
+          // DO NOT show fake budget data when API fails - it breaks user trust
+          logWarning('Calendar API failed - returning empty data (no fake fallback)',
+              tag: 'CALENDAR');
 
-            // Cache the fallback data with shorter expiry
-            await _cacheCalendarData(
-                cacheKey, fallbackData, const Duration(minutes: 30));
-
-            logInfo('Using intelligent fallback calendar data',
-                tag: 'CALENDAR',
-                extra: {
-                  'income': actualIncome,
-                  'location': userLocation,
-                  'days_generated': fallbackData.length,
-                });
-
-            return fallbackData;
-          } catch (fallbackError) {
-            logError('Fallback calendar generation failed',
-                tag: 'CALENDAR', error: fallbackError);
-
-            // Last resort: basic fallback
-            return _generateBasicFallbackCalendar(actualIncome);
-          }
+          // Return empty calendar data - UI will show appropriate empty state
+          return [];
         }
       },
-      fallbackValue: userIncome != null
-          ? _generateBasicFallbackCalendar(userIncome)
-          : throw Exception(
-              'Income data required for calendar. Please complete onboarding.'),
+      fallbackValue: [], // Return empty list instead of throwing exception
       timeout: const Duration(seconds: 10),
       operationName: 'Calendar Data',
     );

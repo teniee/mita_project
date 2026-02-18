@@ -49,7 +49,9 @@ class SentryFinancialService {
 
   bool _isInitialized = false;
   String? _userId;
+  // ignore: unused_field
   String? _userEmail; // Reserved for future user tracking
+  // ignore: unused_field
   String? _subscriptionTier; // Reserved for future tier-based monitoring
   String? _deviceInfo;
 
@@ -274,7 +276,7 @@ class SentryFinancialService {
   SentryTransaction? _filterSensitiveTransactions(
       SentryTransaction transaction, Hint hint) {
     // Add financial context to transactions
-    final contexts = Map<String, dynamic>.from(transaction.contexts ?? {});
+    final contexts = Map<String, dynamic>.from(transaction.contexts);
     contexts['financial_operation'] = {
       'type': 'financial_mobile_transaction',
       'compliance_level': 'pci_dss',
@@ -646,6 +648,12 @@ final sentryService = SentryFinancialService();
 /// No-op Sentry span for when Sentry is not initialized
 class NoOpSentrySpan implements ISentrySpan {
   @override
+  SentryId get traceId => SentryId.empty();
+
+  @override
+  SpanId get spanId => SpanId.empty();
+
+  @override
   Future<void> finish({SpanStatus? status, DateTime? endTimestamp}) async {}
 
   @override
@@ -671,28 +679,19 @@ class NoOpSentrySpan implements ISentrySpan {
   @override
   DateTime get startTimestamp => DateTime.now();
 
-  @override
   DateTime? get endTimestamp => DateTime.now();
 
-  @override
   bool get finished => true;
 
   Map<String, String> get tags => {};
 
   Map<String, dynamic> get data => {};
 
-  @override
   SpanStatus? get status => SpanStatus.ok();
 
   String? get description => null;
 
   String get origin => 'manual';
-
-  SentryId get spanId => const SentryId.empty();
-
-  SentryId? get parentSpanId => null;
-
-  SentryId get traceId => const SentryId.empty();
 
   void setStatus(SpanStatus status) {}
 
