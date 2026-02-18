@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Note: Session type hint removed - use AsyncSession only
 
 from app.api.dependencies import get_current_user
-from app.core.db import get_db
+from app.core.async_session import get_async_db as get_db
 from app.db.models import PushToken, UserPreference
 from app.services.notification_log_service import log_notification
 from app.services.notification_service import NotificationService
