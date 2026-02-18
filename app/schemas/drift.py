@@ -9,7 +9,6 @@ PositiveFloat = Annotated[float, Field(ge=0.0)]
 class DriftLogRequest(BaseModel):
     """Request to log user drift for a given month."""
 
-    user_id: str = Field(..., example="user_123")
     month: MonthStr = Field(..., example="2025-05")
     value: PositiveFloat = Field(..., example=0.153)
 
@@ -17,7 +16,6 @@ class DriftLogRequest(BaseModel):
 class DriftGetRequest(BaseModel):
     """Request to fetch drift information for a user."""
 
-    user_id: str = Field(..., example="user_123")
     month: MonthStr = Field(..., example="2025-05")
 
 
