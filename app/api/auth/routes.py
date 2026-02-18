@@ -30,7 +30,6 @@ from app.api.auth import (
     password_reset,
     registration,
     security_monitoring,
-    test_endpoints,
     token_management,
 )
 
@@ -49,4 +48,5 @@ router.include_router(google_auth.router)
 router.include_router(admin_endpoints.router)
 router.include_router(account_management.router)
 router.include_router(security_monitoring.router)
-router.include_router(test_endpoints.router)
+# test_endpoints.router intentionally NOT included — bypass registration
+# endpoints (/emergency-register, /register-fast) must not be reachable in production.
