@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import desc, and_, func, select
 
 from app.api.dependencies import get_current_user, require_premium_user
-from app.core.session import get_db
+from app.core.async_session import get_async_db as get_db
 from app.api.base_crud import CRUDHelper
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
