@@ -2,9 +2,9 @@
 ReceiptProcessingOrchestrator: Orchestrates receipt OCR, categorization, and transaction creation.
 """
 
-from categorization.receipt_categorization_service import ReceiptCategorizationService
-from ocr.ocr_receipt_service import OCRReceiptService
-from transactions.receipt_transaction_service import ReceiptTransactionService
+from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+from app.ocr.ocr_receipt_service import OCRReceiptService
+from app.transactions.receipt_transaction_service import ReceiptTransactionService
 
 
 class ReceiptProcessingOrchestrator:
