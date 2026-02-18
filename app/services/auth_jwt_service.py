@@ -164,7 +164,7 @@ async def async_verify_password(plain: str, hashed: str) -> bool:
 
 
 def decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM], audience=JWT_AUDIENCE)
 
 
 def _current_secret() -> str:
@@ -344,7 +344,7 @@ def get_token_info(token: str) -> Optional[Dict[str, Any]]:
 
     for secret in secrets:
         try:
-            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+            payload = jwt.decode(token, secret, algorithms=[ALGORITHM], audience=JWT_AUDIENCE)
             token_info = {
                 "jti": payload.get("jti"),
                 "user_id": payload.get("sub"),
@@ -526,8 +526,8 @@ async def verify_token(
     last_error = None
     for i, secret in enumerate(secrets):
         try:
-            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
-            
+            payload = jwt.decode(token, secret, algorithms=[ALGORITHM], audience=JWT_AUDIENCE)
+
             # Validate token type
             if payload.get("token_type") != token_type:
                 logger.warning(f"Token type mismatch: expected {token_type}, got {payload.get('token_type')}")
