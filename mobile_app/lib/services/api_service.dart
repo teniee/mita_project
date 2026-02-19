@@ -994,9 +994,9 @@ class ApiService {
         'savings': income * 0.2,
       },
       'today_budget': (income * 0.55) / 30, // 55% of income divided by 30 days
-      'today_spent': ((income * 0.55) / 30) * 0.6, // 60% spent
+      'today_spent': 0.0, // Real spending loaded from transactions
       'monthly_budget': income * 0.55,
-      'monthly_spent': (income * 0.55) * 0.6,
+      'monthly_spent': 0.0,
     };
   }
 

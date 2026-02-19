@@ -107,12 +107,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     try {
       setState(() => _isLoadingLocal = true);
 
-      final isPastDate = widget.date
-          .isBefore(DateTime.now().subtract(const Duration(days: 1)));
       final isFutureDate = widget.date.isAfter(DateTime.now());
 
-      // Load transactions for past dates using TransactionProvider
-      if (isPastDate) {
+      // Load transactions for past dates AND today using TransactionProvider
+      if (!isFutureDate) {
         await _loadTransactionsFromProvider();
       }
 
@@ -247,20 +245,37 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         });
       }
 
-      // ── For past/today: overlay real transaction data ──
-      // TransactionProvider was already loaded by _loadTransactionsFromProvider
+      // ── For past/today: use TransactionProvider as the sole source of
+      // spent amounts (loaded by _loadTransactionsFromProvider above).
+      // Reset spentByCategory first to avoid double-counting values that were
+      // already pre-merged into widget.dayData by BudgetProvider.
       if (isPastOrToday) {
         final transactionProvider = context.read<TransactionProvider>();
         final dayStart = DateTime(
             widget.date.year, widget.date.month, widget.date.day);
+        // Reset so TransactionProvider is the authoritative source
+        spentByCategory.updateAll((_, __) => 0.0);
+        bool anyTxForDay = false;
         for (final tx in transactionProvider.transactions) {
           final txDay = DateTime(
               tx.spentAt.year, tx.spentAt.month, tx.spentAt.day);
           if (txDay != dayStart) continue;
+          anyTxForDay = true;
           spentByCategory[tx.category] =
               (spentByCategory[tx.category] ?? 0.0) + tx.amount;
           // Add categories that exist in transactions but not in plan
           plannedByCategory.putIfAbsent(tx.category, () => 0.0);
+        }
+        // Fallback: if TransactionProvider had no matching transactions
+        // (e.g. network error during load), use DailyPlan spent values from
+        // catsMap (updated by apply_transaction_to_plan on the backend).
+        if (!anyTxForDay && catsMap != null) {
+          catsMap.forEach((cat, val) {
+            if (val is Map) {
+              spentByCategory[cat as String] =
+                  (val['spent'] as num?)?.toDouble() ?? 0.0;
+            }
+          });
         }
       }
 
