@@ -1,31 +1,69 @@
-# === Flutter ===
+# === Python ===
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# === Environment / Secrets ===
+.env
+.env.local
+.env.*.local
+secrets/
+*.pem
+*.key
+service-account*.json
+
+# === Logs & Runtime Data ===
+*.log
+*.jsonl
+logs/
+reports/
+migration_backups/
+
+# === Docker ===
+docker-compose.override.yml
+
+# === Flutter / Dart ===
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-build/
 *.iml
+mobile_app/build/
+mobile_app/.dart_tool/
 
-# === Firebase Secrets ===
+# === iOS / Android (generated) ===
+macos/Flutter/ephemeral/
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
-# === VS Code ===
+# === IDEs ===
 .vscode/
+.idea/
+*.swp
+*.swo
 
 # === macOS ===
-macos/Flutter/ephemeral/
+.DS_Store
 
-# === Python ===
-*.pyc
-__pycache__/
-.pytest_cache/
-.coverage
-coverage.xml
-htmlcov/
+# === Terraform ===
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
 
-# === Docker / Secrets ===
-secrets/
-.env
-*.log
-docker-compose.override.yml
+# === Node ===
+node_modules/
