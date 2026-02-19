@@ -132,8 +132,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _validatePassword() {
     final password = _passwordController.text;
-    final validation = PasswordValidationService.validatePassword(password);
-    final isValid = validation.isValid && password.isNotEmpty;
+    // Login only checks non-empty; strength validation is for registration
+    final isValid = password.isNotEmpty;
     if (_isPasswordValid != isValid) {
       setState(() {
         _isPasswordValid = isValid;
@@ -492,17 +492,17 @@ class _LoginScreenState extends State<LoginScreen>
 
     final l10n = AppLocalizations.of(context);
 
-    // Enhanced form validation using FormErrorHandler
+    // Basic form validation — only check non-empty for login
+    // (password strength validation is for registration, not login)
     FormErrorHandler.clearAllErrors();
 
     final emailError = FormErrorHandler.validateEmail(_emailController.text);
-    final passwordError =
-        FormErrorHandler.validatePassword(_passwordController.text);
+    final password = _passwordController.text;
 
-    if (emailError != null || passwordError != null) {
+    if (emailError != null || password.isEmpty) {
       List<String> errors = [];
       if (emailError != null) errors.add(emailError);
-      if (passwordError != null) errors.add(passwordError);
+      if (password.isEmpty) errors.add('Password is required');
 
       _accessibilityService.announceFormErrors(errors);
       return;
@@ -985,16 +985,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       if (value == null || value.isEmpty) {
                                         return l10n.pleaseEnterPassword;
                                       }
-
-                                      final validation =
-                                          PasswordValidationService
-                                              .validatePassword(value);
-                                      if (!validation.isValid &&
-                                          validation.issues.isNotEmpty) {
-                                        // Return first critical issue for login screen
-                                        return validation.issues.first;
-                                      }
-
+                                      // No strength validation on login —
+                                      // the backend validates credentials
                                       return null;
                                     },
                                     onFieldSubmitted: (_) {

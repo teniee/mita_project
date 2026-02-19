@@ -483,8 +483,15 @@ class ApiService {
 
       logInfo('Response data keys: ${data.keys.toList()}', tag: 'TOKEN_REFRESH');
 
-      final newAccess = data['access_token'] as String?;
-      final newRefresh = data['refresh_token'] as String?;
+      // Try direct access first, then unwrap from StandardizedResponse {data: {...}}
+      String? newAccess = data['access_token'] as String?;
+      String? newRefresh = data['refresh_token'] as String?;
+
+      if (newAccess == null && data['data'] != null) {
+        final nested = data['data'] as Map<String, dynamic>?;
+        newAccess = nested?['access_token'] as String?;
+        newRefresh = nested?['refresh_token'] as String?;
+      }
 
       if (newAccess == null || newRefresh == null) {
         logError(
