@@ -1,5 +1,5 @@
 #!/bin/bash
-# MITA Backend Startup Script for Render Deployment
+# MITA Backend Startup Script for Railway Deployment
 # This script validates environment variables and starts the application
 
 set -e  # Exit on any error
@@ -61,8 +61,8 @@ if [[ "${ENVIRONMENT}" == "production" ]]; then
         echo "❌ DEPLOYMENT FAILED: Missing critical environment variables"
         echo ""
         echo "📝 To fix this issue:"
-        echo "1. Go to your Render Dashboard"
-        echo "2. Navigate to your service → Environment tab"
+        echo "1. Go to your Railway Dashboard"
+        echo "2. Navigate to your service → Variables tab"
         echo "3. Add the missing environment variables listed above"
         echo "4. Redeploy your service"
         echo ""
