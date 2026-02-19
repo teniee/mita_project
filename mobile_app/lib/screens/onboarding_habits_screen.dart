@@ -48,7 +48,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
     });
   }
 
-  void _submitHabits() async {
+  Future<void> _submitHabits() async {
     if (selectedHabits.isEmpty) return;
 
     // Validate session before proceeding to final step

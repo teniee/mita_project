@@ -83,8 +83,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // Extract tokens from standardized response structure
       final responseData = response.data['data'] ?? response.data;
-      final accessToken = responseData['access_token'] as String;
+      final accessToken = responseData['access_token'] as String?;
       final refreshToken = responseData['refresh_token'] as String?;
+
+      if (accessToken == null) {
+        throw Exception('Registration response missing access token');
+      }
 
       logInfo(
           'Tokens received - access: ${accessToken.substring(0, 20)}..., refresh: ${refreshToken?.substring(0, 20) ?? 'null'}',

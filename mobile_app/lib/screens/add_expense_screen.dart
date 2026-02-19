@@ -284,39 +284,40 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
     setState(() {
       _action = category;
-      if (suggestion['confidence'] != null) {
-        final confidencePercent = (confidence * 100).toInt();
-        final message =
-            'AI suggestion applied with $confidencePercent% confidence';
-
-        // Announce to screen readers
-        _accessibilityService.announceToScreenReader(
-          'Category suggestion applied: $category with $confidencePercent percent confidence',
-          financialContext: 'AI Assistant',
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Semantics(
-              liveRegion: true,
-              label: 'AI suggestion: $message',
-              child: Row(
-                children: [
-                  const Icon(Icons.psychology, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(message),
-                  ),
-                ],
-              ),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
     });
+
+    if (suggestion['confidence'] != null) {
+      final confidencePercent = (confidence * 100).toInt();
+      final message =
+          'AI suggestion applied with $confidencePercent% confidence';
+
+      // Announce to screen readers
+      _accessibilityService.announceToScreenReader(
+        'Category suggestion applied: $category with $confidencePercent percent confidence',
+        financialContext: 'AI Assistant',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Semantics(
+            liveRegion: true,
+            label: 'AI suggestion: $message',
+            child: Row(
+              children: [
+                const Icon(Icons.psychology, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(message),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   /// Check affordability before submitting transaction
@@ -754,7 +755,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                           spacing: 8,
                           runSpacing: 8,
                           children: _aiSuggestions.map((suggestion) {
-                            final category = suggestion['category'] as String;
+                            final category =
+                                suggestion['category'] as String? ?? '';
                             final confidence =
                                 suggestion['confidence'] as double? ?? 0.0;
 

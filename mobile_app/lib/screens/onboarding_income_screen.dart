@@ -44,7 +44,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
         parent: _animationController, curve: Curves.easeOutCubic));
   }
 
-  void _onIncomeChanged(String value) async {
+  Future<void> _onIncomeChanged(String value) async {
     if (value.isNotEmpty) {
       final income = double.tryParse(value.replaceAll(',', ''));
       if (income != null && income > 0) {
@@ -58,6 +58,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
           newTier = await _incomeService.classifyIncomeByLocation(income);
         }
 
+        if (!mounted) return;
         if (newTier != _currentTier) {
           setState(() {
             _currentTier = newTier;
@@ -75,7 +76,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
     }
   }
 
-  void _submitIncome() async {
+  Future<void> _submitIncome() async {
     if (_formKey.currentState?.validate() ?? false) {
       double income = double.parse(_incomeController.text.replaceAll(',', ''));
 
@@ -89,11 +90,14 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
         tier = await _incomeService.classifyIncomeByLocation(income);
       }
 
+      if (!mounted) return;
+
       // Store income and tier information
       OnboardingState.instance.income = income;
       await OnboardingState.instance.save();
       OnboardingState.instance.incomeTier = tier;
 
+      if (!mounted) return;
       // Show personalized message before continuing
       await _showIncomeConfirmationDialog(income, tier);
     }

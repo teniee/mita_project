@@ -12,7 +12,6 @@ import 'timeout_manager_service.dart';
 import 'income_service.dart';
 import 'message_service.dart';
 import 'logging_service.dart';
-import 'calendar_fallback_service.dart';
 import 'advanced_offline_service.dart';
 import 'secure_device_service.dart';
 import 'secure_push_token_manager.dart';
@@ -460,12 +459,13 @@ class ApiService {
           tag: 'TOKEN_REFRESH');
       logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
 
-      final requestUrl = '/auth/refresh-token?refresh_token=$refresh';
-      logInfo('Making refresh request to: ${requestUrl.substring(0, min(50, requestUrl.length))}...',
+      const requestUrl = '/auth/refresh-token';
+      logInfo('Making refresh request to: $requestUrl',
           tag: 'TOKEN_REFRESH');
 
       final response = await _dio.post(
         requestUrl,
+        data: {'refresh_token': refresh},
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 
@@ -483,8 +483,15 @@ class ApiService {
 
       logInfo('Response data keys: ${data.keys.toList()}', tag: 'TOKEN_REFRESH');
 
-      final newAccess = data['access_token'] as String?;
-      final newRefresh = data['refresh_token'] as String?;
+      // Try direct access first, then unwrap from StandardizedResponse {data: {...}}
+      String? newAccess = data['access_token'] as String?;
+      String? newRefresh = data['refresh_token'] as String?;
+
+      if (newAccess == null && data['data'] != null) {
+        final nested = data['data'] as Map<String, dynamic>?;
+        newAccess = nested?['access_token'] as String?;
+        newRefresh = nested?['refresh_token'] as String?;
+      }
 
       if (newAccess == null || newRefresh == null) {
         logError(
@@ -960,9 +967,8 @@ class ApiService {
 
           dashboardData['today_budget'] = totalDaily;
           dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
-          dashboardData['today_spent'] = totalDaily * 0.7; // Simulated spending
-          dashboardData['monthly_spent'] =
-              totalDaily * DateTime.now().day * 0.7;
+          dashboardData['today_spent'] = 0.0; // Real spending loaded from transactions
+          dashboardData['monthly_spent'] = 0.0;
         }
 
         return dashboardData;
@@ -995,9 +1001,9 @@ class ApiService {
         'savings': income * 0.2,
       },
       'today_budget': (income * 0.55) / 30, // 55% of income divided by 30 days
-      'today_spent': ((income * 0.55) / 30) * 0.6, // 60% spent
+      'today_spent': 0.0, // Real spending loaded from transactions
       'monthly_budget': income * 0.55,
-      'monthly_spent': (income * 0.55) * 0.6,
+      'monthly_spent': 0.0,
     };
   }
 
@@ -1335,14 +1341,9 @@ class ApiService {
         final isToday = day == now.day;
         final isPastDay = currentDate.isBefore(now);
 
-        // Calculate realistic spending for past days
-        int spent = 0;
-        if (isPastDay) {
-          spent = _calculateRealisticSpentAmount(
-              totalDaily.round(), day, currentDate.weekday);
-        } else if (isToday) {
-          spent = _calculateTodaySpending(totalDaily.round());
-        }
+        // Shell calendar is a budget preview — real spent amounts come from
+        // transactions loaded separately in BudgetProvider. Leave spent = 0.
+        const int spent = 0;
 
         // Determine status based on spending
         String status = _calculateDayStatus(spent, totalDaily.round());
@@ -1377,41 +1378,8 @@ class ApiService {
     return calendarDays;
   }
 
-  /// Calculate realistic spending amount for past days
-  int _calculateRealisticSpentAmount(int dailyLimit, int day, int dayOfWeek) {
-    // Use day as seed for consistent randomness
-    final random = Random(day);
-
-    // Base spending ratio (most people spend 70-90% of budget)
-    double spendingRatio = 0.7 + (random.nextDouble() * 0.2);
-
-    // Weekend effect
-    if (dayOfWeek >= 6) {
-      spendingRatio += 0.1; // 10% more on weekends
-    }
-
-    // Occasional overspending (5% chance)
-    if (random.nextDouble() < 0.05) {
-      spendingRatio = 1.1 + (random.nextDouble() * 0.3); // 110-140%
-    }
-
-    return (dailyLimit * spendingRatio).round();
-  }
-
-  /// Calculate today's spending based on time of day
-  int _calculateTodaySpending(int dailyLimit) {
-    final now = DateTime.now();
-    final hourOfDay = now.hour;
-
-    // Progress through the day (assuming most spending by 9 PM)
-    double dayProgress = (hourOfDay / 21.0).clamp(0.0, 1.0);
-
-    // Random factor for realism
-    final random = Random();
-    double spendingRatio = dayProgress * (0.5 + (random.nextDouble() * 0.4));
-
-    return (dailyLimit * spendingRatio).round();
-  }
+  // _calculateRealisticSpentAmount and _calculateTodaySpending removed:
+  // spending data must come from real transactions, not random simulation.
 
   /// Calculate day status based on spending vs limit
   String _calculateDayStatus(int spent, int limit) {
@@ -1438,47 +1406,6 @@ class ApiService {
     });
 
     return breakdown;
-  }
-
-  /// Generate basic fallback calendar when all else fails
-  List<dynamic> _generateBasicFallbackCalendar(double income) {
-    final today = DateTime.now();
-    final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
-    final List<dynamic> calendarDays = [];
-
-    // Calculate basic daily budget
-    final monthlyFlexible = income * 0.30; // 30% for flexible spending
-    final dailyBudget = (monthlyFlexible / daysInMonth).round();
-
-    for (int day = 1; day <= daysInMonth; day++) {
-      final currentDate = DateTime(today.year, today.month, day);
-      final isToday = day == today.day;
-      final isPastDay = currentDate.isBefore(today);
-
-      int spent = 0;
-      if (isPastDay) {
-        spent = (dailyBudget * 0.75).round(); // Assume 75% spending
-      } else if (isToday) {
-        spent = (dailyBudget * 0.5).round(); // Assume 50% spent so far today
-      }
-
-      calendarDays.add({
-        'day': day,
-        'limit': dailyBudget,
-        'spent': spent,
-        'status': 'good',
-        'categories': {
-          'food': (dailyBudget * 0.4).round(),
-          'transportation': (dailyBudget * 0.3).round(),
-          'entertainment': (dailyBudget * 0.2).round(),
-          'shopping': (dailyBudget * 0.1).round(),
-        },
-        'is_today': isToday,
-        'is_weekend': currentDate.weekday >= 6,
-      });
-    }
-
-    return calendarDays;
   }
 
   // ---------------------------------------------------------------------------
@@ -2012,6 +1939,34 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] as Map);
+  }
+
+  /// Fetch all transactions for a given month, used to compute real spent
+  /// amounts in the calendar. Returns raw list from backend (up to 500 items).
+  Future<List<Map<String, dynamic>>> getMonthlyTransactionsRaw({
+    required int year,
+    required int month,
+  }) async {
+    final token = await getToken();
+    final startDate = DateTime(year, month, 1);
+    final endDate = DateTime(year, month + 1, 0, 23, 59, 59);
+
+    final response = await _dio.get(
+      '/transactions/',
+      queryParameters: {
+        'start_date': startDate.toIso8601String(),
+        'end_date': endDate.toIso8601String(),
+        'limit': 500,
+      },
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    final raw = response.data is Map
+        ? (response.data['data'] ?? response.data)
+        : response.data;
+
+    if (raw == null) return [];
+    return List<Map<String, dynamic>>.from(raw as List);
   }
 
   Future<List<dynamic>> getExpenses() async {

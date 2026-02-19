@@ -2,7 +2,7 @@ from typing import List
 from uuid import UUID
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
@@ -168,6 +168,55 @@ async def complete_habit(
         "status": "completed",
         "habit_id": str(habit_id),
         "completed_at": completion_date.isoformat()
+    })
+
+
+@router.delete("/{habit_id}/complete")
+async def uncomplete_habit(
+    habit_id: UUID,
+    body: dict = Body(default={}),
+    user=Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """Remove the completion record for a habit on a given date (uncomplete)."""
+    result = await db.execute(
+        select(Habit).where(
+            and_(Habit.id == habit_id, Habit.user_id == user.id)
+        )
+    )
+    habit = result.scalar_one_or_none()
+
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    date_str = body.get("date")
+    if date_str:
+        completion_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+    else:
+        completion_date = datetime.utcnow()
+
+    result = await db.execute(
+        select(HabitCompletion).filter(
+            HabitCompletion.habit_id == habit_id,
+            HabitCompletion.user_id == user.id,
+            HabitCompletion.completed_at >= completion_date.replace(hour=0, minute=0, second=0),
+            HabitCompletion.completed_at < completion_date.replace(hour=23, minute=59, second=59),
+        )
+    )
+    existing = result.scalars().first()
+
+    if not existing:
+        return success_response({
+            "status": "not_completed",
+            "habit_id": str(habit_id),
+        })
+
+    await db.delete(existing)
+    await db.commit()
+
+    return success_response({
+        "status": "uncompleted",
+        "habit_id": str(habit_id),
     })
 
 

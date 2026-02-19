@@ -195,6 +195,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           isPremiumUser: _isPremiumUser,
         );
 
+        if (!mounted) return;
         setState(() {
           _ocrResult = result;
         });
@@ -210,10 +211,11 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
           isPremiumUser: _isPremiumUser,
           onProgress: (processed, total) {
             // Update progress in real-time
-            setState(() {});
+            if (mounted) setState(() {});
           },
         );
 
+        if (!mounted) return;
         setState(() {
           _batchResult = batchResult;
         });
@@ -221,6 +223,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
         _navigateToStep(3);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'OCR processing failed: $e';
       });
@@ -231,6 +234,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
     try {
       final suggestions =
           await _ocrService.getMerchantSuggestions(merchantName);
+      if (!mounted) return;
       setState(() {
         _merchantSuggestions = suggestions;
       });
@@ -251,6 +255,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
       final validatedResult =
           await _ocrService.validateAndCorrectOCR(_ocrResult!);
 
+      if (!mounted) return;
       setState(() {
         _ocrResult = validatedResult;
         _isValidating = false;
@@ -275,6 +280,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isValidating = false;
         _error = 'Validation failed: $e';
@@ -293,30 +299,30 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
     try {
       final enhancedResult = await _ocrService.enhanceOCRData(_ocrResult!);
 
+      if (!mounted) return;
       setState(() {
         _ocrResult = enhancedResult;
         _isEnhancing = false;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome,
-                  color: Theme.of(context).colorScheme.onInverseSurface,
-                ),
-                const SizedBox(width: 8.0),
-                const Text('Receipt data enhanced with AI'),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.inverseSurface,
-            behavior: SnackBarBehavior.floating,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                color: Theme.of(context).colorScheme.onInverseSurface,
+              ),
+              const SizedBox(width: 8.0),
+              const Text('Receipt data enhanced with AI'),
+            ],
           ),
-        );
-      }
+          backgroundColor: Theme.of(context).colorScheme.inverseSurface,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isEnhancing = false;
         _error = 'Enhancement failed: $e';

@@ -11,8 +11,10 @@ Handles:
 
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +39,19 @@ logger = logging.getLogger(__name__)
 
 # Sub-router WITHOUT /auth prefix (will be added by main router)
 router = APIRouter(tags=["Authentication - Account Management"])
+
+
+# --- Request schemas (accept JSON body from mobile app) ---
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+    client_id: Optional[str] = None
+    redirect_url: Optional[str] = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 # Alias for backward compatibility
 get_db = get_async_db
@@ -155,12 +170,13 @@ async def delete_account(
 @handle_auth_errors
 async def forgot_password(
     request: Request,
-    email: str,
+    body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Initiate password reset process by sending reset token to user's email.
     """
+    email = body.email
     try:
         validate_email(email)
 
@@ -214,76 +230,64 @@ async def forgot_password(
         )
 
 
-@router.post("/verify-reset-token", summary="Verify password reset token")
+async def _do_verify_reset_token(token: str, db: AsyncSession):
+    """Shared logic for verifying a password reset token."""
+    from app.services.auth_jwt_service import verify_password_reset_token as _verify
+
+    user_id = _verify(token)
+    if not user_id:
+        return success_response({"valid": False, "message": "Invalid or expired token"})
+
+    result = await db.execute(select(User).where(User.id == int(user_id)))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        return success_response({"valid": False, "message": "Invalid or expired token"})
+
+    if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
+        return success_response({"valid": False, "message": "Invalid or expired token"})
+
+    if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
+        if user.password_reset_expires < datetime.utcnow():
+            return success_response({"valid": False, "message": "Reset token has expired"})
+
+    return success_response({"valid": True, "message": "Reset token is valid", "user_id": str(user_id)})
+
+
+@router.get("/verify-reset-token", summary="Verify password reset token (GET)")
+@handle_auth_errors
+async def verify_reset_token_get(
+    request: Request,
+    token: str = Query(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Verify if password reset token is valid (GET, used by mobile app)."""
+    return await _do_verify_reset_token(token, db)
+
+
+@router.post("/verify-reset-token", summary="Verify password reset token (POST)")
 @handle_auth_errors
 async def verify_reset_token(
     request: Request,
     token: str,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Verify if password reset token is valid and not expired.
-    """
-    try:
-        from app.services.auth_jwt_service import verify_password_reset_token
-
-        # Verify token and get user_id
-        user_id = verify_password_reset_token(token)
-
-        if not user_id:
-            raise ValidationError(
-                "Invalid or expired reset token",
-                ErrorCode.AUTHENTICATION_TOKEN_INVALID
-            )
-
-        # Check if token exists in database
-        result = await db.execute(select(User).where(User.id == int(user_id)))
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise ResourceNotFoundError("User not found")
-
-        # Check if token matches and not expired
-        if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
-            raise ValidationError(
-                "Invalid reset token",
-                ErrorCode.AUTHENTICATION_TOKEN_INVALID
-            )
-
-        if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
-            if user.password_reset_expires < datetime.utcnow():
-                raise ValidationError(
-                    "Reset token has expired",
-                    ErrorCode.AUTHENTICATION_TOKEN_EXPIRED
-                )
-
-        return success_response({
-            "valid": True,
-            "message": "Reset token is valid",
-            "user_id": user_id
-        })
-
-    except (ValidationError, ResourceNotFoundError):
-        raise
-    except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        return success_response({
-            "valid": False,
-            "message": "Invalid or expired token"
-        })
+    """Verify if password reset token is valid and not expired."""
+    return await _do_verify_reset_token(token, db)
 
 
 @router.post("/reset-password", summary="Reset password with token")
 @handle_auth_errors
 async def reset_password(
     request: Request,
-    token: str,
-    new_password: str,
+    body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Reset user password using valid reset token.
     """
+    token = body.token
+    new_password = body.new_password
     try:
         # Validate new password
         validate_password(new_password)

@@ -11,7 +11,7 @@ Handles:
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth.schemas import TokenOut
@@ -43,7 +43,7 @@ router = APIRouter(tags=["Authentication - Token Management"])
 @handle_auth_errors
 async def refresh_token_standardized(
     request: Request,
-    refresh_token: str,
+    refresh_token: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
