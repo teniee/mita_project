@@ -350,73 +350,143 @@ class BudgetProvider extends ChangeNotifier {
     final targetYear = year ?? now.year;
     final targetMonth = month ?? now.month;
 
-    try {
-      // First try to get data from production budget engine
-      logInfo('Loading calendar data from production budget engine',
-          tag: 'BUDGET_PROVIDER');
-      final productionData = await _budgetService.getCalendarData();
-      _calendarData = productionData;
-      logInfo(
-          'Calendar data loaded from production budget engine: ${_calendarData.length} items',
-          tag: 'BUDGET_PROVIDER');
-      notifyListeners();
-    } catch (e) {
-      logError('Error loading production calendar data: $e',
-          tag: 'BUDGET_PROVIDER');
+    _isLoading = true;
+    notifyListeners();
 
+    try {
+      // ── Step 1: Planned budgets from DailyPlan (created during onboarding) ──
+      logInfo('Loading saved calendar for $targetYear-$targetMonth',
+          tag: 'BUDGET_PROVIDER');
+      final savedCalendar = await _apiService.getSavedCalendar(
+        year: targetYear,
+        month: targetMonth,
+      );
+
+      // ── Step 2: Real transactions for the month ──
+      final spentByDayCategory = <int, Map<String, double>>{};
+      final spentByDay = <int, double>{};
       try {
-        // Try behavioral calendar endpoint
-        logInfo('Attempting to load behavioral calendar',
-            tag: 'BUDGET_PROVIDER');
-        final behavioralCalendar = await _apiService.getBehaviorCalendar(
+        final rawTx = await _apiService.getMonthlyTransactionsRaw(
           year: targetYear,
           month: targetMonth,
         );
-
-        // Convert behavioral calendar format to standard calendar format
-        _calendarData = _convertBehavioralCalendarData(behavioralCalendar);
-        logInfo('Loaded behavioral calendar: ${_calendarData.length} items',
-            tag: 'BUDGET_PROVIDER');
-        notifyListeners();
-      } catch (behavioralError) {
-        logError('Error loading behavioral calendar: $behavioralError',
-            tag: 'BUDGET_PROVIDER');
-
-        try {
-          // Fallback to standard API
-          final data = await _apiService.getCalendar();
-          _calendarData = data;
-          logInfo('Loaded standard calendar: ${_calendarData.length} items',
-              tag: 'BUDGET_PROVIDER');
-          notifyListeners();
-        } catch (apiError) {
-          logError('Error loading API calendar: $apiError',
-              tag: 'BUDGET_PROVIDER');
-          _calendarData = [];
-          _errorMessage = 'Failed to load calendar data';
-          notifyListeners();
+        for (final tx in rawTx) {
+          final spentAt =
+              DateTime.tryParse(tx['spent_at'] as String? ?? '');
+          if (spentAt == null) continue;
+          final day = spentAt.day;
+          final cat = (tx['category'] as String?) ?? 'other';
+          final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+          spentByDayCategory[day] ??= {};
+          spentByDayCategory[day]![cat] =
+              (spentByDayCategory[day]![cat] ?? 0.0) + amount;
+          spentByDay[day] = (spentByDay[day] ?? 0.0) + amount;
         }
+        logInfo('Loaded ${rawTx.length} transactions for calendar merge',
+            tag: 'BUDGET_PROVIDER');
+      } catch (txError) {
+        logWarning('Could not load transactions for calendar: $txError',
+            tag: 'BUDGET_PROVIDER');
       }
-    }
-  }
 
-  /// Convert behavioral calendar data format to standard calendar format
-  List<Map<String, dynamic>> _convertBehavioralCalendarData(
-      Map<String, dynamic> behavioralData) {
-    if (behavioralData['calendar_days'] != null) {
-      return List<Map<String, dynamic>>.from(
-          behavioralData['calendar_days'] as Iterable);
-    }
+      // ── Step 3: Merge planned budget + real spending ──
+      if (savedCalendar != null && savedCalendar.isNotEmpty) {
+        final today =
+            DateTime(now.year, now.month, now.day);
 
-    // If the data is already in the correct format
-    if (behavioralData['days'] != null) {
-      return List<Map<String, dynamic>>.from(
-          behavioralData['days'] as Iterable);
-    }
+        _calendarData =
+            savedCalendar.map<Map<String, dynamic>>((dynamic raw) {
+          final d = Map<String, dynamic>.from(raw as Map);
+          final day = d['day'] as int? ?? 0;
+          final dateStr = d['date'] as String?;
+          final dayDate = dateStr != null
+              ? DateTime.tryParse(dateStr)
+              : null;
+          final dayOnly = dayDate != null
+              ? DateTime(dayDate.year, dayDate.month, dayDate.day)
+              : null;
 
-    // Return empty list if format is unknown
-    logWarning('Unknown behavioral calendar format', tag: 'BUDGET_PROVIDER');
-    return [];
+          final isToday = dayOnly == today;
+          final isPast =
+              dayOnly != null && dayOnly.isBefore(today);
+
+          final limit = (d['limit'] as num?)?.toDouble() ?? 0.0;
+          final realSpent = spentByDay[day] ?? 0.0;
+
+          // Build per-category breakdown: planned (from DailyPlan) + real
+          final plannedCats =
+              (d['planned_budget'] as Map?) ?? {};
+          final mergedCats = <String, dynamic>{};
+
+          for (final entry in plannedCats.entries) {
+            final cat = entry.key as String;
+            final val = entry.value;
+            final planned = val is Map
+                ? (val['planned'] as num?)?.toDouble() ?? 0.0
+                : (val as num?)?.toDouble() ?? 0.0;
+            final spent = (isPast || isToday)
+                ? (spentByDayCategory[day]?[cat] ?? 0.0)
+                : 0.0;
+            mergedCats[cat] = {'planned': planned, 'spent': spent};
+          }
+
+          // Include transactions whose category wasn't in planned budget
+          if (isPast || isToday) {
+            (spentByDayCategory[day] ?? {}).forEach((cat, amt) {
+              if (!mergedCats.containsKey(cat)) {
+                mergedCats[cat] = {'planned': 0.0, 'spent': amt};
+              }
+            });
+          }
+
+          // Day status
+          String status;
+          if (!isPast && !isToday) {
+            status = 'planned';
+          } else if (limit > 0 && realSpent > limit) {
+            status = 'over';
+          } else if (limit > 0 && realSpent > limit * 0.85) {
+            status = 'warning';
+          } else {
+            status = 'good';
+          }
+
+          return {
+            'day': day,
+            'date': dateStr,
+            'limit': limit,
+            'status': status,
+            'spent': realSpent,
+            'categories': mergedCats,
+            'is_today': isToday,
+            'is_weekend':
+                dayDate != null && dayDate.weekday >= 6,
+          };
+        }).toList();
+
+        logInfo(
+            'Calendar ready: ${_calendarData.length} days with real spending data',
+            tag: 'BUDGET_PROVIDER');
+      } else {
+        // No saved calendar yet (new user / new month before onboarding saves plan)
+        // Fall back to shell preview — spent stays 0, it's a planning view
+        logWarning(
+            'No saved calendar for $targetYear-$targetMonth — using shell preview',
+            tag: 'BUDGET_PROVIDER');
+        _calendarData = await _apiService.getCalendar();
+      }
+
+      _state = BudgetState.loaded;
+      _errorMessage = null;
+    } catch (e) {
+      logError('Calendar load failed: $e', tag: 'BUDGET_PROVIDER');
+      _errorMessage = 'Failed to load calendar data';
+      _state = BudgetState.error;
+      _calendarData = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Load AI budget optimization

@@ -205,68 +205,102 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Future<void> _loadCategoryBreakdown() async {
     try {
-      // First check widget data
-      if (widget.dayData != null && widget.dayData!['categories'] != null) {
-        final categories =
-            widget.dayData!['categories'] as Map<String, dynamic>;
-        final breakdown = <Map<String, dynamic>>[];
+      final isPastOrToday = !widget.date
+          .isAfter(DateTime(DateTime.now().year, DateTime.now().month,
+              DateTime.now().day));
 
-        categories.forEach((category, budgetedAmount) {
-          final spentAmount =
-              _calculateCategorySpentAmount(category, budgetedAmount);
-          breakdown.add({
-            'name': _formatCategoryName(category),
-            'budgeted': (budgetedAmount as num).toDouble(),
-            'spent': spentAmount,
-            'color': _getCategoryColor(category),
-            'icon': _getCategoryIcon(category),
-          });
-        });
+      // ── Collect planned amounts from merged calendar data ──
+      // BudgetProvider already merged planned+real when loadCalendarData ran,
+      // so each category entry is { 'planned': double, 'spent': double }.
+      final Map<String, double> plannedByCategory = {};
+      final Map<String, double> spentByCategory = {};
 
-        setState(() {
-          _categoryBreakdown = breakdown;
-        });
-        return;
-      }
-
-      // Try to get data from BudgetProvider's calendar data
-      final budgetProvider = context.read<BudgetProvider>();
-      final calendarData = budgetProvider.calendarData;
-
-      if (calendarData.isNotEmpty) {
-        // Find the day data for the current date
-        final dayData = calendarData.firstWhere(
-          (day) => day['day'] == widget.dayNumber,
+      Map<String, dynamic>? catsMap;
+      if (widget.dayData != null &&
+          widget.dayData!['categories'] != null) {
+        catsMap = Map<String, dynamic>.from(
+            widget.dayData!['categories'] as Map);
+      } else {
+        final budgetProvider = context.read<BudgetProvider>();
+        final dayEntry = budgetProvider.calendarData.firstWhere(
+          (d) => d['day'] == widget.dayNumber,
           orElse: () => <String, dynamic>{},
         );
-
-        if (dayData.isNotEmpty && dayData['categories'] != null) {
-          final categories = dayData['categories'] as Map<String, dynamic>;
-          final breakdown = <Map<String, dynamic>>[];
-
-          categories.forEach((category, budgetedAmount) {
-            final spentAmount =
-                _calculateCategorySpentAmount(category, budgetedAmount);
-            breakdown.add({
-              'name': _formatCategoryName(category),
-              'budgeted': (budgetedAmount as num).toDouble(),
-              'spent': spentAmount,
-              'color': _getCategoryColor(category),
-              'icon': _getCategoryIcon(category),
-            });
-          });
-
-          setState(() {
-            _categoryBreakdown = breakdown;
-          });
-          return;
+        if (dayEntry.isNotEmpty && dayEntry['categories'] != null) {
+          catsMap = Map<String, dynamic>.from(
+              dayEntry['categories'] as Map);
         }
       }
 
-      // Fallback to default breakdown
-      setState(() {
-        _categoryBreakdown = _generateDefaultCategoryBreakdown();
+      if (catsMap != null) {
+        catsMap.forEach((cat, val) {
+          if (val is Map) {
+            plannedByCategory[cat] =
+                (val['planned'] as num?)?.toDouble() ?? 0.0;
+            spentByCategory[cat] =
+                (val['spent'] as num?)?.toDouble() ?? 0.0;
+          } else {
+            // Legacy plain-number format from shell calendar
+            plannedByCategory[cat] =
+                (val as num?)?.toDouble() ?? 0.0;
+          }
+        });
+      }
+
+      // ── For past/today: overlay real transaction data ──
+      // TransactionProvider was already loaded by _loadTransactionsFromProvider
+      if (isPastOrToday) {
+        final transactionProvider = context.read<TransactionProvider>();
+        final dayStart = DateTime(
+            widget.date.year, widget.date.month, widget.date.day);
+        for (final tx in transactionProvider.transactions) {
+          final txDay = DateTime(
+              tx.spentAt.year, tx.spentAt.month, tx.spentAt.day);
+          if (txDay != dayStart) continue;
+          spentByCategory[tx.category] =
+              (spentByCategory[tx.category] ?? 0.0) + tx.amount;
+          // Add categories that exist in transactions but not in plan
+          plannedByCategory.putIfAbsent(tx.category, () => 0.0);
+        }
+      }
+
+      // ── Build sorted breakdown list ──
+      final allCategories = {
+        ...plannedByCategory.keys,
+        ...spentByCategory.keys,
+      };
+
+      final breakdown = allCategories.map((cat) {
+        final planned = plannedByCategory[cat] ?? 0.0;
+        final spent = spentByCategory[cat] ?? 0.0;
+        return {
+          'name': _formatCategoryName(cat),
+          'budgeted': planned,
+          'spent': spent,
+          'color': _getCategoryColor(cat),
+          'icon': _getCategoryIcon(cat),
+        };
+      }).toList();
+
+      // Sort: over-budget first, then by spent descending
+      breakdown.sort((a, b) {
+        final aOver =
+            (a['spent'] as double) > (a['budgeted'] as double);
+        final bOver =
+            (b['spent'] as double) > (b['budgeted'] as double);
+        if (aOver && !bOver) return -1;
+        if (!aOver && bOver) return 1;
+        return (b['spent'] as double)
+            .compareTo(a['spent'] as double);
       });
+
+      if (mounted) {
+        setState(() {
+          _categoryBreakdown = breakdown.isEmpty
+              ? _generateDefaultCategoryBreakdown()
+              : breakdown;
+        });
+      }
     } catch (e) {
       logWarning('Failed to load category breakdown: $e',
           tag: 'CALENDAR_DAY_DETAILS');
@@ -276,33 +310,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     }
   }
 
-  double _calculateCategorySpentAmount(
-      String category, dynamic budgetedAmount) {
-    final daySpent = widget.spent.toDouble();
-    final dayLimit = widget.limit.toDouble();
-    final spendingRatio = dayLimit > 0 ? (daySpent / dayLimit) : 0.0;
-
-    // Apply some variation based on category
-    final categoryMultiplier = _getCategorySpendingMultiplier(category);
-    return (budgetedAmount as num).toDouble() *
-        spendingRatio *
-        categoryMultiplier;
-  }
-
-  double _getCategorySpendingMultiplier(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return 0.8; // People tend to spend more on food
-      case 'transportation':
-        return 0.6; // Transportation is more fixed
-      case 'entertainment':
-        return 1.2; // Entertainment varies more
-      case 'shopping':
-        return 0.4; // Shopping is more discretionary
-      default:
-        return 1.0;
-    }
-  }
+  // _calculateCategorySpentAmount removed: spending per category now comes from
+  // real transactions loaded in _loadCategoryBreakdown via TransactionProvider.
 
   @override
   void dispose() {
