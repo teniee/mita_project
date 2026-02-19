@@ -191,7 +191,7 @@ async def get_budget_mode(
     result = await db.execute(select(UserPreference).where(UserPreference.user_id == user.id))
     prefs = result.scalar_one_or_none()
     if prefs and prefs.budget_mode:
-        return success_response({"data": {"mode": prefs.budget_mode}})
+        return success_response({"mode": prefs.budget_mode})
 
     # Fallback: derive mode from user settings
     result = await db.execute(select(UserModel).where(UserModel.id == user.id))
@@ -206,7 +206,7 @@ async def get_budget_mode(
             user_settings["has_family"] = False
 
     mode = resolve_budget_mode(user_settings)
-    return success_response({"data": {"mode": mode}})
+    return success_response({"mode": mode})
 
 
 @router.patch("/mode")

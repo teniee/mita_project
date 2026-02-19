@@ -454,9 +454,9 @@ class BudgetProvider extends ChangeNotifier {
           return {
             'day': day,
             'date': dateStr,
-            'limit': limit,
+            'limit': limit.round(), // int expected by calendar_screen.dart
             'status': status,
-            'spent': realSpent,
+            'spent': realSpent.round(), // int expected by calendar_screen.dart
             'categories': mergedCats,
             'is_today': isToday,
             'is_weekend':
