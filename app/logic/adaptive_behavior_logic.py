@@ -1,7 +1,7 @@
-from adaptive_behavior_agent import AdaptiveBehaviorAgent
-from category_priority import get_priority
-from cohort_drift_tracker import CohortDriftTracker
-from expense_journal import ExpenseJournal
+from app.logic.adaptive_behavior_agent import AdaptiveBehaviorAgent
+from app.logic.category_priority import get_priority
+from app.logic.cohort_drift_tracker import CohortDriftTracker
+from app.services.core.engine.expense_journal import ExpenseJournal
 
 
 class AdaptiveBehaviorLogic:

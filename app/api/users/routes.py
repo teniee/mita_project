@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -107,15 +109,16 @@ async def update_profile(
 
 @router.get("/{user_id}/premium-status")
 async def get_user_premium_status(
-    user_id: int,
+    user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get premium subscription status for user"""
-    # Verify user can access this data (self or admin)
     if current_user.id != user_id:
-        # Check if admin
-        pass  # Add admin check if needed
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: you can only view your own subscription status",
+        )
 
     # Check for premium subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
@@ -148,14 +151,16 @@ async def get_user_premium_status(
 
 @router.get("/{user_id}/premium-features")
 async def get_user_premium_features(
-    user_id: int,
+    user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get available premium features for user"""
-    # Verify access
     if current_user.id != user_id:
-        pass  # Add admin check
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: you can only view your own premium features",
+        )
 
     # Check subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
@@ -213,14 +218,16 @@ async def get_user_premium_features(
 
 @router.get("/{user_id}/subscription-history")
 async def get_subscription_history(
-    user_id: int,
+    user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get subscription payment history"""
-    # Verify access
     if current_user.id != user_id:
-        pass  # Add admin check
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: you can only view your own subscription history",
+        )
 
     # Query subscription history - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription

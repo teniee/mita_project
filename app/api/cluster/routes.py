@@ -13,7 +13,7 @@ router = APIRouter(prefix="/cluster", tags=["cluster"])
 
 
 @router.post("/fit", response_model=ClusterResult)
-async def fit_model(request: FitRequest):
+async def fit_model(request: FitRequest, user=Depends(get_current_user)):  # noqa: B008
     result = fit_cluster_model(request.user_data)
     return success_response(result)
 

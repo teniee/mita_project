@@ -2,9 +2,10 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Column, DateTime, Numeric, String, Date, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Date, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import relationship
 
 from .base import Base
 
@@ -20,7 +21,7 @@ class Goal(Base):
 
     # Primary fields
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Goal details
     title = Column(String(200), nullable=False)

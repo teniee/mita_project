@@ -12,7 +12,7 @@ from app.api.onboarding.schemas import OnboardingSubmitRequest, OnboardingSubmit
 from app.core.session import get_db
 from app.db.models import User
 from app.engine.calendar_engine_behavioral import build_calendar
-from app.services.budget_planner import generate_budget_from_answers
+from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.calendar_service_real import save_calendar_for_user
 from app.utils.response_wrapper import success_response
 

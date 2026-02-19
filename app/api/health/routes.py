@@ -3,10 +3,11 @@ Health Check API Routes
 Provides health monitoring for external services and circuit breakers
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 import logging
 
+from app.api.dependencies import require_admin_access
 from app.core.circuit_breaker import get_circuit_breaker_manager
 from app.services.resilient_gpt_service import get_gpt_service
 from app.services.resilient_google_auth_service import get_google_auth_service
@@ -124,7 +125,10 @@ async def get_circuit_breaker_status():
 
 
 @router.post("/health/circuit-breakers/{service_name}/reset")
-async def reset_circuit_breaker(service_name: str):
+async def reset_circuit_breaker(
+    service_name: str,
+    _admin=Depends(require_admin_access),  # noqa: B008
+):
     """Reset a specific circuit breaker (admin operation)"""
     try:
         circuit_breaker_manager = get_circuit_breaker_manager()

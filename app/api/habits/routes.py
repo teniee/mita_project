@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from app.api.dependencies import get_current_user
-from app.core.db import get_db
+from app.core.async_session import get_async_db as get_db
 from app.db.models import Habit, HabitCompletion
 from app.utils.response_wrapper import success_response
 from app.services.habit_service import get_habit_with_stats

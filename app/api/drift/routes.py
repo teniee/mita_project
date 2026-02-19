@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.dependencies import get_current_user
 from app.schemas.drift import (
     DriftGetRequest,
     DriftGetResponse,
@@ -13,12 +14,12 @@ router = APIRouter(prefix="/drift", tags=["drift"])
 
 
 @router.post("/log", response_model=DriftLogResponse)
-async def log_drift(request: DriftLogRequest):
-    result = log_cohort_drift(request.dict())
+async def log_drift(request: DriftLogRequest, user=Depends(get_current_user)):  # noqa: B008
+    result = log_cohort_drift(str(user.id), request.month, request.value)
     return success_response(result)
 
 
 @router.post("/get", response_model=DriftGetResponse)
-async def fetch_drift(request: DriftGetRequest):
-    result = get_cohort_drift(request.dict())
+async def fetch_drift(request: DriftGetRequest, user=Depends(get_current_user)):  # noqa: B008
+    result = get_cohort_drift(str(user.id), request.month)
     return success_response(result)
