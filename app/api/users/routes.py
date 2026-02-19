@@ -1,11 +1,13 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.api.users.schemas import UserProfileOut, UserUpdateIn
-from app.core.session import get_db
+from app.core.async_session import get_async_db as get_db
 from app.db.models.user import User
 from app.services.users_service import update_user_profile
 from app.utils.response_wrapper import success_response
@@ -60,10 +62,10 @@ async def get_profile(current_user=Depends(get_current_user)):
 )
 async def update_profile(
     data: UserUpdateIn,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    user = update_user_profile(current_user, data, db)
+    user = await update_user_profile(current_user, data, db)
 
     # Calculate profile completion percentage
     completion_fields = [
@@ -111,7 +113,7 @@ async def update_profile(
 async def get_user_premium_status(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get premium subscription status for user"""
     if current_user.id != user_id:
@@ -120,15 +122,18 @@ async def get_user_premium_status(
             detail="Access denied: you can only view your own subscription status",
         )
 
-    # Check for premium subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
-    from datetime import datetime
 
-    subscription = db.query(Subscription).filter(
-        Subscription.user_id == user_id,
-        Subscription.status == "active",
-        Subscription.expires_at > datetime.utcnow()
-    ).order_by(Subscription.expires_at.desc()).first()
+    result = await db.execute(
+        select(Subscription)
+        .where(
+            Subscription.user_id == user_id,
+            Subscription.status == "active",
+            Subscription.expires_at > datetime.utcnow(),
+        )
+        .order_by(Subscription.expires_at.desc())
+    )
+    subscription = result.scalars().first()
 
     is_premium = subscription is not None
     features = []
@@ -153,7 +158,7 @@ async def get_user_premium_status(
 async def get_user_premium_features(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get available premium features for user"""
     if current_user.id != user_id:
@@ -162,15 +167,16 @@ async def get_user_premium_features(
             detail="Access denied: you can only view your own premium features",
         )
 
-    # Check subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
-    from datetime import datetime
 
-    subscription = db.query(Subscription).filter(
-        Subscription.user_id == user_id,
-        Subscription.status == "active",
-        Subscription.expires_at > datetime.utcnow()
-    ).first()
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.user_id == user_id,
+            Subscription.status == "active",
+            Subscription.expires_at > datetime.utcnow(),
+        )
+    )
+    subscription = result.scalars().first()
 
     # Determine which features are enabled based on plan
     enabled_features = set()
@@ -220,7 +226,7 @@ async def get_user_premium_features(
 async def get_subscription_history(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get subscription payment history"""
     if current_user.id != user_id:
@@ -229,12 +235,14 @@ async def get_subscription_history(
             detail="Access denied: you can only view your own subscription history",
         )
 
-    # Query subscription history - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
 
-    subscriptions = db.query(Subscription).filter(
-        Subscription.user_id == user_id
-    ).order_by(Subscription.created_at.desc()).all()
+    result = await db.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user_id)
+        .order_by(Subscription.created_at.desc())
+    )
+    subscriptions = result.scalars().all()
 
     subscription_list = []
     total_spent = 0.0

@@ -1,10 +1,10 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.users.schemas import UserUpdateIn
 from app.db.models import User
 
 
-def update_user_profile(user: User, data: UserUpdateIn, db: Session) -> User:
+async def update_user_profile(user: User, data: UserUpdateIn, db: AsyncSession) -> User:
     # Basic fields
     if data.email is not None:
         user.email = data.email
@@ -34,6 +34,6 @@ def update_user_profile(user: User, data: UserUpdateIn, db: Session) -> User:
         user.dark_mode_enabled = data.dark_mode_enabled
 
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
