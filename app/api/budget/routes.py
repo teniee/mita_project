@@ -185,30 +185,55 @@ async def get_budget_mode(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get current budget mode based on user preferences and behavior"""
-    from app.db.models import User as UserModel
+    from app.db.models import User as UserModel, UserPreference
 
-    # Get user data to build settings dict
+    # Return manually set mode if the user has one saved
+    result = await db.execute(select(UserPreference).where(UserPreference.user_id == user.id))
+    prefs = result.scalar_one_or_none()
+    if prefs and prefs.budget_mode:
+        return success_response({"data": {"mode": prefs.budget_mode}})
+
+    # Fallback: derive mode from user settings
     result = await db.execute(select(UserModel).where(UserModel.id == user.id))
     user_data = result.scalar_one_or_none()
 
     user_settings = {}
     if user_data:
-        # Check if user has high income and savings goals
         monthly_income = float(user_data.monthly_income) if user_data.monthly_income else 0
         user_settings["income_stability"] = "high" if monthly_income > 100000 else "medium" if monthly_income > 50000 else "low"
-
-        # Check for aggressive savings preference (could be from user_preferences table)
-        from app.db.models import UserPreference
-        result = await db.execute(select(UserPreference).where(UserPreference.user_id == user.id))
-        prefs = result.scalar_one_or_none()
         if prefs:
             user_settings["aggressive_savings"] = prefs.behavioral_savings_target and prefs.behavioral_savings_target > 25.0
-            user_settings["has_family"] = False  # Could be added to user profile later
+            user_settings["has_family"] = False
 
-    # Call the actual mode resolver
     mode = resolve_budget_mode(user_settings)
+    return success_response({"data": {"mode": mode}})
 
-    return success_response(mode)
+
+@router.patch("/mode")
+async def set_budget_mode(
+    mode: str = Body(..., embed=True),
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
+):
+    """Update the user's preferred budget mode (strict, flexible, behavioral, goal-oriented)."""
+    from app.db.models import UserPreference
+
+    allowed_modes = {"strict", "flexible", "behavioral", "goal-oriented", "default"}
+    if mode not in allowed_modes:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail=f"Invalid mode. Allowed: {allowed_modes}")
+
+    result = await db.execute(select(UserPreference).where(UserPreference.user_id == user.id))
+    prefs = result.scalar_one_or_none()
+
+    if prefs:
+        prefs.budget_mode = mode
+    else:
+        prefs = UserPreference(user_id=user.id, budget_mode=mode)
+        db.add(prefs)
+
+    await db.commit()
+    return success_response({"mode": mode})
 
 
 @router.get("/redistribution_history")

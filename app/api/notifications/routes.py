@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 # Note: Session type hint removed - use AsyncSession only
 
@@ -141,41 +141,47 @@ async def register_device(
     })
 
 
-@router.post("/unregister-device")
-async def unregister_device(
-    device_data: dict,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-    user=Depends(get_current_user),  # noqa: B008
-):
-    """Unregister device from push notifications"""
-    device_token = device_data.get("token")
-
+async def _unregister_device_token(device_data: dict, db, user):
+    """Shared logic to remove a push token from the database."""
+    # Accept both 'push_token' (mobile app) and 'token' (legacy)
+    device_token = device_data.get("push_token") or device_data.get("token")
     if device_token:
         db.query(PushToken).filter(
             PushToken.user_id == user.id,
             PushToken.token == device_token
         ).delete()
         db.commit()
-
-    return success_response({
-        "status": "unregistered",
-        "token": device_token
-    })
+    return success_response({"status": "unregistered", "token": device_token})
 
 
-@router.post("/update-device")
-async def update_device(
+@router.post("/unregister-device")
+async def unregister_device_post(
     device_data: dict,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     user=Depends(get_current_user),  # noqa: B008
 ):
-    """Update device registration info"""
-    old_token = device_data.get("old_token")
-    new_token = device_data.get("new_token")
+    """Unregister device from push notifications (POST - legacy)"""
+    return await _unregister_device_token(device_data, db, user)
+
+
+@router.delete("/unregister-device")
+async def unregister_device_delete(
+    device_data: dict = Body(default={}),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Unregister device from push notifications (DELETE - mobile app)"""
+    return await _unregister_device_token(device_data, db, user)
+
+
+async def _update_device_token(device_data: dict, db, user):
+    """Shared logic to update a push token."""
+    # Accept both mobile app field names (old_push_token/new_push_token) and legacy (old_token/new_token)
+    old_token = device_data.get("old_push_token") or device_data.get("old_token")
+    new_token = device_data.get("new_push_token") or device_data.get("new_token")
     platform = device_data.get("platform")
 
     if old_token and new_token:
-        # Find and update existing token
         existing = db.query(PushToken).filter(
             PushToken.user_id == user.id,
             PushToken.token == old_token
@@ -186,25 +192,34 @@ async def update_device(
             if platform:
                 existing.platform = platform
             db.commit()
-            return success_response({
-                "status": "updated",
-                "token_id": str(existing.id)
-            })
+            return success_response({"status": "updated", "token_id": str(existing.id)})
 
-    # If not found, create new
-    token = PushToken(
-        user_id=user.id,
-        token=new_token,
-        platform=platform or "fcm"
-    )
+    # If not found or no old_token, create new
+    token = PushToken(user_id=user.id, token=new_token, platform=platform or "fcm")
     db.add(token)
     db.commit()
     db.refresh(token)
+    return success_response({"status": "created", "token_id": str(token.id)})
 
-    return success_response({
-        "status": "created",
-        "token_id": str(token.id)
-    })
+
+@router.post("/update-device")
+async def update_device_post(
+    device_data: dict,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Update device registration info (POST - legacy)"""
+    return await _update_device_token(device_data, db, user)
+
+
+@router.patch("/update-device")
+async def update_device_patch(
+    device_data: dict,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    user=Depends(get_current_user),  # noqa: B008
+):
+    """Update device push token (PATCH - mobile app)"""
+    return await _update_device_token(device_data, db, user)
 
 
 # NEW ENDPOINTS for notification management
