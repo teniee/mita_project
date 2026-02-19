@@ -68,11 +68,21 @@ class _AdviceHistoryScreenState extends State<AdviceHistoryScreen> {
                   itemCount: items.length,
                   itemBuilder: (_, i) {
                     final item = items[i] as Map<String, dynamic>;
-                    final date = DateFormat.yMMMd()
-                        .format(DateTime.parse(item['date'] as String));
+                    final rawDate = item['date'] as String?;
+                    final dateLabel = rawDate != null
+                        ? (() {
+                            try {
+                              return DateFormat.yMMMd()
+                                  .format(DateTime.parse(rawDate));
+                            } catch (_) {
+                              return rawDate;
+                            }
+                          })()
+                        : '';
+                    final text = item['text'] as String? ?? '';
                     return ListTile(
-                      title: Text(item['text'] as String),
-                      subtitle: Text(date),
+                      title: Text(text),
+                      subtitle: Text(dateLabel),
                     );
                   },
                 ),

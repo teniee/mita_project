@@ -258,7 +258,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Set authentication state after login and start token lifecycle management
-  void setAuthenticated() async {
+  Future<void> setAuthenticated() async {
     _state = UserState.authenticated;
     notifyListeners();
 

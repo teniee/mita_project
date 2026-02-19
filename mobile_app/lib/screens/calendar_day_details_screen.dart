@@ -126,7 +126,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       await _loadCategoryBreakdown();
 
       // Start chart animation
-      _chartController.forward();
+      if (mounted) _chartController.forward();
     } catch (e) {
       logError('Failed to load day details: $e', tag: 'CALENDAR_DAY_DETAILS');
     } finally {

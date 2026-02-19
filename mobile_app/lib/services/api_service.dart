@@ -460,12 +460,13 @@ class ApiService {
           tag: 'TOKEN_REFRESH');
       logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
 
-      final requestUrl = '/auth/refresh-token?refresh_token=$refresh';
-      logInfo('Making refresh request to: ${requestUrl.substring(0, min(50, requestUrl.length))}...',
+      const requestUrl = '/auth/refresh-token';
+      logInfo('Making refresh request to: $requestUrl',
           tag: 'TOKEN_REFRESH');
 
       final response = await _dio.post(
         requestUrl,
+        data: {'refresh_token': refresh},
         options: Options(headers: {'Authorization': 'Bearer $refresh'}),
       );
 

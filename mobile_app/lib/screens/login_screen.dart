@@ -402,20 +402,23 @@ class _LoginScreenState extends State<LoginScreen>
       // Clear any stale error messages from previous session expiration
       MessageService.instance.clearMessages();
 
-      // Force navigation with explicit error handling
+      // Navigate to main app or onboarding
+      if (!mounted) return;
       try {
         if (hasOnboarded) {
           _accessibilityService.announceToScreenReader(
             'Google sign-in successful. Navigating to dashboard.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/main');
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/main', (route) => false);
         } else {
           _accessibilityService.announceToScreenReader(
             'Google sign-in successful. Navigating to onboarding.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/onboarding_location');
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              '/onboarding_location', (route) => false);
         }
         if (kDebugMode)
           dev.log('Google login navigation completed successfully',
@@ -424,50 +427,24 @@ class _LoginScreenState extends State<LoginScreen>
         if (kDebugMode)
           dev.log('Google login navigation failed: $navigationError',
               name: 'LoginScreen');
-
-        // Fallback navigation mechanism for Google login
-        try {
-          if (kDebugMode)
-            dev.log('Attempting fallback navigation for Google login',
-                name: 'LoginScreen');
-          await Future.delayed(const Duration(milliseconds: 100));
-
-          if (mounted) {
-            if (hasOnboarded) {
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/main', (route) => false);
-            } else {
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/onboarding_location', (route) => false);
-            }
-            if (kDebugMode)
-              dev.log('Google login fallback navigation successful',
-                  name: 'LoginScreen');
-          }
-        } catch (fallbackError) {
-          if (kDebugMode)
-            dev.log(
-                'Google login fallback navigation also failed: $fallbackError',
-                name: 'LoginScreen');
-          // Show manual navigation instruction
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Google Sign-In Successful'),
-                content: const Text(
-                  'You have successfully signed in with Google, but there was a navigation issue. '
-                  'Please restart the app to continue.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
-                  ),
-                ],
+        // Show manual navigation instruction as final fallback
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Google Sign-In Successful'),
+              content: const Text(
+                'You have successfully signed in with Google, but there was a navigation issue. '
+                'Please restart the app to continue.',
               ),
-            );
-          }
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
       }
     } catch (e, stackTrace) {
@@ -680,67 +657,47 @@ class _LoginScreenState extends State<LoginScreen>
       // Clear any stale error messages from previous session expiration
       MessageService.instance.clearMessages();
 
-      // Force navigation with explicit error handling
+      // Navigate to main app or onboarding
+      if (!mounted) return;
       try {
         if (hasOnboarded) {
           _accessibilityService.announceToScreenReader(
             'Login successful. Navigating to dashboard.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/main');
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/main', (route) => false);
         } else {
           _accessibilityService.announceToScreenReader(
             'Login successful. Navigating to onboarding.',
             isImportant: true,
           );
-          await Navigator.pushReplacementNamed(context, '/onboarding_location');
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              '/onboarding_location', (route) => false);
         }
         if (kDebugMode)
           dev.log('Navigation completed successfully', name: 'LoginScreen');
       } catch (navigationError) {
         if (kDebugMode)
           dev.log('Navigation failed: $navigationError', name: 'LoginScreen');
-
-        // Fallback navigation mechanism
-        try {
-          if (kDebugMode)
-            dev.log('Attempting fallback navigation', name: 'LoginScreen');
-          await Future.delayed(const Duration(milliseconds: 100));
-
-          if (mounted) {
-            if (hasOnboarded) {
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/main', (route) => false);
-            } else {
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/onboarding_location', (route) => false);
-            }
-            if (kDebugMode)
-              dev.log('Fallback navigation successful', name: 'LoginScreen');
-          }
-        } catch (fallbackError) {
-          if (kDebugMode)
-            dev.log('Fallback navigation also failed: $fallbackError',
-                name: 'LoginScreen');
-          // Show manual navigation instruction
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Login Successful'),
-                content: const Text(
-                  'You have successfully logged in, but there was a navigation issue. '
-                  'Please restart the app to continue.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
-                  ),
-                ],
+        // Show manual navigation instruction as final fallback
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Login Successful'),
+              content: const Text(
+                'You have successfully logged in, but there was a navigation issue. '
+                'Please restart the app to continue.',
               ),
-            );
-          }
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
       }
     } catch (e, stackTrace) {

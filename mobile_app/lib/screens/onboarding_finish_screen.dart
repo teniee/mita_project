@@ -48,7 +48,7 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
     }
 
     // Token exists, try to submit (will handle token expiration during submission)
-    _submitOnboardingData();
+    await _submitOnboardingData();
   }
 
   bool _canRetry() {
