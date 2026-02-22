@@ -20,7 +20,7 @@ router = APIRouter(prefix="/iap", tags=["iap"])
     response_model=dict,
     dependencies=[Depends(RateLimiter(times=5, seconds=60))],
 )
-def validate(
+async def validate(
     payload: IAPReceipt,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),  # noqa: B008

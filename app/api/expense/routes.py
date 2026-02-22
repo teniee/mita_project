@@ -8,8 +8,6 @@ from app.core.error_handler import (
     validate_user_access, handle_database_errors
 )
 from app.schemas.expense import ExpenseEntry, ExpenseHistoryOut, ExpenseOut
-from app.services.expense_service import add_user_expense  # noqa: E501
-from app.services.expense_service import get_user_expense_history
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/expense", tags=["expense"])
