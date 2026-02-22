@@ -1,5 +1,10 @@
-from fastapi import APIRouter, Body, Depends, HTTPException
+from collections import defaultdict
+from datetime import datetime
 import logging
+
+from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import extract
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +22,8 @@ from app.api.calendar.schemas import (
     ShellConfig,
 )
 from app.api.dependencies import get_current_user
+from app.core.session import get_db
+from app.db.models.daily_plan import DailyPlan
 
 # core budget redistribution algorithm
 from app.engine.budget_redistributor import (
@@ -147,63 +154,20 @@ async def get_shell(
         })
 
 
-@router.get("/current-month")
-async def get_current_month_calendar(
-    user=Depends(get_current_user),  # noqa: B008
-):
-    """
-    Convenience endpoint to retrieve calendar for the current month.
-
-    This is a wrapper around /saved/{year}/{month} that automatically
-    uses the current year and month based on server time (UTC).
-    """
-    from datetime import datetime
-
-    now = datetime.utcnow()
-    current_year = now.year
-    current_month = now.month
-
-    # Reuse the existing saved calendar logic
-    return await get_saved_calendar(current_year, current_month, user)
-
-
-@router.get("/saved/{year}/{month}")
-async def get_saved_calendar(
-    year: int,
-    month: int,
-    user=Depends(get_current_user),  # noqa: B008
-):
-    """
-    Retrieve saved calendar data for a specific month from DailyPlan table.
-    This returns the calendar that was saved during onboarding or budget updates.
-
-    Returns empty list if no saved data exists for this month.
-    This endpoint is used by the mobile app to retrieve the budget created during onboarding.
-    """
-    from sqlalchemy.orm import Session
-    from sqlalchemy import extract
-    from app.core.session import get_db
-    from app.db.models.daily_plan import DailyPlan
-    from collections import defaultdict
-
-    # BUGFIX: Properly manage database session with context
-    # The get_db() function yields a session, so we need to consume it properly
-    db_gen = get_db()
-    db = next(db_gen)
-
+def _fetch_saved_calendar_data(db: Session, user_id, year: int, month: int):
+    """Shared logic to retrieve saved calendar data from DailyPlan table."""
     try:
-        # Query DailyPlan entries for the specified month
         rows = db.query(DailyPlan).filter(
-            DailyPlan.user_id == user.id,
+            DailyPlan.user_id == user_id,
             extract('year', DailyPlan.date) == year,
             extract('month', DailyPlan.date) == month,
         ).order_by(DailyPlan.date).all()
 
         if not rows:
-            logger.info(f"No saved calendar data found for user {user.id}, {year}-{month}")
+            logger.info(f"No saved calendar data found for user {user_id}, {year}-{month}")
             return success_response({"calendar": []})
 
-        logger.info(f"Retrieved {len(rows)} saved calendar entries for user {user.id}, {year}-{month}")
+        logger.info(f"Retrieved {len(rows)} saved calendar entries for user {user_id}, {year}-{month}")
 
         # Group by date to aggregate categories for each day
         days_data = defaultdict(lambda: {
@@ -237,13 +201,12 @@ async def get_saved_calendar(
             }
 
         # Convert to list format matching the shell calendar structure
-        # Convert all Decimal values to float for JSON serialization
         calendar_days = []
         for day_data in days_data.values():
             calendar_days.append({
                 'date': day_data['date'],
                 'day': day_data['day'],
-                'planned_budget': day_data['categories'],  # Dict of {category: {planned, spent, status}}
+                'planned_budget': day_data['categories'],
                 'limit': float(day_data['total_budget']),
                 'total': float(day_data['total_planned']),
                 'spent': float(day_data['total_spent']),
@@ -257,11 +220,36 @@ async def get_saved_calendar(
 
     except Exception as e:
         logger.error(f"Error retrieving saved calendar: {str(e)}", exc_info=True)
-        # Return empty calendar on error to allow fallback
         return success_response({"calendar": []})
-    finally:
-        # BUGFIX: Properly close the generator to ensure session cleanup
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass
+
+
+@router.get("/current-month")
+def get_current_month_calendar(
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Convenience endpoint to retrieve calendar for the current month.
+
+    This is a wrapper around /saved/{year}/{month} that automatically
+    uses the current year and month based on server time (UTC).
+    """
+    now = datetime.utcnow()
+    return _fetch_saved_calendar_data(db, user.id, now.year, now.month)
+
+
+@router.get("/saved/{year}/{month}")
+def get_saved_calendar(
+    year: int,
+    month: int,
+    user=Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    """
+    Retrieve saved calendar data for a specific month from DailyPlan table.
+    This returns the calendar that was saved during onboarding or budget updates.
+
+    Returns empty list if no saved data exists for this month.
+    This endpoint is used by the mobile app to retrieve the budget created during onboarding.
+    """
+    return _fetch_saved_calendar_data(db, user.id, year, month)

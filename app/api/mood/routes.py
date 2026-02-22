@@ -15,7 +15,7 @@ router = APIRouter(prefix="/mood", tags=["mood"])
 
 
 @router.post("/", response_model=MoodOut)
-async def log_mood(
+def log_mood(
     data: MoodIn,
     db: Session = Depends(get_db),  # noqa: B008
     user=Depends(get_current_user),  # noqa: B008
@@ -42,7 +42,7 @@ async def log_mood(
 
 
 @router.get("/", response_model=List[MoodOut])
-async def list_moods(
+def list_moods(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),  # noqa: B008

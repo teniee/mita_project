@@ -22,7 +22,7 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 
 @router.get("/questions", response_model=dict)
-async def get_questions():
+def get_questions():
     """Return onboarding questions from the config directory."""
     base_dir = Path(__file__).resolve().parent.parent
     path = base_dir / "config" / "onboarding_questions.json"
@@ -34,7 +34,7 @@ async def get_questions():
 
 
 @router.post("/submit")
-async def submit_onboarding(
+def submit_onboarding(
     request: OnboardingSubmitRequest,
     db: Session = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008

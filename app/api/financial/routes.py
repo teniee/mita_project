@@ -35,7 +35,7 @@ financial_error_handler = FinancialErrorHandler()
 @router.post("/installment-evaluate", response_model=InstallmentEvalResult, 
              summary="Evaluate installment plan affordability")
 @handle_financial_errors
-async def installment_check_standardized(
+def installment_check_standardized(
     request: Request,
     payload: InstallmentEvalRequest,
     user=Depends(get_current_user),  # noqa: B008
@@ -109,7 +109,7 @@ async def installment_check_standardized(
 
 
 @router.get("/dynamic-budget-method")
-async def get_personalized_budget_method(
+def get_personalized_budget_method(
     user=Depends(get_current_user),  # noqa: B008
 ):
     """Get personalized budget method recommendation instead of hardcoded 50/30/20"""
@@ -139,7 +139,7 @@ async def get_personalized_budget_method(
 
 
 @router.get("/dynamic-thresholds/{threshold_type}")
-async def get_personalized_thresholds(
+def get_personalized_thresholds(
     threshold_type: str,
     user=Depends(get_current_user),  # noqa: B008
 ):

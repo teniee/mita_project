@@ -12,7 +12,7 @@ router = APIRouter(prefix="/plan", tags=["plan"])
 
 
 @router.get("/{year}/{month}", response_model=dict)
-async def plan_month(
+def plan_month(
     year: int,
     month: int,
     user=Depends(get_current_user),  # noqa: B008
