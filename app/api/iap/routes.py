@@ -20,7 +20,7 @@ router = APIRouter(prefix="/iap", tags=["iap"])
     response_model=dict,
     dependencies=[Depends(RateLimiter(times=5, seconds=60))],
 )
-async def validate(
+def validate(
     payload: IAPReceipt,
     user=Depends(get_current_user),
     db: Session = Depends(get_db),  # noqa: B008
@@ -59,7 +59,7 @@ async def validate(
 
 
 @router.post("/webhook")
-async def iap_webhook(payload: dict, db: Session = Depends(get_db)):
+def iap_webhook(payload: dict, db: Session = Depends(get_db)):
     """Receive server notifications from App Store or Play Store."""
     logging.info("IAP webhook payload: %s", payload)
 

@@ -17,7 +17,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 
 @router.get("/", response_model=Optional[AdviceOut])
-async def latest_insight(
+def latest_insight(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
@@ -69,7 +69,7 @@ async def latest_insight(
 
 
 @router.get("/history", response_model=list[AdviceOut])
-async def insight_history(
+def insight_history(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ):
@@ -113,7 +113,7 @@ async def insight_history(
 
 
 @router.get("/income_based_tips")
-async def get_income_based_tips(
+def get_income_based_tips(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

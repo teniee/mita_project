@@ -17,7 +17,7 @@ router = APIRouter(prefix="/expense", tags=["expense"])
 
 @router.post("/add", response_model=ExpenseOut)
 @handle_database_errors
-async def add_expense(
+def add_expense(
     entry: ExpenseEntry, 
     user=Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -68,7 +68,7 @@ async def add_expense(
 
 
 @router.post("/history", response_model=ExpenseHistoryOut)
-async def get_history(
+def get_history(
     user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

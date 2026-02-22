@@ -25,7 +25,7 @@ router = APIRouter(prefix="/behavior", tags=["behavior"])
 
 
 @router.get("/analysis")
-async def get_behavioral_analysis(
+def get_behavioral_analysis(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -56,7 +56,7 @@ async def get_behavioral_analysis(
 
 
 @router.get("/patterns")
-async def get_spending_pattern_analysis(
+def get_spending_pattern_analysis(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -79,7 +79,7 @@ async def get_spending_pattern_analysis(
 
 
 @router.get("/predictions")
-async def get_behavioral_predictions(
+def get_behavioral_predictions(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -100,7 +100,7 @@ async def get_behavioral_predictions(
 
 
 @router.get("/anomalies")
-async def get_behavioral_anomalies(
+def get_behavioral_anomalies(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -185,7 +185,7 @@ async def get_behavioral_anomalies(
 
 
 @router.get("/recommendations")
-async def get_adaptive_behavior_recommendations(
+def get_adaptive_behavior_recommendations(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -266,7 +266,7 @@ async def get_adaptive_behavior_recommendations(
 
 
 @router.get("/triggers")
-async def get_spending_triggers(
+def get_spending_triggers(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -354,7 +354,7 @@ async def get_spending_triggers(
 
 
 @router.post("/calendar", response_model=dict)
-async def generate_behavior_calendar(
+def generate_behavior_calendar(
     payload: BehaviorPayload, user=Depends(get_current_user)  # noqa: B008
 ):
     """Generate spending behavior calendar for a given user."""
@@ -371,7 +371,7 @@ async def generate_behavior_calendar(
 
 
 @router.get("/cluster")
-async def get_behavioral_cluster(
+def get_behavioral_cluster(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -448,7 +448,7 @@ async def get_behavioral_cluster(
 
 
 @router.patch("/preferences")
-async def update_behavioral_preferences(
+def update_behavioral_preferences(
     preferences: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -487,7 +487,7 @@ async def update_behavioral_preferences(
 
 
 @router.get("/preferences")
-async def get_behavioral_preferences(
+def get_behavioral_preferences(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -524,7 +524,7 @@ async def get_behavioral_preferences(
 
 
 @router.get("/progress")
-async def get_behavioral_progress(
+def get_behavioral_progress(
     months: int = Query(3, ge=1, le=12),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -624,7 +624,7 @@ async def get_behavioral_progress(
 
 
 @router.get("/category/{category}")
-async def get_category_behavioral_insights(
+def get_category_behavioral_insights(
     category: str,
     year: Optional[int] = None,
     month: Optional[int] = None,
@@ -689,7 +689,7 @@ async def get_category_behavioral_insights(
 
 
 @router.get("/warnings")
-async def get_behavioral_warnings(
+def get_behavioral_warnings(
     year: Optional[int] = None,
     month: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -759,7 +759,7 @@ async def get_behavioral_warnings(
 
 
 @router.post("/expense_suggestions")
-async def get_behavioral_expense_suggestions(
+def get_behavioral_expense_suggestions(
     data: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -827,7 +827,7 @@ async def get_behavioral_expense_suggestions(
 
 
 @router.patch("/notification_settings")
-async def update_behavioral_notification_settings(
+def update_behavioral_notification_settings(
     settings: Dict[str, Any] = Body(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -860,7 +860,7 @@ async def update_behavioral_notification_settings(
 
 
 @router.get("/notification_settings")
-async def get_behavioral_notification_settings(
+def get_behavioral_notification_settings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

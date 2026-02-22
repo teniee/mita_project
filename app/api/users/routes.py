@@ -14,7 +14,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserProfileOut, summary="Get current user's profile")
-async def get_profile(current_user=Depends(get_current_user)):
+def get_profile(current_user=Depends(get_current_user)):
     # Calculate profile completion percentage
     completion_fields = [
         getattr(current_user, 'name', None),
@@ -58,7 +58,7 @@ async def get_profile(current_user=Depends(get_current_user)):
 @router.patch(
     "/me", response_model=UserProfileOut, summary="Update current user's profile"
 )
-async def update_profile(
+def update_profile(
     data: UserUpdateIn,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -108,7 +108,7 @@ async def update_profile(
 # NEW ENDPOINTS for premium/subscription management
 
 @router.get("/{user_id}/premium-status")
-async def get_user_premium_status(
+def get_user_premium_status(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -150,7 +150,7 @@ async def get_user_premium_status(
 
 
 @router.get("/{user_id}/premium-features")
-async def get_user_premium_features(
+def get_user_premium_features(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -217,7 +217,7 @@ async def get_user_premium_features(
 
 
 @router.get("/{user_id}/subscription-history")
-async def get_subscription_history(
+def get_subscription_history(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

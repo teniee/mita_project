@@ -86,7 +86,7 @@ def validate_image_file(file: UploadFile) -> None:
 
 
 @router.post("/process")
-async def process_receipt_ocr(
+def process_receipt_ocr(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -100,7 +100,7 @@ async def process_receipt_ocr(
     validate_image_file(file)
 
     # Read file content and validate size
-    content = await file.read()
+    content = file.file.read()
 
     if not content or len(content) == 0:
         raise HTTPException(
@@ -198,7 +198,7 @@ async def process_receipt_ocr(
 
 
 @router.post("/categorize")
-async def categorize_receipt_data(
+def categorize_receipt_data(
     request: CategorizeReceiptRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -267,7 +267,7 @@ async def categorize_receipt_data(
 
 
 @router.post("/enhance")
-async def enhance_receipt_image(
+def enhance_receipt_image(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -281,7 +281,7 @@ async def enhance_receipt_image(
     validate_image_file(file)
 
     # Read file content and validate size
-    content = await file.read()
+    content = file.file.read()
 
     if not content or len(content) == 0:
         raise HTTPException(
@@ -362,7 +362,7 @@ async def enhance_receipt_image(
 
 
 @router.get("/status/{ocr_job_id}")
-async def get_ocr_job_status(
+def get_ocr_job_status(
     ocr_job_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -431,7 +431,7 @@ async def get_ocr_job_status(
 
 
 @router.get("/image/{job_id}")
-async def get_receipt_image(
+def get_receipt_image(
     job_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -481,7 +481,7 @@ async def get_receipt_image(
 
 
 @router.delete("/image/{job_id}")
-async def delete_receipt_image(
+def delete_receipt_image(
     job_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

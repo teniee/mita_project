@@ -2364,7 +2364,7 @@ class ApiService {
 
   Future<void> updateExpense(int id, Map<String, dynamic> data) async {
     final token = await getToken();
-    await _dio.patch(
+    await _dio.put(
       '/transactions/$id',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),

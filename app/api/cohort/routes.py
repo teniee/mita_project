@@ -13,7 +13,7 @@ router = APIRouter(prefix="/cohort", tags=["cohort"])
 
 
 @router.post("/assign", response_model=CohortOut)
-async def assign_cohort(
+def assign_cohort(
     payload: ProfileRequest, user=Depends(get_current_user)  # noqa: B008
 ):
     cohort = assign_user_cohort(payload.profile)
@@ -21,13 +21,13 @@ async def assign_cohort(
 
 
 @router.post("/drift", response_model=DriftOut)
-async def drift(payload: DriftRequest, user=Depends(get_current_user)):  # noqa: B008
+def drift(payload: DriftRequest, user=Depends(get_current_user)):  # noqa: B008
     drift = get_user_drift(user.id)
     return success_response({"drift": drift})
 
 
 @router.get("/insights")
-async def cohort_insights(
+def cohort_insights(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db)  # noqa: B008
 ):
@@ -114,7 +114,7 @@ async def cohort_insights(
 
 
 @router.get("/income_classification")
-async def income_classification(
+def income_classification(
     user=Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db)  # noqa: B008
 ):
@@ -226,7 +226,7 @@ async def income_classification(
 
 
 @router.get("/peer_comparison")
-async def get_peer_comparison(
+def get_peer_comparison(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
