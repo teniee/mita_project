@@ -16,7 +16,6 @@ from app.utils.response_wrapper import success_response
 from .schemas import (
     NotificationCreate,
     NotificationListResponse,
-    NotificationMarkReadRequest,
     NotificationPreferencesResponse,
     NotificationPreferencesUpdate,
     NotificationResponse,
@@ -93,7 +92,7 @@ def send_test_notification(
     return success_response({"sent": True})
 
 
-# NEW ENDPOINTS for mobile app device management
+# Device management endpoints
 
 @router.post("/register-device")
 def register_device(
@@ -105,7 +104,6 @@ def register_device(
     device_id = device_data.get("device_id")
     device_token = device_data.get("token")
     platform = device_data.get("platform", "fcm")
-    device_name = device_data.get("device_name")
 
     # Check if device already registered
     existing = db.query(PushToken).filter(
@@ -114,7 +112,6 @@ def register_device(
     ).first()
 
     if existing:
-        # Update existing
         existing.platform = platform
         db.commit()
         return success_response({
@@ -123,7 +120,6 @@ def register_device(
             "token_id": str(existing.id)
         })
 
-    # Create new device registration
     token = PushToken(
         user_id=user.id,
         token=device_token,
@@ -142,7 +138,6 @@ def register_device(
 
 def _unregister_device_token(device_data: dict, db: Session, user):
     """Shared logic to remove a push token from the database."""
-    # Accept both 'push_token' (mobile app) and 'token' (legacy)
     device_token = device_data.get("push_token") or device_data.get("token")
     if device_token:
         db.query(PushToken).filter(
@@ -175,7 +170,6 @@ def unregister_device_delete(
 
 def _update_device_token(device_data: dict, db: Session, user):
     """Shared logic to update a push token."""
-    # Accept both mobile app field names (old_push_token/new_push_token) and legacy (old_token/new_token)
     old_token = device_data.get("old_push_token") or device_data.get("old_token")
     new_token = device_data.get("new_push_token") or device_data.get("new_token")
     platform = device_data.get("platform")
@@ -193,7 +187,6 @@ def _update_device_token(device_data: dict, db: Session, user):
             db.commit()
             return success_response({"status": "updated", "token_id": str(existing.id)})
 
-    # If not found or no old_token, create new
     token = PushToken(user_id=user.id, token=new_token, platform=platform or "fcm")
     db.add(token)
     db.commit()
@@ -221,7 +214,9 @@ def update_device_patch(
     return _update_device_token(device_data, db, user)
 
 
-# NEW ENDPOINTS for notification management
+# Notification management endpoints
+# IMPORTANT: Specific path routes MUST come before parameterized /{notification_id}
+# routes, otherwise FastAPI will try to parse "list", "unread-count", etc. as UUID.
 
 @router.get("/list", response_model=NotificationListResponse)
 def get_notifications(
@@ -234,20 +229,9 @@ def get_notifications(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    """
-    Get list of notifications for current user with optional filters
-
-    Query Parameters:
-    - limit: Max number of notifications (1-100, default 50)
-    - offset: Offset for pagination (default 0)
-    - unread_only: Only return unread notifications (default false)
-    - type: Filter by notification type
-    - priority: Filter by priority level
-    - category: Filter by category
-    """
+    """Get list of notifications for current user with optional filters"""
     service = NotificationService(db)
 
-    # Get notifications
     notifications = service.get_user_notifications(
         user_id=user.id,
         limit=limit,
@@ -258,10 +242,8 @@ def get_notifications(
         category=category,
     )
 
-    # Get unread count
     unread_count = service.get_unread_count(user.id)
 
-    # Convert to response format
     notification_responses = [
         NotificationResponse.from_orm(notification) for notification in notifications
     ]
@@ -274,21 +256,72 @@ def get_notifications(
     )
 
 
-@router.get("/{notification_id}", response_model=NotificationResponse)
-def get_notification(
-    notification_id: UUID,
+@router.get("/unread-count")
+def get_unread_count(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    """Get a specific notification by ID"""
+    """Get count of unread notifications"""
     service = NotificationService(db)
+    count = service.get_unread_count(user.id)
+    return success_response({"unread_count": count})
 
-    notification = service.get_notification_by_id(notification_id, user.id)
 
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
+@router.get("/preferences", response_model=NotificationPreferencesResponse)
+def get_notification_preferences(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Get notification preferences for current user"""
+    prefs = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
 
-    return NotificationResponse.from_orm(notification)
+    if not prefs:
+        prefs = UserPreference(user_id=user.id)
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+
+    return NotificationPreferencesResponse(
+        push_enabled=getattr(prefs, 'push_enabled', True),
+        email_enabled=getattr(prefs, 'email_enabled', True),
+        budget_alerts=getattr(prefs, 'budget_alerts', True),
+        goal_updates=getattr(prefs, 'goal_updates', True),
+        daily_reminders=getattr(prefs, 'daily_reminders', True),
+        ai_recommendations=getattr(prefs, 'ai_recommendations', True),
+        transaction_alerts=getattr(prefs, 'transaction_alerts', True),
+        achievement_notifications=getattr(prefs, 'achievement_notifications', True),
+    )
+
+
+@router.put("/preferences", response_model=NotificationPreferencesResponse)
+def update_notification_preferences(
+    payload: NotificationPreferencesUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Update notification preferences for current user"""
+    prefs = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+
+    if not prefs:
+        prefs = UserPreference(user_id=user.id)
+        db.add(prefs)
+
+    for key, value in payload.dict().items():
+        setattr(prefs, key, value)
+
+    db.commit()
+    db.refresh(prefs)
+
+    return NotificationPreferencesResponse(
+        push_enabled=prefs.push_enabled,
+        email_enabled=prefs.email_enabled,
+        budget_alerts=prefs.budget_alerts,
+        goal_updates=prefs.goal_updates,
+        daily_reminders=prefs.daily_reminders,
+        ai_recommendations=prefs.ai_recommendations,
+        transaction_alerts=prefs.transaction_alerts,
+        achievement_notifications=prefs.achievement_notifications,
+    )
 
 
 @router.post("/create", response_model=NotificationResponse)
@@ -318,6 +351,35 @@ def create_notification(
     return NotificationResponse.from_orm(notification)
 
 
+@router.post("/mark-all-read")
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Mark all notifications as read for current user"""
+    service = NotificationService(db)
+    count = service.mark_all_as_read(user.id)
+    return success_response({
+        "marked_read": count,
+        "message": f"Marked {count} notifications as read"
+    })
+
+
+# Parameterized routes MUST be last to avoid shadowing specific paths above
+@router.get("/{notification_id}", response_model=NotificationResponse)
+def get_notification(
+    notification_id: UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Get a specific notification by ID"""
+    service = NotificationService(db)
+    notification = service.get_notification_by_id(notification_id, user.id)
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return NotificationResponse.from_orm(notification)
+
+
 @router.post("/{notification_id}/mark-read", response_model=NotificationResponse)
 def mark_notification_read(
     notification_id: UUID,
@@ -326,29 +388,10 @@ def mark_notification_read(
 ):
     """Mark a notification as read"""
     service = NotificationService(db)
-
     notification = service.mark_as_read(notification_id, user.id)
-
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
-
     return NotificationResponse.from_orm(notification)
-
-
-@router.post("/mark-all-read")
-def mark_all_notifications_read(
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    """Mark all notifications as read for current user"""
-    service = NotificationService(db)
-
-    count = service.mark_all_as_read(user.id)
-
-    return success_response({
-        "marked_read": count,
-        "message": f"Marked {count} notifications as read"
-    })
 
 
 @router.delete("/{notification_id}")
@@ -359,88 +402,10 @@ def delete_notification(
 ):
     """Delete a notification"""
     service = NotificationService(db)
-
     success = service.delete_notification(notification_id, user.id)
-
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found")
-
     return success_response({
         "deleted": True,
         "notification_id": str(notification_id)
     })
-
-
-@router.get("/unread-count")
-def get_unread_count(
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    """Get count of unread notifications"""
-    service = NotificationService(db)
-
-    count = service.get_unread_count(user.id)
-
-    return success_response({
-        "unread_count": count
-    })
-
-
-@router.get("/preferences", response_model=NotificationPreferencesResponse)
-def get_notification_preferences(
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    """Get notification preferences for current user"""
-    # Get or create user preferences
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
-
-    if not prefs:
-        prefs = UserPreference(user_id=user.id)
-        db.add(prefs)
-        db.commit()
-        db.refresh(prefs)
-
-    return NotificationPreferencesResponse(
-        push_enabled=getattr(prefs, 'push_enabled', True),
-        email_enabled=getattr(prefs, 'email_enabled', True),
-        budget_alerts=getattr(prefs, 'budget_alerts', True),
-        goal_updates=getattr(prefs, 'goal_updates', True),
-        daily_reminders=getattr(prefs, 'daily_reminders', True),
-        ai_recommendations=getattr(prefs, 'ai_recommendations', True),
-        transaction_alerts=getattr(prefs, 'transaction_alerts', True),
-        achievement_notifications=getattr(prefs, 'achievement_notifications', True),
-    )
-
-
-@router.put("/preferences", response_model=NotificationPreferencesResponse)
-def update_notification_preferences(
-    payload: NotificationPreferencesUpdate,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user),
-):
-    """Update notification preferences for current user"""
-    # Get or create user preferences
-    prefs = db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
-
-    if not prefs:
-        prefs = UserPreference(user_id=user.id)
-        db.add(prefs)
-
-    # Update preferences
-    for key, value in payload.dict().items():
-        setattr(prefs, key, value)
-
-    db.commit()
-    db.refresh(prefs)
-
-    return NotificationPreferencesResponse(
-        push_enabled=prefs.push_enabled,
-        email_enabled=prefs.email_enabled,
-        budget_alerts=prefs.budget_alerts,
-        goal_updates=prefs.goal_updates,
-        daily_reminders=prefs.daily_reminders,
-        ai_recommendations=prefs.ai_recommendations,
-        transaction_alerts=prefs.transaction_alerts,
-        achievement_notifications=prefs.achievement_notifications,
-    )
