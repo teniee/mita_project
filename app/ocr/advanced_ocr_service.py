@@ -75,7 +75,6 @@ class AdvancedOCRService:
             if not raw_text.strip():
                 raise ValueError("No text detected on the image.")
 
-            # Use the real parser instead of hardcoded values
             parsed = parse_receipt_details(raw_text)
 
             # Map to expected format

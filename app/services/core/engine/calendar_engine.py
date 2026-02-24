@@ -94,7 +94,6 @@ def distribute_budget_over_days(
     elif behavior == "spread":
         weekday_days = [d for d in days if d.day_type == "weekday"]
 
-        # FIX: Use actual user frequency instead of hardcoded [::2] pattern
         if user_frequency and user_frequency > 0:
             # User specified how many times they spend in this category
             # Allocate budget to that many days (capped at available weekdays)

@@ -42,7 +42,6 @@ class GoogleVisionOCRService:
 
         full_text = annotations[0].description.strip()
 
-        # Use the real parser instead of hardcoded/simple regex
         parsed = parse_receipt_details(full_text)
 
         # Map to expected format

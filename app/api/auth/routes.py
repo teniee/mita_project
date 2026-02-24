@@ -15,7 +15,6 @@ Architecture:
 - admin_endpoints.py: Admin token management
 - account_management.py: Password change, account deletion
 - security_monitoring.py: Security status and token validation
-- test_endpoints.py: Test and emergency endpoints
 - utils.py: Shared utility functions
 """
 
@@ -48,5 +47,3 @@ router.include_router(google_auth.router)
 router.include_router(admin_endpoints.router)
 router.include_router(account_management.router)
 router.include_router(security_monitoring.router)
-# test_endpoints.router intentionally NOT included — bypass registration
-# endpoints (/emergency-register, /register-fast) must not be reachable in production.

@@ -1226,13 +1226,44 @@ class JWTSecurity:
 
 def get_user_tier_from_request(request) -> str:
     """
-    Get user tier from request for rate limiting
-    Stub function - returns default tier for all requests
-    TODO: Implement proper tier detection based on user authentication/subscription
+    Determine the rate-limit tier for the current request based on
+    JWT claims (role / is_premium).
+
+    Tier precedence: admin_user > premium_user > basic_user > anonymous.
+    Falls back to 'anonymous' when no valid token is present.
     """
-    # Check if user is authenticated and has premium/admin status
-    # For now, return basic_user as default tier
-    return "basic_user"
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return "anonymous"
+
+        token = auth_header[7:]
+        if not token:
+            return "anonymous"
+
+        # Decode without full verification (we only need claims for tier lookup;
+        # the auth dependency does full verification later).
+        payload = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_exp": False},
+        )
+
+        role = payload.get("role", "")
+        if role == "admin":
+            return "admin_user"
+
+        is_premium = payload.get("is_premium", False)
+        if is_premium:
+            return "premium_user"
+
+        # Token present with a valid 'sub' claim → authenticated basic user
+        if payload.get("sub"):
+            return "basic_user"
+
+        return "anonymous"
+    except Exception:
+        # Any decode / parse error → treat as anonymous
+        return "anonymous"
 
 
 def reset_security_instances():
