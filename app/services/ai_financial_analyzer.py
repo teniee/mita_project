@@ -56,7 +56,7 @@ class AIFinancialAnalyzer:
                 region=region,
                 family_size=getattr(user, 'family_size', 1),
                 debt_to_income_ratio=getattr(user, 'debt_to_income_ratio', 0.0),
-                months_of_data=len(set(expense.date.strftime('%Y-%m') 
+                months_of_data=len(set(expense['date'].strftime('%Y-%m')
                                      for expense in self._load_spending_data())),
                 current_savings_rate=getattr(user, 'current_savings_rate', 0.0),
                 housing_status=getattr(user, 'housing_status', 'rent'),
@@ -410,11 +410,12 @@ class AIFinancialAnalyzer:
         # Category-specific tips
         if category_analysis:
             top_category = max(category_analysis.items(), key=lambda x: x[1])[0]
-            
+            top_amount = category_analysis[top_category]
+
             if top_category == "food" or top_category == "dining":
                 # Calculate user-specific savings potential instead of fixed 20-30%
                 user_context = self._get_user_context()
-                food_ratio = scale_threshold_by_income('food_ratio', user_context.monthly_income, 
+                food_ratio = scale_threshold_by_income('food_ratio', user_context.monthly_income,
                                                      family_size=user_context.family_size)
                 current_food_pct = (top_amount / sum(category_analysis.values())) * 100
                 
