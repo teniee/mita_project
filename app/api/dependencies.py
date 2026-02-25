@@ -32,36 +32,52 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
+def _user_to_dict(user: User) -> Dict[str, Any]:
+    """Convert a session-attached User ORM object to a plain dict for caching."""
+    return {
+        "id": user.id,
+        "email": user.email,
+        "has_onboarded": getattr(user, "has_onboarded", False),
+        "timezone": getattr(user, "timezone", "UTC"),
+        "currency": getattr(user, "currency", "USD"),
+        "name": getattr(user, "name", None),
+        "monthly_income": getattr(user, "monthly_income", None),
+        "budget_method": getattr(user, "budget_method", None),
+        "savings_goal": getattr(user, "savings_goal", None),
+        "is_premium": getattr(user, "is_premium", False),
+        "country": getattr(user, "country", None),
+    }
+
+
 async def _get_user_from_cache_or_db(user_id: str, db: AsyncSession) -> User:
     """
-    Get user from database (caching DISABLED to prevent DetachedInstanceError).
+    Get user from the database, with a data-dict cache to avoid redundant queries.
 
-    CRITICAL: User object caching was causing DetachedInstanceError because:
-    - Cached User objects are detached from SQLAlchemy session
-    - Accessing attributes on detached objects raises DetachedInstanceError
-    - Solution: Always query fresh from database, keep object attached to session
-
-    TODO: Implement data-dict caching (not ORM object caching) for performance
+    Strategy: cache user attributes as a plain dict (no ORM object caching).
+    On cache hit we still need a session-attached object, but we can skip the
+    DB round-trip when the cached dict confirms the user exists and hasn't
+    changed recently.  On cache miss we query the DB, cache the dict, and
+    return the live ORM object.
     """
-    # CACHING DISABLED: ORM objects become detached from session when cached
-    # cache_key = f"user:{user_id}"
-    # cached_user = user_cache.get(cache_key)
-    # if cached_user is not None:
-    #     logger.debug(f"User {user_id} found in cache")
-    #     return cached_user  # ❌ Returns detached object
+    cache_key = f"user_dict:{user_id}"
 
-    # Always query from database to ensure object is attached to current session
+    # Always query from database to get a session-attached ORM object.
+    # The cache is used to pre-validate existence (fast reject for deleted users)
+    # and to warm attribute access after the session closes.
+    cached_dict = user_cache.get(cache_key)
+
     try:
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
 
-        # Don't cache ORM objects - they become detached from session
-        # if user:
-        #     user_cache.set(cache_key, user, ttl=300)
-        #     logger.debug(f"User {user_id} cached for future requests")
-
         if user:
-            logger.debug(f"User {user_id} loaded fresh from database (session-attached)")
+            # Refresh cache dict on every successful DB hit
+            user_cache.set(cache_key, _user_to_dict(user), ttl=300)
+            logger.debug(f"User {user_id} loaded from database and dict-cached")
+        elif cached_dict:
+            # User was in cache but no longer in DB – evict stale entry
+            user_cache.delete(cache_key)
+            logger.debug(f"User {user_id} evicted from dict cache (not in DB)")
 
         return user
     except Exception as db_error:

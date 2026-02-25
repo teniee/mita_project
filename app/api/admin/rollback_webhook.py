@@ -7,15 +7,18 @@ Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
 """
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import os
-import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import httpx
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger()
@@ -113,29 +116,84 @@ class RollbackTriggerMapping:
         return cls.ROLLBACK_TRIGGERS.get(alert_name)
 
 
-async def verify_webhook_secret(authorization: str = Header(None)) -> bool:
-    """Verify webhook secret from Authorization header"""
+def _verify_hmac_signature(payload_body: bytes, signature_header: str, secret: str) -> bool:
+    """Verify HMAC-SHA256 webhook signature."""
+    if not signature_header:
+        return False
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        payload_body,
+        hashlib.sha256,
+    ).hexdigest()
+    # Signature header format: "sha256=<hex>"
+    provided = signature_header.removeprefix("sha256=")
+    return hmac.compare_digest(expected, provided)
+
+
+async def verify_webhook_secret(
+    request: Request,
+    authorization: str = Header(None),
+    x_webhook_signature: str = Header(None, alias="X-Webhook-Signature"),
+) -> bool:
+    """
+    Verify webhook authenticity via Basic auth **and** optional HMAC signature.
+
+    Supports two verification methods (both checked when available):
+    1. Basic auth – ``Authorization: Basic base64(username:password)``
+       where *password* must equal ``ROLLBACK_WEBHOOK_SECRET``.
+    2. HMAC signature – ``X-Webhook-Signature: sha256=<hex>``
+       computed over the raw request body with ``ROLLBACK_WEBHOOK_SECRET``.
+    """
+    webhook_secret = os.getenv("ROLLBACK_WEBHOOK_SECRET", "")
+    if not webhook_secret:
+        logger.error("ROLLBACK_WEBHOOK_SECRET not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook secret not configured",
+        )
+
+    # --- Basic auth verification ---
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header"
+            detail="Missing Authorization header",
         )
-
-    # Expected format: "Basic base64(username:password)"
-    # For simplicity, we're using bearer token
-    expected_secret = os.getenv("ROLLBACK_WEBHOOK_SECRET", "change-me-in-production")
 
     if not authorization.startswith("Basic "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Authorization format"
+            detail="Invalid Authorization format – expected Basic auth",
         )
 
-    # In production, implement proper Basic auth verification
-    # For now, simple check
-    token = authorization.replace("Basic ", "")
-    # You should decode base64 and verify username:password
-    # This is simplified for example
+    try:
+        decoded = base64.b64decode(authorization[6:]).decode("utf-8")
+        # Expected format: "username:password"
+        if ":" not in decoded:
+            raise ValueError("Invalid credentials format")
+        _username, password = decoded.split(":", 1)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed Basic auth credentials",
+        )
+
+    if not hmac.compare_digest(password, webhook_secret):
+        logger.warning("Webhook Basic auth failed – invalid secret")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook credentials",
+        )
+
+    # --- Optional HMAC signature verification ---
+    if x_webhook_signature:
+        body = await request.body()
+        if not _verify_hmac_signature(body, x_webhook_signature, webhook_secret):
+            logger.warning("Webhook HMAC signature verification failed")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature",
+            )
+        logger.debug("Webhook HMAC signature verified")
 
     return True
 
@@ -266,7 +324,7 @@ async def execute_automated_rollback(
                            alert_name=alert_name,
                            duration="See logs for details")
 
-                # TODO: Send success notification to Slack
+                _record_rollback_event(alert_name, trigger, reason, "success")
                 await send_rollback_notification(
                     alert_name=alert_name,
                     status="success",
@@ -279,7 +337,8 @@ async def execute_automated_rollback(
                             return_code=process.returncode,
                             stderr=stderr.decode())
 
-                # TODO: Send failure notification + escalate to PagerDuty
+                _record_rollback_event(alert_name, trigger, reason, "failed",
+                                       stderr.decode()[:500])
                 await send_rollback_notification(
                     alert_name=alert_name,
                     status="failed",
@@ -291,10 +350,11 @@ async def execute_automated_rollback(
             logger.error("Automated rollback timed out after 10 minutes",
                         alert_name=alert_name)
 
-            # Kill the process
             process.kill()
             await process.wait()
 
+            _record_rollback_event(alert_name, trigger, reason, "timeout",
+                                   "Exceeded 10 minute timeout")
             await send_rollback_notification(
                 alert_name=alert_name,
                 status="timeout",
@@ -307,6 +367,7 @@ async def execute_automated_rollback(
                     error=str(e),
                     alert_name=alert_name)
 
+        _record_rollback_event(alert_name, trigger, reason, "error", str(e)[:500])
         await send_rollback_notification(
             alert_name=alert_name,
             status="error",
@@ -320,45 +381,144 @@ async def send_rollback_notification(
     status: str,
     reason: str,
     output: Optional[str] = None,
-    error: Optional[str] = None
+    error: Optional[str] = None,
 ):
-    """
-    Send rollback status notification to Slack/PagerDuty
-
-    TODO: Implement actual Slack/PagerDuty integration
-    """
+    """Send rollback status notification to Slack and PagerDuty."""
     logger.info("Sending rollback notification",
-               alert_name=alert_name,
-               status=status)
+                alert_name=alert_name, status=status)
 
-    # Placeholder for Slack webhook
+    # --- Slack notification ---
     slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    if slack_webhook_url:
+        status_emoji = {
+            "success": ":white_check_mark:",
+            "failed": ":x:",
+            "timeout": ":hourglass:",
+            "error": ":warning:",
+        }.get(status, ":grey_question:")
 
-    if not slack_webhook_url:
-        logger.warning("SLACK_WEBHOOK_URL not configured, skipping notification")
-        return
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"{status_emoji} Rollback {status.upper()}: {alert_name}",
+                },
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {"type": "mrkdwn", "text": f"*Alert:*\n{alert_name}"},
+                    {"type": "mrkdwn", "text": f"*Status:*\n{status}"},
+                    {"type": "mrkdwn", "text": f"*Reason:*\n{reason}"},
+                    {"type": "mrkdwn", "text": f"*Time:*\n{datetime.utcnow().isoformat()}Z"},
+                ],
+            },
+        ]
 
-    # TODO: Implement Slack notification
-    # import httpx
-    # async with httpx.AsyncClient() as client:
-    #     await client.post(slack_webhook_url, json={...})
+        if output:
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*Output:*\n```{output[:2000]}```"},
+            })
+        if error:
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*Error:*\n```{error[:2000]}```"},
+            })
 
-    logger.info("Rollback notification sent (placeholder)")
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(slack_webhook_url, json={"blocks": blocks})
+                if resp.status_code == 200:
+                    logger.info("Slack notification sent successfully")
+                else:
+                    logger.warning("Slack notification failed",
+                                   status_code=resp.status_code,
+                                   body=resp.text[:200])
+        except Exception as exc:
+            logger.error("Failed to send Slack notification", error=str(exc))
+    else:
+        logger.warning("SLACK_WEBHOOK_URL not configured, skipping Slack notification")
+
+    # --- PagerDuty escalation for failures ---
+    pagerduty_routing_key = os.getenv("PAGERDUTY_ROUTING_KEY")
+    if pagerduty_routing_key and status in ("failed", "timeout", "error"):
+        severity_map = {"failed": "critical", "timeout": "error", "error": "warning"}
+        pd_payload = {
+            "routing_key": pagerduty_routing_key,
+            "event_action": "trigger",
+            "payload": {
+                "summary": f"Rollback {status}: {alert_name} – {reason}",
+                "source": "mita-rollback-webhook",
+                "severity": severity_map.get(status, "error"),
+                "custom_details": {
+                    "alert_name": alert_name,
+                    "reason": reason,
+                    "error": (error or "")[:500],
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    "https://events.pagerduty.com/v2/enqueue",
+                    json=pd_payload,
+                )
+                if resp.status_code in (200, 202):
+                    logger.info("PagerDuty incident created successfully")
+                else:
+                    logger.warning("PagerDuty escalation failed",
+                                   status_code=resp.status_code,
+                                   body=resp.text[:200])
+        except Exception as exc:
+            logger.error("Failed to send PagerDuty alert", error=str(exc))
+
+
+_rollback_history: List[Dict] = []
+_MAX_HISTORY = 100
+
+
+def _record_rollback_event(
+    alert_name: str,
+    trigger: str,
+    reason: str,
+    status: str,
+    details: Optional[str] = None,
+):
+    """Record a rollback event to the in-memory history."""
+    event = {
+        "alert_name": alert_name,
+        "trigger": trigger,
+        "reason": reason,
+        "status": status,
+        "details": (details or "")[:500],
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+    _rollback_history.insert(0, event)
+    # Keep bounded
+    while len(_rollback_history) > _MAX_HISTORY:
+        _rollback_history.pop()
 
 
 @router.get("/status")
 async def get_rollback_status():
     """
-    Get current rollback system status
+    Get current rollback system status.
 
-    Returns information about recent rollbacks and system health
+    Returns information about recent rollbacks and system health.
     """
-    # TODO: Implement rollback history tracking
     return {
         "status": "operational",
-        "recent_rollbacks": [],
+        "recent_rollbacks": _rollback_history[:20],
+        "total_rollbacks": len(_rollback_history),
         "rollback_enabled": True,
-        "monitored_alerts": list(RollbackTriggerMapping.ROLLBACK_TRIGGERS.keys())
+        "monitored_alerts": list(RollbackTriggerMapping.ROLLBACK_TRIGGERS.keys()),
+        "notification_channels": {
+            "slack": bool(os.getenv("SLACK_WEBHOOK_URL")),
+            "pagerduty": bool(os.getenv("PAGERDUTY_ROUTING_KEY")),
+        },
     }
 
 
