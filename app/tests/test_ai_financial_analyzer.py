@@ -51,15 +51,34 @@ sys.modules["firebase_admin.credentials"] = dummy.credentials
 # ============================================================================
 
 from app.services.ai_financial_analyzer import AIFinancialAnalyzer
+from app.services.core.dynamic_threshold_service import UserContext
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
 
 @pytest.fixture
-def mock_db():
-    """Create mock database session"""
-    return Mock()
+def mock_user():
+    """Create a mock user with proper numeric attributes for UserContext"""
+    user = Mock()
+    user.id = "test_user_analyzer_123"
+    user.monthly_income = 5000.0
+    user.annual_income = 60000.0
+    user.age = 35
+    user.region = "US"
+    user.family_size = 1
+    user.debt_to_income_ratio = 0.0
+    user.current_savings_rate = 0.0
+    user.housing_status = "rent"
+    user.life_stage = "single"
+    return user
+
+@pytest.fixture
+def mock_db(mock_user):
+    """Create mock database session that returns mock_user on User query"""
+    db = Mock()
+    db.query.return_value.filter.return_value.first.return_value = mock_user
+    return db
 
 @pytest.fixture
 def test_user_id():
@@ -166,31 +185,31 @@ def sample_expenses_with_anomaly():
 
 @pytest.fixture
 def sample_expenses_subscriptions():
-    """Sample expenses with recurring subscriptions"""
+    """Sample expenses with recurring subscriptions (6+ unique to trigger accumulation)"""
     expenses = []
     base_date = datetime.utcnow() - timedelta(days=180)  # 6 months
 
+    # Define subscriptions with different categories/amounts so keys are unique
+    subscriptions = [
+        ('Netflix subscription', Decimal('15.99'), 'entertainment'),
+        ('Spotify Premium', Decimal('9.99'), 'entertainment'),
+        ('Amazon Prime monthly', Decimal('14.99'), 'shopping'),
+        ('Gym membership', Decimal('29.99'), 'health'),
+        ('Cloud subscription monthly', Decimal('12.99'), 'utilities'),
+        ('Premium news subscription', Decimal('19.99'), 'education'),
+    ]
+
     # Monthly recurring charges
     for month in range(6):
-        # Netflix
-        expense1 = Mock()
-        expense1.amount = Decimal('9.99')
-        expense1.category = 'entertainment'
-        expense1.date = base_date + timedelta(days=month*30)
-        expense1.description = "Netflix subscription"
-        expense1.spent_at = expense1.date
-        expense1.created_at = expense1.date
-        expenses.append(expense1)
-
-        # Spotify
-        expense2 = Mock()
-        expense2.amount = Decimal('9.99')
-        expense2.category = 'entertainment'
-        expense2.date = base_date + timedelta(days=month*30, hours=2)
-        expense2.description = "Spotify Premium"
-        expense2.spent_at = expense2.date
-        expense2.created_at = expense2.date
-        expenses.append(expense2)
+        for desc, amount, category in subscriptions:
+            expense = Mock()
+            expense.amount = amount
+            expense.category = category
+            expense.date = base_date + timedelta(days=month*30, hours=subscriptions.index((desc, amount, category)))
+            expense.description = desc
+            expense.spent_at = expense.date
+            expense.created_at = expense.date
+            expenses.append(expense)
 
     return expenses
 
@@ -301,10 +320,11 @@ class TestSpendingPatternDetection:
     def test_no_patterns_insufficient_data(self, mock_db, test_user_id):
         """Test graceful handling when insufficient data for patterns"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
-            # Only 5 data points (need 30+)
+            # Only 5 data points spread across categories to avoid category_concentration
+            categories = ['food', 'transportation', 'entertainment', 'shopping', 'utilities']
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'test'}
-                for _ in range(5)
+                {'amount': 50.0, 'category': categories[i], 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                for i in range(5)
             ]
 
             analyzer = AIFinancialAnalyzer(mock_db, test_user_id)
@@ -487,10 +507,13 @@ class TestDynamicThresholds:
     def test_thresholds_low_income_user(self, mock_db, low_income_user):
         """Test thresholds for low income user"""
         with patch.object(AIFinancialAnalyzer, '_get_user_context') as mock_context:
-            mock_context.return_value = Mock(
+            mock_context.return_value = UserContext(
                 monthly_income=low_income_user.monthly_income,
                 age=low_income_user.age,
-                region=low_income_user.region
+                region=low_income_user.region,
+                family_size=low_income_user.family_size,
+                housing_status=low_income_user.housing_status,
+                life_stage=low_income_user.life_stage,
             )
 
             analyzer = AIFinancialAnalyzer(mock_db, low_income_user.id)
@@ -505,10 +528,13 @@ class TestDynamicThresholds:
     def test_thresholds_high_income_user(self, mock_db, high_income_user):
         """Test thresholds for high income user"""
         with patch.object(AIFinancialAnalyzer, '_get_user_context') as mock_context:
-            mock_context.return_value = Mock(
+            mock_context.return_value = UserContext(
                 monthly_income=high_income_user.monthly_income,
                 age=high_income_user.age,
-                region=high_income_user.region
+                region=high_income_user.region,
+                family_size=high_income_user.family_size,
+                housing_status=high_income_user.housing_status,
+                life_stage=high_income_user.life_stage,
             )
 
             analyzer = AIFinancialAnalyzer(mock_db, high_income_user.id)
@@ -523,12 +549,18 @@ class TestDynamicThresholds:
         """Test that thresholds properly scale with income"""
         with patch.object(AIFinancialAnalyzer, '_get_user_context') as mock_context:
             # Low income thresholds
-            mock_context.return_value = Mock(monthly_income=2000, age=25, region="US")
+            mock_context.return_value = UserContext(
+                monthly_income=2000, age=25, region="US",
+                family_size=1, housing_status="rent", life_stage="single",
+            )
             analyzer_low = AIFinancialAnalyzer(mock_db, low_income_user.id)
             thresholds_low = analyzer_low._get_dynamic_thresholds()
 
             # High income thresholds
-            mock_context.return_value = Mock(monthly_income=15000, age=40, region="US")
+            mock_context.return_value = UserContext(
+                monthly_income=15000, age=40, region="US",
+                family_size=4, housing_status="own", life_stage="married_with_children",
+            )
             analyzer_high = AIFinancialAnalyzer(mock_db, high_income_user.id)
             thresholds_high = analyzer_high._get_dynamic_thresholds()
 
@@ -546,25 +578,28 @@ class TestWeeklyInsights:
     def test_weekly_insights_increasing_trend(self, mock_db, test_user_id):
         """Test weekly insights with increasing spending trend"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
-            base_date = datetime.utcnow() - timedelta(days=14)
+            # Align dates with the algorithm's week boundaries
+            now = datetime.utcnow()
+            current_week_start = now - timedelta(days=now.weekday())
+            previous_week_start = current_week_start - timedelta(days=7)
             expenses = []
 
-            # Week 1: $300 total
+            # Previous week: $280 total (low spending)
             for day in range(7):
                 expenses.append({
                     'amount': 40.0,
                     'category': 'food',
-                    'date': base_date + timedelta(days=day),
-                    'description': 'week 1'
+                    'date': previous_week_start + timedelta(days=day, hours=12),
+                    'description': 'previous week'
                 })
 
-            # Week 2: $500 total (increase)
-            for day in range(7, 14):
+            # Current week: $490 total (high spending = increase)
+            for day in range(7):
                 expenses.append({
                     'amount': 70.0,
                     'category': 'food',
-                    'date': base_date + timedelta(days=day),
-                    'description': 'week 2'
+                    'date': current_week_start + timedelta(days=day, hours=12),
+                    'description': 'current week'
                 })
 
             mock_load.return_value = expenses

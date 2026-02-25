@@ -57,7 +57,7 @@ class TestJWTClaimsAndSecurity:
         
         # Decode without verification to check claims structure
         from app.core.config import settings
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"], audience=JWT_AUDIENCE)
         
         # Check standard claims (RFC 7519)
         assert "exp" in payload  # Expiration time
@@ -89,7 +89,7 @@ class TestJWTClaimsAndSecurity:
         
         # Test basic user scopes
         basic_token = create_access_token(user_data, user_role="basic_user")
-        basic_payload = jwt.decode(basic_token, "test-secret", algorithms=["HS256"], options={"verify_signature": False})
+        basic_payload = jwt.decode(basic_token, "test-secret", algorithms=["HS256"], options={"verify_signature": False, "verify_aud": False})
         basic_scopes = basic_payload["scope"].split()
         
         assert TokenScope.READ_PROFILE.value in basic_scopes
