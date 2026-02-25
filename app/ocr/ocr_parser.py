@@ -99,7 +99,7 @@ def parse_receipt_details(text: str) -> dict:
     text_lines = text.splitlines()
     lines = [item.strip() for item in text_lines if item.strip()]
     merchant = lines[0][:64] if lines else "unknown"
-    item_pattern = re.compile(r"(.+?)\s+(\d+[.,]\d{2})$")
+    item_pattern = re.compile(r"(.+?)\s+\$?(\d+[.,]\d{2})$")
     items = []
     for line in lines[1:]:
         m = item_pattern.search(line)
