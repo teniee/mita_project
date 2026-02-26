@@ -59,8 +59,7 @@ def parse_json(response):
     return json.loads(response.body.decode())
 
 
-@pytest.mark.asyncio
-async def test_register_token(monkeypatch):
+def test_register_token(monkeypatch):
     monkeypatch.setattr(
         "app.api.notifications.routes.PushToken",
         DummyToken,
@@ -68,7 +67,7 @@ async def test_register_token(monkeypatch):
     db = DummyDB()
     user = SimpleNamespace(id="u1")
 
-    resp = await register_token(TokenIn(token="abc", platform="fcm"), db=db, user=user)
+    resp = register_token(TokenIn(token="abc", platform="fcm"), db=db, user=user)
     payload = parse_json(resp)
 
     assert db.committed
@@ -77,8 +76,7 @@ async def test_register_token(monkeypatch):
     assert payload["data"]["token"] == "abc"
 
 
-@pytest.mark.asyncio
-async def test_send_test_notification(monkeypatch):
+def test_send_test_notification(monkeypatch):
     sent = {}
 
     def fake_push(user_id, message, token, **kwargs):
@@ -98,7 +96,7 @@ async def test_send_test_notification(monkeypatch):
     db = DummyDB()
     user = SimpleNamespace(id="u1", email="u@example.com")
 
-    resp = await send_test_notification(
+    resp = send_test_notification(
         NotificationTest(message="hi", token="tok", email="e@mail.com", platform="fcm"),
         db=db,
         user=user,
@@ -109,8 +107,7 @@ async def test_send_test_notification(monkeypatch):
     assert sent["email"] == ("e@mail.com", "Mita Notification", "hi")
 
 
-@pytest.mark.asyncio
-async def test_send_test_notification_fetches_token(monkeypatch):
+def test_send_test_notification_fetches_token(monkeypatch):
     record = DummyToken("u1", "dbtoken", "fcm")
     db = DummyDB(record)
     user = SimpleNamespace(id="u1", email="u@example.com")
@@ -130,7 +127,7 @@ async def test_send_test_notification_fetches_token(monkeypatch):
         "app.api.notifications.routes.send_reminder_email",
         lambda *a, **k: sent.setdefault("email", a),
     )
-    resp = await send_test_notification(
+    resp = send_test_notification(
         NotificationTest(message="hi"),
         db=db,
         user=user,

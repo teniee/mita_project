@@ -37,8 +37,12 @@ def test_send_push_requires_token():
 def test_send_reminder_email(monkeypatch):
     dummy = DummySMTP("localhost", 25)
 
+    monkeypatch.setattr(settings, "SMTP_HOST", "localhost")
+    monkeypatch.setattr(settings, "SMTP_PORT", 25)
+    monkeypatch.setattr(settings, "SMTP_USERNAME", "")
+
     def smtp(host, port):
-        assert host == ""
+        assert host == "localhost"
         assert port == 25
         return dummy
 
@@ -93,10 +97,10 @@ def test_send_reminder_email_with_login(monkeypatch):
         return dummy
 
     monkeypatch.setattr("smtplib.SMTP", smtp)
-    monkeypatch.setattr(settings, "smtp_host", "mail.example.com")
-    monkeypatch.setattr(settings, "smtp_port", 587)
-    monkeypatch.setattr(settings, "smtp_username", "user")
-    monkeypatch.setattr(settings, "smtp_password", "pass")
+    monkeypatch.setattr(settings, "SMTP_HOST", "mail.example.com")
+    monkeypatch.setattr(settings, "SMTP_PORT", 587)
+    monkeypatch.setattr(settings, "SMTP_USERNAME", "user")
+    monkeypatch.setattr(settings, "SMTP_PASSWORD", "pass")
     send_reminder_email("to@example.com", "Hi", "Body")
     assert dummy.starttls_called
     assert dummy.logged_in

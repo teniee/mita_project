@@ -17,14 +17,14 @@ def send_reminder_email(
 ) -> None:
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = settings.smtp_from
+    msg["From"] = settings.SMTP_FROM
     msg["To"] = to_address
     msg.set_content(body)
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-        if settings.smtp_username:
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        if settings.SMTP_USERNAME:
             server.starttls()
-            server.login(settings.smtp_username, settings.smtp_password)
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
 
     if db:

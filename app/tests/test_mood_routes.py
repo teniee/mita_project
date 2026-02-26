@@ -51,23 +51,21 @@ def parse_json(response):
     return json.loads(response.body.decode())
 
 
-@pytest.mark.asyncio
-async def test_log_mood_creates(monkeypatch):
+def test_log_mood_creates(monkeypatch):
     db = DummyDB()
     user = SimpleNamespace(id="u1")
     monkeypatch.setattr("app.api.mood.routes.Mood", Mood)
-    resp = await log_mood(MoodIn(date="2025-01-01", mood="happy"), db=db, user=user)
+    resp = log_mood(MoodIn(date="2025-01-01", mood="happy"), db=db, user=user)
     data = parse_json(resp)
     assert db.committed
     assert db.added
     assert data["data"]["mood"] == "happy"
 
 
-@pytest.mark.asyncio
-async def test_list_moods(monkeypatch):
+def test_list_moods(monkeypatch):
     record = SimpleNamespace(id="m1", date="2025-01-01", mood="sad")
     db = DummyDB(record)
     user = SimpleNamespace(id="u1")
-    resp = await list_moods(db=db, user=user)
+    resp = list_moods(db=db, user=user)
     data = parse_json(resp)
     assert data["data"][0]["mood"] == "sad"
