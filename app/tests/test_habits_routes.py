@@ -1,5 +1,7 @@
 import datetime
+import json
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,75 +14,97 @@ class DummyHabit:
 
     def __init__(self, **kw):
         self.id = "h1"
+        self.title = kw.get("title", "")
+        self.description = kw.get("description", "")
+        self.target_frequency = kw.get("target_frequency", "daily")
         self.created_at = datetime.datetime(2025, 1, 1)
         for k, v in kw.items():
             setattr(self, k, v)
 
 
-class DummyDB:
+class AsyncDummyDB:
+    """Async-compatible DummyDB for AsyncSession-based routes."""
+
     def __init__(self, record=None, all_items=None):
         self.added = []
         self.committed = False
         self.refreshed = []
         self.record = record
         self.all_items = all_items or []
+        self.deleted_obj = None
 
     def add(self, obj):
         self.added.append(obj)
 
-    def commit(self):
+    async def commit(self):
         self.committed = True
 
-    def refresh(self, obj):
+    async def refresh(self, obj):
         self.refreshed.append(obj)
 
-    def query(self, model):
-        return self
+    async def delete(self, obj):
+        self.deleted_obj = obj
 
-    def filter(self, *args, **kwargs):
-        return self
-
-    def first(self):
-        return self.record
-
-    def all(self):
-        return self.all_items
-
-    def delete(self, obj):
-        self.deleted = obj
+    async def execute(self, stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = self.all_items
+        result.scalar_one_or_none.return_value = self.record
+        return result
 
 
-def test_create_and_list_habits(monkeypatch):
+@pytest.mark.asyncio
+async def test_create_and_list_habits(monkeypatch):
     monkeypatch.setattr("app.api.habits.routes.Habit", DummyHabit)
+
+    async def fake_get_habit_with_stats(habit, user_id, db):
+        return {"title": habit.title, "description": habit.description}
+
     monkeypatch.setattr(
-        "app.api.habits.routes.success_response", lambda data=None, message="": data
+        "app.api.habits.routes.get_habit_with_stats", fake_get_habit_with_stats
     )
-    db = DummyDB()
+
+    db = AsyncDummyDB()
     user = SimpleNamespace(id="u1")
 
-    result = create_habit(HabitIn(title="T", description="D"), user=user, db=db)
+    result = await create_habit(HabitIn(title="T", description="D"), user=user, db=db)
+    data = json.loads(result.body.decode())
     assert isinstance(db.added[0], DummyHabit)
     assert db.committed
-    assert result["title"] == "T"
+    assert data["data"]["title"] == "T"
 
-    db2 = DummyDB(all_items=[db.added[0]])
-    out = list_habits(user=user, db=db2)
-    assert len(out) == 1
-    assert out[0]["title"] == "T"
+    habit_obj = db.added[0]
+    db2 = AsyncDummyDB(all_items=[habit_obj])
+    # list_habits uses select(Habit) which needs a real model,
+    # so monkeypatch select to return a mock statement
+    monkeypatch.setattr("app.api.habits.routes.select", lambda *a: MagicMock())
+    result2 = await list_habits(user=user, db=db2)
+    data2 = json.loads(result2.body.decode())
+    assert len(data2["data"]) == 1
+    assert data2["data"][0]["title"] == "T"
 
 
-def test_update_and_delete_habit(monkeypatch):
+@pytest.mark.asyncio
+async def test_update_and_delete_habit(monkeypatch):
     habit = DummyHabit(title="Old", description="Old")
-    db = DummyDB(record=habit)
+    db = AsyncDummyDB(record=habit)
+
+    async def fake_get_habit_with_stats(h, user_id, session):
+        return {"status": "updated", "title": h.title}
+
     monkeypatch.setattr(
-        "app.api.habits.routes.success_response", lambda data=None, message="": data
+        "app.api.habits.routes.get_habit_with_stats", fake_get_habit_with_stats
     )
+    monkeypatch.setattr("app.api.habits.routes.select", lambda *a: MagicMock())
+    monkeypatch.setattr("app.api.habits.routes.and_", lambda *a: MagicMock())
 
     user = SimpleNamespace(id="u1")
-    result = update_habit("h1", HabitUpdate(title="New"), user=user, db=db)
-    assert result["status"] == "updated"
+    result = await update_habit("h1", HabitUpdate(title="New"), user=user, db=db)
+    data = json.loads(result.body.decode())
+    assert data["data"]["status"] == "updated"
     assert habit.title == "New"
 
-    result = delete_habit("h1", user=user, db=db)
-    assert result["status"] == "deleted"
-    assert db.committed
+    db2 = AsyncDummyDB(record=habit)
+    result2 = await delete_habit("h1", user=user, db=db2)
+    data2 = json.loads(result2.body.decode())
+    assert data2["data"]["status"] == "deleted"
+    assert db2.committed
