@@ -9,15 +9,15 @@ Based on BNPL research findings:
 - Critical DTI: <43%
 """
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, condecimal
 
-from app.core.validators import InputSanitizer, FinancialConstants
-from app.schemas.base import UserOwnedDecimalResponseSchema, DecimalResponseSchema
+from app.core.validators import InputSanitizer
+from app.schemas.base import UserOwnedDecimalResponseSchema
 from app.db.models.installment import (
     InstallmentCategory,
     AgeGroup,

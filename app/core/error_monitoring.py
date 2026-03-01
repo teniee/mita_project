@@ -6,13 +6,12 @@ Provides real-time error tracking, alerting, and performance monitoring
 import logging
 import traceback
 import json
-import asyncio
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
 import httpx
-from fastapi import Request, Response
+from fastapi import Request
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration

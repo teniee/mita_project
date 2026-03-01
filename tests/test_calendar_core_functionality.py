@@ -17,27 +17,27 @@ class TestIncomeClassification:
     """Test suite for income classification service"""
     
     def test_income_tier_low(self):
-        from app.services.core.income_classification_service import classify_income, IncomeTier
+        from app.services.core.income_classification_service import classify_income
         tier = classify_income(2500, "US")
         assert tier.name == "LOW"
     
     def test_income_tier_lower_middle(self):
-        from app.services.core.income_classification_service import classify_income, IncomeTier
+        from app.services.core.income_classification_service import classify_income
         tier = classify_income(4500, "US")
         assert tier.name == "LOWER_MIDDLE"
     
     def test_income_tier_middle(self):
-        from app.services.core.income_classification_service import classify_income, IncomeTier
+        from app.services.core.income_classification_service import classify_income
         tier = classify_income(6500, "US")
         assert tier.name == "MIDDLE"
     
     def test_income_tier_upper_middle(self):
-        from app.services.core.income_classification_service import classify_income, IncomeTier
+        from app.services.core.income_classification_service import classify_income
         tier = classify_income(10000, "US")
         assert tier.name == "UPPER_MIDDLE"
     
     def test_income_tier_high(self):
-        from app.services.core.income_classification_service import classify_income, IncomeTier
+        from app.services.core.income_classification_service import classify_income
         tier = classify_income(15000, "US")
         assert tier.name == "HIGH"
 

@@ -27,13 +27,12 @@ Options:
     --benchmark            Run performance benchmarks
 """
 
-import os
 import sys
 import subprocess
 import argparse
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -162,7 +161,7 @@ class AuthTestRunner:
             "-m", "not slow or security",
             "--tb=short",
             f"--html={self.reports_dir}/auth_security_report.html",
-            f"--self-contained-html"
+            "--self-contained-html"
         ])
         
         test_files = list(TEST_FILES.values())
@@ -256,12 +255,12 @@ class AuthTestRunner:
             test_paths = list(TEST_FILES.values())
         
         extra_args = [
-            f"--cov=app.services.auth_jwt_service",
-            f"--cov=app.api.auth.services", 
-            f"--cov=app.core.security",
+            "--cov=app.services.auth_jwt_service",
+            "--cov=app.api.auth.services", 
+            "--cov=app.core.security",
             f"--cov-report=html:{self.coverage_dir}/html",
             f"--cov-report=xml:{self.coverage_dir}/coverage.xml",
-            f"--cov-report=term-missing",
+            "--cov-report=term-missing",
             "--cov-fail-under=80",  # Require 80% coverage
         ]
         
@@ -271,7 +270,7 @@ class AuthTestRunner:
         result = self.run_pytest(test_paths, extra_args)
         
         if result.returncode == 0:
-            print(f"\nCoverage report generated:")
+            print("\nCoverage report generated:")
             print(f"  HTML: {self.coverage_dir}/html/index.html")
             print(f"  XML:  {self.coverage_dir}/coverage.xml")
         
@@ -308,7 +307,7 @@ class AuthTestRunner:
         result = self.run_pytest(performance_tests, extra_args)
         
         if result.returncode == 0:
-            print(f"\nBenchmark report generated:")
+            print("\nBenchmark report generated:")
             print(f"  JSON: {self.reports_dir}/benchmarks.json")
             print(f"  HTML: {self.reports_dir}/benchmarks.html")
         
@@ -400,7 +399,7 @@ class AuthTestRunner:
             for req in security_requirements:
                 f.write(f"- ✓ {req}\n")
             
-            f.write(f"\n## Report Generated\n\n")
+            f.write("\n## Report Generated\n\n")
             f.write(f"- Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"- Test Files: {len(TEST_FILES)} security test modules\n")
             f.write(f"- Total Test Categories: {len(TEST_CATEGORIES)}\n")

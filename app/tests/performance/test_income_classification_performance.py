@@ -8,9 +8,8 @@ import pytest
 import time
 import statistics
 import asyncio
-from decimal import Decimal
-from typing import List, Dict, Any
-from unittest.mock import patch, MagicMock
+from typing import List, Dict
+from unittest.mock import patch
 from dataclasses import dataclass
 
 # Import the actual classification services
@@ -18,7 +17,6 @@ from app.logic.cohort_analysis import CohortAnalyzer as LegacyCohortAnalyzer
 from app.engine.cohort_analyzer import CohortAnalyzer as EngineCohortAnalyzer
 from app.services.core.cohort.cohort_analysis import CohortAnalyzer as CoreCohortAnalyzer
 from app.services.core.engine.budget_logic import generate_budget_from_answers
-from app.config.country_profiles_loader import get_profile
 
 
 @dataclass
@@ -198,7 +196,7 @@ class IncomeClassificationPerformanceTests:
         )
         
         # Performance report for monitoring
-        print(f"\n✅ Single Classification Performance Report:")
+        print("\n✅ Single Classification Performance Report:")
         print(f"   Mean: {perf_stats['mean_ms']:.3f}ms (target: {self.CLASSIFICATION_TARGET_MS}ms)")
         print(f"   P95:  {perf_stats['p95_ms']:.3f}ms")
         print(f"   P99:  {perf_stats['p99_ms']:.3f}ms")
@@ -236,7 +234,7 @@ class IncomeClassificationPerformanceTests:
             f"Actual: {per_item_ms:.3f}ms per item"
         )
         
-        print(f"\n✅ Bulk Classification Performance Report:")
+        print("\n✅ Bulk Classification Performance Report:")
         print(f"   Items processed: {len(bulk_profiles)}")
         print(f"   Total time: {perf_stats['mean_ms']:.3f}ms")
         print(f"   Per item: {per_item_ms:.3f}ms (target: {self.BULK_OPERATION_TARGET_MS}ms)")
@@ -288,7 +286,7 @@ class IncomeClassificationPerformanceTests:
             f"Performance variance too high across states: {performance_variance:.3f}ms variance"
         )
         
-        print(f"\n✅ Multi-State Performance Report:")
+        print("\n✅ Multi-State Performance Report:")
         for state, result in state_results.items():
             print(f"   {state}: {result['per_item_ms']:.3f}ms per item ({result['profiles_tested']} profiles)")
     
@@ -335,7 +333,7 @@ class IncomeClassificationPerformanceTests:
                 f"{name} analyzer too slow: {perf_stats['mean_ms']:.3f}ms"
             )
         
-        print(f"\n✅ Analyzer Performance Comparison:")
+        print("\n✅ Analyzer Performance Comparison:")
         for name, ms in analyzer_performance.items():
             print(f"   {name.capitalize()}: {ms:.3f}ms")
     
@@ -384,10 +382,10 @@ class IncomeClassificationPerformanceTests:
             f"(max: {BUDGET_GENERATION_MAX_MS}ms)"
         )
         
-        print(f"\n✅ Budget Generation Performance Report:")
+        print("\n✅ Budget Generation Performance Report:")
         print(f"   Mean: {perf_stats['mean_ms']:.3f}ms")
         print(f"   P95:  {perf_stats['p95_ms']:.3f}ms")
-        print(f"   Includes: Income classification, threshold lookup, budget calculation")
+        print("   Includes: Income classification, threshold lookup, budget calculation")
     
     def test_memory_usage_during_classification(self, mock_country_profiles, test_profiles):
         """
@@ -427,7 +425,7 @@ class IncomeClassificationPerformanceTests:
             final_memory = process.memory_info().rss / 1024 / 1024
             total_growth = final_memory - baseline_memory
             
-            print(f"\n✅ Memory Usage Report:")
+            print("\n✅ Memory Usage Report:")
             print(f"   Baseline: {baseline_memory:.2f}MB")
             print(f"   Final: {final_memory:.2f}MB")
             print(f"   Growth: {total_growth:.2f}MB (1000 classifications)")
@@ -484,7 +482,7 @@ class IncomeClassificationPerformanceTests:
                 f"{result['per_operation_ms']:.3f}ms per operation"
             )
         
-        print(f"\n✅ Concurrent Classification Performance:")
+        print("\n✅ Concurrent Classification Performance:")
         for result in concurrency_results:
             print(f"   {result['concurrent_tasks']:2d} tasks: "
                   f"{result['per_operation_ms']:.3f}ms/op, "

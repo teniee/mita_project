@@ -6,8 +6,7 @@ Centralized configuration for all external service integrations
 import os
 import json
 import logging
-import asyncio
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any
 from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
@@ -18,7 +17,6 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -435,7 +433,6 @@ class AWSService:
         
         try:
             import boto3
-            from botocore.exceptions import ClientError
             
             s3_client = boto3.client(
                 's3',

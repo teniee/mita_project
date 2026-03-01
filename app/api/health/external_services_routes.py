@@ -4,9 +4,9 @@ Provides monitoring endpoints for all external service integrations
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.core.external_services import (
     external_services,
@@ -39,11 +39,10 @@ async def check_external_services():
         health_status = get_services_health()
         
         # Determine HTTP status code based on health
-        status_code = status.HTTP_200_OK
         if health_status['status'] == 'critical':
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            pass
         elif health_status['status'] == 'degraded':
-            status_code = status.HTTP_200_OK  # Still functional but degraded
+            pass  # Still functional but degraded
         
         return {
             "status": health_status['status'],
@@ -110,11 +109,10 @@ async def check_api_keys_health(admin_user = Depends(require_admin_role)):
         health_status = get_api_key_health()
         
         # Determine HTTP status code based on health
-        status_code = status.HTTP_200_OK
         if health_status['status'] == 'unhealthy':
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            pass
         elif health_status['status'] == 'warning':
-            status_code = status.HTTP_200_OK
+            pass
         
         return {
             "status": health_status['status'],
@@ -189,9 +187,8 @@ async def check_critical_services():
         elif not all_critical_healthy:
             overall_status = "degraded"
         
-        status_code = status.HTTP_200_OK
         if overall_status == "critical":
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            pass
         
         return {
             "status": overall_status,

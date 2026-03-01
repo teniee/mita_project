@@ -6,7 +6,7 @@ Provides endpoints for monitoring database performance, connection pools, and qu
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.core.database_monitoring import (
     get_database_performance_stats,

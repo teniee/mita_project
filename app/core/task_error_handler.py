@@ -3,23 +3,16 @@ Enhanced Error Handler and Dead Letter Queue System for MITA Tasks.
 Provides comprehensive error handling, retry logic, and dead letter queue management.
 """
 
-import os
-import time
 import json
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Callable, Tuple
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
-import traceback
-import logging
 
 import redis
 from rq import Queue, Worker
 from rq.job import Job
-from rq.exceptions import NoSuchJobError
-from rq.job import JobStatus
 
-from app.core.config import settings
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)

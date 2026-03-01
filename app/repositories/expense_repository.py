@@ -7,7 +7,6 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import select, func, and_, desc
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.base_repository import BaseRepository
 from app.db.models import Expense

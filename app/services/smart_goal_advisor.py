@@ -3,12 +3,12 @@ MODULE 5: Smart Goal Advisor Service
 AI-powered goal recommendations and insights based on user behavior and spending patterns
 """
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 from decimal import Decimal
 from datetime import datetime, timedelta, date
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, desc
+from sqlalchemy import func, desc
 
 from app.db.models import Goal, Transaction, User
 from app.core.logging_config import get_logger

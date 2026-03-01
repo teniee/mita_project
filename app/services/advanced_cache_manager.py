@@ -5,11 +5,10 @@ Multi-tier caching with intelligent eviction, compression, and analytics
 
 import time
 import logging
-import hashlib
 import pickle
 import gzip
 import json
-from typing import Any, Dict, List, Optional, Union, Callable, TypeVar, Generic
+from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from abc import ABC, abstractmethod
@@ -17,7 +16,6 @@ from collections import OrderedDict, defaultdict
 from threading import RLock, Thread
 from enum import Enum
 import asyncio
-import weakref
 
 try:
     import redis
@@ -321,7 +319,7 @@ class MemoryCache(CacheBackend):
         
         elif self.eviction_policy == EvictionPolicy.TTL:
             # Find expired entries first, then oldest
-            now = datetime.now()
+            datetime.now()
             for key, entry in self._cache.items():
                 if entry.is_expired:
                     key_to_evict = key

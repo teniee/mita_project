@@ -4,15 +4,13 @@ This ensures zero-tolerance quality standards for financial accuracy.
 """
 
 import pytest
-from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import all the classification functions from different modules
 from app.logic.cohort_analysis import CohortAnalyzer as LegacyCohortAnalyzer
-from app.engine.cohort_analyzer import CohortAnalyzer as EngineCohortAnalyzer, determine_cohort
-from app.services.core.cohort.cohort_analysis import CohortAnalyzer as CoreCohortAnalyzer, determine_cohort as core_determine_cohort
+from app.engine.cohort_analyzer import CohortAnalyzer as EngineCohortAnalyzer
+from app.services.core.cohort.cohort_analysis import CohortAnalyzer as CoreCohortAnalyzer
 from app.services.core.engine.budget_logic import generate_budget_from_answers
-from app.services.plan_service import generate_monthly_plan
 
 
 class TestIncomeClassificationConsistency:

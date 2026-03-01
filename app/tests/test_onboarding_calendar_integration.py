@@ -11,12 +11,10 @@ Bug Context:
 - Root cause: Missing UUID default on daily_plan.id column
 """
 import pytest
-from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
 from app.db.models import User, DailyPlan
-from app.api.onboarding.schemas import OnboardingSubmitRequest, IncomeData, SpendingHabits, GoalsData
 
 
 class TestOnboardingCalendarIntegration:

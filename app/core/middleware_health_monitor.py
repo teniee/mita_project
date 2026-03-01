@@ -8,16 +8,14 @@ import asyncio
 import logging
 import threading
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
-import redis
 import psutil
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from concurrent.futures import ThreadPoolExecutor
 
-from app.core.config import settings
 from app.core.rate_limiter import rate_limiter, RateLimitRule
 from app.core.jwt_security import validate_jwt_security_config
 from app.core.audit_logging import AuditLogger
@@ -585,7 +583,7 @@ class MiddlewareHealthMonitor:
         start_time = time.time()
         
         try:
-            from app.core.input_validation import validate_input, ValidationRule, InputValidator
+            from app.core.input_validation import ValidationRule, InputValidator  # noqa: F401
             
             # Test input validation functionality
             validator = InputValidator()

@@ -9,19 +9,15 @@ import time
 import asyncio
 import statistics
 import psutil
-from typing import Dict, List, Any, Optional
-from unittest.mock import patch, MagicMock, AsyncMock
+from typing import Dict, List
+from unittest.mock import patch, MagicMock
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-import threading
 
 # Import security components
-from app.core.security import AdvancedRateLimiter, SecurityConfig, get_security_health_status
+from app.core.security import AdvancedRateLimiter, get_security_health_status
 from app.services.token_security_service import TokenSecurityService
 from app.core.audit_logging import log_security_event
-from app.middleware.comprehensive_rate_limiter import ComprehensiveRateLimitMiddleware
 from app.services.auth_jwt_service import create_access_token, verify_token
-from app.core.rate_limiter import RateLimiter
 
 
 @dataclass
@@ -215,7 +211,7 @@ class SecurityPerformanceTests:
                 f"(max: {self.MAX_THROUGHPUT_DEGRADATION_PERCENT}%)"
             )
             
-            print(f"\n✅ Rate Limiter Performance Impact:")
+            print("\n✅ Rate Limiter Performance Impact:")
             print(f"   Baseline: {baseline_perf['mean_ms']:.3f}ms")
             print(f"   With Rate Limiting: {rate_limited_perf['mean_ms']:.3f}ms")
             print(f"   Overhead: {overhead_ms:.3f}ms ({overhead_percent:.1f}%)")
@@ -268,7 +264,7 @@ class SecurityPerformanceTests:
                 f"(max: {self.MAX_TOKEN_BLACKLIST_OVERHEAD_MS}ms)"
             )
             
-            print(f"\n✅ Token Blacklist Performance Impact:")
+            print("\n✅ Token Blacklist Performance Impact:")
             print(f"   Baseline Token Validation: {baseline_perf['mean_ms']:.3f}ms")
             print(f"   With Blacklist Check: {blacklist_perf['mean_ms']:.3f}ms") 
             print(f"   Overhead: {overhead_ms:.3f}ms ({overhead_percent:.1f}%)")
@@ -306,7 +302,7 @@ class SecurityPerformanceTests:
             )
             return result
         
-        with patch('app.core.audit_logging.logger') as mock_logger:
+        with patch('app.core.audit_logging.logger'):
             audit_perf = self.measure_operation_performance(financial_operation_with_audit)
         
         # Calculate impact
@@ -330,7 +326,7 @@ class SecurityPerformanceTests:
             f"(max: {self.MAX_AUDIT_LOGGING_OVERHEAD_MS}ms)"
         )
         
-        print(f"\n✅ Audit Logging Performance Impact:")
+        print("\n✅ Audit Logging Performance Impact:")
         print(f"   Baseline Operation: {baseline_perf['mean_ms']:.3f}ms")
         print(f"   With Audit Logging: {audit_perf['mean_ms']:.3f}ms")
         print(f"   Overhead: {overhead_ms:.3f}ms ({overhead_percent:.1f}%)")
@@ -384,7 +380,7 @@ class SecurityPerformanceTests:
                 f"(max: {self.MAX_AUTH_SECURITY_OVERHEAD_MS}ms)"
             )
             
-            print(f"\n✅ Comprehensive Auth Security Performance Impact:")
+            print("\n✅ Comprehensive Auth Security Performance Impact:")
             print(f"   Baseline Auth: {baseline_perf['mean_ms']:.3f}ms")
             print(f"   With Security Checks: {comprehensive_perf['mean_ms']:.3f}ms")
             print(f"   Overhead: {overhead_ms:.3f}ms ({overhead_percent:.1f}%)")
@@ -463,7 +459,7 @@ class SecurityPerformanceTests:
             f"(max: {self.MAX_SECURITY_MIDDLEWARE_OVERHEAD_MS}ms)"
         )
         
-        print(f"\n✅ Security Middleware Performance Impact:")
+        print("\n✅ Security Middleware Performance Impact:")
         print(f"   Baseline Request: {baseline_time:.3f}ms")
         print(f"   With Security Middleware: {middleware_time:.3f}ms")
         print(f"   Overhead: {overhead_ms:.3f}ms ({overhead_percent:.1f}%)")
@@ -526,7 +522,7 @@ class SecurityPerformanceTests:
                     f"at {concurrent} concurrent requests"
                 )
             
-            print(f"\n✅ Concurrent Security Operations Performance:")
+            print("\n✅ Concurrent Security Operations Performance:")
             for result in concurrency_results:
                 print(f"   {result['concurrent_requests']:2d} concurrent: "
                       f"{result['per_request_ms']:.3f}ms/request, "
@@ -591,7 +587,7 @@ class SecurityPerformanceTests:
             final_memory = process.memory_info().rss / 1024 / 1024
             total_growth = final_memory - baseline_memory
             
-            print(f"\n✅ Security Features Memory Usage:")
+            print("\n✅ Security Features Memory Usage:")
             print(f"   Baseline: {baseline_memory:.2f}MB")
             print(f"   Final: {final_memory:.2f}MB")
             print(f"   Growth: {total_growth:.2f}MB (5000 security operations)")
@@ -624,7 +620,7 @@ class SecurityPerformanceTests:
                 f"(max: {HEALTH_CHECK_MAX_MS}ms)"
             )
             
-            print(f"\n✅ Security Health Monitoring Performance:")
+            print("\n✅ Security Health Monitoring Performance:")
             print(f"   Mean: {perf_stats['mean_ms']:.3f}ms")
             print(f"   P95:  {perf_stats['p95_ms']:.3f}ms")
             print(f"   Throughput: {perf_stats['throughput_ops_per_sec']:.0f} checks/sec")
@@ -634,8 +630,8 @@ class SecurityPerformanceTests:
         Comprehensive assessment of all security features' combined performance impact.
         This represents the real-world performance impact users will experience.
         """
-        print(f"\n🔒 Security Features Performance Impact Assessment")
-        print(f"=" * 60)
+        print("\n🔒 Security Features Performance Impact Assessment")
+        print("=" * 60)
         
         impact_report = {
             "individual_feature_overhead": {
@@ -666,14 +662,14 @@ class SecurityPerformanceTests:
             ]
         }
         
-        print(f"Individual Feature Overhead Targets:")
+        print("Individual Feature Overhead Targets:")
         for feature, overhead in impact_report["individual_feature_overhead"].items():
             print(f"   {feature}: {overhead}")
         
         print(f"\nWorst-Case Combined Overhead: {impact_report['combined_worst_case_overhead']:.1f}ms")
         print(f"Production Readiness: {impact_report['production_readiness']}")
         
-        print(f"\n💡 Recommendations:")
+        print("\n💡 Recommendations:")
         for i, rec in enumerate(impact_report["recommendations"], 1):
             print(f"   {i}. {rec}")
         

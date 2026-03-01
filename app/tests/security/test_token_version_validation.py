@@ -13,7 +13,6 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Request
 
 from app.services.auth_jwt_service import (
     create_token_pair,
@@ -22,11 +21,9 @@ from app.services.auth_jwt_service import (
 )
 from app.db.models import User
 from app.api.auth.services import (
-    authenticate_google,
-    register_user_async,
-    authenticate_user_async
+    authenticate_google
 )
-from app.api.auth.schemas import LoginIn, RegisterIn, GoogleAuthIn
+from app.api.auth.schemas import GoogleAuthIn
 
 
 class TestTokenVersionValidation:

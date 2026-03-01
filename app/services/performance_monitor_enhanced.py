@@ -5,20 +5,17 @@ Monitors API performance, database queries, and financial operations
 
 import time
 import logging
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 from enum import Enum
 
 import sentry_sdk
-from sentry_sdk import start_transaction, start_span
+from sentry_sdk import start_span
 from fastapi import Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .sentry_service import sentry_service
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

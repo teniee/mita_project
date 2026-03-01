@@ -16,14 +16,12 @@ import os
 import sys
 import types
 import uuid
-from typing import Any, Dict
 from types import SimpleNamespace
 from datetime import datetime
 
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
 # Set required environment variables before any app imports
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
@@ -96,13 +94,8 @@ sys.modules["apns2.payload"] = apns_dummy_payload
 
 # Import app components after mocking
 from app.main import app
-import app.api.email.routes as email_routes
-import app.api.insights.routes as insights_routes
-import app.api.ocr.routes as ocr_routes
-import app.api.onboarding.routes as onboarding_routes
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
-from app.db.models.user import User
 
 
 # ============================================================================

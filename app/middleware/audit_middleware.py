@@ -7,7 +7,6 @@ import time
 import logging
 from typing import Callable
 from fastapi import Request, Response
-from fastapi.responses import StreamingResponse
 import json
 
 from app.core.audit_logging import log_request_response, log_security_violation

@@ -12,7 +12,6 @@ import requests
 import argparse
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

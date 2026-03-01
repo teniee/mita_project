@@ -7,7 +7,6 @@ Create Date: 2025-11-17 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0017_add_account_security_fields'

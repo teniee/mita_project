@@ -13,7 +13,6 @@ from uuid import uuid4
 
 from app.core.standardized_error_handler import (
     StandardizedErrorHandler, 
-    ErrorResponse,
     StandardizedAPIException
 )
 

@@ -26,7 +26,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from app.core.secret_manager import UnifiedSecretManager, SecretCategory, SecretRotationStatus
+from app.core.secret_manager import UnifiedSecretManager, SecretCategory
 
 logger = logging.getLogger(__name__)
 

@@ -6,17 +6,17 @@ Production-ready email service administration and monitoring
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, Field, validator
 
 from app.core.async_session import get_async_db
 from app.api.dependencies import get_current_user
 from app.db.models.user import User
-from app.services.email_service import EmailService, EmailType, EmailPriority, get_email_service
-from app.services.email_queue_service import EmailQueueService, get_email_queue_service, queue_email
+from app.services.email_service import EmailType, EmailPriority, get_email_service
+from app.services.email_queue_service import get_email_queue_service, queue_email
 from app.utils.response_wrapper import StandardizedResponse
 from app.core.audit_logging import log_security_event_async
 

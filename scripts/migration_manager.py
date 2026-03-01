@@ -25,7 +25,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
-from typing import Dict, Optional, List
+from typing import Dict, List
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 

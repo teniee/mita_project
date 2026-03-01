@@ -10,12 +10,10 @@ import secrets
 import logging
 import os
 import asyncio
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
 from fastapi import Request, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from fastapi.security import HTTPBearer
 import redis.asyncio as redis
 from passlib.context import CryptContext
 import jwt
@@ -584,7 +582,7 @@ class AdvancedRateLimiter:
         if client_exceeded or email_exceeded:
             # Log security event
             from app.core.audit_logging import log_security_event
-            log_security_event(f"auth_rate_limit_exceeded", {
+            log_security_event("auth_rate_limit_exceeded", {
                 "endpoint": endpoint_type,
                 "client_hash": SecurityUtils.hash_sensitive_data(client_id)[:16],
                 "email_hash": email_hash[:16],
@@ -1108,7 +1106,7 @@ def comprehensive_auth_security(endpoint_type: str = "general",
         # Log security event for monitoring (skip for performance-critical endpoints)
         if endpoint_type not in ["register"]:
             monitor.log_security_event(
-                f"auth_endpoint_access",
+                "auth_endpoint_access",
                 {
                     "endpoint_type": endpoint_type,
                     "client_hash": SecurityUtils.hash_sensitive_data(

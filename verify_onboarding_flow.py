@@ -60,7 +60,7 @@ budget_plan = {
     }
 }
 
-print(f"\n✓ Budget plan generated successfully")
+print("\n✓ Budget plan generated successfully")
 print(f"  - fixed_expenses_total: ${budget_plan['fixed_expenses_total']}")
 
 # Simulate calendar config merge (FIXED version from routes.py)
@@ -72,7 +72,7 @@ calendar_config = {
 }
 
 # Verify calendar config has what the engine needs
-print(f"\n=== VERIFICATION ===")
+print("\n=== VERIFICATION ===")
 print(f"✓ calendar_config['monthly_income'] = ${calendar_config.get('monthly_income')}")
 print(f"✓ calendar_config['fixed_expenses'] type = {type(calendar_config.get('fixed_expenses'))}")
 print(f"✓ calendar_config['fixed_expenses'] value = {calendar_config.get('fixed_expenses')}")
@@ -82,7 +82,7 @@ print(f"✓ calendar_config['fixed_expenses_total'] = ${calendar_config.get('fix
 income_from_config = calendar_config.get("monthly_income", 3000)
 fixed_from_config = calendar_config.get("fixed_expenses", {})
 
-print(f"\n=== CALENDAR ENGINE WILL SEE ===")
+print("\n=== CALENDAR ENGINE WILL SEE ===")
 print(f"✓ Income: ${income_from_config} (should be 5000, NOT 3000)")
 print(f"✓ Fixed expenses type: {type(fixed_from_config)} (should be dict, NOT float)")
 print(f"✓ Fixed expenses dict: {fixed_from_config}")
@@ -101,7 +101,7 @@ else:
 # Calculate expected daily budget
 days_in_month = 30
 daily_budget = discretionary / days_in_month
-print(f"\n=== EXPECTED RESULT ===")
+print("\n=== EXPECTED RESULT ===")
 print(f"✓ User's income: ${monthly_income}/month")
 print(f"✓ User's fixed expenses: ${fixed_total}/month")
 print(f"✓ User's discretionary: ${discretionary}/month")

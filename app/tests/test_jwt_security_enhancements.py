@@ -7,11 +7,9 @@ security validation, and compliance with financial application standards.
 """
 
 import pytest
-import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import jwt
-from jwt import InvalidTokenError
 
 from app.services.auth_jwt_service import (
     create_access_token,
@@ -25,19 +23,16 @@ from app.services.auth_jwt_service import (
     has_all_scopes,
     blacklist_token,
     TokenScope,
-    UserRole,
     JWT_ISSUER,
     JWT_AUDIENCE
 )
 from app.middleware.jwt_scope_middleware import (
-    require_scopes,
     require_profile_read,
     require_transactions_write,
     require_admin_system
 )
 from app.services.token_security_monitoring import (
     TokenSecurityMonitor,
-    get_security_monitor,
     SecurityAlertLevel
 )
 
@@ -443,7 +438,7 @@ class TestTokenBlacklisting:
             new_callable=AsyncMock,
             return_value=mock_service,
         ):
-            payload = await verify_token(token)
+            await verify_token(token)
             # Fresh tokens skip blacklist check, so we need to also patch the
             # import inside verify_token. verify_token does a local import of
             # get_blacklist_service from token_blacklist_service.

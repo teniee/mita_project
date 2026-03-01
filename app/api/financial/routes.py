@@ -16,7 +16,7 @@ from app.core.standardized_error_handler import (
     validate_required_fields
 )
 from app.core.error_decorators import handle_financial_errors, ErrorHandlingMixin
-from app.utils.response_wrapper import StandardizedResponse, FinancialResponseHelper, success_response
+from app.utils.response_wrapper import FinancialResponseHelper, success_response
 
 from app.services.core.dynamic_threshold_service import (
     get_dynamic_budget_method, get_dynamic_thresholds, 
@@ -82,10 +82,10 @@ def installment_check_standardized(
         
         # Calculate additional financial insights
         monthly_payment = validated_price / payload.months
-        total_budget_impact = monthly_payment * payload.months
+        monthly_payment * payload.months
         
         # Add metadata for better user experience
-        analysis_meta = {
+        {
             "monthly_payment": round(monthly_payment, 2),
             "total_amount": validated_price,
             "installment_period": payload.months,

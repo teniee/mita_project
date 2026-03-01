@@ -9,26 +9,18 @@ import time
 import asyncio
 import statistics
 import psutil
-from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import patch, AsyncMock
+from typing import Dict, List, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import concurrent.futures
-import threading
 from decimal import Decimal
 
 # Database imports
-from sqlalchemy import text, func, select, insert, update, delete
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text, func, select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import models and database components
-from app.db.models import User, Transaction, Expense, Goal
+from app.db.models import User, Transaction
 from app.core.async_session import get_async_session_factory
-from app.repositories.transaction_repository import TransactionRepository
-from app.repositories.expense_repository import ExpenseRepository
-from app.repositories.user_repository import UserRepository
-from app.services.core.engine.budget_logic import generate_budget_from_answers
 
 
 @dataclass
@@ -128,7 +120,7 @@ class DatabasePerformanceTests:
                     asyncio.run(operation_func())
                 else:
                     operation_func()
-            except Exception as e:
+            except Exception:
                 pass  # Some operations might fail in test environment
             end_time = time.perf_counter()
             times.append((end_time - start_time) * 1000)
@@ -217,7 +209,7 @@ class DatabasePerformanceTests:
             f"(min: {self.MIN_THROUGHPUT_SINGLE_OPS})"
         )
         
-        print(f"\n✅ User Authentication Query Performance:")
+        print("\n✅ User Authentication Query Performance:")
         print(f"   Average Time: {benchmark.execution_time_ms:.3f}ms")
         print(f"   Target: {benchmark.target_ms}ms")
         print(f"   Throughput: {benchmark.throughput_ops_per_sec:.0f} lookups/sec")
@@ -257,7 +249,7 @@ class DatabasePerformanceTests:
             f"(target: {benchmark.target_ms}ms). This impacts expense tracking UX."
         )
         
-        print(f"\n✅ Financial Transaction Insert Performance:")
+        print("\n✅ Financial Transaction Insert Performance:")
         print(f"   Average Time: {benchmark.execution_time_ms:.3f}ms")
         print(f"   Target: {benchmark.target_ms}ms")
         print(f"   Throughput: {benchmark.throughput_ops_per_sec:.0f} inserts/sec")
@@ -313,9 +305,9 @@ class DatabasePerformanceTests:
             f"(target: {benchmark.target_ms}ms)"
         )
         
-        print(f"\n✅ Bulk Transaction Query Performance:")
+        print("\n✅ Bulk Transaction Query Performance:")
         print(f"   Average Time: {benchmark.execution_time_ms:.3f}ms")
-        print(f"   Records per Query: ~500")
+        print("   Records per Query: ~500")
         print(f"   Throughput: {benchmark.throughput_ops_per_sec:.0f} ops/sec")
     
     @pytest.mark.asyncio
@@ -368,10 +360,10 @@ class DatabasePerformanceTests:
             f"(target: {benchmark.target_ms}ms)"
         )
         
-        print(f"\n✅ Complex Financial Analytics Query Performance:")
+        print("\n✅ Complex Financial Analytics Query Performance:")
         print(f"   Average Time: {benchmark.execution_time_ms:.3f}ms")
         print(f"   Target: {benchmark.target_ms}ms")
-        print(f"   Query Type: Monthly category aggregations")
+        print("   Query Type: Monthly category aggregations")
     
     @pytest.mark.asyncio
     async def test_concurrent_database_operations_performance(self, async_session_factory, test_users):
@@ -388,7 +380,7 @@ class DatabasePerformanceTests:
                 result = await session.execute(
                     select(User).where(User.id == user.id)
                 )
-                user_record = result.scalars().first()
+                result.scalars().first()
                 operations_completed += 1
                 
                 # Recent transactions query
@@ -398,7 +390,7 @@ class DatabasePerformanceTests:
                     .order_by(Transaction.date.desc())
                     .limit(20)
                 )
-                transactions = result.scalars().all()
+                result.scalars().all()
                 operations_completed += 1
                 
                 # Insert new transaction
@@ -464,7 +456,7 @@ class DatabasePerformanceTests:
                 f"Failed operations under concurrency: {result['failed_operations']}"
             )
         
-        print(f"\n✅ Concurrent Database Operations Performance:")
+        print("\n✅ Concurrent Database Operations Performance:")
         for result in concurrency_results:
             print(f"   {result['concurrent_users']:2d} users: "
                   f"{result['avg_time_per_user_ms']:.0f}ms/user, "
@@ -495,7 +487,7 @@ class DatabasePerformanceTests:
         
         for _ in range(20):  # 20 test runs
             start_time = time.perf_counter()
-            operations_count = await rapid_connection_operations()
+            await rapid_connection_operations()
             end_time = time.perf_counter()
             
             duration_ms = (end_time - start_time) * 1000
@@ -512,7 +504,7 @@ class DatabasePerformanceTests:
             f"(max: {MAX_CONNECTION_POOL_TIME_MS}ms)"
         )
         
-        print(f"\n✅ Database Connection Pooling Performance:")
+        print("\n✅ Database Connection Pooling Performance:")
         print(f"   Average Time (50 connections): {avg_time:.1f}ms")
         print(f"   Connection Throughput: {operations_per_second:.0f} ops/sec")
         print(f"   P95 Time: {self._percentile(times, 95):.1f}ms")
@@ -548,7 +540,7 @@ class DatabasePerformanceTests:
             # Test critical query plans
             critical_queries = [
                 # User authentication query
-                f"SELECT * FROM users WHERE email = 'perf_test_user_0@example.com'",
+                "SELECT * FROM users WHERE email = 'perf_test_user_0@example.com'",
                 
                 # Recent transactions query
                 f"SELECT * FROM transactions WHERE user_id = {user.id} ORDER BY date DESC LIMIT 20",
@@ -582,7 +574,7 @@ class DatabasePerformanceTests:
                 except Exception as e:
                     print(f"   Could not analyze query plan: {e}")
         
-        print(f"\n✅ Database Query Plan Analysis Completed")
+        print("\n✅ Database Query Plan Analysis Completed")
     
     @pytest.mark.asyncio
     async def test_database_memory_usage_under_load(self, async_session_factory, test_users):
@@ -610,7 +602,7 @@ class DatabasePerformanceTests:
                     result = await session.execute(
                         select(User).where(User.id == user.id)
                     )
-                    user_data = result.scalars().first()
+                    result.scalars().first()
                     
                     # Query transactions
                     result = await session.execute(
@@ -618,7 +610,7 @@ class DatabasePerformanceTests:
                         .where(Transaction.user_id == user.id)
                         .limit(50)
                     )
-                    transactions = result.scalars().all()
+                    result.scalars().all()
                     
                     # Insert new transaction
                     new_transaction = Transaction(
@@ -647,7 +639,7 @@ class DatabasePerformanceTests:
         final_memory = process.memory_info().rss / 1024 / 1024
         total_growth = final_memory - baseline_memory
         
-        print(f"\n✅ Database Memory Usage Under Load:")
+        print("\n✅ Database Memory Usage Under Load:")
         print(f"   Baseline: {baseline_memory:.2f}MB")
         print(f"   Final: {final_memory:.2f}MB") 
         print(f"   Growth: {total_growth:.2f}MB (sustained database operations)")

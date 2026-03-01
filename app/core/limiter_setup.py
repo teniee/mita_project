@@ -89,7 +89,7 @@ async def get_redis_connection(app: FastAPI) -> Optional[redis.Redis]:
             
         # Validate URL format
         if not (redis_url.startswith('redis://') or redis_url.startswith('rediss://')):
-            logger.warning(f"Invalid Redis URL format - using in-memory fallback")
+            logger.warning("Invalid Redis URL format - using in-memory fallback")
             app.state.redis_available = False
             return None
         

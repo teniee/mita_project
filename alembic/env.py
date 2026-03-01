@@ -2,8 +2,7 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
-from sqlalchemy.engine.url import make_url
+from sqlalchemy import pool
 
 from alembic import context
 
@@ -54,10 +53,10 @@ print(f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***
 final_url = url
 if "+asyncpg://" in url:
     final_url = url.replace("+asyncpg://", "+psycopg2://", 1)
-    print(f"[Alembic] Converted driver: asyncpg -> psycopg2")
+    print("[Alembic] Converted driver: asyncpg -> psycopg2")
 elif "postgresql://" in url and "+psycopg2://" not in url:
     final_url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
-    print(f"[Alembic] Added psycopg2 driver")
+    print("[Alembic] Added psycopg2 driver")
 
 # Remove problematic query params for Supabase pooler
 if "?" in final_url:
@@ -68,7 +67,7 @@ if "?" in final_url:
         final_url = f"{base_url}?{'&'.join(params)}"
     else:
         final_url = base_url
-    print(f"[Alembic] Cleaned query parameters")
+    print("[Alembic] Cleaned query parameters")
 
 # Extract host and port for logging WITHOUT using make_url()
 try:
@@ -81,7 +80,7 @@ try:
         db_name = final_url.split("/")[-1].split("?")[0] if "/" in final_url else "unknown"
         print(f"[Alembic] Final connection: {host}:{port} database={db_name}")
 except Exception:
-    print(f"[Alembic] Using connection string (parsing failed for logging)")
+    print("[Alembic] Using connection string (parsing failed for logging)")
 
 # Store as string, not make_url object - we'll create_engine directly with the string
 sync_url = final_url

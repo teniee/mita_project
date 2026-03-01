@@ -4,19 +4,16 @@ Provides multi-tier caching with Redis, in-memory, and database query result cac
 """
 
 import json
-import time
 import pickle
 import hashlib
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union, Callable, TypeVar, Generic
+from typing import Any, Dict, List, Optional, Callable, TypeVar
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
 from functools import wraps
-from contextlib import asynccontextmanager
 import redis.asyncio as redis
-from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.error_monitoring import log_error, ErrorSeverity, ErrorCategory

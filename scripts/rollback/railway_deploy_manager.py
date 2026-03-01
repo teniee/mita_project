@@ -422,13 +422,13 @@ async def main():
                 success = await manager.wait_for_deployment_success(new_deployment_id)
 
                 if success:
-                    print(f"✅ Rollback completed successfully")
+                    print("✅ Rollback completed successfully")
                     sys.exit(0)
                 else:
-                    print(f"❌ Rollback failed")
+                    print("❌ Rollback failed")
                     sys.exit(1)
             else:
-                print(f"❌ Failed to initiate rollback")
+                print("❌ Failed to initiate rollback")
                 sys.exit(1)
 
         elif args.command == "status":
@@ -442,7 +442,7 @@ async def main():
         elif args.command == "previous":
             deployment = await manager.get_previous_successful_deployment()
             if deployment:
-                print(f"\nPrevious Successful Deployment:")
+                print("\nPrevious Successful Deployment:")
                 print(f"  ID: {deployment.id}")
                 print(f"  Status: {deployment.status.value}")
                 print(f"  Git SHA: {deployment.git_sha}")

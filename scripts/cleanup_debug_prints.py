@@ -4,7 +4,6 @@ Debug Print Cleanup Script for MITA Finance
 Systematically replaces print() statements with proper logging
 """
 
-import os
 import re
 import logging
 from pathlib import Path
@@ -237,7 +236,7 @@ def main():
     with open(report_file, 'w', encoding='utf-8') as f:
         f.write(report)
     
-    logger.info(f"🎉 Cleanup completed!")
+    logger.info("🎉 Cleanup completed!")
     logger.info(f"📊 Total files processed: {backend_processed}")
     logger.info(f"📄 Report saved to: {report_file}")
     

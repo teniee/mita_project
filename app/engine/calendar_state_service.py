@@ -1,4 +1,3 @@
-from datetime import date
 
 from app.core.logger import get_logger
 from app.services.calendar_service_real import get_calendar_for_user

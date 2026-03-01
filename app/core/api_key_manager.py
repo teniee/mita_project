@@ -6,19 +6,15 @@ Provides secure API key storage, validation, rotation, and monitoring
 import os
 import json
 import logging
-import asyncio
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass, asdict
-import hashlib
-import secrets
 from pathlib import Path
 
 import httpx
 import sentry_sdk
 from cryptography.fernet import Fernet
-from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +87,7 @@ class APIKeyValidator:
             client = openai.AsyncOpenAI(api_key=api_key)
             
             # Test with minimal request
-            response = await client.chat.completions.create(
+            await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": "Hi"}],
                 max_tokens=5,
@@ -187,7 +183,6 @@ class APIKeyValidator:
                 return False, "Invalid service account type"
             
             # Test Firebase Admin SDK initialization
-            import firebase_admin
             from firebase_admin import credentials as firebase_creds
             
             # Create temporary credential object for validation

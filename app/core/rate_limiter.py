@@ -4,16 +4,12 @@ Provides comprehensive rate limiting with multiple algorithms and security featu
 """
 
 import time
-import asyncio
 import logging
-from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime, timedelta
+from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 import redis
-import json
 from fastapi import Request, HTTPException, status
-from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.error_monitoring import log_error, ErrorSeverity, ErrorCategory

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Set, Union
+from typing import Optional, Dict, Any, List
 from enum import Enum
-from concurrent.futures import ThreadPoolExecutor
 
 import jwt
 from jwt import InvalidTokenError
@@ -746,11 +744,11 @@ async def verify_token(
             last_error = e
             continue
 
-    logger.warning(f"❌❌❌ Token verification FAILED after trying all secrets")
+    logger.warning("❌❌❌ Token verification FAILED after trying all secrets")
     if last_error:
         logger.warning(f"Last error: {last_error}")
     else:
-        logger.warning(f"No specific error recorded (possible JWT decode failure)")
+        logger.warning("No specific error recorded (possible JWT decode failure)")
     return None
 
 

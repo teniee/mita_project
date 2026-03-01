@@ -19,13 +19,11 @@ from app.core.async_session import get_async_db
 from app.db.models import User
 from app.services.auth_jwt_service import (
     verify_token, 
-    get_user_scopes, 
-    TokenScope,
-    UserRole
+    TokenScope
 )
 # RESTORED: Re-enable audit logging with optimized performance (no database deadlocks)
-from app.core.audit_logging import log_security_event, log_security_event_async
-from app.core.performance_cache import user_cache, cache_user_data
+from app.core.audit_logging import log_security_event
+from app.core.performance_cache import user_cache
 
 logger = logging.getLogger(__name__)
 
@@ -226,15 +224,13 @@ async def get_current_user(
                 # This is necessary because services access these attributes after the DB session ends
                 # NOTE: With caching disabled, object should remain attached to session,
                 # but we still preload for safety and to ensure all attributes are loaded
-                user_id_val = user.id
                 email = user.email
-                has_onboarded = user.has_onboarded
                 timezone = user.timezone if hasattr(user, 'timezone') else 'UTC'  # Safe access with fallback
-                currency = user.currency if hasattr(user, 'currency') else 'USD'
-                name = user.name if hasattr(user, 'name') else None
-                monthly_income = user.monthly_income if hasattr(user, 'monthly_income') else None
-                budget_method = user.budget_method if hasattr(user, 'budget_method') else None
-                savings_goal = user.savings_goal if hasattr(user, 'savings_goal') else None
+                user.currency if hasattr(user, 'currency') else 'USD'
+                user.name if hasattr(user, 'name') else None
+                user.monthly_income if hasattr(user, 'monthly_income') else None
+                user.budget_method if hasattr(user, 'budget_method') else None
+                user.savings_goal if hasattr(user, 'savings_goal') else None
                 is_premium = user.is_premium if hasattr(user, 'is_premium') else False
                 logger.info(f"User preloaded: email={email}, timezone={timezone}, is_premium={is_premium}")
         except Exception as db_error:

@@ -3,7 +3,7 @@ Prometheus Metrics Configuration for MITA Finance API
 Provides comprehensive monitoring metrics for production observability
 """
 
-from prometheus_client import Counter, Histogram, Gauge, Info, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, Gauge, Info, generate_latest, CONTENT_TYPE_LATEST  # noqa: F401
 from prometheus_client import REGISTRY
 import time
 from typing import Callable
@@ -188,7 +188,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             status_code = response.status_code
 
             return response
-        except Exception as e:
+        except Exception:
             # Track errors
             status_code = 500
             raise
@@ -246,7 +246,7 @@ def update_system_metrics():
         system_memory_usage_percent.set(memory.percent)
         system_memory_available_bytes.set(memory.available)
 
-    except Exception as e:
+    except Exception:
         # Silently fail - don't crash app if metrics collection fails
         pass
 

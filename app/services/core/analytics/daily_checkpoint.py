@@ -8,7 +8,6 @@ def get_today_budget(
     Returns remaining budget for each category on today's calendar entry.
     Supports both indexed dicts and date-keyed list formats.
     """
-    from datetime import datetime
 
     # Convert 'YYYY-MM-DD' to day number if needed
     try:

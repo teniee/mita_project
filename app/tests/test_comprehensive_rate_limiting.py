@@ -4,20 +4,14 @@ Tests the production-ready rate limiting system for MITA financial application
 """
 
 import pytest
-import asyncio
-import time
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.testclient import TestClient
-import redis
 
 from app.core.security import (
     AdvancedRateLimiter,
     SecurityConfig,
-    get_rate_limiter,
-    # reset_security_instances,  # Function doesn't exist
     get_security_health_status
 )
 from app.middleware.comprehensive_rate_limiter import ComprehensiveRateLimitMiddleware

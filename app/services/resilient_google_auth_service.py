@@ -8,7 +8,6 @@ import logging
 from typing import Optional
 import httpx
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from app.services.auth_jwt_service import hash_password
@@ -120,7 +119,7 @@ class ResilientGoogleAuthService:
                     )
                     
                     if response.status_code == 400:
-                        logger.warning(f"Invalid Google token provided")
+                        logger.warning("Invalid Google token provided")
                         raise HTTPException(
                             status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid ID token"

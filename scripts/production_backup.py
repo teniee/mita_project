@@ -13,7 +13,6 @@ import subprocess
 import boto3
 from pathlib import Path
 from typing import Optional
-import psycopg2
 from cryptography.fernet import Fernet
 
 # Configure logging

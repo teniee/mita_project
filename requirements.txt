@@ -73,7 +73,7 @@ boto3==1.35.60                      # AWS SDK
 # Monitoring and Observability
 sentry-sdk==2.17.0                  # Error tracking
 prometheus-client==0.21.0           # Metrics
-psutil==6.1.0                       # System monitoring
+psutil>=6.0.0,<7.0.0                # System monitoring (compatible with locust and safety)
 loguru==0.7.2                       # Advanced logging
 
 # HTTP Client and Network - UPDATED FOR SECURITY

@@ -3,7 +3,6 @@ Health Monitoring and Alerting System
 Advanced alerting and notification system for middleware health issues
 """
 
-import asyncio
 import logging
 import time
 import json

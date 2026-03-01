@@ -119,7 +119,7 @@ async def get_challenge_stats(
 ):
     """Get user's challenge statistics"""
     from datetime import datetime
-    from app.db.models import ChallengeParticipation, Challenge
+    from app.db.models import ChallengeParticipation
 
     current_month = datetime.utcnow().strftime("%Y-%m")
 
@@ -445,8 +445,7 @@ async def get_active_challenges(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get user's active challenges"""
-    from datetime import datetime
-    from app.db.models import ChallengeParticipation, Challenge
+    from app.db.models import ChallengeParticipation
 
     # Query active participations with eager-loaded challenge (no N+1)
     result = await db.execute(
@@ -522,7 +521,7 @@ async def get_challenge_leaderboard(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get challenge leaderboard"""
-    from app.db.models import ChallengeParticipation, Challenge
+    from app.db.models import ChallengeParticipation
 
     # Count completed challenges per user
     result = await db.execute(

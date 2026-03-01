@@ -8,8 +8,6 @@ import os
 import sys
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -19,7 +17,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
 # Import your models
-from app.db.models.user import User
 from app.db.models.ai_advice_template import AIAdviceTemplate
 from app.db.models.budget_advice import BudgetAdvice
 

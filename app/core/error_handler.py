@@ -4,7 +4,6 @@ Provides consistent error responses, logging, and user-friendly messages
 """
 
 import logging
-import traceback
 from typing import Dict, Any, Optional
 from datetime import datetime
 from fastapi import HTTPException, Request

@@ -1,6 +1,5 @@
 import calendar
-from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from typing import Dict
 
 CATEGORY_BEHAVIOR = {

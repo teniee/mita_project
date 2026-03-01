@@ -9,7 +9,6 @@ from typing import Optional
 from decimal import Decimal
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from app.db.models import Goal, Transaction
 from app.core.logging_config import get_logger

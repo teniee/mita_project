@@ -6,7 +6,7 @@ import logging
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.core.standardized_error_handler import ErrorCode, ErrorResponse, StandardizedErrorHandler
+from app.core.standardized_error_handler import ErrorCode
 
 logger = logging.getLogger(__name__)
 

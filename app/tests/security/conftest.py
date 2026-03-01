@@ -13,7 +13,7 @@ import asyncio
 import pytest
 import redis
 from unittest.mock import Mock, AsyncMock
-from typing import Dict, Any, Optional, Generator
+from typing import Dict, Any, Optional
 
 # Add parent directories to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

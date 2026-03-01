@@ -5,7 +5,6 @@ from decimal import Decimal
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Date, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship
 
 from .base import Base
 

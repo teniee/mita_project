@@ -10,22 +10,17 @@ Tests for the complete JWT token blacklist functionality including:
 - Flutter app integration
 """
 
-import asyncio
 import pytest
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, Any
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 from fastapi.testclient import TestClient
-from fastapi import HTTPException
 
 from app.services.token_blacklist_service import (
     TokenBlacklistService,
     TokenType,
     BlacklistReason,
-    BlacklistEntry,
     BlacklistMetrics
 )
 from app.services.auth_jwt_service import (

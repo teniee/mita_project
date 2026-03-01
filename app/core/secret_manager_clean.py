@@ -2,13 +2,11 @@
 MITA Finance - Clean Secret Management System
 Provides secure secret loading with environment separation
 """
-import json
 import os
 import logging
-from typing import Dict, Any, Optional, Union
-from pathlib import Path
+from typing import Dict, Any, Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 @dataclass

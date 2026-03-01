@@ -4,15 +4,14 @@ Provides advanced error monitoring, performance tracking, and financial-specific
 """
 
 import logging
-import traceback
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional
 from contextlib import contextmanager
 
 import sentry_sdk
 from sentry_sdk import (
-    set_user, set_tag, set_context, add_breadcrumb,
+    set_user, set_tag, add_breadcrumb,
     capture_exception, capture_message, push_scope,
     start_transaction, start_span
 )

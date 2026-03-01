@@ -16,7 +16,6 @@ Compliance: SOX, PCI DSS, GDPR
 Security: Financial-grade encryption, zero-trust architecture
 """
 
-import asyncio
 import base64
 import json
 import logging
@@ -24,14 +23,14 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import hashlib
 import secrets
 from contextlib import asynccontextmanager
 
 try:
     import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
+    from botocore.exceptions import ClientError  # noqa: F401
     AWS_AVAILABLE = True
 except ImportError:
     AWS_AVAILABLE = False
@@ -333,7 +332,7 @@ class UnifiedSecretManager:
                 return self._get_from_env(name)
             else:
                 raise SecretManagerError(f"Unsupported provider: {provider}")
-        except Exception as e:
+        except Exception:
             # Try fallback providers
             return await self._try_fallback_providers(name, version)
     
@@ -386,7 +385,7 @@ class UnifiedSecretManager:
         namespace = self.config.get('kubernetes', {}).get('namespace', 'default')
         
         try:
-            secret_name = f"mita-secrets"
+            secret_name = "mita-secrets"
             secret = k8s_client.read_namespaced_secret(name=secret_name, namespace=namespace)
             
             # Kubernetes secret data is base64 encoded
@@ -553,7 +552,7 @@ class UnifiedSecretManager:
         
         for secret_name in critical_secrets:
             try:
-                new_value = await self.rotate_secret(secret_name, force=True)
+                await self.rotate_secret(secret_name, force=True)
                 results[secret_name] = "SUCCESS"
                 
                 # Update status to emergency rotated

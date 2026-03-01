@@ -17,18 +17,14 @@ QA Test Requirements Coverage:
 """
 
 import asyncio
-import json
 import time
 import uuid
-from datetime import datetime, timedelta
-from types import SimpleNamespace
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from typing import Dict, Any, Optional
+from datetime import timedelta
+from unittest.mock import Mock, patch, AsyncMock
 
 import jwt as pyjwt
 import pytest
-from fastapi import HTTPException, Request
-from fastapi.testclient import TestClient
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.auth_jwt_service import (
@@ -36,27 +32,14 @@ from app.services.auth_jwt_service import (
     create_refresh_token,
     verify_token,
     blacklist_token,
-    validate_token_security,
-    get_token_info,
-    hash_password,
-    verify_password,
-    revoke_user_tokens
+    get_token_info
 )
-from app.api.auth.services import (
-    register_user_async,
-    authenticate_user_async,
-    authenticate_google
-)
-from app.api.auth.schemas import RegisterIn, LoginIn, GoogleAuthIn
+from app.api.auth.schemas import LoginIn
 from app.core.security import (
     AdvancedRateLimiter,
-    SecurityConfig,
-    get_rate_limiter,
-    reset_security_instances,
     rate_limit_memory
 )
 from app.core.error_handler import RateLimitException
-from app.db.models import User
 
 
 def _make_mock_blacklist_service(blacklist_store):
@@ -663,7 +646,7 @@ class TestRateLimitingAuthEndpoints:
 
         # Mock the rate limiting to pass
         with patch('app.api.auth.login.check_login_rate_limit', new_callable=AsyncMock) as mock_rate_limit, \
-             patch('app.api.auth.login.validate_required_fields') as mock_validate, \
+             patch('app.api.auth.login.validate_required_fields'), \
              patch('app.api.auth.login.validate_email', return_value="test@example.com"), \
              patch('app.api.auth.login.log_security_event_async', new_callable=AsyncMock):
 
@@ -675,7 +658,7 @@ class TestRateLimitingAuthEndpoints:
             # The login should fail with authentication error (user not found).
             # The @handle_auth_errors decorator catches AuthenticationError
             # and returns a response instead of raising, so check the response.
-            response = await login_user_standardized(
+            await login_user_standardized(
                 request=mock_request,
                 login_data=login_data,
                 db=mock_db

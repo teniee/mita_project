@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import Dict
 from uuid import UUID
 

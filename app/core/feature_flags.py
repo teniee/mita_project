@@ -12,7 +12,6 @@ from typing import Dict, Any, Optional, List, Union
 from enum import Enum
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
-import logging
 from functools import lru_cache
 
 from app.core.config import settings

@@ -22,12 +22,10 @@ Total: 35+ comprehensive test cases covering 2,270+ lines of AI code
 import os
 import sys
 import types
-import json
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from collections import defaultdict
+from unittest.mock import Mock, patch, AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient

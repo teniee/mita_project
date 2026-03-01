@@ -14,7 +14,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.core.security import (
-    AdvancedRateLimiter, 
     SecurityConfig, 
     get_rate_limiter,
     get_user_tier_from_request
@@ -124,7 +123,6 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
         """Apply appropriate rate limiting based on request characteristics"""
         
         path = request.url.path
-        method = request.method
         
         # Get user tier for tiered rate limiting
         user_tier = get_user_tier_from_request(request)
@@ -171,7 +169,7 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
                 })
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Authentication rate limit exceeded. Try again later."
+                    detail="Authentication rate limit exceeded. Try again later."
                 )
             raise
     

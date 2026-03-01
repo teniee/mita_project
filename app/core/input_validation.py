@@ -43,9 +43,9 @@ def validate_email_secure(email: str) -> Tuple[bool, Optional[str]]:
     if EMAIL_VALIDATOR_AVAILABLE:
         try:
             # Use email-validator library for RFC-compliant validation
-            validated_email = validate_email(email)
+            validate_email(email)
             return True, None
-        except EmailNotValidError as e:
+        except EmailNotValidError:
             return False, "Invalid email format"
         except Exception as e:
             logger.warning(f"Email validation error: {e}")

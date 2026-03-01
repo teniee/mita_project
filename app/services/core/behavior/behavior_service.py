@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.services.core.behavior.behavioral_budget_allocator import (
@@ -45,7 +44,6 @@ def analyze_user_behavior(
 
     Returns behavioral insights including patterns, scores, and recommendations.
     """
-    from sqlalchemy import func
     from app.db.models.transaction import Transaction
 
     # Query transactions for the period

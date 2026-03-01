@@ -145,7 +145,7 @@ def main():
     dart_fields = ["id", "title", "description", "category", "targetAmount",
                    "savedAmount", "status", "progress", "priority"]
     for field in dart_fields:
-        has_field = f"final" in dart_model_content and field in dart_model_content
+        has_field = "final" in dart_model_content and field in dart_model_content
         all_passed &= check(f"Dart model has field: {field}", has_field)
 
     has_from_json = "fromJson" in dart_model_content

@@ -14,13 +14,10 @@ Tests cover:
 """
 
 import asyncio
-import json
 import time
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import HTTPException
 
 from app.services import auth_jwt_service as jwt_service
 from app.services.token_security_service import token_security_service

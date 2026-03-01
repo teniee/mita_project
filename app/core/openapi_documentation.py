@@ -3,8 +3,7 @@ OpenAPI Documentation Generator with Standardized Error Examples
 This module provides comprehensive OpenAPI documentation that includes
 standardized error response examples for all endpoints in the MITA Finance API.
 """
-from typing import Dict, Any, List, Optional
-from fastapi import status
+from typing import Dict, Any, Optional
 from fastapi.openapi.utils import get_openapi
 from app.core.standardized_error_handler import ErrorCode
 

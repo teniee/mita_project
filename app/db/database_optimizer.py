@@ -6,19 +6,16 @@ and performance monitoring for MITA's PostgreSQL database
 
 import logging
 import time
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy import create_engine, event, text, Index, Column, Integer, String, DateTime, Float, Boolean
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import StaticPool, QueuePool
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.pool import QueuePool
 # Note: Using SQLAlchemy for database operations instead of direct psycopg2
 # This allows for better compatibility with asyncpg and the async architecture
 
-from app.core.config import settings
-from app.db.models import Base, User, Expense, Transaction, AIAnalysisSnapshot
 
 logger = logging.getLogger(__name__)
 

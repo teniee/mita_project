@@ -45,23 +45,16 @@ All tests follow pytest best practices and include proper fixtures and mocking.
 Tests validate both success and failure scenarios with financial-grade accuracy.
 """
 
-import asyncio
-import json
 import time
-import uuid
-import hashlib
 import secrets
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock, AsyncMock, call
-from typing import Dict, Any, List, Optional
+from datetime import timedelta
+from unittest.mock import Mock, patch, AsyncMock
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 import redis
-from fastapi import HTTPException, Request, status
-from fastapi.testclient import TestClient
+from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.services.auth_jwt_service import (
     create_access_token,
@@ -70,16 +63,12 @@ from app.services.auth_jwt_service import (
     blacklist_token,
     validate_token_security,
     get_token_info,
-    hash_password,
-    verify_password,
-    revoke_user_tokens,
-    decode_token
+    hash_password
 )
 from app.api.auth.services import (
     register_user_async,
     authenticate_user_async,
     authenticate_google,
-    refresh_token_for_user,
     revoke_token
 )
 from app.api.auth.schemas import RegisterIn, LoginIn, GoogleAuthIn, TokenOut
@@ -88,11 +77,9 @@ from app.core.security import (
     SecurityConfig,
     SecurityUtils,
     SQLInjectionProtector,
-    get_rate_limiter,
     reset_security_instances
 )
-from app.core.error_handler import RateLimitException, ValidationException, AuthenticationException
-from app.core.upstash import blacklist_token as upstash_blacklist_token, is_token_blacklisted
+from app.core.error_handler import RateLimitException, ValidationException
 from app.db.models import User
 
 
@@ -674,11 +661,6 @@ class TestAuthenticationFlows:
         Test comprehensive password reset flow end-to-end.
         Critical for financial application account recovery security.
         """
-        from app.services.api_service import (
-            sendPasswordResetEmail,
-            verifyPasswordResetToken,
-            resetPasswordWithToken
-        )
         
         test_email = "reset@example.com"
         test_token = secrets.token_urlsafe(32)
@@ -729,7 +711,6 @@ class TestAuthenticationFlows:
         Test Google OAuth integration with comprehensive security validation.
         Ensures secure third-party authentication for financial application.
         """
-        from app.services.google_auth_service import authenticate_google_user
         
         # Mock Google token data
         valid_google_data = GoogleAuthIn(id_token="valid_google_token_123")

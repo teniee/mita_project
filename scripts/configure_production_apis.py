@@ -9,7 +9,7 @@ import sys
 import json
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 from datetime import datetime
 import argparse
 from pathlib import Path
@@ -18,7 +18,6 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.core.api_key_manager import APIKeyManager, validate_production_keys
-from app.core.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -138,7 +137,6 @@ class ProductionAPIConfigurator:
     async def _test_openai_connection(self) -> Dict[str, Any]:
         """Test OpenAI API connection"""
         try:
-            import openai
             from app.services.resilient_gpt_service import get_gpt_service
             
             api_key = os.getenv('OPENAI_API_KEY')
@@ -301,9 +299,9 @@ class ProductionAPIConfigurator:
             
             # Initialize Firebase (if not already initialized)
             if not firebase_admin._apps:
-                app = firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(cred)
             else:
-                app = firebase_admin.get_app()
+                firebase_admin.get_app()
             
             return {
                 'status': 'connected',
@@ -475,7 +473,7 @@ async def main():
         
         if args.validate_only:
             logger.info("Running API validation only...")
-            results = await configurator._validate_all_apis()
+            await configurator._validate_all_apis()
             report = configurator._generate_configuration_report()
         else:
             logger.info("Running full API configuration...")

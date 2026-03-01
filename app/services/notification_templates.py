@@ -3,7 +3,6 @@ Notification Templates System
 Provides ready-to-use notification templates for different events
 """
 from typing import Dict, Any, Optional
-from decimal import Decimal
 
 
 class NotificationTemplates:
@@ -135,7 +134,6 @@ class NotificationTemplates:
     ) -> Dict[str, Any]:
         """End of month budget summary"""
         percentage = (total_spent / total_budget * 100) if total_budget > 0 else 0
-        status = "exceeded" if percentage > 100 else "on track"
 
         return {
             "title": "📊 Monthly Budget Summary",

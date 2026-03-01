@@ -3,12 +3,10 @@ Receipt Image Storage Service
 Handles persistent storage of receipt images with automatic cleanup.
 """
 
-import os
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-import uuid
 
 from app.core.logger import get_logger
 

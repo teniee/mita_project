@@ -5,9 +5,8 @@ All long-running and computationally expensive tasks are defined here.
 
 import os
 import tempfile
-from datetime import datetime, date
-from typing import Dict, Any, Optional, List
-import logging
+from datetime import datetime
+from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.core.task_queue import task_wrapper, TaskPriority

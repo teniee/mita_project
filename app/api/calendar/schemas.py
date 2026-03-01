@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class GenerateCalendarRequest(BaseModel):

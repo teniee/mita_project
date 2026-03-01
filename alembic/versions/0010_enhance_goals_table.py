@@ -8,7 +8,6 @@ MODULE 5: Budgeting Goals - Enhanced Goal Tracking
 """
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 from alembic import op
 

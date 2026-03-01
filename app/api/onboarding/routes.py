@@ -5,10 +5,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import ValidationError
 
 from app.api.dependencies import get_current_user
-from app.api.onboarding.schemas import OnboardingSubmitRequest, OnboardingSubmitResponse
+from app.api.onboarding.schemas import OnboardingSubmitRequest
 from app.core.session import get_db
 from app.db.models import User
 from app.engine.calendar_engine_behavioral import build_calendar
@@ -66,7 +65,6 @@ def submit_onboarding(
 
     # Extract validated data (FastAPI has already validated via Pydantic)
     monthly_income = request.income.monthly_income
-    fixed_expenses = request.fixed_expenses
 
     # Convert request to dict for backward compatibility with existing services
     answers = request.model_dump()

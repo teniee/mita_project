@@ -25,11 +25,9 @@ import logging
 import ssl
 import socket
 import sys
-import time
 import requests
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Tuple, Optional
-import base64
+from datetime import datetime
+from typing import Dict, List, Any
 import yaml
 
 # Configure logging

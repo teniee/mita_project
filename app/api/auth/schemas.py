@@ -1,7 +1,6 @@
 from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, condecimal
-from app.core.validators import InputSanitizer, FinancialConstants
 
 
 class FastRegisterIn(BaseModel):

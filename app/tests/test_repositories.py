@@ -4,16 +4,13 @@ Tests all repositories: Base, User, Transaction, Expense, and Goal
 """
 
 import pytest
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from decimal import Decimal
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.repositories.base_repository import BaseRepository
 from app.repositories.user_repository import get_user_repository
 from app.repositories.transaction_repository import get_transaction_repository
 from app.repositories.expense_repository import get_expense_repository
 from app.repositories.goal_repository import get_goal_repository
-from app.db.models import User, Transaction, Expense, Goal
 
 
 class TestBaseRepository:

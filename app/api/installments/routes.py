@@ -8,14 +8,14 @@ installment tracking, calendar integration, and achievement tracking.
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 from decimal import Decimal
 from calendar import monthrange
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 
 from app.core.async_session import get_async_db
 from app.api.dependencies import get_current_user
@@ -25,7 +25,6 @@ from app.db.models.installment import (
     UserFinancialProfile,
     InstallmentAchievement,
     InstallmentStatus,
-    RiskLevel,
 )
 from app.api.installments.schemas import (
     InstallmentCalculatorInput,
@@ -41,7 +40,6 @@ from app.api.installments.schemas import (
     InstallmentCalendarEvent,
 )
 from app.api.installments.services import calculate_installment_risk
-from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
 

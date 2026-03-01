@@ -16,10 +16,9 @@ import os
 import json
 import subprocess
 import sys
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any
 import asyncio
 import logging
 
@@ -377,7 +376,7 @@ async def main():
         report = monitor.generate_dependency_report()
         
         # Save report
-        report_file = monitor.save_report(report)
+        monitor.save_report(report)
         
         # Print summary
         monitor.print_summary(report)

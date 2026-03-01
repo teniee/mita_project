@@ -277,7 +277,7 @@ def generate_jwt_signing_key() -> str:
         Secure JWT signing key
     """
     # Generate a 256-bit (32 byte) key for HS256
-    key_bytes = secrets.token_bytes(32)
+    secrets.token_bytes(32)
     
     # Convert to URL-safe base64 string
     jwt_key = secrets.token_urlsafe(32)

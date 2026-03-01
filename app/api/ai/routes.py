@@ -17,9 +17,7 @@ from app.services.ai_financial_analyzer import AIFinancialAnalyzer
 from app.utils.response_wrapper import success_response
 from app.api.ai.schemas import (
     AIAssistantRequest,
-    AIAssistantResponse,
     AIFinancialAdviceRequest,
-    AIFinancialAdviceResponse,
     CategorySuggestionRequest
 )
 
@@ -74,7 +72,7 @@ async def get_spending_patterns(
         analyzer = AIFinancialAnalyzer(db, user.id)
         patterns_data = await analyzer.analyze_spending_patterns()
         return success_response(patterns_data)
-    except Exception as e:
+    except Exception:
         # Fallback to basic response if analysis fails
         return success_response({
             "patterns": [],
@@ -96,7 +94,7 @@ async def get_personalized_feedback(
         analyzer = AIFinancialAnalyzer(db, user.id)
         feedback_data = await analyzer.generate_personalized_feedback()
         return success_response(feedback_data)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "feedback": "Continue tracking your expenses to receive personalized insights.",
@@ -116,7 +114,7 @@ async def get_weekly_insights(
         analyzer = AIFinancialAnalyzer(db, user.id)
         insights_data = await analyzer.generate_weekly_insights()
         return success_response(insights_data)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "insights": "Continue tracking expenses to receive weekly insights.",
@@ -162,7 +160,7 @@ async def get_financial_health_score(
         analyzer = AIFinancialAnalyzer(db, user.id)
         score_data = await analyzer.calculate_financial_health_score()
         return success_response(score_data)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "score": 50,
@@ -183,7 +181,7 @@ async def get_spending_anomalies(
         analyzer = AIFinancialAnalyzer(db, user.id)
         anomalies = await analyzer.detect_spending_anomalies()
         return success_response(anomalies)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response([])
 
@@ -198,7 +196,7 @@ async def get_savings_optimization(
         analyzer = AIFinancialAnalyzer(db, user.id)
         optimization_data = await analyzer.generate_savings_optimization()
         return success_response(optimization_data)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "potential_savings": 0.0,
@@ -228,7 +226,7 @@ async def get_ai_profile(
     except ImportError:
         # Service not available, use AIFinancialAnalyzer
         try:
-            analyzer = AIFinancialAnalyzer(db, user.id)
+            AIFinancialAnalyzer(db, user.id)
             # Generate basic profile from transaction data
             from app.db.models import Transaction
             from datetime import datetime, timedelta
@@ -302,7 +300,7 @@ async def get_day_status_explanation(
         analyzer = AIFinancialAnalyzer(db, user.id)
         explanation = await analyzer.explain_day_status(date)
         return success_response(explanation)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "date": date,
@@ -392,7 +390,7 @@ async def get_budget_optimization(
                     "recommendations": ["Track expenses for personalized budget optimization"],
                     "implementation_steps": []
                 })
-        except Exception as e:
+        except Exception:
             # Final fallback
             return success_response({
                 "current_allocation": {},
@@ -415,7 +413,7 @@ async def get_category_suggestions(
         analyzer = AIFinancialAnalyzer(db, user.id)
         suggestions = await analyzer.suggest_category(request.description, request.amount)
         return success_response(suggestions)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "suggested_category": "other",
@@ -530,7 +528,7 @@ async def get_spending_prediction(
         analyzer = AIFinancialAnalyzer(db, user.id)
         prediction = await analyzer.predict_spending(category, days)
         return success_response(prediction)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "predicted_amount": 0.0,
@@ -554,7 +552,7 @@ async def get_goal_analysis(
         analyzer = AIFinancialAnalyzer(db, user.id)
         analysis = analyzer.analyze_goal_progress(goal_id)
         return success_response(analysis)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "goal_id": goal_id,
@@ -578,7 +576,7 @@ async def get_monthly_report(
         analyzer = AIFinancialAnalyzer(db, user.id)
         report = analyzer.generate_monthly_report(year, month)
         return success_response(report)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "month": f"{year}-{month:02d}" if year and month else None,
@@ -616,11 +614,10 @@ async def get_financial_advice(
     try:
         # Extract validated request data
         question = request.question
-        user_context = request.user_context or {}
         advice_type = request.advice_type or "general"
 
         # Use AIFinancialAnalyzer to generate advice
-        analyzer = AIFinancialAnalyzer(db, user.id)
+        AIFinancialAnalyzer(db, user.id)
 
         # Generate personalized advice based on question and context
         # This is a comprehensive response that uses the analyzer's capabilities

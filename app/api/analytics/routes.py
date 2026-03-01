@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Body, Request
+from fastapi import APIRouter, Depends, Body
 from sqlalchemy import and_, select, func, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 

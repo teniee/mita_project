@@ -21,12 +21,8 @@ to prevent security vulnerabilities and data corruption.
 import asyncio
 import time
 import threading
-import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from typing import List, Dict, Any, Optional
-import queue
-import secrets
+from unittest.mock import Mock, patch, AsyncMock
 
 import pytest
 
@@ -34,13 +30,12 @@ from app.services.auth_jwt_service import (
     create_access_token,
     create_refresh_token,
     verify_token,
-    blacklist_token,
-    get_token_info
+    blacklist_token
 )
 from app.core.security import AdvancedRateLimiter, reset_security_instances
 from app.core.error_handler import RateLimitException
-from app.api.auth.services import authenticate_user_async, register_user_async
-from app.api.auth.schemas import LoginIn, RegisterIn
+from app.api.auth.services import register_user_async
+from app.api.auth.schemas import RegisterIn
 
 
 class TestConcurrentTokenOperations:
@@ -273,7 +268,7 @@ class TestConcurrentTokenOperations:
             assert len(rotation_errors) == 0, f"Rotation errors: {rotation_errors}"
             
             successful_rotations = [r for r in rotation_results if r['success']]
-            failed_rotations = [r for r in rotation_results if not r['success']]
+            [r for r in rotation_results if not r['success']]
             
             # Only some should succeed due to token invalidation after first use
             assert len(successful_rotations) >= 1, "At least one rotation should succeed"
@@ -354,7 +349,7 @@ class TestConcurrentTokenOperations:
             
             # Analyze operation log
             login_ops = [op for op in operation_log if op.startswith("LOGIN:")]
-            logout_ops = [op for op in operation_log if op.startswith("LOGOUT:")]
+            [op for op in operation_log if op.startswith("LOGOUT:")]
             errors = [op for op in operation_log if "ERROR" in op]
             
             assert len(errors) == 0, f"Race condition errors: {errors}"
