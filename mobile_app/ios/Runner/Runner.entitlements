@@ -8,8 +8,7 @@
 <dict>
 	<!-- Push Notifications (APNs) -->
 	<key>aps-environment</key>
-	<string>development</string>
-	<!-- Change to 'production' for App Store builds -->
+	<string>production</string>
 
 	<!-- iCloud & CloudKit (for backup sync - future feature) -->
 	<!-- <key>com.apple.developer.icloud-container-identifiers</key>
