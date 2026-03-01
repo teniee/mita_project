@@ -9,10 +9,9 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
+from sqlalchemy import and_
 
 from app.db.models.daily_plan import DailyPlan
-from app.db.models.transaction import Transaction
 
 
 class SpendingPreventionService:

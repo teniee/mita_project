@@ -15,9 +15,8 @@ import boto3
 import psycopg2
 import secrets
 import string
-import time
-from datetime import datetime, timedelta
-from typing import Dict, Any, Tuple
+from datetime import datetime
+from typing import Dict, Any
 
 # Configure logging
 logger = logging.getLogger()

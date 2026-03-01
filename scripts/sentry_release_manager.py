@@ -6,7 +6,6 @@ Handles automated release creation, deployment tracking, and version management
 
 import os
 import sys
-import json
 import subprocess
 import requests
 from datetime import datetime
@@ -182,7 +181,7 @@ class SentryReleaseManager:
         env = environment or self.environment
         deployment_name = name or f"MITA Finance {env.title()} Deployment"
         
-        git_info = self.get_git_info()
+        self.get_git_info()
         
         deployment_data = {
             "environment": env,
@@ -407,7 +406,7 @@ class SentryReleaseManager:
         
         try:
             # Step 1: Create release
-            release_info = self.create_release(version, projects)
+            self.create_release(version, projects)
             
             # Step 2: Set commits
             self.set_commits(version)
@@ -499,16 +498,16 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # Create release command
-    create_parser = subparsers.add_parser("create", help="Create a new release")
+    subparsers.add_parser("create", help="Create a new release")
     
     # Deploy command
-    deploy_parser = subparsers.add_parser("deploy", help="Create deployment for existing release")
+    subparsers.add_parser("deploy", help="Create deployment for existing release")
     
     # Full cycle command
-    full_parser = subparsers.add_parser("full-cycle", help="Execute full release cycle")
+    subparsers.add_parser("full-cycle", help="Execute full release cycle")
     
     # Finalize command
-    finalize_parser = subparsers.add_parser("finalize", help="Finalize a release")
+    subparsers.add_parser("finalize", help="Finalize a release")
     
     args = parser.parse_args()
     

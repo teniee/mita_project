@@ -6,8 +6,6 @@ Supports graceful shutdown, health monitoring, and advanced queue management.
 import os
 import sys
 import signal
-import logging
-from typing import List
 
 from app.core.worker_manager import worker_manager, create_standard_worker_configs, WorkerConfig
 from app.core.logger import get_logger

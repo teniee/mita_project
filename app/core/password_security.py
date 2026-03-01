@@ -56,7 +56,7 @@ def get_thread_pool() -> ThreadPoolExecutor:
 
 def get_bcrypt_rounds() -> int:
     """Get appropriate bcrypt rounds based on environment"""
-    env = getattr(settings, 'ENVIRONMENT', 'development')
+    getattr(settings, 'ENVIRONMENT', 'development')
     
     # Use 12 rounds for all environments to ensure consistency and security
     # Performance is acceptable (<50ms) so no need for environment-specific values

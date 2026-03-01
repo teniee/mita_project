@@ -6,8 +6,8 @@ Comprehensive health monitoring for financial-grade applications
 import asyncio
 import time
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from datetime import datetime
+from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, status, Depends
 import psutil
 import aioredis

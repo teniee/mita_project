@@ -64,7 +64,7 @@ try:
     # Check coffee distribution
     coffee_days = [day for day in calendar if 'coffee' in day['planned_budget']]
     print(f"Coffee allocated to: {len(coffee_days)} days")
-    print(f"Expected: 20 days (5 days/week * 4 weeks)")
+    print("Expected: 20 days (5 days/week * 4 weeks)")
 
     if len(coffee_days) < 20:
         print(f"❌ COFFEE STILL UNDER-ALLOCATED! Missing {20 - len(coffee_days)} days")
@@ -76,7 +76,7 @@ try:
     # Check transport distribution
     transport_days = [day for day in calendar if 'transport' in day['planned_budget']]
     print(f"Transport allocated to: {len(transport_days)} days")
-    print(f"Expected: 25 days (daily commute)")
+    print("Expected: 25 days (daily commute)")
 
     if len(transport_days) < 22:  # Weekdays only
         print(f"❌ TRANSPORT STILL UNDER-ALLOCATED! Missing {22 - len(transport_days)} days")

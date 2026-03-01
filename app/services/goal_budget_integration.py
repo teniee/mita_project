@@ -3,12 +3,12 @@ MODULE 5: Goal-Budget Integration Service
 Automatically integrates goals with budget system for seamless fund allocation
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 from decimal import Decimal
 from uuid import UUID
 from datetime import datetime, date
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
+from sqlalchemy import func
 
 from app.db.models import Goal, Transaction, User
 from app.core.logging_config import get_logger

@@ -9,7 +9,6 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.services.notification_service import NotificationService
-from app.services.push_service import send_push_notification
 from app.services.notification_templates import NotificationTemplates
 
 logger = logging.getLogger(__name__)

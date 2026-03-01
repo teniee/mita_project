@@ -3,12 +3,9 @@ Task management API routes for MITA financial platform.
 Provides endpoints for task status tracking and management.
 """
 
-from typing import List, Optional
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_limiter.depends import RateLimiter
-from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.tasks.schemas import (
@@ -24,7 +21,7 @@ from app.api.tasks.schemas import (
 )
 from app.core.session import get_db
 from app.services.task_manager import task_manager
-from app.utils.response_wrapper import success_response, error_response
+from app.utils.response_wrapper import success_response
 from app.core.logger import get_logger
 from app.core.feature_flags import is_feature_enabled
 

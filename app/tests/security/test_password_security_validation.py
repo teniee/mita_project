@@ -18,20 +18,14 @@ to protect user accounts and prevent unauthorized access to financial data.
 """
 
 import time
-import secrets
-import hashlib
-from unittest.mock import Mock, patch, MagicMock
-from typing import List, Dict, Any
 
 import pytest
-import bcrypt
 from fastapi import HTTPException
 
-from app.services.auth_jwt_service import hash_password, verify_password
+from app.services.auth_jwt_service import hash_password
 from app.core.security import SecurityUtils, SecurityConfig
 from app.core.error_handler import ValidationException
 from app.api.auth.schemas import RegisterIn
-from app.api.auth.services import register_user_async
 
 
 class TestPasswordStrengthValidation:
@@ -114,7 +108,7 @@ class TestPasswordStrengthValidation:
             for weak_password in weak_passwords[weakness_type]:
                 with pytest.raises((ValidationException, HTTPException)) as exc_info:
                     # Use registration validation which includes comprehensive checks
-                    data = RegisterIn(
+                    RegisterIn(
                         email="test@example.com",
                         password=weak_password,
                         country="US",
@@ -194,7 +188,7 @@ class TestPasswordStrengthValidation:
             return score
         
         for password, expected_min_score in password_complexity_tests:
-            actual_score = calculate_complexity_score(password)
+            calculate_complexity_score(password)
             
             if expected_min_score >= 4:  # Strong passwords
                 try:

@@ -19,18 +19,14 @@ Total: 44+ comprehensive test cases covering 533 lines of OCR code (currently 0%
 import os
 import sys
 import types
-import io
-import json
 import tempfile
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch, AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
-from starlette.datastructures import UploadFile
 
 # ============================================================================
 # ENVIRONMENT & FIREBASE SETUP (MUST come before app imports)

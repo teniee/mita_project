@@ -18,24 +18,15 @@ This test suite ensures:
 Critical for financial application API security and compliance.
 """
 
-import json
-import time
-import uuid
-import base64
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from typing import Dict, Any, List, Optional
+from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import FastAPI, Request, HTTPException, status
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from fastapi.security import HTTPBearer
 
 from app.api.auth.routes import router as auth_router
-from app.api.auth.schemas import LoginIn, RegisterIn, TokenOut
-from app.core.security import SQLInjectionProtector, SecurityConfig, SecurityUtils
-from app.core.error_handler import ValidationException, AuthenticationException
-from app.services.auth_jwt_service import create_access_token, verify_token
-from app.core.upstash import blacklist_token as upstash_blacklist_token
+from app.api.auth.schemas import TokenOut
+from app.services.auth_jwt_service import create_access_token
 
 
 class TestAuthEndpointSecurity:
@@ -302,7 +293,7 @@ class TestAuthEndpointSecurity:
             
             # Test 4: Expired token
             mock_verify.side_effect = HTTPException(status_code=401, detail="Token expired")
-            headers = {"Authorization": f"Bearer expired_token"}
+            headers = {"Authorization": "Bearer expired_token"}
             response = client.post("/auth/refresh", headers=headers)
             assert response.status_code == 401
     
@@ -539,7 +530,7 @@ class TestAuthEndpointSecurity:
                 "password": "SuperSecretPassword123!"
             }
             
-            response = client.post("/auth/login", json=sensitive_data)
+            client.post("/auth/login", json=sensitive_data)
             
             # Check that logging calls don't contain sensitive data
             if mock_logger.called:

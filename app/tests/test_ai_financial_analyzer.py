@@ -20,11 +20,9 @@ Total: 25+ comprehensive test cases covering 1121 lines of AIFinancialAnalyzer
 import os
 import sys
 import types
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
-from collections import defaultdict
-import statistics
 
 import pytest
 

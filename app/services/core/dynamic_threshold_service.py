@@ -15,12 +15,10 @@ Economic Foundation:
 Author: Claude Code (AI Financial Economist)
 """
 
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, List
 from enum import Enum
 from dataclasses import dataclass
-from datetime import datetime
 import logging
-import math
 
 from app.services.core.income_classification_service import (
     IncomeClassificationService, IncomeTier

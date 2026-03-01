@@ -4,7 +4,7 @@ Tests GPT service and Google Auth service with circuit breaker protection
 """
 
 import pytest
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import openai
 from fastapi import HTTPException

@@ -4,8 +4,7 @@ Simple test for Dashboard API endpoint
 This test verifies that the dashboard endpoint is properly configured
 and can return data without errors.
 """
-from unittest.mock import Mock, MagicMock
-from datetime import datetime, timedelta
+from unittest.mock import Mock
 from decimal import Decimal
 import uuid
 
@@ -20,7 +19,6 @@ def test_dashboard_response_structure():
     """Test that dashboard response has expected structure"""
     from app.api.dashboard.routes import get_dashboard
     from app.db.models.user import User
-    from app.db.models import Transaction, DailyPlan
     from sqlalchemy.orm import Session
 
     # Mock user

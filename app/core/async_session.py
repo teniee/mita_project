@@ -216,12 +216,6 @@ async def init_database():
             raise RuntimeError("Database engine not initialized")
 
         async with async_engine.begin() as conn:
-            from app.db.models import (
-                User, Expense, Transaction, Goal, Habit, Mood,
-                DailyPlan, Subscription, PushToken, NotificationLog,
-                UserAnswer, UserProfile, AIAnalysisSnapshot,
-                BudgetAdvice, AIAdviceTemplate
-            )
 
             await conn.run_sync(Base.metadata.create_all)
 

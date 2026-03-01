@@ -2,7 +2,6 @@ import os
 import logging
 import time
 from functools import wraps
-from typing import Optional
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -58,7 +57,7 @@ def _handle_redis_error(operation: str):
                 log_security_event("redis_timeout", {"operation": operation, "error": str(e)})
                 if operation == "blacklist":
                     # Fail-secure: if we can't blacklist, log critical error
-                    logger.critical(f"CRITICAL: Failed to blacklist token due to timeout")
+                    logger.critical("CRITICAL: Failed to blacklist token due to timeout")
                     raise RuntimeError(f"Token blacklisting failed: {e}")
                 return False  # For check operations, assume not blacklisted on error
             except httpx.HTTPStatusError as e:
@@ -70,7 +69,7 @@ def _handle_redis_error(operation: str):
                     "error": str(e)
                 })
                 if operation == "blacklist":
-                    logger.critical(f"CRITICAL: Failed to blacklist token due to HTTP error")
+                    logger.critical("CRITICAL: Failed to blacklist token due to HTTP error")
                     raise RuntimeError(f"Token blacklisting failed: {e}")
                 return False
             except Exception as e:
@@ -78,7 +77,7 @@ def _handle_redis_error(operation: str):
                 token_operations_count["errors"] += 1
                 log_security_event("redis_unexpected_error", {"operation": operation, "error": str(e)})
                 if operation == "blacklist":
-                    logger.critical(f"CRITICAL: Failed to blacklist token due to unexpected error")
+                    logger.critical("CRITICAL: Failed to blacklist token due to unexpected error")
                     raise RuntimeError(f"Token blacklisting failed: {e}")
                 return False
         return wrapper

@@ -4,7 +4,6 @@ GoogleVisionOCRService: Real integration with Google Cloud Vision API.
 
 import io
 import os
-import re
 
 from google.cloud import vision
 

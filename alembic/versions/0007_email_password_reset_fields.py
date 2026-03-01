@@ -7,7 +7,6 @@ Create Date: 2024-12-19 12:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0007_email_password_reset_fields'

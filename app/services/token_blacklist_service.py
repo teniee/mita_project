@@ -21,13 +21,11 @@ Security Requirements:
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 import time
-import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -335,7 +333,7 @@ class TokenBlacklistService:
                 return True
             
             # Create blacklist entry
-            entry_data = {
+            {
                 "jti": jti,
                 "user_id": user_id,
                 "token_type": token_type,
@@ -578,7 +576,7 @@ class TokenBlacklistService:
                 blacklist_key = self._get_blacklist_key(jti)
                 ttl = 86400 * 7  # 7 days default for admin revocations
                 
-                entry_data = {
+                {
                     "reason": reason.value,
                     "revoked_by": revoked_by,
                     "revoked_at": datetime.utcnow().isoformat()

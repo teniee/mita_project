@@ -1,4 +1,3 @@
-from typing import List
 from uuid import UUID
 from datetime import datetime, timedelta
 
@@ -12,7 +11,7 @@ from app.db.models import Habit, HabitCompletion
 from app.utils.response_wrapper import success_response
 from app.services.habit_service import get_habit_with_stats
 
-from .schemas import HabitIn, HabitOut, HabitUpdate
+from .schemas import HabitIn, HabitUpdate
 
 router = APIRouter(prefix="/habits", tags=["habits"])
 

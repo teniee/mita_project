@@ -6,7 +6,6 @@ all income classification logic in MITA Finance.
 """
 
 import pytest
-from decimal import Decimal
 from app.services.core.income_classification_service import (
     IncomeClassificationService,
     IncomeTier,

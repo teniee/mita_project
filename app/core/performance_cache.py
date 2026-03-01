@@ -6,7 +6,7 @@ Provides in-memory caching for frequently accessed data to improve response time
 import time
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Any, Dict, Optional, Callable
 from functools import wraps
 from threading import RLock
 

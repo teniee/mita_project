@@ -46,9 +46,9 @@ class BudgetRequest(BaseModel):
     def validate_year(cls, v):
         current_year = date.today().year
         if v < current_year - 1:
-            raise ValueError(f"Budget year cannot be more than 1 year in the past")
+            raise ValueError("Budget year cannot be more than 1 year in the past")
         if v > current_year + 5:
-            raise ValueError(f"Budget year cannot be more than 5 years in the future")
+            raise ValueError("Budget year cannot be more than 5 years in the future")
         return v
 
 

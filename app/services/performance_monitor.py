@@ -10,7 +10,7 @@ import psutil
 import threading
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from contextlib import contextmanager
 from functools import wraps
 from collections import defaultdict, deque
@@ -391,7 +391,7 @@ class PerformanceDecorator:
                     result = await func(*args, **kwargs)
                     status = 'success'
                     return result
-                except Exception as e:
+                except Exception:
                     status = 'error'
                     raise
                 finally:
@@ -416,7 +416,7 @@ class PerformanceDecorator:
                     result = func(*args, **kwargs)
                     status = 'success'
                     return result
-                except Exception as e:
+                except Exception:
                     status = 'error'
                     raise
                 finally:

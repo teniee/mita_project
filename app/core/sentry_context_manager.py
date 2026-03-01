@@ -3,23 +3,18 @@ Advanced Sentry Context Management for MITA Finance
 Provides comprehensive context tracking, custom error handlers, and financial compliance monitoring
 """
 
-import os
 import json
 import logging
-import traceback
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Callable, Union
-from contextlib import contextmanager, asynccontextmanager
+from typing import Dict, Any, Optional, List
+from contextlib import contextmanager
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-import sentry_sdk
 from sentry_sdk import (
-    set_user, set_tag, set_context, set_extra, add_breadcrumb,
-    push_scope, capture_exception, capture_message, start_transaction
+    set_user, set_tag, set_context, add_breadcrumb,
+    push_scope, capture_message
 )
-from fastapi import Request, HTTPException
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

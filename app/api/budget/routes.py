@@ -20,7 +20,6 @@ from app.api.budget.services import fetch_spent_by_category  # isort:skip
 
 # Import real services
 from app.services.core.behavior.behavioral_budget_allocator import (
-    get_behavioral_allocation,
     allocate_behavioral_budget
 )
 from app.services.core.engine.budget_auto_adapter import adapt_category_weights
@@ -343,7 +342,7 @@ async def get_behavioral_budget_allocation(
 ):
     """Get budget allocation based on behavioral analysis"""
     total_amount = data.get("total_amount", user.monthly_income or 0)
-    profile = data.get("profile", {})
+    data.get("profile", {})
 
     # Use behavioral allocator service
     try:
@@ -353,7 +352,7 @@ async def get_behavioral_budget_allocation(
             db=db
         )
         return success_response(allocation)
-    except Exception as e:
+    except Exception:
         # Fallback to basic allocation if service fails
         basic_allocation = {
             "categories": {
@@ -379,7 +378,7 @@ async def get_monthly_budget(
     """Generate monthly budget based on user income and preferences"""
     year = data.get("year", datetime.utcnow().year)
     month = data.get("month", datetime.utcnow().month)
-    user_answers = data.get("userAnswers", {})
+    data.get("userAnswers", {})
 
     # Generate budget using budget engine
     monthly_income = user.monthly_income or data.get("monthly_income", 0)
@@ -450,7 +449,7 @@ async def trigger_budget_adaptation(
             "message": "Budget categories adjusted based on your spending patterns" if weights_changed else "Budget is currently optimal",
             "adapted_weights": adapted_weights if weights_changed else None
         })
-    except Exception as e:
+    except Exception:
         return success_response({
             "adapted": False,
             "reason": "No adaptation needed",

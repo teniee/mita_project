@@ -11,19 +11,16 @@ Provides comprehensive dashboard data including:
 """
 import logging
 from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Optional
-from collections import defaultdict
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import extract, func, select
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 from app.db.models.user import User
-from app.db.models import Transaction, DailyPlan, Goal, ChallengeParticipation, Challenge
+from app.db.models import Transaction, DailyPlan, Goal, ChallengeParticipation
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)

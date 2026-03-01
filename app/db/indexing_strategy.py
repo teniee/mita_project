@@ -3,8 +3,7 @@ Database Indexing Strategy for MITA
 Comprehensive indexing plan for optimal query performance
 """
 
-from sqlalchemy import Index, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from typing import List, Dict, Any
 import logging
 

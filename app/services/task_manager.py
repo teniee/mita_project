@@ -6,9 +6,8 @@ Provides high-level task management and status tracking for API endpoints.
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
-import logging
 
-from app.core.task_queue import get_task_queue, TaskStatus, TaskResult, enqueue_task
+from app.core.task_queue import get_task_queue, TaskStatus, enqueue_task
 from app.core.logger import get_logger
 from app.tasks.async_tasks import (
     process_ocr_task,

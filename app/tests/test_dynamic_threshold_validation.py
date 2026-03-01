@@ -11,8 +11,6 @@ Author: Claude Code (AI Financial Economist)
 """
 
 import pytest
-from decimal import Decimal
-from typing import Dict, List, Tuple
 
 from app.services.core.dynamic_threshold_service import (
     DynamicThresholdService, UserContext, ThresholdType,
@@ -20,10 +18,10 @@ from app.services.core.dynamic_threshold_service import (
 )
 from app.services.core.income_scaling_algorithms import (
     IncomeScalingAlgorithms, scale_threshold_by_income,
-    get_scaled_variance_thresholds, get_scaled_goal_constraints
+    get_scaled_goal_constraints
 )
 from app.services.core.income_classification_service import (
-    IncomeClassificationService, IncomeTier
+    IncomeClassificationService
 )
 
 
@@ -105,7 +103,7 @@ class TestDynamicThresholdEconomicSoundness:
                 
                 # But other categories should adjust downward to compensate
                 assert regional_allocations['entertainment'] <= base_allocations['entertainment'], \
-                    f"High cost region should reduce discretionary spending"
+                    "High cost region should reduce discretionary spending"
             
             # Low cost regions should have lower housing, higher discretionary
             if profile.region in ["US-TX"]:

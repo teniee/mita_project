@@ -12,35 +12,27 @@ Research-based thresholds (BNPL studies 2023-2024):
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.installment import (
-    Installment,
     UserFinancialProfile,
     InstallmentCalculation,
     InstallmentAchievement,
     InstallmentCategory,
     AgeGroup,
-    RiskLevel,
-    InstallmentStatus
+    RiskLevel
 )
 from app.api.installments.schemas import (
     InstallmentCalculatorInput,
     InstallmentCalculatorOutput,
     RiskFactor,
-    AlternativeRecommendation,
-    InstallmentCreate,
-    InstallmentUpdate,
-    InstallmentOut,
-    InstallmentsSummary,
-    UserFinancialProfileCreate,
-    UserFinancialProfileOut
+    AlternativeRecommendation
 )
 
 
@@ -406,7 +398,7 @@ class InstallmentRiskEngine:
                 factor="high_interest_rate",
                 severity="low",
                 message=f"Interest rate of {float(interest_rate)}% is significant",
-                stat=f"Interest rates >15% substantially increase total cost"
+                stat="Interest rates >15% substantially increase total cost"
             ))
 
         # === DETERMINE FINAL RISK LEVEL ===
@@ -532,7 +524,7 @@ class InstallmentRiskEngine:
             return AlternativeRecommendation(
                 recommendation_type="pay_cash",
                 title="Consider paying cash",
-                description=f"While you can afford this installment, paying cash eliminates mental overhead, gives you stronger negotiating power (ask for a cash discount!), and keeps your credit utilization low. Plus, the psychological benefit of owning it outright is real.",
+                description="While you can afford this installment, paying cash eliminates mental overhead, gives you stronger negotiating power (ask for a cash discount!), and keeps your credit utilization low. Plus, the psychological benefit of owning it outright is real.",
                 savings_amount=None,
                 time_needed_days=None
             )

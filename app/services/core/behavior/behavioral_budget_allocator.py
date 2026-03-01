@@ -100,7 +100,7 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
     user = db.query(User).filter(User.id == user_id).first()
 
     # Create user context
-    user_context = UserContext(
+    UserContext(
         monthly_income=user.monthly_income if user else total_budget,
         age=user.age if user and hasattr(user, 'age') else 35,
         region=user.country if user and hasattr(user, 'country') else "US",

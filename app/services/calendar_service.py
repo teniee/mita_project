@@ -8,7 +8,7 @@ functions should access the ``DailyPlan`` table or a Redis cache.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Union
 

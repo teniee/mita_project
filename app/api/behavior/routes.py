@@ -45,7 +45,7 @@ def get_behavioral_analysis(
             month=month
         )
         return success_response(analysis)
-    except Exception as e:
+    except Exception:
         # Fallback response
         return success_response({
             "spending_patterns": [],
@@ -70,7 +70,7 @@ def get_spending_pattern_analysis(
     try:
         patterns = extract_patterns(str(user.id), year, month)
         return success_response(patterns)
-    except Exception as e:
+    except Exception:
         return success_response({
             "patterns": [],
             "dominant_pattern": "balanced",
@@ -90,7 +90,7 @@ def get_behavioral_predictions(
             db=db
         )
         return success_response(predictions)
-    except Exception as e:
+    except Exception:
         return success_response({
             "next_week_spending": 0.0,
             "next_month_spending": 0.0,
@@ -378,7 +378,6 @@ def get_behavioral_cluster(
     """Get user's behavioral cluster classification"""
     try:
         from app.services.cluster_service import get_user_cluster_label
-        from app.db.models import User as UserModel
 
         # Get cluster label for this user
         cluster_label = get_user_cluster_label(str(user.id))
@@ -433,7 +432,7 @@ def get_behavioral_cluster(
             "note": "Cluster determined by spending behavior analysis"
         })
 
-    except Exception as e:
+    except Exception:
         # Fallback if clustering not trained yet
         return success_response({
             "cluster_id": "unclustered",

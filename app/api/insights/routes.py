@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 from sqlalchemy.orm import Session
 import logging
 
-from app.api.dependencies import get_current_user, require_premium_user
+from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models import BudgetAdvice
 from app.db.models.user import User

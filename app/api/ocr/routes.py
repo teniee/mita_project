@@ -5,7 +5,6 @@ Receipt processing, enhancement, and categorization endpoints
 import os
 import tempfile
 import logging
-from typing import Dict, Any
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
@@ -17,12 +16,6 @@ from pydantic import ValidationError
 from app.api.dependencies import get_current_user
 from app.api.ocr.schemas import (
     CategorizeReceiptRequest,
-    CategorizeReceiptResponse,
-    ProcessReceiptResponse,
-    OCRJobStatusResponse,
-    DeleteReceiptResponse,
-    EnhanceImageResponse,
-    OCRResultData,
 )
 from app.core.session import get_db
 from app.db.models.user import User

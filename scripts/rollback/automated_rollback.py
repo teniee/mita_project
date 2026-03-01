@@ -9,14 +9,13 @@ Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
 """
 
 import asyncio
-import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import structlog
 
@@ -124,7 +123,7 @@ class AutomatedRollbackOrchestrator:
             # PHASE 1: Pre-Rollback Validation (30-60s)
             self.current_phase = RollbackPhase.PRE_VALIDATION
             logger.info(f"\n{'='*80}")
-            logger.info(f"PHASE 1: PRE-ROLLBACK VALIDATION")
+            logger.info("PHASE 1: PRE-ROLLBACK VALIDATION")
             logger.info(f"{'='*80}")
 
             target_deployment = await self._phase1_pre_validation(target_deployment_id)
@@ -142,7 +141,7 @@ class AutomatedRollbackOrchestrator:
             if not self.skip_database_rollback:
                 self.current_phase = RollbackPhase.DATABASE_ROLLBACK
                 logger.info(f"\n{'='*80}")
-                logger.info(f"PHASE 2: DATABASE ROLLBACK")
+                logger.info("PHASE 2: DATABASE ROLLBACK")
                 logger.info(f"{'='*80}")
 
                 db_rollback_success = await self._phase2_database_rollback(target_deployment)
@@ -156,7 +155,7 @@ class AutomatedRollbackOrchestrator:
             # PHASE 3: Application Rollback (60-120s)
             self.current_phase = RollbackPhase.APP_ROLLBACK
             logger.info(f"\n{'='*80}")
-            logger.info(f"PHASE 3: APPLICATION ROLLBACK")
+            logger.info("PHASE 3: APPLICATION ROLLBACK")
             logger.info(f"{'='*80}")
 
             app_rollback_success = await self._phase3_application_rollback(target_deployment)
@@ -173,7 +172,7 @@ class AutomatedRollbackOrchestrator:
             # PHASE 4: Health Verification (60-90s)
             self.current_phase = RollbackPhase.HEALTH_VERIFICATION
             logger.info(f"\n{'='*80}")
-            logger.info(f"PHASE 4: HEALTH VERIFICATION")
+            logger.info("PHASE 4: HEALTH VERIFICATION")
             logger.info(f"{'='*80}")
 
             health_ok = await self._phase4_health_verification()
@@ -190,7 +189,7 @@ class AutomatedRollbackOrchestrator:
             # PHASE 5: Post-Rollback Validation (30-60s)
             self.current_phase = RollbackPhase.POST_VALIDATION
             logger.info(f"\n{'='*80}")
-            logger.info(f"PHASE 5: POST-ROLLBACK VALIDATION")
+            logger.info("PHASE 5: POST-ROLLBACK VALIDATION")
             logger.info(f"{'='*80}")
 
             await self._phase5_post_validation(target_deployment)

@@ -3,13 +3,11 @@ Simplified Rate Limiter for MITA Finance Application
 Provides robust rate limiting with Redis backend and in-memory fallback
 """
 
-import asyncio
 import hashlib
 import logging
 import time
 from typing import Dict, Optional, Tuple
-from datetime import datetime, timedelta
-from fastapi import Request, HTTPException
+from fastapi import Request
 
 from app.core.limiter_setup import get_redis_connection
 from app.core.error_handler import RateLimitException

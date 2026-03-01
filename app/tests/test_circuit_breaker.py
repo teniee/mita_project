@@ -5,8 +5,6 @@ Tests circuit breaker functionality, state transitions, and resilience patterns
 
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, Mock
-from datetime import datetime, timedelta
 
 from app.core.circuit_breaker import (
     CircuitBreaker,

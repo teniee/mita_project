@@ -8,15 +8,9 @@ from app.api.auth.schemas import LoginIn  # noqa: E501
 from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
 from app.db.models import User
 from app.services.auth_jwt_service import (
-    create_access_token,
-    create_refresh_token,
     create_token_pair,
     hash_password,
-    verify_password,
-    async_hash_password,
-    async_verify_password,
-    get_user_scopes,
-    UserRole
+    verify_password
 )
 from app.services.resilient_google_auth_service import authenticate_google_user
 from app.utils.response_wrapper import success_response

@@ -5,19 +5,17 @@ Provides real ML-based financial insights, pattern detection, and recommendation
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 import statistics
-import numpy as np
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import and_
 
 from app.db.models import Expense, User, Transaction
-from app.services.core.behavior.behavioral_config import CATEGORY_PRIORITIES
 from app.services.core.dynamic_threshold_service import (
-    get_dynamic_thresholds, ThresholdType, UserContext, get_housing_affordability_thresholds
+    get_dynamic_thresholds, ThresholdType, UserContext
 )
 from app.services.core.income_scaling_algorithms import (
-    scale_threshold_by_income, get_scaled_variance_thresholds
+    scale_threshold_by_income
 )
 from app.services.core.income_classification_service import classify_income
 
@@ -269,7 +267,7 @@ class AIFinancialAnalyzer:
             if any(word in description for word in ['sale', 'discount', 'deal', 'offer']):
                 impulse_indicators += 1
             # Use dynamic threshold instead of hardcoded $50
-            user_context = self._get_user_context()
+            self._get_user_context()
             medium_purchase_threshold = self._get_dynamic_thresholds()['spending_patterns']['medium_purchase_threshold']
             
             if amount > medium_purchase_threshold and any(cat in expense['category'].lower() for cat in ['entertainment', 'shopping']):
@@ -460,7 +458,7 @@ class AIFinancialAnalyzer:
         # Use dynamic variance thresholds instead of hardcoded values
         dynamic_thresholds = self._get_dynamic_thresholds()['spending_patterns']
         excellent_threshold = dynamic_thresholds['monthly_variance_excellent']
-        warning_threshold = dynamic_thresholds['monthly_variance_warning']
+        dynamic_thresholds['monthly_variance_warning']
         max_threshold = dynamic_thresholds['monthly_variance_threshold']
         
         if monthly_variance < excellent_threshold:
@@ -494,7 +492,7 @@ class AIFinancialAnalyzer:
         if not spending_data:
             # Use income-appropriate baseline for no data case
             user_context = self._get_user_context()
-            tier = classify_income(user_context.monthly_income, user_context.region)
+            classify_income(user_context.monthly_income, user_context.region)
             thresholds = self._get_dynamic_thresholds()['health_scoring']
             
             baseline_score = thresholds['component_expectations']['budgeting_excellence']

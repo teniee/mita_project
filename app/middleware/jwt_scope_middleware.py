@@ -6,7 +6,7 @@ with production-ready security features for financial applications.
 """
 
 import logging
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Callable, Dict, Any
 from functools import wraps
 
 from fastapi import HTTPException, status, Depends, Request
@@ -16,7 +16,6 @@ from app.services.auth_jwt_service import (
     verify_token, 
     validate_scope_access, 
     has_any_scope, 
-    has_all_scopes,
     TokenScope
 )
 from app.core.audit_logging import log_security_event
@@ -150,7 +149,7 @@ def require_scopes(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": "insufficient_scope",
-                    "error_description": f"The request requires higher privileges than provided by the access token.",
+                    "error_description": "The request requires higher privileges than provided by the access token.",
                     "required_scopes": requirement.any_of or requirement.all_of,
                     "missing_scopes": missing_scopes
                 }

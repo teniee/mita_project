@@ -6,7 +6,7 @@ Provides advanced health monitoring to detect issues that could cause 8-15+ seco
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import Dict, Any, Optional
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.circuit_breaker import get_circuit_breaker_manager
@@ -519,7 +519,7 @@ async def get_health_metrics(session: AsyncSession = Depends(get_async_db)):
     except Exception as e:
         logger.error(f"Error generating health metrics: {str(e)}", exc_info=True)
         return {
-            'metrics': f"mita_middleware_health_status 0\nmita_middleware_metrics_error 1",
+            'metrics': "mita_middleware_health_status 0\nmita_middleware_metrics_error 1",
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat(),
             'format': 'prometheus'

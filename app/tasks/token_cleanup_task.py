@@ -17,7 +17,6 @@ provides additional monitoring and optimization.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any
 
 from app.core.audit_logging import log_security_event
 

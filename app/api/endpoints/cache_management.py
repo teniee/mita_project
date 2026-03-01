@@ -12,7 +12,6 @@ from app.core.caching import (
     get_cache_statistics,
     check_cache_health,
     cache_manager,
-    query_cache,
     warm_up_cache,
     invalidate_user_cache,
     invalidate_table_cache

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
 import threading
-from collections import defaultdict, Counter
+from collections import Counter
 
 from prometheus_client import Counter as PrometheusCounter, Histogram, Gauge, CollectorRegistry
 import redis
@@ -185,7 +185,7 @@ class TaskMetrics:
             with self._metrics_lock:
                 for key in worker_keys:
                     try:
-                        worker_id = key.decode().split(":")[-1]
+                        key.decode().split(":")[-1]
                         health_data = self.redis_conn.get(key)
                         if health_data:
                             # Parse worker health data (stored as string representation)

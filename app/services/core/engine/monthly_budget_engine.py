@@ -4,10 +4,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List
 
 from app.config.country_profiles_loader import COUNTRY_PROFILES
-from app.services.core.behavior.behavioral_budget_allocator import (
-    get_behavioral_allocation,
-)
-from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.core.engine.calendar_engine import distribute_budget_over_days, CalendarDay
 
 

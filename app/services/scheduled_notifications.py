@@ -4,8 +4,7 @@ Handles periodic notifications like daily reminders, overdue goals, etc.
 Should be run as background tasks via cron or task scheduler
 """
 from datetime import datetime, date, timedelta
-from typing import List, Dict
-from uuid import UUID
+from typing import Dict
 import logging
 import random
 

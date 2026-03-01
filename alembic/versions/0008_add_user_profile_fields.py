@@ -17,7 +17,6 @@ This migration adds comprehensive user profile fields including:
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0008_add_user_profile_fields'

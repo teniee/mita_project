@@ -6,17 +6,15 @@ Provides comprehensive database performance monitoring, connection management, a
 import time
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
 from contextlib import asynccontextmanager
-from sqlalchemy import event, text, create_engine
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
-from sqlalchemy.pool import QueuePool, NullPool
-from sqlalchemy.engine import Engine
+from sqlalchemy.pool import QueuePool
 # Remove invalid imports - these don't exist in current SQLAlchemy
-from sqlalchemy.sql import sqltypes
 import psutil
 import threading
 from collections import defaultdict, deque

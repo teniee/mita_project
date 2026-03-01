@@ -4,14 +4,11 @@ Specialized health checks for individual middleware components
 """
 
 import time
-import asyncio
 import logging
 import threading
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, Any
 import redis
-import json
 import os
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -59,7 +56,7 @@ class SecurityMiddlewareHealthChecker:
             
             # Test JWT service methods
             service_start = time.time()
-            service_test = jwt_service.create_tokens_for_user(test_user_data)
+            jwt_service.create_tokens_for_user(test_user_data)
             service_time = (time.time() - service_start) * 1000
             
             total_auth_time = token_creation_time + validation_time + service_time
@@ -252,7 +249,7 @@ class DatabaseMiddlewareHealthChecker:
             # Test basic connectivity with timing
             connectivity_start = time.time()
             basic_result = await session.execute(text("SELECT 1, NOW() as current_time"))
-            basic_data = basic_result.first()
+            basic_result.first()
             connectivity_time = (time.time() - connectivity_start) * 1000
             
             # Get connection pool statistics

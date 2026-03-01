@@ -5,11 +5,9 @@ Compares current performance metrics against historical baselines to detect regr
 """
 
 import json
-import os
 import argparse
-import statistics
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, Any
 from pathlib import Path
 import logging
 
@@ -468,13 +466,13 @@ class PerformanceRegressionDetector:
         print(f"Current Branch: {report['current_branch']}")
         print(f"Metrics Compared: {summary.get('total_metrics_compared', 0)}")
         
-        print(f"\n📊 Regression Analysis:")
+        print("\n📊 Regression Analysis:")
         print(f"   Critical Regressions: {len(report.get('critical_regressions', []))}")
         print(f"   Significant Regressions: {len(report.get('significant_regressions', []))}")
         print(f"   Minor Regressions: {len(report.get('minor_regressions', []))}")
         print(f"   Improvements: {len(report.get('improvements', []))}")
         
-        print(f"\n🎯 Impact Assessment:")
+        print("\n🎯 Impact Assessment:")
         print(f"   Overall Impact: {impact.get('overall_impact', 'unknown').upper()}")
         print(f"   Production Ready: {'✅ YES' if impact.get('production_readiness', False) else '❌ NO'}")
         print(f"   User Experience: {impact.get('user_experience_impact', 'unknown').upper()}")
@@ -482,14 +480,14 @@ class PerformanceRegressionDetector:
         # Show critical issues
         critical_issues = impact.get("critical_issues", [])
         if critical_issues:
-            print(f"\n🚨 Critical Issues:")
+            print("\n🚨 Critical Issues:")
             for issue in critical_issues:
                 print(f"   - {issue}")
         
         # Show actions required
         actions = impact.get("action_required", [])
         if actions:
-            print(f"\n💡 Actions Required:")
+            print("\n💡 Actions Required:")
             for action in actions[:3]:  # Show top 3 actions
                 print(f"   - {action}")
 

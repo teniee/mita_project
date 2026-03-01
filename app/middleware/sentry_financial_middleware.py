@@ -3,9 +3,10 @@ Financial-Specific Sentry Monitoring Middleware
 Provides comprehensive monitoring for financial operations with compliance awareness
 """
 
+import asyncio
 import time
 import logging
-from typing import Dict, Any, Optional, Callable, Awaitable
+from typing import Any, Optional, Callable
 from functools import wraps
 from contextlib import asynccontextmanager
 
@@ -18,7 +19,6 @@ from app.services.sentry_service import (
     sentry_service, FinancialErrorCategory, FinancialSeverity
 )
 from app.services.performance_monitor_enhanced import performance_monitor
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,6 @@ class FinancialSentryMiddleware(BaseHTTPMiddleware):
         is_sensitive = any(endpoint in request.url.path for endpoint in self.sensitive_endpoints)
         
         response = None
-        error = None
         
         try:
             # Monitor performance if enabled
@@ -101,7 +100,6 @@ class FinancialSentryMiddleware(BaseHTTPMiddleware):
                 )
                 
         except Exception as e:
-            error = e
             
             # Capture financial error with enhanced context
             if financial_operation:

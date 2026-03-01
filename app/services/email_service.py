@@ -4,13 +4,12 @@ Comprehensive email service with SendGrid integration, templates, and monitoring
 """
 
 import os
-import json
 import logging
 import asyncio
 import secrets
 import hashlib
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
@@ -19,9 +18,7 @@ import httpx
 import jinja2
 import sentry_sdk
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
 
-from app.core.config import settings
 from app.core.external_services import SendGridService
 # Removed problematic import - using sentry_sdk.capture_exception directly
 from app.core.audit_logging import log_security_event_async
@@ -484,7 +481,7 @@ class EmailService:
         variables = {
             'user_name': user.email.split('@')[0].title(),
             'email': user.email,
-            'onboarding_link': f"https://app.mita.finance/onboarding",
+            'onboarding_link': "https://app.mita.finance/onboarding",
             'support_email': 'support@mita.finance'
         }
         

@@ -7,7 +7,7 @@ Tests concurrent users, financial operations, and system stability under load.
 import json
 import random
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 from locust import HttpUser, task, between, events
 from locust.runners import MasterRunner, WorkerRunner
 import logging
@@ -99,8 +99,6 @@ class MITAFinancialUser(HttpUser):
     def _extract_user_id_from_token(self, token: str) -> str:
         """Extract user ID from JWT token (simplified)"""
         try:
-            import base64
-            import json
             # This is simplified - in real implementation would properly decode JWT
             return f"user_{random.randint(1000, 9999)}"
         except:

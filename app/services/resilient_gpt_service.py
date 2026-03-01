@@ -4,9 +4,7 @@ Enhanced version of GPT agent with proper error handling, retries, and fallbacks
 """
 
 import logging
-import asyncio
 from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
 import openai
 from openai import AsyncOpenAI
 
@@ -255,7 +253,7 @@ class ResilientGPTService:
         """Parse categorization response into structured data"""
         try:
             # Simple parsing logic - in production, you might want more sophisticated parsing
-            lines = response.lower().split('\n')
+            response.lower().split('\n')
             category = 'Other'
             confidence = 70  # Default confidence
             reasoning = response

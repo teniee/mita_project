@@ -533,7 +533,7 @@ async def test_rollback_webhook(
     For testing purposes only. Requires authentication.
     """
     # Create test webhook payload
-    test_webhook = AlertmanagerWebhook(
+    AlertmanagerWebhook(
         version="4",
         groupKey="test-group",
         truncatedAlerts=0,

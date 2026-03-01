@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import joinedload
 
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut, TxnUpdate
@@ -23,7 +23,7 @@ from app.core.standardized_error_handler import (
     validate_required_fields
 )
 from app.core.error_decorators import handle_financial_errors, ErrorHandlingMixin
-from app.utils.response_wrapper import StandardizedResponse, FinancialResponseHelper
+from app.utils.response_wrapper import FinancialResponseHelper
 
 # isort: off
 from app.api.transactions.services import (
@@ -675,7 +675,7 @@ async def validate_receipt_data(
     """Validate extracted receipt data before saving"""
     total = data.get("total", 0.0)
     merchant = data.get("merchant", "")
-    items = data.get("items", [])
+    data.get("items", [])
 
     validation_errors = []
 

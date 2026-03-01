@@ -9,10 +9,8 @@ import json
 import logging
 import os
 import sys
-import time
 from datetime import datetime
 from typing import Dict, Any, List
-import subprocess
 import requests
 from pathlib import Path
 
@@ -22,7 +20,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.core.config import settings
 from app.core.middleware_health_monitor import middleware_health_monitor
 from app.core.health_monitoring_alerts import health_alert_manager
-from app.api.health.enhanced_routes import router
 
 # Configure logging
 logging.basicConfig(

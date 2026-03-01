@@ -4,23 +4,19 @@ Provides reliable async task processing with monitoring and error handling.
 """
 
 import os
-import time
 import json
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Callable, List
+from typing import Dict, Any, Optional, Callable
 from functools import wraps
 from dataclasses import dataclass, asdict
 from enum import Enum
 
 import redis
-from rq import Queue, Worker, Connection
+from rq import Queue, Worker
 from rq.job import Job
 # Middleware functionality replaced with RQ 1.15.1 compatible approach
 from rq.job import JobStatus
-from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)

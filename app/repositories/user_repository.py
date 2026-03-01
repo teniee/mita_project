@@ -6,7 +6,6 @@ Provides user-specific database operations with advanced features
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy import select, func, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.base_repository import BaseRepository
 from app.db.models import User
@@ -158,7 +157,7 @@ class UserRepository(BaseRepository[User]):
     
     async def get_user_engagement_metrics(self, user_id: int) -> Dict[str, Any]:
         """Get engagement metrics for a specific user"""
-        async with get_async_db_context() as db:
+        async with get_async_db_context():
             user = await self.get_by_id(user_id)
             if not user:
                 return {}

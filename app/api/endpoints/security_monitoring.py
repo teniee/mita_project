@@ -189,7 +189,7 @@ async def get_blacklist_status(
         try:
             # Perform a simple test operation
             from app.core.upstash import is_token_blacklisted
-            test_result = is_token_blacklisted("test-connectivity-jti")
+            is_token_blacklisted("test-connectivity-jti")
             status_info["connectivity_test"] = "passed"
         except Exception as redis_error:
             logger.warning(f"Redis connectivity test failed: {redis_error}")
@@ -387,11 +387,11 @@ async def security_system_health(
         
         # Return appropriate HTTP status
         if health_status["overall_status"] == "unhealthy":
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            pass
         elif health_status["overall_status"] == "degraded":
-            status_code = status.HTTP_200_OK
+            pass
         else:
-            status_code = status.HTTP_200_OK
+            pass
         
         return success_response(health_status)
         

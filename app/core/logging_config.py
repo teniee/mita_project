@@ -8,7 +8,6 @@ import logging.config
 import sys
 import json
 from datetime import datetime
-from typing import Dict, Any
 from pathlib import Path
 
 from app.core.config import settings

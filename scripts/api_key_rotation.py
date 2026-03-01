@@ -9,17 +9,16 @@ import sys
 import json
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Any
 from datetime import datetime, timedelta
 import argparse
 from pathlib import Path
 import secrets
-import string
 
 # Add app to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.core.api_key_manager import api_key_manager, APIKeyStatus, ServiceType
+from app.core.api_key_manager import api_key_manager, ServiceType
 from app.core.external_services import external_services
 
 # Configure logging

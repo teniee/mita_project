@@ -14,7 +14,6 @@ Issue: Calendar entries were not being saved because the id column had:
 This caused INSERT failures with "null value in column 'id' violates not-null constraint"
 """
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

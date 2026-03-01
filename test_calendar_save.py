@@ -64,7 +64,7 @@ print(f"   ✓ Sample day: {list(calendar_dict.keys())[0]} = {calendar_dict[list
 print("\n2. Testing DICT format (legacy):")
 print(f"   Input type: {type(dict_format_calendar)}")
 print(f"   Input length: {len(dict_format_calendar)} days")
-print(f"   ✓ Already in correct format")
+print("   ✓ Already in correct format")
 
 # Verify both result in same structure
 print("\n3. Verification:")

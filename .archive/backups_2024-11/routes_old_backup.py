@@ -11,7 +11,6 @@ from app.core.password_security import hash_password_async, verify_password_asyn
 # Import standardized error handling system
 from app.core.standardized_error_handler import (
     AuthenticationError,
-    AuthorizationError,
     ValidationError,
     ResourceNotFoundError,
     BusinessLogicError,
@@ -24,8 +23,8 @@ from app.core.error_decorators import handle_auth_errors, ErrorHandlingMixin
 from app.utils.response_wrapper import StandardizedResponse, AuthResponseHelper
 
 # RESTORED: Re-enable optimized audit logging with performance enhancements
-from app.api.auth.schemas import FastRegisterIn, TokenOut, RegisterIn, LoginIn, GoogleAuthIn
-from app.api.auth.services import authenticate_google, authenticate_user_async, register_user_async
+from app.api.auth.schemas import TokenOut, RegisterIn, LoginIn, GoogleAuthIn
+from app.api.auth.services import authenticate_google
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 
@@ -58,7 +57,7 @@ async def revoke_user_tokens(user_id: str, reason: str = "admin_action", revoked
     Raises:
         ValueError: If user not found
     """
-    from sqlalchemy import select, update
+    from sqlalchemy import select
     from uuid import UUID
 
     try:
@@ -123,13 +122,10 @@ from app.services.auth_jwt_service import (
     create_token_pair,
     verify_token,
     validate_token_security,
-    get_token_info,
-    get_user_scopes,
-    UserRole
+    get_token_info
 )
 from app.utils.response_wrapper import success_response
-from app.core.standardized_error_handler import validate_email
-from datetime import datetime, timedelta
+from datetime import timedelta
 from app.core.simple_rate_limiter import (
     check_login_rate_limit,
     check_register_rate_limit,
@@ -565,7 +561,6 @@ async def emergency_register_legacy(request: Request):
     """EMERGENCY: Working registration endpoint - NO dependencies, direct database connection"""
     import json
     import time
-    import bcrypt
     import uuid
     import os
     from datetime import datetime, timedelta
@@ -687,7 +682,6 @@ async def register_fast_legacy(request: Request):
     """WORKING: Fast registration for Flutter app - NO dependencies"""
     import json
     import time
-    import bcrypt
     import uuid
     import os
     from datetime import datetime, timedelta
@@ -810,9 +804,9 @@ async def register_full(
     
     try:
         # EMERGENCY: Use direct implementation instead of register_user_async
-        from sqlalchemy import select, text
+        from sqlalchemy import select
         from app.db.models import User
-        from app.services.auth_jwt_service import hash_password, create_token_pair
+        from app.services.auth_jwt_service import create_token_pair
         
         # Simple user existence check
         result_check = await db.execute(
@@ -2150,7 +2144,7 @@ async def test_response_generation_isolated(request: Request):
     
     try:
         body_bytes = await request.body()
-        data = json.loads(body_bytes.decode('utf-8'))
+        json.loads(body_bytes.decode('utf-8'))
         
         results = {
             "test_id": test_id,

@@ -4,7 +4,6 @@ from typing import Any, Dict
 from app.services.core.dynamic_threshold_service import (
     get_dynamic_thresholds, ThresholdType, UserContext
 )
-from app.services.core.income_classification_service import classify_income
 
 
 def calculate_checkpoint(

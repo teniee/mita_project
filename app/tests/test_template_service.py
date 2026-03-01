@@ -1,4 +1,3 @@
-from app.db.models.ai_advice_template import AIAdviceTemplate
 from app.services.template_service import AIAdviceTemplateService
 
 

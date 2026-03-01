@@ -9,7 +9,6 @@ if isinstance(sys.modules.get("app.db.models"), object) and not hasattr(
     sys.modules.pop("app.db.models", None)
     importlib.import_module("app.db.models")
 
-import pytest
 
 from app.api.notifications.routes import register_token, send_test_notification
 from app.api.notifications.schemas import NotificationTest, TokenIn

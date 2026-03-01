@@ -1,5 +1,4 @@
 import os
-import types
 
 import pytest
 import sentry_sdk

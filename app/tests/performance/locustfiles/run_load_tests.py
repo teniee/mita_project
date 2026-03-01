@@ -450,22 +450,22 @@ class MITALoadTestRunner:
         """
         Print comprehensive test summary.
         """
-        print(f"\n🎯 MITA Load Testing - Comprehensive Results")
-        print(f"=" * 60)
+        print("\n🎯 MITA Load Testing - Comprehensive Results")
+        print("=" * 60)
         print(f"Tests Run: {report['total_tests_run']}")
         print(f"Successful: {report['successful_tests']}")
         print(f"Success Rate: {(report['successful_tests'] / max(report['total_tests_run'], 1)) * 100:.1f}%")
         
         summary = report['performance_summary']
         if 'error' not in summary:
-            print(f"\n📊 Performance Summary:")
+            print("\n📊 Performance Summary:")
             print(f"   Total Requests: {summary['total_requests_across_all_tests']:,}")
             print(f"   Overall Failure Rate: {summary['overall_failure_rate']:.2f}%")
             print(f"   Average Response Time: {summary['average_response_time_across_tests']:.1f}ms")
             print(f"   Best Test: {summary['best_performing_test']}")
             print(f"   Worst Test: {summary['worst_performing_test']}")
         
-        print(f"\n💡 Recommendations:")
+        print("\n💡 Recommendations:")
         for i, rec in enumerate(report['recommendations'], 1):
             print(f"   {i}. {rec}")
 

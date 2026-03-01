@@ -13,10 +13,8 @@ DB models required (see bottom of this file).
 
 from __future__ import annotations
 
-import uuid
 from datetime import date, timedelta
-from decimal import Decimal
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Union, Tuple
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session

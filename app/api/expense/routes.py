@@ -5,7 +5,7 @@ from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.core.error_handler import (
     ValidationException, BusinessLogicException, InputValidator,
-    validate_user_access, handle_database_errors
+    handle_database_errors
 )
 from app.schemas.expense import ExpenseEntry, ExpenseHistoryOut, ExpenseOut
 from app.utils.response_wrapper import success_response
@@ -35,13 +35,12 @@ def add_expense(
     
     # Check user's daily spending limit (optional business rule)
     from datetime import datetime, date
-    today = date.today()
+    date.today()
     # This could query user's daily expenses and check against limits
     
     # Note: expense_service expects AsyncSession but we have sync Session
     # Use Transaction model instead for now (more complete implementation)
     from app.db.models import Transaction
-    from datetime import datetime
 
     # Create transaction record (expense tracking via Transaction model)
     transaction = Transaction(

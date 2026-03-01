@@ -8,18 +8,16 @@ import signal
 import sys
 import time
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Callable, Any
 from dataclasses import dataclass
 from enum import Enum
 
 import redis
-from rq import Worker, Connection, Queue
+from rq import Worker, Queue
 # RQ 1.15.1 doesn't have middleware module - using callbacks instead
 
-from app.core.config import settings
 from app.core.logger import get_logger
-from app.core.task_queue import TaskPriority
 
 logger = get_logger(__name__)
 

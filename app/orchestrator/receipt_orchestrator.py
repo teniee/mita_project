@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 
-from app.ocr.ocr_parser import parse_receipt_text, parse_receipt_details
+from app.ocr.ocr_parser import parse_receipt_text
 from app.services.expense_tracker import record_expense
 
 logger = logging.getLogger(__name__)

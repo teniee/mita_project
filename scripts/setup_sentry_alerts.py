@@ -12,7 +12,6 @@ import requests
 import argparse
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -232,7 +231,7 @@ class SentryAlertsManager:
         
         self._create_action(alert_rule_id, action_data)
     
-    def _create_slack_action(self, alert_rule_id: str, action: Dict[str, Any]]):
+    def _create_slack_action(self, alert_rule_id: str, action: Dict[str, Any]):
         """Create Slack notification action"""
         
         target_identifier = action.get("target_identifier")
@@ -257,7 +256,7 @@ class SentryAlertsManager:
         
         self._create_action(alert_rule_id, action_data)
     
-    def _create_pagerduty_action(self, alert_rule_id: str, action: Dict[str, Any]]):
+    def _create_pagerduty_action(self, alert_rule_id: str, action: Dict[str, Any]):
         """Create PagerDuty notification action"""
         
         target_identifier = action.get("target_identifier")
@@ -277,7 +276,7 @@ class SentryAlertsManager:
         
         self._create_action(alert_rule_id, action_data)
     
-    def _create_webhook_action(self, alert_rule_id: str, action: Dict[str, Any]]):
+    def _create_webhook_action(self, alert_rule_id: str, action: Dict[str, Any]):
         """Create webhook notification action"""
         
         webhook_url = action.get("target_identifier")

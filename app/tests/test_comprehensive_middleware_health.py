@@ -10,15 +10,11 @@ import logging
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis
-import json
-from typing import Dict, Any, List
 
 from app.core.middleware_health_monitor import (
     middleware_health_monitor, 
     MiddlewareHealthMonitor,
-    HealthStatus,
-    HealthMetric
+    HealthStatus
 )
 from app.core.middleware_components_health import (
     SecurityMiddlewareHealthChecker,
@@ -31,7 +27,6 @@ from app.core.health_monitoring_alerts import (
     Alert,
     AlertSeverity
 )
-from app.api.health.enhanced_routes import router
 
 logger = logging.getLogger(__name__)
 

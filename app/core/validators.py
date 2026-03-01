@@ -6,7 +6,7 @@ Focuses on financial data integrity, security, and compliance requirements.
 
 import re
 import logging
-from typing import Any, Dict, List, Optional, Union, Callable, Set
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from email_validator import validate_email, EmailNotValidError
@@ -14,7 +14,6 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, validator, Field, field_validator, ValidationError as PydanticValidationError
 from pydantic import condecimal
 import bleach
-import pycountry
 import phonenumbers
 from phonenumbers.phonenumberutil import NumberParseException
 
@@ -439,7 +438,7 @@ class EnhancedUserValidator(BaseValidator):
         has_lower = any(c.islower() for c in v)
         has_upper = any(c.isupper() for c in v)
         has_digit = any(c.isdigit() for c in v)
-        has_special = any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in v)
+        any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in v)
         
         if not (has_lower and has_upper and has_digit):
             raise ValueError(

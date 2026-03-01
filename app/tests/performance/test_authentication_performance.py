@@ -9,17 +9,14 @@ import time
 import asyncio
 import statistics
 import psutil
-from typing import Dict, List, Any, Optional
+from typing import Dict, List
 from unittest.mock import patch, MagicMock, AsyncMock
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
 # Import authentication services
 from app.api.auth.services import (
     authenticate_user_async,
-    register_user_async, 
-    refresh_token_for_user,
-    revoke_token
+    register_user_async
 )
 from app.services.auth_jwt_service import (
     create_access_token,
@@ -182,7 +179,6 @@ class AuthenticationPerformanceTests:
         )
         
         # Password hashing should take reasonable time (security vs performance balance)
-        HASH_TARGET_MS = 100.0  # Argon2 is intentionally slow for security
         HASH_MAX_MS = 500.0
         
         assert perf_stats["mean_ms"] <= HASH_MAX_MS, (
@@ -190,7 +186,7 @@ class AuthenticationPerformanceTests:
             f"(max: {HASH_MAX_MS}ms)"
         )
         
-        print(f"\n✅ Password Hashing Performance:")
+        print("\n✅ Password Hashing Performance:")
         print(f"   Mean: {perf_stats['mean_ms']:.3f}ms")
         print(f"   P95:  {perf_stats['p95_ms']:.3f}ms") 
         print(f"   Range: {perf_stats['min_ms']:.3f}ms - {perf_stats['max_ms']:.3f}ms")
@@ -209,7 +205,6 @@ class AuthenticationPerformanceTests:
         perf_stats = self.measure_auth_performance(verify_password_operation, iterations=200)
         
         # Password verification should be fast
-        VERIFY_TARGET_MS = 50.0
         VERIFY_MAX_MS = 150.0
         
         assert perf_stats["mean_ms"] <= VERIFY_MAX_MS, (
@@ -217,7 +212,7 @@ class AuthenticationPerformanceTests:
             f"(max: {VERIFY_MAX_MS}ms)"
         )
         
-        print(f"\n✅ Password Verification Performance:")
+        print("\n✅ Password Verification Performance:")
         print(f"   Mean: {perf_stats['mean_ms']:.3f}ms")
         print(f"   Throughput: {perf_stats['throughput']:.0f} verifications/sec")
     
@@ -248,7 +243,7 @@ class AuthenticationPerformanceTests:
             f"Refresh token generation too slow: {refresh_perf['mean_ms']:.3f}ms"
         )
         
-        print(f"\n✅ JWT Generation Performance:")
+        print("\n✅ JWT Generation Performance:")
         print(f"   Access Token:  {access_perf['mean_ms']:.3f}ms")
         print(f"   Refresh Token: {refresh_perf['mean_ms']:.3f}ms")
         print(f"   Access Throughput: {access_perf['throughput']:.0f} tokens/sec")
@@ -276,7 +271,7 @@ class AuthenticationPerformanceTests:
             f"JWT validation P95 too slow: {perf_stats['p95_ms']:.3f}ms"
         )
         
-        print(f"\n✅ JWT Validation Performance:")
+        print("\n✅ JWT Validation Performance:")
         print(f"   Mean: {perf_stats['mean_ms']:.3f}ms (target: {self.TOKEN_VALIDATION_TARGET_MS}ms)")
         print(f"   P95:  {perf_stats['p95_ms']:.3f}ms")
         print(f"   Throughput: {perf_stats['throughput']:.0f} validations/sec")
@@ -306,7 +301,7 @@ class AuthenticationPerformanceTests:
             start_time = time.perf_counter()
             try:
                 await login_operation()
-            except Exception as e:
+            except Exception:
                 pass  # Mock may cause expected failures
             end_time = time.perf_counter()
             times.append((end_time - start_time) * 1000)
@@ -320,10 +315,10 @@ class AuthenticationPerformanceTests:
             f"(target: {self.LOGIN_TARGET_MS}ms, max: {self.LOGIN_MAX_MS}ms)"
         )
         
-        print(f"\n✅ Login Flow Performance:")
+        print("\n✅ Login Flow Performance:")
         print(f"   Mean: {mean_time:.3f}ms (target: {self.LOGIN_TARGET_MS}ms)")
         print(f"   P95:  {p95_time:.3f}ms")
-        print(f"   Includes: DB query, password verification, token generation")
+        print("   Includes: DB query, password verification, token generation")
     
     @pytest.mark.asyncio
     async def test_registration_flow_performance(self, mock_database_session, auth_test_data):
@@ -363,10 +358,10 @@ class AuthenticationPerformanceTests:
             f"(target: {self.REGISTRATION_TARGET_MS}ms, max: {self.REGISTRATION_MAX_MS}ms)"
         )
         
-        print(f"\n✅ Registration Flow Performance:")
+        print("\n✅ Registration Flow Performance:")
         print(f"   Mean: {mean_time:.3f}ms (target: {self.REGISTRATION_TARGET_MS}ms)")
         print(f"   P95:  {p95_time:.3f}ms")
-        print(f"   Includes: Validation, password hashing, DB operations, token generation")
+        print("   Includes: Validation, password hashing, DB operations, token generation")
     
     def test_rate_limiter_performance_impact(self):
         """
@@ -405,7 +400,7 @@ class AuthenticationPerformanceTests:
                 f"(max: {self.RATE_LIMITER_OVERHEAD_MS}ms)"
             )
             
-            print(f"\n✅ Rate Limiter Performance Impact:")
+            print("\n✅ Rate Limiter Performance Impact:")
             print(f"   Mean overhead: {perf_stats['mean_ms']:.3f}ms")
             print(f"   P95 overhead:  {perf_stats['p95_ms']:.3f}ms")
             print(f"   Throughput: {perf_stats['throughput']:.0f} checks/sec")
@@ -471,7 +466,7 @@ class AuthenticationPerformanceTests:
                 f"{result['per_auth_ms']:.3f}ms per auth"
             )
         
-        print(f"\n✅ Concurrent Authentication Performance:")
+        print("\n✅ Concurrent Authentication Performance:")
         for result in concurrency_results:
             print(f"   {result['concurrent_users']:2d} users: "
                   f"{result['per_auth_ms']:.3f}ms/auth, "
@@ -514,7 +509,7 @@ class AuthenticationPerformanceTests:
                 f"Token tracking too slow: {tracking_perf['mean_ms']:.3f}ms"
             )
             
-            print(f"\n✅ Token Security Service Performance:")
+            print("\n✅ Token Security Service Performance:")
             print(f"   Blacklist check: {blacklist_perf['mean_ms']:.3f}ms")
             print(f"   Usage tracking:  {tracking_perf['mean_ms']:.3f}ms")
             print(f"   Blacklist throughput: {blacklist_perf['throughput']:.0f} checks/sec")
@@ -561,7 +556,7 @@ class AuthenticationPerformanceTests:
         final_memory = process.memory_info().rss / 1024 / 1024
         total_growth = final_memory - baseline_memory
         
-        print(f"\n✅ Authentication Memory Usage:")
+        print("\n✅ Authentication Memory Usage:")
         print(f"   Baseline: {baseline_memory:.2f}MB")
         print(f"   Final: {final_memory:.2f}MB") 
         print(f"   Growth: {total_growth:.2f}MB (2000 token operations)")
@@ -592,7 +587,7 @@ class AuthenticationPerformanceTests:
             ]
         }
         
-        print(f"\n✅ Authentication Performance Summary:")
+        print("\n✅ Authentication Performance Summary:")
         print(f"   Production Readiness: {performance_report['production_readiness']}")
         print(f"   Critical Issues: {len(performance_report['critical_issues'])}")
         

@@ -13,7 +13,7 @@ Economic Foundation:
 Author: Claude Code (AI Financial Economist)
 """
 
-from typing import Dict, Tuple, Optional
+from typing import Dict
 from dataclasses import dataclass
 import math
 import logging
@@ -422,7 +422,7 @@ class IncomeScalingAlgorithms:
         Economic Theory: Higher income allows more aggressive goal timelines.
         Age affects time horizon preferences.
         """
-        annual_income = monthly_income * 12
+        monthly_income * 12
         
         # Calculate maximum reasonable contribution (% of income)
         income_tier = classify_income(monthly_income)

@@ -9,7 +9,6 @@ import logging
 import signal
 import sys
 import time
-from datetime import datetime, timezone
 from typing import Optional
 
 # Set up logging before importing app modules

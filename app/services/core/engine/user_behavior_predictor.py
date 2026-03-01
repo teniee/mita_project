@@ -32,7 +32,6 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
 
     Returns predictions including next week and next month spending estimates.
     """
-    from sqlalchemy import func
     from app.db.models.transaction import Transaction
     from app.db.models.user import User
 

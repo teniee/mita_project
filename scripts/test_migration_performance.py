@@ -23,10 +23,9 @@ import os
 import psutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List
 import psycopg2
 
 # Configure logging
@@ -224,7 +223,6 @@ class MigrationPerformanceTester:
         self.start_resource_monitoring()
         
         # Monitor locks in separate thread
-        lock_monitoring_active = True
         lock_data = []
         
         def monitor_locks():
@@ -298,7 +296,7 @@ class MigrationPerformanceTester:
             }
         }
         
-        logger.info(f"Migration performance test completed:")
+        logger.info("Migration performance test completed:")
         logger.info(f"  Duration: {migration_duration:.2f} seconds")
         logger.info(f"  Success: {migration_success}")
         logger.info(f"  Max CPU: {performance_results['resource_usage']['max_cpu_percent']:.1f}%")
@@ -370,7 +368,7 @@ class MigrationPerformanceTester:
             }
         }
         
-        logger.info(f"Rollback performance test completed:")
+        logger.info("Rollback performance test completed:")
         logger.info(f"  Duration: {rollback_duration:.2f} seconds")
         logger.info(f"  Success: {rollback_success}")
         logger.info(f"  Revision: {current_revision} -> {final_revision}")
@@ -551,7 +549,7 @@ class MigrationPerformanceTester:
         
         # Check lock contention
         if "migration_results" in results:
-            max_locks = results["migration_results"]["lock_analysis"].get("max_concurrent_locks", 0)
+            results["migration_results"]["lock_analysis"].get("max_concurrent_locks", 0)
             max_blocked = results["migration_results"]["lock_analysis"].get("max_blocked_locks", 0)
             
             if max_blocked > 0:

@@ -1,8 +1,7 @@
 import datetime
 import io
-from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 from starlette.datastructures import UploadFile

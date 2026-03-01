@@ -1,7 +1,7 @@
 import uuid
 
 import httpx
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.models import User

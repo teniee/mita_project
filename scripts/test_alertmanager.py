@@ -7,12 +7,9 @@ Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
 """
 
 import asyncio
-import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
 import httpx
 import structlog
@@ -59,7 +56,7 @@ class AlertmanagerTester:
         logger.info("Testing rollback webhook...", alert_name=alert_name)
 
         # Create test webhook payload
-        webhook_payload = {
+        {
             "version": "4",
             "groupKey": f"test-{datetime.now().isoformat()}",
             "truncatedAlerts": 0,

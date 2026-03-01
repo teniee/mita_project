@@ -28,17 +28,12 @@ import logging
 import json
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import aiohttp
 import asyncpg
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-import jwt
-import hashlib
-import hmac
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import sentry_sdk
@@ -290,7 +285,7 @@ class SubscriptionManager:
     async def _parse_apple_receipt(self, apple_response: Dict[str, Any], subscription: SubscriptionInfo) -> Tuple[bool, Dict[str, Any]]:
         """Parse Apple receipt response and extract subscription information"""
         try:
-            receipt = apple_response.get('receipt', {})
+            apple_response.get('receipt', {})
             latest_receipt_info = apple_response.get('latest_receipt_info', [])
             pending_renewal_info = apple_response.get('pending_renewal_info', [])
             

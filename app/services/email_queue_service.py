@@ -8,19 +8,14 @@ import json
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, text
-import redis.asyncio as redis
 
-from app.core.config import settings
 from app.core.external_services import RedisService
-from app.services.email_service import EmailService, EmailType, EmailPriority, EmailDeliveryResult
-from app.db.models.notification_log import NotificationLog
+from app.services.email_service import EmailService, EmailType, EmailPriority
 
 logger = logging.getLogger(__name__)
 

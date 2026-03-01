@@ -5,12 +5,11 @@ Provides robust transaction handling with automatic rollback and retry logic
 
 import logging
 import asyncio
-from typing import Any, Callable, Optional, Dict, List
+from typing import Any, Callable, Dict, List
 from contextlib import asynccontextmanager
 from functools import wraps
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import (
-    SQLAlchemyError, 
     IntegrityError, 
     OperationalError,
     TimeoutError as SQLTimeoutError,
@@ -161,7 +160,7 @@ class TransactionManager:
                     }
                 )
                 raise TransactionError(
-                    f"Database operation failed with non-retryable error",
+                    "Database operation failed with non-retryable error",
                     original_error=e
                 )
         

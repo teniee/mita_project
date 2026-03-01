@@ -3,9 +3,8 @@ Base Repository Pattern Implementation for MITA
 Provides abstract base for all repository implementations
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Dict, List, Optional, TypeVar, Generic, Type
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import DeclarativeBase
 

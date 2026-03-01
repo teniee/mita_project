@@ -10,19 +10,14 @@ import asyncio
 import gc
 import psutil
 import threading
-from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import patch, MagicMock, AsyncMock
+from typing import Dict, List, Any
+from unittest.mock import patch
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
-from collections import defaultdict
-import weakref
-import sys
+from datetime import datetime
 
 # Import services for testing
-from app.services.performance_monitor import PerformanceMonitor, get_performance_monitor
+from app.services.performance_monitor import get_performance_monitor
 from app.services.advanced_cache_manager import SmartCacheManager
-from app.core.async_session import get_async_session_factory
-from app.api.auth.services import authenticate_user_async, register_user_async
 from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.logic.cohort_analysis import CohortAnalyzer
 
@@ -179,7 +174,7 @@ class MemoryResourceTests:
             f"(max: {self.MAX_BASELINE_MEMORY_MB}MB)"
         )
         
-        print(f"\n✅ Baseline Memory Usage:")
+        print("\n✅ Baseline Memory Usage:")
         print(f"   RSS Memory: {baseline.memory_rss_mb:.2f}MB")
         print(f"   VMS Memory: {baseline.memory_vms_mb:.2f}MB")
         print(f"   Memory %: {baseline.memory_percent:.1f}%")
@@ -225,7 +220,7 @@ class MemoryResourceTests:
                 f"(threshold: {self.MAX_MEMORY_LEAK_THRESHOLD_KB}KB)"
             )
             
-            print(f"\n✅ Income Classification Memory Leak Test:")
+            print("\n✅ Income Classification Memory Leak Test:")
             print(f"   Operations: {leak_result.operations_count:,}")
             print(f"   Memory Growth: {leak_result.growth_mb:.2f}MB")
             print(f"   Per Operation: {leak_result.growth_per_operation_kb:.3f}KB")
@@ -290,7 +285,7 @@ class MemoryResourceTests:
                 f"{leak_result.growth_per_operation_kb:.3f}KB per operation"
             )
             
-            print(f"\n✅ Budget Generation Memory Test:")
+            print("\n✅ Budget Generation Memory Test:")
             print(f"   Operations: {leak_result.operations_count:,}")
             print(f"   Memory Growth: {leak_result.growth_mb:.2f}MB")
             print(f"   Per Operation: {leak_result.growth_per_operation_kb:.3f}KB")
@@ -331,7 +326,7 @@ class MemoryResourceTests:
             f"{leak_result.growth_per_operation_kb:.3f}KB per operation"
         )
         
-        print(f"\n✅ Cache Memory Management Test:")
+        print("\n✅ Cache Memory Management Test:")
         print(f"   Cache Cycles: {leak_result.operations_count}")
         print(f"   Memory Growth: {leak_result.growth_mb:.2f}MB")
         print(f"   Per Cycle: {leak_result.growth_per_operation_kb:.3f}KB")
@@ -351,7 +346,7 @@ class MemoryResourceTests:
             result = sum(data)
             
             # Create some temporary objects
-            temp_objects = [{"id": i, "value": i * 2} for i in range(50)]
+            [{"id": i, "value": i * 2} for i in range(50)]
             
             return result
         
@@ -386,8 +381,8 @@ class MemoryResourceTests:
             f"Async operations memory growth too high: {memory_growth:.2f}MB"
         )
         
-        print(f"\n✅ Async Operations Memory Test:")
-        print(f"   Total Operations: 1,000")
+        print("\n✅ Async Operations Memory Test:")
+        print("   Total Operations: 1,000")
         print(f"   Memory Growth: {memory_growth:.2f}MB")
         print(f"   Thread Growth: {final.threads - baseline.threads}")
         print(f"   GC Objects Growth: {final.gc_objects - baseline.gc_objects:,}")
@@ -444,7 +439,7 @@ class MemoryResourceTests:
             f"Thread count growth too high: {thread_growth} threads"
         )
         
-        print(f"\n✅ Concurrent Operations Resource Test:")
+        print("\n✅ Concurrent Operations Resource Test:")
         print(f"   Operations Completed: {len(results):,}")
         print(f"   Memory Growth: {memory_growth:.2f}MB")
         print(f"   Thread Growth: {thread_growth}")
@@ -478,7 +473,7 @@ class MemoryResourceTests:
         
         # Create and destroy objects multiple times
         for cycle in range(100):
-            result = create_temporary_objects()
+            create_temporary_objects()
             
             # Occasionally force garbage collection
             if cycle % 20 == 19:
@@ -493,7 +488,7 @@ class MemoryResourceTests:
         gc_cycles = [final_gc_stats[i] - initial_gc_stats[i] for i in range(3)]
         object_growth = final_objects - initial_objects
         
-        print(f"\n✅ Garbage Collection Efficiency:")
+        print("\n✅ Garbage Collection Efficiency:")
         print(f"   Initial Objects: {initial_objects:,}")
         print(f"   Final Objects: {final_objects:,}")
         print(f"   Object Growth: {object_growth:,}")
@@ -530,7 +525,7 @@ class MemoryResourceTests:
             for _ in range(10):
                 operation = operations[operation_count % len(operations)]
                 try:
-                    result = operation()
+                    operation()
                     operation_count += 1
                 except Exception:
                     pass
@@ -563,7 +558,7 @@ class MemoryResourceTests:
             avg_cpu = sum(s.cpu_percent for s in snapshots) / len(snapshots)
             max_memory = max(s.memory_rss_mb for s in snapshots)
             
-            print(f"\n✅ Long-Running Stability Results:")
+            print("\n✅ Long-Running Stability Results:")
             print(f"   Duration: {self.STRESS_TEST_DURATION_MINUTES} minutes")
             print(f"   Total Operations: {operation_count:,}")
             print(f"   Memory Growth: {memory_growth:.2f}MB")
@@ -614,7 +609,7 @@ class MemoryResourceTests:
         baseline_growth = without_monitoring.memory_rss_mb - baseline.memory_rss_mb
         monitoring_growth = with_monitoring.memory_rss_mb - without_monitoring.memory_rss_mb
         
-        print(f"\n✅ Performance Monitoring Memory Impact:")
+        print("\n✅ Performance Monitoring Memory Impact:")
         print(f"   Baseline Growth: {baseline_growth:.2f}MB")
         print(f"   With Monitoring Growth: {monitoring_growth:.2f}MB")
         print(f"   Monitoring Overhead: {monitoring_growth - baseline_growth:.2f}MB")

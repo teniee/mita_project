@@ -14,8 +14,8 @@ Financial services compliance requirements:
 import logging
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 import asyncio
 from threading import Lock
@@ -325,7 +325,7 @@ class TokenSecurityService:
                     del self._user_activity[user_id]
             
             # Clean up suspicious IPs (reset counters daily)
-            hour_ago = now - 3600
+            now - 3600
             self._suspicious_ips = defaultdict(int, {
                 ip: count for ip, count in self._suspicious_ips.items()
                 # Keep IPs that had recent activity

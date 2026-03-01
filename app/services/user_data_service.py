@@ -1,7 +1,6 @@
 import json
 import logging
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan, UserAnswer, UserProfile

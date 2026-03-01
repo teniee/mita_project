@@ -4,13 +4,12 @@ Provides comprehensive health monitoring for the async task queue system.
 """
 
 import time
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from datetime import datetime
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_limiter.depends import RateLimiter
 
-from app.services.task_manager import task_manager
 from app.core.task_queue import get_task_queue
 from app.core.logger import get_logger
 from app.utils.response_wrapper import success_response

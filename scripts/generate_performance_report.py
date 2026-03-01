@@ -459,7 +459,7 @@ class PerformanceReportGenerator:
         print(f"Targets Failed: {summary['targets_failed']}")
         print(f"Critical Failures: {summary['critical_failures']}")
         
-        print(f"\n📊 Key Performance Metrics:")
+        print("\n📊 Key Performance Metrics:")
         metrics = report["performance_metrics"]
         
         # Income classification
@@ -474,7 +474,7 @@ class PerformanceReportGenerator:
             status = "✅" if auth["login_meets_target"] else "❌"
             print(f"   Authentication Login: {auth['login_ms']:.1f}ms {status}")
         
-        print(f"\n💡 Top Recommendations:")
+        print("\n💡 Top Recommendations:")
         for i, rec in enumerate(report["recommendations"][:3], 1):
             print(f"   {i}. {rec[:80]}{'...' if len(rec) > 80 else ''}")
 

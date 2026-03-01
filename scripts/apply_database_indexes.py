@@ -6,7 +6,6 @@ Usage: python scripts/apply_database_indexes.py
 
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Add the app directory to the path
@@ -66,13 +65,13 @@ async def main():
         results = await index_manager.create_all_indexes()
         
         # Report results
-        print(f"\n✅ Successfully created:")
+        print("\n✅ Successfully created:")
         print(f"   - {len(results['critical_indexes'])} critical indexes")
         print(f"   - {len(results['composite_indexes'])} composite indexes") 
         print(f"   - {len(results['fulltext_indexes'])} full-text indexes")
         
         if results['errors']:
-            print(f"\n❌ Errors encountered:")
+            print("\n❌ Errors encountered:")
             for error in results['errors']:
                 print(f"   - {error}")
         
@@ -86,7 +85,7 @@ async def main():
         for idx in all_created:
             print(f"   ✓ {idx['name']}: {idx['description']}")
         
-        print(f"\n🎉 Database indexing strategy applied successfully!")
+        print("\n🎉 Database indexing strategy applied successfully!")
         print(f"📈 Total indexes created: {len(all_created)}")
         
         if results['errors']:

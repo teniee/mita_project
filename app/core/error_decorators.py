@@ -8,11 +8,9 @@ exceptions and convert them to standardized API responses.
 
 import asyncio
 import functools
-import inspect
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.standardized_error_handler import (
@@ -23,9 +21,6 @@ from app.core.standardized_error_handler import (
     ValidationError,
     ResourceNotFoundError,
     BusinessLogicError,
-    DatabaseError,
-    ExternalServiceError,
-    RateLimitError,
     ErrorCode,
     map_database_error
 )
