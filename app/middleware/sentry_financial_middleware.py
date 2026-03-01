@@ -3,6 +3,7 @@ Financial-Specific Sentry Monitoring Middleware
 Provides comprehensive monitoring for financial operations with compliance awareness
 """
 
+import asyncio
 import time
 import logging
 from typing import Dict, Any, Optional, Callable, Awaitable

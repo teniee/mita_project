@@ -9,7 +9,7 @@ import time
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from contextlib import contextmanager
-from sqlalchemy import create_engine, text, Index, Column, Integer, String, DateTime, Float, Boolean
+from sqlalchemy import create_engine, event, text, Index, Column, Integer, String, DateTime, Float, Boolean
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool, QueuePool
