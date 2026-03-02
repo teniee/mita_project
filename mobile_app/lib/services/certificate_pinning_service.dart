@@ -20,20 +20,18 @@ class CertificatePinningService {
   CertificatePinningService._internal();
 
   /// Production SSL certificate SHA-256 fingerprints
-  /// TODO: Replace with actual certificate fingerprints from mita.finance
   ///
-  /// To get certificate fingerprint:
-  /// openssl s_client -servername mita.finance -connect mita.finance:443 < /dev/null 2>/dev/null | \
-  ///   openssl x509 -fingerprint -sha256 -noout -in /dev/stdin
+  /// SETUP REQUIRED before enabling certificate pinning:
+  /// 1. Run: openssl s_client -servername mita.finance -connect mita.finance:443 \
+  ///         < /dev/null 2>/dev/null | openssl x509 -fingerprint -sha256 -noout
+  /// 2. Add the fingerprint below (format: AA:BB:CC:...)
+  /// 3. Add a backup fingerprint for certificate rotation
+  ///
+  /// Note: Certificate pinning is automatically disabled when this list is empty.
+  /// The service logs a warning and falls through to standard TLS validation.
   static const List<String> _pinnedCertificates = [
-    // Primary certificate (mita.finance)
-    // 'SHA256_FINGERPRINT_HERE',
-
-    // Backup certificate (in case of renewal)
-    // 'SHA256_FINGERPRINT_BACKUP_HERE',
-
-    // Railway deployment certificate (if different)
-    // 'SHA256_FINGERPRINT_RAILWAY_HERE',
+    // Add fingerprints here when deploying to production:
+    // 'AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99',
   ];
 
   /// Trusted domains for certificate pinning

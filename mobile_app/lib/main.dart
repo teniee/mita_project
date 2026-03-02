@@ -34,7 +34,6 @@ import 'core/app_error_handler.dart';
 import 'core/error_handling.dart';
 import 'theme/mita_theme.dart';
 
-// DEBUG: Only import debug/test screens in debug mode
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -54,7 +53,6 @@ import 'screens/insights_screen.dart';
 import 'screens/budget_settings_screen.dart';
 import 'screens/user_profile_screen.dart';
 import 'screens/user_settings_screen.dart';
-// DEBUG: auth_test_screen.dart removed from production (only for debug builds)
 import 'screens/transactions_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/challenges_screen.dart';
@@ -128,9 +126,8 @@ void main() async {
   await AppVersionService.instance.initialize();
 
   // Initialize comprehensive Sentry monitoring for financial application
-  const sentryDsn = String.fromEnvironment('SENTRY_DSN',
-      defaultValue:
-          'https://1d38f70c32d316f5dda5dede268ca85e@o4510468167827456.ingest.us.sentry.io/4510468169334784');
+  // Pass DSN at build time: flutter build --dart-define=SENTRY_DSN=https://...
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN');
   const environment =
       String.fromEnvironment('ENVIRONMENT', defaultValue: 'production');
   const sentryRelease = String.fromEnvironment('SENTRY_RELEASE',
@@ -354,8 +351,6 @@ class _MITAAppState extends State<MITAApp> {
         return null; // Let the routes table handle it
       },
       routes: {
-        // DEBUG ROUTES REMOVED: /debug-test and /auth-test only available in debug builds
-        // Use Flutter DevTools for debugging in production builds
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
@@ -381,7 +376,6 @@ class _MITAAppState extends State<MITAApp> {
         '/profile': (context) => const UserProfileScreen(),
         '/settings': (context) => const UserSettingsScreen(),
         '/transactions': (context) => const TransactionsScreen(),
-        // DEBUG: /auth-test route removed for production compliance
         '/goals': (context) => const GoalsScreen(),
         '/challenges': (context) => const ChallengesScreen(),
         '/installment-calculator': (context) => const InstallmentCalculatorScreen(),
