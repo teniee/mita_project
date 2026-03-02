@@ -294,7 +294,7 @@ If you are a California resident, you have the following rights:
 - Same prices and service levels for all users
 
 **How to Exercise Your Rights:**
-Email privacy@mita.finance or call +1-XXX-XXX-XXXX (toll-free)
+Email privacy@mita.finance
 
 ### 5.3 Rights for All Users
 Regardless of location, you can:
