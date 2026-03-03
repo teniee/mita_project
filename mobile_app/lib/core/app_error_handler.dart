@@ -4,9 +4,9 @@ Initializes and configures the error handling system for the MITA app
 */
 
 import 'package:flutter/foundation.dart';
-import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'error_handling.dart';
+import '../services/logging_service.dart';
 
 class AppErrorHandler {
   static bool _initialized = false;
@@ -20,9 +20,9 @@ class AppErrorHandler {
       await ErrorHandler.instance.initialize(userId: userId);
 
       _initialized = true;
-      debugPrint('AppErrorHandler initialized successfully');
+      logInfo('AppErrorHandler initialized successfully', tag: 'ERROR_HANDLER');
     } catch (e) {
-      debugPrint('Failed to initialize AppErrorHandler: $e');
+      logError('Failed to initialize AppErrorHandler: $e', tag: 'ERROR_HANDLER');
     }
   }
 
@@ -58,7 +58,7 @@ class AppErrorHandler {
         context: context,
       );
     } else {
-      debugPrint('Error reported before initialization: $error');
+      logWarning('Error reported before initialization: $error', tag: 'ERROR_HANDLER');
     }
   }
 

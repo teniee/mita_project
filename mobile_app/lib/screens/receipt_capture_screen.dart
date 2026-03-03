@@ -11,6 +11,7 @@ import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../services/api_service.dart';
 import '../services/ocr_service.dart';
+import '../services/logging_service.dart';
 import '../widgets/ocr_widgets.dart';
 
 class ReceiptCaptureScreen extends StatefulWidget {
@@ -102,7 +103,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
         _isPremiumUser = profile['is_premium'] as bool? ?? false;
       });
     } catch (e) {
-      debugPrint('Error checking premium status: $e');
+      logError('Error checking premium status: $e', tag: 'RECEIPT');
     }
   }
 
@@ -239,7 +240,7 @@ class _ReceiptCaptureScreenState extends State<ReceiptCaptureScreen>
         _merchantSuggestions = suggestions;
       });
     } catch (e) {
-      debugPrint('Error loading merchant suggestions: $e');
+      logError('Error loading merchant suggestions: $e', tag: 'RECEIPT');
     }
   }
 

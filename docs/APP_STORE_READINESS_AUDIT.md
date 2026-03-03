@@ -235,15 +235,15 @@ the device console log.
 | 7 | Add missing Android permissions | FIXED (commit 2aa6007) |
 | 8 | Update storage permissions for API 33+ | FIXED (commit 2aa6007) |
 | 9 | Fix Kotlin version conflict | FIXED (commit 2aa6007) |
-| 10 | Generate Adaptive Icons | FIXED — `mipmap-anydpi-v26/` XML + foreground PNGs added |
+| 10 | Generate Adaptive Icons | FIXED — `mipmap-anydpi-v26/` XML + foreground/round PNGs added |
 | 11 | Certificate pinning setup instructions | FIXED — clear setup docs, auto-disabled when empty |
 | 12 | Remove debug screens | FIXED (commit 2aa6007) |
 | 13 | Move Sentry DSN to build-time env | FIXED (commit 2aa6007) |
-| 14 | Add `network_security_config.xml` | FIXED — explicit HTTPS-only config added |
+| 14 | Add `network_security_config.xml` | FIXED — explicit HTTPS-only config with Railway domain |
 | 15 | CCPA phone number placeholder | FIXED — removed placeholder, email-only contact |
-| 16 | `debugPrint()` calls | OK — `debugPrint` is no-op in release builds |
+| 16 | `debugPrint()` calls | FIXED — replaced with logging service in production code |
 | 17 | TODO comments | FIXED — cert pinning TODO replaced with setup instructions |
-| 18 | Windows metadata `com.example` | FIXED — updated to MITA Finance |
+| 18 | Windows/Linux metadata `com.example` | FIXED — updated to MITA Finance / mita.finance |
 
 ### Remaining manual steps
 

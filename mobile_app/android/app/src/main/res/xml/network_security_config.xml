@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Enforce HTTPS for all connections -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <!-- Pin certificates for MITA API domains -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">mita.finance</domain>
+        <domain includeSubdomains="true">mita-production-production.up.railway.app</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
