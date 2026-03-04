@@ -4,6 +4,7 @@ from typing import Dict, List
 
 CATEGORY_BEHAVIOR: Dict[str, str] = {
     "groceries": "spread",
+    "coffee": "spread",  # Daily habit - spread across weekdays
     "dining out": "clustered",
     "delivery": "clustered",
     "rent": "fixed",

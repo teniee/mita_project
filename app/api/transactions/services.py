@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -31,6 +31,13 @@ def add_transaction(user: User, data, db: Session):
         except (ValueError, AttributeError):
             pass  # Invalid UUID, ignore
 
+    # Handle spent_at: use provided time or current UTC time
+    if hasattr(data, 'spent_at') and data.spent_at is not None:
+        spent_at = from_user_timezone(data.spent_at, user.timezone)
+    else:
+        # Default to current UTC time if not provided
+        spent_at = datetime.now(timezone.utc)
+
     txn = Transaction(
         user_id=user.id,
         category=data.category,
@@ -44,7 +51,7 @@ def add_transaction(user: User, data, db: Session):
         confidence_score=getattr(data, 'confidence_score', None),
         receipt_url=getattr(data, 'receipt_url', None),
         notes=getattr(data, 'notes', None),
-        spent_at=from_user_timezone(data.spent_at, user.timezone),
+        spent_at=spent_at,
         goal_id=goal_id,  # Link to goal
     )
     db.add(txn)
@@ -103,6 +110,13 @@ def add_transaction_background(
     if amount > Decimal('1000000'):  # 1 million limit
         raise ValueError("Transaction amount exceeds maximum limit")
 
+    # Handle spent_at: use provided time or current UTC time
+    if hasattr(data, 'spent_at') and data.spent_at is not None:
+        spent_at = from_user_timezone(data.spent_at, user.timezone)
+    else:
+        # Default to current UTC time if not provided
+        spent_at = datetime.now(timezone.utc)
+
     txn = Transaction(
         user_id=user.id,
         category=data.category,
@@ -116,7 +130,7 @@ def add_transaction_background(
         confidence_score=getattr(data, 'confidence_score', None),
         receipt_url=getattr(data, 'receipt_url', None),
         notes=getattr(data, 'notes', None),
-        spent_at=from_user_timezone(data.spent_at, user.timezone),
+        spent_at=spent_at,
     )
     db.add(txn)
     db.commit()
