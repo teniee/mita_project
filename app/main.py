@@ -58,6 +58,7 @@ from app.api.endpoints.database_performance import router as db_performance_rout
 from app.api.endpoints.cache_management import router as cache_management_router
 from app.api.endpoints.feature_flags import router as feature_flags_router
 from app.api.health.external_services_routes import router as external_services_health_router
+from app.api.waitlist.routes import router as waitlist_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
 from app.core.async_session import init_database, close_database
@@ -775,6 +776,9 @@ app.include_router(
     tags=["Authentication"],
     # Removed heavy rate limiter dependency for performance - rate limiting handled in routes
 )
+
+# Waitlist — public, no auth required
+app.include_router(waitlist_router, prefix="/api", tags=["Waitlist"])
 
 # Protected routes - Fixed duplicate path segments
 # Each router already has its own prefix, so we only add /api base
