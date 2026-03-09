@@ -15,6 +15,7 @@ import os
 import secrets
 import string
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -45,7 +46,7 @@ async def _get_total(db: AsyncSession) -> int:
     return result.scalar() or 0
 
 
-async def join_waitlist(email: str, referred_by_code: str | None, db: AsyncSession) -> WaitlistEntry:
+async def join_waitlist(email: str, referred_by_code: Optional[str], db: AsyncSession) -> WaitlistEntry:
     # Check duplicate
     existing = await db.execute(select(WaitlistEntry).where(WaitlistEntry.email == email))
     if existing.scalar_one_or_none():
@@ -55,7 +56,7 @@ async def join_waitlist(email: str, referred_by_code: str | None, db: AsyncSessi
         )
 
     # Validate referral code
-    referrer: WaitlistEntry | None = None
+    referrer: Optional[WaitlistEntry] = None
     if referred_by_code:
         res = await db.execute(
             select(WaitlistEntry).where(WaitlistEntry.ref_code == referred_by_code.upper())
