@@ -331,14 +331,14 @@
       font-family: var(--ff-head); font-weight: 700;
       animation: float 5s ease-in-out infinite;
     }
-    .deco.d1 { top: 50px; left: -100px; animation-delay: -2s; }
-    .deco.d2 { bottom: 70px; right: -88px; animation-delay: -3.5s; display: flex; align-items: center; gap: 10px; }
+    .deco.d1 { top: 60px; left: -114px; animation-delay: -2s; }
+    .deco.d2 { bottom: 80px; right: -100px; animation-delay: -3.5s; display: flex; align-items: center; gap: 10px; }
     .deco .dl { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 2px; }
     .deco .dv  { font-size: 17px; color: var(--teal); }
     .deco .dv2 { font-size: 15px; color: var(--navy); }
 
     .phone {
-      width: 272px; height: 572px;
+      width: 310px; height: 648px;
       background: linear-gradient(160deg, #1c1a34 0%, #141228 60%, #0e0d1f 100%);
       border-radius: 46px; padding: 9px;
       box-shadow:
@@ -765,6 +765,74 @@
     .ph-empty { text-align: center; color: rgba(26,51,71,.4); font-size: 11px; padding: 24px 0; }
     .ph-tap-hint { text-align: center; font-size: 9px; color: rgba(26,51,71,.4); padding: 6px 0; font-weight: 500; letter-spacing: .3px; }
 
+    /* ── PHONE SCREEN TRANSITION ────────────────────────── */
+    @keyframes phFadeIn { from{opacity:0;transform:translateY(9px)} to{opacity:1;transform:translateY(0)} }
+    .ph-screen { animation: phFadeIn .26s ease; }
+
+    /* ── TIER BADGE & RF TAG (budget card) ──────────────── */
+    .bc-lbl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .ph-tier { font-family: var(--ff-head); font-size: 8px; font-weight: 700; background: rgba(255,255,255,.18); padding: 2px 7px; border-radius: 100px; color: rgba(255,255,255,.9); letter-spacing: .3px; }
+    .bc-rem { font-size: 11px; font-weight: 400; color: rgba(255,255,255,.45); margin-left: 5px; }
+    .ph-rf-tag { font-family: var(--ff-head); font-size: 8px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
+
+    /* ── EDIT BUTTON (calendar header) ──────────────────── */
+    .ph-edit-btn { background: none; border: none; font-family: var(--ff-head); font-size: 9px; font-weight: 700; color: rgba(26,51,71,.38); letter-spacing: .4px; cursor: none; padding: 0; transition: color .2s; }
+    .ph-edit-btn:hover { color: var(--navy); }
+
+    /* ── ONBOARDING SCREEN ───────────────────────────────── */
+    .ph-ob { display: flex; flex-direction: column; gap: 11px; }
+    .ph-ob-hdr { display: flex; align-items: center; gap: 9px; padding: 0 0 5px; border-bottom: 1px solid var(--border); }
+    .ph-ob-mark {
+      width: 28px; height: 28px; flex-shrink: 0;
+      background: transparent; border-radius: 7px;
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+      gap: 2.5px; overflow: hidden;
+    }
+    .ph-ob-mark i { border-radius: 2px; display: block; }
+    .ph-ob-mark i:nth-child(1) { background: var(--logo-red); }
+    .ph-ob-mark i:nth-child(2) { background: var(--logo-blue); }
+    .ph-ob-mark i:nth-child(3) { background: var(--logo-teal); }
+    .ph-ob-mark i:nth-child(4) { background: var(--logo-yell); }
+    .ph-ob-hdr-text { display: flex; flex-direction: column; }
+    .ph-ob-title { font-family: var(--ff-head); font-size: 14px; font-weight: 800; color: var(--navy); letter-spacing: -.4px; line-height: 1.1; }
+    .ph-ob-sub { font-size: 10px; color: rgba(26,51,71,.48); font-weight: 500; margin-top: 2px; }
+
+    .ph-ob-fields { display: flex; flex-direction: column; gap: 8px; }
+    .ph-ob-field {}
+    .ph-ob-label { font-family: var(--ff-head); font-size: 10px; font-weight: 600; color: rgba(26,51,71,.55); margin-bottom: 4px; letter-spacing: .2px; }
+    .ph-ob-iw {
+      display: flex; align-items: center;
+      background: rgba(255,255,255,.9); border: 1.5px solid rgba(25,60,87,.14);
+      border-radius: 11px; padding: 8px 10px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .ph-ob-iw:focus-within { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(20,184,166,.1); }
+    .ph-ob-pfx { font-family: var(--ff-head); font-size: 14px; font-weight: 700; color: var(--teal); margin-right: 4px; flex-shrink: 0; }
+    .ph-ob-inp {
+      flex: 1; border: none; outline: none; cursor: text;
+      font-family: var(--ff-head); font-size: 15px; font-weight: 800; color: var(--navy);
+      background: transparent; width: 100%; letter-spacing: -.3px;
+    }
+    .ph-ob-inp::-webkit-inner-spin-button, .ph-ob-inp::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .ph-ob-inp[type=number] { -moz-appearance: textfield; }
+
+    .ph-ob-err {
+      font-size: 9.5px; font-weight: 600; color: var(--red);
+      background: rgba(244,67,54,.07); border-radius: 8px; padding: 6px 9px;
+      border-left: 2px solid var(--red);
+    }
+    .ph-ob-btn {
+      background: linear-gradient(135deg, #193C57 0%, #2A5477 100%);
+      color: var(--yellow); border: none; border-radius: 13px;
+      padding: 13px 10px; width: 100%;
+      font-family: var(--ff-head); font-size: 12px; font-weight: 800;
+      letter-spacing: .4px; cursor: none;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 6px 22px rgba(25,60,87,.28);
+    }
+    .ph-ob-btn:hover { opacity: .92; transform: translateY(-1px); }
+    .ph-ob-note { text-align: center; font-size: 9.5px; color: rgba(26,51,71,.38); font-weight: 500; }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 1024px) {
       nav { padding: 16px 24px; }
@@ -872,9 +940,10 @@
           </div>
 
           <div class="app-scroll">
-            <div id="phBc"></div>
-            <div id="phCal"></div>
-            <div id="phPanel" style="display:none;flex:1;min-height:0;display:none;flex-direction:column"></div>
+            <div id="phOnboard"></div>
+            <div id="phBc" style="display:none"></div>
+            <div id="phCal" style="display:none"></div>
+            <div id="phPanel" style="display:none;flex-direction:column"></div>
           </div>
         </div>
       </div>
@@ -1322,194 +1391,324 @@
   }
 
   // ============================================================
-  // MITA INTERACTIVE PHONE ENGINE
+  // MITA BUDGET ENGINE — Interactive Beta (mirrors Python engine)
   // ============================================================
   (function(){
-    const TODAY = 10; // March 10, 2026
-    const TOTAL_BUDGET = 2100;
+    // ── Constants ─────────────────────────────────────────────
+    const TODAY_DAY  = 10; // March 10, 2026 (simulated current day)
+    const MONTH_DAYS = 31;
+    const DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-    // Category definitions — exact Mita behaviors
-    const CATS = [
-      { id:'bills',    name:'Bills',     emoji:'💡', behavior:'FIXED',     total:162, fixDay:1  },
-      { id:'health',   name:'Health',    emoji:'💊', behavior:'FIXED',     total:145, fixDay:5  },
-      { id:'subs',     name:'Subs',      emoji:'📱', behavior:'FIXED',     total:110, fixDay:5  },
-      { id:'groceries',name:'Groceries', emoji:'🛒', behavior:'SPREAD',    total:420 },
-      { id:'coffee',   name:'Coffee',    emoji:'☕', behavior:'SPREAD',    total:88  },
-      { id:'transit',  name:'Transit',   emoji:'🚇', behavior:'SPREAD',    total:160 },
-      { id:'dining',   name:'Dining',    emoji:'🍽️', behavior:'CLUSTERED', total:380, clusterDays:[1,7,8,14,15,21,22,28] },
-      { id:'fun',      name:'Fun',       emoji:'🎮', behavior:'CLUSTERED', total:340, clusterDays:[7,14,21,28] },
-      { id:'shopping', name:'Shopping',  emoji:'🛍️', behavior:'CLUSTERED', total:295, clusterDays:[1,8,15,22] },
-    ];
-
-    // Weekdays Mon-Fri in March 2026
+    // Weekdays Mon–Fri in March 2026
     const WKDAYS = [2,3,4,5,6,9,10,11,12,13,16,17,18,19,20,23,24,25,26,27,30,31];
 
-    // Build planned amounts: plan[day][catId] = amount
-    function genPlan() {
+    // Cluster day patterns (prefer weekends, add key weekdays)
+    const DINING_DAYS = [1,7,8,14,15,21,22,28];
+    const FUN_DAYS    = [7,14,15,21,22,28,29];
+    const SHOP_DAYS   = [8,15,22,29];
+
+    // ── Income tier classifier (mirrors income_classification_service.py) ──
+    const TIERS = [
+      { id:'low',    label:'Starter',     icon:'🌱', maxM:3000,    w:{food:.15,trans:.15,ent:.04,misc:.05,hth:.08} },
+      { id:'lo_mid', label:'Growing',     icon:'📈', maxM:4800,    w:{food:.13,trans:.15,ent:.06,misc:.08,hth:.07} },
+      { id:'mid',    label:'Established', icon:'💼', maxM:7200,    w:{food:.12,trans:.15,ent:.08,misc:.10,hth:.06} },
+      { id:'up_mid', label:'Flourishing', icon:'🏆', maxM:12000,   w:{food:.10,trans:.13,ent:.09,misc:.06,hth:.05} },
+      { id:'high',   label:'Thriving',    icon:'🚀', maxM:Infinity, w:{food:.08,trans:.10,ent:.10,misc:.07,hth:.04} },
+    ];
+    const classifyTier = m => TIERS.find(t => m <= t.maxM) || TIERS[4];
+
+    // ── Category meta (FIXED / SPREAD / CLUSTERED mirror calendar_engine.py) ──
+    const CAT_META = [
+      { id:'rent',      name:'Rent/Bills', emoji:'🏠', behavior:'FIXED'     },
+      { id:'health',    name:'Health',     emoji:'💊', behavior:'FIXED'     },
+      { id:'subs',      name:'Subs',       emoji:'📱', behavior:'FIXED'     },
+      { id:'groceries', name:'Groceries',  emoji:'🛒', behavior:'SPREAD'    },
+      { id:'coffee',    name:'Coffee',     emoji:'☕', behavior:'SPREAD'    },
+      { id:'transit',   name:'Transit',    emoji:'🚇', behavior:'SPREAD'    },
+      { id:'dining',    name:'Dining Out', emoji:'🍽️', behavior:'CLUSTERED' },
+      { id:'fun',       name:'Fun',        emoji:'🎮', behavior:'CLUSTERED' },
+      { id:'shopping',  name:'Shopping',   emoji:'🛍️', behavior:'CLUSTERED' },
+    ];
+
+    // ── Mutable state ─────────────────────────────────────────
+    let view      = 'onboarding'; // 'onboarding' | 'cal' | 'detail'
+    let selDay    = TODAY_DAY;
+    let budgetCtx = null; // computed budget context
+    let PLAN      = null; // PLAN[day][catId] = planned amount
+    let ACTUAL    = null; // ACTUAL[day][catId] = simulated spending (days 1-9)
+    let PARTIAL   = null; // today's partial spending
+    let TOTAL_BUD = 0;    // total monthly budget to track
+    let RF        = 1;    // redistribution factor (< 1 = overspent, > 1 = underspent)
+
+    const $    = id => document.getElementById(id);
+    const fmt  = n => '$' + Math.round(n);
+    const fmt2 = n => '$' + (n || 0).toFixed(2);
+    const sum  = obj => Object.values(obj || {}).reduce((s,v)=>s+v, 0);
+
+    // ── Budget generator (mirrors budget_logic.py) ────────────
+    function computeBudget(income, fixed, savingsGoal) {
+      const tier = classifyTier(income);
+      const disc = income - fixed - savingsGoal;
+      if (disc <= 0) return null;
+      const w = tier.w;
+      const food  = disc * w.food;
+      const trans = disc * w.trans;
+      const ent   = disc * w.ent;
+      const misc  = disc * w.misc;
+      const hth   = disc * w.hth;
+      const amounts = {
+        rent:      fixed,
+        health:    hth * 0.60,
+        subs:      Math.min(55, misc * 0.20),
+        groceries: food * 0.50,
+        coffee:    food * 0.12,
+        transit:   trans * 0.72,
+        dining:    food * 0.38,
+        fun:       ent,
+        shopping:  misc * 0.80,
+      };
+      return {
+        tier, disc, income, fixed, savingsGoal, amounts,
+        totalBudget: Math.round(Object.values(amounts).reduce((s,v)=>s+v, 0)),
+      };
+    }
+
+    // ── Calendar plan builder (mirrors calendar_engine.py) ────
+    function buildPlan(amounts) {
       const p = {};
-      for(let d=1;d<=31;d++) p[d] = {};
-      CATS.forEach(c => {
-        if(c.behavior==='FIXED') {
-          p[c.fixDay][c.id] = c.total;
-        } else if(c.behavior==='SPREAD') {
-          const pp = c.total / WKDAYS.length;
-          WKDAYS.forEach(d => p[d][c.id] = pp);
-        } else {
-          const pp = c.total / c.clusterDays.length;
-          c.clusterDays.forEach(d => p[d][c.id] = pp);
-        }
+      for (let d = 1; d <= MONTH_DAYS; d++) p[d] = {};
+      // FIXED: charged once on a specific day
+      p[1].rent   = amounts.rent;
+      p[5].health = amounts.health;
+      p[5].subs   = amounts.subs;
+      // SPREAD: distributed evenly across weekdays
+      ['groceries','coffee','transit'].forEach(id => {
+        const pp = amounts[id] / WKDAYS.length;
+        WKDAYS.forEach(d => { p[d][id] = pp; });
       });
+      // CLUSTERED: concentrated on weekends + key weekdays
+      DINING_DAYS.forEach(d => { p[d].dining   = (p[d].dining  ||0) + amounts.dining   / DINING_DAYS.length; });
+      FUN_DAYS   .forEach(d => { p[d].fun      = (p[d].fun     ||0) + amounts.fun      / FUN_DAYS.length;    });
+      SHOP_DAYS  .forEach(d => { p[d].shopping = (p[d].shopping||0) + amounts.shopping / SHOP_DAYS.length;   });
       return p;
     }
-    const PLAN = genPlan();
 
-    function dayTotal(d) { return Object.values(PLAN[d]).reduce((s,v)=>s+v,0); }
+    // ── Simulated actual spending (deterministic) ─────────────
+    // Days 7 & 8 (Sat/Sun) intentionally overspend to trigger redistribution.
+    // This is the "aha moment" that shows Mita's value.
+    function buildActual(plan) {
+      const MULTS = {
+        1: { rent:1.00, dining:1.00 },
+        2: { groceries:.88, coffee:.90, transit:.92 },
+        3: { groceries:.94, coffee:1.00, transit:.88 },
+        4: { groceries:.87, coffee:.92, transit:.90 },
+        5: { health:1.00, subs:1.00, groceries:.93, coffee:1.00, transit:.94 },
+        6: { groceries:.90, coffee:.88, transit:.85 },
+        7: { dining:1.54, fun:1.48 },     // Saturday splurge: +54% dining, +48% fun
+        8: { dining:1.42, shopping:1.46 }, // Sunday splurge:  +42% dining, +46% shopping
+        9: { groceries:.87, coffee:.90, transit:.88 },
+      };
+      const actual = {};
+      for (let d = 1; d <= 9; d++) {
+        actual[d] = {};
+        const mults = MULTS[d] || {};
+        Object.entries(plan[d]).forEach(([cat, planned]) => {
+          if (mults[cat] !== undefined) actual[d][cat] = planned * mults[cat];
+        });
+      }
+      return actual;
+    }
 
-    // Simulated actual spending days 1–9 (overspent on weekend days 7 & 8)
-    const ACTUAL = {
-      1: { bills:162, dining:47.50, shopping:76 },
-      2: { groceries:18.20, coffee:3.80, transit:6.90 },
-      3: { groceries:22, coffee:4.50, transit:7.80 },
-      4: { groceries:19.09, coffee:4.00, transit:7.27 },
-      5: { groceries:18.50, coffee:3.90, transit:7.10, health:145, subs:110 },
-      6: { groceries:15.80, coffee:3.20, transit:5.50 },
-      7: { dining:70, fun:130 },   // 52% over — weekend splurge
-      8: { dining:65, shopping:110 }, // 44% over — shopping splurge
-      9: { groceries:20.10, coffee:4.10, transit:7.50 },
-    };
-    const TODAY_PARTIAL = { groceries:8.50, coffee:2.50, transit:3.20 };
+    function buildPartial(plan) {
+      // Morning spend on day 10 (about 35-55% of day's planned)
+      return {
+        groceries: (plan[TODAY_DAY].groceries||0) * 0.38,
+        coffee:    (plan[TODAY_DAY].coffee   ||0) * 0.55,
+        transit:   (plan[TODAY_DAY].transit  ||0) * 0.62,
+      };
+    }
 
-    function actSum(d) { return Object.values(ACTUAL[d]||{}).reduce((s,v)=>s+v,0); }
-    function planTo(d) { let s=0; for(let i=1;i<=d;i++) s+=dayTotal(i); return s; }
-
-    const spentPast    = Array.from({length:TODAY-1},(_,i)=>actSum(i+1)).reduce((s,v)=>s+v,0);
-    const partialToday = Object.values(TODAY_PARTIAL).reduce((s,v)=>s+v,0);
-    const totalSpent   = spentPast + partialToday;
-    const plannedPast  = planTo(TODAY-1);
-    const plannedRest  = TOTAL_BUDGET - plannedPast;
-    const actualRest   = TOTAL_BUDGET - totalSpent;
-    const RF = plannedRest > 0 ? actualRest / plannedRest : 1; // redistribution factor
-
-    function effAmt(d, catId) {
-      const base = PLAN[d][catId] || 0;
-      return d >= TODAY ? base * RF : base;
+    // ── Redistribution factor (mirrors budget_redistributor.py) ─
+    // RF = remaining / plannedFuture
+    // < 1: overspent → future days trimmed
+    // > 1: underspent → future days get a bonus
+    function calcRF(plan, actual, partial, totalBudget) {
+      let plannedSoFar = 0, spentSoFar = 0;
+      for (let d = 1; d < TODAY_DAY; d++) {
+        plannedSoFar += sum(plan[d]);
+        spentSoFar   += sum(actual[d]);
+      }
+      spentSoFar += sum(partial);
+      const plannedFuture = totalBudget - plannedSoFar;
+      const remaining     = totalBudget - spentSoFar;
+      return plannedFuture > 0 ? remaining / plannedFuture : 1;
     }
 
     function dayStatus(d) {
-      if(d > TODAY) return 'ft';
-      if(d === TODAY) return 'td';
-      const planned = dayTotal(d), actual = actSum(d);
-      const r = planned > 0 ? actual/planned : 0;
-      if(r <= 1.0) return 'ok';
-      if(r <= 1.2) return 'wr';
+      if (d > TODAY_DAY) return 'ft';
+      if (d === TODAY_DAY) return 'td';
+      const r = sum(PLAN[d]) > 0 ? sum(ACTUAL[d]) / sum(PLAN[d]) : 0;
+      if (r <= 1.0)  return 'ok';
+      if (r <= 1.28) return 'wr';
       return 'ov';
     }
 
-    let view = 'cal';  // 'cal' | 'detail'
-    let selDay = TODAY;
+    // ── Renderers ─────────────────────────────────────────────
+    function renderOnboard() {
+      view = 'onboarding';
+      $('phOnboard').style.display = '';
+      $('phBc').style.display      = 'none';
+      $('phCal').style.display     = 'none';
+      $('phPanel').style.cssText   = 'display:none';
 
-    const $ = id => document.getElementById(id);
-
-    function fmt(n)  { return '$' + Math.round(n); }
-    function fmt2(n) { return '$' + n.toFixed(2); }
-
-    // ---- Budget card ----
-    function renderBc() {
-      const remaining = TOTAL_BUDGET - totalSpent;
-      const pct = Math.min(100, (totalSpent/TOTAL_BUDGET)*100);
-      const dLeft = 31 - TODAY + 1;
-      const dailyNow = remaining / dLeft;
-      $('phBc').innerHTML = `<div class="bc">
-        <div class="bc-lbl">March Budget</div>
-        <div class="bc-row"><span class="bc-cur">$</span><span class="bc-amt">${Math.round(remaining)}</span></div>
-        <div class="bc-bar"><div class="bc-fill" style="width:${pct}%"></div></div>
-        <div class="bc-stats">
-          <div class="bc-s"><div class="v">${fmt(totalSpent)}</div><div class="k">spent</div></div>
-          <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(dailyNow)}/day</div><div class="k">avg left</div></div>
-          <div class="bc-s"><div class="v" style="color:var(--teal)">${dLeft} left</div><div class="k">days</div></div>
-        </div>
-      </div>`;
+      $('phOnboard').innerHTML = `
+        <div class="ph-ob ph-screen">
+          <div class="ph-ob-hdr">
+            <div class="ph-ob-mark"><i></i><i></i><i></i><i></i></div>
+            <div class="ph-ob-hdr-text">
+              <div class="ph-ob-title">Try Mita</div>
+              <div class="ph-ob-sub">See your real daily budget</div>
+            </div>
+          </div>
+          <div class="ph-ob-fields">
+            <div class="ph-ob-field">
+              <div class="ph-ob-label">Monthly income</div>
+              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obIncome" type="number" value="5000" min="500" max="100000" step="100"></div>
+            </div>
+            <div class="ph-ob-field">
+              <div class="ph-ob-label">Rent & fixed bills</div>
+              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obFixed" type="number" value="1500" min="0" max="50000" step="100"></div>
+            </div>
+            <div class="ph-ob-field">
+              <div class="ph-ob-label">Savings goal / month</div>
+              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obSav" type="number" value="500" min="0" max="20000" step="50"></div>
+            </div>
+          </div>
+          <div id="obErr" class="ph-ob-err" style="display:none">⚠️ Income must exceed rent + savings</div>
+          <button class="ph-ob-btn" onclick="window._mitaCalc()">Calculate my budget →</button>
+          <div class="ph-ob-note">🔒 All calculations stay on your device</div>
+        </div>`;
     }
 
-    // ---- Calendar ----
+    function renderBc() {
+      const spentPast  = Array.from({length:TODAY_DAY-1},(_,i)=>sum(ACTUAL[i+1])).reduce((s,v)=>s+v, 0);
+      const totalSpent = spentPast + sum(PARTIAL);
+      const remaining  = TOTAL_BUD - totalSpent;
+      const pct        = Math.min(100, (totalSpent / TOTAL_BUD) * 100);
+      const dLeft      = MONTH_DAYS - TODAY_DAY + 1;
+      const dailyNow   = remaining / dLeft;
+      const tier       = budgetCtx.tier;
+      const pctChg     = Math.round((RF - 1) * 100);
+      const rfTag      = Math.abs(pctChg) >= 2
+        ? `<span class="ph-rf-tag" style="color:${pctChg<0?'var(--red)':'var(--teal)'}">${pctChg>0?'↑':'↓'}${Math.abs(pctChg)}%</span>` : '';
+
+      $('phBc').style.display = '';
+      $('phBc').innerHTML = `
+        <div class="bc ph-screen">
+          <div class="bc-lbl-row">
+            <div class="bc-lbl">March Budget</div>
+            <div class="ph-tier">${tier.icon} ${tier.label}</div>
+          </div>
+          <div class="bc-row">
+            <span class="bc-cur">$</span>
+            <span class="bc-amt">${Math.round(remaining)}</span>
+            <span class="bc-rem">remaining${rfTag}</span>
+          </div>
+          <div class="bc-bar"><div class="bc-fill" style="width:${pct}%"></div></div>
+          <div class="bc-stats">
+            <div class="bc-s"><div class="v">${fmt(totalSpent)}</div><div class="k">spent</div></div>
+            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(dailyNow)}/day</div><div class="k">projected</div></div>
+            <div class="bc-s"><div class="v" style="color:var(--teal)">${dLeft}d</div><div class="k">left</div></div>
+          </div>
+        </div>`;
+    }
+
     function renderCal() {
-      const EMPTY = 6; // Mon–Sat before Sun Mar 1
+      view = 'cal';
+      $('phOnboard').style.display = 'none';
+      $('phBc').style.display      = '';
+      $('phCal').style.display     = '';
+      $('phPanel').style.cssText   = 'display:none';
+      renderBc();
+
+      const EMPTY = 6; // Mon–Sat empty before Sun Mar 1
       let cells = '';
-      for(let i=0;i<EMPTY;i++) cells += '<div class="d em"></div>';
-      for(let d=1;d<=31;d++) {
-        const st = dayStatus(d);
-        const sel = d===selDay && view==='detail' ? ' sel' : '';
+      for (let i=0; i<EMPTY; i++) cells += '<div class="d em"></div>';
+      for (let d=1; d<=MONTH_DAYS; d++) {
+        const st  = dayStatus(d);
+        const sel = (d === selDay && view === 'detail') ? ' sel' : '';
         cells += `<div class="d ph-d ${st}${sel}" onclick="window.mitaDay(${d})">${d}</div>`;
       }
-      $('phCal').innerHTML = `<div class="cal">
-        <div class="cal-hd">
-          <span class="cal-mo">March 2026</span>
-          <span style="font-size:9px;font-weight:700;color:rgba(26,51,71,.4);letter-spacing:.5px">TAP A DAY ↓</span>
+
+      $('phCal').innerHTML = `
+        <div class="cal ph-screen">
+          <div class="cal-hd">
+            <span class="cal-mo">March 2026</span>
+            <button class="ph-edit-btn" onclick="window._mitaEdit()">✎ Edit</button>
+          </div>
+          <div class="cal-wk"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          <div class="cal-grid">${cells}</div>
         </div>
-        <div class="cal-wk"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-        <div class="cal-grid">${cells}</div>
-      </div>
-      <div class="ph-tap-hint">Tap any day to see how Mita redistributes your budget</div>`;
+        <div class="ph-tap-hint">Tap any day — see Mita redistribute your budget</div>`;
     }
 
-    // ---- Day detail panel ----
-    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     function renderPanel(d) {
-      const dow = DAY_NAMES[(0 + d - 1) % 7]; // Mar 1 = Sun = index 0
-      const isWE = dow==='Sat'||dow==='Sun';
-      const st = dayStatus(d);
+      view = 'detail';
+      selDay = d;
+      $('phOnboard').style.display = 'none';
+      $('phBc').style.display      = 'none';
+      $('phCal').style.display     = 'none';
 
-      // Effective limit for this day
-      const planned = dayTotal(d);
-      const eff = d >= TODAY ? planned * RF : (d < TODAY ? actSum(d) : planned);
+      const dow  = DAY_NAMES[(0 + d - 1) % 7]; // Mar 1 = Sun
+      const isWE = dow === 'Sat' || dow === 'Sun';
+      const st   = dayStatus(d);
 
-      // Status badge
-      let badge='', badgeCls='';
-      if(st==='ok') { badge='On plan ✓'; badgeCls='ph-badge-ok'; }
-      else if(st==='wr') { badge='Slightly over'; badgeCls='ph-badge-warn'; }
-      else if(st==='ov') { badge='Over budget!'; badgeCls='ph-badge-over'; }
-      else if(st==='td') { badge='Today'; badgeCls='ph-badge-today'; }
-      else { badge='Upcoming'; badgeCls='ph-badge-ft'; }
+      const dayPlan   = sum(PLAN[d]);
+      const dayActual = d < TODAY_DAY ? sum(ACTUAL[d]) : 0;
+      const eff       = d >= TODAY_DAY ? dayPlan * RF : dayActual;
 
-      // Redistribution note
+      let badge = '', badgeCls = '';
+      if      (st==='ok') { badge='On plan ✓';     badgeCls='ph-badge-ok';    }
+      else if (st==='wr') { badge='Slightly over';  badgeCls='ph-badge-warn';  }
+      else if (st==='ov') { badge='Over budget!';   badgeCls='ph-badge-over';  }
+      else if (st==='td') { badge='Today';          badgeCls='ph-badge-today'; }
+      else                { badge='Upcoming';       badgeCls='ph-badge-ft';    }
+
       const pctChg = Math.round((RF - 1) * 100);
       let note = '';
-      if(d >= TODAY && planned > 0 && Math.abs(pctChg) >= 2) {
-        const dir = pctChg > 0 ? 'saved' : 'overspent';
+      if (d >= TODAY_DAY && dayPlan > 0 && Math.abs(pctChg) >= 2) {
+        const dir = pctChg > 0 ? 'under budget earlier' : 'overspent on the weekend';
         const col = pctChg > 0 ? 'var(--teal)' : 'var(--red)';
         const arr = pctChg > 0 ? '↑' : '↓';
         note = `<div class="ph-note" style="border-color:${col};color:${col};background:${pctChg>0?'rgba(20,184,166,.07)':'rgba(244,67,54,.07)'}">
-          Mita adjusted ${Math.abs(pctChg)}% ${arr} — you ${dir} earlier this month
+          Mita adjusted ${Math.abs(pctChg)}% ${arr} — you ${dir}
         </div>`;
       }
 
-      // Category rows
-      let catRows = '';
-      let hasCats = false;
-      CATS.forEach(c => {
+      let catRows = '', hasCats = false;
+      CAT_META.forEach(c => {
         const base = PLAN[d][c.id];
-        if(!base) return;
+        if (!base) return;
         hasCats = true;
-        const effC = d >= TODAY ? base * RF : base;
-        let spentC = 0;
-        if(d < TODAY && ACTUAL[d]) spentC = ACTUAL[d][c.id] || 0;
-        if(d === TODAY) spentC = TODAY_PARTIAL[c.id] || 0;
+        const effC    = d >= TODAY_DAY ? base * RF : base;
+        let   spentC  = 0;
+        if (d < TODAY_DAY)  spentC = (ACTUAL[d]||{})[c.id] || 0;
+        if (d === TODAY_DAY) spentC = (PARTIAL||{})[c.id] || 0;
 
-        const barMax = Math.max(effC, spentC, 0.01);
-        const spentPct = d <= TODAY ? Math.min(100, spentC/barMax*100) : 0;
+        const barMax   = Math.max(effC, spentC, 0.01);
+        const spentPct = d <= TODAY_DAY ? Math.min(100, spentC/barMax*100) : 0;
         const planPct  = Math.min(100, effC/barMax*100);
-
-        let fillCol = 'var(--teal)';
-        if(d < TODAY) {
-          if(spentC > base * 1.2) fillCol = 'var(--red)';
-          else if(spentC > base) fillCol = 'var(--yellow)';
+        let   fillCol  = 'var(--teal)';
+        if (d < TODAY_DAY) {
+          if (spentC > base * 1.25) fillCol = 'var(--red)';
+          else if (spentC > base)   fillCol = 'var(--yellow)';
         } else {
-          fillCol = 'var(--navy-mid)';
+          fillCol = 'rgba(25,60,87,.28)';
         }
 
-        const bhGlyph = c.behavior==='FIXED' ? '●' : c.behavior==='SPREAD' ? '≡' : '◆';
-        const dispAmt = d < TODAY ? fmt2(spentC) : fmt2(effC);
-        const diff = d < TODAY && Math.abs(spentC - base) > 0.05
+        const bhGlyph = c.behavior==='FIXED'?'●':c.behavior==='SPREAD'?'≡':'◆';
+        const dispAmt = d < TODAY_DAY ? fmt2(spentC) : fmt2(effC);
+        const diff    = d < TODAY_DAY && Math.abs(spentC - base) > 0.05
           ? `<div class="ph-cr-diff" style="color:${spentC>base?'var(--red)':'var(--teal)'}">${spentC>base?'+':'-'}${fmt2(Math.abs(spentC-base))}</div>` : '';
 
         catRows += `<div class="ph-cr">
@@ -1519,17 +1718,17 @@
             <span class="ph-cr-bh">${bhGlyph}</span>
             <span class="ph-cr-am">${dispAmt}</span>
           </div>
-          <div class="ph-cb"><div class="ph-cbf" style="width:${d<=TODAY?spentPct:planPct}%;background:${fillCol}"></div></div>
+          <div class="ph-cb"><div class="ph-cbf" style="width:${d<=TODAY_DAY?spentPct:planPct}%;background:${fillCol}"></div></div>
           ${diff}
         </div>`;
       });
 
-      if(!hasCats) catRows = '<div class="ph-empty">No spending planned</div>';
+      if (!hasCats) catRows = '<div class="ph-empty">No spending planned</div>';
 
       const panelEl = $('phPanel');
       panelEl.innerHTML = `
         <button class="ph-back" onclick="window.mitaBack()">← Back to calendar</button>
-        <div class="ph-panel">
+        <div class="ph-panel ph-screen">
           <div class="ph-panel-hd">
             <div>
               <div class="ph-panel-date">Mar ${d} · ${dow}</div>
@@ -1542,31 +1741,42 @@
           </div>
           ${note}
           <div class="ph-cats">${catRows}</div>
-          ${hasCats ? `<div class="ph-legend"><span>◆ Clustered</span><span>≡ Spread</span><span>● Fixed</span></div>` : ''}
+          ${hasCats?`<div class="ph-legend"><span>◆ Clustered</span><span>≡ Spread</span><span>● Fixed</span></div>`:''}
         </div>`;
       panelEl.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;';
     }
 
-    function showCal() {
-      view = 'cal';
-      $('phCal').style.display = '';
-      $('phPanel').style.cssText = 'display:none;';
+    // ── Actions ───────────────────────────────────────────────
+    window._mitaCalc = function() {
+      const income = parseFloat(document.getElementById('obIncome')?.value) || 5000;
+      const fixed  = parseFloat(document.getElementById('obFixed')?.value)  || 1500;
+      const sav    = parseFloat(document.getElementById('obSav')?.value)    || 500;
+      const err    = document.getElementById('obErr');
+      if (income <= fixed + sav + 100) { if (err) err.style.display=''; return; }
+      if (err) err.style.display = 'none';
+
+      budgetCtx = computeBudget(income, fixed, sav);
+      if (!budgetCtx) { if (err) err.style.display=''; return; }
+      PLAN      = buildPlan(budgetCtx.amounts);
+      ACTUAL    = buildActual(PLAN);
+      PARTIAL   = buildPartial(PLAN);
+      TOTAL_BUD = budgetCtx.totalBudget;
+      RF        = calcRF(PLAN, ACTUAL, PARTIAL, TOTAL_BUD);
       renderCal();
-    }
-    function showDetail(d) {
-      view = 'detail';
-      selDay = d;
-      $('phCal').style.display = 'none';
-      renderPanel(d);
-      // also re-render budget card bar (same data, but re-signals state)
-    }
+    };
 
-    window.mitaDay  = function(d) { showDetail(d); };
-    window.mitaBack = function()  { showCal(); };
+    window._mitaEdit = function() { renderOnboard(); };
+    window.mitaDay   = function(d) { renderPanel(d); };
+    window.mitaBack  = function()  { renderCal(); };
 
-    // Initial render
-    renderBc();
-    showCal();
+    // ── Init: pre-compute defaults so calc is instant ─────────
+    budgetCtx = computeBudget(5000, 1500, 500);
+    PLAN      = buildPlan(budgetCtx.amounts);
+    ACTUAL    = buildActual(PLAN);
+    PARTIAL   = buildPartial(PLAN);
+    TOTAL_BUD = budgetCtx.totalBudget;
+    RF        = calcRF(PLAN, ACTUAL, PARTIAL, TOTAL_BUD);
+    renderOnboard();
 
   })();
 </script>
