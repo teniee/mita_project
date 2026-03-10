@@ -144,7 +144,7 @@ class Settings(BaseSettings):
 
     # CORS - Allow configuration via environment (includes mobile app support)
     # SECURITY FIX: Removed wildcard (*) - only allow specific origins
-    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,http://localhost:8080"
+    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com,http://localhost:8080"
     
     # Environment settings
     ENVIRONMENT: str = "development"
