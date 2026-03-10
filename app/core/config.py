@@ -158,10 +158,15 @@ class Settings(BaseSettings):
             origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
         else:
             origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
-        # Always allow localhost regardless of env var so local dev always works
-        for local in ["http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:8080"]:
-            if local not in origins:
-                origins.append(local)
+        # Always allow these regardless of env var
+        always_allow = [
+            "http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:8080",
+            "https://mitafinance.com", "http://mitafinance.com",
+            "https://www.mitafinance.com", "http://www.mitafinance.com",
+        ]
+        for origin in always_allow:
+            if origin not in origins:
+                origins.append(origin)
         return origins
 
     if ConfigDict:
