@@ -26,7 +26,7 @@ from app.db.models.waitlist import WaitlistEntry
 logger = logging.getLogger(__name__)
 
 REFERRAL_BOOST = 10          # spots moved up per referral
-BASE_URL = os.getenv("FRONTEND_URL", "https://mitafinance.app")
+BASE_URL = os.getenv("FRONTEND_URL", "https://mitafinance.com")
 
 
 def _gen_ref_code(email: str) -> str:
