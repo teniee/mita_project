@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '0024'
-down_revision = '0023'
+down_revision = '0023_add_habit_target_frequency'
 branch_labels = None
 depends_on = None
 

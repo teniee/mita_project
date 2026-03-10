@@ -20,6 +20,7 @@ from .challenge import Challenge, ChallengeParticipation
 from .ocr_job import OCRJob
 from .analytics_log import FeatureUsageLog, FeatureAccessLog, PaywallImpressionLog
 from .user_preference import UserPreference
+from .waitlist import WaitlistEntry
 from .installment import (
     Installment,
     UserFinancialProfile,
@@ -68,4 +69,5 @@ __all__ = [
     "AgeGroup",
     "RiskLevel",
     "InstallmentStatus",
+    "WaitlistEntry",
 ]
