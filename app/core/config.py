@@ -153,10 +153,16 @@ class Settings(BaseSettings):
 
     @property
     def ALLOWED_ORIGINS_LIST(self):
-        """Get ALLOWED_ORIGINS as a list"""
+        """Get ALLOWED_ORIGINS as a list, always including localhost for local dev"""
         if isinstance(self.ALLOWED_ORIGINS, str):
-            return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-        return [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
+            origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        else:
+            origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
+        # Always allow localhost regardless of env var so local dev always works
+        for local in ["http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:8080"]:
+            if local not in origins:
+                origins.append(local)
+        return origins
 
     if ConfigDict:
         model_config = ConfigDict(
