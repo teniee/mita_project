@@ -1,5 +1,5 @@
 from app.config.country_profiles_loader import get_profile
-from app.services.core.income_classification_service import classify_income, get_tier_string, get_budget_weights
+from app.services.core.income_classification_service import classify_income, get_tier_string, get_budget_weights, IncomeTier
 
 
 def generate_budget_from_answers(answers: dict) -> dict:
@@ -82,20 +82,42 @@ def generate_budget_from_answers(answers: dict) -> dict:
     # Coffee/Daily treats (SPREAD pattern - daily habit)
     coffee_freq = freq.get("coffee_per_week", 0)
     if coffee_freq > 0:
-        # Allocate small amount from dining/entertainment
-        # Average coffee: $5 per visit, weekly frequency → monthly budget
-        coffee_monthly = min(50.0 * coffee_freq, food_total * 0.15)
-        base_allocations["coffee"] = coffee_monthly  # FIXED: use "coffee" not "delivery"
+        # ✅ TIER & LOCATION AWARE: Coffee price varies by income tier and regional cost of living
+        # Base coffee prices per tier (per visit, US national average)
+        COFFEE_PRICE_BY_TIER = {
+            IncomeTier.LOW: 3.5,           # Budget coffee (e.g., McDonald's, 7-11)
+            IncomeTier.LOWER_MIDDLE: 4.5,  # Chain coffee (e.g., Dunkin')
+            IncomeTier.MIDDLE: 5.5,         # Standard Starbucks latte
+            IncomeTier.UPPER_MIDDLE: 7.0,   # Premium coffee (specialty drinks)
+            IncomeTier.HIGH: 10.0,          # Artisan/specialty coffee shops
+        }
+
+        # Get base price for user's income tier
+        base_coffee_price = COFFEE_PRICE_BY_TIER.get(income_tier, 5.5)
+
+        # Adjust for regional cost of living (CA: 1.25x, TX: 0.92x, NY: 1.35x)
+        regional_adjustment = profile.get("cost_of_living_adjustment", 1.0)
+        coffee_price_per_visit = base_coffee_price * regional_adjustment
+
+        # Calculate monthly budget: (price per visit) × (visits per week) × 4 weeks
+        # Cap at 15% of food budget to prevent over-allocation
+        coffee_monthly = min(coffee_price_per_visit * coffee_freq * 4, food_total * 0.15)
+        base_allocations["coffee"] = coffee_monthly
+
         # Reduce dining out accordingly
         base_allocations["dining out"] = max(0, base_allocations["dining out"] - coffee_monthly)
 
     # Calculate total allocated
     total_allocated = sum(base_allocations.values())
 
-    # Adjust to match discretionary budget (scale if needed)
-    if total_allocated > 0 and total_allocated != discretionary:
+    # ✅ FIX: Only DOWNSCALE if allocations exceed discretionary
+    # Don't UPSCALE when discretionary > allocations (happens when no fixed expenses)
+    # This preserves tier-based coffee prices instead of inflating them
+    if total_allocated > discretionary:
+        # Overspent - scale down proportionally
         scale_factor = discretionary / total_allocated
         base_allocations = {k: v * scale_factor for k, v in base_allocations.items()}
+    # If total_allocated < discretionary: leave unallocated (user can spend freely)
 
     # Remove zero or negative allocations
     discretionary_breakdown = {
