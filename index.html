@@ -799,7 +799,9 @@
 
     .ph-ob-fields { display: flex; flex-direction: column; gap: 8px; }
     .ph-ob-field {}
-    .ph-ob-label { font-family: var(--ff-head); font-size: 10px; font-weight: 600; color: rgba(26,51,71,.55); margin-bottom: 4px; letter-spacing: .2px; }
+    .ph-ob-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .ph-ob-tier-preview { font-family: var(--ff-head); font-size: 9px; font-weight: 700; color: var(--teal); background: rgba(20,184,166,.10); padding: 2px 7px; border-radius: 100px; transition: all .25s ease; }
+    .ph-ob-label { font-family: var(--ff-head); font-size: 10px; font-weight: 600; color: rgba(26,51,71,.55); margin-bottom: 0; letter-spacing: .2px; }
     .ph-ob-iw {
       display: flex; align-items: center;
       background: rgba(255,255,255,.9); border: 1.5px solid rgba(25,60,87,.14);
@@ -1572,8 +1574,11 @@
           </div>
           <div class="ph-ob-fields">
             <div class="ph-ob-field">
-              <div class="ph-ob-label">Monthly income</div>
-              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obIncome" type="number" value="5000" min="500" max="100000" step="100"></div>
+              <div class="ph-ob-label-row">
+                <div class="ph-ob-label">Monthly income</div>
+                <div class="ph-ob-tier-preview" id="obTierPreview">💼 Established</div>
+              </div>
+              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obIncome" type="number" value="5000" min="500" max="100000" step="100" oninput="window._mitaTierPreview(this.value)"></div>
             </div>
             <div class="ph-ob-field">
               <div class="ph-ob-label">Rent & fixed bills</div>
@@ -1602,6 +1607,7 @@
       const rfTag      = Math.abs(pctChg) >= 2
         ? `<span class="ph-rf-tag" style="color:${pctChg<0?'var(--red)':'var(--teal)'}">${pctChg>0?'↑':'↓'}${Math.abs(pctChg)}%</span>` : '';
 
+      const todayLimit = (PLAN[TODAY_DAY] ? sum(PLAN[TODAY_DAY]) * RF : 0);
       $('phBc').style.display = '';
       $('phBc').innerHTML = `
         <div class="bc ph-screen">
@@ -1612,12 +1618,12 @@
           <div class="bc-row">
             <span class="bc-cur">$</span>
             <span class="bc-amt">${Math.round(remaining)}</span>
-            <span class="bc-rem">remaining${rfTag}</span>
+            <span class="bc-rem">left${rfTag}</span>
           </div>
           <div class="bc-bar"><div class="bc-fill" style="width:${pct}%"></div></div>
           <div class="bc-stats">
-            <div class="bc-s"><div class="v">${fmt(totalSpent)}</div><div class="k">spent</div></div>
-            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(dailyNow)}/day</div><div class="k">projected</div></div>
+            <div class="bc-s"><div class="v">${fmt(totalSpent)}</div><div class="k">used</div></div>
+            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(todayLimit)}</div><div class="k">today's limit</div></div>
             <div class="bc-s"><div class="v" style="color:var(--teal)">${dLeft}d</div><div class="k">left</div></div>
           </div>
         </div>`;
@@ -1747,6 +1753,12 @@
     }
 
     // ── Actions ───────────────────────────────────────────────
+    window._mitaTierPreview = function(val) {
+      const t = classifyTier(parseFloat(val) || 0);
+      const el = document.getElementById('obTierPreview');
+      if (el) { el.textContent = t.icon + ' ' + t.label; el.style.opacity='1'; }
+    };
+
     window._mitaCalc = function() {
       const income = parseFloat(document.getElementById('obIncome')?.value) || 5000;
       const fixed  = parseFloat(document.getElementById('obFixed')?.value)  || 1500;
