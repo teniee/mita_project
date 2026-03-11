@@ -403,6 +403,22 @@
     .d.wr { background: var(--yellow); color: var(--navy); }
     .d.ov { background: var(--red); }
     .d.td { background: linear-gradient(135deg, var(--purple), var(--teal)); box-shadow: 0 0 0 2px rgba(123,127,255,0.4); }
+    /* Plan-level day colours (full-month view) */
+    .d.plan-h { background: linear-gradient(135deg, #193C57, #2A5477); color: #fff; }
+    .d.plan-m { background: var(--teal); color: #fff; }
+    .d.plan-l { background: rgba(20,184,166,.22); color: var(--teal); }
+    .d.plan-n { background: rgba(26,51,71,.04); color: rgba(26,51,71,.2); }
+    /* Split bar in budget card */
+    .bc-bar-split { height: 3px; border-radius: 3px; overflow: hidden; display: flex; margin-bottom: 7px; gap: 1px; }
+    .bc-bar-f { height: 100%; background: var(--yellow); border-radius: 3px; }
+    .bc-bar-d { height: 100%; background: linear-gradient(90deg, var(--teal), rgba(20,184,166,.55)); border-radius: 3px; flex: 1; }
+    /* Calendar legend */
+    .ph-legend-cal { display: flex; gap: 8px; justify-content: center; padding: 5px 0 2px; }
+    .ph-lc { display: flex; align-items: center; gap: 4px; font-family: var(--ff-head); font-size: 8px; font-weight: 600; color: rgba(26,51,71,.5); }
+    .ph-lc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ph-lc-dot.plan-h { background: #193C57; }
+    .ph-lc-dot.plan-m { background: var(--teal); }
+    .ph-lc-dot.plan-l { background: rgba(20,184,166,.4); }
 
     .tc { background: #fff; border-radius: 14px; padding: 10px 11px; border: 1px solid var(--border); flex-shrink: 0; }
     .tc-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
@@ -1396,18 +1412,26 @@
   // MITA BUDGET ENGINE — Interactive Beta (mirrors Python engine)
   // ============================================================
   (function(){
-    // ── Constants ─────────────────────────────────────────────
-    const TODAY_DAY  = 10; // March 10, 2026 (simulated current day)
-    const MONTH_DAYS = 31;
-    const DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    // ── Date-aware month setup ─────────────────────────────────
+    const NOW         = new Date();
+    const YEAR        = NOW.getFullYear();
+    const MONTH       = NOW.getMonth(); // 0-indexed
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const MONTH_LABEL = MONTH_NAMES[MONTH] + ' ' + YEAR;
+    const MONTH_DAYS  = new Date(YEAR, MONTH + 1, 0).getDate();
+    const MONTH_START_DOW = new Date(YEAR, MONTH, 1).getDay(); // 0=Sun
+    const EMPTY_CELLS = (MONTH_START_DOW + 6) % 7; // shift to Mon-based grid
 
-    // Weekdays Mon–Fri in March 2026
-    const WKDAYS = [2,3,4,5,6,9,10,11,12,13,16,17,18,19,20,23,24,25,26,27,30,31];
-
-    // Cluster day patterns (prefer weekends, add key weekdays)
-    const DINING_DAYS = [1,7,8,14,15,21,22,28];
-    const FUN_DAYS    = [7,14,15,21,22,28,29];
-    const SHOP_DAYS   = [8,15,22,29];
+    // Compute weekdays / weekends dynamically for this month
+    const WKDAYS = [], WKENDS = [];
+    for (let d = 1; d <= MONTH_DAYS; d++) {
+      const dow = new Date(YEAR, MONTH, d).getDay();
+      (dow === 0 || dow === 6 ? WKENDS : WKDAYS).push(d);
+    }
+    // Cluster patterns — prefer weekends
+    const DINING_DAYS = WKENDS.slice(0, Math.min(8, WKENDS.length));
+    const FUN_DAYS    = WKENDS;
+    const SHOP_DAYS   = WKENDS.filter((_, i) => i % 2 === 0).slice(0, 4);
 
     // ── Income tier classifier (mirrors income_classification_service.py) ──
     const TIERS = [
@@ -1434,13 +1458,10 @@
 
     // ── Mutable state ─────────────────────────────────────────
     let view      = 'onboarding'; // 'onboarding' | 'cal' | 'detail'
-    let selDay    = TODAY_DAY;
+    let selDay    = 1;
     let budgetCtx = null; // computed budget context
     let PLAN      = null; // PLAN[day][catId] = planned amount
-    let ACTUAL    = null; // ACTUAL[day][catId] = simulated spending (days 1-9)
-    let PARTIAL   = null; // today's partial spending
-    let TOTAL_BUD = 0;    // total monthly budget to track
-    let RF        = 1;    // redistribution factor (< 1 = overspent, > 1 = underspent)
+    let avgDaily  = 0;    // average daily budget (for level thresholds)
 
     const $    = id => document.getElementById(id);
     const fmt  = n => '$' + Math.round(n);
@@ -1495,81 +1516,38 @@
       return p;
     }
 
-    // ── Simulated actual spending (deterministic) ─────────────
-    // Days 7 & 8 (Sat/Sun) intentionally overspend to trigger redistribution.
-    // This is the "aha moment" that shows Mita's value.
-    function buildActual(plan) {
-      const MULTS = {
-        1: { rent:1.00, dining:1.00 },
-        2: { groceries:.88, coffee:.90, transit:.92 },
-        3: { groceries:.94, coffee:1.00, transit:.88 },
-        4: { groceries:.87, coffee:.92, transit:.90 },
-        5: { health:1.00, subs:1.00, groceries:.93, coffee:1.00, transit:.94 },
-        6: { groceries:.90, coffee:.88, transit:.85 },
-        7: { dining:1.54, fun:1.48 },     // Saturday splurge: +54% dining, +48% fun
-        8: { dining:1.42, shopping:1.46 }, // Sunday splurge:  +42% dining, +46% shopping
-        9: { groceries:.87, coffee:.90, transit:.88 },
-      };
-      const actual = {};
-      for (let d = 1; d <= 9; d++) {
-        actual[d] = {};
-        const mults = MULTS[d] || {};
-        Object.entries(plan[d]).forEach(([cat, planned]) => {
-          if (mults[cat] !== undefined) actual[d][cat] = planned * mults[cat];
-        });
-      }
-      return actual;
-    }
-
-    function buildPartial(plan) {
-      // Morning spend on day 10 (about 35-55% of day's planned)
-      return {
-        groceries: (plan[TODAY_DAY].groceries||0) * 0.38,
-        coffee:    (plan[TODAY_DAY].coffee   ||0) * 0.55,
-        transit:   (plan[TODAY_DAY].transit  ||0) * 0.62,
-      };
-    }
-
-    // ── Redistribution factor (mirrors budget_redistributor.py) ─
-    // RF = remaining / plannedFuture
-    // < 1: overspent → future days trimmed
-    // > 1: underspent → future days get a bonus
-    function calcRF(plan, actual, partial, totalBudget) {
-      let plannedSoFar = 0, spentSoFar = 0;
-      for (let d = 1; d < TODAY_DAY; d++) {
-        plannedSoFar += sum(plan[d]);
-        spentSoFar   += sum(actual[d]);
-      }
-      spentSoFar += sum(partial);
-      const plannedFuture = totalBudget - plannedSoFar;
-      const remaining     = totalBudget - spentSoFar;
-      return plannedFuture > 0 ? remaining / plannedFuture : 1;
-    }
-
-    function dayStatus(d) {
-      if (d > TODAY_DAY) return 'ft';
-      if (d === TODAY_DAY) return 'td';
-      const r = sum(PLAN[d]) > 0 ? sum(ACTUAL[d]) / sum(PLAN[d]) : 0;
-      if (r <= 1.0)  return 'ok';
-      if (r <= 1.28) return 'wr';
-      return 'ov';
+    // ── Day intensity level (heat-map based on planned amount) ──
+    // plan-h: big payment day (rent etc)
+    // plan-m: medium spending (weekend clusters)
+    // plan-l: light spending (weekday spread)
+    // plan-n: rest day (no planned spending)
+    function dayLevel(d) {
+      if (!PLAN) return 'plan-n';
+      const amt = sum(PLAN[d]);
+      if (amt === 0)            return 'plan-n';
+      if (amt > avgDaily * 2.5) return 'plan-h'; // rent/big payment day
+      if (amt > avgDaily * 0.3) return 'plan-m'; // weekends + bill days
+      return 'plan-l';                            // regular weekdays
     }
 
     // ── Renderers ─────────────────────────────────────────────
+    function show(ob, bc, cal, panel) {
+      $('phOnboard').style.display = ob   ? ''     : 'none';
+      $('phBc').style.display      = bc   ? ''     : 'none';
+      $('phCal').style.display     = cal  ? ''     : 'none';
+      $('phPanel').style.cssText   = panel? 'display:flex;flex-direction:column;flex:1;min-height:0;' : 'display:none';
+    }
+
     function renderOnboard() {
       view = 'onboarding';
-      $('phOnboard').style.display = '';
-      $('phBc').style.display      = 'none';
-      $('phCal').style.display     = 'none';
-      $('phPanel').style.cssText   = 'display:none';
-
+      show(true, false, false, false);
       $('phOnboard').innerHTML = `
         <div class="ph-ob ph-screen">
           <div class="ph-ob-hdr">
             <div class="ph-ob-mark"><i></i><i></i><i></i><i></i></div>
             <div class="ph-ob-hdr-text">
               <div class="ph-ob-title">Try Mita</div>
-              <div class="ph-ob-sub">See your real daily budget</div>
+              <div class="ph-ob-sub">Your ${MONTH_NAMES[MONTH]} plan, day by day</div>
             </div>
           </div>
           <div class="ph-ob-fields">
@@ -1590,173 +1568,127 @@
             </div>
           </div>
           <div id="obErr" class="ph-ob-err" style="display:none">⚠️ Income must exceed rent + savings</div>
-          <button class="ph-ob-btn" onclick="window._mitaCalc()">Calculate my budget →</button>
+          <button class="ph-ob-btn" onclick="window._mitaCalc()">See my ${MONTH_NAMES[MONTH]} plan →</button>
           <div class="ph-ob-note">🔒 All calculations stay on your device</div>
         </div>`;
     }
 
     function renderBc() {
-      const spentPast  = Array.from({length:TODAY_DAY-1},(_,i)=>sum(ACTUAL[i+1])).reduce((s,v)=>s+v, 0);
-      const totalSpent = spentPast + sum(PARTIAL);
-      const remaining  = TOTAL_BUD - totalSpent;
-      const pct        = Math.min(100, (totalSpent / TOTAL_BUD) * 100);
-      const dLeft      = MONTH_DAYS - TODAY_DAY + 1;
-      const dailyNow   = remaining / dLeft;
-      const tier       = budgetCtx.tier;
-      const pctChg     = Math.round((RF - 1) * 100);
-      const rfTag      = Math.abs(pctChg) >= 2
-        ? `<span class="ph-rf-tag" style="color:${pctChg<0?'var(--red)':'var(--teal)'}">${pctChg>0?'↑':'↓'}${Math.abs(pctChg)}%</span>` : '';
-
-      const todayLimit = (PLAN[TODAY_DAY] ? sum(PLAN[TODAY_DAY]) * RF : 0);
-      $('phBc').style.display = '';
+      const tier      = budgetCtx.tier;
+      const fixedAmt  = (budgetCtx.amounts.rent||0) + (budgetCtx.amounts.health||0) + (budgetCtx.amounts.subs||0);
+      const flexAmt   = budgetCtx.totalBudget - fixedAmt;
+      const fixedPct  = Math.round((fixedAmt / budgetCtx.totalBudget) * 100);
       $('phBc').innerHTML = `
         <div class="bc ph-screen">
           <div class="bc-lbl-row">
-            <div class="bc-lbl">March Budget</div>
+            <div class="bc-lbl">${MONTH_LABEL}</div>
             <div class="ph-tier">${tier.icon} ${tier.label}</div>
           </div>
           <div class="bc-row">
             <span class="bc-cur">$</span>
-            <span class="bc-amt">${Math.round(remaining)}</span>
-            <span class="bc-rem">left${rfTag}</span>
+            <span class="bc-amt">${Math.round(budgetCtx.totalBudget)}</span>
+            <span class="bc-rem">planned</span>
           </div>
-          <div class="bc-bar"><div class="bc-fill" style="width:${pct}%"></div></div>
+          <div class="bc-bar-split">
+            <div class="bc-bar-f" style="width:${fixedPct}%"></div>
+            <div class="bc-bar-d"></div>
+          </div>
           <div class="bc-stats">
-            <div class="bc-s"><div class="v">${fmt(totalSpent)}</div><div class="k">used</div></div>
-            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(todayLimit)}</div><div class="k">today's limit</div></div>
-            <div class="bc-s"><div class="v" style="color:var(--teal)">${dLeft}d</div><div class="k">left</div></div>
+            <div class="bc-s"><div class="v">${fmt(avgDaily)}/day</div><div class="k">avg limit</div></div>
+            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(fixedAmt)}</div><div class="k">fixed</div></div>
+            <div class="bc-s"><div class="v" style="color:var(--teal)">${fmt(budgetCtx.savingsGoal)}</div><div class="k">saving</div></div>
           </div>
         </div>`;
     }
 
     function renderCal() {
       view = 'cal';
-      $('phOnboard').style.display = 'none';
-      $('phBc').style.display      = '';
-      $('phCal').style.display     = '';
-      $('phPanel').style.cssText   = 'display:none';
+      show(false, true, true, false);
       renderBc();
-
-      const EMPTY = 6; // Mon–Sat empty before Sun Mar 1
       let cells = '';
-      for (let i=0; i<EMPTY; i++) cells += '<div class="d em"></div>';
-      for (let d=1; d<=MONTH_DAYS; d++) {
-        const st  = dayStatus(d);
-        const sel = (d === selDay && view === 'detail') ? ' sel' : '';
-        cells += `<div class="d ph-d ${st}${sel}" onclick="window.mitaDay(${d})">${d}</div>`;
+      for (let i = 0; i < EMPTY_CELLS; i++) cells += '<div class="d em"></div>';
+      for (let d = 1; d <= MONTH_DAYS; d++) {
+        const lv  = dayLevel(d);
+        const sel = d === selDay && view === 'detail' ? ' sel' : '';
+        cells += `<div class="d ph-d ${lv}${sel}" onclick="window.mitaDay(${d})">${d}</div>`;
       }
-
       $('phCal').innerHTML = `
         <div class="cal ph-screen">
           <div class="cal-hd">
-            <span class="cal-mo">March 2026</span>
+            <span class="cal-mo">${MONTH_LABEL}</span>
             <button class="ph-edit-btn" onclick="window._mitaEdit()">✎ Edit</button>
           </div>
           <div class="cal-wk"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
           <div class="cal-grid">${cells}</div>
         </div>
-        <div class="ph-tap-hint">Tap any day — see Mita redistribute your budget</div>`;
+        <div class="ph-legend-cal">
+          <span class="ph-lc"><span class="ph-lc-dot plan-h"></span>Big day</span>
+          <span class="ph-lc"><span class="ph-lc-dot plan-m"></span>Weekend</span>
+          <span class="ph-lc"><span class="ph-lc-dot plan-l"></span>Weekday</span>
+        </div>
+        <div class="ph-tap-hint">Tap any day — see your full plan</div>`;
     }
 
     function renderPanel(d) {
       view = 'detail';
       selDay = d;
-      $('phOnboard').style.display = 'none';
-      $('phBc').style.display      = 'none';
-      $('phCal').style.display     = 'none';
-
-      const dow  = DAY_NAMES[(0 + d - 1) % 7]; // Mar 1 = Sun
-      const isWE = dow === 'Sat' || dow === 'Sun';
-      const st   = dayStatus(d);
-
-      const dayPlan   = sum(PLAN[d]);
-      const dayActual = d < TODAY_DAY ? sum(ACTUAL[d]) : 0;
-      const eff       = d >= TODAY_DAY ? dayPlan * RF : dayActual;
+      show(false, false, false, true);
+      const date  = new Date(YEAR, MONTH, d);
+      const DOW   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][date.getDay()];
+      const isWE  = date.getDay() === 0 || date.getDay() === 6;
+      const lv    = dayLevel(d);
+      const dayAmt = sum(PLAN[d]);
 
       let badge = '', badgeCls = '';
-      if      (st==='ok') { badge='On plan ✓';     badgeCls='ph-badge-ok';    }
-      else if (st==='wr') { badge='Slightly over';  badgeCls='ph-badge-warn';  }
-      else if (st==='ov') { badge='Over budget!';   badgeCls='ph-badge-over';  }
-      else if (st==='td') { badge='Today';          badgeCls='ph-badge-today'; }
-      else                { badge='Upcoming';       badgeCls='ph-badge-ft';    }
-
-      const pctChg = Math.round((RF - 1) * 100);
-      let note = '';
-      if (d >= TODAY_DAY && dayPlan > 0 && Math.abs(pctChg) >= 2) {
-        const dir = pctChg > 0 ? 'under budget earlier' : 'overspent on the weekend';
-        const col = pctChg > 0 ? 'var(--teal)' : 'var(--red)';
-        const arr = pctChg > 0 ? '↑' : '↓';
-        note = `<div class="ph-note" style="border-color:${col};color:${col};background:${pctChg>0?'rgba(20,184,166,.07)':'rgba(244,67,54,.07)'}">
-          Mita adjusted ${Math.abs(pctChg)}% ${arr} — you ${dir}
-        </div>`;
-      }
+      if      (lv === 'plan-h') { badge = '💳 Big payment';   badgeCls = 'ph-badge-over';  }
+      else if (lv === 'plan-m') { badge = isWE ? '🏖️ Weekend' : '📅 Active day'; badgeCls = 'ph-badge-today'; }
+      else if (lv === 'plan-l') { badge = '💼 Regular day';   badgeCls = 'ph-badge-ok';    }
+      else                      { badge = '🌿 Rest day';      badgeCls = 'ph-badge-ft';    }
 
       let catRows = '', hasCats = false;
+      const dayMax = Math.max(...Object.values(PLAN[d]).concat(0.01));
       CAT_META.forEach(c => {
-        const base = PLAN[d][c.id];
-        if (!base) return;
+        const planned = PLAN[d][c.id];
+        if (!planned) return;
         hasCats = true;
-        const effC    = d >= TODAY_DAY ? base * RF : base;
-        let   spentC  = 0;
-        if (d < TODAY_DAY)  spentC = (ACTUAL[d]||{})[c.id] || 0;
-        if (d === TODAY_DAY) spentC = (PARTIAL||{})[c.id] || 0;
-
-        const barMax   = Math.max(effC, spentC, 0.01);
-        const spentPct = d <= TODAY_DAY ? Math.min(100, spentC/barMax*100) : 0;
-        const planPct  = Math.min(100, effC/barMax*100);
-        let   fillCol  = 'var(--teal)';
-        if (d < TODAY_DAY) {
-          if (spentC > base * 1.25) fillCol = 'var(--red)';
-          else if (spentC > base)   fillCol = 'var(--yellow)';
-        } else {
-          fillCol = 'rgba(25,60,87,.28)';
-        }
-
+        const pct     = Math.min(100, (planned / dayMax) * 100);
+        const fillCol = c.behavior==='FIXED' ? 'var(--navy)' : c.behavior==='SPREAD' ? 'var(--teal)' : 'var(--purple)';
         const bhGlyph = c.behavior==='FIXED'?'●':c.behavior==='SPREAD'?'≡':'◆';
-        const dispAmt = d < TODAY_DAY ? fmt2(spentC) : fmt2(effC);
-        const diff    = d < TODAY_DAY && Math.abs(spentC - base) > 0.05
-          ? `<div class="ph-cr-diff" style="color:${spentC>base?'var(--red)':'var(--teal)'}">${spentC>base?'+':'-'}${fmt2(Math.abs(spentC-base))}</div>` : '';
-
         catRows += `<div class="ph-cr">
           <div class="ph-cr-top">
             <span class="ph-cr-ic">${c.emoji}</span>
             <span class="ph-cr-nm">${c.name}</span>
             <span class="ph-cr-bh">${bhGlyph}</span>
-            <span class="ph-cr-am">${dispAmt}</span>
+            <span class="ph-cr-am">${fmt2(planned)}</span>
           </div>
-          <div class="ph-cb"><div class="ph-cbf" style="width:${d<=TODAY_DAY?spentPct:planPct}%;background:${fillCol}"></div></div>
-          ${diff}
+          <div class="ph-cb"><div class="ph-cbf" style="width:${pct}%;background:${fillCol}"></div></div>
         </div>`;
       });
+      if (!hasCats) catRows = '<div class="ph-empty">Rest day — no spending planned 🌿</div>';
 
-      if (!hasCats) catRows = '<div class="ph-empty">No spending planned</div>';
-
-      const panelEl = $('phPanel');
-      panelEl.innerHTML = `
+      $('phPanel').innerHTML = `
         <button class="ph-back" onclick="window.mitaBack()">← Back to calendar</button>
         <div class="ph-panel ph-screen">
           <div class="ph-panel-hd">
             <div>
-              <div class="ph-panel-date">Mar ${d} · ${dow}</div>
+              <div class="ph-panel-date">${MONTH_NAMES[MONTH].slice(0,3)} ${d} · ${DOW}</div>
               <div class="ph-panel-type">${isWE?'🏖️ Weekend':'💼 Weekday'}</div>
             </div>
             <div style="text-align:right">
-              <div class="ph-lim">${fmt2(eff)}</div>
+              <div class="ph-lim">${fmt2(dayAmt)}</div>
               <span class="ph-badge ${badgeCls}">${badge}</span>
             </div>
           </div>
-          ${note}
           <div class="ph-cats">${catRows}</div>
           ${hasCats?`<div class="ph-legend"><span>◆ Clustered</span><span>≡ Spread</span><span>● Fixed</span></div>`:''}
         </div>`;
-      panelEl.style.cssText = 'display:flex;flex-direction:column;flex:1;min-height:0;';
     }
 
     // ── Actions ───────────────────────────────────────────────
     window._mitaTierPreview = function(val) {
       const t = classifyTier(parseFloat(val) || 0);
       const el = document.getElementById('obTierPreview');
-      if (el) { el.textContent = t.icon + ' ' + t.label; el.style.opacity='1'; }
+      if (el) el.textContent = t.icon + ' ' + t.label;
     };
 
     window._mitaCalc = function() {
@@ -1766,14 +1698,10 @@
       const err    = document.getElementById('obErr');
       if (income <= fixed + sav + 100) { if (err) err.style.display=''; return; }
       if (err) err.style.display = 'none';
-
       budgetCtx = computeBudget(income, fixed, sav);
       if (!budgetCtx) { if (err) err.style.display=''; return; }
-      PLAN      = buildPlan(budgetCtx.amounts);
-      ACTUAL    = buildActual(PLAN);
-      PARTIAL   = buildPartial(PLAN);
-      TOTAL_BUD = budgetCtx.totalBudget;
-      RF        = calcRF(PLAN, ACTUAL, PARTIAL, TOTAL_BUD);
+      PLAN     = buildPlan(budgetCtx.amounts);
+      avgDaily = budgetCtx.totalBudget / MONTH_DAYS;
       renderCal();
     };
 
@@ -1781,13 +1709,10 @@
     window.mitaDay   = function(d) { renderPanel(d); };
     window.mitaBack  = function()  { renderCal(); };
 
-    // ── Init: pre-compute defaults so calc is instant ─────────
+    // ── Init ──────────────────────────────────────────────────
     budgetCtx = computeBudget(5000, 1500, 500);
     PLAN      = buildPlan(budgetCtx.amounts);
-    ACTUAL    = buildActual(PLAN);
-    PARTIAL   = buildPartial(PLAN);
-    TOTAL_BUD = budgetCtx.totalBudget;
-    RF        = calcRF(PLAN, ACTUAL, PARTIAL, TOTAL_BUD);
+    avgDaily  = budgetCtx.totalBudget / MONTH_DAYS;
     renderOnboard();
 
   })();
