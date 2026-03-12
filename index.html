@@ -1409,313 +1409,342 @@
   }
 
   // ============================================================
-  // MITA BUDGET ENGINE — Interactive Beta (mirrors Python engine)
-  // ============================================================
-  (function(){
-    // ── Date-aware month setup ─────────────────────────────────
-    const NOW         = new Date();
-    const YEAR        = NOW.getFullYear();
-    const MONTH       = NOW.getMonth(); // 0-indexed
-    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const MONTH_LABEL = MONTH_NAMES[MONTH] + ' ' + YEAR;
-    const MONTH_DAYS  = new Date(YEAR, MONTH + 1, 0).getDate();
-    const MONTH_START_DOW = new Date(YEAR, MONTH, 1).getDay(); // 0=Sun
-    const EMPTY_CELLS = (MONTH_START_DOW + 6) % 7; // shift to Mon-based grid
+// ============================================================
+// MITA BUDGET ENGINE — Interactive (mirrors Python engine)
+// ============================================================
+(function(){
+  // ── Date-aware month setup ─────────────────────────────────
+  const NOW         = new Date();
+  const YEAR        = NOW.getFullYear();
+  const MONTH       = NOW.getMonth();
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTH_LABEL = MONTH_NAMES[MONTH] + ' ' + YEAR;
+  const MONTH_DAYS  = new Date(YEAR, MONTH + 1, 0).getDate();
+  const MONTH_START_DOW = new Date(YEAR, MONTH, 1).getDay();
+  const EMPTY_CELLS = (MONTH_START_DOW + 6) % 7;
 
-    // Compute weekdays / weekends dynamically for this month
-    const WKDAYS = [], WKENDS = [];
+  const WKDAYS = [], WKENDS = [];
+  for (let d = 1; d <= MONTH_DAYS; d++) {
+    const dow = new Date(YEAR, MONTH, d).getDay();
+    (dow === 0 || dow === 6 ? WKENDS : WKDAYS).push(d);
+  }
+  const DINING_DAYS = WKENDS.slice(0, Math.min(8, WKENDS.length));
+  const FUN_DAYS    = WKENDS;
+  const SHOP_DAYS   = WKENDS.filter((_, i) => i % 2 === 0).slice(0, 4);
+
+  // ── Income tier classifier ──────────────────────────────────
+  // Weights applied to discretionary income (after fixed + savings).
+  // Each tier's weights sum to 1.0 — 100% allocation, zero leaks.
+  // food → groceries + coffee + dining
+  // trans → transport (100%)
+  // ent → fun (100%)
+  // misc → subs + shopping (leftover from subs cap → shopping)
+  // hth → health (100%)
+  const TIERS = [
+    { id:'low',    label:'Starter',     icon:'\uD83C\uDF31', maxM:3000,    w:{food:.32, trans:.20, ent:.08, misc:.20, hth:.20} },
+    { id:'lo_mid', label:'Growing',     icon:'\uD83D\uDCC8', maxM:4800,    w:{food:.28, trans:.18, ent:.10, misc:.24, hth:.20} },
+    { id:'mid',    label:'Established', icon:'\uD83D\uDCBC', maxM:7200,    w:{food:.25, trans:.16, ent:.12, misc:.27, hth:.20} },
+    { id:'up_mid', label:'Flourishing', icon:'\uD83C\uDFC6', maxM:12000,   w:{food:.22, trans:.14, ent:.14, misc:.30, hth:.20} },
+    { id:'high',   label:'Thriving',    icon:'\uD83D\uDE80', maxM:Infinity, w:{food:.18, trans:.12, ent:.16, misc:.35, hth:.19} },
+  ];
+  const classifyTier = m => TIERS.find(t => m <= t.maxM) || TIERS[4];
+
+  // ── Category meta ──────────────────────────────────────────
+  const CAT_META = [
+    { id:'rent',      name:'Rent/Bills',  emoji:'\uD83C\uDFE0', behavior:'FIXED'     },
+    { id:'health',    name:'Health',      emoji:'\uD83D\uDC8A', behavior:'FIXED'     },
+    { id:'subs',      name:'Subs',        emoji:'\uD83D\uDCF1', behavior:'FIXED'     },
+    { id:'groceries', name:'Groceries',   emoji:'\uD83D\uDED2', behavior:'SPREAD'    },
+    { id:'coffee',    name:'Coffee',      emoji:'\u2615',        behavior:'SPREAD'    },
+    { id:'transport', name:'Transport',   emoji:'\uD83D\uDE97', behavior:'SPREAD'    },
+    { id:'dining',    name:'Dining Out',  emoji:'\uD83C\uDF7D\uFE0F', behavior:'CLUSTERED' },
+    { id:'fun',       name:'Fun',         emoji:'\uD83C\uDFAE', behavior:'CLUSTERED' },
+    { id:'shopping',  name:'Shopping',    emoji:'\uD83D\uDECD\uFE0F', behavior:'CLUSTERED' },
+  ];
+
+  // ── Mutable state ─────────────────────────────────────────
+  let view      = 'onboarding';
+  let selDay    = 1;
+  let budgetCtx = null;
+  let PLAN      = null;
+  let avgDaily  = 0;
+
+  const $    = id => document.getElementById(id);
+  const fmt  = n => '$' + Math.round(n);
+  const fmt2 = n => '$' + (n || 0).toFixed(2);
+  const sum  = obj => Object.values(obj || {}).reduce((s,v)=>s+v, 0);
+
+  // ── Budget generator ──────────────────────────────────────
+  // All tier weights sum to 1.0 → totalBudget = income - savingsGoal
+  function computeBudget(income, fixed, savingsGoal) {
+    const tier = classifyTier(income);
+    const disc = income - fixed - savingsGoal;
+    if (disc <= 0) return null;
+    const w = tier.w;
+    const food  = disc * w.food;
+    const trans = disc * w.trans;
+    const ent   = disc * w.ent;
+    const misc  = disc * w.misc;
+    const hth   = disc * w.hth;
+    // Sub-splits: all sum to 1.0, subs cap leftover absorbed by shopping
+    const subsRaw  = misc * 0.20;
+    const subsAmt  = Math.min(55, subsRaw);
+    const subsLeft = subsRaw - subsAmt;
+    const amounts = {
+      rent:      fixed,
+      health:    hth,                        // 100% — was 60%
+      subs:      subsAmt,
+      groceries: food * 0.50,
+      coffee:    food * 0.12,
+      transport: trans,                      // 100% — was 72%, renamed from transit
+      dining:    food * 0.38,
+      fun:       ent,
+      shopping:  misc * 0.80 + subsLeft,
+    };
+    return {
+      tier, disc, income, fixed, savingsGoal, amounts,
+      totalBudget: Math.round(Object.values(amounts).reduce((s,v)=>s+v, 0)),
+    };
+  }
+
+  // ── DOW-based spread weight (natural daily variation) ──────
+  // Tue lightest → Mon light → Wed mid → Thu moderate → Fri heaviest
+  const DOW_W = {1:0.85, 2:0.80, 3:0.90, 4:1.05, 5:1.40};
+  function spreadW(d) {
+    return DOW_W[new Date(YEAR, MONTH, d).getDay()] || 1.0;
+  }
+
+  // ── Calendar plan builder ─────────────────────────────────
+  function buildPlan(amounts) {
+    const p = {};
+    for (let d = 1; d <= MONTH_DAYS; d++) p[d] = {};
+
+    // FIXED: single-day charges
+    p[1].rent   = amounts.rent;
+    p[5].health = amounts.health;
+    p[5].subs   = amounts.subs;
+
+    // SPREAD with DOW variation — exact totals preserved
+    const totalSpreadW = WKDAYS.reduce((s, d) => s + spreadW(d), 0);
+    ['groceries', 'coffee', 'transport'].forEach(id => {
+      WKDAYS.forEach(d => {
+        p[d][id] = amounts[id] * spreadW(d) / totalSpreadW;
+      });
+    });
+
+    // CLUSTERED with natural variation — some weekends heavier than others
+    const DINING_PAT = [1.4, 0.7, 1.2, 0.8, 1.3, 0.9, 1.1, 0.7];
+    const FUN_PAT    = [1.1, 0.8, 1.4, 0.7, 1.2, 0.8, 1.3, 0.9, 1.0];
+    const SHOP_PAT   = [1.5, 0.7, 1.2, 0.8];
+
+    function cluster(days, catId, total, pat) {
+      const w  = days.map((_, i) => pat[i % pat.length]);
+      const wt = w.reduce((s, x) => s + x, 0);
+      days.forEach((d, i) => { p[d][catId] = (p[d][catId] || 0) + total * w[i] / wt; });
+    }
+
+    cluster(DINING_DAYS, 'dining',   amounts.dining,   DINING_PAT);
+    cluster(FUN_DAYS,    'fun',      amounts.fun,      FUN_PAT);
+    cluster(SHOP_DAYS,   'shopping', amounts.shopping, SHOP_PAT);
+
+    return p;
+  }
+
+  // ── Day intensity level ───────────────────────────────────
+  function dayLevel(d) {
+    if (!PLAN) return 'plan-n';
+    const amt = sum(PLAN[d]);
+    if (amt === 0)            return 'plan-n';
+    if (amt > avgDaily * 2.5) return 'plan-h';
+    if (amt > avgDaily * 0.3) return 'plan-m';
+    return 'plan-l';
+  }
+
+  // ── Renderers ─────────────────────────────────────────────
+  function show(ob, bc, cal, panel) {
+    $('phOnboard').style.display = ob   ? ''     : 'none';
+    $('phBc').style.display      = bc   ? ''     : 'none';
+    $('phCal').style.display     = cal  ? ''     : 'none';
+    $('phPanel').style.cssText   = panel? 'display:flex;flex-direction:column;flex:1;min-height:0;' : 'display:none';
+  }
+
+  function renderOnboard() {
+    view = 'onboarding';
+    show(true, false, false, false);
+    $('phOnboard').innerHTML = `
+      <div class="ph-ob ph-screen">
+        <div class="ph-ob-hdr">
+          <div class="ph-ob-mark"><i></i><i></i><i></i><i></i></div>
+          <div class="ph-ob-hdr-text">
+            <div class="ph-ob-title">Try Mita</div>
+            <div class="ph-ob-sub">Your ${MONTH_NAMES[MONTH]} plan, day by day</div>
+          </div>
+        </div>
+        <div class="ph-ob-fields">
+          <div class="ph-ob-field">
+            <div class="ph-ob-label-row">
+              <div class="ph-ob-label">Monthly income</div>
+              <div class="ph-ob-tier-preview" id="obTierPreview">\uD83D\uDCBC Established</div>
+            </div>
+            <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obIncome" type="number" value="5000" min="500" max="100000" step="100" oninput="window._mitaTierPreview(this.value)"></div>
+          </div>
+          <div class="ph-ob-field">
+            <div class="ph-ob-label">Rent & fixed bills</div>
+            <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obFixed" type="number" value="1500" min="0" max="50000" step="100"></div>
+          </div>
+          <div class="ph-ob-field">
+            <div class="ph-ob-label">Savings goal / month</div>
+            <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obSav" type="number" value="500" min="0" max="20000" step="50"></div>
+          </div>
+        </div>
+        <div id="obErr" class="ph-ob-err" style="display:none">\u26A0\uFE0F Income must exceed rent + savings</div>
+        <button class="ph-ob-btn" onclick="window._mitaCalc()">See my ${MONTH_NAMES[MONTH]} plan \u2192</button>
+        <div class="ph-ob-note">\uD83D\uDD12 All calculations stay on your device</div>
+      </div>`;
+  }
+
+  function renderBc() {
+    const tier     = budgetCtx.tier;
+    const fixedAmt = (budgetCtx.amounts.rent||0) + (budgetCtx.amounts.health||0) + (budgetCtx.amounts.subs||0);
+    const fixedPct = Math.round((fixedAmt / budgetCtx.totalBudget) * 100);
+    $('phBc').innerHTML = `
+      <div class="bc ph-screen">
+        <div class="bc-lbl-row">
+          <div class="bc-lbl">${MONTH_LABEL}</div>
+          <div class="ph-tier">${tier.icon} ${tier.label}</div>
+        </div>
+        <div class="bc-row">
+          <span class="bc-cur">$</span>
+          <span class="bc-amt">${Math.round(budgetCtx.totalBudget)}</span>
+          <span class="bc-rem">planned</span>
+        </div>
+        <div class="bc-bar-split">
+          <div class="bc-bar-f" style="width:${fixedPct}%"></div>
+          <div class="bc-bar-d"></div>
+        </div>
+        <div class="bc-stats">
+          <div class="bc-s"><div class="v">${fmt(avgDaily)}/day</div><div class="k">avg limit</div></div>
+          <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(fixedAmt)}</div><div class="k">fixed</div></div>
+          <div class="bc-s"><div class="v" style="color:var(--teal)">${fmt(budgetCtx.savingsGoal)}</div><div class="k">saving</div></div>
+        </div>
+      </div>`;
+  }
+
+  function renderCal() {
+    view = 'cal';
+    show(false, true, true, false);
+    renderBc();
+    let cells = '';
+    for (let i = 0; i < EMPTY_CELLS; i++) cells += '<div class="d em"></div>';
     for (let d = 1; d <= MONTH_DAYS; d++) {
-      const dow = new Date(YEAR, MONTH, d).getDay();
-      (dow === 0 || dow === 6 ? WKENDS : WKDAYS).push(d);
+      const lv  = dayLevel(d);
+      const sel = d === selDay && view === 'detail' ? ' sel' : '';
+      cells += `<div class="d ph-d ${lv}${sel}" onclick="window.mitaDay(${d})">${d}</div>`;
     }
-    // Cluster patterns — prefer weekends
-    const DINING_DAYS = WKENDS.slice(0, Math.min(8, WKENDS.length));
-    const FUN_DAYS    = WKENDS;
-    const SHOP_DAYS   = WKENDS.filter((_, i) => i % 2 === 0).slice(0, 4);
-
-    // ── Income tier classifier (mirrors income_classification_service.py) ──
-    const TIERS = [
-      { id:'low',    label:'Starter',     icon:'🌱', maxM:3000,    w:{food:.15,trans:.15,ent:.04,misc:.05,hth:.08} },
-      { id:'lo_mid', label:'Growing',     icon:'📈', maxM:4800,    w:{food:.13,trans:.15,ent:.06,misc:.08,hth:.07} },
-      { id:'mid',    label:'Established', icon:'💼', maxM:7200,    w:{food:.12,trans:.15,ent:.08,misc:.10,hth:.06} },
-      { id:'up_mid', label:'Flourishing', icon:'🏆', maxM:12000,   w:{food:.10,trans:.13,ent:.09,misc:.06,hth:.05} },
-      { id:'high',   label:'Thriving',    icon:'🚀', maxM:Infinity, w:{food:.08,trans:.10,ent:.10,misc:.07,hth:.04} },
-    ];
-    const classifyTier = m => TIERS.find(t => m <= t.maxM) || TIERS[4];
-
-    // ── Category meta (FIXED / SPREAD / CLUSTERED mirror calendar_engine.py) ──
-    const CAT_META = [
-      { id:'rent',      name:'Rent/Bills', emoji:'🏠', behavior:'FIXED'     },
-      { id:'health',    name:'Health',     emoji:'💊', behavior:'FIXED'     },
-      { id:'subs',      name:'Subs',       emoji:'📱', behavior:'FIXED'     },
-      { id:'groceries', name:'Groceries',  emoji:'🛒', behavior:'SPREAD'    },
-      { id:'coffee',    name:'Coffee',     emoji:'☕', behavior:'SPREAD'    },
-      { id:'transit',   name:'Transit',    emoji:'🚇', behavior:'SPREAD'    },
-      { id:'dining',    name:'Dining Out', emoji:'🍽️', behavior:'CLUSTERED' },
-      { id:'fun',       name:'Fun',        emoji:'🎮', behavior:'CLUSTERED' },
-      { id:'shopping',  name:'Shopping',   emoji:'🛍️', behavior:'CLUSTERED' },
-    ];
-
-    // ── Mutable state ─────────────────────────────────────────
-    let view      = 'onboarding'; // 'onboarding' | 'cal' | 'detail'
-    let selDay    = 1;
-    let budgetCtx = null; // computed budget context
-    let PLAN      = null; // PLAN[day][catId] = planned amount
-    let avgDaily  = 0;    // average daily budget (for level thresholds)
-
-    const $    = id => document.getElementById(id);
-    const fmt  = n => '$' + Math.round(n);
-    const fmt2 = n => '$' + (n || 0).toFixed(2);
-    const sum  = obj => Object.values(obj || {}).reduce((s,v)=>s+v, 0);
-
-    // ── Budget generator (mirrors budget_logic.py) ────────────
-    function computeBudget(income, fixed, savingsGoal) {
-      const tier = classifyTier(income);
-      const disc = income - fixed - savingsGoal;
-      if (disc <= 0) return null;
-      const w = tier.w;
-      const food  = disc * w.food;
-      const trans = disc * w.trans;
-      const ent   = disc * w.ent;
-      const misc  = disc * w.misc;
-      const hth   = disc * w.hth;
-      const amounts = {
-        rent:      fixed,
-        health:    hth * 0.60,
-        subs:      Math.min(55, misc * 0.20),
-        groceries: food * 0.50,
-        coffee:    food * 0.12,
-        transit:   trans * 0.72,
-        dining:    food * 0.38,
-        fun:       ent,
-        shopping:  misc * 0.80,
-      };
-      return {
-        tier, disc, income, fixed, savingsGoal, amounts,
-        totalBudget: Math.round(Object.values(amounts).reduce((s,v)=>s+v, 0)),
-      };
-    }
-
-    // ── Calendar plan builder (mirrors calendar_engine.py) ────
-    function buildPlan(amounts) {
-      const p = {};
-      for (let d = 1; d <= MONTH_DAYS; d++) p[d] = {};
-      // FIXED: charged once on a specific day
-      p[1].rent   = amounts.rent;
-      p[5].health = amounts.health;
-      p[5].subs   = amounts.subs;
-      // SPREAD: distributed evenly across weekdays
-      ['groceries','coffee','transit'].forEach(id => {
-        const pp = amounts[id] / WKDAYS.length;
-        WKDAYS.forEach(d => { p[d][id] = pp; });
-      });
-      // CLUSTERED: concentrated on weekends + key weekdays
-      DINING_DAYS.forEach(d => { p[d].dining   = (p[d].dining  ||0) + amounts.dining   / DINING_DAYS.length; });
-      FUN_DAYS   .forEach(d => { p[d].fun      = (p[d].fun     ||0) + amounts.fun      / FUN_DAYS.length;    });
-      SHOP_DAYS  .forEach(d => { p[d].shopping = (p[d].shopping||0) + amounts.shopping / SHOP_DAYS.length;   });
-      return p;
-    }
-
-    // ── Day intensity level (heat-map based on planned amount) ──
-    // plan-h: big payment day (rent etc)
-    // plan-m: medium spending (weekend clusters)
-    // plan-l: light spending (weekday spread)
-    // plan-n: rest day (no planned spending)
-    function dayLevel(d) {
-      if (!PLAN) return 'plan-n';
-      const amt = sum(PLAN[d]);
-      if (amt === 0)            return 'plan-n';
-      if (amt > avgDaily * 2.5) return 'plan-h'; // rent/big payment day
-      if (amt > avgDaily * 0.3) return 'plan-m'; // weekends + bill days
-      return 'plan-l';                            // regular weekdays
-    }
-
-    // ── Renderers ─────────────────────────────────────────────
-    function show(ob, bc, cal, panel) {
-      $('phOnboard').style.display = ob   ? ''     : 'none';
-      $('phBc').style.display      = bc   ? ''     : 'none';
-      $('phCal').style.display     = cal  ? ''     : 'none';
-      $('phPanel').style.cssText   = panel? 'display:flex;flex-direction:column;flex:1;min-height:0;' : 'display:none';
-    }
-
-    function renderOnboard() {
-      view = 'onboarding';
-      show(true, false, false, false);
-      $('phOnboard').innerHTML = `
-        <div class="ph-ob ph-screen">
-          <div class="ph-ob-hdr">
-            <div class="ph-ob-mark"><i></i><i></i><i></i><i></i></div>
-            <div class="ph-ob-hdr-text">
-              <div class="ph-ob-title">Try Mita</div>
-              <div class="ph-ob-sub">Your ${MONTH_NAMES[MONTH]} plan, day by day</div>
-            </div>
-          </div>
-          <div class="ph-ob-fields">
-            <div class="ph-ob-field">
-              <div class="ph-ob-label-row">
-                <div class="ph-ob-label">Monthly income</div>
-                <div class="ph-ob-tier-preview" id="obTierPreview">💼 Established</div>
-              </div>
-              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obIncome" type="number" value="5000" min="500" max="100000" step="100" oninput="window._mitaTierPreview(this.value)"></div>
-            </div>
-            <div class="ph-ob-field">
-              <div class="ph-ob-label">Rent & fixed bills</div>
-              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obFixed" type="number" value="1500" min="0" max="50000" step="100"></div>
-            </div>
-            <div class="ph-ob-field">
-              <div class="ph-ob-label">Savings goal / month</div>
-              <div class="ph-ob-iw"><span class="ph-ob-pfx">$</span><input class="ph-ob-inp" id="obSav" type="number" value="500" min="0" max="20000" step="50"></div>
-            </div>
-          </div>
-          <div id="obErr" class="ph-ob-err" style="display:none">⚠️ Income must exceed rent + savings</div>
-          <button class="ph-ob-btn" onclick="window._mitaCalc()">See my ${MONTH_NAMES[MONTH]} plan →</button>
-          <div class="ph-ob-note">🔒 All calculations stay on your device</div>
-        </div>`;
-    }
-
-    function renderBc() {
-      const tier      = budgetCtx.tier;
-      const fixedAmt  = (budgetCtx.amounts.rent||0) + (budgetCtx.amounts.health||0) + (budgetCtx.amounts.subs||0);
-      const flexAmt   = budgetCtx.totalBudget - fixedAmt;
-      const fixedPct  = Math.round((fixedAmt / budgetCtx.totalBudget) * 100);
-      $('phBc').innerHTML = `
-        <div class="bc ph-screen">
-          <div class="bc-lbl-row">
-            <div class="bc-lbl">${MONTH_LABEL}</div>
-            <div class="ph-tier">${tier.icon} ${tier.label}</div>
-          </div>
-          <div class="bc-row">
-            <span class="bc-cur">$</span>
-            <span class="bc-amt">${Math.round(budgetCtx.totalBudget)}</span>
-            <span class="bc-rem">planned</span>
-          </div>
-          <div class="bc-bar-split">
-            <div class="bc-bar-f" style="width:${fixedPct}%"></div>
-            <div class="bc-bar-d"></div>
-          </div>
-          <div class="bc-stats">
-            <div class="bc-s"><div class="v">${fmt(avgDaily)}/day</div><div class="k">avg limit</div></div>
-            <div class="bc-s"><div class="v" style="color:var(--yellow)">${fmt(fixedAmt)}</div><div class="k">fixed</div></div>
-            <div class="bc-s"><div class="v" style="color:var(--teal)">${fmt(budgetCtx.savingsGoal)}</div><div class="k">saving</div></div>
-          </div>
-        </div>`;
-    }
-
-    function renderCal() {
-      view = 'cal';
-      show(false, true, true, false);
-      renderBc();
-      let cells = '';
-      for (let i = 0; i < EMPTY_CELLS; i++) cells += '<div class="d em"></div>';
-      for (let d = 1; d <= MONTH_DAYS; d++) {
-        const lv  = dayLevel(d);
-        const sel = d === selDay && view === 'detail' ? ' sel' : '';
-        cells += `<div class="d ph-d ${lv}${sel}" onclick="window.mitaDay(${d})">${d}</div>`;
-      }
-      $('phCal').innerHTML = `
-        <div class="cal ph-screen">
-          <div class="cal-hd">
-            <span class="cal-mo">${MONTH_LABEL}</span>
-            <button class="ph-edit-btn" onclick="window._mitaEdit()">✎ Edit</button>
-          </div>
-          <div class="cal-wk"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-          <div class="cal-grid">${cells}</div>
+    $('phCal').innerHTML = `
+      <div class="cal ph-screen">
+        <div class="cal-hd">
+          <span class="cal-mo">${MONTH_LABEL}</span>
+          <button class="ph-edit-btn" onclick="window._mitaEdit()">\u270E Edit</button>
         </div>
-        <div class="ph-legend-cal">
-          <span class="ph-lc"><span class="ph-lc-dot plan-h"></span>Big day</span>
-          <span class="ph-lc"><span class="ph-lc-dot plan-m"></span>Weekend</span>
-          <span class="ph-lc"><span class="ph-lc-dot plan-l"></span>Weekday</span>
+        <div class="cal-wk"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+        <div class="cal-grid">${cells}</div>
+      </div>
+      <div class="ph-legend-cal">
+        <span class="ph-lc"><span class="ph-lc-dot plan-h"></span>Big day</span>
+        <span class="ph-lc"><span class="ph-lc-dot plan-m"></span>Weekend</span>
+        <span class="ph-lc"><span class="ph-lc-dot plan-l"></span>Weekday</span>
+      </div>
+      <div class="ph-tap-hint">Tap any day \u2014 see your full plan</div>`;
+  }
+
+  function renderPanel(d) {
+    view = 'detail';
+    selDay = d;
+    show(false, false, false, true);
+    const date   = new Date(YEAR, MONTH, d);
+    const DOW    = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][date.getDay()];
+    const isWE   = date.getDay() === 0 || date.getDay() === 6;
+    const lv     = dayLevel(d);
+    const dayAmt = sum(PLAN[d]);
+
+    let badge = '', badgeCls = '';
+    if      (lv === 'plan-h') { badge = '\uD83D\uDCB3 Big payment';   badgeCls = 'ph-badge-over';  }
+    else if (lv === 'plan-m') { badge = isWE ? '\uD83C\uDFD6\uFE0F Weekend' : '\uD83D\uDCC5 Active day'; badgeCls = 'ph-badge-today'; }
+    else if (lv === 'plan-l') { badge = '\uD83D\uDCBC Regular day';   badgeCls = 'ph-badge-ok';    }
+    else                      { badge = '\uD83C\uDF3F Rest day';      badgeCls = 'ph-badge-ft';    }
+
+    let catRows = '', hasCats = false;
+    const dayMax = Math.max(...Object.values(PLAN[d]).concat(0.01));
+    CAT_META.forEach(c => {
+      const planned = PLAN[d][c.id];
+      if (!planned) return;
+      hasCats = true;
+      const pct     = Math.min(100, (planned / dayMax) * 100);
+      const fillCol = c.behavior==='FIXED' ? 'var(--navy)' : c.behavior==='SPREAD' ? 'var(--teal)' : 'var(--purple)';
+      const bhGlyph = c.behavior==='FIXED'?'\u25CF':c.behavior==='SPREAD'?'\u2261':'\u25C6';
+      catRows += `<div class="ph-cr">
+        <div class="ph-cr-top">
+          <span class="ph-cr-ic">${c.emoji}</span>
+          <span class="ph-cr-nm">${c.name}</span>
+          <span class="ph-cr-bh">${bhGlyph}</span>
+          <span class="ph-cr-am">${fmt2(planned)}</span>
         </div>
-        <div class="ph-tap-hint">Tap any day — see your full plan</div>`;
-    }
+        <div class="ph-cb"><div class="ph-cbf" style="width:${pct}%;background:${fillCol}"></div></div>
+      </div>`;
+    });
+    if (!hasCats) catRows = '<div class="ph-empty">Rest day \u2014 no spending planned \uD83C\uDF3F</div>';
 
-    function renderPanel(d) {
-      view = 'detail';
-      selDay = d;
-      show(false, false, false, true);
-      const date  = new Date(YEAR, MONTH, d);
-      const DOW   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][date.getDay()];
-      const isWE  = date.getDay() === 0 || date.getDay() === 6;
-      const lv    = dayLevel(d);
-      const dayAmt = sum(PLAN[d]);
-
-      let badge = '', badgeCls = '';
-      if      (lv === 'plan-h') { badge = '💳 Big payment';   badgeCls = 'ph-badge-over';  }
-      else if (lv === 'plan-m') { badge = isWE ? '🏖️ Weekend' : '📅 Active day'; badgeCls = 'ph-badge-today'; }
-      else if (lv === 'plan-l') { badge = '💼 Regular day';   badgeCls = 'ph-badge-ok';    }
-      else                      { badge = '🌿 Rest day';      badgeCls = 'ph-badge-ft';    }
-
-      let catRows = '', hasCats = false;
-      const dayMax = Math.max(...Object.values(PLAN[d]).concat(0.01));
-      CAT_META.forEach(c => {
-        const planned = PLAN[d][c.id];
-        if (!planned) return;
-        hasCats = true;
-        const pct     = Math.min(100, (planned / dayMax) * 100);
-        const fillCol = c.behavior==='FIXED' ? 'var(--navy)' : c.behavior==='SPREAD' ? 'var(--teal)' : 'var(--purple)';
-        const bhGlyph = c.behavior==='FIXED'?'●':c.behavior==='SPREAD'?'≡':'◆';
-        catRows += `<div class="ph-cr">
-          <div class="ph-cr-top">
-            <span class="ph-cr-ic">${c.emoji}</span>
-            <span class="ph-cr-nm">${c.name}</span>
-            <span class="ph-cr-bh">${bhGlyph}</span>
-            <span class="ph-cr-am">${fmt2(planned)}</span>
+    $('phPanel').innerHTML = `
+      <button class="ph-back" onclick="window.mitaBack()">\u2190 Back to calendar</button>
+      <div class="ph-panel ph-screen">
+        <div class="ph-panel-hd">
+          <div>
+            <div class="ph-panel-date">${MONTH_NAMES[MONTH].slice(0,3)} ${d} \u00B7 ${DOW}</div>
+            <div class="ph-panel-type">${isWE?'\uD83C\uDFD6\uFE0F Weekend':'\uD83D\uDCBC Weekday'}</div>
           </div>
-          <div class="ph-cb"><div class="ph-cbf" style="width:${pct}%;background:${fillCol}"></div></div>
-        </div>`;
-      });
-      if (!hasCats) catRows = '<div class="ph-empty">Rest day — no spending planned 🌿</div>';
-
-      $('phPanel').innerHTML = `
-        <button class="ph-back" onclick="window.mitaBack()">← Back to calendar</button>
-        <div class="ph-panel ph-screen">
-          <div class="ph-panel-hd">
-            <div>
-              <div class="ph-panel-date">${MONTH_NAMES[MONTH].slice(0,3)} ${d} · ${DOW}</div>
-              <div class="ph-panel-type">${isWE?'🏖️ Weekend':'💼 Weekday'}</div>
-            </div>
-            <div style="text-align:right">
-              <div class="ph-lim">${fmt2(dayAmt)}</div>
-              <span class="ph-badge ${badgeCls}">${badge}</span>
-            </div>
+          <div style="text-align:right">
+            <div class="ph-lim">${fmt2(dayAmt)}</div>
+            <span class="ph-badge ${badgeCls}">${badge}</span>
           </div>
-          <div class="ph-cats">${catRows}</div>
-          ${hasCats?`<div class="ph-legend"><span>◆ Clustered</span><span>≡ Spread</span><span>● Fixed</span></div>`:''}
-        </div>`;
-    }
+        </div>
+        <div class="ph-cats">${catRows}</div>
+        ${hasCats?`<div class="ph-legend"><span>\u25C6 Clustered</span><span>\u2261 Spread</span><span>\u25CF Fixed</span></div>`:''}
+      </div>`;
+  }
 
-    // ── Actions ───────────────────────────────────────────────
-    window._mitaTierPreview = function(val) {
-      const t = classifyTier(parseFloat(val) || 0);
-      const el = document.getElementById('obTierPreview');
-      if (el) el.textContent = t.icon + ' ' + t.label;
-    };
+  // ── Actions ───────────────────────────────────────────────
+  window._mitaTierPreview = function(val) {
+    const t = classifyTier(parseFloat(val) || 0);
+    const el = document.getElementById('obTierPreview');
+    if (el) el.textContent = t.icon + ' ' + t.label;
+  };
 
-    window._mitaCalc = function() {
-      const income = parseFloat(document.getElementById('obIncome')?.value) || 5000;
-      const fixed  = parseFloat(document.getElementById('obFixed')?.value)  || 1500;
-      const sav    = parseFloat(document.getElementById('obSav')?.value)    || 500;
-      const err    = document.getElementById('obErr');
-      if (income <= fixed + sav + 100) { if (err) err.style.display=''; return; }
-      if (err) err.style.display = 'none';
-      budgetCtx = computeBudget(income, fixed, sav);
-      if (!budgetCtx) { if (err) err.style.display=''; return; }
-      PLAN     = buildPlan(budgetCtx.amounts);
-      avgDaily = budgetCtx.totalBudget / MONTH_DAYS;
-      renderCal();
-    };
+  window._mitaCalc = function() {
+    const income = parseFloat(document.getElementById('obIncome')?.value) || 5000;
+    const fixed  = parseFloat(document.getElementById('obFixed')?.value)  || 1500;
+    const sav    = parseFloat(document.getElementById('obSav')?.value)    || 500;
+    const err    = document.getElementById('obErr');
+    if (income <= fixed + sav + 100) { if (err) err.style.display=''; return; }
+    if (err) err.style.display = 'none';
+    budgetCtx = computeBudget(income, fixed, sav);
+    if (!budgetCtx) { if (err) err.style.display=''; return; }
+    PLAN     = buildPlan(budgetCtx.amounts);
+    avgDaily = budgetCtx.totalBudget / MONTH_DAYS;
+    renderCal();
+  };
 
-    window._mitaEdit = function() { renderOnboard(); };
-    window.mitaDay   = function(d) { renderPanel(d); };
-    window.mitaBack  = function()  { renderCal(); };
+  window._mitaEdit = function() { renderOnboard(); };
+  window.mitaDay   = function(d) { renderPanel(d); };
+  window.mitaBack  = function()  { renderCal(); };
 
-    // ── Init ──────────────────────────────────────────────────
-    budgetCtx = computeBudget(5000, 1500, 500);
-    PLAN      = buildPlan(budgetCtx.amounts);
-    avgDaily  = budgetCtx.totalBudget / MONTH_DAYS;
-    renderOnboard();
+  // ── Init ──────────────────────────────────────────────────
+  budgetCtx = computeBudget(5000, 1500, 500);
+  PLAN      = buildPlan(budgetCtx.amounts);
+  avgDaily  = budgetCtx.totalBudget / MONTH_DAYS;
+  renderOnboard();
 
-  })();
+})();
 </script>
 </body>
 </html>
