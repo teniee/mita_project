@@ -101,17 +101,19 @@ def handle_errors(
                     return StandardizedErrorHandler.create_response(e, request, user_id)
                 
                 # Handle all other exceptions as internal server errors
+                import traceback as _tb
                 internal_error = StandardizedAPIException(
                     message="An unexpected error occurred",
                     error_code=ErrorCode.SYSTEM_INTERNAL_ERROR,
                     status_code=500,
+                    details={"exception_type": type(e).__name__, "exception_msg": str(e)},
                     context={"original_error": type(e).__name__}
                 )
-                
+
                 return StandardizedErrorHandler.create_response(
-                    internal_error, request, user_id, {"original_error": str(e)}
+                    internal_error, request, user_id, {"original_error": str(e), "traceback": _tb.format_exc()}
                 )
-        
+
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             try:
