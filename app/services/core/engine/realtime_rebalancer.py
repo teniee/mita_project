@@ -39,6 +39,7 @@ class RebalancePlan:
         self.transfers: List[Dict] = []
         self.covered: Decimal = Decimal("0")
         self.uncovered: Decimal = Decimal("0")
+        self.goal_context: Optional[Dict] = None
 
     @property
     def fully_covered(self) -> bool:
@@ -53,6 +54,7 @@ class RebalancePlan:
             "uncovered": float(self.uncovered),
             "transfers": self.transfers,
             "fully_covered": self.fully_covered,
+            "goal_context": self.goal_context,
         }
 
 

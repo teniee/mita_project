@@ -16,6 +16,9 @@ class TransactionModel {
   final DateTime spentAt;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final bool? rebalanced;
+  final double? rebalanceCovered;
+  final bool? rebalanceFullyCovered;
 
   TransactionModel({
     required this.id,
@@ -33,6 +36,9 @@ class TransactionModel {
     required this.spentAt,
     required this.createdAt,
     this.updatedAt,
+    this.rebalanced,
+    this.rebalanceCovered,
+    this.rebalanceFullyCovered,
   });
 
   /// Create from JSON
@@ -60,6 +66,9 @@ class TransactionModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
+      rebalanced: json['rebalanced'] as bool?,
+      rebalanceCovered: (json['rebalance_covered'] as num?)?.toDouble(),
+      rebalanceFullyCovered: json['rebalance_fully_covered'] as bool?,
     );
   }
 
@@ -81,6 +90,9 @@ class TransactionModel {
       'spent_at': spentAt.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      if (rebalanced != null) 'rebalanced': rebalanced,
+      if (rebalanceCovered != null) 'rebalance_covered': rebalanceCovered,
+      if (rebalanceFullyCovered != null) 'rebalance_fully_covered': rebalanceFullyCovered,
     };
   }
 
@@ -101,6 +113,9 @@ class TransactionModel {
     DateTime? spentAt,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? rebalanced,
+    double? rebalanceCovered,
+    bool? rebalanceFullyCovered,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -118,6 +133,9 @@ class TransactionModel {
       spentAt: spentAt ?? this.spentAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rebalanced: rebalanced ?? this.rebalanced,
+      rebalanceCovered: rebalanceCovered ?? this.rebalanceCovered,
+      rebalanceFullyCovered: rebalanceFullyCovered ?? this.rebalanceFullyCovered,
     );
   }
 

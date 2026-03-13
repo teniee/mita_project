@@ -4,6 +4,7 @@ import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/budget_provider.dart';
 import '../models/transaction_model.dart';
 import '../services/api_service.dart';
 import '../services/accessibility_service.dart';
@@ -455,6 +456,28 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       if (transaction != null) {
         // Show success feedback with animation
         await _showSuccessFeedback();
+
+        // Show rebalance banner if budget was redistributed
+        if (mounted && transaction.rebalanced == true) {
+          final covered =
+              transaction.rebalanceCovered?.toStringAsFixed(2) ?? '0';
+          final fully =
+              transaction.rebalanceFullyCovered == true ? 'fully' : 'partially';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Budget $fully rebalanced! \$$covered redistributed from other categories.',
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFF14B8A6), // MITA teal
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          // Refresh redistribution history in BudgetProvider
+          context
+              .read<BudgetProvider>()
+              .onTransactionCreated(rebalanced: true);
+        }
 
         logInfo('Expense submitted via TransactionProvider successfully',
             tag: 'ADD_EXPENSE');

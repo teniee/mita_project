@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/budget_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TransactionModel? transaction;
@@ -140,6 +141,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 : 'Transaction updated successfully'),
           ),
         );
+
+        // Show rebalance banner if a new transaction triggered redistribution
+        if (widget.transaction == null && result.rebalanced == true) {
+          final covered = result.rebalanceCovered?.toStringAsFixed(2) ?? '0';
+          final fully =
+              result.rebalanceFullyCovered == true ? 'fully' : 'partially';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Budget $fully rebalanced! \$$covered redistributed from other categories.',
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFF14B8A6), // MITA teal
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          // Refresh redistribution history in BudgetProvider
+          context
+              .read<BudgetProvider>()
+              .onTransactionCreated(rebalanced: true);
+        }
 
         Navigator.pop(context, true);
       } else {

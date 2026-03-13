@@ -628,6 +628,14 @@ class BudgetProvider extends ChangeNotifier {
     }
   }
 
+  /// Called after a transaction is successfully created.
+  /// If the transaction triggered a rebalance, refreshes redistribution history.
+  Future<void> onTransactionCreated({bool rebalanced = false}) async {
+    if (rebalanced) {
+      await loadRedistributionHistory();
+    }
+  }
+
   /// Clear error message
   void clearError() {
     _errorMessage = null;

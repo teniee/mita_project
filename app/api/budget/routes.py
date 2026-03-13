@@ -613,6 +613,33 @@ async def get_budget_automation_settings(
     return success_response(settings)
 
 
+@router.post("/alert/ignored", summary="Record that user ignored a budget alert")
+async def record_alert_ignored(
+    payload: dict,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Mobile app calls this when user taps [Ignore] on a budget warning.
+    Records the event so a 3-day follow-up reminder can be sent.
+    """
+    try:
+        from app.services.core.engine.cron_task_followup_reminder import record_ignored_alert
+        category = payload.get("category", "")
+        overspend_amount = float(payload.get("overspend_amount", 0))
+        goal_title = payload.get("goal_title")
+        record_ignored_alert(
+            user_id=str(user.id),
+            category=category,
+            overspend_amount=overspend_amount,
+            goal_title=goal_title,
+        )
+        return success_response({"recorded": True})
+    except Exception as e:
+        logger.error(f"Failed to record ignored alert: {e}")
+        return success_response({"recorded": False})
+
+
 @router.post("/income_based_recommendations")
 async def get_income_based_budget_recommendations(
     data: Dict[str, Any] = Body(...),

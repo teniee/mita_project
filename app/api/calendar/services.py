@@ -48,8 +48,8 @@ def fetch_day_state(user_id: str, year: int, month: int, day: int) -> dict:
 from app.engine.budget_redistributor import redistribute_budget
 
 
-def redistribute_calendar_budget(calendar: dict, strategy: str = "balance") -> dict:
-    return redistribute_budget(calendar, strategy)
+def redistribute_calendar_budget(calendar: dict) -> dict:
+    return redistribute_budget(calendar)
 
 
 from app.engine.budget_mode_shell_integration import get_shell_calendar
