@@ -1,3 +1,17 @@
+"""
+In-memory budget redistributor — DISPLAY ONLY.
+
+Used by the calendar API to show a visual representation of how budget
+would be redistributed across days. Operates on a plain dict (day→total/limit)
+and does NOT write to the database.
+
+For DB-backed real-time rebalancing (the actual budget changes), use:
+  - app.services.core.engine.realtime_rebalancer.check_and_rebalance()
+  - app.services.budget_redistributor.redistribute_budget_for_user()
+
+NOTE: This class operates at the day level and is not category-aware.
+Category priority (SACRED/DISCRETIONARY) is enforced at the service layer.
+"""
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal, getcontext

@@ -28,3 +28,14 @@ def run_budget_redistribution_batch():
             print(msg)
         except Exception as e:
             print(f"Redistribution failed for user {user.id}: {str(e)}")
+        # On first day of month: roll over last month's savings surplus to goal
+        try:
+            if now.day == 1:
+                from app.services.savings_surplus_service import rollover_month_savings
+                prev_year = year if month > 1 else year - 1
+                prev_month = month - 1 if month > 1 else 12
+                rollover = rollover_month_savings(db, user.id, prev_year, prev_month)
+                if rollover.get("applied_to_goal"):
+                    print(f"Savings rollover for user {user.id}: {rollover}")
+        except Exception as e:
+            print(f"Savings rollover failed for user {user.id}: {e}")

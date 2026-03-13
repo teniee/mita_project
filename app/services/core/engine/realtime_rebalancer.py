@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.core.category_priority import get_category_level, is_sacred
 from app.db.models.daily_plan import DailyPlan
+from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,17 @@ def rebalance_after_overspend(
             )
             remaining -= actual
             plan.covered += actual
+            # Record to audit log
+            try:
+                record_redistribution_event(
+                    user_id=user_id,
+                    from_category=donor_cat,
+                    to_category=overspent_category,
+                    amount=actual,
+                    reason="realtime_rebalance",
+                )
+            except Exception:
+                pass  # audit log must never break rebalancing
 
     plan.uncovered = max(Decimal("0"), remaining)
 
