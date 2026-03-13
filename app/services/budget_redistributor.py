@@ -37,11 +37,12 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
     redistribution_log = []
     for cat, deficit in deficit_by_cat.items():
         transferred_total = 0.0
+        remaining_deficit = deficit
         for donor_cat, available in surplus_by_cat.items():
-            if donor_cat == cat or available <= 0:
+            if donor_cat == cat or available <= 0 or remaining_deficit <= 0:
                 continue
 
-            transfer = min(available, deficit)
+            transfer = min(available, remaining_deficit)
             if transfer <= 0:
                 continue
 
@@ -53,6 +54,7 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                     donor_entry.planned_amount -= to_take
                     transfer -= to_take
                     transferred_total += to_take
+                    remaining_deficit -= to_take
                     surplus_by_cat[donor_cat] -= to_take
                     redistribution_log.append(
                         {
@@ -65,10 +67,20 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                 if transfer <= 0:
                     break
 
-        # Add to receiving category
-        for receiver_entry in sorted(plan_map[cat], key=lambda e: e.date):
-            receiver_entry.planned_amount += transferred_total
-            break  # only one day
+        # Add to receiving category - distribute across deficit entries in date order
+        remaining = transferred_total
+        receiver_entries = sorted(plan_map[cat], key=lambda e: e.date)
+        for receiver_entry in receiver_entries:
+            entry_deficit = float(receiver_entry.spent_amount - receiver_entry.planned_amount)
+            if entry_deficit > 0.01:
+                to_add = min(entry_deficit, remaining)
+                receiver_entry.planned_amount += to_add
+                remaining -= to_add
+            if remaining <= 0.01:
+                break
+        # Fallback: any remainder (e.g. category has no deficit entries yet) goes to earliest day
+        if remaining > 0.01:
+            receiver_entries[0].planned_amount += remaining
 
     db.commit()
     return {"status": "redistributed", "log": redistribution_log}

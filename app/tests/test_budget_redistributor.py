@@ -73,5 +73,9 @@ def test_redistribute_sums_transfers(monkeypatch):
     mod.redistribute_budget_for_user(db, user_id=1, year=2023, month=1)
 
     assert db.committed
-    # Total surplus = 80, should be added to first rent entry
-    assert entries[0].planned_amount == 180.0
+    # Total surplus = 80 (groceries 50 + entertainment 30).
+    # Distributed across rent deficit entries in date order:
+    #   entries[0] deficit=50 → receives 50 → planned = 150
+    #   entries[1] deficit=50 → receives remaining 30 → planned = 130
+    assert entries[0].planned_amount == 150.0
+    assert entries[1].planned_amount == 130.0
