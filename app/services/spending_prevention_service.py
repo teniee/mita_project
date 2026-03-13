@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.db.models.daily_plan import DailyPlan
+from app.core.budget_thresholds import (
+    THRESHOLD_SAFE, THRESHOLD_DANGER, THRESHOLD_EXCEEDED
+)
 
 
 class SpendingPreventionService:
@@ -20,10 +23,10 @@ class SpendingPreventionService:
     Checks if user can afford a transaction BEFORE creating it
     """
 
-    # Warning level thresholds
-    SAFE_THRESHOLD = 0.70  # Under 70% of budget = safe (green)
-    CAUTION_THRESHOLD = 0.90  # 70-90% of budget = caution (yellow)
-    DANGER_THRESHOLD = 1.00  # 90-100% of budget = danger (orange)
+    # Warning level thresholds (sourced from app.core.budget_thresholds)
+    SAFE_THRESHOLD = THRESHOLD_SAFE       # Under 70% of budget = safe (green)
+    CAUTION_THRESHOLD = THRESHOLD_DANGER  # 70-90% of budget = caution (yellow)
+    DANGER_THRESHOLD = THRESHOLD_EXCEEDED # 90-100% of budget = danger (orange)
     # Over 100% = blocked (red)
 
     def __init__(self, db: Session, user_id: UUID):
@@ -298,12 +301,12 @@ class SpendingPreventionService:
             remaining = daily_budget - spent
             percentage = float((spent / daily_budget * 100)) if daily_budget > 0 else 0
 
-            # Determine status color
-            if percentage < 70:
+            # Determine status color (thresholds from app.core.budget_thresholds)
+            if percentage < THRESHOLD_SAFE * 100:
                 status = "safe"
-            elif percentage < 90:
+            elif percentage < THRESHOLD_DANGER * 100:
                 status = "caution"
-            elif percentage < 100:
+            elif percentage < THRESHOLD_EXCEEDED * 100:
                 status = "danger"
             else:
                 status = "over_budget"

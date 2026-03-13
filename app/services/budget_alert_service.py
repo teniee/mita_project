@@ -2,7 +2,7 @@
 Budget Alert Service
 Monitors spending and sends alerts when budgets are at risk or exceeded
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import UUID
 from decimal import Decimal
 import logging
@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.services.core.engine.budget_tracker import BudgetTracker
 from app.services.notification_integration import get_notification_integration
+from app.core.budget_thresholds import THRESHOLD_WARNING, THRESHOLD_EXCEEDED
+from app.db.models import Goal
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,9 @@ class BudgetAlertService:
     Service for monitoring budget spending and sending alerts
     """
 
-    # Thresholds for sending alerts
-    WARNING_THRESHOLD = 0.80  # 80% of budget
-    DANGER_THRESHOLD = 1.00   # 100% of budget (exceeded)
+    # Thresholds for sending alerts (sourced from app.core.budget_thresholds)
+    WARNING_THRESHOLD = THRESHOLD_WARNING    # 80% of budget
+    DANGER_THRESHOLD = THRESHOLD_EXCEEDED   # 100% of budget (exceeded)
 
     def __init__(self, db: Session):
         self.db = db
@@ -77,6 +79,41 @@ class BudgetAlertService:
 
         return alerts_sent
 
+    def _get_user_goal_context(
+        self,
+        user_id: UUID,
+        overspend_amount: float
+    ) -> Optional[Dict]:
+        """
+        Get goal context for alert messages.
+
+        Returns dict with goal info and delay estimate, or None if no active goals.
+        """
+        try:
+            goal = (
+                self.db.query(Goal)
+                .filter(Goal.user_id == user_id, Goal.status == "active")
+                .order_by(Goal.priority)
+                .first()
+            )
+            if not goal:
+                return None
+
+            monthly_contribution = float(goal.monthly_contribution or 0)
+            if monthly_contribution > 0:
+                delay_days = int(overspend_amount / (monthly_contribution / 30))
+            else:
+                delay_days = 0
+
+            return {
+                "goal_title": goal.title,
+                "delay_days": delay_days,
+                "monthly_contribution": monthly_contribution,
+            }
+        except Exception as e:
+            logger.warning(f"Could not fetch goal context for user {user_id}: {e}")
+            return None
+
     def _check_category_alert(
         self,
         user_id: UUID,
@@ -94,39 +131,96 @@ class BudgetAlertService:
             # Budget exceeded (critical alert)
             if percentage >= self.DANGER_THRESHOLD:
                 overage = spent - limit
-                self.notifier.notify_budget_exceeded(
-                    user_id=user_id,
-                    category=category,
-                    spent=spent,
-                    limit=limit,
-                    overage=overage
-                )
-                logger.info(f"Budget exceeded alert sent for user {user_id}, category {category}")
-                return {
+                goal_context = self._get_user_goal_context(user_id, overage)
+
+                try:
+                    self.notifier.notify_budget_exceeded(
+                        user_id=user_id,
+                        category=category,
+                        spent=spent,
+                        limit=limit,
+                        overage=overage,
+                        goal_context=goal_context,
+                    )
+                except TypeError:
+                    self.notifier.notify_budget_exceeded(
+                        user_id=user_id,
+                        category=category,
+                        spent=spent,
+                        limit=limit,
+                        overage=overage,
+                    )
+
+                if goal_context:
+                    logger.info(
+                        f"Budget exceeded alert sent for user {user_id}, category {category}. "
+                        f"Goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                else:
+                    logger.info(f"Budget exceeded alert sent for user {user_id}, category {category}")
+
+                result = {
                     "type": "exceeded",
                     "category": category,
                     "spent": spent,
                     "limit": limit,
-                    "percentage": percentage
+                    "percentage": percentage,
+                    "goal_context": goal_context,
                 }
+                if goal_context:
+                    result["goal_context_message"] = (
+                        f"Your goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                return result
 
             # Budget warning (80% threshold)
             elif percentage >= self.WARNING_THRESHOLD:
-                self.notifier.notify_budget_warning(
-                    user_id=user_id,
-                    category=category,
-                    spent=spent,
-                    limit=limit,
-                    percentage=percentage * 100
-                )
-                logger.info(f"Budget warning sent for user {user_id}, category {category}")
-                return {
+                overage = max(0.0, spent - limit)
+                goal_context = self._get_user_goal_context(user_id, overage)
+
+                try:
+                    self.notifier.notify_budget_warning(
+                        user_id=user_id,
+                        category=category,
+                        spent=spent,
+                        limit=limit,
+                        percentage=percentage * 100,
+                        goal_context=goal_context,
+                    )
+                except TypeError:
+                    self.notifier.notify_budget_warning(
+                        user_id=user_id,
+                        category=category,
+                        spent=spent,
+                        limit=limit,
+                        percentage=percentage * 100,
+                    )
+
+                if goal_context:
+                    logger.info(
+                        f"Budget warning sent for user {user_id}, category {category}. "
+                        f"Goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                else:
+                    logger.info(f"Budget warning sent for user {user_id}, category {category}")
+
+                result = {
                     "type": "warning",
                     "category": category,
                     "spent": spent,
                     "limit": limit,
-                    "percentage": percentage
+                    "percentage": percentage,
+                    "goal_context": goal_context,
                 }
+                if goal_context:
+                    result["goal_context_message"] = (
+                        f"Your goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                return result
 
         except Exception as e:
             logger.error(f"Error sending budget alert: {e}")

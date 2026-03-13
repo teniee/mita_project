@@ -12,12 +12,10 @@ def run_budget_redistribution_batch():
     db: Session = next(get_db())
 
     now = datetime.utcnow()
-    # Redistribute for the previous month at the start of a new one
+    # Redistribute for the current month — rebalance categories that already exceeded budget.
+    # Future days are handled by realtime_rebalancer when transactions are recorded.
     year = now.year
-    month = now.month - 1
-    if month == 0:
-        month = 12
-        year -= 1
+    month = now.month
 
     users = db.query(User).filter(User.is_active.is_(True)).all()
     for user in users:

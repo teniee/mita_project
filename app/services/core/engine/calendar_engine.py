@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import random
 from typing import Dict, List
 
@@ -118,18 +119,31 @@ def distribute_budget_over_days(
         else:
             num_cluster_days = 4  # Default fallback
 
+        # Build a deterministic RNG seeded on year+month+category so results
+        # are stable across re-runs but differ per calendar period and category
+        if days:
+            d = getattr(days[0], 'date', None)
+            year_val = d.year if d else 2025
+            month_val = d.month if d else 1
+        else:
+            year_val, month_val = 2025, 1
+
+        seed_str = f"{year_val}{month_val}{category}"
+        seed_int = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % (2 ** 31)
+        rng = random.Random(seed_int)
+
         candidate_days = [d for d in days if d.day_type == "weekend"]
         if len(candidate_days) < num_cluster_days:
             # Add weekdays if not enough weekend days
             remaining_needed = num_cluster_days - len(candidate_days)
             weekday_candidates = [d for d in days if d.day_type == "weekday"]
             if weekday_candidates:
-                candidate_days += random.sample(
+                candidate_days += rng.sample(
                     weekday_candidates,
                     min(remaining_needed, len(weekday_candidates))
                 )
 
-        selected_days = random.sample(candidate_days, min(num_cluster_days, len(candidate_days)))
+        selected_days = rng.sample(candidate_days, min(num_cluster_days, len(candidate_days)))
         chunk = round(total / len(selected_days), 2)
         for day in selected_days:
             day.planned_budget[category] = chunk

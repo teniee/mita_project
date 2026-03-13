@@ -115,7 +115,7 @@ async def create_transaction_standardized(
                 "Failed to create transaction",
                 ErrorCode.BUSINESS_INVALID_OPERATION
             )
-        
+
         # Calculate budget impact (if budget tracking is available)
         budget_impact = {
             "category": txn.category,
@@ -123,7 +123,32 @@ async def create_transaction_standardized(
             "remaining_budget": None,  # Calculate from user's budget if available
             "budget_exceeded": False
         }
-        
+
+        # Trigger real-time rebalancing if transaction created overspend
+        try:
+            from app.services.core.engine.realtime_rebalancer import check_and_rebalance
+            from datetime import date as _date
+            txn_date = getattr(txn, 'spent_at', None)
+            if txn_date is None:
+                txn_date = _date.today()
+            elif hasattr(txn_date, 'date'):
+                txn_date = txn_date.date()
+
+            rebalance_plan = await db.run_sync(
+                lambda sync_db: check_and_rebalance(
+                    db=sync_db,
+                    user_id=user.id,
+                    category=txn.category,
+                    transaction_date=txn_date,
+                )
+            )
+            if rebalance_plan:
+                budget_impact["rebalanced"] = True
+                budget_impact["rebalance_covered"] = float(rebalance_plan.covered)
+                budget_impact["rebalance_fully_covered"] = rebalance_plan.fully_covered
+        except Exception as _reb_exc:
+            logger.warning(f"Rebalance check failed (non-fatal): {_reb_exc}")
+
         return FinancialResponseHelper.transaction_created(
             transaction_data=result,
             balance_impact=budget_impact

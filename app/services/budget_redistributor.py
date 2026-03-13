@@ -1,10 +1,13 @@
 from collections import defaultdict
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan
+from app.core.category_priority import is_sacred, donor_sort_key
+from app.services.redistribution_audit_log import record_redistribution_event
 
 
 def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: int):
@@ -38,8 +41,23 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
     for cat, deficit in deficit_by_cat.items():
         transferred_total = 0.0
         remaining_deficit = deficit
-        for donor_cat, available in surplus_by_cat.items():
-            if donor_cat == cat or available <= 0 or remaining_deficit <= 0:
+
+        # Sort donors: DISCRETIONARY (3) first, skip SACRED (0)
+        sorted_donors = sorted(
+            [
+                (d_cat, d_avail)
+                for d_cat, d_avail in surplus_by_cat.items()
+                if d_cat != cat
+                and d_avail > 0
+                and not is_sacred(d_cat)
+            ],
+            key=lambda x: donor_sort_key(x[0]),
+            reverse=True,
+        )
+
+        for donor_cat, _ in sorted_donors:
+            available = surplus_by_cat[donor_cat]
+            if available <= 0 or remaining_deficit <= 0:
                 continue
 
             transfer = min(available, remaining_deficit)
@@ -63,6 +81,14 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                             "amount": round(to_take, 2),
                             "from_day": donor_entry.date.isoformat(),
                         }
+                    )
+                    record_redistribution_event(
+                        user_id=user_id,
+                        from_category=donor_cat,
+                        to_category=cat,
+                        amount=Decimal(str(round(to_take, 2))),
+                        reason="budget_redistribution",
+                        from_day=donor_entry.date.isoformat(),
                     )
                 if transfer <= 0:
                     break

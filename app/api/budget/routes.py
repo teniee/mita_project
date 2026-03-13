@@ -1,7 +1,10 @@
 import inspect
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Body
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +28,8 @@ from app.services.core.behavior.behavioral_budget_allocator import (
 from app.services.core.engine.budget_auto_adapter import adapt_category_weights
 from app.services.core.engine.budget_suggestion_engine import suggest_budget_adjustments
 from app.services.core.engine.budget_mode_selector import resolve_budget_mode
+from app.services.core.engine.budget_logic import generate_budget_from_answers
+from app.services.core.income_classification_service import IncomeClassificationService
 
 
 router = APIRouter(prefix="/budget", tags=["budget"])
@@ -378,26 +383,56 @@ async def get_monthly_budget(
     """Generate monthly budget based on user income and preferences"""
     year = data.get("year", datetime.utcnow().year)
     month = data.get("month", datetime.utcnow().month)
-    data.get("userAnswers", {})
+    user_answers = data.get("userAnswers", {})
 
-    # Generate budget using budget engine
+    # Generate budget using the real engine, not hardcoded percentages
     monthly_income = user.monthly_income or data.get("monthly_income", 0)
 
-    budget_data = {
-        "month": f"{year}-{month:02d}",
-        "total_income": float(monthly_income),
-        "total_budget": float(monthly_income),
-        "allocated": float(monthly_income * 0.8),  # 80% allocated by default
-        "saved": float(monthly_income * 0.20),  # 20% savings
-        "categories": {
-            "food": float(monthly_income * 0.30),
-            "transportation": float(monthly_income * 0.15),
-            "utilities": float(monthly_income * 0.10),
-            "entertainment": float(monthly_income * 0.10),
-            "healthcare": float(monthly_income * 0.05),
-            "other": float(monthly_income * 0.10)
+    try:
+        if user_answers and user_answers.get("monthly_income"):
+            # Full engine path: answers contain income + goals + spending habits
+            result = generate_budget_from_answers(user_answers)
+            budget_data = {
+                "month": f"{year}-{month:02d}",
+                "total_income": float(result.get("total_income", monthly_income)),
+                "total_budget": float(result.get("total_income", monthly_income)),
+                "allocated": float(result.get("total_income", monthly_income)),
+                "saved": float(result.get("savings_goal", 0)),
+                "income_tier": result.get("income_tier", ""),
+                "categories": {
+                    cat: round(float(amt), 2)
+                    for cat, amt in result.get("discretionary_breakdown", {}).items()
+                },
+            }
+        else:
+            # Fallback: classify income tier and use tier-specific weights
+            svc = IncomeClassificationService()
+            tier = svc.classify_income(float(monthly_income), region="US")
+            weights = svc.get_budget_weights(tier, region="US")
+            savings_weight = weights.get("savings", 0.10)
+            budget_data = {
+                "month": f"{year}-{month:02d}",
+                "total_income": float(monthly_income),
+                "total_budget": float(monthly_income),
+                "allocated": float(monthly_income),
+                "saved": round(float(monthly_income) * savings_weight, 2),
+                "income_tier": tier.value if hasattr(tier, "value") else str(tier),
+                "categories": {
+                    cat: round(float(monthly_income) * w, 2)
+                    for cat, w in weights.items()
+                },
+            }
+    except Exception as exc:
+        logger.error("budget monthly engine error: %s", exc)
+        budget_data = {
+            "month": f"{year}-{month:02d}",
+            "total_income": float(monthly_income),
+            "total_budget": float(monthly_income),
+            "allocated": float(monthly_income),
+            "saved": round(float(monthly_income) * 0.10, 2),
+            "income_tier": "unknown",
+            "categories": {},
         }
-    }
 
     return success_response(budget_data)
 

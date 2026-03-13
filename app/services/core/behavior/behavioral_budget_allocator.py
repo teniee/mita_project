@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.services.core.dynamic_threshold_service import (
-    get_dynamic_thresholds, ThresholdType, UserContext
+    DynamicThresholdService, get_dynamic_thresholds, ThresholdType, UserContext
 )
 
 
@@ -99,15 +99,15 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
     # Get user for context
     user = db.query(User).filter(User.id == user_id).first()
 
-    # Create user context
-    UserContext(
+    # Create user context and assign it
+    user_context = UserContext(
         monthly_income=user.monthly_income if user else total_budget,
         age=user.age if user and hasattr(user, 'age') else 35,
         region=user.country if user and hasattr(user, 'country') else "US",
         family_size=1
     )
 
-    # Define default category distribution (percentages)
+    # Define default category distribution (percentages) as fallback
     default_distribution = {
         "food": 0.30,
         "transportation": 0.15,
@@ -118,15 +118,31 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
         "savings": 0.20
     }
 
-    # Allocate budget to categories
-    categories = {}
-    for category, percentage in default_distribution.items():
-        categories[category] = round(total_budget * percentage, 2)
+    # Try to get dynamic weights from DynamicThresholdService
+    user_context_applied = False
+    try:
+        svc = DynamicThresholdService()
+        thresholds = svc.get_budget_allocation_thresholds(user_context)
+        if thresholds and isinstance(thresholds, dict) and len(thresholds) > 0:
+            categories = {
+                cat: round(float(total_budget) * float(weight), 2)
+                for cat, weight in thresholds.items()
+            }
+            user_context_applied = True
+        else:
+            raise ValueError("empty thresholds")
+    except Exception:
+        # Fallback to hardcoded defaults
+        categories = {
+            cat: round(total_budget * pct, 2)
+            for cat, pct in default_distribution.items()
+        }
+        user_context_applied = False
 
     return {
         "categories": categories,
         "total_allocated": sum(categories.values()),
         "method": "behavioral_allocation",
         "confidence": 0.8,
-        "user_context_applied": True
+        "user_context_applied": user_context_applied
     }
