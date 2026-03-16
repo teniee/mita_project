@@ -1428,39 +1428,62 @@
     const dow = new Date(YEAR, MONTH, d).getDay();
     (dow === 0 || dow === 6 ? WKENDS : WKDAYS).push(d);
   }
-  const DINING_DAYS = WKENDS.slice(0, Math.min(8, WKENDS.length));
-  const FUN_DAYS    = WKENDS;
-  const SHOP_DAYS   = WKENDS.filter((_, i) => i % 2 === 0).slice(0, 4);
 
   // ── Income tier classifier ──────────────────────────────────
-  // Weights applied to discretionary income (after fixed + savings).
-  // Each tier's weights sum to 1.0 — 100% allocation, zero leaks.
-  // food → groceries + coffee + dining
-  // trans → transport (100%)
-  // ent → fun (100%)
-  // misc → subs + shopping (leftover from subs cap → shopping)
-  // hth → health (100%)
   const TIERS = [
-    { id:'low',    label:'Starter',     icon:'\uD83C\uDF31', maxM:3000,    w:{food:.32, trans:.20, ent:.08, misc:.20, hth:.20} },
-    { id:'lo_mid', label:'Growing',     icon:'\uD83D\uDCC8', maxM:4800,    w:{food:.28, trans:.18, ent:.10, misc:.24, hth:.20} },
-    { id:'mid',    label:'Established', icon:'\uD83D\uDCBC', maxM:7200,    w:{food:.25, trans:.16, ent:.12, misc:.27, hth:.20} },
-    { id:'up_mid', label:'Flourishing', icon:'\uD83C\uDFC6', maxM:12000,   w:{food:.22, trans:.14, ent:.14, misc:.30, hth:.20} },
-    { id:'high',   label:'Thriving',    icon:'\uD83D\uDE80', maxM:Infinity, w:{food:.18, trans:.12, ent:.16, misc:.35, hth:.19} },
+    { id:'low',    label:'Starter',     icon:'\uD83C\uDF31', maxM:3000     },
+    { id:'lo_mid', label:'Growing',     icon:'\uD83D\uDCC8', maxM:4800     },
+    { id:'mid',    label:'Established', icon:'\uD83D\uDCBC', maxM:7200     },
+    { id:'up_mid', label:'Flourishing', icon:'\uD83C\uDFC6', maxM:12000    },
+    { id:'high',   label:'Thriving',    icon:'\uD83D\uDE80', maxM:Infinity },
   ];
   const classifyTier = m => TIERS.find(t => m <= t.maxM) || TIERS[4];
 
   // ── Category meta ──────────────────────────────────────────
+  // behavior: FIXED (once/month on dayFixed) | SPREAD (freq random weekdays) | CLUSTERED (freq days, prefer weekends)
   const CAT_META = [
-    { id:'rent',      name:'Rent/Bills',  emoji:'\uD83C\uDFE0', behavior:'FIXED'     },
-    { id:'health',    name:'Health',      emoji:'\uD83D\uDC8A', behavior:'FIXED'     },
-    { id:'subs',      name:'Subs',        emoji:'\uD83D\uDCF1', behavior:'FIXED'     },
-    { id:'groceries', name:'Groceries',   emoji:'\uD83D\uDED2', behavior:'SPREAD'    },
-    { id:'coffee',    name:'Coffee',      emoji:'\u2615',        behavior:'SPREAD'    },
-    { id:'transport', name:'Transport',   emoji:'\uD83D\uDE97', behavior:'SPREAD'    },
-    { id:'dining',    name:'Dining Out',  emoji:'\uD83C\uDF7D\uFE0F', behavior:'CLUSTERED' },
-    { id:'fun',       name:'Fun',         emoji:'\uD83C\uDFAE', behavior:'CLUSTERED' },
-    { id:'shopping',  name:'Shopping',    emoji:'\uD83D\uDECD\uFE0F', behavior:'CLUSTERED' },
+    { id:'rent',          name:'\u0416\u0438\u043b\u044c\u0451 / \u0430\u0440\u0435\u043d\u0434\u0430',     emoji:'\uD83C\uDFE0', behavior:'FIXED',     dayFixed:1  },
+    { id:'utilities',     name:'\u041a\u043e\u043c\u043c\u0443\u043d\u0430\u043b\u043a\u0430',              emoji:'\uD83D\uDCA1', behavior:'FIXED',     dayFixed:5  },
+    { id:'phone',         name:'\u0421\u0432\u044f\u0437\u044c / \u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442', emoji:'\uD83D\uDCE1', behavior:'FIXED',     dayFixed:5  },
+    { id:'subs',          name:'\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0438',                          emoji:'\uD83D\uDCF1', behavior:'FIXED',     dayFixed:5  },
+    { id:'insurance',     name:'\u0421\u0442\u0440\u0430\u0445\u043e\u0432\u043a\u0438',                    emoji:'\uD83D\uDEE1', behavior:'FIXED',     dayFixed:5  },
+    { id:'groceries',     name:'\u041f\u0440\u043e\u0434\u0443\u043a\u0442\u044b',                          emoji:'\uD83D\uDED2', behavior:'SPREAD',    freq:10 },
+    { id:'coffee',        name:'\u041a\u043e\u0444\u0435 / \u043f\u0435\u0440\u0435\u043a\u0443\u0441\u044b', emoji:'\u2615',       behavior:'SPREAD',    freq:16 },
+    { id:'transport',     name:'\u0422\u0440\u0430\u043d\u0441\u043f\u043e\u0440\u0442',                    emoji:'\uD83D\uDE87', behavior:'SPREAD',    freq:22 },
+    { id:'hygiene',       name:'\u0413\u0438\u0433\u0438\u0435\u043d\u0430',                                emoji:'\uD83E\uDDF4', behavior:'SPREAD',    freq:6  },
+    { id:'dining',        name:'\u0415\u0434\u0430 \u0432\u043d\u0435 \u0434\u043e\u043c\u0430',          emoji:'\uD83C\uDF7D', behavior:'CLUSTERED', freq:6  },
+    { id:'alcohol',       name:'\u0410\u043b\u043a\u043e\u0433\u043e\u043b\u044c',                          emoji:'\uD83C\uDF77', behavior:'CLUSTERED', freq:4  },
+    { id:'health',        name:'\u0417\u0434\u043e\u0440\u043e\u0432\u044c\u0435 / \u0430\u043f\u0442\u0435\u043a\u0430', emoji:'\uD83D\uDC8A', behavior:'CLUSTERED', freq:3  },
+    { id:'selfcare',      name:'\u0423\u0445\u043e\u0434 \u0437\u0430 \u0441\u043e\u0431\u043e\u0439',    emoji:'\uD83D\uDC87', behavior:'CLUSTERED', freq:2  },
+    { id:'clothing',      name:'\u041e\u0434\u0435\u0436\u0434\u0430 / \u043e\u0431\u0443\u0432\u044c',   emoji:'\uD83D\uDC55', behavior:'CLUSTERED', freq:2  },
+    { id:'homegds',       name:'\u0414\u043e\u043c / \u0431\u044b\u0442',                                     emoji:'\uD83C\uDFE1', behavior:'CLUSTERED', freq:3  },
+    { id:'car',           name:'\u0410\u0432\u0442\u043e',                                                      emoji:'\uD83D\uDE97', behavior:'CLUSTERED', freq:3  },
+    { id:'entertainment', name:'\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f',      emoji:'\uD83C\uDFAE', behavior:'CLUSTERED', freq:4  },
+    { id:'sports',        name:'\u0421\u043f\u043e\u0440\u0442 / \u0437\u0430\u043b',                        emoji:'\uD83C\uDFCB', behavior:'FIXED',     dayFixed:5  },
+    { id:'gifts',         name:'\u041f\u043e\u0434\u0430\u0440\u043a\u0438',                                  emoji:'\uD83C\uDF81', behavior:'CLUSTERED', freq:1  },
+    { id:'travel',        name:'\u041f\u0443\u0442\u0435\u0448\u0435\u0441\u0442\u0432\u0438\u044f',      emoji:'\u2708',        behavior:'CLUSTERED', freq:1  },
+    { id:'electronics',   name:'\u0422\u0435\u0445\u043d\u0438\u043a\u0430',                                  emoji:'\uD83D\uDCBB', behavior:'CLUSTERED', freq:1  },
+    { id:'other',         name:'\u041f\u0440\u043e\u0447\u0435\u0435',                                         emoji:'\uD83D\uDCE6', behavior:'CLUSTERED', freq:3  },
   ];
+
+  // ── Tier allocation — % of discretionary per variable category ─────────
+  const TIER_ALLOC = {
+    low:    { groceries:.20,coffee:.06,transport:.16,hygiene:.04,
+              dining:.08,alcohol:.02,health:.10,selfcare:.02,clothing:.05,
+              homegds:.04,car:.03,entertainment:.04,sports:.00,gifts:.01,travel:.01,electronics:.01,other:.05 },
+    lo_mid: { groceries:.17,coffee:.05,transport:.14,hygiene:.03,
+              dining:.10,alcohol:.02,health:.09,selfcare:.03,clothing:.06,
+              homegds:.04,car:.05,entertainment:.05,sports:.00,gifts:.02,travel:.02,electronics:.02,other:.04 },
+    mid:    { groceries:.15,coffee:.05,transport:.12,hygiene:.02,
+              dining:.10,alcohol:.03,health:.08,selfcare:.04,clothing:.05,
+              homegds:.03,car:.05,entertainment:.07,sports:.02,gifts:.02,travel:.03,electronics:.03,other:.03 },
+    up_mid: { groceries:.12,coffee:.04,transport:.10,hygiene:.02,
+              dining:.12,alcohol:.04,health:.07,selfcare:.05,clothing:.07,
+              homegds:.04,car:.05,entertainment:.09,sports:.03,gifts:.03,travel:.05,electronics:.04,other:.03 },
+    high:   { groceries:.10,coffee:.03,transport:.08,hygiene:.02,
+              dining:.14,alcohol:.05,health:.06,selfcare:.06,clothing:.08,
+              homegds:.05,car:.05,entertainment:.12,sports:.04,gifts:.04,travel:.08,electronics:.06,other:.02 },
+  };
 
   // ── Mutable state ─────────────────────────────────────────
   let view      = 'onboarding';
@@ -1474,40 +1497,7 @@
   const fmt2 = n => '$' + (n || 0).toFixed(2);
   const sum  = obj => Object.values(obj || {}).reduce((s,v)=>s+v, 0);
 
-  // ── Budget generator ──────────────────────────────────────
-  // All tier weights sum to 1.0 → totalBudget = income - savingsGoal
-  function computeBudget(income, fixed, savingsGoal) {
-    const tier = classifyTier(income);
-    const disc = income - fixed - savingsGoal;
-    if (disc <= 0) return null;
-    const w = tier.w;
-    const food  = disc * w.food;
-    const trans = disc * w.trans;
-    const ent   = disc * w.ent;
-    const misc  = disc * w.misc;
-    const hth   = disc * w.hth;
-    // Sub-splits: all sum to 1.0, subs cap leftover absorbed by shopping
-    const subsRaw  = misc * 0.20;
-    const subsAmt  = Math.min(55, subsRaw);
-    const subsLeft = subsRaw - subsAmt;
-    const amounts = {
-      rent:      fixed,
-      health:    hth,                        // 100% — was 60%
-      subs:      subsAmt,
-      groceries: food * 0.50,
-      coffee:    food * 0.12,
-      transport: trans,                      // 100% — was 72%, renamed from transit
-      dining:    food * 0.38,
-      fun:       ent,
-      shopping:  misc * 0.80 + subsLeft,
-    };
-    return {
-      tier, disc, income, fixed, savingsGoal, amounts,
-      totalBudget: Math.round(Object.values(amounts).reduce((s,v)=>s+v, 0)),
-    };
-  }
-
-  // ── Seeded RNG (mirrors Python hashlib.md5 seed approach) ──────
+  // ── Seeded RNG (mirrors Python hashlib.md5 seed approach) ─────────
   function seededRng(seed) {
     let s = seed >>> 0;
     return function() {
@@ -1522,44 +1512,78 @@
     return Math.abs(h);
   }
 
-  // ── Calendar plan builder (mirrors Python production engine) ──────────
+  // ── Budget generator ─────────────────────────────────────
+  function computeBudget(income, fixed, savingsGoal) {
+    const tier = classifyTier(income);
+    const disc = income - fixed - savingsGoal;
+    if (disc <= 0) return null;
+    const w = TIER_ALLOC[tier.id] || TIER_ALLOC.mid;
+    const amounts = {};
+    // Break fixed into realistic subcategories
+    amounts.rent      = fixed * 0.68;
+    amounts.utilities = fixed * 0.14;
+    amounts.phone     = fixed * 0.06;
+    amounts.subs      = fixed * 0.07;
+    amounts.insurance = fixed * 0.05;
+    // Variable categories from tier weights
+    CAT_META.forEach(c => {
+      if (c.behavior !== 'FIXED') {
+        const wt = w[c.id] || 0;
+        if (wt > 0) amounts[c.id] = disc * wt;
+      }
+    });
+    const totalBudget = Math.round(Object.values(amounts).reduce((s,v)=>s+v,0));
+    return { tier, disc, income, fixed, savingsGoal, amounts, totalBudget };
+  }
+
+  // ── Calendar plan builder ─────────────────────────────────
+  // Mirrors Python distribute_budget_over_days:
+  // FIXED → specific day | SPREAD → freq random weekdays | CLUSTERED → freq random weekends
   function buildPlan(amounts) {
     const p = {};
     for (let d = 1; d <= MONTH_DAYS; d++) p[d] = {};
 
-    // FIXED: single-day charges (matches Python: rent→day0, others→day4)
-    p[1].rent   = amounts.rent;
-    p[5].health = amounts.health;
-    p[5].subs   = amounts.subs;
+    CAT_META.forEach(c => {
+      const total = amounts[c.id];
+      if (!total || total <= 0) return;
 
-    // SPREAD: even distribution across weekdays — matches Python's distribute_budget_over_days
-    const perDay = {};
-    ['groceries', 'coffee', 'transport'].forEach(id => {
-      perDay[id] = amounts[id] / WKDAYS.length;
-    });
-    WKDAYS.forEach(d => {
-      ['groceries', 'coffee', 'transport'].forEach(id => {
-        p[d][id] = perDay[id];
-      });
-    });
+      if (c.behavior === 'FIXED') {
+        const day = Math.min(c.dayFixed, MONTH_DAYS);
+        p[day][c.id] = (p[day][c.id] || 0) + total;
 
-    // CLUSTERED: deterministic RNG on weekends — matches Python seeded random.sample
-    function clusterRng(catId, total, n) {
-      const pool = [...WKENDS];
-      const rng  = seededRng(catSeed(catId));
-      // Fisher-Yates shuffle (seeded)
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
+      } else if (c.behavior === 'SPREAD') {
+        // Seeded shuffle of weekdays, pick freq days, place per-occurrence amount
+        const pool = [...WKDAYS];
+        const rng  = seededRng(catSeed(c.id));
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        const n   = Math.min(c.freq, pool.length);
+        const per = total / n;
+        pool.slice(0, n).forEach(d => { p[d][c.id] = (p[d][c.id] || 0) + per; });
+
+      } else if (c.behavior === 'CLUSTERED') {
+        // Prefer weekends; fill with weekdays if needed
+        const rng = seededRng(catSeed(c.id));
+        let pool = [...WKENDS];
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        const n = Math.min(c.freq, MONTH_DAYS);
+        if (pool.length < n) {
+          const extras = [...WKDAYS];
+          for (let i = extras.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [extras[i], extras[j]] = [extras[j], extras[i]];
+          }
+          pool = pool.concat(extras.slice(0, n - pool.length));
+        }
+        const per = total / Math.min(n, pool.length);
+        pool.slice(0, n).forEach(d => { p[d][c.id] = (p[d][c.id] || 0) + per; });
       }
-      const selected = pool.slice(0, Math.min(n, pool.length));
-      const per = total / selected.length;
-      selected.forEach(d => { p[d][catId] = (p[d][catId] || 0) + per; });
-    }
-
-    clusterRng('dining',   amounts.dining,   Math.min(8, WKENDS.length));
-    clusterRng('fun',      amounts.fun,      WKENDS.length);
-    clusterRng('shopping', amounts.shopping, Math.min(4, WKENDS.length));
+    });
 
     return p;
   }
@@ -1569,8 +1593,8 @@
     if (!PLAN) return 'plan-n';
     const amt = sum(PLAN[d]);
     if (amt === 0)            return 'plan-n';
-    if (amt > avgDaily * 2.5) return 'plan-h';
-    if (amt > avgDaily * 0.3) return 'plan-m';
+    if (amt > avgDaily * 3.0) return 'plan-h';
+    if (amt > avgDaily * 0.5) return 'plan-m';
     return 'plan-l';
   }
 
