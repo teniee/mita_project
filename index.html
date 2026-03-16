@@ -1697,7 +1697,9 @@
       const lv  = dayLevel(d);
       const sel = d === selDay && view === 'detail' ? ' sel' : '';
       const dayAmt = PLAN ? sum(PLAN[d]) : 0;
-      const amtStr = dayAmt >= 1000 ? '
+      const amtStr = dayAmt >= 1000 ? '$' + (dayAmt/1000).toFixed(1) + 'k' : dayAmt > 0 ? '$' + Math.round(dayAmt) : '';
+      const inner  = amtStr ? '<span class="d-a">' + amtStr + '</span>' : '';
+      cells += '<div class="d ph-d ' + lv + sel + '" onclick="window.mitaDay(' + d + ')"><span class="d-n">' + d + '</span>' + inner + '</div>';
     }
     $('phCal').innerHTML = `
       <div class="cal ph-screen">
