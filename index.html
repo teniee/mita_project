@@ -1507,45 +1507,59 @@
     };
   }
 
-  // ── DOW-based spread weight (natural daily variation) ──────
-  // Tue lightest → Mon light → Wed mid → Thu moderate → Fri heaviest
-  const DOW_W = {1:0.85, 2:0.80, 3:0.90, 4:1.05, 5:1.40};
-  function spreadW(d) {
-    return DOW_W[new Date(YEAR, MONTH, d).getDay()] || 1.0;
+  // ── Seeded RNG (mirrors Python hashlib.md5 seed approach) ──────
+  function seededRng(seed) {
+    let s = seed >>> 0;
+    return function() {
+      s = Math.imul(s ^ s >>> 15, 1 | s);
+      s ^= s + Math.imul(s ^ s >>> 7, 61 | s);
+      return ((s ^ s >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function catSeed(cat) {
+    let h = YEAR * 397 + (MONTH + 1) * 31;
+    for (let i = 0; i < cat.length; i++) h = (Math.imul(31, h) + cat.charCodeAt(i)) | 0;
+    return Math.abs(h);
   }
 
-  // ── Calendar plan builder ─────────────────────────────────
+  // ── Calendar plan builder (mirrors Python production engine) ──────────
   function buildPlan(amounts) {
     const p = {};
     for (let d = 1; d <= MONTH_DAYS; d++) p[d] = {};
 
-    // FIXED: single-day charges
+    // FIXED: single-day charges (matches Python: rent→day0, others→day4)
     p[1].rent   = amounts.rent;
     p[5].health = amounts.health;
     p[5].subs   = amounts.subs;
 
-    // SPREAD with DOW variation — exact totals preserved
-    const totalSpreadW = WKDAYS.reduce((s, d) => s + spreadW(d), 0);
+    // SPREAD: even distribution across weekdays — matches Python's distribute_budget_over_days
+    const perDay = {};
     ['groceries', 'coffee', 'transport'].forEach(id => {
-      WKDAYS.forEach(d => {
-        p[d][id] = amounts[id] * spreadW(d) / totalSpreadW;
+      perDay[id] = amounts[id] / WKDAYS.length;
+    });
+    WKDAYS.forEach(d => {
+      ['groceries', 'coffee', 'transport'].forEach(id => {
+        p[d][id] = perDay[id];
       });
     });
 
-    // CLUSTERED with natural variation — some weekends heavier than others
-    const DINING_PAT = [1.4, 0.7, 1.2, 0.8, 1.3, 0.9, 1.1, 0.7];
-    const FUN_PAT    = [1.1, 0.8, 1.4, 0.7, 1.2, 0.8, 1.3, 0.9, 1.0];
-    const SHOP_PAT   = [1.5, 0.7, 1.2, 0.8];
-
-    function cluster(days, catId, total, pat) {
-      const w  = days.map((_, i) => pat[i % pat.length]);
-      const wt = w.reduce((s, x) => s + x, 0);
-      days.forEach((d, i) => { p[d][catId] = (p[d][catId] || 0) + total * w[i] / wt; });
+    // CLUSTERED: deterministic RNG on weekends — matches Python seeded random.sample
+    function clusterRng(catId, total, n) {
+      const pool = [...WKENDS];
+      const rng  = seededRng(catSeed(catId));
+      // Fisher-Yates shuffle (seeded)
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const selected = pool.slice(0, Math.min(n, pool.length));
+      const per = total / selected.length;
+      selected.forEach(d => { p[d][catId] = (p[d][catId] || 0) + per; });
     }
 
-    cluster(DINING_DAYS, 'dining',   amounts.dining,   DINING_PAT);
-    cluster(FUN_DAYS,    'fun',      amounts.fun,      FUN_PAT);
-    cluster(SHOP_DAYS,   'shopping', amounts.shopping, SHOP_PAT);
+    clusterRng('dining',   amounts.dining,   Math.min(8, WKENDS.length));
+    clusterRng('fun',      amounts.fun,      WKENDS.length);
+    clusterRng('shopping', amounts.shopping, Math.min(4, WKENDS.length));
 
     return p;
   }
@@ -1730,7 +1744,7 @@
     budgetCtx = computeBudget(income, fixed, sav);
     if (!budgetCtx) { if (err) err.style.display=''; return; }
     PLAN     = buildPlan(budgetCtx.amounts);
-    avgDaily = budgetCtx.totalBudget / MONTH_DAYS;
+    avgDaily = budgetCtx.disc / MONTH_DAYS;
     renderCal();
   };
 
@@ -1741,7 +1755,7 @@
   // ── Init ──────────────────────────────────────────────────
   budgetCtx = computeBudget(5000, 1500, 500);
   PLAN      = buildPlan(budgetCtx.amounts);
-  avgDaily  = budgetCtx.totalBudget / MONTH_DAYS;
+  avgDaily  = budgetCtx.disc / MONTH_DAYS;
   renderOnboard();
 
 })();
