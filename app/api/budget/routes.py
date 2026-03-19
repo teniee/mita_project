@@ -1,5 +1,6 @@
 import inspect
 import logging
+from calendar import monthrange
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any
@@ -16,7 +17,14 @@ from app.core.async_session import get_async_db
 # assumes User is defined in models
 from app.db.models.user import User
 from app.db.models.daily_plan import DailyPlan
+from app.db.models.goal import Goal
 from app.utils.response_wrapper import success_response
+
+from app.services.core.engine.budget_forecast_engine import (
+    DailyPlanData,
+    GoalData,
+    compute_forecast,
+)
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
 from app.api.budget.services import fetch_spent_by_category  # isort:skip
@@ -242,64 +250,144 @@ async def set_budget_mode(
 
 @router.get("/redistribution_history")
 async def get_redistribution_history(
+    limit: int = 50,
     user: User = Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
-    """Get budget redistribution history from DailyPlan changes"""
-    from app.db.models import DailyPlan
-    from datetime import datetime, timedelta
+    """
+    Return real redistribution history from the redistribution_events table.
 
-    # Get last 30 days of daily plans
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    Each entry shows exactly which category donated to which, when, and why.
+    Persisted to PostgreSQL — survives server restarts.
+    """
+    from app.db.models.redistribution_event import RedistributionEvent
+
+    limit = max(1, min(limit, 200))  # clamp: 1–200
+
     result = await db.execute(
-        select(DailyPlan).where(
-            DailyPlan.user_id == user.id,
-            DailyPlan.date >= thirty_days_ago
-        ).order_by(DailyPlan.date.desc())
+        select(RedistributionEvent)
+        .where(RedistributionEvent.user_id == user.id)
+        .order_by(RedistributionEvent.created_at.desc())
+        .limit(limit)
     )
-    daily_plans = result.scalars().all()
+    events = result.scalars().all()
 
-    # Track redistributions by analyzing plan_json changes
-    history_data = []
-    previous_plan = None
+    history_data = [
+        {
+            "id": str(e.id),
+            "from_category": e.from_category,
+            "to_category": e.to_category,
+            "amount": float(e.amount),
+            "reason": e.reason,
+            "from_day": e.from_day.isoformat() if e.from_day else None,
+            "created_at": e.created_at.isoformat(),
+        }
+        for e in events
+    ]
 
-    for plan in reversed(daily_plans):  # Process chronologically
-        if previous_plan and plan.plan_json:
-            # Check if budget allocations changed
-            prev_budget = previous_plan.plan_json.get("category_budgets", {})
-            curr_budget = plan.plan_json.get("category_budgets", {})
+    return success_response({
+        "count": len(history_data),
+        "events": history_data,
+    })
 
-            # Find categories where budget changed
-            for category, curr_amount in curr_budget.items():
-                prev_amount = prev_budget.get(category, 0)
-                if prev_amount != curr_amount and prev_amount > 0:
-                    diff = curr_amount - prev_amount
-                    if abs(diff) > 1.0:  # Only track significant changes
-                        history_data.append({
-                            "id": len(history_data) + 1,
-                            "from": category if diff < 0 else "unallocated",
-                            "to": category if diff > 0 else "unallocated",
-                            "amount": abs(diff),
-                            "date": plan.date.isoformat(),
-                            "reason": "manual_adjustment" if abs(diff) > 10 else "automatic_redistribution"
-                        })
 
-        previous_plan = plan
+@router.get("/forecast")
+async def get_budget_forecast(
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
+):
+    """
+    Forward projection: where does the user land at month-end at current pace?
 
-    # Limit to most recent 20 redistributions
-    history_data = history_data[-20:] if len(history_data) > 20 else history_data
+    Returns:
+    - current_daily_pace: avg spend per day since month start
+    - safe_daily_limit: max spend per remaining day to finish at zero
+    - projected_month_end_balance: positive = surplus, negative = overshoot
+    - status: "on_track" | "warning" | "danger" | "no_data"
+    - categories_at_risk: categories burning > 120% of planned daily rate
+    - all_categories: full per-category breakdown
+    - goals: projection for each active savings goal
+    """
+    now = datetime.utcnow()
+    target_year = year or now.year
+    target_month = month or now.month
 
-    if not history_data:
-        history_data = [{
-            "id": 1,
-            "from": "none",
-            "to": "none",
-            "amount": 0,
-            "date": datetime.utcnow().isoformat(),
-            "reason": "no_redistributions_yet"
-        }]
+    # Validate year/month ranges
+    if not (1 <= target_month <= 12):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="month must be between 1 and 12")
+    if not (2020 <= target_year <= 2030):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="year must be between 2020 and 2030")
 
-    return success_response(history_data)
+    days_in_month = monthrange(target_year, target_month)[1]
+    month_start_dt = datetime(target_year, target_month, 1, 0, 0, 0)
+    month_end_dt = datetime(target_year, target_month, days_in_month, 23, 59, 59)
+
+    # ── Fetch DailyPlan rows for the month ───────────────────────────────────
+    result = await db.execute(
+        select(DailyPlan)
+        .where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= month_start_dt,
+            DailyPlan.date <= month_end_dt,
+        )
+    )
+    plans = result.scalars().all()
+
+    # ── Fetch active goals ───────────────────────────────────────────────────
+    result = await db.execute(
+        select(Goal)
+        .where(
+            Goal.user_id == user.id,
+            Goal.status == "active",
+            Goal.deleted_at.is_(None),
+        )
+    )
+    goals = result.scalars().all()
+
+    # ── Build engine inputs (convert ORM objects to plain data classes) ──────
+    plan_data = [
+        DailyPlanData(
+            date=(
+                p.date.date()
+                if isinstance(p.date, datetime)
+                else p.date
+            ),
+            category=p.category or "other",
+            planned_amount=Decimal(str(p.planned_amount or 0)),
+            spent_amount=Decimal(str(p.spent_amount or 0)),
+        )
+        for p in plans
+    ]
+
+    goal_data = [
+        GoalData(
+            goal_id=str(g.id),
+            title=g.title,
+            target_amount=Decimal(str(g.target_amount)),
+            saved_amount=Decimal(str(g.saved_amount or 0)),
+            monthly_contribution=(
+                Decimal(str(g.monthly_contribution))
+                if g.monthly_contribution is not None
+                else None
+            ),
+            target_date=g.target_date,
+        )
+        for g in goals
+    ]
+
+    # ── Run pure computation ──────────────────────────────────────────────────
+    forecast = compute_forecast(
+        daily_plans=plan_data,
+        goals=goal_data,
+        year=target_year,
+        month=target_month,
+    )
+
+    return success_response(forecast.to_dict())
 
 
 @router.get("/daily")

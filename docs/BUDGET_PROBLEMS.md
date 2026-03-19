@@ -167,56 +167,82 @@ day_start, day_end = day_to_range(day)
 
 ---
 
-### ПРОБЛЕМА 3 — Нет forward projection (приложение не думает вперёд) ⚠️ ОТКРЫТА
+### ПРОБЛЕМА 3 — Нет forward projection (приложение не думает вперёд) ✅ ИСПРАВЛЕНО
 
-**Файлы:** нет — функциональность отсутствует полностью
+**Файлы:** `app/services/core/engine/budget_forecast_engine.py`, `app/api/budget/routes.py`
 
-**Проблема:**
-Пользователь не видит ничего о том, что будет к концу месяца при текущем темпе трат. Нет ни одного эндпоинта который считает:
-- "При текущем темпе ты потратишь весь бюджет на еду к 18-му числу"
-- "В конце месяца у тебя останется X рублей / ты уйдёшь в минус на Y"
-- "Безопасный дневной лимит с сегодня: $64/день"
-- "Цель на отпуск: ты отстаёшь на $120, нужно урезать развлечения"
+**Что было:**
+Пользователь не видел ничего о том, что будет к концу месяца при текущем темпе трат.
 
-**Что нужно сделать:**
-Новый эндпоинт `GET /budget/forecast`:
+**Что сделано:**
+- Создан чистый движок `budget_forecast_engine.py` — pure computation, никакого DB доступа внутри
+- `DailyPlanData`, `GoalData` — входные dataclass'ы (route предварительно тянет данные из БД)
+- `ForecastResult`, `CategoryForecast`, `GoalForecast` — выходные dataclass'ы с `to_dict()`
+- `compute_forecast()` — публичный API движка
+- Добавлен `GET /budget/forecast` в `app/api/budget/routes.py`
+- Все расчёты через `Decimal`, float только в `to_dict()` при отдаче JSON
 
+**Эндпоинт `GET /budget/forecast`:**
 ```json
 {
-  "days_elapsed": 10,
-  "days_remaining": 21,
-  "current_daily_pace": 87.50,
-  "safe_daily_limit": 64.20,
-  "projected_month_end_balance": -278.00,
+  "year": 2026, "month": 3,
+  "days_in_month": 31, "days_elapsed": 10, "days_remaining": 21,
+  "total_planned": 3100.00, "total_spent": 1500.00,
+  "remaining_budget": 1600.00,
+  "current_daily_pace": 150.00,
+  "safe_daily_limit": 76.19,
+  "projected_month_end_spend": 4650.00,
+  "projected_month_end_balance": -1550.00,
   "status": "danger",
   "categories_at_risk": [
     {
       "category": "dining_out",
-      "pace": 12.50,
-      "budget_per_day": 8.30,
+      "monthly_planned": 930.00,
+      "monthly_spent": 600.00,
+      "pace": 60.00,
+      "budget_per_day": 30.00,
+      "overspend_ratio": 2.0,
       "days_until_exhausted": 6
     }
   ],
-  "goal_forecast": {
-    "target": 500.00,
-    "on_track": false,
-    "projected_saved": 320.00,
-    "shortfall": 180.00
-  }
+  "all_categories": [...],
+  "goals": [
+    {
+      "goal_id": "...", "title": "Vacation",
+      "target": 500.00, "saved": 50.00, "remaining": 450.00,
+      "target_date": "2026-06-01",
+      "months_remaining": 2.53,
+      "required_monthly_contribution": 177.87,
+      "projected_saved": 176.50,
+      "on_track": false,
+      "shortfall": 323.50
+    }
+  ]
 }
 ```
 
-**Формулы:**
-```python
-days_remaining = days_in_month - today.day
-total_spent = sum(daily_plan.spent_amount for month)
-monthly_budget = sum(daily_plan.planned_amount for month)
-remaining_budget = monthly_budget - total_spent
-safe_daily_limit = remaining_budget / days_remaining
-current_pace = total_spent / today.day
-projected_end = total_spent + (current_pace * days_remaining)
-projected_balance = monthly_budget - projected_end
-```
+**Статусы:**
+- `"on_track"` → projected_balance >= 0
+- `"warning"` → projected overspend < 10% от total_planned
+- `"danger"` → projected overspend >= 10% от total_planned
+- `"no_data"` → нет DailyPlan строк или days_elapsed == 0
+
+**Категории at_risk:** темп трат > 120% от планового дневного лимита
+**Цели:** проекция через `monthly_contribution * months_remaining` (30.44 дней/мес)
+
+**Тесты:**
+- `tests/test_budget_forecast_engine.py` — 35 unit тестов (pure engine, без DB)
+- Все 35 проходят ✅
+
+**Тест-классы:**
+- `TestNoData` — пустые планы, будущий месяц, первый день, прошлый месяц, to_dict()
+- `TestStatusThresholds` — on_track / warning / danger пороги
+- `TestGlobalMetrics` — safe_daily_limit, pace, projected_balance формулы
+- `TestCategoryForecasts` — at_risk пороги, сортировка, агрегация по категории
+- `TestDaysUntilExhausted` — normal, zero-pace, already-exhausted
+- `TestGoalForecasts` — on_track, not_on_track, no deadline, overdue, fully funded
+- `TestDecimalPrecision` — Decimal внутри, float в to_dict(), 2 знака
+- `TestFullScenario` — реалистичные сценарии (danger + goals, all green)
 
 ---
 
@@ -281,7 +307,7 @@ projected_balance = monthly_budget - projected_end
 |---|----------|-------------|--------|
 | 1 | Авто-перераспределение не вызывалось + 2 бага в алгоритме | 🔴 Критично | ✅ **ИСПРАВЛЕНО** |
 | 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ⚠️ Открыта |
+| 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ⚠️ Открыта |
 | 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ⚠️ Открыта |
 | 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ⚠️ Открыта |
@@ -337,6 +363,28 @@ projected_balance = monthly_budget - projected_end
 ---
 
 **Итого тестов сейчас:** 45 passing ✅
+
+---
+
+### Problem 3 — `app/services/core/engine/budget_forecast_engine.py` ← новый файл
+- Pure computation engine, zero DB access
+- `DailyPlanData`, `GoalData` — frozen dataclass'ы для входных данных
+- `CategoryForecast`, `GoalForecast`, `ForecastResult` — выходные dataclass'ы с `to_dict()`
+- `compute_forecast()` — публичный API, принимает pre-fetched данные от роута
+- Все расчёты в Decimal, ROUND_HALF_UP, 2 знака везде
+
+### `app/api/budget/routes.py`
+- Добавлен `GET /budget/forecast` эндпоинт
+- Async SQLAlchemy запросы: DailyPlan за месяц + активные Goals
+- Конвертация ORM объектов → DailyPlanData / GoalData перед вызовом движка
+- Валидация year/month (2020–2030, 1–12) с HTTP 422
+
+### `tests/test_budget_forecast_engine.py` ← новый файл
+- 35 unit тестов, все без DB (движок чистый)
+- 8 групп: NoData, Status, GlobalMetrics, CategoryForecasts, DaysUntilExhausted,
+  GoalForecasts, DecimalPrecision, FullScenario
+
+**Итого тестов после Problem 3:** 80 passing ✅ (45 предыдущих + 35 новых)
 
 ---
 
