@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.date_utils import day_to_range
 from app.db.models import DailyPlan, Transaction
 
 
@@ -25,9 +26,15 @@ def record_expense(
     db.add(txn)
 
     # 2. Update the daily calendar plan
+    day_start, day_end = day_to_range(day)
     plan = (
         db.query(DailyPlan)
-        .filter_by(user_id=user_id, date=day, category=category)
+        .filter(
+            DailyPlan.user_id == user_id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
+            DailyPlan.category == category,
+        )
         .first()
     )
     if plan:

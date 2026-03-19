@@ -5,6 +5,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from app.core.date_utils import day_to_range
 from app.db.models import DailyPlan, Transaction
 from app.services.core.engine.calendar_updater import update_day_status
 from app.services.core.engine.realtime_rebalancer import check_and_rebalance
@@ -16,9 +17,15 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
     """Apply an already saved transaction to the DailyPlan table."""
     txn_day = txn.spent_at.date()
 
+    day_start, day_end = day_to_range(txn_day)
     plan = (
         db.query(DailyPlan)
-        .filter_by(user_id=txn.user_id, date=txn_day, category=txn.category)
+        .filter(
+            DailyPlan.user_id == txn.user_id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
+            DailyPlan.category == txn.category,
+        )
         .first()
     )
     if plan:
@@ -91,9 +98,15 @@ def record_expense(
     )
     db.add(txn)
 
+    _day_start, _day_end = day_to_range(day)
     plan = (
         db.query(DailyPlan)
-        .filter_by(user_id=user_id, date=day, category=category)
+        .filter(
+            DailyPlan.user_id == user_id,
+            DailyPlan.date >= _day_start,
+            DailyPlan.date <= _day_end,
+            DailyPlan.category == category,
+        )
         .first()
     )
     if plan:

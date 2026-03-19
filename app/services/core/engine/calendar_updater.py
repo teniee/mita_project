@@ -4,11 +4,21 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.date_utils import day_to_range
 from app.db.models import DailyPlan
 
 
 def update_day_status(db: Session, user_id: UUID, day: date):
-    days = db.query(DailyPlan).filter_by(user_id=user_id, date=day).all()
+    day_start, day_end = day_to_range(day)
+    days = (
+        db.query(DailyPlan)
+        .filter(
+            DailyPlan.user_id == user_id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
+        )
+        .all()
+    )
     if not days:
         return {"status": "no_plan", "date": day.isoformat()}
 

@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.date_utils import day_to_range
 from app.db.models import DailyPlan
 
 logger = logging.getLogger(__name__)
@@ -100,9 +101,15 @@ def fetch_calendar(
 
 def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, Any]):
     for category, new_amount in updates.items():
+        day_start, day_end = day_to_range(day)
         plan = (
             db.query(DailyPlan)
-            .filter_by(user_id=user_id, date=day, category=category)
+            .filter(
+                DailyPlan.user_id == user_id,
+                DailyPlan.date >= day_start,
+                DailyPlan.date <= day_end,
+                DailyPlan.category == category,
+            )
             .first()
         )
         if plan:
