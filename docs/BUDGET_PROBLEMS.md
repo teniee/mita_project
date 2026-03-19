@@ -132,6 +132,41 @@ CREATE INDEX ix_redistribution_events_user_day
 
 ---
 
+### ПРОБЛЕМА 2.5 — DateTime vs date в WHERE запросах к DailyPlan ✅ ИСПРАВЛЕНО
+
+**Файлы:** `expense_tracker.py` (×2), `calendar_updater.py`, `calendar_service_real.py`, `expense_tracker.py` (services)
+
+**Что было:**
+`DailyPlan.date` — колонка `DateTime(timezone=True)`. Все запросы использовали:
+```python
+.filter_by(date=python_date_object)
+```
+Это генерирует SQL:
+```sql
+WHERE date = '2026-03-19 00:00:00+00'
+```
+Запись хранящаяся как `2026-03-19 12:00:00+00` (полдень UTC) **не находилась**. В результате `apply_transaction_to_plan()` создавал новый `DailyPlan` ряд с `planned_amount=0` вместо обновления существующего → `spent_amount` накапливался в дублирующей строке, а оригинальный бюджет оставался нетронутым.
+
+**Что сделано:**
+- Создан хелпер `app/core/date_utils.py::day_to_range(d: date)` → возвращает `(00:00:00, 23:59:59)` datetime границы
+- Во всех 4 файлах заменены `filter_by(date=day)` на явный range-фильтр:
+```python
+day_start, day_end = day_to_range(day)
+.filter(
+    DailyPlan.date >= day_start,
+    DailyPlan.date <= day_end,
+)
+```
+
+**Затронутые файлы:**
+- `app/core/date_utils.py` ← новый файл
+- `app/services/core/engine/expense_tracker.py` — `apply_transaction_to_plan()` + `record_expense()`
+- `app/services/core/engine/calendar_updater.py` — `update_day_status()`
+- `app/services/calendar_service_real.py` — `update_day_entry()`
+- `app/services/expense_tracker.py` — `record_expense()`
+
+---
+
 ### ПРОБЛЕМА 3 — Нет forward projection (приложение не думает вперёд) ⚠️ ОТКРЫТА
 
 **Файлы:** нет — функциональность отсутствует полностью
@@ -245,7 +280,7 @@ projected_balance = monthly_budget - projected_end
 | # | Проблема | Критичность | Статус |
 |---|----------|-------------|--------|
 | 1 | Авто-перераспределение не вызывалось + 2 бага в алгоритме | 🔴 Критично | ✅ **ИСПРАВЛЕНО** |
-| 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ⚠️ Открыта |
+| 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ⚠️ Открыта |
 | 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ⚠️ Открыта |
 | 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ⚠️ Открыта |
@@ -253,7 +288,7 @@ projected_balance = monthly_budget - projected_end
 
 ---
 
-## Что изменено в коде (Problem 1)
+## Что изменено в коде
 
 ### `app/services/core/engine/realtime_rebalancer.py`
 - Исправлен `float` → `Decimal` при обновлении `planned_amount` (строка ~168)
@@ -273,6 +308,35 @@ projected_balance = monthly_budget - projected_end
 - Покрытие: full flow, past days не трогаются, DB precision, multiple donors
 
 **Итого тестов:** было 44 passing → стало 72 passing (+28 новых, все ✅)
+
+---
+
+### Problem 2 — `app/services/redistribution_audit_log.py`
+- Полностью переписан с in-memory dict → PostgreSQL
+- `record_redistribution_event()` пишет через savepoint (`db.begin_nested()`)
+- `get_redistribution_history()` / `clear_user_audit_log()` — реальные SQL запросы
+
+### `app/db/models/redistribution_event.py` ← новый файл
+- SQLAlchemy модель `RedistributionEvent`
+
+### `alembic/versions/0025_add_redistribution_events_table.py` ← новая миграция
+- Таблица + 2 индекса: `(user_id, created_at DESC)`, `(user_id, from_day)`
+
+### `app/api/budget/routes.py`
+- `GET /budget/redistribution_history` — реальный SQL вместо эвристического хака
+
+### `tests/test_redistribution_audit_log.py` ← новый файл
+- 17 тестов: write, session restart, from_day типы, precision, ordering, isolation, limit, clear
+
+---
+
+### Problem 2.5 (DateTime баг) — `app/core/date_utils.py` ← новый файл
+- `day_to_range(d)` — единственный источник правды для datetime границ дня
+- Исправлены 4 файла: оба `expense_tracker.py`, `calendar_updater.py`, `calendar_service_real.py`
+
+---
+
+**Итого тестов сейчас:** 45 passing ✅
 
 ---
 
