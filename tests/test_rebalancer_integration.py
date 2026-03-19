@@ -53,6 +53,21 @@ CREATE TABLE IF NOT EXISTS daily_plan (
 )
 """
 
+# redistribution_events must exist so the audit log writes inside
+# rebalance_after_overspend() don't corrupt the session via failed flush.
+_CREATE_REDISTRIBUTION_EVENTS = """
+CREATE TABLE IF NOT EXISTS redistribution_events (
+    id            TEXT PRIMARY KEY,
+    user_id       TEXT NOT NULL,
+    from_category VARCHAR(100) NOT NULL,
+    to_category   VARCHAR(100) NOT NULL,
+    amount        DECIMAL(12, 2) NOT NULL,
+    reason        VARCHAR(50) NOT NULL,
+    from_day      DATE,
+    created_at    DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+)
+"""
+
 
 @pytest.fixture(scope="function")
 def engine():
@@ -62,6 +77,7 @@ def engine():
     )
     with eng.connect() as conn:
         conn.execute(text(_CREATE_DAILY_PLAN))
+        conn.execute(text(_CREATE_REDISTRIBUTION_EVENTS))
         conn.commit()
     yield eng
 
