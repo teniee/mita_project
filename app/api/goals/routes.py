@@ -20,6 +20,10 @@ from app.utils.response_wrapper import success_response
 from app.services.notification_integration import get_notification_integration
 from app.services.smart_goal_advisor import get_smart_goal_advisor
 from app.services.goal_budget_integration import get_goal_budget_integration
+from app.services.core.engine.goal_budget_sync import (
+    sync_goal_to_daily_plan,
+    remove_goal_daily_plan_rows,
+)
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -188,6 +192,17 @@ async def create_goal(
     db.add(goal)
     await db.commit()
     await db.refresh(goal)
+
+    # Reserve daily savings in DailyPlan (SACRED rows) for this goal.
+    # Non-blocking: budget sync failure must not prevent goal creation.
+    try:
+        await sync_goal_to_daily_plan(db, goal, user.id)
+        await db.commit()
+    except Exception as _sync_err:
+        import logging as _log
+        _log.getLogger(__name__).error(
+            "goal_budget_sync failed on create goal=%s: %s", goal.id, _sync_err
+        )
 
     # Send notification about goal creation
     try:
@@ -563,6 +578,12 @@ async def update_goal(
     """Update an existing goal"""
     goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
+    # Track whether budget-relevant fields change so we know to re-sync.
+    _budget_fields = {"target_amount", "saved_amount", "target_date", "status"}
+    needs_sync = any(
+        getattr(data, f) is not None for f in _budget_fields
+    )
+
     # Update fields if provided
     if data.title is not None:
         goal.title = data.title
@@ -589,6 +610,17 @@ async def update_goal(
     await db.commit()
     await db.refresh(goal)
 
+    # Re-sync DailyPlan reservations when financial parameters changed.
+    if needs_sync:
+        try:
+            await sync_goal_to_daily_plan(db, goal, user.id)
+            await db.commit()
+        except Exception as _sync_err:
+            import logging as _log
+            _log.getLogger(__name__).error(
+                "goal_budget_sync failed on update goal=%s: %s", goal.id, _sync_err
+            )
+
     return success_response(goal_to_dict(goal))
 
 
@@ -599,6 +631,18 @@ async def delete_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Delete a goal"""
+    # Free future budget reservations BEFORE deleting the goal.
+    # (After deletion the goal_id FK is gone; we can still remove rows
+    #  because we have the UUID from the URL parameter.)
+    try:
+        await remove_goal_daily_plan_rows(db, goal_id, user.id)
+        await db.flush()
+    except Exception as _sync_err:
+        import logging as _log
+        _log.getLogger(__name__).error(
+            "goal_budget_sync failed on delete goal=%s: %s", goal_id, _sync_err
+        )
+
     await CRUDHelper.delete_user_resource(db, Goal, goal_id, user.id, "Goal not found")
     return success_response({"status": "deleted", "id": str(goal_id)})
 
@@ -678,6 +722,16 @@ async def mark_goal_completed(
     await db.commit()
     await db.refresh(goal)
 
+    # Goal completed — release future daily budget reservations.
+    try:
+        await sync_goal_to_daily_plan(db, goal, user.id)
+        await db.commit()
+    except Exception as _sync_err:
+        import logging as _log
+        _log.getLogger(__name__).error(
+            "goal_budget_sync failed on complete goal=%s: %s", goal.id, _sync_err
+        )
+
     # Send completion notification
     try:
         notifier = get_notification_integration(db)
@@ -714,6 +768,16 @@ async def pause_goal(
     await db.commit()
     await db.refresh(goal)
 
+    # Goal paused — release future daily budget reservations.
+    try:
+        await sync_goal_to_daily_plan(db, goal, user.id)
+        await db.commit()
+    except Exception as _sync_err:
+        import logging as _log
+        _log.getLogger(__name__).error(
+            "goal_budget_sync failed on pause goal=%s: %s", goal.id, _sync_err
+        )
+
     return success_response(goal_to_dict(goal))
 
 
@@ -734,6 +798,16 @@ async def resume_goal(
 
     await db.commit()
     await db.refresh(goal)
+
+    # Goal resumed — recreate daily budget reservations.
+    try:
+        await sync_goal_to_daily_plan(db, goal, user.id)
+        await db.commit()
+    except Exception as _sync_err:
+        import logging as _log
+        _log.getLogger(__name__).error(
+            "goal_budget_sync failed on resume goal=%s: %s", goal.id, _sync_err
+        )
 
     return success_response(goal_to_dict(goal))
 

@@ -21,6 +21,16 @@ class DailyPlan(Base):
     daily_budget = Column(Numeric(12, 2), nullable=True)  # Total daily budget limit
     status = Column(String(20), nullable=True, default="green")  # green/yellow/red status
 
+    # Links this row to a specific Goal (set for goal_savings category rows only).
+    # ON DELETE SET NULL is a DB-level safety net; the application removes future
+    # rows at the service layer before a goal is soft-deleted.
+    goal_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("goals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # JSONB for additional metadata and backward compatibility
     plan_json = Column(JSONB, nullable=True)
 

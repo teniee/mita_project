@@ -246,25 +246,74 @@ day_start, day_end = day_to_range(day)
 
 ---
 
-### ПРОБЛЕМА 4 — Цели не связаны с дневным бюджетом ⚠️ ОТКРЫТА
+### ПРОБЛЕМА 4 — Цели не связаны с дневным бюджетом ✅ ИСПРАВЛЕНО
 
-**Файлы:** `app/db/models/goal.py`, `app/db/models/daily_plan.py`
+**Файлы:** `app/db/models/daily_plan.py`, `app/core/category_priority.py`,
+`app/services/core/engine/goal_budget_sync.py`, `app/api/goals/routes.py`,
+`alembic/versions/0026_add_goal_id_to_daily_plan.py`
 
-**Проблема:**
-Цели и DailyPlan живут в параллельных мирах. Если пользователь создаёт цель "накопить $500 к июню" — это никак не влияет на то, сколько приложение разрешает тратить каждый день. Накопление не вычитается из discretionary автоматически.
+**Что было:**
+Цели и DailyPlan жили в параллельных мирах. Пользователь создавал цель "накопить $500 к июню" — это никак не влияло на то, сколько приложение разрешает тратить каждый день. Накопление не вычиталось из discretionary автоматически.
 
-**Пример:**
+**Пример (что было vs что стало):**
 ```
 Доход: $3000/мес
-Цель: накопить $600 к June 30 (нужно откладывать $200/мес)
-Текущая ситуация: приложение даёт тратить $3000 — цель полностью игнорируется
-Должно быть: приложение даёт тратить $2800, $200 помечены как SACRED для цели
+Цель: накопить $600 к June 30 (нужно откладывать $200/мес = $6.45/день)
+
+БЫЛО:  приложение даёт тратить $3000 — цель полностью игнорируется
+СТАЛО: 13 SACRED строк в DailyPlan (19-31 марта), по $6.45/день
+       Реблансёр никогда не трогает эти строки
+       Пользователь видит реальный "safe daily limit" → $2800/мес
 ```
 
-**Что нужно сделать:**
-- При создании цели с `target_date` — вычислять `required_monthly_savings`
-- Автоматически добавлять в DailyPlan SACRED запись для этой суммы
-- При обновлении прогресса цели — пересчитывать оставшуюся сумму
+**Что сделано:**
+
+**1. Миграция 0026** — добавлена колонка `goal_id` в `daily_plan`:
+```sql
+ALTER TABLE daily_plan ADD COLUMN goal_id UUID REFERENCES goals(id) ON DELETE SET NULL;
+CREATE INDEX ix_daily_plan_goal_id ON daily_plan(goal_id);
+CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
+```
+
+**2. `DailyPlan` модель** — новое nullable FK поле `goal_id`.
+
+**3. `category_priority.py`** — добавлена категория `goal_savings` в SACRED:
+```python
+"goal_savings": CategoryLevel.SACRED,  # Реблансёр никогда не трогает
+```
+
+**4. `goal_budget_sync.py`** (новый файл) — чистый движок синхронизации:
+- `calculate_required_monthly_contribution(goal, today)` — сколько нужно откладывать в месяц
+- `calculate_daily_savings_amount(monthly, year, month)` — ежедневная сумма = monthly / days_in_month
+- `sync_goal_to_daily_plan(db, goal, user_id)` — upsert SACRED строк для оставшихся дней месяца
+- `remove_goal_daily_plan_rows(db, goal_id, user_id, from_date)` — освобождает бюджет при деактивации
+
+**Ключевые принципы:**
+- Только будущие дни создаются/обновляются (прошлое нетронуто)
+- Idempotent: вызов дважды даёт тот же результат
+- `daily = monthly / days_in_month` — равномерное распределение, честный shortfall при создании mid-month
+- `months` floor = 1 — нет деления на 0 при deadlines < 30 дней
+
+**5. `goals/routes.py`** — хуки в 6 endpoints (non-blocking, try/except):
+| Endpoint | Действие |
+|----------|----------|
+| `POST /goals/` | Создать SACRED строки |
+| `PATCH /goals/{id}` | Пересчитать при изменении target/date/status |
+| `DELETE /goals/{id}` | Удалить будущие строки ДО удаления цели |
+| `POST /goals/{id}/pause` | Освободить будущий бюджет |
+| `POST /goals/{id}/resume` | Восстановить SACRED строки |
+| `POST /goals/{id}/complete` | Освободить будущий бюджет |
+
+**Тесты:**
+- `tests/test_goal_budget_sync.py` — 41 тест (unit + mock-based):
+  - 12 тестов: `calculate_required_monthly_contribution`
+  - 6 тестов: `calculate_daily_savings_amount`
+  - 11 тестов: `sync_goal_to_daily_plan`
+  - 4 теста: `remove_goal_daily_plan_rows`
+  - 3 теста: SACRED category validation
+  - 5 тестов: edge cases (precision, multiple goals, leap year)
+- `tests/test_rebalancer_integration.py` — обновлён DDL (добавлен `goal_id` в SQLite schema)
+- Все 121 тест проходят ✅
 
 ---
 
@@ -308,7 +357,7 @@ day_start, day_end = day_to_range(day)
 | 1 | Авто-перераспределение не вызывалось + 2 бага в алгоритме | 🔴 Критично | ✅ **ИСПРАВЛЕНО** |
 | 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ⚠️ Открыта |
+| 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ⚠️ Открыта |
 | 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ⚠️ Открыта |
 
@@ -385,6 +434,35 @@ day_start, day_end = day_to_range(day)
   GoalForecasts, DecimalPrecision, FullScenario
 
 **Итого тестов после Problem 3:** 80 passing ✅ (45 предыдущих + 35 новых)
+
+---
+
+### Problem 4 — `app/services/core/engine/goal_budget_sync.py` ← новый файл
+- `calculate_required_monthly_contribution()` — pure, synchronous
+- `calculate_daily_savings_amount()` — pure, synchronous
+- `sync_goal_to_daily_plan()` — async, idempotent upsert
+- `remove_goal_daily_plan_rows()` — async, bulk DELETE
+
+### `app/db/models/daily_plan.py`
+- Добавлен `goal_id` nullable FK → `goals.id` ON DELETE SET NULL
+
+### `app/core/category_priority.py`
+- Добавлен `"goal_savings": CategoryLevel.SACRED`
+
+### `alembic/versions/0026_add_goal_id_to_daily_plan.py` ← новая миграция
+- `goal_id` column + 2 индекса: `ix_daily_plan_goal_id`, `ix_daily_plan_user_goal_date`
+
+### `app/api/goals/routes.py`
+- Хуки в 6 endpoints: create, update, delete, pause, resume, complete
+- Non-blocking: try/except, sync failure не ломает goal CRUD
+
+### `tests/test_goal_budget_sync.py` ← новый файл
+- 41 тест: unit + mock-based AsyncSession
+
+### `tests/test_rebalancer_integration.py`
+- DDL обновлён: добавлен `goal_id TEXT` в CREATE TABLE
+
+**Итого тестов после Problem 4:** 121 passing ✅ (80 предыдущих + 41 новый)
 
 ---
 

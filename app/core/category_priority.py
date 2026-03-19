@@ -22,6 +22,9 @@ class CategoryLevel(IntEnum):
 
 CATEGORY_PRIORITY: Dict[str, CategoryLevel] = {
     # LEVEL 0 — SACRED
+    # goal_savings: rows auto-created by GoalBudgetSyncService (Problem 4).
+    # Each row is linked to a specific Goal via DailyPlan.goal_id.
+    "goal_savings": CategoryLevel.SACRED,
     "savings_goal": CategoryLevel.SACRED,
     "savings goal based": CategoryLevel.SACRED,
     "savings goal": CategoryLevel.SACRED,

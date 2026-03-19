@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS daily_plan (
     spent_amount    DECIMAL(12, 2) DEFAULT 0.00,
     daily_budget    DECIMAL(12, 2),
     status      VARCHAR(20) DEFAULT 'green',
+    goal_id     TEXT,
     plan_json   TEXT,
     created_at  DATETIME
 )
