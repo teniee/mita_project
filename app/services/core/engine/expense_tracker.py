@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan, Transaction
 from app.services.core.engine.calendar_updater import update_day_status
+from app.services.core.engine.realtime_rebalancer import check_and_rebalance
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,28 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
             )
         except Exception as e:
             logger.warning(f"Failed to check budget alerts: {e}")
+
+    # AUTO-REBALANCE: if category is overspent, pull budget from future
+    # low-priority days and credit back to this day — core MITA promise.
+    try:
+        rebalance_result = check_and_rebalance(
+            db=db,
+            user_id=txn.user_id,
+            category=txn.category,
+            transaction_date=txn_day,
+        )
+        if rebalance_result is not None:
+            # Re-evaluate day status — planned_amount on this day may have
+            # increased after rebalancing, flipping red → green/yellow.
+            update_day_status(db, txn.user_id, txn_day)
+            logger.info(
+                "Auto-rebalance: covered=%.2f uncovered=%.2f transfers=%d",
+                float(rebalance_result.covered),
+                float(rebalance_result.uncovered),
+                len(rebalance_result.transfers),
+            )
+    except Exception as e:
+        logger.warning(f"Auto-rebalance failed (non-critical): {e}")
 
 
 def record_expense(

@@ -165,7 +165,8 @@ def rebalance_after_overspend(
             if cut <= Decimal("0.01"):
                 continue
             if not dry_run:
-                entry.planned_amount = float(available - cut)
+                # Use Decimal throughout — never convert to float for financial data
+                entry.planned_amount = available - cut
             actual += cut
 
         if actual > Decimal("0.01"):
@@ -192,6 +193,41 @@ def rebalance_after_overspend(
                 pass  # audit log must never break rebalancing
 
     plan.uncovered = max(Decimal("0"), remaining)
+
+    # 5. Credit covered amount back to the overspent entry.
+    #    Without this, the overspent day stays "red" even though the
+    #    monthly budget has been rebalanced — confusing for the user.
+    if not dry_run and plan.covered > Decimal("0.01"):
+        day_start_credit = datetime(
+            transaction_date.year,
+            transaction_date.month,
+            transaction_date.day,
+            0, 0, 0,
+        )
+        day_end_credit = datetime(
+            transaction_date.year,
+            transaction_date.month,
+            transaction_date.day,
+            23, 59, 59,
+        )
+        overspent_entry: Optional[DailyPlan] = (
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user_id,
+                DailyPlan.category == overspent_category,
+                DailyPlan.date >= day_start_credit,
+                DailyPlan.date <= day_end_credit,
+            )
+            .first()
+        )
+        if overspent_entry is not None:
+            overspent_entry.planned_amount = (
+                Decimal(str(overspent_entry.planned_amount or 0)) + plan.covered
+            )
+            logger.debug(
+                "rebalance: credited $%.2f to %s on %s",
+                float(plan.covered), overspent_category, transaction_date,
+            )
 
     if not dry_run and plan.covered > Decimal("0.01"):
         try:
