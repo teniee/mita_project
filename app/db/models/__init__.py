@@ -21,6 +21,7 @@ from .ocr_job import OCRJob
 from .analytics_log import FeatureUsageLog, FeatureAccessLog, PaywallImpressionLog
 from .user_preference import UserPreference
 from .waitlist import WaitlistEntry
+from .redistribution_event import RedistributionEvent
 from .installment import (
     Installment,
     UserFinancialProfile,
@@ -70,4 +71,5 @@ __all__ = [
     "RiskLevel",
     "InstallmentStatus",
     "WaitlistEntry",
+    "RedistributionEvent",
 ]

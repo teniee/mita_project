@@ -83,12 +83,13 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                         }
                     )
                     record_redistribution_event(
+                        db=db,
                         user_id=user_id,
                         from_category=donor_cat,
                         to_category=cat,
                         amount=Decimal(str(round(to_take, 2))),
                         reason="budget_redistribution",
-                        from_day=donor_entry.date.isoformat(),
+                        from_day=donor_entry.date,
                     )
                 if transfer <= 0:
                     break

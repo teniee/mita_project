@@ -3,6 +3,8 @@ Application-wide Error Handler Setup
 Initializes and configures the error handling system for the MITA app
 */
 
+import 'dart:developer' as dev;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'error_handling.dart';

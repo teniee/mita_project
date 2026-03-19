@@ -1,6 +1,6 @@
 // Production API URL - Railway backend (healthy, database connected)
 const String defaultApiBaseUrl =
-    'https://mita-production-production.up.railway.app/api';
+    'https://mita-production-production.up.railway.app/api/';
 
 // For development: Use local API service
 // const String defaultApiBaseUrl = 'http://localhost:8001/api';

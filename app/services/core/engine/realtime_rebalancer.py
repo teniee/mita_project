@@ -180,17 +180,18 @@ def rebalance_after_overspend(
             )
             remaining -= actual
             plan.covered += actual
-            # Record to audit log
+            # Record to audit log — must never break rebalancing
             try:
                 record_redistribution_event(
+                    db=db,
                     user_id=user_id,
                     from_category=donor_cat,
                     to_category=overspent_category,
                     amount=actual,
                     reason="realtime_rebalance",
                 )
-            except Exception:
-                pass  # audit log must never break rebalancing
+            except Exception as _audit_err:
+                logger.warning("audit log write failed (non-critical): %s", _audit_err)
 
     plan.uncovered = max(Decimal("0"), remaining)
 
