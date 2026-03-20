@@ -1,595 +1,272 @@
-# MITA Budget System — Problem Audit & Fix Status
-
-**Audit Date:** 2026-03-19
-**Audited By:** Claude Code (deep codebase analysis)
-**Scope:** Full budget distribution pipeline — from income input to daily redistribution
-
----
-
-## Core Vision (что должно работать)
-
-> Пользователь вводит доходы и расходы → приложение само считает, сколько тратить каждый день по категориям → в конце месяца деньги остаются, цели выполняются.
-
-Четыре шага цикла:
-1. **Вход** — доход + фиксированные расходы + цели накоплений
-2. **Расчёт** — сколько тратить в день по каждой категории
-3. **Трекинг** — пользователь логирует трату → бюджет обновляется мгновенно
-4. **Корректировка** — перерасход в одной категории → автоматически урезаем другие
+# BUDGET PROBLEMS — ПОЛНЫЙ АУДИТ И СТАТУС ИСПРАВЛЕНИЙ
+**Создан:** 2026-03-13
+**Обновлён:** 2026-03-20
+**Источник:** Deep analysis of all 32 budget-related files + code verification
 
 ---
 
-## Что работало до аудита ✅
+## КРИТИЧЕСКИЕ НЕСООТВЕТСТВИЯ
 
-| Компонент | Файл | Статус |
-|-----------|------|--------|
-| Классификация дохода (5 тиров) | `income_classification_service.py` | ✅ Работает |
-| Генерация бюджета из анкеты | `budget_logic.py` | ✅ Работает |
-| Распределение по дням (FIXED/SPREAD/CLUSTERED) | `calendar_engine.py` | ✅ Работает |
-| Логирование транзакции → DailyPlan | `expense_tracker.py` | ✅ Работает |
-| Мгновенное обновление spent_amount | `services.py` (transactions) | ✅ Синхронно |
-| Pre-transaction affordability check | `POST /transactions/check-affordability` | ✅ Работает |
-| Дашборд дня green/yellow/red | `GET /budget/daily` | ✅ Работает |
-| Трекинг целей (goal progress) | `goal_transaction_service.py` | ✅ Работает |
-| Алгоритм перераспределения | `budget_redistributor.py` | ✅ Написан |
+### ПРОБЛЕМА 1 — Главный API эндпоинт игнорирует движок
+**Файл:** `app/api/budget/routes.py` строки 476–556
+
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
+
+Эндпоинт `POST /budget/monthly` корректно вызывает реальный движок:
+- Если `user_answers` содержит `monthly_income` → вызывает `generate_budget_from_answers(user_answers)` → персонализированный бюджет
+- Иначе → `IncomeClassificationService.classify_income()` → `get_budget_weights(tier)` → tier-специфичные веса
+- Захардкоженные `0.30/0.15/0.10/0.20` присутствуют только как `except`-fallback при крэше движка — это нормальная архитектура
 
 ---
 
-## Проблемы — полный список
+### ПРОБЛЕМА 2 — Real-time rebalancing не был реализован
+**Файл:** `app/services/core/engine/realtime_rebalancer.py`, `app/services/core/engine/expense_tracker.py`
 
----
+**Статус: ✅ ИСПРАВЛЕНО (март 2026)**
 
-### ПРОБЛЕМА 1 — Авто-перераспределение не вызывалось ❌ → ✅ ИСПРАВЛЕНО
-
-**Файлы:** `expense_tracker.py`, `realtime_rebalancer.py`
-
-**Что было:**
-Алгоритм перераспределения (`rebalance_after_overspend`) был написан и работал корректно, но нигде не вызывался автоматически. При перерасходе день просто становился "red" — и всё. Ничего не происходило.
-
-**Два дополнительных бага в `realtime_rebalancer.py`:**
-1. `entry.planned_amount = float(available - cut)` — финансовые суммы конвертировались в `float`, теряя точность (например, $3.33 → $3.3300000001)
-2. Функция брала деньги у доноров, но **не добавляла** покрытую сумму к перерасходованному дню. День оставался "red" вечно, даже после успешного ребаланса.
+**Что было:** Алгоритм перераспределения был написан, но нигде не вызывался. При перерасходе день просто становился RED — ничего не происходило. Дополнительно: два бага — `float` вместо `Decimal` теряло точность, и перерасходованный день не кредитировался после ребаланса (оставался RED навсегда).
 
 **Что сделано:**
-- Исправлен баг с `float` → везде `Decimal`
-- Добавлен шаг 5: после трансферов кредитуем `planned_amount` перерасходованного entry
-- В `expense_tracker.py` добавлен вызов `check_and_rebalance()` после каждой транзакции
-- После ребаланса повторно вызывается `update_day_status()` — статус пересчитывается и может переключиться RED → GREEN
+- `realtime_rebalancer.py` — исправлен `float` → `Decimal`, добавлен шаг кредитования перерасходованного entry
+- `expense_tracker.py` — после каждой транзакции вызывается `check_and_rebalance()` + повторный `update_day_status()`
+- Приоритет доноров: DISCRETIONARY(3) → FLEXIBLE(2) → PROTECTED(1), SACRED(0) никогда не трогается
+- 50% cap на один ребаланс, только future days
 
-**Полный поток теперь:**
+**Полный поток:**
 ```
-Пользователь тратит $35 на dining_out (план $25, дефицит $10)
-  → apply_transaction_to_plan() → spent = 35, статус RED
-  → check_and_rebalance() → дефицит $10 обнаружен
-      → ищет future days с surplus в non-SACRED категориях
-      → берёт $10 у entertainment (DISCRETIONARY — первый приоритет)
-      → кредитует dining_out planned → planned = 35
-      → db.commit()
-  → update_day_status() → planned=35, spent=35 → статус GREEN ✅
+Потратил $35 на dining_out (план $25, дефицит $10)
+  → spent = 35, статус RED
+  → check_and_rebalance() → берёт $10 у entertainment (DISCRETIONARY)
+  → dining_out planned = 35
+  → update_day_status() → GREEN ✅
 ```
 
-**Приоритет доноров:**
-```
-DISCRETIONARY (3) — gaming, entertainment, dining, delivery  → берём первыми
-FLEXIBLE (2)      — coffee, clothing, personal_care          → вторые
-PROTECTED (1)     — groceries, transport_public              → только если нет других
-SACRED (0)        — rent, mortgage, savings_goal, utilities  → НИКОГДА не трогаем
-```
-
-**Защиты:**
-- 50% cap: максимум 50% бюджета одной категории за один ребаланс
-- Только future days (≥ txn_date): прошлые дни не меняются
-- dry_run режим: расчёт без записи в БД (для preview)
-
-**Тесты написаны:**
-- `tests/test_realtime_rebalancer.py` — 18 unit тестов (mock DB)
-- `tests/test_rebalancer_integration.py` — 10 integration тестов (SQLite in-memory, реальные SQL запросы)
-- Все 28 тестов проходят ✅
+**Тесты:** 28 тестов (`test_realtime_rebalancer.py` + `test_rebalancer_integration.py`) — все проходят ✅
 
 ---
 
-### ПРОБЛЕМА 2 — Audit log хранился в памяти, терялся при рестарте ✅ ИСПРАВЛЕНО
+### ПРОБЛЕМА 3 — Cron перераспределял прошлый месяц
+**Файл:** `app/services/core/engine/cron_task_budget_redistribution.py` строка 16
 
-**Файл:** `app/services/redistribution_audit_log.py`
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
 
-**Что было:**
-```python
-_audit_log: Dict[str, List[Dict]] = {}  # in-memory dict!
-```
-История перераспределений хранилась в Python-словаре. При каждом деплое на Railway — вся история терялась. `GET /budget/redistribution_history` возвращал пустой список после рестарта.
+Cron использует `year = now.year`, `month = now.month` — текущий месяц. `prev_month = month - 1` встречается только в блоке `if now.day == 1` для rollover savings — это правильная логика, а не баг.
+
+---
+
+### ПРОБЛЕМА 4 — Savings не были защищены от перераспределения
+**Файл:** `app/services/budget_redistributor.py` строки 41–52
+
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
+
+`is_sacred()` из `category_priority.py` применяется: `not is_sacred(d_cat)` как фильтр доноров. `savings_goal`, `savings_emergency`, `rent`, `mortgage`, `utilities` никогда не выступают донорами.
+
+---
+
+### ПРОБЛЕМА 5 — Behavioral allocator сломан (возвращал `user_context_applied: True` — ложь)
+**Файл:** `app/services/core/behavior/behavioral_budget_allocator.py` строки 103–147
+
+**Статус: ⚠️ ЧАСТИЧНО ИСПРАВЛЕНО — нужна проверка**
+
+`user_context_applied` теперь честный boolean: `True` только при успешном применении контекста (строка 131), `False` при fallback (строка 140).
+
+**Что остаётся под вопросом:** Насколько часто реальный пользователь попадает в ветку `user_context_applied=True`. Нужно проверить, какой процент вызовов реально использует `dynamic_threshold_service` vs жёсткие константы `food=30%, savings=20%`.
+
+**Нужно сделать:** Добавить логирование/метрику — сколько % запросов используют реальный контекст, сколько — fallback константы.
+
+---
+
+### ПРОБЛЕМА 6 — Порог статуса дня одинаков для всех доходов
+**Файл:** `app/services/core/engine/calendar_updater.py` строка 26
+
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
+
+Порог динамический: `yellow_threshold = max(Decimal("2.00"), min(Decimal("25.00"), planned * Decimal("0.05")))` — 5% от planned, от $2 до $25. `$10 flat` для всех больше не используется.
+
+---
+
+### ПРОБЛЕМА 7 — CLUSTERED распределение случайное (без seed)
+**Файл:** `app/services/core/engine/calendar_engine.py` строки 127–146
+
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
+
+Детерминированный RNG: `seed = hashlib.md5(f"{year}{month}{category}".encode())` → `random.Random(seed_int)`. При одинаковых входных данных — одинаковое распределение по дням. Пользователь может планировать.
+
+---
+
+### ПРОБЛЕМА 8 — Два механизма перераспределения несовместимы
+**Файл A:** `app/engine/budget_redistributor.py` — дневное, не сохраняет в БД
+**Файл B:** `app/services/budget_redistributor.py` — категорийное, сохраняет в БД
+
+**Статус: ❌ НЕ ИСПРАВЛЕНО**
+
+Оба файла существуют, используются в разных контекстах, разные форматы данных. Алгоритм A (app/engine/) не записывает результат в `DailyPlan`. Нет единого пути для всех ребалансов.
+
+**Что нужно сделать:** Выбрать один — скорее всего `app/services/budget_redistributor.py` (он пишет в БД) + `realtime_rebalancer.py` для real-time. `app/engine/budget_redistributor.py` — устаревший, нужно проверить все вызовы и удалить.
+
+---
+
+### ПРОБЛЕМА 9 — Цели изолированы от бюджета
+**Файл:** `app/services/core/engine/goal_budget_sync.py`, `app/api/goals/routes.py`
+
+**Статус: ✅ ИСПРАВЛЕНО (март 2026)**
+
+**Что было:** Цели жили отдельно. "Накопить $500 к июню" не влияло на daily spending limit.
 
 **Что сделано:**
-- Создана модель `RedistributionEvent` (`app/db/models/redistribution_event.py`)
-- Alembic миграция `0025_add_redistribution_events_table.py`
-- Два индекса: `(user_id, created_at DESC)` для history queries, `(user_id, from_day)` для monthly reports
-- `redistribution_audit_log.py` полностью переписан — `record_redistribution_event()` пишет в PostgreSQL через savepoint (`db.begin_nested()`)
-- Savepoint защищает основную транзакцию: если audit write упадёт, ребаланс не откатывается
-- `GET /budget/redistribution_history` теперь делает реальный SQL-запрос к `redistribution_events`
-- `budget_redistributor.py` обновлён — передаёт `db=db` и `from_day=donor_entry.date`
-- `realtime_rebalancer.py` обновлён — передаёт `db=db` в `record_redistribution_event()`
+- `goal_budget_sync.py` — при создании цели создаются SACRED строки в `DailyPlan` (category `goal_savings`)
+- Alembic миграция `0026` — добавлена колонка `goal_id` в `daily_plan`
+- Хуки в 6 endpoints goals: create, update, delete, pause, resume, complete
+- Реблансёр никогда не трогает `goal_savings` категорию (SACRED)
+- Пример: доход $3000, цель $600 к June 30 → 13 SACRED строк по $6.45/день → реальный safe_daily_limit = $2800/мес
 
-**Схема таблицы:**
-```sql
-CREATE TABLE redistribution_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    from_category VARCHAR(100) NOT NULL,
-    to_category VARCHAR(100) NOT NULL,
-    amount DECIMAL(12, 2) NOT NULL,
-    reason VARCHAR(50) NOT NULL,  -- 'realtime_rebalance' | 'budget_redistribution'
-    from_day DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-CREATE INDEX ix_redistribution_events_user_created
-    ON redistribution_events(user_id, created_at DESC);
-CREATE INDEX ix_redistribution_events_user_day
-    ON redistribution_events(user_id, from_day);
-```
-
-**Тесты:**
-- `tests/test_redistribution_audit_log.py` — 17 тестов (SQLite in-memory): write to DB, survives session restart, from_day as date/datetime/str/None, precision, ordering, user isolation, limit, clear
-- `tests/test_rebalancer_integration.py` — 10 integration тестов обновлены (оба теста создают обе таблицы)
-- Все 45 тестов проходят ✅
+**Тесты:** 41 тест (`test_goal_budget_sync.py`) — все проходят ✅
 
 ---
 
-### ПРОБЛЕМА 2.5 — DateTime vs date в WHERE запросах к DailyPlan ✅ ИСПРАВЛЕНО
+### ПРОБЛЕМА 10 — Уведомления не знают о целях пользователя
+**Файл:** `app/services/budget_alert_service.py`, `app/services/spending_prevention_service.py`
 
-**Файлы:** `expense_tracker.py` (×2), `calendar_updater.py`, `calendar_service_real.py`, `expense_tracker.py` (services)
+**Статус: ❌ НЕ ИСПРАВЛЕНО**
 
-**Что было:**
-`DailyPlan.date` — колонка `DateTime(timezone=True)`. Все запросы использовали:
-```python
-.filter_by(date=python_date_object)
+Сообщения безличные: "Consider reducing this category". Не упоминают имя, не говорят о влиянии на цель.
+
+**Что нужно:** Каждый alert должен включать:
+- Имя пользователя
+- Категорию и сумму перерасхода
+- Влияние на цель (сдвиг в днях/сумме)
+- Конкретное предложение откуда взять
+- Кнопки: [Принять] [Настроить] [Игнорировать]
+
+**Пример:**
 ```
-Это генерирует SQL:
-```sql
-WHERE date = '2026-03-19 00:00:00+00'
+"Марина, ты потратила на $250 больше на одежду.
+Твоя цель [Отпуск в Барселоне] сдвинулась на 5 дней.
+Хочешь скорректировать бюджет?"
 ```
-Запись хранящаяся как `2026-03-19 12:00:00+00` (полдень UTC) **не находилась**. В результате `apply_transaction_to_plan()` создавал новый `DailyPlan` ряд с `planned_amount=0` вместо обновления существующего → `spent_amount` накапливался в дублирующей строке, а оригинальный бюджет оставался нетронутым.
+
+---
+
+### ПРОБЛЕМА 11 — Нет напоминаний через 3 дня
+**Статус: ❌ НЕ СДЕЛАНО**
+
+Когда пользователь нажал [Игнорировать] на предупреждении → через 3 дня напоминание о последствиях.
+
+**Что нужно:** Cron task + поле `ignored_at` в `Notification`. При ignore → записать дату. Cron утром проверяет: `ignored_at + 3 days <= today` → push напоминание с обновлённым impact (цель сдвинулась ещё на N дней).
+
+---
+
+### ПРОБЛЕМА 12 — Несоответствие порогов между сервисами
+**Файл A:** `app/services/budget_alert_service.py:24–25` — WARNING=80%, DANGER=100%
+**Файл B:** `app/services/spending_prevention_service.py:24–27` — CAUTION=70%, DANGER=90%
+
+**Статус: ❌ НЕ ИСПРАВЛЕНО**
+
+Два разных порога в двух сервисах — пользователь получает разные сигналы в зависимости от того, какой путь сработал.
+
+**Что нужно:** Вынести все пороги в `budget_thresholds.py` (там уже есть velocity константы — добавить туда же). Оба сервиса импортируют из одного источника.
+
+---
+
+### ПРОБЛЕМА 13 — История перераспределений — эвристика, не лог
+**Файл:** `app/api/budget/routes.py` строки 261–280
+
+**Статус: ✅ ИСПРАВЛЕНО (март 2026)**
+
+**Что было:** `GET /budget/redistribution_history` сравнивал соседние DailyPlan записи и угадывал причину изменения по размеру diff.
 
 **Что сделано:**
-- Создан хелпер `app/core/date_utils.py::day_to_range(d: date)` → возвращает `(00:00:00, 23:59:59)` datetime границы
-- Во всех 4 файлах заменены `filter_by(date=day)` на явный range-фильтр:
-```python
-day_start, day_end = day_to_range(day)
-.filter(
-    DailyPlan.date >= day_start,
-    DailyPlan.date <= day_end,
-)
-```
+- Модель `RedistributionEvent` (`app/db/models/redistribution_event.py`)
+- Alembic миграция `0025` — таблица `redistribution_events` + 2 индекса
+- `redistribution_audit_log.py` переписан — пишет в PostgreSQL через savepoint
+- `GET /budget/redistribution_history` — реальный SQL запрос к таблице
 
-**Затронутые файлы:**
-- `app/core/date_utils.py` ← новый файл
-- `app/services/core/engine/expense_tracker.py` — `apply_transaction_to_plan()` + `record_expense()`
-- `app/services/core/engine/calendar_updater.py` — `update_day_status()`
-- `app/services/calendar_service_real.py` — `update_day_entry()`
-- `app/services/expense_tracker.py` — `record_expense()`
+**Тесты:** 17 тестов (`test_redistribution_audit_log.py`) — все проходят ✅
 
 ---
 
-### ПРОБЛЕМА 3 — Нет forward projection (приложение не думает вперёд) ✅ ИСПРАВЛЕНО
+### ПРОБЛЕМА 14 — Потеря излишков savings между месяцами
+**Статус: ✅ УЖЕ ИСПРАВЛЕНО**
 
-**Файлы:** `app/services/core/engine/budget_forecast_engine.py`, `app/api/budget/routes.py`
-
-**Что было:**
-Пользователь не видел ничего о том, что будет к концу месяца при текущем темпе трат.
-
-**Что сделано:**
-- Создан чистый движок `budget_forecast_engine.py` — pure computation, никакого DB доступа внутри
-- `DailyPlanData`, `GoalData` — входные dataclass'ы (route предварительно тянет данные из БД)
-- `ForecastResult`, `CategoryForecast`, `GoalForecast` — выходные dataclass'ы с `to_dict()`
-- `compute_forecast()` — публичный API движка
-- Добавлен `GET /budget/forecast` в `app/api/budget/routes.py`
-- Все расчёты через `Decimal`, float только в `to_dict()` при отдаче JSON
-
-**Эндпоинт `GET /budget/forecast`:**
-```json
-{
-  "year": 2026, "month": 3,
-  "days_in_month": 31, "days_elapsed": 10, "days_remaining": 21,
-  "total_planned": 3100.00, "total_spent": 1500.00,
-  "remaining_budget": 1600.00,
-  "current_daily_pace": 150.00,
-  "safe_daily_limit": 76.19,
-  "projected_month_end_spend": 4650.00,
-  "projected_month_end_balance": -1550.00,
-  "status": "danger",
-  "categories_at_risk": [
-    {
-      "category": "dining_out",
-      "monthly_planned": 930.00,
-      "monthly_spent": 600.00,
-      "pace": 60.00,
-      "budget_per_day": 30.00,
-      "overspend_ratio": 2.0,
-      "days_until_exhausted": 6
-    }
-  ],
-  "all_categories": [...],
-  "goals": [
-    {
-      "goal_id": "...", "title": "Vacation",
-      "target": 500.00, "saved": 50.00, "remaining": 450.00,
-      "target_date": "2026-06-01",
-      "months_remaining": 2.53,
-      "required_monthly_contribution": 177.87,
-      "projected_saved": 176.50,
-      "on_track": false,
-      "shortfall": 323.50
-    }
-  ]
-}
-```
-
-**Статусы:**
-- `"on_track"` → projected_balance >= 0
-- `"warning"` → projected overspend < 10% от total_planned
-- `"danger"` → projected overspend >= 10% от total_planned
-- `"no_data"` → нет DailyPlan строк или days_elapsed == 0
-
-**Категории at_risk:** темп трат > 120% от планового дневного лимита
-**Цели:** проекция через `monthly_contribution * months_remaining` (30.44 дней/мес)
-
-**Тесты:**
-- `tests/test_budget_forecast_engine.py` — 35 unit тестов (pure engine, без DB)
-- Все 35 проходят ✅
-
-**Тест-классы:**
-- `TestNoData` — пустые планы, будущий месяц, первый день, прошлый месяц, to_dict()
-- `TestStatusThresholds` — on_track / warning / danger пороги
-- `TestGlobalMetrics` — safe_daily_limit, pace, projected_balance формулы
-- `TestCategoryForecasts` — at_risk пороги, сортировка, агрегация по категории
-- `TestDaysUntilExhausted` — normal, zero-pace, already-exhausted
-- `TestGoalForecasts` — on_track, not_on_track, no deadline, overdue, fully funded
-- `TestDecimalPrecision` — Decimal внутри, float в to_dict(), 2 знака
-- `TestFullScenario` — реалистичные сценарии (danger + goals, all green)
+`savings_surplus_service.rollover_month_savings()` вызывается в cron каждое 1-е число: берёт surplus прошлого месяца и добавляет к цели текущего. Логика уже в `cron_task_budget_redistribution.py`.
 
 ---
 
-### ПРОБЛЕМА 4 — Цели не связаны с дневным бюджетом ✅ ИСПРАВЛЕНО
+### ПРОБЛЕМА 15 — Нет положительных уведомлений (wins)
+**Файл:** `app/services/core/engine/velocity_alert_engine.py`
 
-**Файлы:** `app/db/models/daily_plan.py`, `app/core/category_priority.py`,
-`app/services/core/engine/goal_budget_sync.py`, `app/api/goals/routes.py`,
-`alembic/versions/0026_add_goal_id_to_daily_plan.py`
+**Статус: ⚠️ ЧАСТИЧНО СДЕЛАНО — нужна проверка delivery**
 
-**Что было:**
-Цели и DailyPlan жили в параллельных мирах. Пользователь создавал цель "накопить $500 к июню" — это никак не влияло на то, сколько приложение разрешает тратить каждый день. Накопление не вычиталось из discretionary автоматически.
+`velocity_alert_engine.py` содержит win detection: consecutive good days (7/14/30-day streaks). `notify_spending_win` добавлен в `NotificationIntegration`. Шаблон `spending_win` есть в `NotificationTemplates`.
 
-**Пример (что было vs что стало):**
-```
-Доход: $3000/мес
-Цель: накопить $600 к June 30 (нужно откладывать $200/мес = $6.45/день)
-
-БЫЛО:  приложение даёт тратить $3000 — цель полностью игнорируется
-СТАЛО: 13 SACRED строк в DailyPlan (19-31 марта), по $6.45/день
-       Реблансёр никогда не трогает эти строки
-       Пользователь видит реальный "safe daily limit" → $2800/мес
-```
-
-**Что сделано:**
-
-**1. Миграция 0026** — добавлена колонка `goal_id` в `daily_plan`:
-```sql
-ALTER TABLE daily_plan ADD COLUMN goal_id UUID REFERENCES goals(id) ON DELETE SET NULL;
-CREATE INDEX ix_daily_plan_goal_id ON daily_plan(goal_id);
-CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
-```
-
-**2. `DailyPlan` модель** — новое nullable FK поле `goal_id`.
-
-**3. `category_priority.py`** — добавлена категория `goal_savings` в SACRED:
-```python
-"goal_savings": CategoryLevel.SACRED,  # Реблансёр никогда не трогает
-```
-
-**4. `goal_budget_sync.py`** (новый файл) — чистый движок синхронизации:
-- `calculate_required_monthly_contribution(goal, today)` — сколько нужно откладывать в месяц
-- `calculate_daily_savings_amount(monthly, year, month)` — ежедневная сумма = monthly / days_in_month
-- `sync_goal_to_daily_plan(db, goal, user_id)` — upsert SACRED строк для оставшихся дней месяца
-- `remove_goal_daily_plan_rows(db, goal_id, user_id, from_date)` — освобождает бюджет при деактивации
-
-**Ключевые принципы:**
-- Только будущие дни создаются/обновляются (прошлое нетронуто)
-- Idempotent: вызов дважды даёт тот же результат
-- `daily = monthly / days_in_month` — равномерное распределение, честный shortfall при создании mid-month
-- `months` floor = 1 — нет деления на 0 при deadlines < 30 дней
-
-**5. `goals/routes.py`** — хуки в 6 endpoints (non-blocking, try/except):
-| Endpoint | Действие |
-|----------|----------|
-| `POST /goals/` | Создать SACRED строки |
-| `PATCH /goals/{id}` | Пересчитать при изменении target/date/status |
-| `DELETE /goals/{id}` | Удалить будущие строки ДО удаления цели |
-| `POST /goals/{id}/pause` | Освободить будущий бюджет |
-| `POST /goals/{id}/resume` | Восстановить SACRED строки |
-| `POST /goals/{id}/complete` | Освободить будущий бюджет |
-
-**Тесты:**
-- `tests/test_goal_budget_sync.py` — 41 тест (unit + mock-based):
-  - 12 тестов: `calculate_required_monthly_contribution`
-  - 6 тестов: `calculate_daily_savings_amount`
-  - 11 тестов: `sync_goal_to_daily_plan`
-  - 4 теста: `remove_goal_daily_plan_rows`
-  - 3 теста: SACRED category validation
-  - 5 тестов: edge cases (precision, multiple goals, leap year)
-- `tests/test_rebalancer_integration.py` — обновлён DDL (добавлен `goal_id` в SQLite schema)
-- Все 121 тест проходят ✅
+**Что нужно проверить:** Реально ли отправляются push при streak. Проверить через тест или лог после 7 consecutive green days.
 
 ---
 
-### ПРОБЛЕМА 5 — Нет проактивных алертов по velocity ✅ ИСПРАВЛЕНО
+## ОТСУТСТВУЮЩИЕ КОМПОНЕНТЫ (уже построены)
 
-**Файлы созданы:**
-- `app/services/core/engine/velocity_alert_engine.py` — pure computation engine
-- `app/services/velocity_alert_service.py` — DB-aware orchestrator с дедупликацией
-- `app/services/core/engine/cron_task_velocity_alerts.py` — daily cron runner
+### ✅ СДЕЛАНО A — Real-time rebalancing engine
+`app/services/core/engine/realtime_rebalancer.py` — полный цикл от транзакции до GREEN статуса.
 
-**Что сделано:**
+### ✅ СДЕЛАНО B — Goal-aware budget sync
+`app/services/core/engine/goal_budget_sync.py` — SACRED строки в DailyPlan при создании цели.
 
-**velocity_alert_engine.py** — чистый движок без DB:
-- `velocity_ratio = (monthly_spent / days_elapsed) / (monthly_planned / days_in_month)`
-- **Уровни:** WATCH (≥1.2×), WARNING (≥1.5×), CRITICAL (≥2.0×)
-- Sacred категории (rent, savings_goal) — **никогда** не алертятся
-- `days_until_exhausted` — сколько дней осталось бюджета при текущем темпе
-- Goal impact — проецирует как дефицит сдвигает цели (в днях)
-- Win detection — считает streak consecutive good days (7/14/30)
-- Все расчёты в `Decimal`, float только в `to_dict()`
+### ✅ СДЕЛАНО C — Категорийная иерархия (единый реестр)
+`app/core/category_priority.py` — SACRED(0) / PROTECTED(1) / FLEXIBLE(2) / DISCRETIONARY(3).
 
-**velocity_alert_service.py** — оркестратор с дедупликацией:
-- **Real-time trigger** (после каждой транзакции через expense_tracker): только категория транзакции
-- **Cron trigger** (раз в день): все категории + win detection
-- Дедупликация: перед отправкой проверяет `Notification` по `group_key` + 24h cooldown для алертов, 7 days для wins
-- group_key: `velocity_alert:{user_id}:{category}:{year}-{month}`
+### ✅ СДЕЛАНО D — Velocity alerts + win notifications
+`app/services/core/engine/velocity_alert_engine.py` + `velocity_alert_service.py` + cron.
 
-**Нотификации добавлены:**
-- `notify_velocity_watch / warning / critical` в `NotificationIntegration`
-- `notify_spending_win` в `NotificationIntegration`
-- Templates: `velocity_watch`, `velocity_warning`, `velocity_critical`, `spending_win` в `NotificationTemplates`
+### ✅ СДЕЛАНО E — Scheduled future expenses
+`app/services/core/engine/scheduled_expense_engine.py`, модель `ScheduledExpense`, миграция 0027, API `/api/scheduled-expenses/`.
 
-**Константы добавлены в `budget_thresholds.py`:**
-- `VELOCITY_WATCH=1.20`, `VELOCITY_WARNING=1.50`, `VELOCITY_CRITICAL=2.00`
-- `VELOCITY_MIN_DAYS=3`, `VELOCITY_ALERT_COOLDOWN_HOURS=24`
-- `WIN_DAILY_UNDER_PCT=0.80`, `WIN_STREAK_DAYS=7`
+### ✅ СДЕЛАНО F — Savings surplus rollover
+`app/services/savings_surplus_service.py` — автоматический перенос на 1-е число.
 
-**expense_tracker.py обновлён:**
-- Добавлен вызов `check_velocity_after_transaction()` после каждой транзакции (non-blocking)
-
-**Тесты:**
-- `tests/test_velocity_alert_engine.py` — 53 unit теста (pure engine, без DB)
-  - 11 групп: NoData, VelocityRatio, AlertLevels, SacredCategories, DaysUntilExhausted, GoalImpact, WinDetection, DecimalPrecision, CategoryFilter, EdgeCases, FullScenario
-- `tests/test_velocity_alert_service.py` — 18 integration теста (SQLite in-memory)
-  - 5 групп: Deduplication, NotificationLevel, WinNotifications, RealTimeTrigger, ErrorHandling
-- Все 71 тест проходят ✅
+### ❌ НЕ СДЕЛАНО D (из оригинального плана) — 3-day reminder cron
+Cron для напоминаний при игнорировании предупреждений — ещё не создан.
 
 ---
 
-### ПРОБЛЕМА 6 — Нет запланированных будущих расходов ✅ ИСПРАВЛЕНО
+## АРХИТЕКТУРНЫЕ ПРИНЦИПЫ
 
-**Файлы созданы:**
-- `app/db/models/scheduled_expense.py` — SQLAlchemy модель
-- `alembic/versions/0027_add_scheduled_expenses_table.py` — миграция + 4 индекса
-- `app/services/core/engine/scheduled_expense_engine.py` — pure computation engine
-- `app/services/scheduled_expense_service.py` — async DB операции (для API)
-- `app/services/core/engine/cron_task_scheduled_expenses.py` — cron task (sync, 06:00 UTC)
-- `app/api/scheduled_expenses/routes.py` — API эндпоинты
-
-**Что сделано:**
-
-**1. Модель `ScheduledExpense`:**
-- `status`: `pending` → `processed` | `cancelled` | `failed`
-- `recurrence`: `once` / `weekly` / `monthly`
-- `scheduled_date`: Date
-- `transaction_id`: FK → реальная транзакция, созданная в день срабатывания
-
-**2. API эндпоинты:**
-```
-POST   /api/scheduled-expenses/        — создать + сразу вернуть budget_impact
-GET    /api/scheduled-expenses/        — список (фильтр по status, date)
-GET    /api/scheduled-expenses/impact  — влияние на safe_daily_limit (год/месяц)
-GET    /api/scheduled-expenses/{id}    — получить одну запись
-DELETE /api/scheduled-expenses/{id}    — отменить + вернуть обновлённый impact
-```
-
-**3. `scheduled_expense_engine.py` — pure computation:**
-- `compute_scheduled_impact(pending_expenses, daily_plans, today)` → `ScheduledImpactResult`
-- `base_safe_daily_limit` — без учёта scheduled
-- `adjusted_safe_daily_limit` — с вычетом всех pending scheduled сумм
-- `daily_reduction` для каждой расходной строки — насколько режется дневной лимит
-- `category_can_cover` — есть ли в категории буфер для покрытия
-
-**4. Cron task (06:00 UTC ежедневно):**
-- Фаза 1: `scheduled_date == today` → создаёт реальную `Transaction` → `apply_transaction_to_plan()` → `check_and_rebalance()` — авто-ребаланс срабатывает сразу
-- Фаза 2: расходы через 1-3 дня → push-напоминание (если `reminder_sent_at is None`)
-- Рекуррентность: после обработки weekly/monthly → создаёт следующий `ScheduledExpense`
-
-**Пример (что было vs что стало):**
-```
-Пользователь вводит: страховка $300 на 25 марта
-
-БЫЛО:  safe_daily_limit = $75/день; 25-го неожиданный перерасход $300 → RED день
-СТАЛО: сразу после создания:
-         adjusted_safe_daily_limit = (remaining - $300) / days_remaining
-       22-го: push "📅 Upcoming Bill: Insurance — $300 through в 3 дня"
-       25-го: транзакция создаётся автоматически, авто-ребаланс перераспределяет
-              из discretionary категорий, день остаётся GREEN ✅
-```
-
-**Notification templates добавлены:**
-- `scheduled_expense_reminder(category, amount, scheduled_date, days_until, merchant)`
-- `scheduled_expense_processed(category, amount, scheduled_date, transaction_id)`
-
-**Тесты:**
-- `tests/test_scheduled_expense_engine.py` — 34 unit теста (pure engine, без DB)
-  - 7 групп: NoExpenses, BasicImpact, MultipleExpenses, ExpenseOutsideMonth, CategoryCanCover, DailyReduction, DecimalPrecision, EdgeCases, FullScenario
-- `tests/test_scheduled_expense_service.py` — 17 integration тестов (SQLite in-memory)
-  - 4 группы: Create, Get, Cancel, Impact
-- Все 51 тест проходят ✅
-
-**Итого тестов после Problem 6:** 243 passing ✅ (192 предыдущих + 51 новый)
+- Savings СВЯЩЕННЫ — никогда не доноры при ребалансе
+- MITA — советник, не судья. Конечный выбор всегда за пользователем
+- Каждое уведомление = имя + категория + цель + предложение + действие
+- Пороги всегда из `budget_thresholds.py` (единый источник)
+- Все финансовые расчёты через `Decimal`, `float` только при отдаче JSON
 
 ---
 
-## Сводная таблица
+## ИТОГОВЫЙ СТАТУС
 
-| # | Проблема | Критичность | Статус |
-|---|----------|-------------|--------|
-| 1 | Авто-перераспределение не вызывалось + 2 бага в алгоритме | 🔴 Критично | ✅ **ИСПРАВЛЕНО** |
-| 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ✅ **ИСПРАВЛЕНО** |
-| 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ✅ **ИСПРАВЛЕНО** |
+| # | Проблема | Приоритет | Статус |
+|---|----------|-----------|--------|
+| 1 | `/budget/monthly` игнорировал движок | 🔴 Критично | ✅ Было неверно описано — уже работало |
+| 2 | Real-time rebalancing не вызывался | 🔴 Критично | ✅ **ИСПРАВЛЕНО** |
+| 3 | Cron брал прошлый месяц | 🔴 Критично | ✅ Было неверно описано — уже работало |
+| 4 | Savings не защищены | 🔴 Критично | ✅ Было неверно описано — уже работало |
+| 5 | Behavioral allocator врал | 🟡 Важно | ⚠️ Частично — нужна проверка % использования |
+| 6 | Порог $10 для всех | 🟡 Важно | ✅ Было неверно описано — уже динамический |
+| 7 | CLUSTERED без seed | 🟡 Важно | ✅ Было неверно описано — уже детерминирован |
+| 8 | Два несовместимых redistributor | 🟡 Важно | ❌ **НУЖНО ИСПРАВИТЬ** |
+| 9 | Цели не в DailyPlan | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
+| 10 | Безличные уведомления | 🟢 Улучшение | ❌ **НУЖНО СДЕЛАТЬ** |
+| 11 | Нет 3-day reminder | 🟢 Улучшение | ❌ **НУЖНО СДЕЛАТЬ** |
+| 12 | Разные пороги в разных сервисах | 🟢 Улучшение | ❌ **НУЖНО ИСПРАВИТЬ** |
+| 13 | Audit log эвристика | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
+| 14 | Потеря savings surplus | 🟢 Улучшение | ✅ Было неверно описано — уже работало |
+| 15 | Нет позитивных wins | 🟢 Улучшение | ⚠️ Частично — нужна проверка delivery |
 
----
-
-## Что изменено в коде
-
-### `app/services/core/engine/realtime_rebalancer.py`
-- Исправлен `float` → `Decimal` при обновлении `planned_amount` (строка ~168)
-- Добавлен шаг 5: кредитование перерасходованного entry после трансферов (строки ~197–231)
-
-### `app/services/core/engine/expense_tracker.py`
-- Добавлен import `check_and_rebalance`
-- Добавлен вызов после `update_day_status` (строки ~54–74)
-- Повторный `update_day_status` после ребаланса для актуального статуса
-
-### `tests/test_realtime_rebalancer.py` ← новый файл
-- 18 unit тестов с mock DB
-- Покрытие: fast path, SACRED protection, 50% cap, priority order, partial coverage, dry_run, Decimal precision, credit to overspent entry
-
-### `tests/test_rebalancer_integration.py` ← новый файл
-- 10 integration тестов с SQLite in-memory (реальные SQL запросы)
-- Покрытие: full flow, past days не трогаются, DB precision, multiple donors
-
-**Итого тестов:** было 44 passing → стало 72 passing (+28 новых, все ✅)
+**Тесты:** 287 passing, 7 failing (`test_category_mapping_fix.py`, `test_income_location_budget_allocation.py` — не связаны с бюджетными проблемами).
 
 ---
 
-### Problem 2 — `app/services/redistribution_audit_log.py`
-- Полностью переписан с in-memory dict → PostgreSQL
-- `record_redistribution_event()` пишет через savepoint (`db.begin_nested()`)
-- `get_redistribution_history()` / `clear_user_audit_log()` — реальные SQL запросы
+## ПОРЯДОК ОСТАВШЕЙСЯ РАБОТЫ
 
-### `app/db/models/redistribution_event.py` ← новый файл
-- SQLAlchemy модель `RedistributionEvent`
-
-### `alembic/versions/0025_add_redistribution_events_table.py` ← новая миграция
-- Таблица + 2 индекса: `(user_id, created_at DESC)`, `(user_id, from_day)`
-
-### `app/api/budget/routes.py`
-- `GET /budget/redistribution_history` — реальный SQL вместо эвристического хака
-
-### `tests/test_redistribution_audit_log.py` ← новый файл
-- 17 тестов: write, session restart, from_day типы, precision, ordering, isolation, limit, clear
-
----
-
-### Problem 2.5 (DateTime баг) — `app/core/date_utils.py` ← новый файл
-- `day_to_range(d)` — единственный источник правды для datetime границ дня
-- Исправлены 4 файла: оба `expense_tracker.py`, `calendar_updater.py`, `calendar_service_real.py`
-
----
-
-**Итого тестов сейчас:** 45 passing ✅
-
----
-
-### Problem 3 — `app/services/core/engine/budget_forecast_engine.py` ← новый файл
-- Pure computation engine, zero DB access
-- `DailyPlanData`, `GoalData` — frozen dataclass'ы для входных данных
-- `CategoryForecast`, `GoalForecast`, `ForecastResult` — выходные dataclass'ы с `to_dict()`
-- `compute_forecast()` — публичный API, принимает pre-fetched данные от роута
-- Все расчёты в Decimal, ROUND_HALF_UP, 2 знака везде
-
-### `app/api/budget/routes.py`
-- Добавлен `GET /budget/forecast` эндпоинт
-- Async SQLAlchemy запросы: DailyPlan за месяц + активные Goals
-- Конвертация ORM объектов → DailyPlanData / GoalData перед вызовом движка
-- Валидация year/month (2020–2030, 1–12) с HTTP 422
-
-### `tests/test_budget_forecast_engine.py` ← новый файл
-- 35 unit тестов, все без DB (движок чистый)
-- 8 групп: NoData, Status, GlobalMetrics, CategoryForecasts, DaysUntilExhausted,
-  GoalForecasts, DecimalPrecision, FullScenario
-
-**Итого тестов после Problem 3:** 80 passing ✅ (45 предыдущих + 35 новых)
-
----
-
-### Problem 4 — `app/services/core/engine/goal_budget_sync.py` ← новый файл
-- `calculate_required_monthly_contribution()` — pure, synchronous
-- `calculate_daily_savings_amount()` — pure, synchronous
-- `sync_goal_to_daily_plan()` — async, idempotent upsert
-- `remove_goal_daily_plan_rows()` — async, bulk DELETE
-
-### `app/db/models/daily_plan.py`
-- Добавлен `goal_id` nullable FK → `goals.id` ON DELETE SET NULL
-
-### `app/core/category_priority.py`
-- Добавлен `"goal_savings": CategoryLevel.SACRED`
-
-### `alembic/versions/0026_add_goal_id_to_daily_plan.py` ← новая миграция
-- `goal_id` column + 2 индекса: `ix_daily_plan_goal_id`, `ix_daily_plan_user_goal_date`
-
-### `app/api/goals/routes.py`
-- Хуки в 6 endpoints: create, update, delete, pause, resume, complete
-- Non-blocking: try/except, sync failure не ломает goal CRUD
-
-### `tests/test_goal_budget_sync.py` ← новый файл
-- 41 тест: unit + mock-based AsyncSession
-
-### `tests/test_rebalancer_integration.py`
-- DDL обновлён: добавлен `goal_id TEXT` в CREATE TABLE
-
-**Итого тестов после Problem 4:** 121 passing ✅ (80 предыдущих + 41 новый)
-
----
-
-### Problem 5 — `app/services/core/engine/velocity_alert_engine.py` ← новый файл
-- `DailyPlanData`, `GoalData` — frozen input dataclasses
-- `CategoryVelocity`, `GoalImpact`, `SpendingWin`, `VelocityAlertResult` — output dataclasses с `to_dict()`
-- `compute_velocity_alerts()` — публичный API, pure function, нет DB
-- Пороги: WATCH(1.2×) / WARNING(1.5×) / CRITICAL(2.0×) — sacred категории исключены
-- `_compute_goal_impacts()` — проецирует дефицит → задержку цели в днях
-- `_detect_wins()` — считает consecutive good days (7/14/30-day streaks)
-- Все расчёты в Decimal, float только в to_dict()
-
-### `app/services/velocity_alert_service.py` ← новый файл
-- `check_velocity_after_transaction()` — real-time trigger (per-category)
-- `run_velocity_check_for_user()` — full scan (all categories + wins)
-- Дедупликация через Notification.group_key + cooldown (24h alerts, 7d wins)
-- Non-blocking: все исключения перехватываются
-
-### `app/services/core/engine/cron_task_velocity_alerts.py` ← новый файл
-- `run_velocity_alerts_batch(db, today)` — batch cron runner для всех active пользователей
-- `run_velocity_alerts_daily()` — no-arg wrapper для rq_scheduler (паттерн как у run_streak_win_check)
-
-### `app/services/core/engine/expense_tracker.py`
-- Добавлен вызов `check_velocity_after_transaction()` после каждой транзакции
-
-### `app/services/notification_integration.py`
-- Добавлены 4 метода: `notify_velocity_watch`, `notify_velocity_warning`, `notify_velocity_critical`, `notify_spending_win`
-
-### `app/services/notification_templates.py`
-- Добавлены 4 шаблона: `velocity_watch`, `velocity_warning`, `velocity_critical`, `spending_win`
-
-### `app/core/budget_thresholds.py`
-- Добавлены velocity константы: VELOCITY_WATCH/WARNING/CRITICAL, VELOCITY_MIN_DAYS, VELOCITY_ALERT_COOLDOWN_HOURS, WIN_DAILY_UNDER_PCT, WIN_STREAK_DAYS
-
-### `tests/test_velocity_alert_engine.py` ← новый файл
-- 53 unit теста (pure engine, без DB)
-- 11 групп: NoData, VelocityRatio, AlertLevels, SacredCategories, DaysUntilExhausted, GoalImpact, WinDetection, DecimalPrecision, CategoryFilter, EdgeCases, FullScenario
-
-### `tests/test_velocity_alert_service.py` ← новый файл
-- 18 integration теста (SQLite in-memory)
-- 5 групп: Deduplication, NotificationLevel, WinNotifications, RealTimeTrigger, ErrorHandling
-
-### `scripts/rq_scheduler.py`
-- Добавлен импорт `run_velocity_alerts_daily`
-- Добавлено расписание: `"30 7 * * *"` — ежедневно в 07:30 UTC (до daily advice в 08:00)
-
-**Итого тестов после Problem 5:** 192 passing ✅ (121 предыдущих + 71 новый)
-
----
-
-*Документ обновлять при закрытии каждой проблемы.*
+1. **Проблема 8** — Убрать `app/engine/budget_redistributor.py`, все вызовы направить на `app/services/budget_redistributor.py` + `realtime_rebalancer.py`
+2. **Проблема 12** — Унифицировать пороги: вынести WARNING/DANGER/CAUTION в `budget_thresholds.py`, убрать дублирование
+3. **Проблема 5** — Добавить метрику: % запросов с реальным user_context vs fallback
+4. **Проблема 15** — Проверить delivery push для wins streak
+5. **Проблема 10** — Goal-aware текст в уведомлениях (имя + цель + сдвиг в днях)
+6. **Проблема 11** — 3-day reminder cron при игнорировании алерта
