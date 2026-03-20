@@ -363,18 +363,69 @@ CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
 
 ---
 
-### ПРОБЛЕМА 6 — Нет запланированных будущих расходов ⚠️ ОТКРЫТА
+### ПРОБЛЕМА 6 — Нет запланированных будущих расходов ✅ ИСПРАВЛЕНО
 
-**Файлы:** нет — функциональность отсутствует
+**Файлы созданы:**
+- `app/db/models/scheduled_expense.py` — SQLAlchemy модель
+- `alembic/versions/0027_add_scheduled_expenses_table.py` — миграция + 4 индекса
+- `app/services/core/engine/scheduled_expense_engine.py` — pure computation engine
+- `app/services/scheduled_expense_service.py` — async DB операции (для API)
+- `app/services/core/engine/cron_task_scheduled_expenses.py` — cron task (sync, 06:00 UTC)
+- `app/api/scheduled_expenses/routes.py` — API эндпоинты
 
-**Проблема:**
-Пользователь знает что 25-го числа придёт счёт за страховку $300. Он не может сказать об этом приложению заранее, и оно не корректирует дневной бюджет. В итоге 25-го происходит "неожиданный" перерасход.
+**Что сделано:**
 
-**Что нужно сделать:**
-- `POST /transactions/scheduled` — запланировать будущую трату
-- При создании: сразу пересчитать `safe_daily_limit` для оставшихся дней
-- За 3 дня до — push reminder
-- В день наступления — автоматически создать транзакцию
+**1. Модель `ScheduledExpense`:**
+- `status`: `pending` → `processed` | `cancelled` | `failed`
+- `recurrence`: `once` / `weekly` / `monthly`
+- `scheduled_date`: Date
+- `transaction_id`: FK → реальная транзакция, созданная в день срабатывания
+
+**2. API эндпоинты:**
+```
+POST   /api/scheduled-expenses/        — создать + сразу вернуть budget_impact
+GET    /api/scheduled-expenses/        — список (фильтр по status, date)
+GET    /api/scheduled-expenses/impact  — влияние на safe_daily_limit (год/месяц)
+GET    /api/scheduled-expenses/{id}    — получить одну запись
+DELETE /api/scheduled-expenses/{id}    — отменить + вернуть обновлённый impact
+```
+
+**3. `scheduled_expense_engine.py` — pure computation:**
+- `compute_scheduled_impact(pending_expenses, daily_plans, today)` → `ScheduledImpactResult`
+- `base_safe_daily_limit` — без учёта scheduled
+- `adjusted_safe_daily_limit` — с вычетом всех pending scheduled сумм
+- `daily_reduction` для каждой расходной строки — насколько режется дневной лимит
+- `category_can_cover` — есть ли в категории буфер для покрытия
+
+**4. Cron task (06:00 UTC ежедневно):**
+- Фаза 1: `scheduled_date == today` → создаёт реальную `Transaction` → `apply_transaction_to_plan()` → `check_and_rebalance()` — авто-ребаланс срабатывает сразу
+- Фаза 2: расходы через 1-3 дня → push-напоминание (если `reminder_sent_at is None`)
+- Рекуррентность: после обработки weekly/monthly → создаёт следующий `ScheduledExpense`
+
+**Пример (что было vs что стало):**
+```
+Пользователь вводит: страховка $300 на 25 марта
+
+БЫЛО:  safe_daily_limit = $75/день; 25-го неожиданный перерасход $300 → RED день
+СТАЛО: сразу после создания:
+         adjusted_safe_daily_limit = (remaining - $300) / days_remaining
+       22-го: push "📅 Upcoming Bill: Insurance — $300 through в 3 дня"
+       25-го: транзакция создаётся автоматически, авто-ребаланс перераспределяет
+              из discretionary категорий, день остаётся GREEN ✅
+```
+
+**Notification templates добавлены:**
+- `scheduled_expense_reminder(category, amount, scheduled_date, days_until, merchant)`
+- `scheduled_expense_processed(category, amount, scheduled_date, transaction_id)`
+
+**Тесты:**
+- `tests/test_scheduled_expense_engine.py` — 34 unit теста (pure engine, без DB)
+  - 7 групп: NoExpenses, BasicImpact, MultipleExpenses, ExpenseOutsideMonth, CategoryCanCover, DailyReduction, DecimalPrecision, EdgeCases, FullScenario
+- `tests/test_scheduled_expense_service.py` — 17 integration тестов (SQLite in-memory)
+  - 4 группы: Create, Get, Cancel, Impact
+- Все 51 тест проходят ✅
+
+**Итого тестов после Problem 6:** 243 passing ✅ (192 предыдущих + 51 новый)
 
 ---
 
@@ -387,7 +438,7 @@ CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
 | 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ✅ **ИСПРАВЛЕНО** |
-| 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ⚠️ Открыта |
+| 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ✅ **ИСПРАВЛЕНО** |
 
 ---
 

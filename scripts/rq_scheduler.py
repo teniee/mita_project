@@ -12,6 +12,7 @@ from app.legacy_tasks import (
 from app.services.core.engine.cron_task_streak_wins import run_streak_win_check
 from app.services.core.engine.cron_task_followup_reminder import run_followup_reminders
 from app.services.core.engine.cron_task_velocity_alerts import run_velocity_alerts_daily
+from app.services.core.engine.cron_task_scheduled_expenses import run_scheduled_expenses_daily
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 conn = Redis.from_url(redis_url)
@@ -72,6 +73,15 @@ scheduler.cron(
 scheduler.cron(
     "30 7 * * *",
     func=run_velocity_alerts_daily,
+    repeat=None,
+    queue_name="default",
+)
+
+# Scheduled expenses: fire due expenses + send 3-day reminders at 06:00 UTC
+# Runs before velocity alerts (07:30) so alerts already account for today's bills
+scheduler.cron(
+    "0 6 * * *",
+    func=run_scheduled_expenses_daily,
     repeat=None,
     queue_name="default",
 )

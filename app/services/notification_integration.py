@@ -490,6 +490,91 @@ class NotificationIntegration:
             return None
 
     # ============================================================================
+    # SCHEDULED EXPENSE NOTIFICATIONS
+    # ============================================================================
+
+    def notify_scheduled_expense_reminder(
+        self,
+        user_id: UUID,
+        category: str,
+        amount: float,
+        scheduled_date,
+        days_until: int,
+        merchant: Optional[str] = None,
+        group_key: Optional[str] = None,
+    ):
+        """Send reminder push for an upcoming scheduled expense (1–3 days before)."""
+        try:
+            template = self.templates.scheduled_expense_reminder(
+                category=category,
+                amount=amount,
+                scheduled_date=scheduled_date,
+                days_until=days_until,
+                merchant=merchant,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "scheduled_expense reminder sent: user=%s cat=%s days_until=%d",
+                user_id,
+                category,
+                days_until,
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send scheduled_expense reminder: user=%s cat=%s err=%s",
+                user_id,
+                category,
+                exc,
+            )
+            return None
+
+    def notify_scheduled_expense_processed(
+        self,
+        user_id: UUID,
+        category: str,
+        amount: float,
+        scheduled_date,
+        transaction_id: str,
+        group_key: Optional[str] = None,
+    ):
+        """Confirm that a scheduled expense was auto-created as a transaction."""
+        try:
+            template = self.templates.scheduled_expense_processed(
+                category=category,
+                amount=amount,
+                scheduled_date=scheduled_date,
+                transaction_id=transaction_id,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "scheduled_expense processed notification sent: user=%s cat=%s txn=%s",
+                user_id,
+                category,
+                transaction_id,
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send scheduled_expense processed notification: "
+                "user=%s cat=%s err=%s",
+                user_id,
+                category,
+                exc,
+            )
+            return None
+
+    # ============================================================================
     # GENERIC NOTIFICATION HELPER
     # ============================================================================
 

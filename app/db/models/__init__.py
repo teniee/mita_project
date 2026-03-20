@@ -22,6 +22,7 @@ from .analytics_log import FeatureUsageLog, FeatureAccessLog, PaywallImpressionL
 from .user_preference import UserPreference
 from .waitlist import WaitlistEntry
 from .redistribution_event import RedistributionEvent
+from .scheduled_expense import ScheduledExpense
 from .installment import (
     Installment,
     UserFinancialProfile,
@@ -72,4 +73,5 @@ __all__ = [
     "InstallmentStatus",
     "WaitlistEntry",
     "RedistributionEvent",
+    "ScheduledExpense",
 ]

@@ -404,6 +404,82 @@ class NotificationTemplates:
         }
 
     # ============================================================================
+    # SCHEDULED EXPENSE NOTIFICATIONS
+    # ============================================================================
+
+    @staticmethod
+    def scheduled_expense_reminder(
+        category: str,
+        amount: float,
+        scheduled_date,
+        days_until: int,
+        merchant: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Reminder sent 1–3 days before a scheduled expense fires."""
+        cat_display = category.replace("_", " ").title()
+        merchant_text = f" at {merchant}" if merchant else ""
+        if days_until == 0:
+            when_text = "today"
+        elif days_until == 1:
+            when_text = "tomorrow"
+        else:
+            when_text = f"in {days_until} days"
+        date_str = (
+            scheduled_date.isoformat()
+            if hasattr(scheduled_date, "isoformat")
+            else str(scheduled_date)
+        )
+        return {
+            "title": f"📅 Upcoming Bill: {cat_display}",
+            "message": (
+                f"${amount:,.2f}{merchant_text} is scheduled {when_text} ({date_str}). "
+                "MITA has already adjusted your daily limit to cover it."
+            ),
+            "type": "reminder",
+            "priority": "high" if days_until <= 1 else "medium",
+            "category": "scheduled_expenses",
+            "data": {
+                "alert_subtype": "scheduled_expense_reminder",
+                "budget_category": category,
+                "amount": round(amount, 2),
+                "scheduled_date": date_str,
+                "days_until": days_until,
+            },
+        }
+
+    @staticmethod
+    def scheduled_expense_processed(
+        category: str,
+        amount: float,
+        scheduled_date,
+        transaction_id: str,
+    ) -> Dict[str, Any]:
+        """Confirmation sent when a scheduled expense fires and creates a transaction."""
+        cat_display = category.replace("_", " ").title()
+        date_str = (
+            scheduled_date.isoformat()
+            if hasattr(scheduled_date, "isoformat")
+            else str(scheduled_date)
+        )
+        return {
+            "title": f"💸 Scheduled Bill Paid: {cat_display}",
+            "message": (
+                f"${amount:,.2f} was automatically recorded for {cat_display} today. "
+                "Your budget has been rebalanced."
+            ),
+            "type": "info",
+            "priority": "medium",
+            "category": "scheduled_expenses",
+            "data": {
+                "alert_subtype": "scheduled_expense_processed",
+                "budget_category": category,
+                "amount": round(amount, 2),
+                "scheduled_date": date_str,
+                "transaction_id": transaction_id,
+            },
+        }
+
+    # ============================================================================
     # SYSTEM & SECURITY NOTIFICATIONS
     # ============================================================================
 

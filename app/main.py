@@ -58,6 +58,7 @@ from app.api.endpoints.database_performance import router as db_performance_rout
 from app.api.endpoints.cache_management import router as cache_management_router
 from app.api.endpoints.feature_flags import router as feature_flags_router
 from app.api.health.external_services_routes import router as external_services_health_router
+from app.api.scheduled_expenses.routes import router as scheduled_expenses_router
 from app.api.waitlist.routes import router as waitlist_router
 from app.core.config import settings
 from app.core.limiter_setup import init_rate_limiter
@@ -818,6 +819,7 @@ private_routers_list = [
     (cache_management_router, "/api", ["Cache Management"]),
     (feature_flags_router, "/api", ["Feature Flags"]),
     (installments_router, "/api", ["Installments"]),
+    (scheduled_expenses_router, "/api", ["Scheduled Expenses"]),
     (external_services_health_router, "", ["Health"]),  # No /api prefix for health endpoints
 ]
 
