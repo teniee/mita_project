@@ -13,7 +13,7 @@ from sqlalchemy import and_
 
 from app.db.models.daily_plan import DailyPlan
 from app.core.budget_thresholds import (
-    THRESHOLD_SAFE, THRESHOLD_DANGER, THRESHOLD_EXCEEDED
+    THRESHOLD_SAFE, THRESHOLD_WARNING, THRESHOLD_DANGER, THRESHOLD_EXCEEDED
 )
 
 
@@ -24,10 +24,10 @@ class SpendingPreventionService:
     """
 
     # Warning level thresholds (sourced from app.core.budget_thresholds)
-    SAFE_THRESHOLD = THRESHOLD_SAFE       # Under 70% of budget = safe (green)
-    CAUTION_THRESHOLD = THRESHOLD_DANGER  # 70-90% of budget = caution (yellow)
-    DANGER_THRESHOLD = THRESHOLD_EXCEEDED # 90-100% of budget = danger (orange)
-    # Over 100% = blocked (red)
+    SAFE_UPPER = THRESHOLD_SAFE        # < 70%: safe (green)
+    CAUTION_UPPER = THRESHOLD_WARNING  # 70–80%: caution (yellow) — aligns with first push at 80%
+    DANGER_UPPER = THRESHOLD_DANGER    # 80–90%: warning (amber)
+    EXCEEDED_UPPER = THRESHOLD_EXCEEDED  # 90–100%: danger (orange); ≥ 100% = blocked (red)
 
     def __init__(self, db: Session, user_id: UUID):
         self.db = db
@@ -88,7 +88,7 @@ class SpendingPreventionService:
 
         # Determine warning level
         warning_level = self._calculate_warning_level(new_total, daily_budget)
-        can_afford = warning_level in ['safe', 'caution']
+        can_afford = warning_level in ['safe', 'caution', 'warning']
 
         # Get alternative categories with available budget
         alternatives = self._find_alternative_categories(trans_date, amount)
@@ -135,11 +135,13 @@ class SpendingPreventionService:
 
         usage_ratio = float(new_total / daily_budget)
 
-        if usage_ratio < self.SAFE_THRESHOLD:
+        if usage_ratio < self.SAFE_UPPER:
             return "safe"
-        elif usage_ratio < self.CAUTION_THRESHOLD:
+        elif usage_ratio < self.CAUTION_UPPER:
             return "caution"
-        elif usage_ratio < self.DANGER_THRESHOLD:
+        elif usage_ratio < self.DANGER_UPPER:
+            return "warning"
+        elif usage_ratio < self.EXCEEDED_UPPER:
             return "danger"
         else:
             return "blocked"
@@ -240,8 +242,11 @@ class SpendingPreventionService:
         elif warning_level == "caution":
             return f"⚠️ This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining."
 
+        elif warning_level == "warning":
+            return f"⚠️ Budget alert! This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining."
+
         elif warning_level == "danger":
-            return f"🟠 Warning! This will leave only ${float(remaining):.2f} in {category} today ({percentage_used:.0f}% used)."
+            return f"🟠 Danger! This will leave only ${float(remaining):.2f} in {category} today ({percentage_used:.0f}% used)."
 
         else:  # blocked
             return f"🔴 This will exceed your {category} budget by ${float(overage):.2f}!"
@@ -304,8 +309,10 @@ class SpendingPreventionService:
             # Determine status color (thresholds from app.core.budget_thresholds)
             if percentage < THRESHOLD_SAFE * 100:
                 status = "safe"
-            elif percentage < THRESHOLD_DANGER * 100:
+            elif percentage < THRESHOLD_WARNING * 100:
                 status = "caution"
+            elif percentage < THRESHOLD_DANGER * 100:
+                status = "warning"
             elif percentage < THRESHOLD_EXCEEDED * 100:
                 status = "danger"
             else:

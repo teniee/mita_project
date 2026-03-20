@@ -105,6 +105,17 @@ class NotificationTemplates:
         }
 
     @staticmethod
+    def budget_danger(category: str, spent: float, limit: float, percentage: float) -> Dict[str, Any]:
+        """Alert when spending reaches 90% of budget"""
+        return {
+            "title": "🟠 Budget Danger Zone",
+            "message": f"You've used {percentage:.0f}% (${spent:,.2f} of ${limit:,.2f}) of your {category} budget. Only ${limit - spent:,.2f} left.",
+            "type": "alert",
+            "priority": "high",
+            "category": "budget_alerts",
+        }
+
+    @staticmethod
     def budget_exceeded(category: str, spent: float, limit: float, overage: float) -> Dict[str, Any]:
         """Alert when budget is exceeded"""
         return {

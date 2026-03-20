@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.services.core.engine.budget_tracker import BudgetTracker
 from app.services.notification_integration import get_notification_integration
-from app.core.budget_thresholds import THRESHOLD_WARNING, THRESHOLD_EXCEEDED
+from app.core.budget_thresholds import (
+    THRESHOLD_WARNING,
+    THRESHOLD_DANGER,
+    THRESHOLD_EXCEEDED,
+    THRESHOLD_MODERATE,
+)
 from app.db.models import Goal
 
 logger = logging.getLogger(__name__)
@@ -23,8 +28,9 @@ class BudgetAlertService:
     """
 
     # Thresholds for sending alerts (sourced from app.core.budget_thresholds)
-    WARNING_THRESHOLD = THRESHOLD_WARNING    # 80% of budget
-    DANGER_THRESHOLD = THRESHOLD_EXCEEDED   # 100% of budget (exceeded)
+    WARNING_THRESHOLD = THRESHOLD_WARNING        # 80% — first warning push
+    DANGER_ALERT_THRESHOLD = THRESHOLD_DANGER    # 90% — danger push
+    EXCEEDED_THRESHOLD = THRESHOLD_EXCEEDED      # 100% — exceeded push
 
     def __init__(self, db: Session):
         self.db = db
@@ -128,8 +134,8 @@ class BudgetAlertService:
         Returns alert dict if sent, None otherwise
         """
         try:
-            # Budget exceeded (critical alert)
-            if percentage >= self.DANGER_THRESHOLD:
+            # Budget exceeded (critical alert) — 100%+
+            if percentage >= self.EXCEEDED_THRESHOLD:
                 overage = spent - limit
                 goal_context = self._get_user_goal_context(user_id, overage)
 
@@ -162,6 +168,42 @@ class BudgetAlertService:
 
                 result = {
                     "type": "exceeded",
+                    "category": category,
+                    "spent": spent,
+                    "limit": limit,
+                    "percentage": percentage,
+                    "goal_context": goal_context,
+                }
+                if goal_context:
+                    result["goal_context_message"] = (
+                        f"Your goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                return result
+
+            # Budget danger (90% threshold)
+            elif percentage >= self.DANGER_ALERT_THRESHOLD:
+                goal_context = self._get_user_goal_context(user_id, 0.0)
+
+                self.notifier.notify_budget_danger(
+                    user_id=user_id,
+                    category=category,
+                    spent=spent,
+                    limit=limit,
+                    percentage=percentage * 100,
+                )
+
+                if goal_context:
+                    logger.info(
+                        f"Budget danger alert sent for user {user_id}, category {category}. "
+                        f"Goal [{goal_context['goal_title']}] may be delayed by "
+                        f"{goal_context['delay_days']} days."
+                    )
+                else:
+                    logger.info(f"Budget danger alert sent for user {user_id}, category {category}")
+
+                result = {
+                    "type": "danger",
                     "category": category,
                     "spent": spent,
                     "limit": limit,
@@ -317,12 +359,14 @@ class BudgetAlertService:
                 spent = spent_amounts.get(category, Decimal('0.00'))
                 percentage = float(spent / budget_limit) if budget_limit > 0 else 0
 
-                # Determine status
-                if percentage >= 1.0:
+                # Determine status (thresholds from app.core.budget_thresholds)
+                if percentage >= THRESHOLD_EXCEEDED:
                     budget_status = "exceeded"
-                elif percentage >= 0.8:
+                elif percentage >= THRESHOLD_DANGER:
+                    budget_status = "danger"
+                elif percentage >= THRESHOLD_WARNING:
                     budget_status = "warning"
-                elif percentage >= 0.5:
+                elif percentage >= THRESHOLD_MODERATE:
                     budget_status = "moderate"
                 else:
                     budget_status = "good"

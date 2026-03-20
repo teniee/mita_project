@@ -161,6 +161,28 @@ class NotificationIntegration:
             logger.error(f"Failed to send budget warning notification: {e}")
             return None
 
+    def notify_budget_danger(
+        self,
+        user_id: UUID,
+        category: str,
+        spent: float,
+        limit: float,
+        percentage: float
+    ):
+        """Send alert when budget reaches 90%"""
+        try:
+            template = self.templates.budget_danger(category, spent, limit, percentage)
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                **template
+            )
+            logger.info(f"Budget danger notification sent to user {user_id} for {category}")
+            return notification
+        except Exception as e:
+            logger.error(f"Failed to send budget danger notification: {e}")
+            return None
+
     def notify_budget_exceeded(
         self,
         user_id: UUID,
