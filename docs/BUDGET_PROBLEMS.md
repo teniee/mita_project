@@ -317,21 +317,49 @@ CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
 
 ---
 
-### ПРОБЛЕМА 5 — Нет проактивных алертов по velocity ⚠️ ОТКРЫТА
+### ПРОБЛЕМА 5 — Нет проактивных алертов по velocity ✅ ИСПРАВЛЕНО
 
-**Файлы:** нет — функциональность отсутствует
+**Файлы созданы:**
+- `app/services/core/engine/velocity_alert_engine.py` — pure computation engine
+- `app/services/velocity_alert_service.py` — DB-aware orchestrator с дедупликацией
+- `app/services/core/engine/cron_task_velocity_alerts.py` — daily cron runner
 
-**Проблема:**
-`POST /transactions/check-affordability` работает только когда пользователь **сам спрашивает** перед тратой. Приложение никогда не пишет первым:
-- "Ты уже потратил 80% бюджета на развлечения, хотя месяц прошёл лишь на 40%"
-- "При текущем темпе бюджет на еду закончится через 5 дней"
-- "Сегодня хорошо — ты потратил меньше нормы, +$12 к запасу"
+**Что сделано:**
 
-**Что нужно сделать:**
-- Фоновый воркер запускается раз в день (или триггер при транзакции)
-- Считает velocity по каждой категории: `spent_so_far / days_elapsed` vs `monthly_budget / days_in_month`
-- Если категория сжигается > 1.5x быстрее нормы → push notification
-- Firebase Cloud Messaging уже интегрирован — нужна только логика триггеров
+**velocity_alert_engine.py** — чистый движок без DB:
+- `velocity_ratio = (monthly_spent / days_elapsed) / (monthly_planned / days_in_month)`
+- **Уровни:** WATCH (≥1.2×), WARNING (≥1.5×), CRITICAL (≥2.0×)
+- Sacred категории (rent, savings_goal) — **никогда** не алертятся
+- `days_until_exhausted` — сколько дней осталось бюджета при текущем темпе
+- Goal impact — проецирует как дефицит сдвигает цели (в днях)
+- Win detection — считает streak consecutive good days (7/14/30)
+- Все расчёты в `Decimal`, float только в `to_dict()`
+
+**velocity_alert_service.py** — оркестратор с дедупликацией:
+- **Real-time trigger** (после каждой транзакции через expense_tracker): только категория транзакции
+- **Cron trigger** (раз в день): все категории + win detection
+- Дедупликация: перед отправкой проверяет `Notification` по `group_key` + 24h cooldown для алертов, 7 days для wins
+- group_key: `velocity_alert:{user_id}:{category}:{year}-{month}`
+
+**Нотификации добавлены:**
+- `notify_velocity_watch / warning / critical` в `NotificationIntegration`
+- `notify_spending_win` в `NotificationIntegration`
+- Templates: `velocity_watch`, `velocity_warning`, `velocity_critical`, `spending_win` в `NotificationTemplates`
+
+**Константы добавлены в `budget_thresholds.py`:**
+- `VELOCITY_WATCH=1.20`, `VELOCITY_WARNING=1.50`, `VELOCITY_CRITICAL=2.00`
+- `VELOCITY_MIN_DAYS=3`, `VELOCITY_ALERT_COOLDOWN_HOURS=24`
+- `WIN_DAILY_UNDER_PCT=0.80`, `WIN_STREAK_DAYS=7`
+
+**expense_tracker.py обновлён:**
+- Добавлен вызов `check_velocity_after_transaction()` после каждой транзакции (non-blocking)
+
+**Тесты:**
+- `tests/test_velocity_alert_engine.py` — 53 unit теста (pure engine, без DB)
+  - 11 групп: NoData, VelocityRatio, AlertLevels, SacredCategories, DaysUntilExhausted, GoalImpact, WinDetection, DecimalPrecision, CategoryFilter, EdgeCases, FullScenario
+- `tests/test_velocity_alert_service.py` — 18 integration теста (SQLite in-memory)
+  - 5 групп: Deduplication, NotificationLevel, WinNotifications, RealTimeTrigger, ErrorHandling
+- Все 71 тест проходят ✅
 
 ---
 
@@ -358,7 +386,7 @@ CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
 | 2 | Audit log в памяти — теряется при рестарте | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 3 | Нет forward projection / прогноза конца месяца | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
 | 4 | Цели не связаны с дневным бюджетом | 🟡 Важно | ✅ **ИСПРАВЛЕНО** |
-| 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ⚠️ Открыта |
+| 5 | Нет проактивных алертов по velocity трат | 🟢 Улучшение | ✅ **ИСПРАВЛЕНО** |
 | 6 | Нет запланированных будущих расходов | 🟢 Улучшение | ⚠️ Открыта |
 
 ---
@@ -463,6 +491,53 @@ CREATE INDEX ix_daily_plan_user_goal_date ON daily_plan(user_id, goal_id, date);
 - DDL обновлён: добавлен `goal_id TEXT` в CREATE TABLE
 
 **Итого тестов после Problem 4:** 121 passing ✅ (80 предыдущих + 41 новый)
+
+---
+
+### Problem 5 — `app/services/core/engine/velocity_alert_engine.py` ← новый файл
+- `DailyPlanData`, `GoalData` — frozen input dataclasses
+- `CategoryVelocity`, `GoalImpact`, `SpendingWin`, `VelocityAlertResult` — output dataclasses с `to_dict()`
+- `compute_velocity_alerts()` — публичный API, pure function, нет DB
+- Пороги: WATCH(1.2×) / WARNING(1.5×) / CRITICAL(2.0×) — sacred категории исключены
+- `_compute_goal_impacts()` — проецирует дефицит → задержку цели в днях
+- `_detect_wins()` — считает consecutive good days (7/14/30-day streaks)
+- Все расчёты в Decimal, float только в to_dict()
+
+### `app/services/velocity_alert_service.py` ← новый файл
+- `check_velocity_after_transaction()` — real-time trigger (per-category)
+- `run_velocity_check_for_user()` — full scan (all categories + wins)
+- Дедупликация через Notification.group_key + cooldown (24h alerts, 7d wins)
+- Non-blocking: все исключения перехватываются
+
+### `app/services/core/engine/cron_task_velocity_alerts.py` ← новый файл
+- `run_velocity_alerts_batch(db, today)` — batch cron runner для всех active пользователей
+- `run_velocity_alerts_daily()` — no-arg wrapper для rq_scheduler (паттерн как у run_streak_win_check)
+
+### `app/services/core/engine/expense_tracker.py`
+- Добавлен вызов `check_velocity_after_transaction()` после каждой транзакции
+
+### `app/services/notification_integration.py`
+- Добавлены 4 метода: `notify_velocity_watch`, `notify_velocity_warning`, `notify_velocity_critical`, `notify_spending_win`
+
+### `app/services/notification_templates.py`
+- Добавлены 4 шаблона: `velocity_watch`, `velocity_warning`, `velocity_critical`, `spending_win`
+
+### `app/core/budget_thresholds.py`
+- Добавлены velocity константы: VELOCITY_WATCH/WARNING/CRITICAL, VELOCITY_MIN_DAYS, VELOCITY_ALERT_COOLDOWN_HOURS, WIN_DAILY_UNDER_PCT, WIN_STREAK_DAYS
+
+### `tests/test_velocity_alert_engine.py` ← новый файл
+- 53 unit теста (pure engine, без DB)
+- 11 групп: NoData, VelocityRatio, AlertLevels, SacredCategories, DaysUntilExhausted, GoalImpact, WinDetection, DecimalPrecision, CategoryFilter, EdgeCases, FullScenario
+
+### `tests/test_velocity_alert_service.py` ← новый файл
+- 18 integration теста (SQLite in-memory)
+- 5 групп: Deduplication, NotificationLevel, WinNotifications, RealTimeTrigger, ErrorHandling
+
+### `scripts/rq_scheduler.py`
+- Добавлен импорт `run_velocity_alerts_daily`
+- Добавлено расписание: `"30 7 * * *"` — ежедневно в 07:30 UTC (до daily advice в 08:00)
+
+**Итого тестов после Problem 5:** 192 passing ✅ (121 предыдущих + 71 новый)
 
 ---
 

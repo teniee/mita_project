@@ -264,6 +264,146 @@ class NotificationTemplates:
         }
 
     # ============================================================================
+    # VELOCITY ALERT NOTIFICATIONS
+    # ============================================================================
+
+    @staticmethod
+    def velocity_watch(
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+    ) -> Dict[str, Any]:
+        """Informational: spending slightly ahead of plan (1.2x – 1.49x)."""
+        days_text = (
+            f"budget runs out in ~{days_until_exhausted:.0f} days at this pace"
+            if days_until_exhausted is not None and days_until_exhausted > 0
+            else "budget is running low"
+        )
+        cat_display = category.replace("_", " ").title()
+        return {
+            "title": f"⚡ {cat_display} spending is ahead",
+            "message": (
+                f"You're spending {velocity_ratio:.1f}× faster than planned on "
+                f"{cat_display}. {days_text.capitalize()}."
+            ),
+            "type": "warning",
+            "priority": "medium",
+            "category": "budget_alerts",
+            "data": {
+                "alert_subtype": "velocity_watch",
+                "budget_category": category,
+                "velocity_ratio": round(velocity_ratio, 2),
+            },
+        }
+
+    @staticmethod
+    def velocity_warning(
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+        goal_title: Optional[str] = None,
+        delay_days: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """High-priority: budget will exhaust significantly early (1.5x – 1.99x)."""
+        cat_display = category.replace("_", " ").title()
+        days_text = (
+            f"Only ~{days_until_exhausted:.0f} days of {cat_display} budget left "
+            "at current pace."
+            if days_until_exhausted is not None and days_until_exhausted > 0
+            else f"{cat_display} budget is nearly exhausted."
+        )
+        goal_text = ""
+        if goal_title and delay_days and delay_days > 0:
+            goal_text = (
+                f" Your goal '{goal_title}' may be delayed ~{delay_days} days."
+            )
+        return {
+            "title": f"⚠️ {cat_display} budget at risk",
+            "message": (
+                f"You're using your {cat_display} budget {velocity_ratio:.1f}× "
+                f"faster than planned. {days_text}{goal_text}"
+            ),
+            "type": "warning",
+            "priority": "high",
+            "category": "budget_alerts",
+            "data": {
+                "alert_subtype": "velocity_warning",
+                "budget_category": category,
+                "velocity_ratio": round(velocity_ratio, 2),
+                "days_until_exhausted": days_until_exhausted,
+            },
+        }
+
+    @staticmethod
+    def velocity_critical(
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+        goal_title: Optional[str] = None,
+        delay_days: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Critical: budget runs out very soon (2.0x+)."""
+        cat_display = category.replace("_", " ").title()
+        days_text = (
+            f"in ~{days_until_exhausted:.0f} days"
+            if days_until_exhausted is not None and days_until_exhausted > 0
+            else "very soon"
+        )
+        goal_text = ""
+        if goal_title and delay_days and delay_days > 0:
+            goal_text = (
+                f" This puts your goal '{goal_title}' at risk — "
+                f"~{delay_days} day delay."
+            )
+        return {
+            "title": f"🔴 {cat_display} budget running out fast",
+            "message": (
+                f"At current pace your {cat_display} budget runs out {days_text} — "
+                f"{velocity_ratio:.1f}× faster than planned. "
+                f"Reduce spending or rebalance now.{goal_text}"
+            ),
+            "type": "alert",
+            "priority": "critical",
+            "category": "budget_alerts",
+            "data": {
+                "alert_subtype": "velocity_critical",
+                "budget_category": category,
+                "velocity_ratio": round(velocity_ratio, 2),
+                "days_until_exhausted": days_until_exhausted,
+            },
+        }
+
+    @staticmethod
+    def spending_win(
+        win_type: str,
+        streak_days: int,
+        surplus_amount: float,
+    ) -> Dict[str, Any]:
+        """Positive: celebrate a budget win-streak."""
+        streak_map = {
+            "streak_7": ("🎯", "7-day budget streak!"),
+            "streak_14": ("🔥", "14-day budget streak!"),
+            "streak_30": ("⭐", "30-day budget streak!"),
+        }
+        emoji, title_suffix = streak_map.get(win_type, ("✅", f"{streak_days}-day streak!"))
+        return {
+            "title": f"{emoji} {title_suffix}",
+            "message": (
+                f"You've been under budget for {streak_days} days straight "
+                f"and saved ${surplus_amount:,.2f} total. Keep it up!"
+            ),
+            "type": "achievement",
+            "priority": "low",
+            "category": "budget_alerts",
+            "data": {
+                "alert_subtype": win_type,
+                "streak_days": streak_days,
+                "surplus_amount": round(surplus_amount, 2),
+                "celebration": True,
+            },
+        }
+
+    # ============================================================================
     # SYSTEM & SECURITY NOTIFICATIONS
     # ============================================================================
 

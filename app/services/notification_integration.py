@@ -341,6 +341,155 @@ class NotificationIntegration:
             return None
 
     # ============================================================================
+    # VELOCITY ALERT NOTIFICATIONS
+    # ============================================================================
+
+    def notify_velocity_watch(
+        self,
+        user_id: UUID,
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+        monthly_planned: float,
+        monthly_spent: float,
+        group_key: Optional[str] = None,
+    ):
+        """Send informational alert: spending is 1.2x – 1.49x ahead of plan."""
+        try:
+            template = self.templates.velocity_watch(
+                category=category,
+                velocity_ratio=velocity_ratio,
+                days_until_exhausted=days_until_exhausted,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "velocity_watch notification sent: user=%s cat=%s", user_id, category
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send velocity_watch: user=%s cat=%s err=%s",
+                user_id, category, exc,
+            )
+            return None
+
+    def notify_velocity_warning(
+        self,
+        user_id: UUID,
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+        monthly_planned: float,
+        monthly_spent: float,
+        goal_impact=None,
+        group_key: Optional[str] = None,
+    ):
+        """Send high-priority alert: budget will exhaust early (1.5x – 1.99x)."""
+        try:
+            goal_title = goal_impact.goal_title if goal_impact else None
+            delay_days = goal_impact.delay_days if goal_impact else None
+            template = self.templates.velocity_warning(
+                category=category,
+                velocity_ratio=velocity_ratio,
+                days_until_exhausted=days_until_exhausted,
+                goal_title=goal_title,
+                delay_days=delay_days,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "velocity_warning notification sent: user=%s cat=%s", user_id, category
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send velocity_warning: user=%s cat=%s err=%s",
+                user_id, category, exc,
+            )
+            return None
+
+    def notify_velocity_critical(
+        self,
+        user_id: UUID,
+        category: str,
+        velocity_ratio: float,
+        days_until_exhausted: Optional[float],
+        monthly_planned: float,
+        monthly_spent: float,
+        goal_impact=None,
+        group_key: Optional[str] = None,
+    ):
+        """Send critical alert: budget runs out very soon (2.0x+)."""
+        try:
+            goal_title = goal_impact.goal_title if goal_impact else None
+            delay_days = goal_impact.delay_days if goal_impact else None
+            template = self.templates.velocity_critical(
+                category=category,
+                velocity_ratio=velocity_ratio,
+                days_until_exhausted=days_until_exhausted,
+                goal_title=goal_title,
+                delay_days=delay_days,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "velocity_critical notification sent: user=%s cat=%s", user_id, category
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send velocity_critical: user=%s cat=%s err=%s",
+                user_id, category, exc,
+            )
+            return None
+
+    def notify_spending_win(
+        self,
+        user_id: UUID,
+        win_type: str,
+        streak_days: int,
+        surplus_amount: float,
+        group_key: Optional[str] = None,
+    ):
+        """Send positive win-streak notification."""
+        try:
+            template = self.templates.spending_win(
+                win_type=win_type,
+                streak_days=streak_days,
+                surplus_amount=surplus_amount,
+            )
+            notification = self.service.create_notification(
+                user_id=user_id,
+                send_immediately=True,
+                group_key=group_key,
+                **template,
+            )
+            logger.info(
+                "spending_win notification sent: user=%s type=%s streak=%d",
+                user_id, win_type, streak_days,
+            )
+            return notification
+        except Exception as exc:
+            logger.error(
+                "failed to send spending_win: user=%s type=%s err=%s",
+                user_id, win_type, exc,
+            )
+            return None
+
+    # ============================================================================
     # GENERIC NOTIFICATION HELPER
     # ============================================================================
 

@@ -11,6 +11,7 @@ from app.legacy_tasks import (
 )
 from app.services.core.engine.cron_task_streak_wins import run_streak_win_check
 from app.services.core.engine.cron_task_followup_reminder import run_followup_reminders
+from app.services.core.engine.cron_task_velocity_alerts import run_velocity_alerts_daily
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 conn = Redis.from_url(redis_url)
@@ -63,6 +64,14 @@ scheduler.cron(
 scheduler.cron(
     "5 9 * * *",
     func=run_followup_reminders,
+    repeat=None,
+    queue_name="default",
+)
+
+# Velocity alerts every day at 07:30 UTC (before daily advice at 08:00)
+scheduler.cron(
+    "30 7 * * *",
+    func=run_velocity_alerts_daily,
     repeat=None,
     queue_name="default",
 )

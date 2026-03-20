@@ -58,6 +58,18 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
         except Exception as e:
             logger.warning(f"Failed to check budget alerts: {e}")
 
+    # VELOCITY ALERT: check if this category is burning budget too fast
+    try:
+        from app.services.velocity_alert_service import check_velocity_after_transaction
+        check_velocity_after_transaction(
+            db=db,
+            user_id=txn.user_id,
+            category=txn.category,
+            transaction_date=txn_day,
+        )
+    except Exception as e:
+        logger.warning(f"Velocity check failed (non-critical): {e}")
+
     # AUTO-REBALANCE: if category is overspent, pull budget from future
     # low-priority days and credit back to this day — core MITA promise.
     try:
