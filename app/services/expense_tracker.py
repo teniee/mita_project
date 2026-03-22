@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from decimal import Decimal
 
@@ -5,11 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.core.date_utils import day_to_range
 from app.db.models import DailyPlan, Transaction
+from app.services.core.engine.calendar_updater import update_day_status
+from app.services.core.engine.realtime_rebalancer import check_and_rebalance
+
+logger = logging.getLogger(__name__)
 
 
 def record_expense(
     db: Session,
-    user_id: int,
+    user_id,
     day: date,
     category: str,
     amount: float,
@@ -51,6 +56,29 @@ def record_expense(
         db.add(new_plan)
 
     db.commit()
+
+    # 3. Update day status (green/yellow/red)
+    update_day_status(db, user_id, day)
+
+    # 4. AUTO-REBALANCE: ensure future days are recalculated — core MITA promise.
+    try:
+        rebalance_result = check_and_rebalance(
+            db=db,
+            user_id=user_id,
+            category=category,
+            transaction_date=day,
+        )
+        if rebalance_result is not None:
+            update_day_status(db, user_id, day)
+            logger.info(
+                "Auto-rebalance (receipt record_expense): covered=%.2f uncovered=%.2f transfers=%d",
+                float(rebalance_result.covered),
+                float(rebalance_result.uncovered),
+                len(rebalance_result.transfers),
+            )
+    except Exception as e:
+        logger.warning(f"Auto-rebalance failed in record_expense (non-critical): {e}")
+
     return {
         "status": "recorded",
         "date": day.isoformat(),

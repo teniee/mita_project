@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.db.models.daily_plan import DailyPlan
+from app.db.models.goal import Goal
 from app.core.budget_thresholds import (
     THRESHOLD_SAFE, THRESHOLD_WARNING, THRESHOLD_DANGER, THRESHOLD_EXCEEDED
 )
@@ -103,13 +104,17 @@ class SpendingPreventionService:
             remaining=remaining
         )
 
+        # Get goal context for personalised impact message
+        goal_context = self._get_user_goal_context(float(overage))
+
         # Generate impact message
         impact_message = self._generate_impact_message(
             warning_level=warning_level,
             category=category,
             remaining=remaining,
             overage=overage,
-            percentage_used=percentage_used
+            percentage_used=percentage_used,
+            goal_context=goal_context,
         )
 
         return {
@@ -127,6 +132,27 @@ class SpendingPreventionService:
             "category": category,
             "amount": float(amount)
         }
+
+    def _get_user_goal_context(self, overspend_amount: float) -> Optional[Dict]:
+        """Return active goal context for personalised messages, or None if no active goal."""
+        try:
+            goal = (
+                self.db.query(Goal)
+                .filter(Goal.user_id == self.user_id, Goal.status == "active")
+                .order_by(Goal.priority)
+                .first()
+            )
+            if not goal:
+                return None
+            monthly_contribution = float(goal.monthly_contribution or 0)
+            delay_days = (
+                int(overspend_amount / (monthly_contribution / 30))
+                if monthly_contribution > 0 and overspend_amount > 0
+                else 0
+            )
+            return {"goal_title": goal.title, "delay_days": delay_days}
+        except Exception:
+            return None
 
     def _calculate_warning_level(self, new_total: Decimal, daily_budget: Decimal) -> str:
         """Calculate warning level based on budget usage"""
@@ -233,23 +259,31 @@ class SpendingPreventionService:
         category: str,
         remaining: Decimal,
         overage: Decimal,
-        percentage_used: float
+        percentage_used: float,
+        goal_context: Optional[Dict] = None,
     ) -> str:
-        """Generate human-readable impact message"""
+        """Generate human-readable impact message with optional goal context."""
+        goal_suffix = ""
+        if goal_context and goal_context.get("goal_title"):
+            if goal_context.get("delay_days", 0) > 0:
+                goal_suffix = f" Goal [{goal_context['goal_title']}] may be delayed by {goal_context['delay_days']} day(s)."
+            else:
+                goal_suffix = f" Staying on track for goal [{goal_context['goal_title']}]."
+
         if warning_level == "safe":
-            return f"✅ Safe to spend. You'll have ${float(remaining):.2f} left in {category} today."
+            return f"✅ Safe to spend. You'll have ${float(remaining):.2f} left in {category} today.{goal_suffix}"
 
         elif warning_level == "caution":
-            return f"⚠️ This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining."
+            return f"⚠️ This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining.{goal_suffix}"
 
         elif warning_level == "warning":
-            return f"⚠️ Budget alert! This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining."
+            return f"⚠️ Budget alert! This will use {percentage_used:.0f}% of your {category} budget. ${float(remaining):.2f} remaining.{goal_suffix}"
 
         elif warning_level == "danger":
-            return f"🟠 Danger! This will leave only ${float(remaining):.2f} in {category} today ({percentage_used:.0f}% used)."
+            return f"🟠 Danger! This will leave only ${float(remaining):.2f} in {category} today ({percentage_used:.0f}% used).{goal_suffix}"
 
         else:  # blocked
-            return f"🔴 This will exceed your {category} budget by ${float(overage):.2f}!"
+            return f"🔴 This will exceed your {category} budget by ${float(overage):.2f}!{goal_suffix}"
 
     def _build_no_budget_response(self, category: str, amount: Decimal) -> Dict:
         """Response when no budget exists for category"""

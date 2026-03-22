@@ -74,6 +74,22 @@ def run_followup_reminders(db: Session) -> List[Dict]:
         alert["reminded"] = True
         alert["reminded_at"] = now.isoformat()
 
+        # Send actual push notification via NotificationIntegration
+        try:
+            from uuid import UUID
+            from app.services.notification_integration import get_notification_integration
+            notifier = get_notification_integration(db)
+            notifier.send_custom_notification(
+                user_id=UUID(user_id),
+                title="Budget Follow-up 📊",
+                message=message,
+                notification_type="reminder",
+                priority="medium",
+                category=category,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send follow-up push for user {user_id}: {e}")
+
         logger.info(f"Follow-up reminder sent to user {user_id}: {message}")
         reminders_sent.append({
             "user_id": user_id,

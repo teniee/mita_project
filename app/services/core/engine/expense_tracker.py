@@ -137,6 +137,25 @@ def record_expense(
 
     update_day_status(db, user_id, day)
 
+    # AUTO-REBALANCE: ensure future days are recalculated — core MITA promise.
+    try:
+        rebalance_result = check_and_rebalance(
+            db=db,
+            user_id=user_id,
+            category=category,
+            transaction_date=day,
+        )
+        if rebalance_result is not None:
+            update_day_status(db, user_id, day)
+            logger.info(
+                "Auto-rebalance (record_expense): covered=%.2f uncovered=%.2f transfers=%d",
+                float(rebalance_result.covered),
+                float(rebalance_result.uncovered),
+                len(rebalance_result.transfers),
+            )
+    except Exception as e:
+        logger.warning(f"Auto-rebalance failed in record_expense (non-critical): {e}")
+
     return {
         "status": "recorded",
         "date": day.isoformat(),
