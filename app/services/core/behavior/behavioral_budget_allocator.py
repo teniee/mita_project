@@ -1,7 +1,10 @@
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.services.core.dynamic_threshold_service import (
     DynamicThresholdService, get_dynamic_thresholds, ThresholdType, UserContext
@@ -138,6 +141,8 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
             for cat, pct in default_distribution.items()
         }
         user_context_applied = False
+
+    logger.info("behavioral_allocator: context_applied=%s", user_context_applied)
 
     return {
         "categories": categories,
