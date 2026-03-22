@@ -83,7 +83,7 @@ def run_followup_reminders(db: Session) -> List[Dict]:
                 user_id=UUID(user_id),
                 title="Budget Follow-up 📊",
                 message=message,
-                notification_type="budget_reminder",
+                notification_type="reminder",
                 priority="medium",
                 category=category,
             )
