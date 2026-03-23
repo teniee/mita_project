@@ -15,12 +15,10 @@
 
 ---
 
-### 2. `user_preferences` table missing in DB — no migration for UserPreference model
-- **Model:** `app/db/models/user_preference.py`
-- **Migration:** MISSING
-- **Used by:** Services storing behavioral preferences and notification settings
-- **Effect:** App crashes when saving user preferences
-- **Fix:** Create migration `0030_add_user_preferences_table.py`
+### ~~2. `user_preferences` table missing in DB — no migration for UserPreference model~~ ✅ FIXED 2026-03-23
+- **Migration created:** `alembic/versions/0030_add_user_preferences_table.py`
+- All 16 columns, unique constraint on `user_id`, index `ix_user_preferences_user_id`
+- Server defaults match model defaults (booleans, `notification_threshold`, `budget_mode`)
 
 ---
 
@@ -145,7 +143,7 @@
 |----------|-------|--------|
 | 1 | Register `health/routes.py` in `main.py` | 5 min |
 | ~~2~~ | ~~Create migration for `OCRJob`~~ | ~~15 min~~ ✅ Done |
-| 2 | Create migration for `UserPreference` | 15 min |
+| ~~2~~ | ~~Create migration for `UserPreference`~~ | ~~15 min~~ ✅ Done |
 | 4 | Fix `nixpacks.toml` Python version | 2 min |
 | 5 | Add `uvloop` to `requirements.txt` | 2 min |
 | 6 | Fix duplicate `Base` definitions | 30 min |
