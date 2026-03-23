@@ -78,12 +78,57 @@ else
     echo "Development environment detected - skipping strict validation"
 fi
 
+# Redis configuration check — at least one provider required in production
+# Supports: REDIS_URL (standard), UPSTASH_REDIS_REST_URL (Upstash REST), UPSTASH_REDIS_URL (Upstash direct)
+echo ""
+echo "🔍 Checking Redis configuration..."
+redis_configured=false
+
+if [[ -n "$REDIS_URL" ]]; then
+    echo "✅ REDIS_URL is configured (standard Redis)"
+    redis_configured=true
+fi
+
+if [[ -n "$UPSTASH_REDIS_REST_URL" ]]; then
+    echo "✅ UPSTASH_REDIS_REST_URL is configured (Upstash REST API)"
+    redis_configured=true
+    if [[ -z "$UPSTASH_REDIS_REST_TOKEN" ]]; then
+        echo "⚠️  WARNING: UPSTASH_REDIS_REST_TOKEN is missing — Upstash REST API will not authenticate"
+    fi
+fi
+
+if [[ -n "$UPSTASH_REDIS_URL" ]]; then
+    echo "✅ UPSTASH_REDIS_URL is configured (Upstash direct)"
+    redis_configured=true
+fi
+
+if [[ "$redis_configured" == "false" ]]; then
+    if [[ "${ENVIRONMENT}" == "production" ]]; then
+        echo ""
+        echo "❌ DEPLOYMENT FAILED: No Redis configuration found"
+        echo ""
+        echo "   Production requires at least one Redis provider:"
+        echo "   - REDIS_URL (standard Redis connection string)"
+        echo "   - UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (Upstash REST API)"
+        echo "   - UPSTASH_REDIS_URL (Upstash direct connection)"
+        echo ""
+        echo "   Without Redis, these features degrade critically:"
+        echo "   - Rate limiting → per-process in-memory (5x higher with multiple workers)"
+        echo "   - Task queue → background tasks silently dropped"
+        echo "   - Token blacklisting → JWT revocation unavailable"
+        echo "   - Caching → single-process in-memory only"
+        echo ""
+        exit 1
+    else
+        echo "⚠️  WARNING: No Redis configured — using in-memory fallbacks for rate limiting, task queue, and caching"
+    fi
+fi
+
 echo ""
 echo "🔍 Checking optional variables..."
 
-# Check optional variables
+# Check optional variables (Redis handled above, not listed here)
 optional_vars=(
-    "REDIS_URL"
     "SENTRY_DSN"
     "SMTP_HOST"
     "UPSTASH_AUTH_TOKEN"

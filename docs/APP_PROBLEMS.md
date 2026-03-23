@@ -84,10 +84,13 @@
 
 ---
 
-### 9. Redis not in critical environment variable checks
-- **File:** `start.sh`
-- **Effect:** App starts without Redis; rate limiting degrades to per-process in-memory (5x higher effective limit with multiple workers)
-- **Fix:** Add `REDIS_URL` or `UPSTASH_REDIS_REST_URL` to critical vars, or document the degraded behavior
+### ~~9. Redis not in critical environment variable checks~~ ✅ FIXED 2026-03-23
+- **Root cause:** `REDIS_URL` was listed in `optional_vars` — app started without Redis in production, causing rate limiting to degrade to per-process in-memory (5x higher effective limits), task queue to silently drop jobs, and JWT revocation to stop working
+- **Fix applied:** Added dedicated Redis configuration check block in `start.sh` (lines 81–125) with OR-logic across all 3 supported providers: `REDIS_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_URL`
+- **Production behavior:** Hard failure (`exit 1`) with descriptive error listing all provider options and degradation consequences
+- **Development behavior:** Warning only — in-memory fallbacks still used for local dev
+- **Bonus:** Warns if `UPSTASH_REDIS_REST_URL` is set without `UPSTASH_REDIS_REST_TOKEN` (authentication will fail)
+- **Files changed:** `start.sh`, `scripts/deployment/start.sh` — Redis check block added, `REDIS_URL` removed from `optional_vars`
 
 ---
 
@@ -162,4 +165,5 @@
 | ~~7~~ | ~~Add Firebase status to `/health`~~ | ~~10 min~~ ✅ Done |
 | ~~8~~ | ~~Increase DB init timeout to 15s~~ | ~~5 min~~ ✅ Done |
 | ~~9~~ | ~~Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config~~ | ~~10 min~~ ✅ Done |
-| 10 | Replace `print()` with `logger` everywhere | 1 hr |
+| ~~10~~ | ~~Add Redis to critical env var checks~~ | ~~15 min~~ ✅ Done |
+| 11 | Replace `print()` with `logger` everywhere | 1 hr |
