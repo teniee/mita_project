@@ -58,6 +58,7 @@ from app.api.endpoints.database_performance import router as db_performance_rout
 from app.api.endpoints.cache_management import router as cache_management_router
 from app.api.endpoints.feature_flags import router as feature_flags_router
 from app.api.health.external_services_routes import router as external_services_health_router
+from app.api.health.routes import router as health_router
 from app.api.scheduled_expenses.routes import router as scheduled_expenses_router
 from app.api.waitlist.routes import router as waitlist_router
 from app.core.config import settings
@@ -780,6 +781,9 @@ app.include_router(
 
 # Waitlist — public, no auth required
 app.include_router(waitlist_router, prefix="/api", tags=["Waitlist"])
+
+# Health — public, no auth required (Railway/load-balancer health checks must reach this)
+app.include_router(health_router, tags=["Health"])
 
 # Protected routes - Fixed duplicate path segments
 # Each router already has its own prefix, so we only add /api base

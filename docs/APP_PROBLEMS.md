@@ -22,12 +22,11 @@
 
 ---
 
-### 3. `app/api/health/routes.py` exists but is NOT registered in `main.py`
-- **File:** `app/api/health/routes.py`
-- **Missing in:** `app/main.py` — no `include_router()` call for this file
-- **Only imported:** `app/api/health/external_services_routes.py`
-- **Effect:** Railway health check can't reach `/health` endpoint → deployment never shows "healthy"
-- **Fix:** Add `from app.api.health.routes import router as health_router` and `app.include_router(health_router)` in `main.py`
+### ~~3. `app/api/health/routes.py` exists but is NOT registered in `main.py`~~ ✅ FIXED 2026-03-23
+- **Fix applied:** Added `from app.api.health.routes import router as health_router` at `app/main.py:61`
+- **Fix applied:** Added `app.include_router(health_router, tags=["Health"])` as a **public** route (no auth deps) at `app/main.py:785–786`
+- `GET /health`, `GET /health/detailed`, `GET /health/circuit-breakers` now publicly accessible
+- Railway health checks can reach `/health` → deployment shows "healthy"
 
 ---
 
@@ -141,7 +140,7 @@
 
 | Priority | Issue | Effort |
 |----------|-------|--------|
-| 1 | Register `health/routes.py` in `main.py` | 5 min |
+| ~~1~~ | ~~Register `health/routes.py` in `main.py`~~ | ~~5 min~~ ✅ Done |
 | ~~2~~ | ~~Create migration for `OCRJob`~~ | ~~15 min~~ ✅ Done |
 | ~~2~~ | ~~Create migration for `UserPreference`~~ | ~~15 min~~ ✅ Done |
 | 4 | Fix `nixpacks.toml` Python version | 2 min |
