@@ -1,8 +1,11 @@
 """GPTAgentService for analysing financial data using OpenAI."""
 
+import logging
 from typing import Optional
 from openai import OpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
+
+logger = logging.getLogger(__name__)
 
 
 class GPTAgentService:
@@ -43,5 +46,5 @@ class GPTAgentService:
             return response.choices[0].message.content.strip()
 
         except OpenAIError as e:
-            print(f"OpenAI API error: {str(e)}")
+            logger.error("OpenAI API error: %s", e)
             return "Sorry, I'm currently unavailable. Please try again later."

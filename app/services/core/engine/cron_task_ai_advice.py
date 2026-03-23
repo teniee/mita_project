@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.session import get_db
 from app.db.models import BudgetAdvice, PushToken, User
@@ -58,4 +61,4 @@ def run_ai_advice_batch() -> None:
                     db=db,
                 )
         except Exception as e:
-            print(f"AI advice failed for user {user.id}: {str(e)}")
+            logger.error("AI advice failed for user %s: %s", user.id, e)

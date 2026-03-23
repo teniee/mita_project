@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.session import get_db
 from app.engine.calendar_engine_behavioral import build_calendar
@@ -63,7 +66,5 @@ class OnboardingEngine:
 
         except Exception as e:
             # Log the error and re-raise
-            print(
-                f"[OnboardingEngine] Error finalizing profile for user {user_id}: {str(e)}"
-            )
+            logger.error("Error finalizing profile for user %s: %s", user_id, e)
             raise

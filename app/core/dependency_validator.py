@@ -448,13 +448,13 @@ def validate_dependencies_on_startup():
             for error in errors:
                 logger.error(f"  - {error}")
 
-            print("\n" + "="*60)
-            print("CRITICAL DEPENDENCY VALIDATION FAILURE")
-            print("="*60)
+            logger.critical("=" * 60)
+            logger.critical("CRITICAL DEPENDENCY VALIDATION FAILURE")
+            logger.critical("=" * 60)
             for error in errors:
-                print(f"ERROR: {error}")
-            print("\nPlease install missing dependencies and restart the application.")
-            print("="*60)
+                logger.critical("ERROR: %s", error)
+            logger.critical("Please install missing dependencies and restart the application.")
+            logger.critical("=" * 60)
 
             sys.exit(1)
         

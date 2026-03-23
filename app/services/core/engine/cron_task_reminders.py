@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -5,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.session import get_db
 from app.db.models import User
 from app.utils.email_utils import send_reminder_email
+
+logger = logging.getLogger(__name__)
 
 
 def run_daily_email_reminders() -> None:
@@ -18,4 +21,4 @@ def run_daily_email_reminders() -> None:
             body = f"Don't forget to log your expenses for {today}."
             send_reminder_email(user.email, "Mita Daily Reminder", body)
         except Exception as exc:  # pragma: no cover - ignore email failures
-            print(f"Reminder email failed for {user.id}: {exc}")
+            logger.error("Reminder email failed for user %s: %s", user.id, exc)

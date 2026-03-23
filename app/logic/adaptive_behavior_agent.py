@@ -1,4 +1,7 @@
+import logging
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
 class AdaptiveBehaviorAgent:
@@ -38,5 +41,5 @@ class AdaptiveBehaviorAgent:
 
     def adapt(self, user_id: str, cluster_id: int):
         policy = self.get_policy(cluster_id)
-        print(f"User {user_id} → Cluster {cluster_id} → Policy: {policy}")
+        logger.debug("User %s → Cluster %s → Policy: %s", user_id, cluster_id, policy)
         return policy

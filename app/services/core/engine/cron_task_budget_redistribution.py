@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.session import get_db
 from app.db.models import User
@@ -25,9 +28,9 @@ def run_budget_redistribution_batch():
                 f"Redistribution for user {user.id} "
                 f"{year}-{month:02d}: {result['status']}"
             )
-            print(msg)
+            logger.info(msg)
         except Exception as e:
-            print(f"Redistribution failed for user {user.id}: {str(e)}")
+            logger.error("Redistribution failed for user %s: %s", user.id, e)
         # On first day of month: roll over last month's savings surplus to goal
         try:
             if now.day == 1:
@@ -36,6 +39,6 @@ def run_budget_redistribution_batch():
                 prev_month = month - 1 if month > 1 else 12
                 rollover = rollover_month_savings(db, user.id, prev_year, prev_month)
                 if rollover.get("applied_to_goal"):
-                    print(f"Savings rollover for user {user.id}: {rollover}")
+                    logger.info("Savings rollover for user %s: %s", user.id, rollover)
         except Exception as e:
-            print(f"Savings rollover failed for user {user.id}: {e}")
+            logger.error("Savings rollover failed for user %s: %s", user.id, e)

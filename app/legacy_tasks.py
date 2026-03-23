@@ -3,7 +3,10 @@ Legacy task enqueuing functions for backward compatibility.
 Updated to use the new async task system.
 """
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 def enqueue_daily_advice() -> None:
@@ -11,7 +14,7 @@ def enqueue_daily_advice() -> None:
     # Use delayed import to avoid circular dependency
     from app.services.task_manager import task_manager
     task_info = task_manager.submit_daily_advice_batch()
-    print(f"Daily advice batch enqueued: {task_info.task_id}")
+    logger.info("Daily advice batch enqueued: %s", task_info.task_id)
 
 
 def enqueue_monthly_redistribution() -> None:
@@ -19,7 +22,7 @@ def enqueue_monthly_redistribution() -> None:
     # Use delayed import to avoid circular dependency
     from app.services.task_manager import task_manager
     task_info = task_manager.submit_monthly_redistribution_batch()
-    print(f"Monthly redistribution batch enqueued: {task_info.task_id}")
+    logger.info("Monthly redistribution batch enqueued: %s", task_info.task_id)
 
 
 def enqueue_subscription_refresh() -> None:
@@ -28,7 +31,7 @@ def enqueue_subscription_refresh() -> None:
     from app.core.task_queue import enqueue_task
     
     job = enqueue_task(refresh_premium_status)
-    print(f"Subscription refresh enqueued: {job.id}")
+    logger.info("Subscription refresh enqueued: %s", job.id)
 
 
 def enqueue_daily_reminders() -> None:
@@ -38,7 +41,7 @@ def enqueue_daily_reminders() -> None:
     from app.core.task_queue import enqueue_task
     
     job = enqueue_task(run_daily_email_reminders)
-    print(f"Daily reminders enqueued: {job.id}")
+    logger.info("Daily reminders enqueued: %s", job.id)
 
 
 # Legacy Redis queue for backward compatibility - EMERGENCY FIX: Lazy initialization
