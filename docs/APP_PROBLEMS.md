@@ -43,6 +43,13 @@
 
 ---
 
+### ~~4b. `pkg_resources` crash — regression from Python 3.12 upgrade~~ ✅ FIXED 2026-03-23
+- **Root cause:** `python:3.12-slim` does not bundle `setuptools` (unlike 3.10-slim), so `import pkg_resources` in `dependency_validator.py:12` crashes at startup (`ModuleNotFoundError`)
+- **Fix applied:** Replaced all `pkg_resources` usage with `importlib.metadata` (Python stdlib since 3.8) — zero external dependencies, faster than `pkg_resources`
+- **Files changed:** `app/core/dependency_validator.py` — 3 edits (import + 2 call sites)
+
+---
+
 ### ~~5. `uvloop` used in `start.sh` but missing from `requirements.txt`~~ ✅ FIXED 2026-03-23
 - **Dependency added:** `uvloop>=0.21.0; sys_platform != "win32"` in `requirements.txt` (line 9)
 - **Fallback added:** `start.sh` and `scripts/deployment/start.sh` now detect uvloop at runtime — uses `--loop uvloop` if available, falls back to default asyncio loop with a warning if not

@@ -9,7 +9,7 @@ import importlib
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from packaging import version
-import pkg_resources
+import importlib.metadata
 
 logger = logging.getLogger(__name__)
 
@@ -152,12 +152,11 @@ class DependencyValidator:
                 module = importlib.import_module(requirement.name.replace("-", "_"))
                 result["status"] = "imported"
             except ImportError:
-                # If direct import fails, try to get version from pkg_resources
+                # If direct import fails, try to get version from importlib.metadata
                 try:
-                    installed = pkg_resources.get_distribution(requirement.name)
                     result["status"] = "available"
-                    result["installed_version"] = installed.version
-                except pkg_resources.DistributionNotFound:
+                    result["installed_version"] = importlib.metadata.version(requirement.name)
+                except importlib.metadata.PackageNotFoundError:
                     result["status"] = "missing"
                     result["issues"].append(f"Package {requirement.name} is not installed")
                     return result
@@ -171,12 +170,11 @@ class DependencyValidator:
                             result["installed_version"] = getattr(module, attr)
                             break
                     
-                    # If no version found in module, try pkg_resources
+                    # If no version found in module, try importlib.metadata
                     if not result["installed_version"]:
                         try:
-                            installed = pkg_resources.get_distribution(requirement.name)
-                            result["installed_version"] = installed.version
-                        except pkg_resources.DistributionNotFound:
+                            result["installed_version"] = importlib.metadata.version(requirement.name)
+                        except importlib.metadata.PackageNotFoundError:
                             result["issues"].append(f"Could not determine version for {requirement.name}")
                             
                 except Exception as e:
