@@ -21,6 +21,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if sa.inspect(conn).has_table('user_preferences'):
+        return  # table already exists — skip idempotently
+
     op.create_table(
         'user_preferences',
 

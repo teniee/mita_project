@@ -20,6 +20,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if sa.inspect(conn).has_table('ocr_jobs'):
+        return  # table already exists (e.g. created via create_all) — skip idempotently
+
     op.create_table(
         'ocr_jobs',
         # Primary key
