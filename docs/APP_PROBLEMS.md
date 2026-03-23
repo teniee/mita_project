@@ -75,10 +75,12 @@
 
 ---
 
-### 8. Database initialization timeout too aggressive (5 seconds)
-- **File:** `app/main.py` lines 967–972
-- **Effect:** On Railway cold start (after alembic migrations), 5s is too tight → DB marked as unavailable
-- **Fix:** Increase timeout to 15–20 seconds
+### ~~8. Database initialization timeout too aggressive (5 seconds)~~ ✅ FIXED 2026-03-23
+- **Root cause:** `asyncio.wait_for(init_database(), timeout=5.0)` at startup — on Railway cold starts (DNS resolution + connection pool warming + system catalog queries), 5s is insufficient
+- **Fix applied:** Increased timeout from 5.0s → 15.0s at `app/main.py:985`
+- Consistent with Docker HEALTHCHECK `--start-period=30s` (init completes well within grace period)
+- Consistent with pool_timeout=30s (half the pool timeout — fails fast if real issue, generous for cold starts)
+- Warning message now includes timeout value for easier debugging
 
 ---
 
@@ -158,6 +160,6 @@
 | ~~5~~ | ~~Add `uvloop` to `requirements.txt`~~ | ~~2 min~~ ✅ Done |
 | ~~6~~ | ~~Fix duplicate `Base` definitions~~ | ~~30 min~~ ✅ Done |
 | ~~7~~ | ~~Add Firebase status to `/health`~~ | ~~10 min~~ ✅ Done |
-| 8 | Increase DB init timeout to 15s | 5 min |
+| ~~8~~ | ~~Increase DB init timeout to 15s~~ | ~~5 min~~ ✅ Done |
 | ~~9~~ | ~~Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config~~ | ~~10 min~~ ✅ Done |
 | 10 | Replace `print()` with `logger` everywhere | 1 hr |

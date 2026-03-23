@@ -980,13 +980,13 @@ async def on_startup():
                 logging.warning(f"⚠️ Rate limiter init failed: {e}")
                 app.state.redis_available = False
             
-            # Database with minimal retry
+            # Database with generous timeout for cold starts (Railway/Docker)
             try:
-                await asyncio.wait_for(init_database(), timeout=5.0)
+                await asyncio.wait_for(init_database(), timeout=15.0)
                 services_status["database"] = True
                 logging.info("✅ Database ready")
             except asyncio.TimeoutError:
-                logging.warning("⚠️ Database init timed out - will retry on first request")
+                logging.warning("⚠️ Database init timed out after 15s - will retry on first request")
             except Exception as e:
                 logging.warning(f"⚠️ Database init failed: {e}")
             
