@@ -122,10 +122,14 @@
 
 ---
 
-### 12. `SENTRY_DSN` not marked as critical — error monitoring silently disabled
-- **File:** `start.sh`
-- **Effect:** If `SENTRY_DSN` is not set, app starts without error tracking — no alerts when things break
-- **Fix:** Either make `SENTRY_DSN` critical in `start.sh` or add a prominent startup warning
+### ~~12. `SENTRY_DSN` not marked as critical — error monitoring silently disabled~~ ✅ FIXED 2026-03-23
+- **Root cause:** `SENTRY_DSN` was listed in `optional_vars` — app started in production without error monitoring, showing only a generic "not set (optional)" warning buried in logs
+- **Fix applied:** Removed `SENTRY_DSN` from `optional_vars`, added dedicated Sentry check block in `start.sh` (lines 127–152) with prominent box warning in production explaining all degraded capabilities (exception alerts, performance tracing, error grouping, release health)
+- **Fix applied:** Added `_sentry_initialized` flag at module level (`app/main.py:111`) — set to `True` after `sentry_sdk.init()` succeeds
+- **Fix applied:** `/health` endpoint now includes `sentry` status (`"initialized"` / `"unavailable"`) and `config.sentry_configured`
+- **Fix applied:** Overall health degrades to `"degraded"` when Sentry is unavailable in production (not `"unhealthy"` — core features still work)
+- **Development behavior:** Mild warning only — Sentry is not required for local dev
+- **Files changed:** `start.sh`, `scripts/deployment/start.sh` — Sentry check block added, `SENTRY_DSN` removed from `optional_vars`; `app/main.py` — `_sentry_initialized` flag + health endpoint visibility
 
 ---
 
@@ -176,3 +180,4 @@
 | ~~9~~ | ~~Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config~~ | ~~10 min~~ ✅ Done |
 | ~~10~~ | ~~Add Redis to critical env var checks~~ | ~~15 min~~ ✅ Done |
 | ~~11~~ | ~~Replace `print()` with `logger` everywhere~~ | ~~1 hr~~ ✅ Done |
+| ~~12~~ | ~~Add Sentry DSN check + health visibility~~ | ~~15 min~~ ✅ Done |

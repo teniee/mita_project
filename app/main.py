@@ -108,6 +108,8 @@ else:
     _firebase_initialized = True
 
 # ---- Sentry setup ----
+_sentry_initialized: bool = False
+
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
@@ -209,6 +211,8 @@ def configure_sentry():
     set_tag("component", "backend")
     set_tag("environment", environment)
     
+    global _sentry_initialized
+    _sentry_initialized = True
     logger.info(f"Sentry error monitoring initialized for {environment} environment")
 
 def filter_sensitive_data(event, hint):
@@ -443,6 +447,7 @@ async def detailed_health_check():
         "upstash_rest_api": bool(os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN")),
         "openai_configured": bool(settings.OPENAI_API_KEY),
         "firebase_configured": _firebase_initialized,
+        "sentry_configured": _sentry_initialized,
     }
     
     # Check database health
@@ -465,9 +470,14 @@ async def detailed_health_check():
     # Firebase status
     firebase_status = "initialized" if _firebase_initialized else "unavailable"
 
+    # Sentry status
+    sentry_status = "initialized" if _sentry_initialized else "unavailable"
+
     # Determine overall status
     overall_status = "healthy"
     if database_status != "connected" or not _firebase_initialized:
+        overall_status = "degraded"
+    if not _sentry_initialized and settings.ENVIRONMENT == "production":
         overall_status = "degraded"
     if not config_status["jwt_secret_configured"] or not config_status["database_configured"]:
         overall_status = "unhealthy"
@@ -478,6 +488,7 @@ async def detailed_health_check():
         "version": "1.0.0",
         "database": database_status,
         "firebase": firebase_status,
+        "sentry": sentry_status,
         "config": config_status,
         "cache_stats": cache_stats,
         "timestamp": time.time(),

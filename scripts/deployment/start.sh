@@ -124,12 +124,38 @@ if [[ "$redis_configured" == "false" ]]; then
     fi
 fi
 
+# Sentry error monitoring check — critical for production observability
+echo ""
+echo "🔍 Checking Sentry error monitoring..."
+
+if [[ -n "$SENTRY_DSN" ]]; then
+    echo "✅ SENTRY_DSN is configured — error monitoring active"
+else
+    if [[ "${ENVIRONMENT}" == "production" ]]; then
+        echo ""
+        echo "╔══════════════════════════════════════════════════════════════════╗"
+        echo "║  ⚠️  WARNING: SENTRY_DSN is not configured                      ║"
+        echo "║  Error monitoring is DISABLED in production!                     ║"
+        echo "╠══════════════════════════════════════════════════════════════════╣"
+        echo "║  Without Sentry, these capabilities are unavailable:            ║"
+        echo "║  - Unhandled exception alerts → errors happen silently          ║"
+        echo "║  - Performance transaction tracing → no latency visibility      ║"
+        echo "║  - Error grouping and trends → no degradation detection         ║"
+        echo "║  - Release health tracking → blind deploys                      ║"
+        echo "║                                                                 ║"
+        echo "║  Set SENTRY_DSN in your environment variables to enable.        ║"
+        echo "╚══════════════════════════════════════════════════════════════════╝"
+        echo ""
+    else
+        echo "⚠️  WARNING: SENTRY_DSN not configured — error monitoring disabled (OK for development)"
+    fi
+fi
+
 echo ""
 echo "🔍 Checking optional variables..."
 
-# Check optional variables (Redis handled above, not listed here)
+# Check optional variables (Redis and Sentry handled above, not listed here)
 optional_vars=(
-    "SENTRY_DSN"
     "SMTP_HOST"
     "UPSTASH_AUTH_TOKEN"
 )
