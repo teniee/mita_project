@@ -12,11 +12,11 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
 )
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import StaticPool
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.db.models.base import Base
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +119,6 @@ def initialize_database() -> None:
     except Exception as e:
         logger.error(f"Failed to create database engine: {type(e).__name__}: {e}")
         raise
-
-
-# Base class for all models
-Base = declarative_base()
 
 
 def get_async_session_factory():
