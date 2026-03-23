@@ -43,11 +43,10 @@
 
 ---
 
-### 5. `uvloop` used in `start.sh` but missing from `requirements.txt`
-- **In `start.sh`:** `uvicorn app.main:app --loop uvloop`
-- **In `requirements.txt`:** uvloop not listed
-- **Effect:** Startup crash if uvloop is not installed in the container
-- **Fix:** Add `uvloop>=0.21.0` to `requirements.txt`
+### ~~5. `uvloop` used in `start.sh` but missing from `requirements.txt`~~ ✅ FIXED 2026-03-23
+- **Dependency added:** `uvloop>=0.21.0; sys_platform != "win32"` in `requirements.txt` (line 9)
+- **Fallback added:** `start.sh` and `scripts/deployment/start.sh` now detect uvloop at runtime — uses `--loop uvloop` if available, falls back to default asyncio loop with a warning if not
+- Platform marker ensures Windows dev machines are unaffected
 
 ---
 
@@ -147,7 +146,7 @@
 | ~~2~~ | ~~Create migration for `OCRJob`~~ | ~~15 min~~ ✅ Done |
 | ~~2~~ | ~~Create migration for `UserPreference`~~ | ~~15 min~~ ✅ Done |
 | ~~4~~ | ~~Fix Python version mismatch (all configs → 3.12)~~ | ~~10 min~~ ✅ Done |
-| 5 | Add `uvloop` to `requirements.txt` | 2 min |
+| ~~5~~ | ~~Add `uvloop` to `requirements.txt`~~ | ~~2 min~~ ✅ Done |
 | 6 | Fix duplicate `Base` definitions | 30 min |
 | 7 | Increase DB init timeout to 15s | 5 min |
 | 8 | Add Firebase/Redis status to `/health` | 20 min |

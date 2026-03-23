@@ -119,7 +119,17 @@ fi
 
 echo ""
 echo "🔄 Starting application..."
-echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --access-log --loop uvloop"
+
+# Detect uvloop availability for high-performance event loop
+UVLOOP_ARG=""
+if python -c "import uvloop" 2>/dev/null; then
+    UVLOOP_ARG="--loop uvloop"
+    echo "✅ uvloop detected — using high-performance event loop"
+else
+    echo "⚠️  uvloop not available — falling back to default asyncio event loop"
+fi
+
+echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --access-log ${UVLOOP_ARG}"
 echo ""
 
 # Start the application
@@ -128,4 +138,4 @@ exec uvicorn app.main:app \
     --port "${PORT:-8000}" \
     --workers 1 \
     --access-log \
-    --loop uvloop
+    $UVLOOP_ARG
