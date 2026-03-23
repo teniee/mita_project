@@ -1,6 +1,7 @@
 # App Production Readiness Problems
 
 > Audit date: 2026-03-23
+> Last updated: 2026-03-23
 > Tool: Bulletproof Deep Research (3 parallel agents)
 > Status: **NOT FULLY READY** — critical issues block production readiness
 
@@ -8,12 +9,9 @@
 
 ## 🔴 CRITICAL — Block Production Readiness
 
-### 1. `ocr_jobs` table missing in DB — no migration for OCRJob model
-- **Model:** `app/db/models/ocr_job.py`
-- **Migration:** MISSING
-- **Used by:** `app/services/task_manager.py`
-- **Effect:** App crashes on first OCR receipt processing request
-- **Fix:** Create migration `0029_add_ocr_jobs_table.py`
+### ~~1. `ocr_jobs` table missing in DB — no migration for OCRJob model~~ ✅ FIXED 2026-03-23
+- **Migration created:** `alembic/versions/0029_add_ocr_jobs_table.py`
+- All 18 columns, 3 indexes (`job_id`, `user_id+created_at`, `status`), unique constraint on `job_id`, FK with `ondelete=CASCADE`
 
 ---
 
@@ -146,8 +144,8 @@
 | Priority | Issue | Effort |
 |----------|-------|--------|
 | 1 | Register `health/routes.py` in `main.py` | 5 min |
-| 2 | Create migration for `OCRJob` | 15 min |
-| 3 | Create migration for `UserPreference` | 15 min |
+| ~~2~~ | ~~Create migration for `OCRJob`~~ | ~~15 min~~ ✅ Done |
+| 2 | Create migration for `UserPreference` | 15 min |
 | 4 | Fix `nixpacks.toml` Python version | 2 min |
 | 5 | Add `uvloop` to `requirements.txt` | 2 min |
 | 6 | Fix duplicate `Base` definitions | 30 min |
