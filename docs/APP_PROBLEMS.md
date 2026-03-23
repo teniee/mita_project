@@ -86,14 +86,13 @@
 
 ---
 
-### 10. Multiple `Base = declarative_base()` definitions
-- **Locations:**
-  - `app/core/async_session.py:125` ← WRONG — no models registered here
-  - `app/db/__init__.py:3` ← unused
-  - `app/db/base.py:3` ← unused
-  - `app/db/models/base.py:3` ← CORRECT — all models use this
-- **Effect:** `init_database()` calls `Base.metadata.create_all()` on the wrong empty Base — silent no-op
-- **Fix:** Remove duplicate Base definitions; keep only `app/db/models/base.py`
+### ~~10. Multiple `Base = declarative_base()` definitions~~ ✅ FIXED 2026-03-23
+- **Root cause:** 4 separate `Base = declarative_base()` — only `app/db/models/base.py` had models registered; `async_session.py` used its own empty Base for `create_all()`
+- **Fix applied:** Removed 3 duplicate Base definitions, kept canonical `app/db/models/base.py`
+  - `app/core/async_session.py`: Replaced local `Base = declarative_base()` with `from app.db.models.base import Base` — `init_database()` now uses the correct Base with all 25+ models registered
+  - `app/db/__init__.py`: Removed duplicate `Base = declarative_base()` (was unused)
+  - `app/db/base.py`: Removed duplicate `Base = declarative_base()` (was unused)
+- **Impact verified:** Zero circular imports, zero broken consumers, Alembic unaffected (already used correct Base)
 
 ---
 
@@ -154,7 +153,7 @@
 | ~~2~~ | ~~Create migration for `UserPreference`~~ | ~~15 min~~ ✅ Done |
 | ~~4~~ | ~~Fix Python version mismatch (all configs → 3.12)~~ | ~~10 min~~ ✅ Done |
 | ~~5~~ | ~~Add `uvloop` to `requirements.txt`~~ | ~~2 min~~ ✅ Done |
-| 6 | Fix duplicate `Base` definitions | 30 min |
+| ~~6~~ | ~~Fix duplicate `Base` definitions~~ | ~~30 min~~ ✅ Done |
 | 7 | Increase DB init timeout to 15s | 5 min |
 | 8 | Add Firebase/Redis status to `/health` | 20 min |
 | 9 | Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config | 10 min |
