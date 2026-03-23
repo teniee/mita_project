@@ -455,7 +455,7 @@ async def detailed_health_check():
     database_error = None
     
     try:
-        db_healthy = await asyncio.wait_for(check_database_health(), timeout=1.0)  # Very short timeout for responsive health checks
+        db_healthy = await asyncio.wait_for(check_database_health(), timeout=5.0)  # Aligned with Docker HEALTHCHECK --timeout (5-10s)
         database_status = "connected" if db_healthy else "disconnected"
     except asyncio.TimeoutError:
         database_status = "timeout"

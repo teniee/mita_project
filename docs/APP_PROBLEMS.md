@@ -133,11 +133,12 @@
 
 ---
 
-### 13. Health check internal timeout (1s) mismatches Dockerfile timeout (10s)
-- **`/health` endpoint:** `asyncio.wait_for(check_database_health(), timeout=1.0)`
-- **Dockerfile HEALTHCHECK:** `--timeout=10s`
-- **Effect:** Race conditions during cold start — Docker sees success while app internally marks DB as timed out
-- **Fix:** Align timeouts (increase health endpoint DB check to 5s)
+### ~~13. Health check internal timeout (1s) mismatches Dockerfile timeout (10s)~~ ✅ FIXED 2026-03-23
+- **Root cause:** `/health` endpoint used `asyncio.wait_for(check_database_health(), timeout=1.0)` while Docker HEALTHCHECK allowed 5–10s — during cold starts (DNS + connection pool warming), the 1s internal timeout expired first, marking DB as "timeout" even though Docker still considered the check passing
+- **Fix applied:** Increased internal DB health check timeout from `1.0s` → `5.0s` at `app/main.py:458`
+- **Timeout hierarchy now consistent:** 5s internal ≤ 5s Docker HEALTHCHECK (Dockerfile.clean production) ≤ 10s Docker HEALTHCHECK (Dockerfile/staging)
+- **No behavioral change on healthy DBs:** `SELECT 1` completes in milliseconds; the 5s ceiling only matters during cold starts or genuine DB issues
+- **Files changed:** `app/main.py` — single line edit (timeout value + comment)
 
 ---
 
@@ -181,3 +182,4 @@
 | ~~10~~ | ~~Add Redis to critical env var checks~~ | ~~15 min~~ ✅ Done |
 | ~~11~~ | ~~Replace `print()` with `logger` everywhere~~ | ~~1 hr~~ ✅ Done |
 | ~~12~~ | ~~Add Sentry DSN check + health visibility~~ | ~~15 min~~ ✅ Done |
+| ~~13~~ | ~~Align health check internal timeout with Docker~~ | ~~5 min~~ ✅ Done |
