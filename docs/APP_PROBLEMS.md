@@ -65,10 +65,13 @@
 
 ---
 
-### 7. Firebase initialization fails silently — not reflected in `/health`
-- **File:** `app/main.py` lines 82–101
-- **Effect:** Push notifications silently disabled in production; `/health` shows no warning
-- **Fix:** Add Firebase status to the `/health` response payload
+### ~~7. Firebase initialization fails silently — not reflected in `/health`~~ ✅ FIXED 2026-03-23
+- **Root cause:** Firebase init at module level caught all exceptions with `print()` only — no status variable, no health visibility
+- **Fix applied:** Added `_firebase_initialized` flag and `_firebase_init_error` at module level (`app/main.py:83-84`)
+- **Fix applied:** `/health` endpoint now includes `firebase` status (`"initialized"` / `"unavailable"`), `firebase_error` (when failed), and `config.firebase_configured`
+- **Fix applied:** Overall health degrades to `"degraded"` when Firebase is unavailable (not `"unhealthy"` — core features still work)
+- **Fix applied:** Replaced `print()` with `logging.info()` / `logging.warning()` for structured log output
+- **Files changed:** `app/main.py` — Firebase init block (lines 82–108) + `/health` endpoint (lines 431–493)
 
 ---
 
@@ -154,7 +157,7 @@
 | ~~4~~ | ~~Fix Python version mismatch (all configs → 3.12)~~ | ~~10 min~~ ✅ Done |
 | ~~5~~ | ~~Add `uvloop` to `requirements.txt`~~ | ~~2 min~~ ✅ Done |
 | ~~6~~ | ~~Fix duplicate `Base` definitions~~ | ~~30 min~~ ✅ Done |
-| 7 | Increase DB init timeout to 15s | 5 min |
-| 8 | Add Firebase/Redis status to `/health` | 20 min |
+| ~~7~~ | ~~Add Firebase status to `/health`~~ | ~~10 min~~ ✅ Done |
+| 8 | Increase DB init timeout to 15s | 5 min |
 | ~~9~~ | ~~Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config~~ | ~~10 min~~ ✅ Done |
 | 10 | Replace `print()` with `logger` everywhere | 1 hr |

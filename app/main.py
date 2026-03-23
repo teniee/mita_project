@@ -80,6 +80,9 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 # ---- Firebase Admin SDK init ----
+_firebase_initialized: bool = False
+_firebase_init_error: str | None = None
+
 if not firebase_admin._apps:
     try:
         firebase_json = os.environ.get("FIREBASE_JSON")
@@ -95,11 +98,14 @@ if not firebase_admin._apps:
                 cred = credentials.ApplicationDefault()
 
         firebase_admin.initialize_app(cred)
-        print("✅ Firebase Admin SDK initialized successfully")
+        _firebase_initialized = True
+        logging.info("Firebase Admin SDK initialized successfully")
     except Exception as e:
-        print(f"⚠️  Firebase Admin SDK initialization failed: {e}")
-        print("⚠️  Push notifications will be disabled, but app will continue")
-        # App continues without Firebase - push notifications won't work but everything else will
+        _firebase_init_error = str(e)
+        logging.warning("Firebase Admin SDK initialization failed: %s", e)
+        logging.warning("Push notifications will be disabled, but app will continue")
+else:
+    _firebase_initialized = True
 
 # ---- Sentry setup ----
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -435,7 +441,8 @@ async def detailed_health_check():
         "environment": settings.ENVIRONMENT,
         "upstash_configured": bool(os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN")),
         "upstash_rest_api": bool(os.getenv("UPSTASH_REDIS_REST_URL") and os.getenv("UPSTASH_REDIS_REST_TOKEN")),
-        "openai_configured": bool(settings.OPENAI_API_KEY)
+        "openai_configured": bool(settings.OPENAI_API_KEY),
+        "firebase_configured": _firebase_initialized,
     }
     
     # Check database health
@@ -455,26 +462,33 @@ async def detailed_health_check():
     # Get performance cache statistics
     cache_stats = get_cache_stats()
     
+    # Firebase status
+    firebase_status = "initialized" if _firebase_initialized else "unavailable"
+
     # Determine overall status
     overall_status = "healthy"
-    if database_status != "connected":
+    if database_status != "connected" or not _firebase_initialized:
         overall_status = "degraded"
     if not config_status["jwt_secret_configured"] or not config_status["database_configured"]:
         overall_status = "unhealthy"
-    
+
     response = {
         "status": overall_status,
-        "service": "Mita Finance API", 
+        "service": "Mita Finance API",
         "version": "1.0.0",
         "database": database_status,
+        "firebase": firebase_status,
         "config": config_status,
         "cache_stats": cache_stats,
         "timestamp": time.time(),
         "port": os.getenv("PORT", "8000")
     }
-    
+
     if database_error:
         response["database_error"] = database_error
+
+    if _firebase_init_error:
+        response["firebase_error"] = _firebase_init_error
 
     return response
 
