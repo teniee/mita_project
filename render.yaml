@@ -109,7 +109,7 @@ services:
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 30
+        value: 120
       
       # Feature Flags - Production Enabled
       - key: FEATURE_FLAGS_ADMIN_ENDPOINTS

@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     JWT_PREVIOUS_SECRET: str = ""
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120  # Увеличиваем до 2 часов для устранения Session Expired
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120  # Default 2 hours — required for onboarding completion flow
     
     # Password Security Configuration
     BCRYPT_ROUNDS_PRODUCTION: int = 10  # Optimized for performance while maintaining security
@@ -90,14 +90,17 @@ class Settings(BaseSettings):
     @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES", mode="before")
     @classmethod
     def validate_token_expiry(cls, v):
-        """Ensure token expiration is minimum 120 minutes for onboarding completion"""
+        """Validate token expiration is a positive integer.
+
+        The configured value is respected as-is — no silent overrides.
+        Default (120 min) is used only when the env var is empty or missing.
+        If you need shorter tokens, set the value explicitly in your deployment config.
+        """
         if v == "" or v is None:
             return 120
         expire_minutes = int(v)
-        if expire_minutes < 120:
-            import logging
-            logging.warning(f"ACCESS_TOKEN_EXPIRE_MINUTES={expire_minutes} is too short, forcing 120 minutes")
-            return 120
+        if expire_minutes <= 0:
+            raise ValueError(f"ACCESS_TOKEN_EXPIRE_MINUTES must be positive, got {expire_minutes}")
         return expire_minutes
 
     @classmethod

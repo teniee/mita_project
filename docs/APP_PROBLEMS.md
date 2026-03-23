@@ -57,11 +57,11 @@
 
 ---
 
-### 6. `ACCESS_TOKEN_EXPIRE_MINUTES` config is silently overridden
-- **render.yaml:** `ACCESS_TOKEN_EXPIRE_MINUTES: 30`
-- **`app/core/config.py`:** Forces minimum of 120 minutes regardless of config
-- **Effect:** Tokens expire in 120 min, not 30 — security regression, config is ignored
-- **Fix:** Either remove the forced minimum or update render.yaml to 120+
+### ~~6. `ACCESS_TOKEN_EXPIRE_MINUTES` config is silently overridden~~ ✅ FIXED 2026-03-23
+- **Root cause:** `app/core/config.py` had a `@field_validator` that silently clamped any value < 120 to 120, while `render.yaml` set 30 — config was a lie
+- **Fix applied:** Removed the forced minimum from the validator — configured values are now respected as-is. Validator only handles empty/None (defaults to 120) and rejects non-positive values
+- **Fix applied:** Updated `render.yaml` from `ACCESS_TOKEN_EXPIRE_MINUTES: 30` → `120` to reflect the actual desired production value (required for onboarding completion)
+- **Files changed:** `app/core/config.py` (validator rewrite), `render.yaml` (value 30→120)
 
 ---
 
@@ -156,5 +156,5 @@
 | ~~6~~ | ~~Fix duplicate `Base` definitions~~ | ~~30 min~~ ✅ Done |
 | 7 | Increase DB init timeout to 15s | 5 min |
 | 8 | Add Firebase/Redis status to `/health` | 20 min |
-| 9 | Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config | 10 min |
+| ~~9~~ | ~~Fix `ACCESS_TOKEN_EXPIRE_MINUTES` config~~ | ~~10 min~~ ✅ Done |
 | 10 | Replace `print()` with `logger` everywhere | 1 hr |
