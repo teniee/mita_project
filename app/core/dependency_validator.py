@@ -442,41 +442,40 @@ def validate_dependencies_on_startup():
 
     try:
         startup_ok, errors = validator.validate_startup_requirements()
-
-        if not startup_ok:
-            logger.error("Critical dependency validation failed:")
-            for error in errors:
-                logger.error(f"  - {error}")
-
-            logger.critical("=" * 60)
-            logger.critical("CRITICAL DEPENDENCY VALIDATION FAILURE")
-            logger.critical("=" * 60)
-            for error in errors:
-                logger.critical("ERROR: %s", error)
-            logger.critical("Please install missing dependencies and restart the application.")
-            logger.critical("=" * 60)
-
-            sys.exit(1)
-        
-        else:
-            logger.info("All critical dependencies validated successfully")
-            
-            # Log full report at debug level
-            report = validator.generate_report()
-            logger.debug(f"Dependency validation report:\n{report}")
-            
-            # Check for security vulnerabilities
-            vulnerabilities = validator.check_security_vulnerabilities()
-            if vulnerabilities["high_risk"]:
-                logger.warning("High-risk security vulnerabilities detected in dependencies!")
-                for vuln in vulnerabilities["high_risk"]:
-                    logger.warning(f"  - {vuln}")
-                logger.warning("Consider updating dependencies immediately.")
-    
     except Exception as e:
-        logger.error(f"Dependency validation failed with error: {e}")
-        # Don't block startup on validation errors, but log them
+        logger.error("Dependency validation failed with error: %s", e)
+        # Don't block startup on validation errors (e.g. transient import issues)
         logger.warning("Continuing startup despite validation errors...")
+        return
+
+    if not startup_ok:
+        logger.critical("=" * 60)
+        logger.critical("CRITICAL DEPENDENCY VALIDATION FAILURE")
+        logger.critical("=" * 60)
+        for error in errors:
+            logger.critical("ERROR: %s", error)
+        logger.critical("Please install missing dependencies and restart the application.")
+        logger.critical("=" * 60)
+
+        error_summary = "; ".join(errors)
+        raise RuntimeError(
+            f"Critical dependency validation failed — cannot start application. "
+            f"Errors: {error_summary}"
+        )
+
+    logger.info("All critical dependencies validated successfully")
+
+    # Log full report at debug level
+    report = validator.generate_report()
+    logger.debug("Dependency validation report:\n%s", report)
+
+    # Check for security vulnerabilities
+    vulnerabilities = validator.check_security_vulnerabilities()
+    if vulnerabilities["high_risk"]:
+        logger.warning("High-risk security vulnerabilities detected in dependencies!")
+        for vuln in vulnerabilities["high_risk"]:
+            logger.warning("  - %s", vuln)
+        logger.warning("Consider updating dependencies immediately.")
 
 
 if __name__ == "__main__":

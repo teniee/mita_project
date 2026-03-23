@@ -142,11 +142,14 @@
 
 ---
 
-### 14. `dependency_validator.py` calls `sys.exit(1)` on import failure
-- **File:** `app/core/dependency_validator.py:446–461`
-- **Called at:** `app/main.py:282–283` (during import, before any endpoint is ready)
-- **Effect:** Container exits silently with code 1; Railway sees failed deployment with no visible logs
-- **Fix:** Convert to log + raise RuntimeError instead of sys.exit
+### ~~14. `dependency_validator.py` calls `sys.exit(1)` on import failure~~ ✅ FIXED 2026-03-23
+- **Root cause:** `sys.exit(1)` at `app/core/dependency_validator.py:459` killed the container process immediately — Railway saw exit code 1 with no visible error in logs because output buffers weren't flushed
+- **Subtlety:** The `sys.exit(1)` was inside a `try/except Exception` block, but `SystemExit` inherits from `BaseException` (not `Exception`), so it bypassed the catch. A naive `raise RuntimeError(...)` replacement would have been silently caught, allowing startup to continue with broken dependencies
+- **Fix applied:** Restructured control flow — `try/except` now only wraps the validation execution (catching transient errors like import issues during scanning), while the `raise RuntimeError(...)` lives **outside** the try/except block so it propagates correctly
+- **Fix applied:** `RuntimeError` includes all failed dependency details in the exception message, producing a full traceback visible in Railway deployment logs
+- **Fix applied:** Replaced 2 f-string logger calls (`logger.debug(f"...")`, `logger.warning(f"...")`) with lazy `%s` formatting for proper Sentry event grouping
+- **Behavioral change:** Container still terminates on critical dependency failure (correct), but now uvicorn/gunicorn captures the exception traceback before exit → Railway shows the actual error
+- **Files changed:** `app/core/dependency_validator.py` — `validate_dependencies_on_startup()` function rewrite (lines 443–478)
 
 ---
 
@@ -183,3 +186,4 @@
 | ~~11~~ | ~~Replace `print()` with `logger` everywhere~~ | ~~1 hr~~ ✅ Done |
 | ~~12~~ | ~~Add Sentry DSN check + health visibility~~ | ~~15 min~~ ✅ Done |
 | ~~13~~ | ~~Align health check internal timeout with Docker~~ | ~~5 min~~ ✅ Done |
+| ~~14~~ | ~~Replace `sys.exit(1)` with `raise RuntimeError` in dependency validator~~ | ~~10 min~~ ✅ Done |
