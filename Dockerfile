@@ -2,7 +2,7 @@
 # Multi-stage build for security and optimization
 
 # Stage 1: Build dependencies
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Install build dependencies and security updates
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -24,7 +24,7 @@ RUN pip install --upgrade pip setuptools wheel && \
     --no-warn-script-location -r requirements.txt
 
 # Stage 2: Production image
-FROM python:3.10-slim AS production
+FROM python:3.12-slim AS production
 
 # Security updates and runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

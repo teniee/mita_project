@@ -32,11 +32,14 @@
 
 ## 🟡 HIGH — Degrade Production Quality
 
-### 4. Python version mismatch between nixpacks.toml and Dockerfile
-- **nixpacks.toml:** `python39`
-- **Dockerfile:** `python:3.10-slim`
-- **Effect:** Railway deploys on Python 3.9 (EOL Oct 2025); potential incompatibilities with dependencies
-- **Fix:** Update `nixpacks.toml` → `nixPkgs = ["python310", "postgresql"]`
+### ~~4. Python version mismatch between nixpacks.toml and Dockerfile~~ ✅ FIXED 2026-03-23
+- **All Python versions aligned to 3.12** across every deployment config:
+  - `nixpacks.toml`: `python39` → `python312` (Railway production)
+  - `Dockerfile`: `python:3.10-slim` → `python:3.12-slim` (both builder + production stages)
+  - `docker/Dockerfile.clean`: `python:3.11-slim` → `python:3.12-slim` (multi-env base)
+  - `mobile_app/scripts/Dockerfile.subscription-manager`: `python:3.11-slim` → `python:3.12-slim` (builder + production + site-packages path)
+  - `.github/workflows/main-ci.yml`: `python-version: "3.10"` → `"3.12"` (CI pipeline)
+- Python 3.12 chosen over 3.10 for long-term support (EOL Oct 2028 vs Oct 2026)
 
 ---
 
@@ -143,7 +146,7 @@
 | ~~1~~ | ~~Register `health/routes.py` in `main.py`~~ | ~~5 min~~ ✅ Done |
 | ~~2~~ | ~~Create migration for `OCRJob`~~ | ~~15 min~~ ✅ Done |
 | ~~2~~ | ~~Create migration for `UserPreference`~~ | ~~15 min~~ ✅ Done |
-| 4 | Fix `nixpacks.toml` Python version | 2 min |
+| ~~4~~ | ~~Fix Python version mismatch (all configs → 3.12)~~ | ~~10 min~~ ✅ Done |
 | 5 | Add `uvloop` to `requirements.txt` | 2 min |
 | 6 | Fix duplicate `Base` definitions | 30 min |
 | 7 | Increase DB init timeout to 15s | 5 min |

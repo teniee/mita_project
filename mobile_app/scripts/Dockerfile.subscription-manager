@@ -5,7 +5,7 @@
 # service with security hardening and minimal attack surface.
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Set build arguments
 ARG BUILD_DATE
@@ -51,7 +51,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip cache purge
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.12-slim as production
 
 # Copy build arguments to production stage
 ARG BUILD_DATE
@@ -81,7 +81,7 @@ RUN mkdir -p /opt/mita /var/log/mita /var/lib/mita /etc/mita && \
     chown -R mita:mita /opt/mita /var/log/mita /var/lib/mita /etc/mita
 
 # Copy Python packages from builder stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Set working directory
