@@ -10,7 +10,7 @@
 ## Table of Contents
 
 - [CRITICAL — App won't start or massive security breach](#critical)
-  - [C-01: JWT and Secret Keys leaked in render.yaml](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
+  - [C-01: JWT and Secret Keys leaked in render.yaml — FIXED](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
   - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
   - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
   - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
@@ -47,7 +47,7 @@
 ---
 
 <a id="c-01-jwt-and-secret-keys-leaked-in-renderyaml"></a>
-### C-01: JWT and Secret Keys leaked in `render.yaml`
+### C-01: JWT and Secret Keys leaked in `render.yaml` — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -55,10 +55,12 @@
 | **File** | `render.yaml` lines 57–62 |
 | **Priority** | P0 — Fix immediately |
 | **Effort** | 30 minutes |
+| **Status** | **FIXED** (2026-03-24) |
+| **Fix commit** | `feature/fix-c01-secrets-leaked-render-yaml` |
 
 #### Description
 
-The `render.yaml` file, which is committed to the git repository and visible to anyone with repo access, contains the actual production secret values in YAML comments:
+The `render.yaml` file, which is committed to the git repository and visible to anyone with repo access, contained the actual production secret values in YAML comments:
 
 ```yaml
 - key: SECRET_KEY
@@ -69,36 +71,26 @@ The `render.yaml` file, which is committed to the git repository and visible to 
   sync: false  # Set to: b0wJB1GuD13OBI3SEfDhtFBWA8KqM3ynI6Ce83xLTHs
 ```
 
-These are the actual production JWT signing secrets. With these, **anyone can:**
+These were the actual production JWT signing secrets. With these, **anyone could:**
 - Forge valid JWT access and refresh tokens for any user
 - Bypass all authentication and authorization
 - Access any user's financial data (transactions, budgets, goals)
 - Impersonate admin users
 
-#### What will happen if not fixed
+#### What was fixed
 
-- Complete authentication bypass — attackers can generate valid tokens for any user_id
-- Full financial data exfiltration
-- PCI DSS compliance violation
-- User trust destruction if exploited
+1. **Removed secret values from `render.yaml` comments** — replaced with safe placeholder instructions that include the generation command (`openssl rand -base64 32`)
+2. Preserved `sync: false` so secrets remain dashboard-managed
 
-#### How to fix
+#### Remaining manual action required
 
-1. **Generate completely new secrets immediately:**
-   ```bash
-   openssl rand -base64 32   # Run 3 times for SECRET_KEY, JWT_SECRET, JWT_PREVIOUS_SECRET
-   ```
-2. **Update the new secrets in the Render Dashboard** (Environment → Service Variables)
-3. **Remove the comments from `render.yaml`** — change lines to:
-   ```yaml
-   - key: SECRET_KEY
-     sync: false  # REQUIRED: Set in Render Dashboard
-   - key: JWT_SECRET
-     sync: false  # REQUIRED: Set in Render Dashboard
-   - key: JWT_PREVIOUS_SECRET
-     sync: false  # REQUIRED: Set in Render Dashboard
-   ```
-4. **Note:** Even after removal, the old secrets remain in git history. If the repo is public, consider those secrets permanently compromised. Rotate them regardless.
+> **CRITICAL:** The old secrets remain in git history. You MUST:
+> 1. **Generate completely new secrets immediately:**
+>    ```bash
+>    openssl rand -base64 32   # Run 3 times for SECRET_KEY, JWT_SECRET, JWT_PREVIOUS_SECRET
+>    ```
+> 2. **Update the new secrets in the Render Dashboard** (Environment → Service Variables)
+> 3. Consider the old secrets permanently compromised — rotate them regardless of repo visibility
 
 ---
 
@@ -1190,32 +1182,32 @@ def apns_sandbox(self) -> bool:
 <a id="priority-fix-order"></a>
 ## Priority Fix Order
 
-| Priority | Issue ID | Description | Effort |
-|----------|----------|-------------|--------|
-| **P0 NOW** | C-01 | Rotate ALL secrets, remove from render.yaml | 30 min |
-| **P0 NOW** | C-04 | Remove DB URL from logs | 5 min |
-| **P0 NOW** | C-05 | Remove token logging | 5 min |
-| **P1 Before Launch** | C-03 | Crash if JWT_SECRET not set in production | 10 min |
-| **P1** | H-01 | Remove localhost from CORS in production | 10 min |
-| **P1** | H-03 | Remove MinimalSettings fallback | 10 min |
-| **P1** | H-05 | Fail startup on migration failure in production | 5 min |
-| **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min |
-| **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min |
-| **P2** | C-02 | Restrict Firebase API keys, enable App Check | 1 hr |
-| **P2** | H-02 | Add environment config to Flutter | 1 hr |
-| **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr |
-| **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min |
-| **P2** | M-01 | Add fallback route handler in Flutter | 15 min |
-| **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min |
-| **P2** | M-05 | Make CI quality checks blocking | 15 min |
-| **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min |
-| **P2** | L-04 | Fix APNS sandbox default | 5 min |
-| **P3** | M-03 | Add IgnoredAlert to model imports | 5 min |
-| **P3** | M-04 | Evaluate spacy/transformers necessity | 2 hrs |
-| **P3** | M-07 | Clean up dual Base definitions | 15 min |
-| **P3** | L-01 | Consolidate duplicate modules | Days |
-| **P3** | L-02 | Clean up 200+ stale branches | 30 min |
-| **P3** | L-03 | Move root test files to tests/ | 10 min |
+| Priority | Issue ID | Description | Effort | Status |
+|----------|----------|-------------|--------|--------|
+| ~~**P0 NOW**~~ | ~~C-01~~ | ~~Rotate ALL secrets, remove from render.yaml~~ | ~~30 min~~ | **FIXED** |
+| **P0 NOW** | C-04 | Remove DB URL from logs | 5 min | |
+| **P0 NOW** | C-05 | Remove token logging | 5 min | |
+| **P1 Before Launch** | C-03 | Crash if JWT_SECRET not set in production | 10 min | |
+| **P1** | H-01 | Remove localhost from CORS in production | 10 min | |
+| **P1** | H-03 | Remove MinimalSettings fallback | 10 min | |
+| **P1** | H-05 | Fail startup on migration failure in production | 5 min | |
+| **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min | |
+| **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
+| **P2** | C-02 | Restrict Firebase API keys, enable App Check | 1 hr | |
+| **P2** | H-02 | Add environment config to Flutter | 1 hr | |
+| **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
+| **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |
+| **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |
+| **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min | |
+| **P2** | M-05 | Make CI quality checks blocking | 15 min | |
+| **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |
+| **P2** | L-04 | Fix APNS sandbox default | 5 min | |
+| **P3** | M-03 | Add IgnoredAlert to model imports | 5 min | |
+| **P3** | M-04 | Evaluate spacy/transformers necessity | 2 hrs | |
+| **P3** | M-07 | Clean up dual Base definitions | 15 min | |
+| **P3** | L-01 | Consolidate duplicate modules | Days | |
+| **P3** | L-02 | Clean up 200+ stale branches | 30 min | |
+| **P3** | L-03 | Move root test files to tests/ | 10 min | |
 
 ---
 
