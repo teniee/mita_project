@@ -1,0 +1,1224 @@
+# MITA Finance — Production Readiness Audit: All Issues
+
+> **Date:** 2026-03-24
+> **Branch:** `main`
+> **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
+> **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
+
+---
+
+## Table of Contents
+
+- [CRITICAL — App won't start or massive security breach](#critical)
+  - [C-01: JWT and Secret Keys leaked in render.yaml](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
+  - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
+  - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
+  - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
+  - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
+- [HIGH — App starts but has major problems](#high)
+  - [H-01: CORS always allows localhost origins in production](#h-01-cors-always-allows-localhost-origins-in-production)
+  - [H-02: API base URL hardcoded in Flutter with no environment switching](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
+  - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
+  - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
+  - [H-05: Alembic migrations may fail silently and app starts anyway](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
+  - [H-06: aioredis dependency is deprecated/dead](#h-06-aioredis-dependency-is-deprecateddead)
+  - [H-07: Excessive debug logging in auth flow](#h-07-excessive-debug-logging-in-auth-flow)
+  - [H-08: Single worker deployment ignores WEB_CONCURRENCY](#h-08-single-worker-deployment-ignores-web_concurrency)
+- [MEDIUM — Functional issues, tech debt, reliability](#medium)
+  - [M-01: onGenerateRoute returns null, breaking dynamic navigation](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
+  - [M-02: login_data.dict() is deprecated in Pydantic v2](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
+  - [M-03: Missing IgnoredAlert model in __init__.py](#m-03-missing-ignoredalert-model-in-__init__py)
+  - [M-04: spacy and transformers in production requirements (huge image)](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
+  - [M-05: CI/CD quality checks are non-blocking](#m-05-cicd-quality-checks-are-non-blocking)
+  - [M-06: Flutter tests are continue-on-error](#m-06-flutter-tests-are-continue-on-error)
+  - [M-07: Two different Base definitions in db/](#m-07-two-different-base-definitions-in-db)
+- [LOW — Code quality, minor issues](#low)
+  - [L-01: Massive code duplication across engine/logic/services](#l-01-massive-code-duplication-across-enginelogicservices)
+  - [L-02: 200+ stale remote branches](#l-02-200-stale-remote-branches)
+  - [L-03: Root-level test files outside tests/ directory](#l-03-root-level-test-files-outside-tests-directory)
+  - [L-04: APNS_USE_SANDBOX defaults to True](#l-04-apns_use_sandbox-defaults-to-true)
+- [Priority Fix Order](#priority-fix-order)
+
+---
+
+<a id="critical"></a>
+## CRITICAL — App won't start or massive security breach
+
+---
+
+<a id="c-01-jwt-and-secret-keys-leaked-in-renderyaml"></a>
+### C-01: JWT and Secret Keys leaked in `render.yaml`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | CRITICAL |
+| **File** | `render.yaml` lines 57–62 |
+| **Priority** | P0 — Fix immediately |
+| **Effort** | 30 minutes |
+
+#### Description
+
+The `render.yaml` file, which is committed to the git repository and visible to anyone with repo access, contains the actual production secret values in YAML comments:
+
+```yaml
+- key: SECRET_KEY
+  sync: false  # Set to: _2xehg0QmsjRElHCg7hRwAhEO9eYKeZ9EDDSFx9CgoI
+- key: JWT_SECRET
+  sync: false  # Set to: LZaS6tha51MBwgBoHW6GbK4VbbboeQO12LsmEDdKp3s
+- key: JWT_PREVIOUS_SECRET
+  sync: false  # Set to: b0wJB1GuD13OBI3SEfDhtFBWA8KqM3ynI6Ce83xLTHs
+```
+
+These are the actual production JWT signing secrets. With these, **anyone can:**
+- Forge valid JWT access and refresh tokens for any user
+- Bypass all authentication and authorization
+- Access any user's financial data (transactions, budgets, goals)
+- Impersonate admin users
+
+#### What will happen if not fixed
+
+- Complete authentication bypass — attackers can generate valid tokens for any user_id
+- Full financial data exfiltration
+- PCI DSS compliance violation
+- User trust destruction if exploited
+
+#### How to fix
+
+1. **Generate completely new secrets immediately:**
+   ```bash
+   openssl rand -base64 32   # Run 3 times for SECRET_KEY, JWT_SECRET, JWT_PREVIOUS_SECRET
+   ```
+2. **Update the new secrets in the Render Dashboard** (Environment → Service Variables)
+3. **Remove the comments from `render.yaml`** — change lines to:
+   ```yaml
+   - key: SECRET_KEY
+     sync: false  # REQUIRED: Set in Render Dashboard
+   - key: JWT_SECRET
+     sync: false  # REQUIRED: Set in Render Dashboard
+   - key: JWT_PREVIOUS_SECRET
+     sync: false  # REQUIRED: Set in Render Dashboard
+   ```
+4. **Note:** Even after removal, the old secrets remain in git history. If the repo is public, consider those secrets permanently compromised. Rotate them regardless.
+
+---
+
+<a id="c-02-firebase-api-keys-hardcoded-in-source-code"></a>
+### C-02: Firebase API keys hardcoded in source code
+
+| Field | Value |
+|-------|-------|
+| **Severity** | CRITICAL |
+| **File** | `mobile_app/lib/firebase_options.dart` lines 42–48 |
+| **Priority** | P0 — Fix immediately |
+| **Effort** | 1 hour |
+
+#### Description
+
+The Firebase configuration file contains hardcoded API keys, app IDs, and project identifiers:
+
+```dart
+static const FirebaseOptions android = FirebaseOptions(
+  apiKey: 'AIzaSyCRI7k1ATHDbpi-KEpJCx8pgAufcF7WVKk',
+  appId: '1:147595998708:android:84d48c2591631b948335a1',
+  messagingSenderId: '147595998708',
+  projectId: 'mita-finance',
+  storageBucket: 'mita-finance.firebasestorage.app',
+);
+```
+
+The same API key is reused for Android, iOS, and macOS configurations.
+
+#### What will happen if not fixed
+
+While Firebase API keys are designed to be semi-public (they identify the project, not authorize access), without proper Firebase App Check configured:
+- Anyone can use the API key to send push notifications through your Firebase project
+- Attackers can abuse Firestore/Storage if security rules are not properly locked down
+- Quota abuse — attackers can exhaust your Firebase free tier or rack up bills
+- The API key appearing in git history makes key rotation difficult
+
+#### How to fix
+
+1. **Enable Firebase App Check** in the Firebase Console to restrict which apps can use the key
+2. **Restrict the API key** in Google Cloud Console → API Credentials → restrict to your app's package name/bundle ID
+3. **Consider using `--dart-define`** at build time to inject keys instead of hardcoding:
+   ```dart
+   static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
+   ```
+4. **Set up proper Firebase Security Rules** for Firestore and Storage to block unauthorized access regardless of the API key
+
+---
+
+<a id="c-03-jwt_secret-auto-generates-on-every-restart-if-not-set"></a>
+### C-03: JWT_SECRET auto-generates on every restart if not set
+
+| Field | Value |
+|-------|-------|
+| **Severity** | CRITICAL |
+| **File** | `app/core/config.py` lines 73–88 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 10 minutes |
+
+#### Description
+
+The pydantic field validator for `JWT_SECRET` and `SECRET_KEY` generates a random fallback if the environment variable is empty:
+
+```python
+@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
+@classmethod
+def validate_secrets(cls, v, info):
+    if not v:
+        import secrets
+        import os
+        env = os.getenv("ENVIRONMENT", "development")
+        if env == "production":
+            import logging
+            logging.warning(f"{field_name} not set in production, using generated fallback")
+        return secrets.token_urlsafe(32)  # <-- New random value every time
+    return v
+```
+
+On every server restart, `secrets.token_urlsafe(32)` generates a **new random string**. Since JWT tokens are signed with this secret, all previously issued tokens become invalid the moment the server restarts.
+
+#### What will happen if not fixed
+
+- Every deployment or server restart **logs out all users** instantly
+- Refresh tokens become invalid — users must re-enter email and password
+- If running multiple workers (WEB_CONCURRENCY > 1), each worker gets a **different** secret — tokens issued by worker 1 are rejected by worker 2
+- In production, the code only logs a WARNING but doesn't stop — this is a **silent** failure
+
+#### How to fix
+
+Change the validator to **crash the application** in production if secrets are missing:
+
+```python
+@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
+@classmethod
+def validate_secrets(cls, v, info):
+    if not v:
+        import os
+        env = os.getenv("ENVIRONMENT", "development")
+        if env == "production":
+            raise ValueError(
+                f"{info.field_name} MUST be set in production. "
+                f"Generate with: openssl rand -base64 32"
+            )
+        # Only auto-generate in development
+        import secrets
+        return secrets.token_urlsafe(32)
+    return v
+```
+
+---
+
+<a id="c-04-database-url-logged-in-plaintext-with-credentials"></a>
+### C-04: Database URL logged in plaintext with credentials
+
+| Field | Value |
+|-------|-------|
+| **Severity** | CRITICAL |
+| **Files** | `app/core/async_session.py` line 71, `app/core/session.py` lines 57–58 |
+| **Priority** | P0 — Fix immediately |
+| **Effort** | 5 minutes |
+
+#### Description
+
+The async database initialization logs the full database URL (which includes username and password) at INFO level:
+
+```python
+# app/core/async_session.py:71
+logger.info(f"Final database URL used by asyncpg: {database_url}")
+```
+
+And in the sync session:
+
+```python
+# app/core/session.py:57-58
+logger.info(f"Sync session connecting to: {host}:{port}/{database}")
+logger.info(f"Username (via connect_args): {parsed.username}")
+```
+
+A typical database URL looks like:
+```
+postgresql+asyncpg://user.name:p4ssw0rd@db.supabase.co:6543/postgres?ssl=require
+```
+
+This is written to stdout, log files, and any log aggregation service (Sentry breadcrumbs, Render logs, CloudWatch, etc.).
+
+#### What will happen if not fixed
+
+- Database credentials exposed to anyone with log access
+- If Sentry captures this as a breadcrumb, credentials are stored in Sentry's servers
+- Render logs are accessible to all team members — violates principle of least privilege
+- Compliance violation (PCI DSS requirement 8: protect stored credentials)
+
+#### How to fix
+
+Replace the log statements with redacted versions:
+
+```python
+# app/core/async_session.py:71
+logger.info(f"Database engine connecting to: {database_url.split('@')[-1] if '@' in database_url else 'configured'}")
+
+# app/core/session.py:57-58
+logger.info(f"Sync session connecting to: {host}:{port}/{database}")
+# Remove the username logging line entirely
+```
+
+---
+
+<a id="c-05-jwt-tokens-partially-logged-first-30-chars"></a>
+### C-05: JWT tokens partially logged (first 30 chars)
+
+| Field | Value |
+|-------|-------|
+| **Severity** | CRITICAL |
+| **Files** | `app/api/dependencies.py` line 113, `app/services/auth_jwt_service.py` line 517 |
+| **Priority** | P0 — Fix immediately |
+| **Effort** | 5 minutes |
+
+#### Description
+
+Two critical authentication files log the first 30 characters of JWT tokens at INFO level:
+
+```python
+# app/api/dependencies.py:113
+logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+
+# app/services/auth_jwt_service.py:517
+logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+```
+
+A JWT token has three base64-encoded parts: `header.payload.signature`. The first 30 characters always include the **full header** and the **beginning of the payload** (which contains `sub` = user ID, `token_type`, `iss`, and sometimes `scope`).
+
+Example — first 30 chars of a real JWT:
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6Ik
+```
+This decodes to: `{"alg":"HS256","typ":"J` — revealing the algorithm used.
+
+#### What will happen if not fixed
+
+- Algorithm information is leaked (useful for crafting attack tokens)
+- Partial payload data (including user IDs) ends up in logs
+- In a financial application, any token data in logs is a compliance concern
+- Combined with the leaked JWT secret (C-01), this makes token forgery trivial
+
+#### How to fix
+
+Remove both lines entirely, or replace with:
+
+```python
+logger.debug(f"Token received - length: {len(token) if token else 0}")
+# Remove the "first 30 chars" log line completely
+```
+
+---
+
+<a id="high"></a>
+## HIGH — App starts but has major problems
+
+---
+
+<a id="h-01-cors-always-allows-localhost-origins-in-production"></a>
+### H-01: CORS always allows localhost origins in production
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **File** | `app/core/config.py` lines 157–173 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 10 minutes |
+
+#### Description
+
+The `ALLOWED_ORIGINS_LIST` property **always** appends localhost origins regardless of environment:
+
+```python
+@property
+def ALLOWED_ORIGINS_LIST(self):
+    if isinstance(self.ALLOWED_ORIGINS, str):
+        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+    else:
+        origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
+    # Always allow these regardless of env var
+    always_allow = [
+        "http://localhost:8080", "http://localhost:3000",
+        "http://localhost:5173", "http://127.0.0.1:8080",
+        "https://mitafinance.com", "http://mitafinance.com",
+        "https://www.mitafinance.com", "http://www.mitafinance.com",
+    ]
+    for origin in always_allow:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
+```
+
+This means in production, `http://localhost:8080` is always a valid CORS origin.
+
+#### What will happen if not fixed
+
+- An attacker creates a malicious page on `localhost:8080` (e.g., via a local script)
+- If a user visits that page while logged into MITA, the browser sends cookies/credentials
+- The attacker's script can make cross-origin API calls to the production backend
+- This bypasses CORS protection entirely for any user who has a local server on those ports
+
+#### How to fix
+
+Only add localhost origins in development mode:
+
+```python
+@property
+def ALLOWED_ORIGINS_LIST(self):
+    origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    # Production domains (always allowed)
+    always_allow = [
+        "https://mitafinance.com", "https://www.mitafinance.com",
+    ]
+
+    # Localhost only in development
+    if self.ENVIRONMENT != "production":
+        always_allow.extend([
+            "http://localhost:8080", "http://localhost:3000",
+            "http://localhost:5173", "http://127.0.0.1:8080",
+        ])
+
+    for origin in always_allow:
+        if origin not in origins:
+            origins.append(origin)
+    return origins
+```
+
+---
+
+<a id="h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching"></a>
+### H-02: API base URL hardcoded in Flutter with no environment switching
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **File** | `mobile_app/lib/config.dart` lines 1–25 |
+| **Priority** | P2 — Fix for staging/multi-env |
+| **Effort** | 1 hour |
+
+#### Description
+
+The Flutter app has a single hardcoded API URL with no mechanism to switch between environments:
+
+```dart
+const String defaultApiBaseUrl =
+    'https://mita-production-production.up.railway.app/api/';
+
+class ApiConfig {
+  static const String baseUrl =
+      'https://mita-production-production.up.railway.app';
+  // ...
+}
+```
+
+There are two problems:
+1. **No environment switching** — if you need staging, dev, or a new prod URL, you edit source code
+2. **Railway-specific URL** — if you switch hosting providers, every installed client needs a new build
+3. **Two duplicate URL definitions** — `defaultApiBaseUrl` and `ApiConfig.baseUrl` can get out of sync
+
+#### What will happen if not fixed
+
+- Cannot test against staging/dev backends without rebuilding the app
+- If Railway changes URL format or you migrate hosting, all existing app installs break
+- QA team cannot test against isolated environments
+- App Store review builds point to production data
+
+#### How to fix
+
+Use Flutter's `--dart-define` for build-time configuration:
+
+```dart
+class ApiConfig {
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://mita-production-production.up.railway.app',
+  );
+  static const String apiPath = '/api';
+  // ... rest stays the same
+}
+```
+
+Build commands:
+```bash
+# Production
+flutter build apk --dart-define=API_BASE_URL=https://api.mita.finance
+
+# Staging
+flutter build apk --dart-define=API_BASE_URL=https://staging.mita.finance
+
+# Local dev
+flutter run --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+---
+
+<a id="h-03-minimalsettings-fallback-silently-swallows-config-errors"></a>
+### H-03: MinimalSettings fallback silently swallows config errors
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **File** | `app/core/config.py` lines 194–227 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 10 minutes |
+
+#### Description
+
+At module import time, if `Settings()` fails for any reason, a `MinimalSettings` object with all-empty credentials is silently substituted:
+
+```python
+try:
+    settings = Settings()
+except Exception as e:
+    import logging
+    logging.warning(f"Could not load settings: {e}")
+    class MinimalSettings:
+        DATABASE_URL = ""
+        JWT_SECRET = ""
+        SECRET_KEY = ""
+        OPENAI_API_KEY = ""
+        ENVIRONMENT = "development"
+        # ... all empty
+    settings = MinimalSettings()
+```
+
+This can be triggered by:
+- A typo in `.env` file (e.g., `DATABASE_URL=postgres://` with a trailing space)
+- A pydantic validation error on any field
+- Missing `pydantic-settings` package
+- File encoding issues
+
+#### What will happen if not fixed
+
+- The application starts with **no database connection**, **no JWT secret**, **no API keys**
+- Every endpoint returns 500 errors or empty data
+- There's only a single WARNING log line — easy to miss in production
+- Debugging is extremely difficult because the app "seems" to start fine
+
+#### How to fix
+
+Remove the `MinimalSettings` fallback entirely. Let the application crash on startup if settings can't load:
+
+```python
+settings = Settings()
+
+# If you want a safety net for development only:
+# try:
+#     settings = Settings()
+# except Exception as e:
+#     if os.getenv("ENVIRONMENT") == "production":
+#         raise  # Always crash in production
+#     logging.warning(f"Settings load failed: {e}, using defaults")
+#     settings = Settings(_env_file=None)  # Load with pydantic defaults
+```
+
+---
+
+<a id="h-04-datetimeutcnow-used-throughout-deprecated-in-python-312"></a>
+### H-04: `datetime.utcnow()` used throughout (deprecated in Python 3.12)
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **Files** | `app/db/models/user.py` lines 20–21, `app/api/auth/login.py` lines 88, 109, 179, 186, `app/api/auth/registration.py` lines 101–102, and many more |
+| **Priority** | P2 — Fix before Python 3.13 |
+| **Effort** | 1 hour (project-wide search/replace) |
+
+#### Description
+
+The codebase extensively uses `datetime.utcnow()` which was deprecated in Python 3.12 (the version used in the Dockerfile):
+
+```python
+# app/db/models/user.py:20-21
+created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# app/api/auth/login.py:88
+if user.account_locked_until and user.account_locked_until > datetime.utcnow():
+
+# app/api/auth/login.py:109
+user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+
+# app/api/auth/registration.py:101-102
+created_at=datetime.utcnow(),
+updated_at=datetime.utcnow(),
+```
+
+The core issue: `datetime.utcnow()` returns a **naive** datetime (no timezone info), but the columns are `DateTime(timezone=True)` (timezone-aware). This creates an implicit assumption that "naive = UTC" which PostgreSQL handles differently depending on the server timezone setting.
+
+#### What will happen if not fixed
+
+- Python 3.13 will raise `DeprecationWarning` on every call
+- Future Python versions will remove it entirely
+- Timezone-naive datetimes stored in timezone-aware columns cause subtle bugs:
+  - Account lockout comparison may be wrong if DB server timezone differs from UTC
+  - Token expiration calculations can be off
+  - Timestamps in API responses may confuse clients expecting ISO 8601 with timezone
+
+#### How to fix
+
+Replace all occurrences across the project:
+
+```python
+# Old
+from datetime import datetime
+datetime.utcnow()
+
+# New
+from datetime import datetime, timezone
+datetime.now(timezone.utc)
+```
+
+For SQLAlchemy model defaults:
+```python
+from datetime import datetime, timezone
+
+created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+```
+
+---
+
+<a id="h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway"></a>
+### H-05: Alembic migrations may fail silently and app starts anyway
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **File** | `start.sh` lines 182–189 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 5 minutes |
+
+#### Description
+
+The startup script runs Alembic migrations but continues even if they fail:
+
+```bash
+python -m alembic upgrade head
+
+if [ $? -ne 0 ]; then
+    echo "Migration failed! Attempting to continue anyway..."
+    echo "The application may not work correctly without migrations"
+else
+    echo "Migrations completed successfully"
+fi
+```
+
+Migration failures can happen when:
+- Database is temporarily unreachable (cold start on Render)
+- A migration has a conflict (two branches modified the same table)
+- A migration requires a table that was manually dropped
+- Supabase connection limits are exhausted
+
+#### What will happen if not fixed
+
+- App starts with an **outdated database schema**
+- New columns referenced in code don't exist → `SQLAlchemyError: column X does not exist`
+- Missing tables → 500 errors on any endpoint using that table
+- Data integrity issues if constraints aren't applied
+- Extremely hard to debug because the error happened at startup and the logs scrolled past
+
+#### How to fix
+
+Make migration failure a hard stop in production:
+
+```bash
+python -m alembic upgrade head
+
+if [ $? -ne 0 ]; then
+    if [[ "${ENVIRONMENT}" == "production" ]]; then
+        echo "FATAL: Migration failed in production. Aborting startup."
+        exit 1
+    else
+        echo "WARNING: Migration failed. Continuing in development mode..."
+    fi
+else
+    echo "Migrations completed successfully"
+fi
+```
+
+---
+
+<a id="h-06-aioredis-dependency-is-deprecateddead"></a>
+### H-06: `aioredis` dependency is deprecated/dead
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **File** | `requirements.txt` line 37 |
+| **Priority** | P2 |
+| **Effort** | 30 minutes |
+
+#### Description
+
+```
+aioredis==2.0.1  # Async Redis client
+```
+
+The `aioredis` package was **merged into `redis-py`** starting from `redis>=4.2.0`. The standalone `aioredis` package:
+- Has not been updated since 2021
+- Has known unfixed security issues
+- Conflicts with modern `redis` package (you also have `redis==5.2.0`)
+- May cause import errors or unexpected behavior when both are installed
+
+#### What will happen if not fixed
+
+- Potential import conflicts between `aioredis` and `redis.asyncio`
+- No security patches for the deprecated package
+- Larger Docker image for no benefit (two Redis libraries instead of one)
+- Future dependency resolution failures when other packages also depend on `redis`
+
+#### How to fix
+
+1. Remove `aioredis==2.0.1` from `requirements.txt`
+2. Replace all imports:
+   ```python
+   # Old
+   import aioredis
+
+   # New
+   from redis import asyncio as aioredis  # Drop-in compatible
+   ```
+3. Or use `redis.asyncio.Redis` directly — the API is nearly identical
+
+---
+
+<a id="h-07-excessive-debug-logging-in-auth-flow"></a>
+### H-07: Excessive debug logging in auth flow
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **Files** | `app/api/dependencies.py` lines 99–283, `app/services/auth_jwt_service.py` lines 515–739 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 30 minutes |
+
+#### Description
+
+The `get_current_user()` function in `dependencies.py` contains **44 `logger.info()` calls** with emoji prefixes that fire on **every single authenticated request**:
+
+```python
+logger.info("🔐 GET_CURRENT_USER CALLED")
+logger.info(f"Token received - length: {len(token) if token else 0}")
+logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+logger.info("📞 Calling verify_token for access_token...")
+logger.info(f"✅ verify_token returned - payload is {'None' if payload is None else 'present'}")
+logger.info(f"Payload user_id (sub): {payload.get('sub')}")
+logger.info(f"🔍 Extracting user_id from payload...")
+logger.info(f"✅ User ID extracted: {user_id}")
+logger.info(f"📊 Querying user from cache/database for user_id={user_id}...")
+# ... ~35 more logger.info() calls
+logger.info(f"🎉 RETURNING USER OBJECT for {user_id}")
+```
+
+Similarly, `verify_token()` in `auth_jwt_service.py` has another ~20 `logger.info()` calls.
+
+Combined: **~64 INFO log lines per authenticated API request**.
+
+#### What will happen if not fixed
+
+- At 100 requests/sec, this generates **6,400 log lines per second** — significant I/O overhead
+- Log storage fills up quickly (Render's log retention is limited)
+- Real errors get buried in noise — hard to spot actual problems
+- Sensitive data (user IDs, token types, scopes) at INFO level in all log aggregators
+- Added latency on every request from synchronous logging I/O
+
+#### How to fix
+
+1. Change most `logger.info()` to `logger.debug()` — they won't appear at production log level
+2. Remove token content logging entirely (see C-05)
+3. Keep only 2-3 key log points at INFO level:
+   ```python
+   logger.info(f"Auth: user {user_id} authenticated successfully")
+   logger.warning(f"Auth: token verification failed for request")
+   ```
+
+---
+
+<a id="h-08-single-worker-deployment-ignores-web_concurrency"></a>
+### H-08: Single worker deployment ignores WEB_CONCURRENCY
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **Files** | `start.sh` line 210, `render.yaml` line 46 |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 5 minutes |
+
+#### Description
+
+The startup script always starts with exactly 1 worker:
+
+```bash
+# start.sh:207-212
+exec uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port "${PORT:-8000}" \
+    --workers 1 \             # <-- Always 1
+    --access-log \
+    $UVLOOP_ARG
+```
+
+But `render.yaml` configures 4 workers:
+
+```yaml
+- key: WEB_CONCURRENCY
+  value: 4
+```
+
+The `WEB_CONCURRENCY` environment variable is set but **never read** by `start.sh`.
+
+#### What will happen if not fixed
+
+- A single uvicorn worker handles all requests sequentially during I/O operations
+- CPU-bound operations (ML inference for spacy/transformers, bcrypt hashing) block the entire server
+- Under moderate load (50+ concurrent users), requests queue and timeout
+- The Render "standard" plan resources (multiple vCPUs, more RAM) are wasted — only 1 core used
+
+#### How to fix
+
+Use the environment variable in `start.sh`:
+
+```bash
+WORKERS="${WEB_CONCURRENCY:-1}"
+
+exec uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port "${PORT:-8000}" \
+    --workers "${WORKERS}" \
+    --access-log \
+    $UVLOOP_ARG
+```
+
+**Note:** With multiple workers, ensure `JWT_SECRET` is set via environment variable (not auto-generated per C-03), otherwise each worker gets a different secret.
+
+---
+
+<a id="medium"></a>
+## MEDIUM — Functional issues, tech debt, reliability
+
+---
+
+<a id="m-01-ongenerateroute-returns-null-breaking-dynamic-navigation"></a>
+### M-01: `onGenerateRoute` returns null, breaking dynamic navigation
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **File** | `mobile_app/lib/main.dart` line 351 |
+| **Priority** | P2 |
+| **Effort** | 15 minutes |
+
+#### Description
+
+```dart
+onGenerateRoute: (settings) {
+    logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
+        tag: 'NAVIGATION');
+    return null; // Let the routes table handle it
+},
+```
+
+When `onGenerateRoute` returns `null` and the route name isn't in the `routes` map, Flutter throws an exception: `Could not find a generator for route "/some-route"`. This crashes the app.
+
+Additionally, the log message says "CRITICAL DEBUG" — this is debug logging that fires on **every navigation** in production.
+
+#### How to fix
+
+```dart
+onGenerateRoute: (settings) {
+    // Return an error page for unknown routes
+    return MaterialPageRoute(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text('Page Not Found')),
+        body: Center(child: Text('Route ${settings.name} not found')),
+      ),
+    );
+},
+```
+
+---
+
+<a id="m-02-login_datadict-is-deprecated-in-pydantic-v2"></a>
+### M-02: `login_data.dict()` is deprecated in Pydantic v2
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **Files** | `app/api/auth/login.py` line 62, `app/api/auth/registration.py` line 61 |
+| **Priority** | P2 |
+| **Effort** | 15 minutes |
+
+#### Description
+
+```python
+login_dict = login_data.dict()          # Deprecated
+registration_dict = registration_data.dict()  # Deprecated
+```
+
+The project uses Pydantic v2 (`pydantic==2.9.2`), where `.dict()` is deprecated in favor of `.model_dump()`. This generates `DeprecationWarning` on every login and registration request.
+
+#### How to fix
+
+```python
+login_dict = login_data.model_dump()
+registration_dict = registration_data.model_dump()
+```
+
+Search the entire codebase for other occurrences:
+```bash
+grep -r "\.dict()" app/ --include="*.py" | grep -v test | grep -v __pycache__
+```
+
+---
+
+<a id="m-03-missing-ignoredalert-model-in-__init__py"></a>
+### M-03: Missing `IgnoredAlert` model in `__init__.py`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **Files** | `app/db/models/__init__.py`, `app/db/models/ignored_alert.py` |
+| **Priority** | P2 |
+| **Effort** | 5 minutes |
+
+#### Description
+
+The file `app/db/models/ignored_alert.py` exists and migration `0028_add_ignored_alerts_table.py` creates the table, but `IgnoredAlert` is **not imported** in `app/db/models/__init__.py`.
+
+This means:
+- The table exists in the database (created by migration)
+- But the ORM model is not registered with SQLAlchemy's metadata
+- Any code doing `from app.db.models import IgnoredAlert` will fail with `ImportError`
+- Alembic autogenerate may try to **drop** the table because it doesn't see the model
+
+#### How to fix
+
+Add to `app/db/models/__init__.py`:
+
+```python
+from .ignored_alert import IgnoredAlert
+
+__all__ = [
+    # ... existing exports ...
+    "IgnoredAlert",
+]
+```
+
+---
+
+<a id="m-04-spacy-and-transformers-in-production-requirements-huge-image"></a>
+### M-04: `spacy` and `transformers` in production requirements (huge image)
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **File** | `requirements.txt` lines 60–61 |
+| **Priority** | P3 |
+| **Effort** | 2 hours |
+
+#### Description
+
+```
+spacy==3.8.2        # NLP library
+transformers==4.52.1 # SECURITY UPDATE: Multiple CVEs fixed
+```
+
+These two packages alone add **2–3 GB** to the Docker image:
+- `spacy` requires downloading language models (~500MB each)
+- `transformers` pulls in `torch` or `tensorflow` as transitive dependencies (~1.5GB)
+- Combined with `scikit-learn` and `numpy`, the ML stack is ~3GB
+
+The Docker build takes 10–15 minutes and the final image is likely **4–5 GB**.
+
+#### What will happen if not fixed
+
+- Extremely slow deploys on Render (build timeout risk)
+- Higher hosting costs (more RAM needed, larger disk)
+- Slow cold starts — the app takes 30+ seconds to import all ML libraries
+- If these ML features aren't core to launch, it's unnecessary weight
+
+#### How to fix
+
+Options:
+1. **If not used for launch:** Move to `requirements-ml.txt` and exclude from production
+2. **If used occasionally:** Extract ML features into a separate microservice
+3. **If needed:** At minimum, pin `torch` CPU-only variant to save ~1GB:
+   ```
+   --extra-index-url https://download.pytorch.org/whl/cpu
+   torch==2.x.x+cpu
+   ```
+
+---
+
+<a id="m-05-cicd-quality-checks-are-non-blocking"></a>
+### M-05: CI/CD quality checks are non-blocking
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **File** | `.github/workflows/main-ci.yml` lines 46–62 |
+| **Priority** | P2 |
+| **Effort** | 15 minutes |
+
+#### Description
+
+All code quality checks use `|| echo "::warning::"` which prevents them from failing the CI:
+
+```yaml
+- name: Code quality checks
+  run: |
+    black --check . || echo "::warning::Code formatting issues detected"
+    isort --check . || echo "::warning::Import sorting issues detected"
+    ruff . || echo "::warning::Linting issues detected"
+
+- name: Security scan (Bandit)
+  run: |
+    bandit -r app/ -ll || echo "::warning::Security issues detected"
+  continue-on-error: true
+```
+
+#### How to fix
+
+Remove the `|| echo` fallbacks and let CI fail on quality issues:
+
+```yaml
+- name: Code quality checks
+  run: |
+    black --check .
+    isort --check .
+    ruff check .
+
+- name: Security scan (Bandit)
+  run: bandit -r app/ -ll
+```
+
+---
+
+<a id="m-06-flutter-tests-are-continue-on-error"></a>
+### M-06: Flutter tests are `continue-on-error`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **File** | `.github/workflows/main-ci.yml` line 94 |
+| **Priority** | P2 |
+| **Effort** | 5 minutes |
+
+#### Description
+
+```yaml
+- name: Run tests
+  run: flutter test
+  continue-on-error: true
+```
+
+Flutter tests can fail completely and CI still passes green. This means broken frontend code can be merged to `main` and auto-deployed.
+
+#### How to fix
+
+Remove `continue-on-error: true`:
+
+```yaml
+- name: Run tests
+  run: flutter test
+```
+
+If some tests are flaky, fix them or mark individual tests as `skip` rather than ignoring all failures.
+
+---
+
+<a id="m-07-two-different-base-definitions-in-db"></a>
+### M-07: Two different `Base` definitions in `db/`
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **Files** | `app/db/base.py` (empty), `app/db/models/base.py` (actual Base) |
+| **Priority** | P3 |
+| **Effort** | 15 minutes |
+
+#### Description
+
+- `app/db/base.py` — is an empty file (1 line, no content)
+- `app/db/models/base.py` — contains the actual `Base = declarative_base()`
+
+Some imports in the codebase may reference `app.db.base.Base` while others use `app.db.models.base.Base`. If different parts of the code import from different locations, SQLAlchemy models may register with **different** metadata objects, causing:
+- Tables not detected by Alembic
+- Relationships failing to resolve
+- `create_all()` missing tables
+
+#### How to fix
+
+Either:
+1. Delete `app/db/base.py` and ensure all imports use `app.db.models.base`
+2. Or make `app/db/base.py` re-export: `from app.db.models.base import Base`
+
+---
+
+<a id="low"></a>
+## LOW — Code quality, minor issues
+
+---
+
+<a id="l-01-massive-code-duplication-across-enginelogicservices"></a>
+### L-01: Massive code duplication across engine/logic/services
+
+| Field | Value |
+|-------|-------|
+| **Severity** | LOW |
+| **Directories** | `app/logic/`, `app/engine/`, `app/services/core/` |
+| **Priority** | P3 |
+| **Effort** | Days (major refactor) |
+
+#### Description
+
+The same business logic exists in up to 3 parallel directory structures:
+
+| Functionality | Location 1 | Location 2 | Location 3 |
+|---|---|---|---|
+| Cohort analysis | `app/logic/cohort_analysis.py` | `app/engine/cohort_analyzer.py` | `app/services/core/cohort/cohort_analysis.py` |
+| Budget allocator | `app/logic/behavioral_budget_allocator.py` | `app/engine/budget/behavioral_budget_allocator.py` | `app/services/core/behavior/behavioral_budget_allocator.py` |
+| Category priority | `app/logic/category_priority.py` | `app/engine/utils/category_priority.py` | `app/services/core/behavior/category_priority.py` |
+| Calendar anomaly | `app/logic/calendar_anomaly_detector.py` | `app/engine/analysis/calendar_anomaly_detector.py` | `app/services/core/analytics/calendar_anomaly_detector.py` |
+| Receipt categorization | `app/categorization/receipt_categorization_service.py` | `app/engine/categorization/receipt_categorization_service.py` | — |
+| OCR service | `app/ocr/google_vision_ocr_service.py` | `app/engine/ocr/google_vision_ocr_service.py` | — |
+
+This is likely the result of multiple AI-assisted development sessions that each created their own module structure without consolidating.
+
+#### Impact
+
+- Bugs fixed in one location may not be fixed in the duplicate
+- Unclear which version is actually used at runtime
+- Increases import time and memory usage
+- Makes the codebase confusing for new developers
+
+---
+
+<a id="l-02-200-stale-remote-branches"></a>
+### L-02: 200+ stale remote branches
+
+| Field | Value |
+|-------|-------|
+| **Severity** | LOW |
+| **Priority** | P3 |
+| **Effort** | 30 minutes |
+
+#### Description
+
+The repository has **200+ remote branches**, mostly from automated codex/claude sessions:
+- `remotes/origin/codex/fix-401-error-on-login`
+- `remotes/origin/claude/complete-first-task-01JzuqnaxQLC6APrqcptC9eo`
+- `remotes/origin/codex/проверить-работоспособность-бэкенда`
+- etc.
+
+#### How to fix
+
+```bash
+# List all remote branches that are merged into main
+git branch -r --merged main | grep -v 'main\|HEAD' | sed 's/origin\///' > branches_to_delete.txt
+
+# Review the list, then delete
+while read branch; do git push origin --delete "$branch"; done < branches_to_delete.txt
+```
+
+---
+
+<a id="l-03-root-level-test-files-outside-tests-directory"></a>
+### L-03: Root-level test files outside `tests/` directory
+
+| Field | Value |
+|-------|-------|
+| **Severity** | LOW |
+| **Files** | `test_calendar_fix_real.py`, `test_calendar_save.py`, `verify_module5.py`, `verify_onboarding_flow.py` |
+| **Priority** | P3 |
+| **Effort** | 10 minutes |
+
+#### Description
+
+Four test/verification files sit in the project root instead of the `tests/` directory. They won't be picked up by `pytest` with the standard configuration and clutter the root directory.
+
+#### How to fix
+
+```bash
+mv test_calendar_fix_real.py tests/
+mv test_calendar_save.py tests/
+mv verify_module5.py tests/
+mv verify_onboarding_flow.py tests/
+```
+
+---
+
+<a id="l-04-apns_use_sandbox-defaults-to-true"></a>
+### L-04: `APNS_USE_SANDBOX` defaults to True
+
+| Field | Value |
+|-------|-------|
+| **Severity** | LOW |
+| **File** | `app/core/config.py` line 146 |
+| **Priority** | P2 |
+| **Effort** | 5 minutes |
+
+#### Description
+
+```python
+APNS_USE_SANDBOX: bool = True
+```
+
+The Apple Push Notification Service sandbox is for **development only**. Push notifications sent via the sandbox environment never reach production devices. If this default isn't overridden in production, users won't receive any push notifications.
+
+#### How to fix
+
+```python
+APNS_USE_SANDBOX: bool = False  # Override to True in development .env only
+```
+
+Or tie it to environment:
+```python
+@property
+def apns_sandbox(self) -> bool:
+    return self.ENVIRONMENT != "production"
+```
+
+---
+
+<a id="priority-fix-order"></a>
+## Priority Fix Order
+
+| Priority | Issue ID | Description | Effort |
+|----------|----------|-------------|--------|
+| **P0 NOW** | C-01 | Rotate ALL secrets, remove from render.yaml | 30 min |
+| **P0 NOW** | C-04 | Remove DB URL from logs | 5 min |
+| **P0 NOW** | C-05 | Remove token logging | 5 min |
+| **P1 Before Launch** | C-03 | Crash if JWT_SECRET not set in production | 10 min |
+| **P1** | H-01 | Remove localhost from CORS in production | 10 min |
+| **P1** | H-03 | Remove MinimalSettings fallback | 10 min |
+| **P1** | H-05 | Fail startup on migration failure in production | 5 min |
+| **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min |
+| **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min |
+| **P2** | C-02 | Restrict Firebase API keys, enable App Check | 1 hr |
+| **P2** | H-02 | Add environment config to Flutter | 1 hr |
+| **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr |
+| **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min |
+| **P2** | M-01 | Add fallback route handler in Flutter | 15 min |
+| **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min |
+| **P2** | M-05 | Make CI quality checks blocking | 15 min |
+| **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min |
+| **P2** | L-04 | Fix APNS sandbox default | 5 min |
+| **P3** | M-03 | Add IgnoredAlert to model imports | 5 min |
+| **P3** | M-04 | Evaluate spacy/transformers necessity | 2 hrs |
+| **P3** | M-07 | Clean up dual Base definitions | 15 min |
+| **P3** | L-01 | Consolidate duplicate modules | Days |
+| **P3** | L-02 | Clean up 200+ stale branches | 30 min |
+| **P3** | L-03 | Move root test files to tests/ | 10 min |
+
+---
+
+> **Total estimated effort for P0+P1:** ~2 hours
+> **Total estimated effort for P2:** ~4 hours
+> **Total estimated effort for all:** ~2-3 days (including L-01 refactor)
