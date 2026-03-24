@@ -37,6 +37,10 @@
   - [L-02: 200+ stale remote branches](#l-02-200-stale-remote-branches)
   - [L-03: Root-level test files outside tests/ directory](#l-03-root-level-test-files-outside-tests-directory)
   - [L-04: APNS_USE_SANDBOX defaults to True](#l-04-apns_use_sandbox-defaults-to-true)
+- [RAILWAY — Production environment misconfigurations](#railway)
+  - [R-01: JWT_PREVIOUS_SECRET not set while JWT rotation is enabled](#r-01-jwt_previous_secret-not-set-while-jwt-rotation-is-enabled)
+  - [R-02: PYTHONPATH points to Render path, not Railway](#r-02-pythonpath-points-to-render-path-not-railway)
+  - [R-03: Missing critical environment variables in Railway](#r-03-missing-critical-environment-variables-in-railway)
 - [Priority Fix Order](#priority-fix-order)
 
 ---
@@ -1179,6 +1183,117 @@ def apns_sandbox(self) -> bool:
 
 ---
 
+<a id="railway"></a>
+## RAILWAY — Production environment misconfigurations
+
+> **Discovered:** 2026-03-24 during Railway environment audit
+> **Context:** Server migrated from Render to Railway, but some config was not fully updated
+
+---
+
+<a id="r-01-jwt_previous_secret-not-set-while-jwt-rotation-is-enabled"></a>
+### R-01: `JWT_PREVIOUS_SECRET` not set while JWT rotation is enabled
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **Location** | Railway Dashboard → `mita-production` → Environment Variables |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 5 minutes |
+
+#### Description
+
+`FEATURE_FLAGS_JWT_ROTATION` is set to `true` in Railway, but `JWT_PREVIOUS_SECRET` is **not configured**. JWT rotation requires two secrets:
+- `JWT_SECRET` — the current signing key (set: `oPh-TW4BNM9v...`)
+- `JWT_PREVIOUS_SECRET` — the previous key used to verify tokens signed before rotation (missing)
+
+When the app tries to verify a token with the previous secret and it's `None` or empty, the verification will either:
+- Raise an exception (crash on auth)
+- Silently fail, invalidating all tokens issued before the last rotation
+
+#### How to fix
+
+In Railway Dashboard, set `JWT_PREVIOUS_SECRET` to the same value as `JWT_SECRET` (if no rotation has happened yet):
+```
+JWT_PREVIOUS_SECRET = oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA
+```
+
+Or, if JWT rotation is not actually needed yet, disable it:
+```
+FEATURE_FLAGS_JWT_ROTATION = false
+```
+
+---
+
+<a id="r-02-pythonpath-points-to-render-path-not-railway"></a>
+### R-02: `PYTHONPATH` points to Render path, not Railway
+
+| Field | Value |
+|-------|-------|
+| **Severity** | HIGH |
+| **Location** | Railway Dashboard → `mita-production` → Environment Variables |
+| **Priority** | P1 — Fix before launch |
+| **Effort** | 5 minutes |
+
+#### Description
+
+```
+PYTHONPATH = /opt/render/project/src
+```
+
+This is a **Render-specific path**. On Railway, the application runs from `/app/` (or the Docker `WORKDIR`). The `/opt/render/project/src` directory does not exist on Railway.
+
+If any Python code relies on `PYTHONPATH` for module resolution (e.g., absolute imports like `from app.core.config import settings`), it may fail with `ModuleNotFoundError` on Railway — or it may work accidentally if the Docker `WORKDIR` happens to be correct.
+
+#### How to fix
+
+In Railway Dashboard, update:
+```
+PYTHONPATH = /app
+```
+
+Or remove it entirely if the `Dockerfile` already sets `WORKDIR /app` — Python will resolve imports from the working directory automatically.
+
+---
+
+<a id="r-03-missing-critical-environment-variables-in-railway"></a>
+### R-03: Missing critical environment variables in Railway
+
+| Field | Value |
+|-------|-------|
+| **Severity** | MEDIUM |
+| **Location** | Railway Dashboard → `mita-production` → Environment Variables |
+| **Priority** | P2 |
+| **Effort** | 15 minutes |
+
+#### Description
+
+Several environment variables that are referenced in `render.yaml` and the codebase are **not set** in Railway:
+
+| Variable | Impact if missing |
+|----------|------------------|
+| `SENTRY_DSN` | No error monitoring — production errors go unnoticed |
+| `UPSTASH_REDIS_URL` | Redis caching/rate-limiting non-functional |
+| `UPSTASH_REDIS_REST_URL` | Redis REST API fallback non-functional |
+| `UPSTASH_REDIS_REST_TOKEN` | Redis auth fails |
+| `SMTP_PASSWORD` | Email sending (password reset, notifications) broken |
+| `AWS_ACCESS_KEY_ID` | S3 backups non-functional (if used) |
+| `AWS_SECRET_ACCESS_KEY` | S3 backups non-functional (if used) |
+| `APPSTORE_SHARED_SECRET` | iOS in-app purchase verification will fail |
+
+#### How to fix
+
+For each variable, set the value in Railway Dashboard → Environment Variables:
+1. **`SENTRY_DSN`** — get from Sentry project settings (sentry.io)
+2. **`UPSTASH_REDIS_*`** — get from Upstash dashboard (upstash.com)
+3. **`SMTP_PASSWORD`** — SendGrid API key (sendgrid.com)
+4. **`AWS_*`** — only if S3 backups are in use
+5. **`APPSTORE_SHARED_SECRET`** — only if iOS IAP is live
+
+If a service is not yet needed, ensure the code gracefully handles the missing variable (not crash).
+
+---
+
 <a id="priority-fix-order"></a>
 ## Priority Fix Order
 
@@ -1193,6 +1308,9 @@ def apns_sandbox(self) -> bool:
 | **P1** | H-05 | Fail startup on migration failure in production | 5 min | |
 | **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min | |
 | **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
+| **P1** | R-01 | Set `JWT_PREVIOUS_SECRET` in Railway (or disable rotation) | 5 min | |
+| **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
+| **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
 | **P2** | C-02 | Restrict Firebase API keys, enable App Check | 1 hr | |
 | **P2** | H-02 | Add environment config to Flutter | 1 hr | |
 | **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
