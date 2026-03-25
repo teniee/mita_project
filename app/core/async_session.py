@@ -68,7 +68,9 @@ def initialize_database() -> None:
 
     # normalize raw URL
     database_url = _normalize_database_url(settings.DATABASE_URL)
-    logger.info(f"Final database URL used by asyncpg: {database_url}")
+    # Log only the host portion — never log credentials (C-04 security fix)
+    redacted_host = database_url.split('@')[-1] if '@' in database_url else 'configured'
+    logger.info(f"Database engine connecting to: {redacted_host}")
 
     try:
         engine_kwargs = {

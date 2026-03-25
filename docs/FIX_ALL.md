@@ -11,6 +11,9 @@
 
 - [CRITICAL — App won't start or massive security breach](#critical)
   - [C-01: JWT and Secret Keys leaked in render.yaml — FIXED](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
+  - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
+  - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
+  - [C-04: Database URL logged in plaintext with credentials — FIXED](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-02: Firebase API keys hardcoded in source code — FIXED](#c-02-firebase-api-keys-hardcoded-in-source-code)
   - [C-03: JWT_SECRET auto-generates on every restart if not set — FIXED](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
   - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
@@ -171,7 +174,7 @@ Additionally, the `MinimalSettings` fallback (try/except around `Settings()`) wo
 ---
 
 <a id="c-04-database-url-logged-in-plaintext-with-credentials"></a>
-### C-04: Database URL logged in plaintext with credentials
+### C-04: Database URL logged in plaintext with credentials — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -179,6 +182,8 @@ Additionally, the `MinimalSettings` fallback (try/except around `Settings()`) wo
 | **Files** | `app/core/async_session.py` line 71, `app/core/session.py` lines 57–58 |
 | **Priority** | P0 — Fix immediately |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-c04-db-url-credential-leakage` |
 
 #### Description
 
@@ -211,18 +216,10 @@ This is written to stdout, log files, and any log aggregation service (Sentry br
 - Render logs are accessible to all team members — violates principle of least privilege
 - Compliance violation (PCI DSS requirement 8: protect stored credentials)
 
-#### How to fix
+#### What was fixed
 
-Replace the log statements with redacted versions:
-
-```python
-# app/core/async_session.py:71
-logger.info(f"Database engine connecting to: {database_url.split('@')[-1] if '@' in database_url else 'configured'}")
-
-# app/core/session.py:57-58
-logger.info(f"Sync session connecting to: {host}:{port}/{database}")
-# Remove the username logging line entirely
-```
+1. **`app/core/async_session.py:71`** — Replaced full URL logging with redacted version that only shows the host portion after `@` (e.g., `db.supabase.co:6543/postgres?ssl=require`). URLs without `@` log `"configured"`.
+2. **`app/core/session.py:58`** — Removed the username logging line entirely. The safe `host:port/database` log (line 57) was kept since it contains no credentials.
 
 ---
 
@@ -1217,7 +1214,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | Priority | Issue ID | Description | Effort | Status |
 |----------|----------|-------------|--------|--------|
 | ~~**P0 NOW**~~ | ~~C-01~~ | ~~Rotate ALL secrets, remove from render.yaml~~ | ~~30 min~~ | **FIXED** |
-| **P0 NOW** | C-04 | Remove DB URL from logs | 5 min | |
+| ~~**P0 NOW**~~ | ~~C-04~~ | ~~Remove DB URL from logs~~ | ~~5 min~~ | **FIXED** |
 | **P0 NOW** | C-05 | Remove token logging | 5 min | |
 | **P1 Before Launch** | C-03 | Crash if JWT_SECRET not set in production | 10 min | |
 | **P1** | H-01 | Remove localhost from CORS in production | 10 min | |
