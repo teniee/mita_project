@@ -53,9 +53,8 @@ def _initialize_sync_session():
 
         sync_url = make_url(sync_database_url)
 
-        # Log the connection details for debugging
+        # Log connection target only — never log credentials (C-04 security fix)
         logger.info(f"Sync session connecting to: {host}:{port}/{database}")
-        logger.info(f"Username (via connect_args): {parsed.username}")
 
         # Create engine with credentials in connect_args
         engine = create_engine(
