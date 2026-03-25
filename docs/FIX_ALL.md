@@ -16,7 +16,7 @@
   - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
-  - [H-01: CORS always allows localhost origins in production](#h-01-cors-always-allows-localhost-origins-in-production)
+  - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
   - [H-02: API base URL hardcoded in Flutter with no environment switching](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
@@ -280,74 +280,27 @@ logger.debug(f"Token received - length: {len(token) if token else 0}")
 ---
 
 <a id="h-01-cors-always-allows-localhost-origins-in-production"></a>
-### H-01: CORS always allows localhost origins in production
+### H-01: CORS always allows localhost origins in production — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **File** | `app/core/config.py` lines 157–173 |
+| **File** | `app/core/config.py` lines 157–180 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-h01-cors-localhost-in-production` |
 
 #### Description
 
-The `ALLOWED_ORIGINS_LIST` property **always** appends localhost origins regardless of environment:
+The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regardless of environment, meaning in production `http://localhost:8080` was a valid CORS origin. Additionally, `http://mitafinance.com` and `http://www.mitafinance.com` (HTTP, not HTTPS) were in the always-allow list unnecessarily.
 
-```python
-@property
-def ALLOWED_ORIGINS_LIST(self):
-    if isinstance(self.ALLOWED_ORIGINS, str):
-        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-    else:
-        origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
-    # Always allow these regardless of env var
-    always_allow = [
-        "http://localhost:8080", "http://localhost:3000",
-        "http://localhost:5173", "http://127.0.0.1:8080",
-        "https://mitafinance.com", "http://mitafinance.com",
-        "https://www.mitafinance.com", "http://www.mitafinance.com",
-    ]
-    for origin in always_allow:
-        if origin not in origins:
-            origins.append(origin)
-    return origins
-```
+#### What was fixed
 
-This means in production, `http://localhost:8080` is always a valid CORS origin.
-
-#### What will happen if not fixed
-
-- An attacker creates a malicious page on `localhost:8080` (e.g., via a local script)
-- If a user visits that page while logged into MITA, the browser sends cookies/credentials
-- The attacker's script can make cross-origin API calls to the production backend
-- This bypasses CORS protection entirely for any user who has a local server on those ports
-
-#### How to fix
-
-Only add localhost origins in development mode:
-
-```python
-@property
-def ALLOWED_ORIGINS_LIST(self):
-    origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-
-    # Production domains (always allowed)
-    always_allow = [
-        "https://mitafinance.com", "https://www.mitafinance.com",
-    ]
-
-    # Localhost only in development
-    if self.ENVIRONMENT != "production":
-        always_allow.extend([
-            "http://localhost:8080", "http://localhost:3000",
-            "http://localhost:5173", "http://127.0.0.1:8080",
-        ])
-
-    for origin in always_allow:
-        if origin not in origins:
-            origins.append(origin)
-    return origins
-```
+1. **Localhost origins gated by environment** — `http://localhost:8080`, `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:8080` are now only added when `ENVIRONMENT != "production"`
+2. **Removed HTTP production origins** — `http://mitafinance.com` and `http://www.mitafinance.com` removed from always-allow list (Railway terminates TLS at proxy; browser `Origin` header is always `https://`)
+3. **Removed dead `isinstance` check** — `ALLOWED_ORIGINS` is typed as `str` in Pydantic v2; the `isinstance` branch was unreachable
+4. **Cleaned default `ALLOWED_ORIGINS`** — removed `http://localhost:8080` from the default value (localhost is added dynamically in dev via `always_allow`)
 
 ---
 

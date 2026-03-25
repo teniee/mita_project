@@ -148,7 +148,7 @@ class Settings(BaseSettings):
 
     # CORS - Allow configuration via environment (includes mobile app support)
     # SECURITY FIX: Removed wildcard (*) - only allow specific origins
-    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com,http://localhost:8080"
+    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com"
     
     # Environment settings
     ENVIRONMENT: str = "development"
@@ -157,17 +157,24 @@ class Settings(BaseSettings):
 
     @property
     def ALLOWED_ORIGINS_LIST(self):
-        """Get ALLOWED_ORIGINS as a list, always including localhost for local dev"""
-        if isinstance(self.ALLOWED_ORIGINS, str):
-            origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-        else:
-            origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
-        # Always allow these regardless of env var
+        """Get ALLOWED_ORIGINS as a list. Localhost origins only in development."""
+        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+        # Production domains (always allowed, HTTPS only)
         always_allow = [
-            "http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:8080",
-            "https://mitafinance.com", "http://mitafinance.com",
-            "https://www.mitafinance.com", "http://www.mitafinance.com",
+            "https://mitafinance.com",
+            "https://www.mitafinance.com",
         ]
+
+        # Localhost only in non-production environments
+        if self.ENVIRONMENT != "production":
+            always_allow.extend([
+                "http://localhost:8080",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:8080",
+            ])
+
         for origin in always_allow:
             if origin not in origins:
                 origins.append(origin)
