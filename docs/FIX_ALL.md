@@ -11,7 +11,7 @@
 
 - [CRITICAL — App won't start or massive security breach](#critical)
   - [C-01: JWT and Secret Keys leaked in render.yaml — FIXED](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
-  - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
+  - [C-02: Firebase API keys hardcoded in source code — FIXED](#c-02-firebase-api-keys-hardcoded-in-source-code)
   - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
   - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
@@ -99,48 +99,48 @@ These were the actual production JWT signing secrets. With these, **anyone could
 ---
 
 <a id="c-02-firebase-api-keys-hardcoded-in-source-code"></a>
-### C-02: Firebase API keys hardcoded in source code
+### C-02: Firebase API keys hardcoded in source code — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | CRITICAL |
-| **File** | `mobile_app/lib/firebase_options.dart` lines 42–48 |
+| **File** | `mobile_app/lib/firebase_options.dart` |
 | **Priority** | P0 — Fix immediately |
 | **Effort** | 1 hour |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-c02-firebase-keys-hardcoded` |
 
 #### Description
 
-The Firebase configuration file contains hardcoded API keys, app IDs, and project identifiers:
+The Firebase configuration file contained hardcoded API keys, app IDs, and project identifiers for Android, iOS, and macOS. The same API key was reused across all platforms.
 
-```dart
-static const FirebaseOptions android = FirebaseOptions(
-  apiKey: 'AIzaSyCRI7k1ATHDbpi-KEpJCx8pgAufcF7WVKk',
-  appId: '1:147595998708:android:84d48c2591631b948335a1',
-  messagingSenderId: '147595998708',
-  projectId: 'mita-finance',
-  storageBucket: 'mita-finance.firebasestorage.app',
-);
+#### What was fixed
+
+1. **Replaced all hardcoded values with `String.fromEnvironment()`** — Firebase config is now injected at compile time via `--dart-define-from-file=firebase_config.json`
+2. **Added fail-fast validation** — app throws a clear `StateError` at startup if Firebase config was not provided at build time, instead of silently failing
+3. **Created `firebase_config.example.json`** — template showing all required environment variables for developers
+4. **Fixed `.gitignore` patterns** — `google-services.json` and `GoogleService-Info.plist` patterns now use `**` prefix to match inside `mobile_app/` directory
+5. **Untracked `google-services.json` and `GoogleService-Info.plist`** from git index — these files contained the same API key and were incorrectly tracked despite being in `.gitignore` (path pattern didn't match `mobile_app/` subdirectory)
+
+#### Build usage
+
+```bash
+# Local development
+flutter run --dart-define-from-file=firebase_config.json
+
+# Production build
+flutter build apk --dart-define-from-file=firebase_config.json
+flutter build ipa --dart-define-from-file=firebase_config.json
 ```
 
-The same API key is reused for Android, iOS, and macOS configurations.
+#### Remaining manual action required
 
-#### What will happen if not fixed
-
-While Firebase API keys are designed to be semi-public (they identify the project, not authorize access), without proper Firebase App Check configured:
-- Anyone can use the API key to send push notifications through your Firebase project
-- Attackers can abuse Firestore/Storage if security rules are not properly locked down
-- Quota abuse — attackers can exhaust your Firebase free tier or rack up bills
-- The API key appearing in git history makes key rotation difficult
-
-#### How to fix
-
-1. **Enable Firebase App Check** in the Firebase Console to restrict which apps can use the key
-2. **Restrict the API key** in Google Cloud Console → API Credentials → restrict to your app's package name/bundle ID
-3. **Consider using `--dart-define`** at build time to inject keys instead of hardcoding:
-   ```dart
-   static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
-   ```
-4. **Set up proper Firebase Security Rules** for Firestore and Storage to block unauthorized access regardless of the API key
+> **IMPORTANT:** The old API keys remain in git history. You SHOULD:
+> 1. **Restrict the existing API key** in Google Cloud Console → API Credentials → restrict to your app's package name/bundle ID
+> 2. **Enable Firebase App Check** in the Firebase Console to restrict which apps can use the key
+> 3. **Set up proper Firebase Security Rules** for Firestore and Storage
+> 4. **Create `mobile_app/firebase_config.json`** locally by copying `firebase_config.example.json` and filling in real values
+> 5. Consider rotating the API key if the repo was ever public
 
 ---
 
