@@ -73,17 +73,18 @@ class Settings(BaseSettings):
     @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
     @classmethod
     def validate_secrets(cls, v, info):
-        """Ensure JWT secrets are provided in production"""
+        """Ensure JWT secrets are provided in production, auto-generate in development only"""
         field_name = info.field_name
-        # Generate fallback if empty (works for both dev and prod)
         if not v:
-            import secrets
             import os
             env = os.getenv("ENVIRONMENT", "development")
-            # Still warn in production, but don't crash the app
             if env == "production":
-                import logging
-                logging.warning(f"{field_name} not set in production, using generated fallback")
+                raise ValueError(
+                    f"{field_name} MUST be set in production. "
+                    f"Generate with: openssl rand -base64 32"
+                )
+            # Auto-generate only in development/test for convenience
+            import secrets
             return secrets.token_urlsafe(32)
         return v
 
@@ -147,7 +148,7 @@ class Settings(BaseSettings):
 
     # CORS - Allow configuration via environment (includes mobile app support)
     # SECURITY FIX: Removed wildcard (*) - only allow specific origins
-    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com,http://localhost:8080"
+    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com"
     
     # Environment settings
     ENVIRONMENT: str = "development"
@@ -156,17 +157,24 @@ class Settings(BaseSettings):
 
     @property
     def ALLOWED_ORIGINS_LIST(self):
-        """Get ALLOWED_ORIGINS as a list, always including localhost for local dev"""
-        if isinstance(self.ALLOWED_ORIGINS, str):
-            origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-        else:
-            origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
-        # Always allow these regardless of env var
+        """Get ALLOWED_ORIGINS as a list. Localhost origins only in development."""
+        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+        # Production domains (always allowed, HTTPS only)
         always_allow = [
-            "http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:8080",
-            "https://mitafinance.com", "http://mitafinance.com",
-            "https://www.mitafinance.com", "http://www.mitafinance.com",
+            "https://mitafinance.com",
+            "https://www.mitafinance.com",
         ]
+
+        # Localhost only in non-production environments
+        if self.ENVIRONMENT != "production":
+            always_allow.extend([
+                "http://localhost:8080",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:8080",
+            ])
+
         for origin in always_allow:
             if origin not in origins:
                 origins.append(origin)
@@ -194,9 +202,13 @@ def get_settings():
 try:
     settings = Settings()
 except Exception as e:
+    import os as _os
+    if _os.getenv("ENVIRONMENT", "development") == "production":
+        # In production, configuration errors MUST crash the app — never fall back silently
+        raise
     import logging
     logging.warning(f"Could not load settings: {e}")
-    # Create a minimal settings object for development
+    # Create a minimal settings object for development only
     class MinimalSettings:
         DATABASE_URL = ""
         JWT_SECRET = ""

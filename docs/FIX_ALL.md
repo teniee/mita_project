@@ -14,9 +14,12 @@
   - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
   - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
   - [C-04: Database URL logged in plaintext with credentials — FIXED](#c-04-database-url-logged-in-plaintext-with-credentials)
+  - [C-02: Firebase API keys hardcoded in source code — FIXED](#c-02-firebase-api-keys-hardcoded-in-source-code)
+  - [C-03: JWT_SECRET auto-generates on every restart if not set — FIXED](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
+  - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
-  - [H-01: CORS always allows localhost origins in production](#h-01-cors-always-allows-localhost-origins-in-production)
+  - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
   - [H-02: API base URL hardcoded in Flutter with no environment switching](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
@@ -99,110 +102,74 @@ These were the actual production JWT signing secrets. With these, **anyone could
 ---
 
 <a id="c-02-firebase-api-keys-hardcoded-in-source-code"></a>
-### C-02: Firebase API keys hardcoded in source code
+### C-02: Firebase API keys hardcoded in source code — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | CRITICAL |
-| **File** | `mobile_app/lib/firebase_options.dart` lines 42–48 |
+| **File** | `mobile_app/lib/firebase_options.dart` |
 | **Priority** | P0 — Fix immediately |
 | **Effort** | 1 hour |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-c02-firebase-keys-hardcoded` |
 
 #### Description
 
-The Firebase configuration file contains hardcoded API keys, app IDs, and project identifiers:
+The Firebase configuration file contained hardcoded API keys, app IDs, and project identifiers for Android, iOS, and macOS. The same API key was reused across all platforms.
 
-```dart
-static const FirebaseOptions android = FirebaseOptions(
-  apiKey: 'AIzaSyCRI7k1ATHDbpi-KEpJCx8pgAufcF7WVKk',
-  appId: '1:147595998708:android:84d48c2591631b948335a1',
-  messagingSenderId: '147595998708',
-  projectId: 'mita-finance',
-  storageBucket: 'mita-finance.firebasestorage.app',
-);
+#### What was fixed
+
+1. **Replaced all hardcoded values with `String.fromEnvironment()`** — Firebase config is now injected at compile time via `--dart-define-from-file=firebase_config.json`
+2. **Added fail-fast validation** — app throws a clear `StateError` at startup if Firebase config was not provided at build time, instead of silently failing
+3. **Created `firebase_config.example.json`** — template showing all required environment variables for developers
+4. **Fixed `.gitignore` patterns** — `google-services.json` and `GoogleService-Info.plist` patterns now use `**` prefix to match inside `mobile_app/` directory
+5. **Untracked `google-services.json` and `GoogleService-Info.plist`** from git index — these files contained the same API key and were incorrectly tracked despite being in `.gitignore` (path pattern didn't match `mobile_app/` subdirectory)
+
+#### Build usage
+
+```bash
+# Local development
+flutter run --dart-define-from-file=firebase_config.json
+
+# Production build
+flutter build apk --dart-define-from-file=firebase_config.json
+flutter build ipa --dart-define-from-file=firebase_config.json
 ```
 
-The same API key is reused for Android, iOS, and macOS configurations.
+#### Remaining manual action required
 
-#### What will happen if not fixed
-
-While Firebase API keys are designed to be semi-public (they identify the project, not authorize access), without proper Firebase App Check configured:
-- Anyone can use the API key to send push notifications through your Firebase project
-- Attackers can abuse Firestore/Storage if security rules are not properly locked down
-- Quota abuse — attackers can exhaust your Firebase free tier or rack up bills
-- The API key appearing in git history makes key rotation difficult
-
-#### How to fix
-
-1. **Enable Firebase App Check** in the Firebase Console to restrict which apps can use the key
-2. **Restrict the API key** in Google Cloud Console → API Credentials → restrict to your app's package name/bundle ID
-3. **Consider using `--dart-define`** at build time to inject keys instead of hardcoding:
-   ```dart
-   static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
-   ```
-4. **Set up proper Firebase Security Rules** for Firestore and Storage to block unauthorized access regardless of the API key
+> **IMPORTANT:** The old API keys remain in git history. You SHOULD:
+> 1. **Restrict the existing API key** in Google Cloud Console → API Credentials → restrict to your app's package name/bundle ID
+> 2. **Enable Firebase App Check** in the Firebase Console to restrict which apps can use the key
+> 3. **Set up proper Firebase Security Rules** for Firestore and Storage
+> 4. **Create `mobile_app/firebase_config.json`** locally by copying `firebase_config.example.json` and filling in real values
+> 5. Consider rotating the API key if the repo was ever public
 
 ---
 
 <a id="c-03-jwt_secret-auto-generates-on-every-restart-if-not-set"></a>
-### C-03: JWT_SECRET auto-generates on every restart if not set
+### C-03: JWT_SECRET auto-generates on every restart if not set — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | CRITICAL |
-| **File** | `app/core/config.py` lines 73–88 |
+| **File** | `app/core/config.py` lines 73–89 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-c03-jwt-secret-autogenerate` |
 
 #### Description
 
-The pydantic field validator for `JWT_SECRET` and `SECRET_KEY` generates a random fallback if the environment variable is empty:
+The pydantic field validator for `JWT_SECRET` and `SECRET_KEY` generated a random fallback if the environment variable was empty — even in production. On every server restart, `secrets.token_urlsafe(32)` produced a **new random string**, invalidating all previously issued JWT tokens.
 
-```python
-@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
-@classmethod
-def validate_secrets(cls, v, info):
-    if not v:
-        import secrets
-        import os
-        env = os.getenv("ENVIRONMENT", "development")
-        if env == "production":
-            import logging
-            logging.warning(f"{field_name} not set in production, using generated fallback")
-        return secrets.token_urlsafe(32)  # <-- New random value every time
-    return v
-```
+Additionally, the `MinimalSettings` fallback (try/except around `Settings()`) would silently swallow the error and create a settings object with empty secrets, making any validator-level crash ineffective.
 
-On every server restart, `secrets.token_urlsafe(32)` generates a **new random string**. Since JWT tokens are signed with this secret, all previously issued tokens become invalid the moment the server restarts.
+#### What was fixed
 
-#### What will happen if not fixed
-
-- Every deployment or server restart **logs out all users** instantly
-- Refresh tokens become invalid — users must re-enter email and password
-- If running multiple workers (WEB_CONCURRENCY > 1), each worker gets a **different** secret — tokens issued by worker 1 are rejected by worker 2
-- In production, the code only logs a WARNING but doesn't stop — this is a **silent** failure
-
-#### How to fix
-
-Change the validator to **crash the application** in production if secrets are missing:
-
-```python
-@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
-@classmethod
-def validate_secrets(cls, v, info):
-    if not v:
-        import os
-        env = os.getenv("ENVIRONMENT", "development")
-        if env == "production":
-            raise ValueError(
-                f"{info.field_name} MUST be set in production. "
-                f"Generate with: openssl rand -base64 32"
-            )
-        # Only auto-generate in development
-        import secrets
-        return secrets.token_urlsafe(32)
-    return v
-```
+1. **Validator now crashes in production** — `raise ValueError` with a clear message and generation command instead of `logging.warning()` + auto-generate
+2. **MinimalSettings fallback re-raises in production** — the `try/except` around `Settings()` now checks `ENVIRONMENT` and re-raises the error in production, preventing silent fallback to empty secrets
+3. **Development/test behavior preserved** — auto-generates secrets for local convenience, no changes to developer workflow
 
 ---
 
@@ -310,74 +277,27 @@ logger.debug(f"Token received - length: {len(token) if token else 0}")
 ---
 
 <a id="h-01-cors-always-allows-localhost-origins-in-production"></a>
-### H-01: CORS always allows localhost origins in production
+### H-01: CORS always allows localhost origins in production — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **File** | `app/core/config.py` lines 157–173 |
+| **File** | `app/core/config.py` lines 157–180 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-h01-cors-localhost-in-production` |
 
 #### Description
 
-The `ALLOWED_ORIGINS_LIST` property **always** appends localhost origins regardless of environment:
+The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regardless of environment, meaning in production `http://localhost:8080` was a valid CORS origin. Additionally, `http://mitafinance.com` and `http://www.mitafinance.com` (HTTP, not HTTPS) were in the always-allow list unnecessarily.
 
-```python
-@property
-def ALLOWED_ORIGINS_LIST(self):
-    if isinstance(self.ALLOWED_ORIGINS, str):
-        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-    else:
-        origins = [self.ALLOWED_ORIGINS] if self.ALLOWED_ORIGINS else []
-    # Always allow these regardless of env var
-    always_allow = [
-        "http://localhost:8080", "http://localhost:3000",
-        "http://localhost:5173", "http://127.0.0.1:8080",
-        "https://mitafinance.com", "http://mitafinance.com",
-        "https://www.mitafinance.com", "http://www.mitafinance.com",
-    ]
-    for origin in always_allow:
-        if origin not in origins:
-            origins.append(origin)
-    return origins
-```
+#### What was fixed
 
-This means in production, `http://localhost:8080` is always a valid CORS origin.
-
-#### What will happen if not fixed
-
-- An attacker creates a malicious page on `localhost:8080` (e.g., via a local script)
-- If a user visits that page while logged into MITA, the browser sends cookies/credentials
-- The attacker's script can make cross-origin API calls to the production backend
-- This bypasses CORS protection entirely for any user who has a local server on those ports
-
-#### How to fix
-
-Only add localhost origins in development mode:
-
-```python
-@property
-def ALLOWED_ORIGINS_LIST(self):
-    origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-
-    # Production domains (always allowed)
-    always_allow = [
-        "https://mitafinance.com", "https://www.mitafinance.com",
-    ]
-
-    # Localhost only in development
-    if self.ENVIRONMENT != "production":
-        always_allow.extend([
-            "http://localhost:8080", "http://localhost:3000",
-            "http://localhost:5173", "http://127.0.0.1:8080",
-        ])
-
-    for origin in always_allow:
-        if origin not in origins:
-            origins.append(origin)
-    return origins
-```
+1. **Localhost origins gated by environment** — `http://localhost:8080`, `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:8080` are now only added when `ENVIRONMENT != "production"`
+2. **Removed HTTP production origins** — `http://mitafinance.com` and `http://www.mitafinance.com` removed from always-allow list (Railway terminates TLS at proxy; browser `Origin` header is always `https://`)
+3. **Removed dead `isinstance` check** — `ALLOWED_ORIGINS` is typed as `str` in Pydantic v2; the `isinstance` branch was unreachable
+4. **Cleaned default `ALLOWED_ORIGINS`** — removed `http://localhost:8080` from the default value (localhost is added dynamically in dev via `always_allow`)
 
 ---
 
