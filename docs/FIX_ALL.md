@@ -12,7 +12,7 @@
 - [CRITICAL — App won't start or massive security breach](#critical)
   - [C-01: JWT and Secret Keys leaked in render.yaml — FIXED](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
   - [C-02: Firebase API keys hardcoded in source code — FIXED](#c-02-firebase-api-keys-hardcoded-in-source-code)
-  - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
+  - [C-03: JWT_SECRET auto-generates on every restart if not set — FIXED](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
   - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
@@ -145,64 +145,28 @@ flutter build ipa --dart-define-from-file=firebase_config.json
 ---
 
 <a id="c-03-jwt_secret-auto-generates-on-every-restart-if-not-set"></a>
-### C-03: JWT_SECRET auto-generates on every restart if not set
+### C-03: JWT_SECRET auto-generates on every restart if not set — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | CRITICAL |
-| **File** | `app/core/config.py` lines 73–88 |
+| **File** | `app/core/config.py` lines 73–89 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-03-25) |
+| **Fix commit** | `feature/fix-c03-jwt-secret-autogenerate` |
 
 #### Description
 
-The pydantic field validator for `JWT_SECRET` and `SECRET_KEY` generates a random fallback if the environment variable is empty:
+The pydantic field validator for `JWT_SECRET` and `SECRET_KEY` generated a random fallback if the environment variable was empty — even in production. On every server restart, `secrets.token_urlsafe(32)` produced a **new random string**, invalidating all previously issued JWT tokens.
 
-```python
-@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
-@classmethod
-def validate_secrets(cls, v, info):
-    if not v:
-        import secrets
-        import os
-        env = os.getenv("ENVIRONMENT", "development")
-        if env == "production":
-            import logging
-            logging.warning(f"{field_name} not set in production, using generated fallback")
-        return secrets.token_urlsafe(32)  # <-- New random value every time
-    return v
-```
+Additionally, the `MinimalSettings` fallback (try/except around `Settings()`) would silently swallow the error and create a settings object with empty secrets, making any validator-level crash ineffective.
 
-On every server restart, `secrets.token_urlsafe(32)` generates a **new random string**. Since JWT tokens are signed with this secret, all previously issued tokens become invalid the moment the server restarts.
+#### What was fixed
 
-#### What will happen if not fixed
-
-- Every deployment or server restart **logs out all users** instantly
-- Refresh tokens become invalid — users must re-enter email and password
-- If running multiple workers (WEB_CONCURRENCY > 1), each worker gets a **different** secret — tokens issued by worker 1 are rejected by worker 2
-- In production, the code only logs a WARNING but doesn't stop — this is a **silent** failure
-
-#### How to fix
-
-Change the validator to **crash the application** in production if secrets are missing:
-
-```python
-@field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
-@classmethod
-def validate_secrets(cls, v, info):
-    if not v:
-        import os
-        env = os.getenv("ENVIRONMENT", "development")
-        if env == "production":
-            raise ValueError(
-                f"{info.field_name} MUST be set in production. "
-                f"Generate with: openssl rand -base64 32"
-            )
-        # Only auto-generate in development
-        import secrets
-        return secrets.token_urlsafe(32)
-    return v
-```
+1. **Validator now crashes in production** — `raise ValueError` with a clear message and generation command instead of `logging.warning()` + auto-generate
+2. **MinimalSettings fallback re-raises in production** — the `try/except` around `Settings()` now checks `ENVIRONMENT` and re-raises the error in production, preventing silent fallback to empty secrets
+3. **Development/test behavior preserved** — auto-generates secrets for local convenience, no changes to developer workflow
 
 ---
 
