@@ -44,10 +44,11 @@ docker-compose.override.yml
 mobile_app/build/
 mobile_app/.dart_tool/
 
-# === iOS / Android (generated) ===
+# === iOS / Android / Firebase (generated, contain API keys) ===
 macos/Flutter/ephemeral/
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
+**/google-services.json
+**/GoogleService-Info.plist
+mobile_app/firebase_config.json
 
 # === IDEs ===
 .vscode/

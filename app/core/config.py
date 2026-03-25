@@ -73,17 +73,18 @@ class Settings(BaseSettings):
     @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
     @classmethod
     def validate_secrets(cls, v, info):
-        """Ensure JWT secrets are provided in production"""
+        """Ensure JWT secrets are provided in production, auto-generate in development only"""
         field_name = info.field_name
-        # Generate fallback if empty (works for both dev and prod)
         if not v:
-            import secrets
             import os
             env = os.getenv("ENVIRONMENT", "development")
-            # Still warn in production, but don't crash the app
             if env == "production":
-                import logging
-                logging.warning(f"{field_name} not set in production, using generated fallback")
+                raise ValueError(
+                    f"{field_name} MUST be set in production. "
+                    f"Generate with: openssl rand -base64 32"
+                )
+            # Auto-generate only in development/test for convenience
+            import secrets
             return secrets.token_urlsafe(32)
         return v
 
@@ -194,9 +195,13 @@ def get_settings():
 try:
     settings = Settings()
 except Exception as e:
+    import os as _os
+    if _os.getenv("ENVIRONMENT", "development") == "production":
+        # In production, configuration errors MUST crash the app — never fall back silently
+        raise
     import logging
     logging.warning(f"Could not load settings: {e}")
-    # Create a minimal settings object for development
+    # Create a minimal settings object for development only
     class MinimalSettings:
         DATABASE_URL = ""
         JWT_SECRET = ""
