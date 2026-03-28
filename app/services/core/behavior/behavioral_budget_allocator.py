@@ -10,6 +10,8 @@ from app.services.core.dynamic_threshold_service import (
     DynamicThresholdService, get_dynamic_thresholds, ThresholdType, UserContext
 )
 
+logger = logging.getLogger(__name__)
+
 
 def get_behavioral_allocation(
     start_date: str, 
@@ -95,22 +97,44 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
         db: Database session
 
     Returns:
-        Dictionary with category allocations and metadata
+        Dictionary with category allocations and metadata.
+        Key fields:
+          - user_context_applied: True only when DynamicThresholdService returned
+            personalised weights. False means hardcoded defaults were used.
+          - allocation_method: "dynamic" | "hardcoded_fallback"
+          - income_tier: classified tier string (e.g. "middle"), "unknown" on error
+          - confidence: 0.85 for dynamic, 0.50 for hardcoded fallback
     """
     from app.db.models.user import User
+    from app.services.core.income_classification_service import IncomeClassificationService
 
-    # Get user for context
+    # ------------------------------------------------------------------ #
+    # 1. Build user context from DB record                                 #
+    # ------------------------------------------------------------------ #
     user = db.query(User).filter(User.id == user_id).first()
 
-    # Create user context and assign it
+    monthly_income = user.monthly_income if user else total_budget
+    region = user.country if user and hasattr(user, "country") else "US"
+    age = user.age if user and hasattr(user, "age") else 35
+
     user_context = UserContext(
-        monthly_income=user.monthly_income if user else total_budget,
-        age=user.age if user and hasattr(user, 'age') else 35,
-        region=user.country if user and hasattr(user, 'country') else "US",
-        family_size=1
+        monthly_income=monthly_income,
+        age=age,
+        region=region,
+        family_size=1,
     )
 
-    # Define default category distribution (percentages) as fallback
+    # Classify income tier upfront — pure computation, used in both paths.
+    try:
+        income_tier: str = IncomeClassificationService().classify_income(
+            monthly_income, region
+        ).value
+    except Exception:
+        income_tier = "unknown"
+
+    # ------------------------------------------------------------------ #
+    # 2. Hardcoded fallback distribution                                   #
+    # ------------------------------------------------------------------ #
     default_distribution = {
         "food": 0.30,
         "transportation": 0.15,
@@ -118,10 +142,12 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
         "entertainment": 0.10,
         "shopping": 0.10,
         "healthcare": 0.05,
-        "savings": 0.20
+        "savings": 0.20,
     }
 
-    # Try to get dynamic weights from DynamicThresholdService
+    # ------------------------------------------------------------------ #
+    # 3. Try personalised weights from DynamicThresholdService             #
+    # ------------------------------------------------------------------ #
     user_context_applied = False
     try:
         svc = DynamicThresholdService()
@@ -132,15 +158,36 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
                 for cat, weight in thresholds.items()
             }
             user_context_applied = True
+            logger.info(
+                "behavioral_allocation.dynamic_context_applied",
+                extra={
+                    "user_id": user_id,
+                    "income_tier": income_tier,
+                    "monthly_income": monthly_income,
+                    "region": region,
+                    "categories_count": len(categories),
+                    "allocation_method": "dynamic",
+                },
+            )
         else:
-            raise ValueError("empty thresholds")
-    except Exception:
-        # Fallback to hardcoded defaults
+            raise ValueError("DynamicThresholdService returned empty thresholds")
+    except Exception as exc:
         categories = {
             cat: round(total_budget * pct, 2)
             for cat, pct in default_distribution.items()
         }
         user_context_applied = False
+        logger.warning(
+            "behavioral_allocation.fallback_to_hardcoded",
+            extra={
+                "user_id": user_id,
+                "income_tier": income_tier,
+                "monthly_income": monthly_income,
+                "fallback_reason": type(exc).__name__,
+                "allocation_method": "hardcoded_fallback",
+            },
+            exc_info=True,
+        )
 
     logger.info("behavioral_allocator: context_applied=%s", user_context_applied)
 
@@ -148,6 +195,8 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
         "categories": categories,
         "total_allocated": sum(categories.values()),
         "method": "behavioral_allocation",
-        "confidence": 0.8,
-        "user_context_applied": user_context_applied
+        "allocation_method": "dynamic" if user_context_applied else "hardcoded_fallback",
+        "income_tier": income_tier,
+        "confidence": 0.85 if user_context_applied else 0.50,
+        "user_context_applied": user_context_applied,
     }
