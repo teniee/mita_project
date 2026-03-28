@@ -189,8 +189,6 @@ def allocate_behavioral_budget(user_id: int, total_budget: float, db: Session) -
             exc_info=True,
         )
 
-    logger.info("behavioral_allocator: context_applied=%s", user_context_applied)
-
     return {
         "categories": categories,
         "total_allocated": sum(categories.values()),
