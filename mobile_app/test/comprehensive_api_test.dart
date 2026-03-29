@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
+import 'package:mita/config.dart' show AppConfig;
 
 /// Comprehensive API Endpoint Testing
 /// Tests all the critical endpoints mentioned in the QA requirements
@@ -16,7 +17,7 @@ import 'package:dio/dio.dart';
 void main() {
   group('MITA API Endpoint Tests', () {
     late Dio dio;
-    const baseUrl = 'https://mita-docker-ready-project-manus.onrender.com/api';
+    final baseUrl = AppConfig.fullApiUrl;
 
     setUpAll(() {
       dio = Dio(BaseOptions(

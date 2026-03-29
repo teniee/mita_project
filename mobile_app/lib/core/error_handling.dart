@@ -12,6 +12,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 
+import '../config.dart' show AppConfig;
+
 // Error severity levels
 enum ErrorSeverity {
   low,
@@ -263,8 +265,7 @@ class ErrorHandler {
   // Send error report to backend
   Future<bool> _sendErrorReport(ErrorReport report) async {
     try {
-      // Replace with your actual error reporting endpoint
-      const endpoint = 'https://your-api.com/api/errors/report';
+      final endpoint = AppConfig.fullErrorReportUrl;
 
       final response = await http
           .post(

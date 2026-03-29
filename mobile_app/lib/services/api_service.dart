@@ -3836,7 +3836,7 @@ class ApiService {
         data: {
           'email': email,
           'client_id': 'mita_flutter_app',
-          'redirect_url': 'https://app.mita.finance/reset-password',
+          'redirect_url': AppConfig.passwordResetRedirectUrl,
         },
       );
 

@@ -345,7 +345,7 @@ class AppConfig {
 }
 ```
 
-**Changes made:**
+**Changes made (initial fix):**
 - **`config.dart`** — replaced hardcoded URLs with `AppConfig` class using `String.fromEnvironment('API_BASE_URL')` and `String.fromEnvironment('ENV')`. Added environment-based feature flags, security settings, performance tuning. Legacy `ApiConfig` class kept as backward-compat wrapper delegating to `AppConfig`.
 - **`api_service.dart`** — changed `_baseUrl` from `const String.fromEnvironment('API_BASE_URL', defaultValue: defaultApiBaseUrl)` to `AppConfig.baseUrl` (single source of truth).
 - **`installment_service.dart`** — replaced `$defaultApiBaseUrl/installments/...` with `${AppConfig.fullApiUrl}/installments/...` (also fixed a double-slash URL bug).
@@ -353,16 +353,27 @@ class AppConfig {
 - **`user_settings_screen.dart`** — replaced hardcoded Railway URLs for privacy-policy and terms-of-service with `${AppConfig.baseUrl}/...`.
 - **Deleted `config_clean.dart`** — merged its environment-switching concept into `config.dart` (it was unused except by `transaction_service.dart`).
 
+**Additional fixes (2026-03-29, follow-up audit):**
+
+A deep audit found 3 files that were missed in the initial H-02 fix:
+
+- **`config.dart`** — added `webAppUrl` (build-time injectable via `--dart-define=WEB_APP_URL=...`, default `https://app.mita.finance`), `errorReportEndpoint`, `fullErrorReportUrl`, and `passwordResetRedirectUrl` computed getters so that ALL URLs flow through `AppConfig`.
+- **`error_handling.dart`** — replaced placeholder `https://your-api.com/api/errors/report` with `AppConfig.fullErrorReportUrl`. Added `import '../config.dart' show AppConfig`. The placeholder URL would silently fail every error report in production.
+- **`api_service.dart`** — replaced hardcoded `'https://app.mita.finance/reset-password'` in `sendPasswordResetEmail()` with `AppConfig.passwordResetRedirectUrl`, making it environment-switchable.
+- **`test/comprehensive_api_test.dart`** — replaced dead Render URL (`https://mita-docker-ready-project-manus.onrender.com/api`) with `AppConfig.fullApiUrl`. Added `import 'package:mita/config.dart' show AppConfig`. Tests were pointing at a decommissioned host.
+
+**Post-audit verification:** Full grep of `railway.app|onrender.com|your-api.com` across all `.dart` files confirms the only remaining Railway URL is the `defaultValue` in `AppConfig.baseUrl` — which is correct (it's the compile-time fallback for production builds without `--dart-define`).
+
 Build commands:
 ```bash
 # Production
-flutter build apk --dart-define=API_BASE_URL=https://api.mita.finance --dart-define=ENV=production
+flutter build apk --dart-define=API_BASE_URL=https://api.mita.finance --dart-define=WEB_APP_URL=https://app.mita.finance --dart-define=ENV=production
 
 # Staging
-flutter build apk --dart-define=API_BASE_URL=https://staging.mita.finance --dart-define=ENV=staging
+flutter build apk --dart-define=API_BASE_URL=https://staging.mita.finance --dart-define=WEB_APP_URL=https://staging-app.mita.finance --dart-define=ENV=staging
 
 # Local dev
-flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ENV=development
+flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=WEB_APP_URL=http://localhost:3000 --dart-define=ENV=development
 ```
 
 ---

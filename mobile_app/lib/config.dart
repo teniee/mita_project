@@ -24,11 +24,19 @@ class AppConfig {
 
   static const String apiPath = '/api';
 
+  /// Web app URL — used for deep-link redirects (e.g. password reset).
+  /// Override at build time with `--dart-define=WEB_APP_URL=...`.
+  static const String webAppUrl = String.fromEnvironment(
+    'WEB_APP_URL',
+    defaultValue: 'https://app.mita.finance',
+  );
+
   // Standard FastAPI authentication endpoints
   static const String registerEndpoint = '/api/auth/register';
   static const String loginEndpoint = '/api/auth/login';
   static const String refreshEndpoint = '/api/auth/refresh';
   static const String healthEndpoint = '/health';
+  static const String errorReportEndpoint = '/api/errors/report';
 
   // Computed full URLs
   static String get fullApiUrl => '$baseUrl$apiPath';
@@ -36,6 +44,8 @@ class AppConfig {
   static String get fullLoginUrl => '$baseUrl$loginEndpoint';
   static String get fullRefreshUrl => '$baseUrl$refreshEndpoint';
   static String get fullHealthUrl => '$baseUrl$healthEndpoint';
+  static String get fullErrorReportUrl => '$baseUrl$errorReportEndpoint';
+  static String get passwordResetRedirectUrl => '$webAppUrl/reset-password';
 
   // Environment checks
   static bool get isProduction => environment == 'production';
