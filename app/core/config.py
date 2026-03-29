@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 try:
     from pydantic_settings import BaseSettings
 except ModuleNotFoundError:  # pragma: no cover - fallback for older pydantic
@@ -194,53 +192,55 @@ class Settings(BaseSettings):
             extra = "ignore"
 
 
-@lru_cache
-def get_settings():
-    return Settings()
-
-
 try:
     settings = Settings()
 except Exception as e:
     import os as _os
-    if _os.getenv("ENVIRONMENT", "development") == "production":
-        # In production, configuration errors MUST crash the app — never fall back silently
-        raise
-    import logging
-    logging.warning(f"Could not load settings: {e}")
-    # Create a minimal settings object for development only
-    class MinimalSettings:
-        DATABASE_URL = ""
-        JWT_SECRET = ""
-        SECRET_KEY = ""
-        OPENAI_API_KEY = ""
-        ENVIRONMENT = "development"
-        ALGORITHM = "HS256"
-        ACCESS_TOKEN_EXPIRE_MINUTES = 120  # Match main config - 2 hours for onboarding
-        REDIS_URL = ""  # No Redis in development by default - graceful fallback
-        OPENAI_MODEL = "gpt-4o-mini"
-        GOOGLE_APPLICATION_CREDENTIALS = ""
-        APPSTORE_SHARED_SECRET = ""
-        SENTRY_DSN = ""
-        SMTP_HOST = ""
-        SMTP_PORT = 587
-        SMTP_USERNAME = ""
-        SMTP_PASSWORD = ""
-        SMTP_FROM = "noreply@mita.finance"
-        APNS_KEY = ""
-        APNS_KEY_ID = ""
-        APNS_TEAM_ID = ""
-        APNS_TOPIC = "com.mita.finance"
-        APNS_USE_SANDBOX = True
-        ALLOWED_ORIGINS = ["https://app.mita.finance"]
-        DEBUG = False
-        LOG_LEVEL = "INFO"
-    
-    settings = MinimalSettings()
 
-# Legacy support - maintain backward compatibility
-SECRET_KEY = settings.SECRET_KEY if hasattr(settings, 'SECRET_KEY') else ""
-ALGORITHM = settings.ALGORITHM if hasattr(settings, 'ALGORITHM') else "HS256"
+    _is_production = (
+        _os.getenv("ENVIRONMENT", "development") == "production"
+        or _os.getenv("RAILWAY_ENVIRONMENT") is not None
+    )
+    if _is_production:
+        # In production, configuration errors MUST crash the app — never fall back silently.
+        # A running server with empty DATABASE_URL / JWT_SECRET is worse than a crashed one.
+        # We also check RAILWAY_ENVIRONMENT because Railway always sets it on deployed
+        # services — so even if someone forgets ENVIRONMENT=production, we still crash.
+        raise
+
+    # Development-only fallback: retry without .env file so pydantic defaults kick in.
+    # Unlike the old MinimalSettings class, this preserves @property methods
+    # (ASYNC_DATABASE_URL, ALLOWED_ORIGINS_LIST) and field validators.
+    import logging as _logging
+
+    _logging.error(
+        "Settings failed to load: %s. "
+        "Retrying without .env file (pydantic defaults only). "
+        "Fix your .env file to silence this error.",
+        e,
+    )
+    try:
+        settings = Settings(_env_file=None)
+    except Exception as e2:
+        raise RuntimeError(
+            f"Cannot initialize settings even with defaults: {e2}. "
+            f"Original error: {e}"
+        ) from e2
+
+
+def get_settings():
+    """Return the module-level settings singleton.
+
+    Kept for backward compatibility with code that calls get_settings()
+    (e.g. app.core.session). Always returns the same instance as the
+    module-level ``settings`` — never creates a second Settings() that
+    could bypass the production guard above.
+    """
+    return settings
+
+# Module-level exports used by auth_jwt_service and others
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 
 # Validation function to ensure critical settings are provided
 def validate_required_settings():

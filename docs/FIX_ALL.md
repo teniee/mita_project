@@ -380,64 +380,43 @@ flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=WEB_A
 ---
 
 <a id="h-03-minimalsettings-fallback-silently-swallows-config-errors"></a>
-### H-03: MinimalSettings fallback silently swallows config errors
+### H-03: MinimalSettings fallback silently swallows config errors — **FIXED**
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **File** | `app/core/config.py` lines 194–227 |
+| **File** | `app/core/config.py` lines 195–228 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-03-29) |
 
-#### Description
+#### Description (original problem)
 
-At module import time, if `Settings()` fails for any reason, a `MinimalSettings` object with all-empty credentials is silently substituted:
+At module import time, if `Settings()` fails for any reason, a `MinimalSettings` object with all-empty credentials was silently substituted. The app would start with no database, no JWT secret, no API keys — and only a single `WARNING` log line that was easy to miss.
 
-```python
-try:
-    settings = Settings()
-except Exception as e:
-    import logging
-    logging.warning(f"Could not load settings: {e}")
-    class MinimalSettings:
-        DATABASE_URL = ""
-        JWT_SECRET = ""
-        SECRET_KEY = ""
-        OPENAI_API_KEY = ""
-        ENVIRONMENT = "development"
-        # ... all empty
-    settings = MinimalSettings()
-```
+#### What was fixed
 
-This can be triggered by:
-- A typo in `.env` file (e.g., `DATABASE_URL=postgres://` with a trailing space)
-- A pydantic validation error on any field
-- Missing `pydantic-settings` package
-- File encoding issues
+1. **Removed the `MinimalSettings` class entirely.** It was a plain class that lacked `@property` methods (`ASYNC_DATABASE_URL`, `ALLOWED_ORIGINS_LIST`) and field validators — any code calling those would crash with `AttributeError`, masking the real config error.
 
-#### What will happen if not fixed
+2. **Production always crashes on config failure.** The guard now checks both `ENVIRONMENT=production` **and** `RAILWAY_ENVIRONMENT` (always set by Railway on deployed services). This prevents a bypass when someone forgets to set `ENVIRONMENT=production`:
+   ```python
+   _is_production = (
+       _os.getenv("ENVIRONMENT", "development") == "production"
+       or _os.getenv("RAILWAY_ENVIRONMENT") is not None
+   )
+   if _is_production:
+       raise
+   ```
 
-- The application starts with **no database connection**, **no JWT secret**, **no API keys**
-- Every endpoint returns 500 errors or empty data
-- There's only a single WARNING log line — easy to miss in production
-- Debugging is extremely difficult because the app "seems" to start fine
+3. **Development fallback uses `Settings(_env_file=None)`** instead of a fake class. This preserves all validators, properties, and auto-generates dev-only JWT secrets — a real `Settings` instance, not a hollow stub.
 
-#### How to fix
+4. **Error level raised from `WARNING` to `ERROR`** so it's visible in log aggregators.
 
-Remove the `MinimalSettings` fallback entirely. Let the application crash on startup if settings can't load:
+5. **`get_settings()` now returns the module-level singleton** instead of creating a separate `Settings()` instance. Previously, `session.py` (which uses `get_settings()`) could get a different config object than the rest of the app — bypassing the production guard entirely.
 
-```python
-settings = Settings()
+6. **Removed `@lru_cache` from `get_settings()`** — it was semantically wrong after the change (would cache a stale reference, breaking test isolation).
 
-# If you want a safety net for development only:
-# try:
-#     settings = Settings()
-# except Exception as e:
-#     if os.getenv("ENVIRONMENT") == "production":
-#         raise  # Always crash in production
-#     logging.warning(f"Settings load failed: {e}, using defaults")
-#     settings = Settings(_env_file=None)  # Load with pydantic defaults
-```
+7. **Removed `hasattr` guards on module-level exports** — `SECRET_KEY` and `ALGORITHM` now read directly from the guaranteed `Settings` instance.
 
 ---
 
@@ -1214,7 +1193,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P0 NOW**~~ | ~~C-05~~ | ~~Remove token logging~~ | ~~5 min~~ | **FIXED** |
 | ~~**P1 Before Launch**~~ | ~~C-03~~ | ~~Crash if JWT_SECRET not set in production~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-01~~ | ~~Remove localhost from CORS in production~~ | ~~10 min~~ | **FIXED** |
-| **P1** | H-03 | Remove MinimalSettings fallback | 10 min | |
+| ~~**P1**~~ | ~~H-03~~ | ~~Remove MinimalSettings fallback~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-05~~ | ~~Fail startup on migration failure in production~~ | ~~5 min~~ | **FIXED** |
 | **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min | |
 | **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
