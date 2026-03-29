@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../config.dart';
+import '../config.dart' show AppConfig;
 import '../theme/app_colors.dart';
 import 'timeout_manager_service.dart';
 import 'income_service.dart';
@@ -208,10 +208,7 @@ class ApiService {
   // Prevents showing "Session expired" for old tokens from previous installs
   bool _hasActiveSession = false;
 
-  final String _baseUrl = const String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: defaultApiBaseUrl,
-  );
+  final String _baseUrl = AppConfig.baseUrl;
 
   // ---------------------------------------------------------------------------
   // Helpers

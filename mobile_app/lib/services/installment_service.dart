@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../config.dart';
+import '../config.dart' show AppConfig;
 import '../models/installment_models.dart';
 import 'api_service.dart';
 import 'logging_service.dart';
@@ -144,7 +144,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .post(
-              Uri.parse('$defaultApiBaseUrl/installments/calculator'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/calculator'),
               headers: headers,
               body: json.encode(input.toJson()),
             )
@@ -180,7 +180,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .post(
-              Uri.parse('$defaultApiBaseUrl/installments/profile'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/profile'),
               headers: headers,
               body: json.encode(profile.toJson()),
             )
@@ -214,7 +214,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .get(
-              Uri.parse('$defaultApiBaseUrl/installments/profile'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/profile'),
               headers: headers,
             )
             .timeout(_defaultTimeout);
@@ -258,7 +258,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .post(
-              Uri.parse('$defaultApiBaseUrl/installments'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments'),
               headers: headers,
               body: json.encode(installment.toJson()),
             )
@@ -297,7 +297,7 @@ class InstallmentService {
         queryParams['status'] = status.toJson();
       }
 
-      final uri = Uri.parse('$defaultApiBaseUrl/installments').replace(
+      final uri = Uri.parse('${AppConfig.fullApiUrl}/installments').replace(
           queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await _executeWithRetry(() async {
@@ -335,7 +335,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .get(
-              Uri.parse('$defaultApiBaseUrl/installments/$installmentId'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/$installmentId'),
               headers: headers,
             )
             .timeout(_defaultTimeout);
@@ -379,7 +379,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .patch(
-              Uri.parse('$defaultApiBaseUrl/installments/$installmentId'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/$installmentId'),
               headers: headers,
               body: json.encode(updates),
             )
@@ -418,7 +418,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .delete(
-              Uri.parse('$defaultApiBaseUrl/installments/$installmentId'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/$installmentId'),
               headers: headers,
             )
             .timeout(_defaultTimeout);
@@ -458,7 +458,7 @@ class InstallmentService {
         return await http
             .get(
               Uri.parse(
-                  '$defaultApiBaseUrl/installments/calendar/$year/$month'),
+                  '${AppConfig.fullApiUrl}/installments/calendar/$year/$month'),
               headers: headers,
             )
             .timeout(_defaultTimeout);
@@ -491,7 +491,7 @@ class InstallmentService {
         final headers = await _getHeaders();
         return await http
             .get(
-              Uri.parse('$defaultApiBaseUrl/installments/achievements'),
+              Uri.parse('${AppConfig.fullApiUrl}/installments/achievements'),
               headers: headers,
             )
             .timeout(_defaultTimeout);

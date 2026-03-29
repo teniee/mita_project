@@ -20,7 +20,7 @@
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
   - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
-  - [H-02: API base URL hardcoded in Flutter with no environment switching](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
+  - [H-02: API base URL hardcoded in Flutter with no environment switching — FIXED](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
@@ -297,7 +297,7 @@ The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regard
 ---
 
 <a id="h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching"></a>
-### H-02: API base URL hardcoded in Flutter with no environment switching
+### H-02: API base URL hardcoded in Flutter with no environment switching — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -305,10 +305,12 @@ The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regard
 | **File** | `mobile_app/lib/config.dart` lines 1–25 |
 | **Priority** | P2 — Fix for staging/multi-env |
 | **Effort** | 1 hour |
+| **Status** | **FIXED** (2026-03-29) |
+| **Fix commit** | `feature/fix-h02-api-base-url-hardcoded` |
 
 #### Description
 
-The Flutter app has a single hardcoded API URL with no mechanism to switch between environments:
+The Flutter app had a single hardcoded API URL with no mechanism to switch between environments:
 
 ```dart
 const String defaultApiBaseUrl =
@@ -321,43 +323,46 @@ class ApiConfig {
 }
 ```
 
-There are two problems:
+There were three problems:
 1. **No environment switching** — if you need staging, dev, or a new prod URL, you edit source code
 2. **Railway-specific URL** — if you switch hosting providers, every installed client needs a new build
 3. **Two duplicate URL definitions** — `defaultApiBaseUrl` and `ApiConfig.baseUrl` can get out of sync
 
-#### What will happen if not fixed
+#### What was fixed
 
-- Cannot test against staging/dev backends without rebuilding the app
-- If Railway changes URL format or you migrate hosting, all existing app installs break
-- QA team cannot test against isolated environments
-- App Store review builds point to production data
-
-#### How to fix
-
-Use Flutter's `--dart-define` for build-time configuration:
+Rewrote `config.dart` with a new `AppConfig` class using `String.fromEnvironment` for build-time URL injection:
 
 ```dart
-class ApiConfig {
+class AppConfig {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://mita-production-production.up.railway.app',
   );
-  static const String apiPath = '/api';
-  // ... rest stays the same
+  static const String environment = String.fromEnvironment(
+    'ENV', defaultValue: 'development',
+  );
+  // ...computed URLs, feature flags, security/performance settings
 }
 ```
+
+**Changes made:**
+- **`config.dart`** — replaced hardcoded URLs with `AppConfig` class using `String.fromEnvironment('API_BASE_URL')` and `String.fromEnvironment('ENV')`. Added environment-based feature flags, security settings, performance tuning. Legacy `ApiConfig` class kept as backward-compat wrapper delegating to `AppConfig`.
+- **`api_service.dart`** — changed `_baseUrl` from `const String.fromEnvironment('API_BASE_URL', defaultValue: defaultApiBaseUrl)` to `AppConfig.baseUrl` (single source of truth).
+- **`installment_service.dart`** — replaced `$defaultApiBaseUrl/installments/...` with `${AppConfig.fullApiUrl}/installments/...` (also fixed a double-slash URL bug).
+- **`transaction_service.dart`** — changed import from `config_clean.dart` to `config.dart`.
+- **`user_settings_screen.dart`** — replaced hardcoded Railway URLs for privacy-policy and terms-of-service with `${AppConfig.baseUrl}/...`.
+- **Deleted `config_clean.dart`** — merged its environment-switching concept into `config.dart` (it was unused except by `transaction_service.dart`).
 
 Build commands:
 ```bash
 # Production
-flutter build apk --dart-define=API_BASE_URL=https://api.mita.finance
+flutter build apk --dart-define=API_BASE_URL=https://api.mita.finance --dart-define=ENV=production
 
 # Staging
-flutter build apk --dart-define=API_BASE_URL=https://staging.mita.finance
+flutter build apk --dart-define=API_BASE_URL=https://staging.mita.finance --dart-define=ENV=staging
 
 # Local dev
-flutter run --dart-define=API_BASE_URL=http://localhost:8000
+flutter run --dart-define=API_BASE_URL=http://localhost:8000 --dart-define=ENV=development
 ```
 
 ---
@@ -1205,7 +1210,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
 | ~~**P2**~~ | ~~C-02~~ | ~~Restrict Firebase API keys, enable App Check~~ | ~~1 hr~~ | **FIXED** |
-| **P2** | H-02 | Add environment config to Flutter | 1 hr | |
+| ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter~~ | ~~1 hr~~ | **FIXED** |
 | **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
 | **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |
 | **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |

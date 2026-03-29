@@ -7,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../config.dart' show AppConfig;
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -917,7 +918,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   /// Open privacy policy URL in browser
   Future<void> _openPrivacyPolicy() async {
     try {
-      final Uri url = Uri.parse('https://mita-production-production.up.railway.app/privacy-policy');
+      final Uri url = Uri.parse('${AppConfig.baseUrl}/privacy-policy');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
@@ -932,7 +933,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   /// Open terms of service URL in browser
   Future<void> _openTermsOfService() async {
     try {
-      final Uri url = Uri.parse('https://mita-production-production.up.railway.app/terms-of-service');
+      final Uri url = Uri.parse('${AppConfig.baseUrl}/terms-of-service');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
