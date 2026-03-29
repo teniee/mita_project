@@ -11,7 +11,7 @@ import logging
 import os
 import asyncio
 from typing import Dict, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer
 import redis.asyncio as redis
@@ -357,7 +357,7 @@ class AdvancedRateLimiter:
         """Implement sliding window rate limiting with Redis sorted sets"""
         if self.redis:
             try:
-                now = datetime.utcnow().timestamp()
+                now = datetime.now(timezone.utc).timestamp()
                 window_start = now - window_seconds
                 
                 pipe = self.redis.pipeline()
@@ -415,7 +415,7 @@ class AdvancedRateLimiter:
     
     def _memory_sliding_window(self, key: str, window_seconds: int, limit: int) -> tuple[int, int, bool]:
         """Memory-based sliding window fallback"""
-        now = datetime.utcnow().timestamp()
+        now = datetime.now(timezone.utc).timestamp()
         window_start = now - window_seconds
         
         if key not in self.memory_store:
@@ -698,7 +698,7 @@ class SecurityMonitor:
         """Log security event with details"""
         event_data = {
             'event_type': event_type,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'severity': severity,
             'details': details
         }
@@ -716,7 +716,7 @@ class SecurityMonitor:
         # Store in Redis for monitoring
         if self.redis:
             try:
-                key = f"security_events:{event_type}:{datetime.utcnow().strftime('%Y-%m-%d-%H')}"
+                key = f"security_events:{event_type}:{datetime.now(timezone.utc).strftime('%Y-%m-%d-%H')}"
                 self.redis.incr(key)
                 self.redis.expire(key, 86400)  # Keep for 24 hours
             except Exception as e:
@@ -917,7 +917,7 @@ def get_security_health_status() -> dict:
     """Get comprehensive security health status for monitoring"""
     global redis_client
     health_status = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "redis_status": "connected" if redis_client else "disconnected",
         "rate_limiting_backend": "redis" if redis_client else "memory",
         "security_features": {
@@ -1164,9 +1164,9 @@ class JWTSecurity:
         to_encode = data.copy()
         
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(hours=SecurityConfig.JWT_EXPIRY_HOURS)
+            expire = datetime.now(timezone.utc) + timedelta(hours=SecurityConfig.JWT_EXPIRY_HOURS)
         
         to_encode.update({"exp": expire, "type": "access"})
         

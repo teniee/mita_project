@@ -7,7 +7,7 @@ Safe thresholds: payment <5% of income, balance >$2500, DTI <35%
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
@@ -99,8 +99,8 @@ class Installment(Base):
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at = Column(DateTime(timezone=True), nullable=True, default=None, index=True)  # Soft delete support
 
     # Relationships
@@ -143,7 +143,7 @@ class UserFinancialProfile(Base):
     planning_mortgage = Column(Boolean, default=False, nullable=False)
 
     # Metadata
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user = relationship("User", backref="financial_profile")
@@ -196,7 +196,7 @@ class InstallmentCalculation(Base):
     user_proceeded = Column(Boolean, default=False, nullable=False)  # Did user create actual installment?
 
     # Metadata
-    calculated_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    calculated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     user = relationship("User", backref="installment_calculations")
@@ -230,7 +230,7 @@ class InstallmentAchievement(Base):
 
     # Metadata
     last_calculation_date = Column(DateTime(timezone=True), nullable=True)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user = relationship("User", backref="installment_achievements")

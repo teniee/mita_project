@@ -134,7 +134,7 @@ class MigrationPerformanceTester:
                 memory = psutil.virtual_memory()
                 disk_io = psutil.disk_io_counters()
                 
-                timestamp = datetime.datetime.utcnow()
+                timestamp = datetime.datetime.now(datetime.timezone.utc)
                 
                 self.resource_data.append({
                     "timestamp": timestamp.isoformat(),
@@ -199,7 +199,7 @@ class MigrationPerformanceTester:
                         })
                     
                     lock_data.append({
-                        "timestamp": datetime.datetime.utcnow().isoformat(),
+                        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                         "locks": locks,
                         "total_locks": len(locks),
                         "blocked_locks": len([l for l in locks if not l["granted"]])
@@ -235,7 +235,7 @@ class MigrationPerformanceTester:
         
         # Execute migration with timing
         start_time = time.time()
-        migration_start = datetime.datetime.utcnow()
+        migration_start = datetime.datetime.now(datetime.timezone.utc)
         
         try:
             # Run alembic migration
@@ -316,7 +316,7 @@ class MigrationPerformanceTester:
         
         # Execute rollback with timing
         start_time = time.time()
-        rollback_start = datetime.datetime.utcnow()
+        rollback_start = datetime.datetime.now(datetime.timezone.utc)
         
         try:
             result = subprocess.run([
@@ -500,7 +500,7 @@ class MigrationPerformanceTester:
         """Generate detailed performance report"""
         report = {
             "test_summary": {
-                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "test_database": self.test_db_url.split('@')[1] if '@' in self.test_db_url else "masked",
                 "total_tests": len([k for k in results.keys() if k.endswith("_results")])
             },

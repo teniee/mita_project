@@ -4,7 +4,7 @@ Provides detailed metrics for task queue performance and business operations.
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
 import threading
@@ -304,7 +304,7 @@ class TaskMetrics:
                 worker_utilization = workers.get('active', 0) / workers.get('total', 1)
             
             return {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'queue_health': {
                     'total_queued_tasks': total_queued,
                     'total_failed_tasks': total_failed,
@@ -323,7 +323,7 @@ class TaskMetrics:
         except Exception as e:
             logger.error(f"Error generating business metrics summary: {e}")
             return {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'error': str(e),
                 'system_status': 'unknown'
             }

@@ -15,7 +15,7 @@ silently suppressed.
 from __future__ import annotations
 
 import calendar
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
@@ -243,7 +243,7 @@ def _maybe_send_velocity_alert(
     group_key = (
         f"{_GK_VELOCITY}:{user_id}:{alert.category}:{year}-{month:02d}"
     )
-    cooldown_cutoff = datetime.utcnow() - timedelta(hours=VELOCITY_ALERT_COOLDOWN_HOURS)
+    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(hours=VELOCITY_ALERT_COOLDOWN_HOURS)
 
     existing = (
         db.query(Notification)
@@ -328,7 +328,7 @@ def _maybe_send_win_notification(
 ) -> None:
     """Send win notification unless the same milestone was sent this week."""
     group_key = f"{_GK_WIN}:{user_id}:{win.win_type}:{year}-{month:02d}"
-    cooldown_cutoff = datetime.utcnow() - timedelta(days=WIN_NOTIFICATION_COOLDOWN_DAYS)
+    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(days=WIN_NOTIFICATION_COOLDOWN_DAYS)
 
     existing = (
         db.query(Notification)

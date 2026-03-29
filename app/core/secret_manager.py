@@ -21,7 +21,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 import hashlib
@@ -111,7 +111,7 @@ class SecretValue:
         logger.info(f"Secret accessed: {self.metadata.name} (category: {self.metadata.category.value})")
         
         # Update access tracking
-        self.metadata.last_accessed = datetime.utcnow()
+        self.metadata.last_accessed = datetime.now(timezone.utc)
         self.metadata.access_count += 1
 
 
@@ -259,7 +259,7 @@ class UnifiedSecretManager:
                     category=SecretCategory(secret_config.get('category', 'medium')),
                     provider=SecretProvider(secret_config.get('provider', 'environment')),
                     version=secret_config.get('version', '1'),
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                     expires_at=None,
                     rotation_interval_days=secret_config.get('rotation_interval_days', 30),
                     last_accessed=None,
@@ -521,7 +521,7 @@ class UnifiedSecretManager:
             # Update metadata
             metadata.version = str(int(metadata.version) + 1)
             metadata.status = SecretRotationStatus.ACTIVE
-            metadata.created_at = datetime.utcnow()
+            metadata.created_at = datetime.now(timezone.utc)
             
             self._audit_log('rotation_success', name, {'new_version': metadata.version})
             
@@ -604,7 +604,7 @@ class UnifiedSecretManager:
         if metadata.status != SecretRotationStatus.ACTIVE:
             return False
         
-        age_days = (datetime.utcnow() - metadata.created_at).days
+        age_days = (datetime.now(timezone.utc) - metadata.created_at).days
         return age_days >= metadata.rotation_interval_days
     
     def _is_cache_valid(self, secret: SecretValue) -> bool:
@@ -621,12 +621,12 @@ class UnifiedSecretManager:
         }.get(secret.metadata.category, 15)
         
         cache_expiry = secret.metadata.last_accessed + timedelta(minutes=ttl_minutes)
-        return datetime.utcnow() < cache_expiry
+        return datetime.now(timezone.utc) < cache_expiry
     
     async def _check_compliance(self, name: str, metadata: SecretMetadata) -> None:
         """Check compliance requirements for secret access"""
         # Check if secret has expired
-        if metadata.expires_at and datetime.utcnow() > metadata.expires_at:
+        if metadata.expires_at and datetime.now(timezone.utc) > metadata.expires_at:
             raise ComplianceViolationError(f"Secret {name} has expired")
         
         # Check rotation requirements
@@ -641,7 +641,7 @@ class UnifiedSecretManager:
     def _audit_log(self, event: str, secret_name: str, details: Dict[str, Any]) -> None:
         """Log audit events for compliance"""
         audit_entry = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'event': event,
             'secret_name': secret_name,
             'details': details,
@@ -655,7 +655,7 @@ class UnifiedSecretManager:
     def _get_request_id(self) -> str:
         """Get current request ID for audit correlation"""
         # This would typically come from request context
-        return hashlib.md5(f"{datetime.utcnow()}{secrets.token_hex(8)}".encode()).hexdigest()[:16]
+        return hashlib.md5(f"{datetime.now(timezone.utc)}{secrets.token_hex(8)}".encode()).hexdigest()[:16]
     
     async def get_secret_health(self) -> Dict[str, Any]:
         """Get health status of all secrets for monitoring"""
@@ -686,7 +686,7 @@ class UnifiedSecretManager:
             if self._is_rotation_needed(metadata):
                 health_report['rotation_alerts'].append({
                     'secret': name,
-                    'days_overdue': (datetime.utcnow() - metadata.created_at).days - metadata.rotation_interval_days
+                    'days_overdue': (datetime.now(timezone.utc) - metadata.created_at).days - metadata.rotation_interval_days
                 })
         
         return health_report

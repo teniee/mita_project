@@ -3,7 +3,7 @@ Scheduled Notifications Service
 Handles periodic notifications like daily reminders, overdue goals, etc.
 Should be run as background tasks via cron or task scheduler
 """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Dict
 import logging
 import random
@@ -262,7 +262,7 @@ class ScheduledNotificationService:
                 .all()
             )
 
-            one_week_ago = datetime.utcnow() - timedelta(days=7)
+            one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
             for (user_id,) in users_with_goals:
                 try:

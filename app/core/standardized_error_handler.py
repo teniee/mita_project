@@ -11,7 +11,7 @@ This module provides a comprehensive, consistent error handling system that ensu
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
 
@@ -121,7 +121,7 @@ class StandardizedAPIException(Exception):
         self.retry_after = retry_after
         self.context = context or {}
         self.error_id = f"mita_{uuid.uuid4().hex[:12]}"
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(timezone.utc)
         
         super().__init__(self.message)
 
@@ -234,7 +234,7 @@ class ErrorResponse:
         
         # Generate error ID for tracking
         error_id = getattr(error, 'error_id', f"mita_{uuid.uuid4().hex[:12]}")
-        timestamp = getattr(error, 'timestamp', datetime.utcnow())
+        timestamp = getattr(error, 'timestamp', datetime.now(timezone.utc))
         
         if isinstance(error, StandardizedAPIException):
             response = {
@@ -344,7 +344,7 @@ class StandardizedErrorHandler:
             "error_type": type(error).__name__,
             "error_message": str(error),
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         # Add request context if available

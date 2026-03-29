@@ -6,7 +6,7 @@ Specialized health checks for individual middleware components
 import time
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 import redis
 import os
@@ -133,7 +133,7 @@ class SecurityMiddlewareHealthChecker:
                 user_id="system_health_checker",
                 details={
                     "test": True,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "component": "security_event_logging"
                 },
                 severity="info"

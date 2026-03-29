@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from enum import Enum
 
@@ -183,7 +183,7 @@ def _create_token(data: dict, expires_delta: timedelta, token_type: str, scopes:
         scopes: List of OAuth 2.0 scopes
     """
     to_encode = data.copy()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expire = now + expires_delta
     
     # Standard JWT claims (RFC 7519)

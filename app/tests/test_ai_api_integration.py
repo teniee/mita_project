@@ -22,7 +22,7 @@ Total: 35+ comprehensive test cases covering 2,270+ lines of AI code
 import os
 import sys
 import types
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock, patch, AsyncMock
@@ -204,7 +204,7 @@ def sample_ai_snapshot():
             },
             "behavior_tags": ["weekend_spender", "emotional_spending"]
         },
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
 
 @pytest.fixture
@@ -217,7 +217,7 @@ def sample_spending_patterns():
             "impulse_buying"
         ],
         "confidence": 0.85,
-        "analysis_date": datetime.utcnow().isoformat(),
+        "analysis_date": datetime.now(timezone.utc).isoformat(),
         "data_points": 150
     }
 
@@ -243,7 +243,7 @@ def sample_financial_health_score():
 @pytest.fixture
 def sample_transactions():
     """Sample transaction data for AI analysis"""
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
     transactions = []
 
     for i in range(30):
@@ -408,7 +408,7 @@ class TestSpendingAnalysisEndpoints:
                 "description": "Unusual food expense - 180% above average",
                 "amount": 156.78,
                 "category": "food",
-                "date": datetime.utcnow().isoformat(),
+                "date": datetime.now(timezone.utc).isoformat(),
                 "severity": "high",
                 "average_for_category": 56.12
             }
@@ -975,7 +975,7 @@ class TestAIIntegrationScenarios:
         mock_snapshot.rating = "B+"
         mock_snapshot.risk = "moderate"
         mock_snapshot.summary = "Good spending discipline"
-        mock_snapshot.created_at = datetime.utcnow()
+        mock_snapshot.created_at = datetime.now(timezone.utc)
 
         mock_result = Mock()
         mock_result.scalars.return_value.first.return_value = mock_snapshot

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 
@@ -8,7 +8,7 @@ class ExpenseJournal:
 
     def add_entry(self, user_id: str, action: str, payload: dict):
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "action": action,
             "data": payload,
         }

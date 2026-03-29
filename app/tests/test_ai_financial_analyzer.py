@@ -20,7 +20,7 @@ Total: 25+ comprehensive test cases covering 1121 lines of AIFinancialAnalyzer
 import os
 import sys
 import types
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -115,7 +115,7 @@ def high_income_user():
 def sample_expenses_weekend_pattern():
     """Sample expenses showing weekend overspending pattern"""
     expenses = []
-    base_date = datetime.utcnow() - timedelta(days=60)
+    base_date = datetime.now(timezone.utc) - timedelta(days=60)
 
     for day in range(60):
         current_date = base_date + timedelta(days=day)
@@ -136,7 +136,7 @@ def sample_expenses_weekend_pattern():
 def sample_expenses_small_purchases():
     """Sample expenses with many small frequent purchases"""
     expenses = []
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     for day in range(30):
         # 3 small purchases per day
@@ -156,7 +156,7 @@ def sample_expenses_small_purchases():
 def sample_expenses_with_anomaly():
     """Sample expenses with statistical outlier"""
     expenses = []
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     # Normal expenses ($50 each)
     for day in range(29):
@@ -185,7 +185,7 @@ def sample_expenses_with_anomaly():
 def sample_expenses_subscriptions():
     """Sample expenses with recurring subscriptions (6+ unique to trigger accumulation)"""
     expenses = []
-    base_date = datetime.utcnow() - timedelta(days=180)  # 6 months
+    base_date = datetime.now(timezone.utc) - timedelta(days=180)  # 6 months
 
     # Define subscriptions with different categories/amounts so keys are unique
     subscriptions = [
@@ -215,7 +215,7 @@ def sample_expenses_subscriptions():
 def sample_expenses_impulse_buying():
     """Sample expenses with impulse buying indicators"""
     expenses = []
-    base_date = datetime.utcnow() - timedelta(days=30)
+    base_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     for i in range(10):
         expense = Mock()
@@ -321,7 +321,7 @@ class TestSpendingPatternDetection:
             # Only 5 data points spread across categories to avoid category_concentration
             categories = ['food', 'transportation', 'entertainment', 'shopping', 'utilities']
             mock_load.return_value = [
-                {'amount': 50.0, 'category': categories[i], 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 50.0, 'category': categories[i], 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(5)
             ]
 
@@ -364,7 +364,7 @@ class TestAnomalyDetection:
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             # All expenses exactly the same
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(30)
             ]
 
@@ -377,7 +377,7 @@ class TestAnomalyDetection:
         """Test anomaly detection with insufficient data (<30 points)"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc), 'description': 'test'}
                 for _ in range(10)
             ]
 
@@ -398,7 +398,7 @@ class TestFinancialHealthScore:
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             # Create balanced spending data
             expenses = []
-            base_date = datetime.utcnow() - timedelta(days=90)
+            base_date = datetime.now(timezone.utc) - timedelta(days=90)
             for day in range(90):
                 expenses.append({
                     'amount': 50.0,
@@ -424,7 +424,7 @@ class TestFinancialHealthScore:
         """Test that all health score components are calculated"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(60)
             ]
 
@@ -440,7 +440,7 @@ class TestFinancialHealthScore:
         """Test trend calculation (improving/stable/declining)"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(60)
             ]
 
@@ -485,7 +485,7 @@ class TestSavingsOptimization:
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             # Very minimal spending - hard to optimize
             mock_load.return_value = [
-                {'amount': 10.0, 'category': 'food', 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 10.0, 'category': 'food', 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(10)
             ]
 
@@ -577,7 +577,7 @@ class TestWeeklyInsights:
         """Test weekly insights with increasing spending trend"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             # Align dates with the algorithm's week boundaries
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             current_week_start = now - timedelta(days=now.weekday())
             previous_week_start = current_week_start - timedelta(days=7)
             expenses = []
@@ -613,7 +613,7 @@ class TestWeeklyInsights:
         """Test weekly insights with insufficient data"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc), 'description': 'test'}
             ]
 
             analyzer = AIFinancialAnalyzer(mock_db, test_user_id)
@@ -675,7 +675,7 @@ class TestCategoryConcentration:
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             # All food category
             mock_load.return_value = [
-                {'amount': 100.0, 'category': 'food', 'date': datetime.utcnow() - timedelta(days=i), 'description': 'test'}
+                {'amount': 100.0, 'category': 'food', 'date': datetime.now(timezone.utc) - timedelta(days=i), 'description': 'test'}
                 for i in range(30)
             ]
 
@@ -696,7 +696,7 @@ class TestCategoryConcentration:
                 expenses.append({
                     'amount': 100.0,
                     'category': categories[i % 4],
-                    'date': datetime.utcnow() - timedelta(days=i),
+                    'date': datetime.now(timezone.utc) - timedelta(days=i),
                     'description': 'test'
                 })
             mock_load.return_value = expenses
@@ -739,7 +739,7 @@ class TestEdgeCases:
         """Test with only one expense entry"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': 50.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'test'}
+                {'amount': 50.0, 'category': 'food', 'date': datetime.now(timezone.utc), 'description': 'test'}
             ]
 
             analyzer = AIFinancialAnalyzer(mock_db, test_user_id)
@@ -752,8 +752,8 @@ class TestEdgeCases:
         """Test handling of negative amounts (refunds)"""
         with patch.object(AIFinancialAnalyzer, '_load_spending_data') as mock_load:
             mock_load.return_value = [
-                {'amount': -50.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'refund'},
-                {'amount': 100.0, 'category': 'food', 'date': datetime.utcnow(), 'description': 'purchase'}
+                {'amount': -50.0, 'category': 'food', 'date': datetime.now(timezone.utc), 'description': 'refund'},
+                {'amount': 100.0, 'category': 'food', 'date': datetime.now(timezone.utc), 'description': 'purchase'}
             ]
 
             analyzer = AIFinancialAnalyzer(mock_db, test_user_id)

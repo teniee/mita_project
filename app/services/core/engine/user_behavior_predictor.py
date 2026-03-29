@@ -1,6 +1,6 @@
 from typing import Dict, List
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def predict_user_behavior(transactions: List[Dict], income: float) -> str:
@@ -46,7 +46,7 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
         }
 
     # Get recent transactions (last 60 days)
-    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
     transactions = db.query(Transaction).filter(
         Transaction.user_id == user_id,
         Transaction.spent_at >= sixty_days_ago
@@ -62,7 +62,7 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
 
     # Calculate average daily spending
     total_spent = sum(float(t.amount) for t in transactions)
-    days_covered = (datetime.utcnow() - sixty_days_ago).days
+    days_covered = (datetime.now(timezone.utc) - sixty_days_ago).days
     avg_daily_spending = total_spent / days_covered if days_covered > 0 else 0.0
 
     # Predict next week (7 days)

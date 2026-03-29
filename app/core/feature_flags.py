@@ -11,7 +11,7 @@ import redis
 from typing import Dict, Any, Optional, List, Union
 from enum import Enum
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 from app.core.config import settings
@@ -55,9 +55,9 @@ class FeatureFlag:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(timezone.utc)
         if self.updated_at is None:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = datetime.now(timezone.utc)
         if self.metadata is None:
             self.metadata = {}
 
@@ -296,7 +296,7 @@ class FeatureFlagManager:
                 cache_key = f"{flag_key}:{user_id}" if user_id else flag_key
                 self.cache[cache_key] = {
                     'value': value,
-                    'expires_at': datetime.utcnow() + timedelta(seconds=self.cache_ttl)
+                    'expires_at': datetime.now(timezone.utc) + timedelta(seconds=self.cache_ttl)
                 }
                 return True
         
@@ -384,7 +384,7 @@ class FeatureFlagManager:
             cache_key = f"{flag.key}:{user_id}" if user_id else flag.key
             if cache_key in self.cache:
                 cached = self.cache[cache_key]
-                if cached['expires_at'] > datetime.utcnow():
+                if cached['expires_at'] > datetime.now(timezone.utc):
                     return cached['value']
                 else:
                     del self.cache[cache_key]

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -15,6 +15,6 @@ class Subscription(Base):
     plan = Column(String, default="standard")
     receipt = Column(JSONB, nullable=False)
     status = Column(String, default="active")
-    starts_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    starts_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

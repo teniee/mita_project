@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,7 @@ from app.db.models import Subscription, User
 def refresh_premium_status() -> None:
     """Disable premium when a subscription expires."""
     db: Session = next(get_db())
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired = (
         db.query(Subscription)
         .filter(

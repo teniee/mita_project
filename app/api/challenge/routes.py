@@ -55,10 +55,10 @@ async def get_available_challenges(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get list of available challenges for user"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import Challenge, ChallengeParticipation
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Get all active challenges for this month
     result = await db.execute(
@@ -118,10 +118,10 @@ async def get_challenge_stats(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get user's challenge statistics"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import ChallengeParticipation
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Count completed challenges
     result = await db.execute(
@@ -219,10 +219,10 @@ async def get_challenge_progress(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get user's progress on specific challenge"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import ChallengeParticipation, Challenge
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Query participation record
     result = await db.execute(
@@ -278,10 +278,10 @@ async def join_challenge(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Join a challenge"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import ChallengeParticipation, Challenge
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Check if challenge exists
     result = await db.execute(
@@ -322,7 +322,7 @@ async def join_challenge(
         days_completed=0,
         current_streak=0,
         best_streak=0,
-        started_at=datetime.utcnow()
+        started_at=datetime.now(timezone.utc)
     )
 
     db.add(participation)
@@ -344,10 +344,10 @@ async def leave_challenge(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Leave a challenge"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import ChallengeParticipation
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Find participation record
     result = await db.execute(
@@ -387,10 +387,10 @@ async def update_challenge_progress(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Update progress on a challenge"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import ChallengeParticipation
 
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Find participation record
     result = await db.execute(
@@ -421,9 +421,9 @@ async def update_challenge_progress(
     if "status" in progress_data:
         participation.status = progress_data["status"]
         if progress_data["status"] == "completed":
-            participation.completed_at = datetime.utcnow()
+            participation.completed_at = datetime.now(timezone.utc)
 
-    participation.last_updated = datetime.utcnow()
+    participation.last_updated = datetime.now(timezone.utc)
     await db.commit()
 
     result = {

@@ -11,7 +11,7 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -344,7 +344,7 @@ class RailwayDeploymentManager:
 
             event = {
                 "type": "rollback",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "target_deployment_id": deployment_id,
                 "git_sha": deployment.git_sha,
                 "git_branch": deployment.git_branch,
@@ -379,7 +379,7 @@ class RailwayDeploymentManager:
         history = self._load_history()
         history["last_known_good"] = {
             "deployment_id": deployment_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         self._save_history(history)
         logger.info("Marked deployment as last known good", deployment_id=deployment_id)

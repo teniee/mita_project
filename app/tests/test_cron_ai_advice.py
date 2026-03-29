@@ -79,7 +79,7 @@ def test_run_ai_advice_batch_sends(monkeypatch):
     monkeypatch.setattr(
         "app.services.core.engine.cron_task_ai_advice.datetime",
         SimpleNamespace(
-            utcnow=lambda: datetime(2025, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
+            now=lambda tz=None: datetime(2025, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
         ),
     )
 
@@ -125,7 +125,7 @@ def test_run_ai_advice_batch_skips_outside_hour(monkeypatch):
     monkeypatch.setattr(
         "app.services.core.engine.cron_task_ai_advice.datetime",
         SimpleNamespace(
-            utcnow=lambda: datetime(2025, 1, 1, 7, 0, 0, tzinfo=timezone.utc)
+            now=lambda tz=None: datetime(2025, 1, 1, 7, 0, 0, tzinfo=timezone.utc)
         ),
     )
 

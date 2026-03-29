@@ -225,8 +225,8 @@ class CRUDHelper:
         # Check if model supports soft delete (has deleted_at field)
         if hasattr(resource, 'deleted_at'):
             # Soft delete for compliance (financial data must be recoverable)
-            from datetime import datetime
-            resource.deleted_at = datetime.utcnow()
+            from datetime import datetime, timezone
+            resource.deleted_at = datetime.now(timezone.utc)
             db.commit()
         else:
             # Hard delete for non-financial data

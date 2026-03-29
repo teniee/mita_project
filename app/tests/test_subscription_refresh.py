@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.services.core.engine.cron_task_subscription_refresh import (
@@ -38,7 +38,7 @@ class DummyDB:
 def test_refresh_premium_status_expires(monkeypatch):
     expired_sub = SimpleNamespace(
         user_id="u1",
-        expires_at=datetime.utcnow() - timedelta(days=1),
+        expires_at=datetime.now(timezone.utc) - timedelta(days=1),
         status="active",
     )
     user = SimpleNamespace(

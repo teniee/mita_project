@@ -7,7 +7,7 @@ including suspicious activity detection, token usage analytics, and security rep
 
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -66,7 +66,7 @@ class TokenSecurityMonitor:
             "scopes": scopes,
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Check for suspicious token creation patterns
@@ -88,7 +88,7 @@ class TokenSecurityMonitor:
             "endpoint": endpoint,
             "scopes_used": scopes_used,
             "ip_address": ip_address,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         if not success:
@@ -113,7 +113,7 @@ class TokenSecurityMonitor:
             "token_scopes": token_scopes,
             "missing_scopes": list(set(required_scopes) - set(token_scopes)),
             "ip_address": ip_address,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "severity": self._calculate_violation_severity(required_scopes)
         })
         
@@ -135,7 +135,7 @@ class TokenSecurityMonitor:
             "token_type": token_type,
             "reason": reason,
             "ip_address": ip_address,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
     def detect_suspicious_activity(
@@ -161,7 +161,7 @@ class TokenSecurityMonitor:
             "alert_level": alert_level.value,
             "details": details,
             "ip_address": ip_address,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         # Take automated actions based on severity
@@ -209,7 +209,7 @@ class TokenSecurityMonitor:
                 "anomalies": anomalies,
                 "token_claims": {k: v for k, v in token_payload.items() if k not in ['sub', 'jti']},
                 "request_context": request_context,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
             
         return anomalies
@@ -233,7 +233,7 @@ class TokenSecurityMonitor:
             "suspicious_ips": list(self.suspicious_ips),
             "rate_limit_violations_count": len(self.rate_limit_violations),
             "failed_attempts_count": len(self.failed_attempts),
-            "report_generated": datetime.utcnow().isoformat()
+            "report_generated": datetime.now(timezone.utc).isoformat()
         }
         
     def _check_suspicious_token_creation(

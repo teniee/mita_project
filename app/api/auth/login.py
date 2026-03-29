@@ -10,7 +10,7 @@ Handles:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,7 +85,7 @@ async def login_user_standardized(
         )
 
     # Check if account is locked (migration 0017_add_account_security_fields)
-    if user.account_locked_until and user.account_locked_until > datetime.utcnow():
+    if user.account_locked_until and user.account_locked_until > datetime.now(timezone.utc):
         await log_security_event_async(
             event_type="login_attempt_account_locked",
             user_id=str(user.id),
@@ -106,7 +106,7 @@ async def login_user_standardized(
         # Lock account after 5 failed attempts
         if user.failed_login_attempts >= 5:
             from datetime import timedelta
-            user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+            user.account_locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
             await log_security_event_async(
                 event_type="account_locked_too_many_attempts",
                 user_id=str(user.id),
@@ -176,14 +176,14 @@ async def login_user_standardized(
     }
 
     # Update last login timestamp
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
     return AuthResponseHelper.login_success(
         tokens=tokens,
         user_data=user_response_data,
         login_info={
-            "login_time": datetime.utcnow().isoformat() + "Z",
+            "login_time": datetime.now(timezone.utc).isoformat() + "Z",
             "client_ip": request.client.host if request.client else 'unknown',
             "requires_password_change": False  # Add logic for password expiry if needed
         }

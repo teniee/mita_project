@@ -15,7 +15,7 @@ def backup_database() -> None:
     if not db_url or not bucket:
         raise RuntimeError("DATABASE_URL and S3_BUCKET must be set")
 
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
     key = f"backup-{timestamp}.sql.gz"
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -35,7 +35,7 @@ def backup_database() -> None:
         )
         s3.upload_file(gz_path, bucket, key)
 
-        retention = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+        retention = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
         objects = s3.list_objects_v2(Bucket=bucket).get("Contents", [])
         for obj in objects:
             if (

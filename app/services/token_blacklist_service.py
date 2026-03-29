@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -338,8 +338,8 @@ class TokenBlacklistService:
                 "user_id": user_id,
                 "token_type": token_type,
                 "reason": reason.value,
-                "blacklisted_at": datetime.utcnow().isoformat(),
-                "expires_at": (datetime.utcnow() + timedelta(seconds=ttl)).isoformat(),
+                "blacklisted_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=ttl)).isoformat(),
                 "revoked_by": revoked_by,
                 "metadata": metadata or {}
             }
@@ -579,7 +579,7 @@ class TokenBlacklistService:
                 {
                     "reason": reason.value,
                     "revoked_by": revoked_by,
-                    "revoked_at": datetime.utcnow().isoformat()
+                    "revoked_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 await client.setex(blacklist_key, ttl, f"admin_revocation:{revoked_by}")
@@ -619,7 +619,7 @@ class TokenBlacklistService:
             
             # Update cleanup metrics
             self._metrics.cleanup_operations += 1
-            self._metrics.last_cleanup = datetime.utcnow()
+            self._metrics.last_cleanup = datetime.now(timezone.utc)
             
             # Get current Redis stats
             async with self._get_redis_client() as client:
@@ -694,7 +694,7 @@ class TokenBlacklistService:
                 "average_check_time_ms": self._metrics.average_check_time_ms,
                 "redis_errors": self._metrics.redis_errors
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         try:

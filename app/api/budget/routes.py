@@ -1,7 +1,7 @@
 import inspect
 import logging
 from calendar import monthrange
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any
 
@@ -56,7 +56,7 @@ async def spent(
     if not isinstance(db, AsyncSession):
         raise TypeError("Expected AsyncSession")  # type: ignore
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
     result = fetch_spent_by_category(db, user.id, year, month)
@@ -78,7 +78,7 @@ async def remaining(
     if not isinstance(db, AsyncSession):
         raise TypeError("Expected AsyncSession")  # type: ignore
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
     result = fetch_remaining_budget(db, user.id, year, month)
@@ -103,7 +103,7 @@ async def get_budget_suggestions(
     user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
 
     # Build calendar structure for last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     result = await db.execute(
         select(Transaction).where(
             Transaction.user_id == user.id,
@@ -310,7 +310,7 @@ async def get_budget_forecast(
     - all_categories: full per-category breakdown
     - goals: projection for each active savings goal
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     target_year = year or now.year
     target_month = month or now.month
 
@@ -398,7 +398,7 @@ async def get_daily_budgets(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get daily budget breakdown for the month"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -469,8 +469,8 @@ async def get_monthly_budget(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Generate monthly budget based on user income and preferences"""
-    year = data.get("year", datetime.utcnow().year)
-    month = data.get("month", datetime.utcnow().month)
+    year = data.get("year", datetime.now(timezone.utc).year)
+    month = data.get("month", datetime.now(timezone.utc).month)
     user_answers = data.get("userAnswers", {})
 
     # Generate budget using the real engine, not hardcoded percentages
@@ -588,7 +588,7 @@ async def get_live_budget_status(
     """Get real-time budget status"""
     from app.db.models import Transaction
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Get today's plan
     result = await db.execute(

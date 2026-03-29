@@ -4,7 +4,7 @@ Complete CRUD + Progress Tracking + Statistics
 """
 from typing import List, Optional
 from uuid import UUID
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -400,7 +400,7 @@ async def get_smart_recommendations(
         return success_response({
             "recommendations": recommendations,
             "count": len(recommendations),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         })
     except Exception as e:
         import logging
@@ -455,7 +455,7 @@ async def suggest_goal_adjustments(
         return success_response({
             "adjustments": suggestions,
             "count": len(suggestions),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         })
     except Exception as e:
         import logging
@@ -481,7 +481,7 @@ async def detect_goal_opportunities(
         return success_response({
             "opportunities": opportunities,
             "count": len(opportunities),
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": datetime.now(timezone.utc).isoformat()
         })
     except Exception as e:
         import logging
@@ -716,8 +716,8 @@ async def mark_goal_completed(
 
     goal.status = 'completed'
     goal.progress = 100
-    goal.completed_at = datetime.utcnow()
-    goal.last_updated = datetime.utcnow()
+    goal.completed_at = datetime.now(timezone.utc)
+    goal.last_updated = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(goal)
@@ -763,7 +763,7 @@ async def pause_goal(
     goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     goal.status = 'paused'
-    goal.last_updated = datetime.utcnow()
+    goal.last_updated = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(goal)
@@ -794,7 +794,7 @@ async def resume_goal(
         raise HTTPException(status_code=400, detail="Only paused goals can be resumed")
 
     goal.status = 'active'
-    goal.last_updated = datetime.utcnow()
+    goal.last_updated = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(goal)

@@ -9,7 +9,7 @@ Handles:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,7 +75,7 @@ async def request_password_reset(
 
             # Store token hash in user record (you may want to create a separate tokens table)
             user.password_reset_token = token_hash
-            user.password_reset_expires = datetime.utcnow() + timedelta(hours=2)
+            user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=2)
             user.password_reset_attempts = getattr(user, 'password_reset_attempts', 0) + 1
 
             await db.commit()
@@ -193,7 +193,7 @@ async def confirm_password_reset(
 
         # Check token expiry
         if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
-            if datetime.utcnow() > user.password_reset_expires:
+            if datetime.now(timezone.utc) > user.password_reset_expires:
                 await log_security_event_async(
                     event_type="password_reset_token_expired",
                     user_id=str(user.id),
@@ -226,7 +226,7 @@ async def confirm_password_reset(
         user.password_reset_token = None
         user.password_reset_expires = None
         user.password_reset_attempts = 0
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(timezone.utc)
 
         # Increment token version to invalidate existing JWT tokens
         user.token_version = (getattr(user, 'token_version', 0) or 0) + 1
@@ -251,8 +251,8 @@ async def confirm_password_reset(
         security_variables = {
             'user_name': validated_email.split('@')[0].title(),
             'alert_type': 'Password Successfully Changed',
-            'alert_details': f'Your password was successfully changed on {datetime.utcnow().strftime("%B %d, %Y at %I:%M %p UTC")}.',
-            'timestamp': datetime.utcnow().strftime('%B %d, %Y at %I:%M %p UTC'),
+            'alert_details': f'Your password was successfully changed on {datetime.now(timezone.utc).strftime("%B %d, %Y at %I:%M %p UTC")}.',
+            'timestamp': datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC'),
             'email': validated_email,
             'action_taken': 'All existing sessions have been terminated for your security.',
             'recommended_actions': [
@@ -277,7 +277,7 @@ async def confirm_password_reset(
             data={
                 "password_changed": True,
                 "sessions_invalidated": True,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
             }
         )
 

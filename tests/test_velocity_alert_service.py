@@ -11,7 +11,7 @@ Coverage:
   TestRealTimeTrigger   — check_velocity_after_transaction entry point
   TestErrorHandling     — non-blocking on errors
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -105,8 +105,8 @@ class Goal(Base):
     status = Column(String(20), default="active")
     progress = Column(Numeric(5, 2), default=0)
     target_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
     priority = Column(String(10), default="medium")
@@ -132,8 +132,8 @@ class Notification(Base):
     delivered_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
     retry_count = Column(String, default="0")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
     category = Column(String(50), nullable=True)
     group_key = Column(String(100), nullable=True)
@@ -213,7 +213,7 @@ def _add_notification(db, user_id, group_key, created_at=None):
         title="test",
         message="test",
         group_key=group_key,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or datetime.now(timezone.utc),
     )
     db.add(n)
     db.commit()
@@ -258,7 +258,7 @@ class TestDeduplication:
         today = date(2026, 3, 10)
         group_key = f"velocity_alert:{user_id}:dining_out:2026-03"
         # Pre-insert a recent notification for this group_key
-        _add_notification(db, user_id, group_key, created_at=datetime.utcnow())
+        _add_notification(db, user_id, group_key, created_at=datetime.now(timezone.utc))
 
         with patch("app.services.velocity_alert_service.get_notification_integration",
                    return_value=notifier):
@@ -275,7 +275,7 @@ class TestDeduplication:
         today = date(2026, 3, 10)
         group_key = f"velocity_alert:{user_id}:gaming:2026-03"
         # Pre-insert an OLD notification (>24 h ago)
-        old_time = datetime.utcnow() - timedelta(hours=25)
+        old_time = datetime.now(timezone.utc) - timedelta(hours=25)
         _add_notification(db, user_id, group_key, created_at=old_time)
 
         with patch("app.services.velocity_alert_service.get_notification_integration",

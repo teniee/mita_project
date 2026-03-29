@@ -5,7 +5,7 @@ Provides reliable async task processing with monitoring and error handling.
 
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, Callable
 from functools import wraps
 from dataclasses import dataclass, asdict
@@ -164,7 +164,7 @@ class MitaTaskQueue:
             'priority': priority.value,
             'retry_count': retry_count,
             'retry_delay': retry_delay,
-            'enqueued_at': datetime.utcnow().isoformat(),
+            'enqueued_at': datetime.now(timezone.utc).isoformat(),
             'function_name': func.__name__,
             **(task_metadata or {})
         }
@@ -255,7 +255,7 @@ class MitaTaskQueue:
             task_result = TaskResult(
                 task_id=task_id,
                 status=TaskStatus.CANCELLED,
-                completed_at=datetime.utcnow()
+                completed_at=datetime.now(timezone.utc)
             )
             self._store_task_result(task_id, task_result)
             
@@ -286,7 +286,7 @@ class MitaTaskQueue:
             # Create new job with decremented retry count
             metadata['retry_count'] = retry_count - 1
             metadata['retried_from'] = task_id
-            metadata['retry_at'] = datetime.utcnow().isoformat()
+            metadata['retry_at'] = datetime.now(timezone.utc).isoformat()
             
             # Determine priority from metadata
             priority = TaskPriority(metadata.get('priority', TaskPriority.NORMAL.value))
@@ -343,7 +343,7 @@ class MitaTaskQueue:
     def clean_old_jobs(self, max_age_hours: int = 48) -> Dict[str, int]:
         """Clean up old completed and failed jobs."""
         cleaned = {'completed': 0, 'failed': 0}
-        cutoff = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         
         for priority, queue in self.queues.items():
             # Clean completed jobs
@@ -471,7 +471,7 @@ def task_wrapper(
                     task_result = TaskResult(
                         task_id=task_id,
                         status=TaskStatus.STARTED,
-                        started_at=datetime.utcnow()
+                        started_at=datetime.now(timezone.utc)
                     )
                     get_task_queue()._store_task_result(task_id, task_result)
                 
@@ -485,7 +485,7 @@ def task_wrapper(
                         status=TaskStatus.COMPLETED,
                         result=result,
                         started_at=task_result.started_at,
-                        completed_at=datetime.utcnow()
+                        completed_at=datetime.now(timezone.utc)
                     )
                     get_task_queue()._store_task_result(task_id, task_result)
                 
@@ -509,7 +509,7 @@ def task_wrapper(
                         task_id=task_id,
                         status=TaskStatus.FAILED,
                         error=str(e),
-                        completed_at=datetime.utcnow()
+                        completed_at=datetime.now(timezone.utc)
                     )
                     get_task_queue()._store_task_result(task_id, task_result)
                 

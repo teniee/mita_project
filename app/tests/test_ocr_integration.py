@@ -20,7 +20,7 @@ import os
 import sys
 import types
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock, patch, AsyncMock
@@ -908,8 +908,8 @@ class TestOCRAPIEndpoints:
         mock_job.date = "2025-12-04"
         mock_job.category_hint = "groceries"
         mock_job.image_url = "/receipts/image.jpg"
-        mock_job.created_at = datetime.utcnow()
-        mock_job.completed_at = datetime.utcnow()
+        mock_job.created_at = datetime.now(timezone.utc)
+        mock_job.completed_at = datetime.now(timezone.utc)
         mock_job.error_message = None
         mock_job.raw_result = {"merchant": "Walmart", "amount": 50.0}
 

@@ -11,7 +11,7 @@ import base64
 import hashlib
 import hmac
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -411,7 +411,7 @@ async def send_rollback_notification(
                     {"type": "mrkdwn", "text": f"*Alert:*\n{alert_name}"},
                     {"type": "mrkdwn", "text": f"*Status:*\n{status}"},
                     {"type": "mrkdwn", "text": f"*Reason:*\n{reason}"},
-                    {"type": "mrkdwn", "text": f"*Time:*\n{datetime.utcnow().isoformat()}Z"},
+                    {"type": "mrkdwn", "text": f"*Time:*\n{datetime.now(timezone.utc).isoformat()}Z"},
                 ],
             },
         ]
@@ -456,7 +456,7 @@ async def send_rollback_notification(
                     "alert_name": alert_name,
                     "reason": reason,
                     "error": (error or "")[:500],
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             },
         }
@@ -494,7 +494,7 @@ def _record_rollback_event(
         "reason": reason,
         "status": status,
         "details": (details or "")[:500],
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     _rollback_history.insert(0, event)
     # Keep bounded
@@ -562,7 +562,7 @@ async def test_rollback_webhook(
                     "summary": f"Test alert: {alert_name}",
                     "description": "This is a test alert"
                 },
-                startsAt=datetime.utcnow(),
+                startsAt=datetime.now(timezone.utc),
                 fingerprint="test-fingerprint"
             )
         ]

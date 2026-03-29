@@ -7,7 +7,7 @@ import time
 import asyncio
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -40,7 +40,7 @@ class HealthMetric:
     threshold_warning: Optional[float] = None
     threshold_critical: Optional[float] = None
     message: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     response_time_ms: Optional[float] = None
     details: Dict[str, Any] = field(default_factory=dict)
 
@@ -65,7 +65,7 @@ class MiddlewareHealthMonitor:
     """
     
     def __init__(self):
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
         self.health_history: List[MiddlewareHealthReport] = []
         self.max_history_size = 1000
         self.performance_thresholds = {
@@ -420,7 +420,7 @@ class MiddlewareHealthMonitor:
             await test_logger.log_security_event(
                 event_type="health_check",
                 user_id="system",
-                details={"test": True, "timestamp": datetime.utcnow().isoformat()},
+                details={"test": True, "timestamp": datetime.now(timezone.utc).isoformat()},
                 severity="info"
             )
             log_time = (time.time() - log_start) * 1000
@@ -769,7 +769,7 @@ class MiddlewareHealthMonitor:
             # Create comprehensive report
             report = MiddlewareHealthReport(
                 overall_status=overall_status,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metrics=all_metrics,
                 performance_summary=performance_summary,
                 alerts=alerts,
@@ -792,7 +792,7 @@ class MiddlewareHealthMonitor:
             # Return emergency health report
             return MiddlewareHealthReport(
                 overall_status=HealthStatus.UNHEALTHY,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metrics={},
                 performance_summary={
                     'total_response_time_ms': (time.time() - overall_start_time) * 1000,
@@ -811,7 +811,7 @@ class MiddlewareHealthMonitor:
 
     def get_health_trends(self, hours: int = 24) -> Dict[str, Any]:
         """Analyze health trends over time"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         with self._lock:
             recent_reports = [

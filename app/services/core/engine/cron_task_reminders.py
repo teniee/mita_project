@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def run_daily_email_reminders() -> None:
     """Send a simple reminder email to all active users."""
     db: Session = next(get_db())
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
 
     users = db.query(User).filter(User.is_active.is_(True)).all()
     for user in users:

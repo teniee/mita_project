@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -234,7 +234,7 @@ def get_current_month_calendar(
     This is a wrapper around /saved/{year}/{month} that automatically
     uses the current year and month based on server time (UTC).
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return _fetch_saved_calendar_data(db, user.id, now.year, now.month)
 
 

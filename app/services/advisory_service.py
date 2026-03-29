@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,7 @@ class AdvisoryService:
         """Persist an advice entry in the database."""
         advice = BudgetAdvice(
             user_id=user_id,
-            date=datetime.utcnow(),
+            date=datetime.now(timezone.utc),
             type=type_,
             text=text,
         )

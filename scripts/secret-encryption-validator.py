@@ -26,7 +26,7 @@ import ssl
 import socket
 import sys
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any
 import yaml
 
@@ -71,7 +71,7 @@ class SecretEncryptionValidator:
         
         # Validation results
         self.validation_results = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'environment': environment,
             'compliance_status': 'UNKNOWN',
             'encryption_at_rest': {},
@@ -469,7 +469,7 @@ class SecretEncryptionValidator:
                     
                     # Check certificate validity
                     not_after = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
-                    if not_after < datetime.utcnow():
+                    if not_after < datetime.now(timezone.utc):
                         self.validation_results['violations'].append({
                             'type': 'TLS_VIOLATION',
                             'severity': 'HIGH',

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
@@ -16,7 +16,7 @@ from app.services.push_service import send_push_notification
 def run_ai_advice_batch() -> None:
     """Generate daily budget advice and push to active users."""
     db: Session = next(get_db())
-    utc_now = datetime.utcnow()
+    utc_now = datetime.now(timezone.utc)
     today = utc_now.date()
 
     users_q = db.query(User)

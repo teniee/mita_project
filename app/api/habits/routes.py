@@ -1,5 +1,5 @@
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -134,7 +134,7 @@ async def complete_habit(
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
 
-    completion_date = datetime.fromisoformat(date.replace('Z', '+00:00')) if date else datetime.utcnow()
+    completion_date = datetime.fromisoformat(date.replace('Z', '+00:00')) if date else datetime.now(timezone.utc)
 
     # Check if already completed for this date
     result = await db.execute(
@@ -192,7 +192,7 @@ async def uncomplete_habit(
     if date_str:
         completion_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
     else:
-        completion_date = datetime.utcnow()
+        completion_date = datetime.now(timezone.utc)
 
     result = await db.execute(
         select(HabitCompletion).filter(
@@ -240,8 +240,8 @@ async def get_habit_progress(
         raise HTTPException(status_code=404, detail="Habit not found")
 
     # Parse dates
-    start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else datetime.utcnow() - timedelta(days=30)
-    end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else datetime.utcnow()
+    start = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else datetime.now(timezone.utc) - timedelta(days=30)
+    end = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if end_date else datetime.now(timezone.utc)
 
     # Query completions
     result = await db.execute(

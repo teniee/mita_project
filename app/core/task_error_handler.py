@@ -4,7 +4,7 @@ Provides comprehensive error handling, retry logic, and dead letter queue manage
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -203,7 +203,7 @@ class TaskErrorHandler:
     def get_error_statistics(self, time_window_hours: int = 24) -> Dict[str, Any]:
         """Get comprehensive error statistics."""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=time_window_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=time_window_hours)
             
             # Get error records
             error_records = self._get_error_records_since(cutoff_time)
@@ -267,7 +267,7 @@ class TaskErrorHandler:
     def cleanup_old_error_records(self, max_age_days: int = 30) -> Dict[str, Any]:
         """Clean up old error records."""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(days=max_age_days)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(days=max_age_days)
             
             # Scan for old error records
             cursor = 0
@@ -340,7 +340,7 @@ class TaskErrorHandler:
             error_type=error_type,
             error_message=error_message,
             error_details=traceback_str,
-            occurred_at=datetime.utcnow(),
+            occurred_at=datetime.now(timezone.utc),
             worker_id=worker.name if worker else None,
             retry_count=retry_count,
             severity=severity,
@@ -447,7 +447,7 @@ class TaskErrorHandler:
             retry_meta = job.meta.copy() if job.meta else {}
             retry_meta['retry_count'] = retry_meta.get('retry_count', 0) + 1
             retry_meta['original_task_id'] = job.id
-            retry_meta['retry_scheduled_at'] = datetime.utcnow().isoformat()
+            retry_meta['retry_scheduled_at'] = datetime.now(timezone.utc).isoformat()
             
             # Schedule for later execution
             self.dlq_retry.enqueue_in(
@@ -569,7 +569,7 @@ class TaskErrorHandler:
         """Update error statistics counters."""
         try:
             # Update daily error counters
-            today = datetime.utcnow().date().isoformat()
+            today = datetime.now(timezone.utc).date().isoformat()
             
             # Overall error count
             self.redis_conn.hincrby(f"error_stats:{today}", "total_errors", 1)
@@ -597,7 +597,7 @@ class TaskErrorHandler:
                 self._send_error_alert(task_error, "Critical task failure detected")
             
             # Check error rate thresholds
-            today = datetime.utcnow().date().isoformat()
+            today = datetime.now(timezone.utc).date().isoformat()
             total_errors = int(self.redis_conn.hget(f"error_stats:{today}", "total_errors") or 0)
             
             if total_errors > 100:  # More than 100 errors in a day

@@ -14,7 +14,7 @@ Financial services compliance requirements:
 import logging
 import time
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 import asyncio
@@ -143,7 +143,7 @@ class TokenSecurityService:
                 severity="HIGH",
                 message=f"Attempted use of blacklisted token {token_jti[:8]}...",
                 user_id=user_id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metadata={"jti": token_jti[:8] + "...", "client_ip": client_ip}
             )
             
@@ -185,7 +185,7 @@ class TokenSecurityService:
                 severity="MEDIUM",
                 message=f"User {user_id} requested {user_tokens_last_hour} tokens in the last hour",
                 user_id=user_id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metadata={"token_count": user_tokens_last_hour, "client_ip": client_ip}
             )
             self._add_alert(alert)
@@ -205,7 +205,7 @@ class TokenSecurityService:
                 severity="HIGH",
                 message=f"User {user_id} had {user_failures} verification failures in the last hour",
                 user_id=user_id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metadata={"failure_count": user_failures, "client_ip": client_ip}
             )
             self._add_alert(alert)
@@ -217,7 +217,7 @@ class TokenSecurityService:
                 severity="CRITICAL",
                 message=f"IP {client_ip} has {self._suspicious_ips[client_ip]} failures",
                 user_id=user_id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 metadata={"ip": client_ip, "failure_count": self._suspicious_ips[client_ip]}
             )
             self._add_alert(alert)

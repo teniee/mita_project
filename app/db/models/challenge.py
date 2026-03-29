@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,8 +23,8 @@ class Challenge(Base):
     difficulty = Column(String(20), nullable=False)  # easy, medium, hard
     start_month = Column(String(7), nullable=False)  # "2025-01"
     end_month = Column(String(7), nullable=False)  # "2025-12"
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     participations = relationship("ChallengeParticipation", back_populates="challenge")
@@ -45,9 +45,9 @@ class ChallengeParticipation(Base):
     days_completed = Column(Integer, default=0)
     current_streak = Column(Integer, default=0)
     best_streak = Column(Integer, default=0)
-    started_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    last_updated = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     challenge = relationship("Challenge", back_populates="participations")

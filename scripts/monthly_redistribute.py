@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.session import get_db
 from app.db.models import User
@@ -7,7 +7,7 @@ from app.services.budget_redistributor import redistribute_budget_for_user
 
 def run():
     db = next(get_db())
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     year, month = today.year, today.month
     users = db.query(User.id).all()
     for (uid,) in users:

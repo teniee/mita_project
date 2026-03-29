@@ -16,7 +16,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -146,7 +146,7 @@ async def budget_impact(
         adjusted_safe_daily_limit — daily budget after reserving for
         all scheduled expenses, plus a per-expense breakdown.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month
 
@@ -190,7 +190,7 @@ async def cancel_expense(
 
     await db.commit()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     impact = await get_impact(db, user.id, now.year, now.month)
 
     return success_response(

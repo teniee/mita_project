@@ -3,7 +3,7 @@ Task Manager Service for MITA Financial Platform.
 Provides high-level task management and status tracking for API endpoints.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
@@ -79,7 +79,7 @@ class TaskManager:
             return TaskInfo(
                 task_id=job.id,
                 status=TaskStatus.QUEUED,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 estimated_completion="2-5 minutes"
             )
             
@@ -120,7 +120,7 @@ class TaskManager:
             return TaskInfo(
                 task_id=job.id,
                 status=TaskStatus.QUEUED,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 estimated_completion="5-10 minutes"
             )
             
@@ -161,7 +161,7 @@ class TaskManager:
             return TaskInfo(
                 task_id=job.id,
                 status=TaskStatus.QUEUED,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 estimated_completion="1-3 minutes"
             )
             
@@ -227,7 +227,7 @@ class TaskManager:
             return TaskInfo(
                 task_id=job.id,
                 status=TaskStatus.QUEUED,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 estimated_completion=estimated_time
             )
             
@@ -271,7 +271,7 @@ class TaskManager:
             return TaskInfo(
                 task_id=job.id,
                 status=TaskStatus.QUEUED,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 estimated_completion="5-15 minutes"
             )
             
@@ -356,7 +356,7 @@ class TaskManager:
                 return TaskInfo(
                     task_id=job.id,
                     status=TaskStatus.QUEUED,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
             else:
                 logger.warning(f"Failed to retry task: {task_id}")
@@ -405,7 +405,7 @@ class TaskManager:
             
             return {
                 'queue_statistics': queue_stats,
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'system_health': self._calculate_system_health(queue_stats)
             }
             
@@ -413,7 +413,7 @@ class TaskManager:
             logger.error(f"Failed to get system stats: {str(e)}")
             return {
                 'error': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
     def _calculate_system_health(self, queue_stats: Dict[str, Any]) -> str:
@@ -461,7 +461,7 @@ class TaskManager:
         return TaskInfo(
             task_id=job.id,
             status=TaskStatus.QUEUED,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             estimated_completion="15-30 minutes"
         )
 
@@ -474,7 +474,7 @@ class TaskManager:
         return TaskInfo(
             task_id=job.id,
             status=TaskStatus.QUEUED,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             estimated_completion="30-60 minutes"
         )
 
@@ -487,7 +487,7 @@ class TaskManager:
         return TaskInfo(
             task_id=job.id,
             status=TaskStatus.QUEUED,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             estimated_completion="5-30 minutes"
         )
 

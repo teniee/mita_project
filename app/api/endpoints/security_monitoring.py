@@ -13,7 +13,7 @@ Security Note: These endpoints should be restricted to admin users only.
 
 import logging
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,12 +48,12 @@ async def get_security_metrics(
         
         log_security_event("security_metrics_accessed", {
             "admin_user_id": str(current_user.id),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         
         return success_response({
             "metrics": metrics,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "healthy"
         })
         
@@ -107,7 +107,7 @@ async def get_security_alerts(
         return success_response({
             "alerts": alerts,
             "summary": summary,
-            "retrieved_at": datetime.utcnow().isoformat()
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
         })
         
     except Exception as e:
@@ -156,7 +156,7 @@ async def get_user_security_activity(
             "user_id": user_id,
             "user_email": target_user.email,
             "activity_summary": activity_summary,
-            "retrieved_at": datetime.utcnow().isoformat()
+            "retrieved_at": datetime.now(timezone.utc).isoformat()
         })
         
     except HTTPException:
@@ -182,7 +182,7 @@ async def get_blacklist_status(
         status_info = {
             "redis_metrics": blacklist_metrics,
             "system_status": "operational",
-            "last_checked": datetime.utcnow().isoformat()
+            "last_checked": datetime.now(timezone.utc).isoformat()
         }
         
         # Test Redis connectivity
@@ -264,7 +264,7 @@ async def admin_revoke_user_tokens(
                 "target_user_email": target_user.email,
                 "reason": reason,
                 "tokens_revoked": tokens_revoked,
-                "action_timestamp": datetime.utcnow().isoformat()
+                "action_timestamp": datetime.now(timezone.utc).isoformat()
             })
             
             logger.critical(f"ADMIN ACTION: User {current_user.email} revoked {tokens_revoked} tokens for user {target_user.email}. Reason: {reason}")
@@ -274,7 +274,7 @@ async def admin_revoke_user_tokens(
                 "tokens_revoked": tokens_revoked,
                 "reason": reason,
                 "revoked_by": current_user.email,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
             
         except Exception as e:
@@ -286,7 +286,7 @@ async def admin_revoke_user_tokens(
                 "target_user_email": target_user.email,
                 "reason": reason,
                 "error": str(e),
-                "action_timestamp": datetime.utcnow().isoformat()
+                "action_timestamp": datetime.now(timezone.utc).isoformat()
             })
             
             logger.error(f"Failed to revoke tokens for user {user_id}: {e}")
@@ -327,7 +327,7 @@ async def security_system_health(
     health_status = {
         "overall_status": "healthy",
         "components": {},
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     try:
@@ -416,7 +416,7 @@ async def get_audit_summary(
     """
     try:
         # Calculate time range
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(hours=hours)
         
         # Get security metrics
@@ -465,7 +465,7 @@ async def get_audit_summary(
         
         return success_response({
             "audit_summary": audit_summary,
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "generated_by": current_user.email
         })
         

@@ -6,7 +6,7 @@ Provides monitoring endpoints for all external service integrations
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, List, Any
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.external_services import (
     external_services,
@@ -27,7 +27,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "MITA Finance API",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

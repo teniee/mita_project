@@ -2,7 +2,7 @@
 Behavioral Analysis API Router
 Connects powerful behavioral analysis services to mobile app
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, Dict, Any
 
@@ -32,7 +32,7 @@ def get_behavioral_analysis(
     db: Session = Depends(get_db),
 ):
     """Get comprehensive behavioral analysis"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -63,7 +63,7 @@ def get_spending_pattern_analysis(
     db: Session = Depends(get_db),
 ):
     """Get detailed spending patterns"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -111,7 +111,7 @@ def get_behavioral_anomalies(
     from datetime import datetime
     import statistics
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -195,7 +195,7 @@ def get_adaptive_behavior_recommendations(
     from collections import defaultdict
 
     # Analyze last 60 days of transactions
-    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
     transactions = db.query(Transaction).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= sixty_days_ago
@@ -277,7 +277,7 @@ def get_spending_triggers(
     from datetime import datetime
     from collections import defaultdict
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -534,7 +534,7 @@ def get_behavioral_progress(
     from collections import defaultdict
 
     # Analyze transactions over the requested months
-    end_date = datetime.utcnow()
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=months * 30)
 
     transactions = db.query(Transaction).filter(
@@ -642,7 +642,7 @@ def get_category_behavioral_insights(
         else:
             end_date = datetime(year, month + 1, 1)
     else:
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=90)
 
     # Query transactions for this category
@@ -699,7 +699,7 @@ def get_behavioral_warnings(
     from datetime import datetime
     import statistics
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
 
@@ -772,7 +772,7 @@ def get_behavioral_expense_suggestions(
     amount = data.get("amount")
 
     # Analyze past transactions to suggest category
-    sixty_days_ago = datetime.utcnow() - timedelta(days=60)
+    sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
     past_transactions = db.query(Transaction).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= sixty_days_ago

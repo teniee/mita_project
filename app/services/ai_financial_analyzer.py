@@ -4,7 +4,7 @@ Provides real ML-based financial insights, pattern detection, and recommendation
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple
 import statistics
 from sqlalchemy.orm import Session
@@ -82,7 +82,7 @@ class AIFinancialAnalyzer:
     def _load_spending_data(self, months_back: int = 6) -> List[Dict]:
         """Load user's spending data for analysis"""
         if self._spending_data is None:
-            cutoff_date = datetime.utcnow() - timedelta(days=months_back * 30)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=months_back * 30)
             
             expenses = self.db.query(Expense).filter(
                 and_(
@@ -106,7 +106,7 @@ class AIFinancialAnalyzer:
     def _load_transaction_data(self, months_back: int = 3) -> List[Dict]:
         """Load user's transaction data for analysis"""
         if self._transaction_data is None:
-            cutoff_date = datetime.utcnow() - timedelta(days=months_back * 30)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=months_back * 30)
             
             transactions = self.db.query(Transaction).filter(
                 and_(
@@ -135,7 +135,7 @@ class AIFinancialAnalyzer:
             return {
                 "patterns": [],
                 "confidence": 0.0,
-                "analysis_date": datetime.utcnow().isoformat()
+                "analysis_date": datetime.now(timezone.utc).isoformat()
             }
         
         patterns = []
@@ -187,7 +187,7 @@ class AIFinancialAnalyzer:
         return {
             "patterns": patterns[:5],  # Return top 5 patterns
             "confidence": confidence,
-            "analysis_date": datetime.utcnow().isoformat(),
+            "analysis_date": datetime.now(timezone.utc).isoformat(),
             "data_points": len(spending_data)
         }
     
@@ -1002,7 +1002,7 @@ class AIFinancialAnalyzer:
             }
         
         # Get current and previous week data
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_week_start = now - timedelta(days=now.weekday())
         previous_week_start = current_week_start - timedelta(days=7)
         

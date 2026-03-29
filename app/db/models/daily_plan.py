@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String
@@ -34,4 +34,4 @@ class DailyPlan(Base):
     # JSONB for additional metadata and backward compatibility
     plan_json = Column(JSONB, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

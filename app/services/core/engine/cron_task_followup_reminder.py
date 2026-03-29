@@ -4,7 +4,7 @@ When a user ignored a budget warning, remind them 3 days later.
 Based on MITA design principle: MITA is an advisor, not a judge.
 """
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ def record_ignored_alert(
         "category": category,
         "overspend_amount": overspend_amount,
         "goal_title": goal_title,
-        "alert_date": datetime.utcnow().isoformat(),
+        "alert_date": datetime.now(timezone.utc).isoformat(),
         "reminded": False,
     })
     logger.info(f"User {user_id} ignored alert for {category} (${overspend_amount:.2f})")
@@ -44,7 +44,7 @@ def run_followup_reminders(db: Session) -> List[Dict]:
     Cron task: send follow-up reminders for alerts ignored REMINDER_FOLLOWUP_DAYS ago.
     Returns list of reminders sent.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=REMINDER_FOLLOWUP_DAYS)
     reminders_sent = []
 

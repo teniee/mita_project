@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -15,7 +15,7 @@ class Habit(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     target_frequency = Column(String, nullable=False, default="daily")  # daily, weekly, monthly
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class HabitCompletion(Base):
@@ -29,8 +29,8 @@ class HabitCompletion(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
     # Completion data
-    completed_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True)
+    completed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     notes = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

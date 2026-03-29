@@ -4,7 +4,7 @@ Provides advanced error monitoring, performance tracking, and financial-specific
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
@@ -89,7 +89,7 @@ class SentryFinancialService:
             financial_context = {
                 "category": category.value,
                 "severity": severity.value,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             if transaction_id:
@@ -345,7 +345,7 @@ class SentryFinancialService:
         
         breadcrumb_data = data or {}
         breadcrumb_data.update({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "financial_context": True
         })
         
@@ -444,7 +444,7 @@ class SentryFinancialService:
                 "duration_ms": duration_ms,
                 "threshold_ms": threshold_ms,
                 "slowdown_factor": duration_ms / threshold_ms,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             scope.set_context("performance", perf_context)

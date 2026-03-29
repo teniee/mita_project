@@ -16,7 +16,7 @@ Public API (unchanged signatures, db param added):
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Union
 
@@ -97,7 +97,7 @@ def record_redistribution_event(
 
     return {
         "id": str(event_id),
-        "timestamp": event.created_at.isoformat() if event.created_at else datetime.utcnow().isoformat(),
+        "timestamp": event.created_at.isoformat() if event.created_at else datetime.now(timezone.utc).isoformat(),
         "user_id": str(user_id),
         "from_category": from_category,
         "to_category": to_category,

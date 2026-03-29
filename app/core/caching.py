@@ -9,7 +9,7 @@ import hashlib
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Callable, TypeVar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, asdict
 from enum import Enum
 from functools import wraps
@@ -55,7 +55,7 @@ class CacheEntry:
         """Check if cache entry is expired"""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
@@ -92,7 +92,7 @@ class MemoryCache:
             
             # Update access metadata
             entry.access_count += 1
-            entry.last_accessed = datetime.utcnow()
+            entry.last_accessed = datetime.now(timezone.utc)
             
             # Update LRU order
             if key in self.access_order:
@@ -111,7 +111,7 @@ class MemoryCache:
         """Set value in memory cache"""
         async with self.lock:
             ttl = ttl or self.default_ttl
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl) if ttl > 0 else None
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl) if ttl > 0 else None
             
             # Calculate size (approximate)
             size_bytes = len(pickle.dumps(value))
@@ -119,10 +119,10 @@ class MemoryCache:
             entry = CacheEntry(
                 key=key,
                 value=value,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 expires_at=expires_at,
                 access_count=0,
-                last_accessed=datetime.utcnow(),
+                last_accessed=datetime.now(timezone.utc),
                 size_bytes=size_bytes,
                 tags=tags or []
             )
@@ -287,7 +287,7 @@ class RedisCache:
             
             cache_entry = {
                 'value': value,
-                'created_at': datetime.utcnow().isoformat(),
+                'created_at': datetime.now(timezone.utc).isoformat(),
                 'tags': tags or []
             }
             
@@ -334,7 +334,7 @@ class RedisCache:
         """Update access metadata for cache entry"""
         try:
             await self.redis_client.hincrby(f"meta:{key}", "access_count", 1)
-            await self.redis_client.hset(f"meta:{key}", "last_accessed", datetime.utcnow().isoformat())
+            await self.redis_client.hset(f"meta:{key}", "last_accessed", datetime.now(timezone.utc).isoformat())
         except Exception:
             pass  # Non-critical operation
     
@@ -439,7 +439,7 @@ class MultiTierCache:
             'redis_cache': redis_stats,
             'hit_ratios': hit_ratios,
             'hit_stats': self.hit_stats,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
 

@@ -122,12 +122,12 @@ def get_user_premium_status(
 
     # Check for premium subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     subscription = db.query(Subscription).filter(
         Subscription.user_id == user_id,
         Subscription.status == "active",
-        Subscription.expires_at > datetime.utcnow()
+        Subscription.expires_at > datetime.now(timezone.utc)
     ).order_by(Subscription.expires_at.desc()).first()
 
     is_premium = subscription is not None
@@ -164,12 +164,12 @@ def get_user_premium_features(
 
     # Check subscription - REAL DATABASE QUERY
     from app.db.models.subscription import Subscription
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     subscription = db.query(Subscription).filter(
         Subscription.user_id == user_id,
         Subscription.status == "active",
-        Subscription.expires_at > datetime.utcnow()
+        Subscription.expires_at > datetime.now(timezone.utc)
     ).first()
 
     # Determine which features are enabled based on plan

@@ -9,7 +9,7 @@ Handles:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,8 +98,8 @@ async def register_user_standardized(
         annual_income=registration_data.annual_income or 0,
         timezone=registration_data.timezone or "UTC",
         # Explicitly set datetime fields
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
         # Set default boolean fields
         is_premium=False,
         email_verified=False,

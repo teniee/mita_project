@@ -7,7 +7,7 @@ Focuses on financial data integrity, security, and compliance requirements.
 import re
 import logging
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from email_validator import validate_email, EmailNotValidError
 from fastapi import HTTPException, status
@@ -678,10 +678,10 @@ class EnhancedTransactionValidator(BaseValidator):
     @classmethod
     def validate_spent_at(cls, v):
         if v is None:
-            return datetime.utcnow()
+            return datetime.now(timezone.utc)
         
         # Enhanced date validation for financial transactions
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Check if date is not too far in the future (allow 1 day for timezone differences)
         if v > now + timedelta(days=1):
@@ -1137,7 +1137,7 @@ class EnhancedValidationMiddleware:
                           severity: str = "medium"):
         """Log security events for monitoring and analysis"""
         security_event = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "severity": severity,
             "user_id": user_id,

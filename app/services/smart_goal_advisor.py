@@ -5,7 +5,7 @@ AI-powered goal recommendations and insights based on user behavior and spending
 
 from typing import List, Dict
 from decimal import Decimal
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -101,7 +101,7 @@ class SmartGoalAdvisor:
 
         # Calculate health score
         progress = float(goal.progress)
-        days_since_created = (datetime.utcnow() - goal.created_at).days
+        days_since_created = (datetime.now(timezone.utc) - goal.created_at).days
 
         if goal.target_date:
             total_days = (goal.target_date - goal.created_at.date()).days
@@ -166,7 +166,7 @@ class SmartGoalAdvisor:
 
         if transactions:
             last_transaction_date = transactions[0].spent_at
-            days_since_last = (datetime.utcnow() - last_transaction_date).days
+            days_since_last = (datetime.now(timezone.utc) - last_transaction_date).days
 
             if days_since_last > 30:
                 insights["insights"].append(
@@ -198,7 +198,7 @@ class SmartGoalAdvisor:
         monthly_income = float(user.monthly_income or 3000) if user else 3000
 
         # Analyze recent spending to determine available funds
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         recent_spending = self.db.query(
             func.sum(Transaction.amount)
         ).filter(
@@ -267,7 +267,7 @@ class SmartGoalAdvisor:
 
     def _analyze_spending_patterns(self, user_id: UUID) -> Dict:
         """Analyze user's spending patterns over last 3 months"""
-        three_months_ago = datetime.utcnow() - timedelta(days=90)
+        three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
 
         transactions = self.db.query(Transaction).filter(
             Transaction.user_id == user_id,

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Boolean, Float, Text
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
@@ -42,9 +42,9 @@ class Transaction(Base):
     notes = Column(Text, nullable=True)  # Extended notes
 
     # Timestamps
-    spent_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    spent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at = Column(DateTime(timezone=True), nullable=True, default=None, index=True)  # Soft delete support
 
     # Relationships

@@ -5,7 +5,7 @@ Provides consistent error responses, logging, and user-friendly messages
 
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -131,14 +131,14 @@ class ErrorHandler:
     @staticmethod
     def log_error(error: Exception, request: Optional[Request] = None, user_id: Optional[int] = None) -> str:
         """Log error with context and return error ID"""
-        error_id = f"error_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
+        error_id = f"error_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%f')}"
         
         context = {
             "error_id": error_id,
             "error_type": type(error).__name__,
             "error_message": str(error),
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         if request:

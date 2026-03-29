@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
@@ -143,11 +143,11 @@ class TxnIn(BaseModel):
     @classmethod
     def validate_spent_at(cls, v):
         if v is None:
-            return datetime.utcnow()
+            return datetime.now(timezone.utc)
         
         # Enhanced date validation for financial transactions
         from datetime import timedelta
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Check if date is not too far in the future (allow 1 day for timezone differences)
         if v > now + timedelta(days=1):

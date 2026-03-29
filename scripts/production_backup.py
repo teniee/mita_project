@@ -56,7 +56,7 @@ class MitaProductionBackup:
     def create_database_backup(self) -> Optional[Path]:
         """Create compressed database backup"""
         try:
-            timestamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M%S')
             backup_filename = f"mita_db_backup_{timestamp}.sql"
             backup_path = self.backup_dir / backup_filename
             
@@ -147,7 +147,7 @@ class MitaProductionBackup:
     def upload_to_s3(self, backup_path: Path) -> bool:
         """Upload backup to S3 with metadata"""
         try:
-            timestamp = datetime.datetime.utcnow().strftime('%Y/%m/%d')
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y/%m/%d')
             s3_key = f"database_backups/{timestamp}/{backup_path.name}"
             
             logger.info(f"Uploading to S3: s3://{self.backup_bucket}/{s3_key}")
@@ -160,7 +160,7 @@ class MitaProductionBackup:
                 'Metadata': {
                     'backup-type': 'database',
                     'environment': os.getenv('ENVIRONMENT', 'production'),
-                    'created-at': datetime.datetime.utcnow().isoformat(),
+                    'created-at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     'file-size': str(file_size),
                     'encrypted': str(bool(self.cipher))
                 },
@@ -194,7 +194,7 @@ class MitaProductionBackup:
     def cleanup_old_backups(self, retention_days: int = 30):
         """Remove old backups from S3 based on retention policy"""
         try:
-            cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=retention_days)
+            cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=retention_days)
             
             logger.info(f"Cleaning up backups older than {retention_days} days")
             

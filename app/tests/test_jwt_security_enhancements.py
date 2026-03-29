@@ -7,7 +7,7 @@ security validation, and compliance with financial application standards.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 import jwt
 
@@ -123,9 +123,9 @@ class TestJWTClaimsAndSecurity:
         # Test with wrong issuer
         wrong_issuer_payload = {
             "sub": "test-user-123",
-            "exp": int((datetime.utcnow() + timedelta(minutes=30)).timestamp()),
-            "iat": int(datetime.utcnow().timestamp()),
-            "nbf": int(datetime.utcnow().timestamp()),
+            "exp": int((datetime.now(timezone.utc) + timedelta(minutes=30)).timestamp()),
+            "iat": int(datetime.now(timezone.utc).timestamp()),
+            "nbf": int(datetime.now(timezone.utc).timestamp()),
             "jti": "test-jti",
             "iss": "wrong-issuer",
             "aud": JWT_AUDIENCE,
@@ -181,7 +181,7 @@ class TestJWTClaimsAndSecurity:
         # Create token with missing claims
         incomplete_payload = {
             "sub": "test-user-123",
-            "exp": int((datetime.utcnow() + timedelta(minutes=30)).timestamp()),
+            "exp": int((datetime.now(timezone.utc) + timedelta(minutes=30)).timestamp()),
             # Missing iat, nbf, jti, iss, aud, token_type
         }
 
@@ -194,12 +194,12 @@ class TestJWTClaimsAndSecurity:
     @pytest.mark.asyncio
     async def test_not_before_claim_validation(self):
         """Test not-before (nbf) claim validation."""
-        future_time = datetime.utcnow() + timedelta(minutes=5)
+        future_time = datetime.now(timezone.utc) + timedelta(minutes=5)
 
         future_payload = {
             "sub": "test-user-123",
-            "exp": int((datetime.utcnow() + timedelta(minutes=30)).timestamp()),
-            "iat": int(datetime.utcnow().timestamp()),
+            "exp": int((datetime.now(timezone.utc) + timedelta(minutes=30)).timestamp()),
+            "iat": int(datetime.now(timezone.utc).timestamp()),
             "nbf": int(future_time.timestamp()),  # Not valid yet
             "jti": "test-jti",
             "iss": JWT_ISSUER,
@@ -356,7 +356,7 @@ class TestTokenSecurityMonitoring:
         # Test with old token
         old_token_payload = {
             "sub": "test-user-123",
-            "iat": int((datetime.utcnow() - timedelta(days=2)).timestamp()),  # 2 days old
+            "iat": int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp()),  # 2 days old
             "scope": "read:profile write:profile",
             "country": "US"
         }
@@ -424,7 +424,7 @@ class TestTokenBlacklisting:
 
         user_data = {"sub": "test-user-123"}
         # Use an old iat so the token is NOT considered "fresh" (>30 min)
-        old_iat = int((datetime.utcnow() - timedelta(minutes=60)).timestamp())
+        old_iat = int((datetime.now(timezone.utc) - timedelta(minutes=60)).timestamp())
         token = create_access_token(
             {**user_data, "iat": old_iat},
         )
@@ -451,7 +451,7 @@ class TestTokenBlacklisting:
         # Create a token that appears old by manipulating the payload directly
         from app.core.config import settings, ALGORITHM
         import uuid as uuid_mod
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         old_time = now - timedelta(minutes=45)
         payload_data = {
             "sub": "test-user-123",
@@ -593,7 +593,7 @@ class TestProductionReadinessFeatures:
         import uuid as uuid_mod
 
         # Create a token that appears old (>30 min) so blacklist check runs
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         old_time = now - timedelta(minutes=45)
         payload_data = {
             "sub": "test-user-123",

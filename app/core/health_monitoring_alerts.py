@@ -6,7 +6,7 @@ Advanced alerting and notification system for middleware health issues
 import logging
 import time
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -301,7 +301,7 @@ class HealthAlertManager:
                         triggered_alerts.append(alert)
                         
                         # Set cooldown
-                        self.cooldown_tracker[rule.name] = datetime.utcnow() + timedelta(minutes=rule.cooldown_minutes)
+                        self.cooldown_tracker[rule.name] = datetime.now(timezone.utc) + timedelta(minutes=rule.cooldown_minutes)
                         
                         # Send notifications
                         await self._send_alert_notifications(alert, rule)
@@ -321,7 +321,7 @@ class HealthAlertManager:
         """Check if alert rule is in cooldown period"""
         if rule_name not in self.cooldown_tracker:
             return False
-        return datetime.utcnow() < self.cooldown_tracker[rule_name]
+        return datetime.now(timezone.utc) < self.cooldown_tracker[rule_name]
     
     def _generate_alert_message(self, rule: AlertRule, health_report: MiddlewareHealthReport) -> str:
         """Generate detailed alert message"""
@@ -596,7 +596,7 @@ Support: support@mita.finance
         """Acknowledge an alert"""
         with self.lock:
             if alert_id in self.active_alerts:
-                self.active_alerts[alert_id].acknowledgements.append(f"{acknowledger} at {datetime.utcnow().isoformat()}")
+                self.active_alerts[alert_id].acknowledgements.append(f"{acknowledger} at {datetime.now(timezone.utc).isoformat()}")
                 logger.info(f"Alert {alert_id} acknowledged by {acknowledger}")
                 return True
             return False
@@ -607,7 +607,7 @@ Support: support@mita.finance
             if alert_id in self.active_alerts:
                 alert = self.active_alerts[alert_id]
                 alert.resolved = True
-                alert.resolved_at = datetime.utcnow()
+                alert.resolved_at = datetime.now(timezone.utc)
                 alert.acknowledgements.append(f"Resolved by {resolver} at {alert.resolved_at.isoformat()}")
                 logger.info(f"Alert {alert_id} resolved by {resolver}")
                 return True
