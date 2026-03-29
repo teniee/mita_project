@@ -23,7 +23,7 @@
   - [H-02: API base URL hardcoded in Flutter with no environment switching](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
-  - [H-05: Alembic migrations may fail silently and app starts anyway](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
+  - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
   - [H-06: aioredis dependency is deprecated/dead](#h-06-aioredis-dependency-is-deprecateddead)
   - [H-07: Excessive debug logging in auth flow](#h-07-excessive-debug-logging-in-auth-flow)
   - [H-08: Single worker deployment ignores WEB_CONCURRENCY](#h-08-single-worker-deployment-ignores-web_concurrency)
@@ -495,14 +495,16 @@ updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezo
 ---
 
 <a id="h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway"></a>
-### H-05: Alembic migrations may fail silently and app starts anyway
+### H-05: Alembic migrations may fail silently and app starts anyway — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **File** | `start.sh` lines 182–189 |
+| **Files** | `start.sh` lines 177–211, `scripts/deployment/start.sh` lines 177–211 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-03-29) |
+| **Fix commit** | `feature/fix-h05-alembic-migration-fail-silently` |
 
 #### Description
 
@@ -519,38 +521,20 @@ else
 fi
 ```
 
+Additionally, the script has `set -e` at line 5, making the `if [ $? -ne 0 ]` block **dead code** — `set -e` would exit the script immediately on migration failure before reaching the error handler, producing a raw exit with no meaningful diagnostic.
+
 Migration failures can happen when:
-- Database is temporarily unreachable (cold start on Render)
+- Database is temporarily unreachable (cold start on Railway)
 - A migration has a conflict (two branches modified the same table)
 - A migration requires a table that was manually dropped
 - Supabase connection limits are exhausted
 
-#### What will happen if not fixed
+#### What was fixed
 
-- App starts with an **outdated database schema**
-- New columns referenced in code don't exist → `SQLAlchemyError: column X does not exist`
-- Missing tables → 500 errors on any endpoint using that table
-- Data integrity issues if constraints aren't applied
-- Extremely hard to debug because the error happened at startup and the logs scrolled past
-
-#### How to fix
-
-Make migration failure a hard stop in production:
-
-```bash
-python -m alembic upgrade head
-
-if [ $? -ne 0 ]; then
-    if [[ "${ENVIRONMENT}" == "production" ]]; then
-        echo "FATAL: Migration failed in production. Aborting startup."
-        exit 1
-    else
-        echo "WARNING: Migration failed. Continuing in development mode..."
-    fi
-else
-    echo "Migrations completed successfully"
-fi
-```
+1. **`set +e` / `set -e` guard around migration** — Temporarily disables exit-on-error so the migration exit code can be captured in a variable (`MIGRATION_EXIT_CODE`), then re-enables `set -e` for the rest of the script
+2. **Production hard stop** — If `ENVIRONMENT == "production"` and migration fails, the script prints a detailed diagnostic box (possible causes, remediation steps) and exits with code 1. Railway/Render will mark the deployment as crashed, preventing the app from serving requests with an outdated schema
+3. **Development continues with warning** — If not in production, migration failure prints a warning and allows the app to start for local development convenience
+4. **Both copies updated** — Root `start.sh` and `scripts/deployment/start.sh` (which the Dockerfile copies into the container) are both fixed identically
 
 ---
 
@@ -1215,17 +1199,17 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 |----------|----------|-------------|--------|--------|
 | ~~**P0 NOW**~~ | ~~C-01~~ | ~~Rotate ALL secrets, remove from render.yaml~~ | ~~30 min~~ | **FIXED** |
 | ~~**P0 NOW**~~ | ~~C-04~~ | ~~Remove DB URL from logs~~ | ~~5 min~~ | **FIXED** |
-| **P0 NOW** | C-05 | Remove token logging | 5 min | |
-| **P1 Before Launch** | C-03 | Crash if JWT_SECRET not set in production | 10 min | |
-| **P1** | H-01 | Remove localhost from CORS in production | 10 min | |
+| ~~**P0 NOW**~~ | ~~C-05~~ | ~~Remove token logging~~ | ~~5 min~~ | **FIXED** |
+| ~~**P1 Before Launch**~~ | ~~C-03~~ | ~~Crash if JWT_SECRET not set in production~~ | ~~10 min~~ | **FIXED** |
+| ~~**P1**~~ | ~~H-01~~ | ~~Remove localhost from CORS in production~~ | ~~10 min~~ | **FIXED** |
 | **P1** | H-03 | Remove MinimalSettings fallback | 10 min | |
-| **P1** | H-05 | Fail startup on migration failure in production | 5 min | |
+| ~~**P1**~~ | ~~H-05~~ | ~~Fail startup on migration failure in production~~ | ~~5 min~~ | **FIXED** |
 | **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min | |
 | **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
 | **P1** | R-01 | Set `JWT_PREVIOUS_SECRET` in Railway (or disable rotation) | 5 min | |
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
-| **P2** | C-02 | Restrict Firebase API keys, enable App Check | 1 hr | |
+| ~~**P2**~~ | ~~C-02~~ | ~~Restrict Firebase API keys, enable App Check~~ | ~~1 hr~~ | **FIXED** |
 | **P2** | H-02 | Add environment config to Flutter | 1 hr | |
 | **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
 | **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |

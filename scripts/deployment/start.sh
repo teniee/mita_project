@@ -175,11 +175,37 @@ echo "Command: alembic upgrade head"
 echo ""
 
 # Run database migrations
+# Temporarily disable exit-on-error to capture migration exit code
+set +e
 python -m alembic upgrade head
+MIGRATION_EXIT_CODE=$?
+set -e
 
-if [ $? -ne 0 ]; then
-    echo "❌ Migration failed! Attempting to continue anyway..."
-    echo "⚠️  The application may not work correctly without migrations"
+if [ $MIGRATION_EXIT_CODE -ne 0 ]; then
+    if [[ "${ENVIRONMENT}" == "production" ]]; then
+        echo ""
+        echo "╔══════════════════════════════════════════════════════════════════╗"
+        echo "║  ❌ FATAL: Database migration failed in production!             ║"
+        echo "║  Application startup ABORTED to prevent data corruption.       ║"
+        echo "╠══════════════════════════════════════════════════════════════════╣"
+        echo "║  Possible causes:                                              ║"
+        echo "║  - Database unreachable (check DATABASE_URL)                   ║"
+        echo "║  - Migration conflict (concurrent schema changes)              ║"
+        echo "║  - Missing table or column (manual DB modification)            ║"
+        echo "║  - Connection limit exhausted (Supabase/Railway)               ║"
+        echo "║                                                                ║"
+        echo "║  DO NOT start the app with an outdated schema.                 ║"
+        echo "║  Fix the migration issue and redeploy.                         ║"
+        echo "╚══════════════════════════════════════════════════════════════════╝"
+        echo ""
+        exit 1
+    else
+        echo ""
+        echo "⚠️  WARNING: Migration failed in development mode."
+        echo "   The application may not work correctly without migrations."
+        echo "   Continuing anyway..."
+        echo ""
+    fi
 else
     echo "✅ Migrations completed successfully"
 fi
