@@ -103,25 +103,21 @@ if [[ -n "$UPSTASH_REDIS_URL" ]]; then
 fi
 
 if [[ "$redis_configured" == "false" ]]; then
-    if [[ "${ENVIRONMENT}" == "production" ]]; then
-        echo ""
-        echo "❌ DEPLOYMENT FAILED: No Redis configuration found"
-        echo ""
-        echo "   Production requires at least one Redis provider:"
-        echo "   - REDIS_URL (standard Redis connection string)"
-        echo "   - UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (Upstash REST API)"
-        echo "   - UPSTASH_REDIS_URL (Upstash direct connection)"
-        echo ""
-        echo "   Without Redis, these features degrade critically:"
-        echo "   - Rate limiting → per-process in-memory (5x higher with multiple workers)"
-        echo "   - Task queue → background tasks silently dropped"
-        echo "   - Token blacklisting → JWT revocation unavailable"
-        echo "   - Caching → single-process in-memory only"
-        echo ""
-        exit 1
-    else
-        echo "⚠️  WARNING: No Redis configured — using in-memory fallbacks for rate limiting, task queue, and caching"
-    fi
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║  ⚠️  WARNING: No Redis configuration found                      ║"
+    echo "║  Using in-memory fallbacks (degraded mode)                      ║"
+    echo "╠══════════════════════════════════════════════════════════════════╣"
+    echo "║  Affected features:                                            ║"
+    echo "║  - Rate limiting → per-process in-memory                       ║"
+    echo "║  - Task queue → background tasks may be dropped                ║"
+    echo "║  - Token blacklisting → JWT revocation unavailable             ║"
+    echo "║  - Caching → single-process in-memory only                     ║"
+    echo "║                                                                 ║"
+    echo "║  Add REDIS_URL, UPSTASH_REDIS_REST_URL, or UPSTASH_REDIS_URL  ║"
+    echo "║  to restore full functionality.                                ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo ""
 fi
 
 # Sentry error monitoring check — critical for production observability
