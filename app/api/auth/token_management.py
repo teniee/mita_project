@@ -123,7 +123,7 @@ async def refresh_token_standardized(
             event_type="token_refresh_failure",
             user_id=None,
             request=request,
-            details={"error": str(e), "token_prefix": refresh_token[:20] if refresh_token else ""}
+            details={"error": str(e)}
         )
 
         if isinstance(e, (AuthenticationError, ValidationError)):

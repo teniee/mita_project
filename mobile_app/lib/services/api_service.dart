@@ -455,8 +455,6 @@ class ApiService {
 
     try {
       logInfo('🔄 STARTING TOKEN REFRESH', tag: 'TOKEN_REFRESH');
-      logInfo('Refresh token (first 20 chars): ${refresh.substring(0, min(20, refresh.length))}...',
-          tag: 'TOKEN_REFRESH');
       logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
 
       const requestUrl = '/auth/refresh-token';
@@ -502,8 +500,6 @@ class ApiService {
       }
 
       logInfo('✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
-          tag: 'TOKEN_REFRESH');
-      logInfo('New access token (first 20 chars): ${newAccess.substring(0, min(20, newAccess.length))}...',
           tag: 'TOKEN_REFRESH');
 
       // Use secure storage for token refresh when available

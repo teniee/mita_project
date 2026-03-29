@@ -155,7 +155,7 @@ class TestConcurrentTokenOperations:
                 
                 with results_lock:
                     validation_results.append({
-                        'token': token[:20] + "...",  # Truncate for readability
+                        'token': f"[len={len(token)}]",  # Don't log token content
                         'expected_valid': expected_valid,
                         'actual_valid': is_valid,
                         'correct': is_valid == expected_valid

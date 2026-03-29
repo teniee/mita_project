@@ -224,7 +224,7 @@ This is written to stdout, log files, and any log aggregation service (Sentry br
 ---
 
 <a id="c-05-jwt-tokens-partially-logged-first-30-chars"></a>
-### C-05: JWT tokens partially logged (first 30 chars)
+### C-05: JWT tokens partially logged (first 30 chars) — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -232,6 +232,8 @@ This is written to stdout, log files, and any log aggregation service (Sentry br
 | **Files** | `app/api/dependencies.py` line 113, `app/services/auth_jwt_service.py` line 517 |
 | **Priority** | P0 — Fix immediately |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-03-29) |
+| **Fix commit** | `feature/fix-h05-alembic-migration-fail-silently` |
 
 #### Description
 
@@ -253,21 +255,14 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6Ik
 ```
 This decodes to: `{"alg":"HS256","typ":"J` — revealing the algorithm used.
 
-#### What will happen if not fixed
+#### What was fixed
 
-- Algorithm information is leaked (useful for crafting attack tokens)
-- Partial payload data (including user IDs) ends up in logs
-- In a financial application, any token data in logs is a compliance concern
-- Combined with the leaked JWT secret (C-01), this makes token forgery trivial
-
-#### How to fix
-
-Remove both lines entirely, or replace with:
-
-```python
-logger.debug(f"Token received - length: {len(token) if token else 0}")
-# Remove the "first 30 chars" log line completely
-```
+1. **`app/api/dependencies.py:113`** — Removed `token[:30]` logging line entirely. Replaced with `logger.debug` that only logs token length (safe metadata, no content).
+2. **`app/services/auth_jwt_service.py:515-517`** — Removed `token[:30]` logging. Downgraded remaining logs from `logger.info` to `logger.debug` so token metadata doesn't appear in production INFO logs.
+3. **`app/api/auth/token_management.py:126`** — Removed `token_prefix: refresh_token[:20]` from security audit event details (was leaking partial refresh tokens into audit logs).
+4. **`mobile_app/lib/screens/register_screen.dart:94`** — Removed `accessToken.substring(0, 20)` and `refreshToken.substring(0, 20)` logging. Replaced with length-only logging.
+5. **`mobile_app/lib/services/api_service.dart:458,506`** — Removed partial token logging (`refresh.substring(0, min(20, ...))` and `newAccess.substring(0, min(20, ...))`). Replaced with safe length-only logging.
+6. **`mobile_app/lib/services/logging_service.dart:135`** — Token sanitization function now fully redacts detected tokens with `[REDACTED_TOKEN]` instead of leaking first 8 characters (which contained the JWT algorithm header `eyJhbGci`).
 
 ---
 

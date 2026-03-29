@@ -131,13 +131,9 @@ class LoggingService {
       return '****';
     });
 
-    // Mask JWT tokens and API keys
+    // Mask JWT tokens and API keys — fully redact (no partial content)
     masked = masked.replaceAllMapped(_tokenPattern, (match) {
-      final token = match.group(0)!;
-      if (token.length > 8) {
-        return '${token.substring(0, 8)}***';
-      }
-      return '***';
+      return '[REDACTED_TOKEN]';
     });
 
     // Mask password fields in JSON
