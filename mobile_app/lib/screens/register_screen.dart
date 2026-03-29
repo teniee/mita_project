@@ -90,8 +90,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         throw Exception('Registration response missing access token');
       }
 
-      logInfo(
-          'Tokens received - access: ${accessToken.substring(0, 20)}..., refresh: ${refreshToken?.substring(0, 20) ?? 'null'}',
+      logDebug(
+          'Tokens received - access length: ${accessToken.length}, refresh length: ${refreshToken?.length ?? 0}',
           tag: 'REGISTER');
 
       // Save tokens from FastAPI registration

@@ -109,8 +109,7 @@ async def get_current_user(
 
     try:
         # Validate token format
-        logger.info(f"Token received - length: {len(token) if token else 0}")
-        logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+        logger.debug(f"Token received - length: {len(token) if token else 0}")
 
         if not token or token.strip() == "":
             logger.warning("❌ Empty or invalid token provided")

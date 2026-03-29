@@ -512,9 +512,8 @@ async def verify_token(
     Returns:
         Token payload if valid, None otherwise
     """
-    logger.info(f"🔍 VERIFY_TOKEN CALLED - token_type={token_type}, required_scopes={required_scopes}")
-    logger.info(f"Token length: {len(token) if token else 0}")
-    logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
+    logger.debug(f"verify_token called - token_type={token_type}, required_scopes={required_scopes}")
+    logger.debug(f"Token received - length: {len(token) if token else 0}")
 
     if not token or len(token) < 10:
         logger.warning("❌ Invalid token format received - too short or empty")
