@@ -10,8 +10,8 @@ from app.core.audit_logging import log_security_event
 
 logger = logging.getLogger(__name__)
 
-UPSTASH_URL = os.getenv("UPSTASH_URL", "https://global.api.upstash.com")
-UPSTASH_AUTH_TOKEN = os.getenv("UPSTASH_AUTH_TOKEN")
+UPSTASH_URL = os.getenv("UPSTASH_REDIS_REST_URL") or os.getenv("UPSTASH_URL", "")
+UPSTASH_AUTH_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN") or os.getenv("UPSTASH_AUTH_TOKEN")
 
 # Security configuration
 MAX_RETRIES = 3
@@ -118,12 +118,12 @@ def blacklist_token(jti: str, ttl: int) -> None:
         ttl = min(max(ttl, 1), 86400 * 7)
     
     key = f"{BLACKLIST_KEY_PREFIX}:{jti}"
-    url = f"{UPSTASH_URL}/set/{key}?EX={ttl}"
-    
+    url = f"{UPSTASH_URL}/set/{key}/blacklisted/EX/{ttl}"
+
     logger.info(f"Blacklisting token JTI: {jti[:8]}... for {ttl}s")
-    
+
     with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
-        response = client.post(url, headers=_auth_header(), json={"value": "blacklisted"})
+        response = client.get(url, headers=_auth_header())
         response.raise_for_status()
     
     token_operations_count["blacklist"] += 1

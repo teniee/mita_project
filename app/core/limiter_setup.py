@@ -76,7 +76,7 @@ async def get_redis_connection(app: FastAPI) -> Optional[redis.Redis]:
             # Convert REST URL to Redis URL format
             if config["upstash_rest_url"].startswith('https://'):
                 host = config["upstash_rest_url"].replace('https://', '').replace('http://', '')
-                redis_url = f"rediss://default:{config['upstash_rest_token']}@{host}:6380"
+                redis_url = f"rediss://default:{config['upstash_rest_token']}@{host}:6379"
                 logger.info("Using Upstash Redis REST API configuration")
         elif config["redis_url"]:
             redis_url = config["redis_url"]
