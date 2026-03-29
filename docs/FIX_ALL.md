@@ -1,6 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
+> **Last updated:** 2026-03-29
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -302,11 +303,11 @@ The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regard
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **File** | `mobile_app/lib/config.dart` lines 1–25 |
+| **Files** | `mobile_app/lib/config.dart`, `mobile_app/lib/core/error_handling.dart`, `mobile_app/lib/services/api_service.dart`, `mobile_app/test/comprehensive_api_test.dart` |
 | **Priority** | P2 — Fix for staging/multi-env |
 | **Effort** | 1 hour |
-| **Status** | **FIXED** (2026-03-29) |
-| **Fix commit** | `feature/fix-h02-api-base-url-hardcoded` |
+| **Status** | **FULLY FIXED** (2026-03-29) |
+| **Fix commits** | `338c859` (initial), `fb905fc` (follow-up audit — 3 missed files) |
 
 #### Description
 
@@ -1221,7 +1222,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
 | ~~**P2**~~ | ~~C-02~~ | ~~Restrict Firebase API keys, enable App Check~~ | ~~1 hr~~ | **FIXED** |
-| ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter~~ | ~~1 hr~~ | **FIXED** |
+| ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter + eliminate all hardcoded URLs~~ | ~~1 hr~~ | **FULLY FIXED** |
 | **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
 | **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |
 | **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |
