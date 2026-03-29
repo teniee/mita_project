@@ -21,7 +21,7 @@
   - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
   - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
-  - [H-02: API base URL hardcoded in Flutter with no environment switching — FIXED](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
+  - [H-02: API base URL hardcoded in Flutter with no environment switching — FULLY FIXED](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
@@ -298,7 +298,7 @@ The `ALLOWED_ORIGINS_LIST` property **always** appended localhost origins regard
 ---
 
 <a id="h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching"></a>
-### H-02: API base URL hardcoded in Flutter with no environment switching — FIXED
+### H-02: API base URL hardcoded in Flutter with no environment switching — FULLY FIXED
 
 | Field | Value |
 |-------|-------|
