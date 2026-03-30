@@ -15,7 +15,7 @@ import boto3
 import jwt
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import requests
 
@@ -77,7 +77,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             'body': json.dumps({
                 'message': f'JWT rotation step {step} completed successfully',
                 'secret_arn': secret_arn,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             })
         }
         
@@ -93,7 +93,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
                 'error': str(e),
                 'secret_arn': secret_arn,
                 'step': step,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             })
         }
 
@@ -126,13 +126,13 @@ def create_jwt_secret(secret_arn: str) -> None:
             'current_key': new_jwt_key,
             'previous_key': current_secret.get('current_key'),  # Keep previous key for validation
             'algorithm': JWT_ALGORITHM,
-            'created_at': datetime.utcnow().isoformat(),
-            'expires_at': (datetime.utcnow() + timedelta(minutes=TRANSITION_PERIOD_MINUTES)).isoformat(),
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'expires_at': (datetime.now(timezone.utc) + timedelta(minutes=TRANSITION_PERIOD_MINUTES)).isoformat(),
             'version': current_secret.get('version', 0) + 1,
             'rotation_metadata': {
                 'trigger': 'automated_rotation',
                 'previous_version': current_secret.get('version', 0),
-                'rotation_timestamp': datetime.utcnow().isoformat()
+                'rotation_timestamp': datetime.now(timezone.utc).isoformat()
             }
         }
         
@@ -404,7 +404,7 @@ def schedule_jwt_key_cleanup(secret_arn: str, old_version_id: str) -> None:
         secret_arn: ARN of the JWT secret
         old_version_id: Version ID of old key to clean up
     """
-    cleanup_time = datetime.utcnow() + timedelta(minutes=TRANSITION_PERIOD_MINUTES)
+    cleanup_time = datetime.now(timezone.utc) + timedelta(minutes=TRANSITION_PERIOD_MINUTES)
     
     logger.info(f"Scheduled JWT key cleanup for version {old_version_id} at {cleanup_time}")
     

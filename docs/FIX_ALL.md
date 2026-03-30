@@ -500,6 +500,16 @@ Replaced **all 522 occurrences** of `datetime.utcnow()` across the entire projec
 **Files modified:** 120+ files across `app/`, `scripts/`, `tests/`
 **Archive files (`.archive/`):** intentionally skipped — dead code
 
+#### Supplementary Fix (2026-03-30)
+
+Fixed **10 additional occurrences** in `infrastructure/lambda/secret-rotation/` that were missed in the initial sweep:
+
+- **`jwt_rotation.py`** — 6 occurrences: timestamps in Lambda responses, secret metadata (`created_at`, `expires_at`, `rotation_timestamp`), and key cleanup scheduling
+- **`database_rotation.py`** — 4 occurrences: timestamps in Lambda responses, `last_rotated` metadata, and rotation audit trail
+- **`timezone`** import added to both files
+
+**Result:** Zero `datetime.utcnow()` remaining in active codebase. Only `.archive/backups_2024-11/routes_old_backup.py` retains the old pattern (intentionally — dead code).
+
 ---
 
 <a id="h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway"></a>
