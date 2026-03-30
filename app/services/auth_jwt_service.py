@@ -512,11 +512,10 @@ async def verify_token(
     Returns:
         Token payload if valid, None otherwise
     """
-    logger.debug(f"verify_token called - token_type={token_type}, required_scopes={required_scopes}")
-    logger.debug(f"Token received - length: {len(token) if token else 0}")
+    logger.debug(f"verify_token called: token_type={token_type}")
 
     if not token or len(token) < 10:
-        logger.warning("❌ Invalid token format received - too short or empty")
+        logger.warning("Token verification: invalid token format (too short or empty)")
         return None
 
     secrets = [_current_secret()]
@@ -524,12 +523,12 @@ async def verify_token(
     if prev:
         secrets.append(prev)
 
-    logger.info(f"Using {len(secrets)} secrets for verification")
+    logger.debug(f"Using {len(secrets)} secret(s) for verification")
 
     last_error = None
     for i, secret in enumerate(secrets):
         try:
-            logger.info(f"🔑 Attempting JWT decode with secret #{i + 1}")
+            logger.debug(f"Attempting JWT decode with secret #{i + 1}")
             # Try to decode JWT with current secret
             try:
                 payload = jwt.decode(
@@ -539,57 +538,43 @@ async def verify_token(
                     audience=JWT_AUDIENCE,
                     issuer=JWT_ISSUER
                 )
-                logger.info(f"✅ JWT decode successful with secret {i + 1}")
-                logger.info(f"Payload keys: {list(payload.keys())}")
-                logger.info(f"Payload token_type: {payload.get('token_type')}")
-                logger.info(f"Payload sub (user_id): {payload.get('sub')}")
-                logger.info(f"Payload exp: {payload.get('exp')}")
-                logger.info(f"Payload iat: {payload.get('iat')}")
-                logger.info(f"Payload jti (first 12 chars): {payload.get('jti', '')[:12]}...")
+                logger.debug(f"JWT decode successful with secret #{i + 1}")
             except Exception as decode_error:
-                logger.warning(f"❌ JWT decode failed with secret {i + 1}: {type(decode_error).__name__}: {decode_error}")
+                logger.debug(f"JWT decode failed with secret #{i + 1}: {type(decode_error).__name__}")
                 raise  # Re-raise to be caught by outer try-except
 
             # Validate token type
-            logger.info(f"🔍 Validating token type: expected={token_type}, actual={payload.get('token_type')}")
             if payload.get("token_type") != token_type:
-                logger.warning(f"❌ Token type mismatch: expected {token_type}, got {payload.get('token_type')}")
+                logger.warning(f"Token type mismatch: expected {token_type}, got {payload.get('token_type')}")
                 log_security_event("token_type_mismatch", {
                     "expected_type": token_type,
                     "actual_type": payload.get("token_type")
                 })
                 raise InvalidTokenError("Invalid token type")
-            logger.info("✅ Token type validation passed")
 
             # Validate issuer (iss) and audience (aud)
-            logger.info(f"🔍 Validating issuer: expected={JWT_ISSUER}, actual={payload.get('iss')}")
             if payload.get("iss") != JWT_ISSUER:
-                logger.warning(f"❌ Token issuer mismatch: expected {JWT_ISSUER}, got {payload.get('iss')}")
+                logger.warning(f"Token issuer mismatch: expected {JWT_ISSUER}, got {payload.get('iss')}")
                 log_security_event("token_issuer_mismatch", {
                     "expected_issuer": JWT_ISSUER,
                     "actual_issuer": payload.get("iss")
                 })
                 raise InvalidTokenError("Invalid token issuer")
-            logger.info("✅ Token issuer validation passed")
 
-            logger.info(f"🔍 Validating audience: expected={JWT_AUDIENCE}, actual={payload.get('aud')}")
             if payload.get("aud") != JWT_AUDIENCE:
-                logger.warning(f"❌ Token audience mismatch: expected {JWT_AUDIENCE}, got {payload.get('aud')}")
+                logger.warning(f"Token audience mismatch: expected {JWT_AUDIENCE}, got {payload.get('aud')}")
                 log_security_event("token_audience_mismatch", {
                     "expected_audience": JWT_AUDIENCE,
                     "actual_audience": payload.get("aud")
                 })
                 raise InvalidTokenError("Invalid token audience")
-            logger.info("✅ Token audience validation passed")
 
             # Validate required scopes if specified
             if required_scopes:
-                logger.info(f"🔍 Validating scopes: required={required_scopes}")
                 token_scopes = payload.get("scope", "").split()
-                logger.info(f"Token scopes: {token_scopes}")
                 missing_scopes = [scope for scope in required_scopes if scope not in token_scopes]
                 if missing_scopes:
-                    logger.warning(f"❌ Token missing required scopes: {missing_scopes}")
+                    logger.warning(f"Token missing required scopes: {missing_scopes}")
                     log_security_event("insufficient_token_scopes", {
                         "required_scopes": required_scopes,
                         "token_scopes": token_scopes,
@@ -597,20 +582,16 @@ async def verify_token(
                         "user_id": payload.get("sub")
                     })
                     raise InvalidTokenError(f"Insufficient token scopes: {missing_scopes}")
-                logger.info("✅ Token scopes validation passed")
 
             # Check expiration
             exp = payload.get("exp")
             current_time = time.time()
-            logger.info(f"🔍 Checking expiration: exp={exp}, current_time={current_time}, diff={(exp - current_time) if exp else 'N/A'}")
             if exp and exp < current_time:
-                logger.warning(f"❌ Token has expired: exp={exp}, current_time={current_time}, expired_by={current_time - exp}s")
+                logger.debug(f"Token expired by {current_time - exp:.0f}s")
                 raise InvalidTokenError("Token expired")
-            logger.info("✅ Token expiration check passed")
 
-            # Get jti early for logging (used in token version check)
+            # Get jti early (used in token version check and blacklist)
             jti = payload.get("jti")
-            logger.info(f"Token JTI: {jti[:12] if jti else 'None'}...")
 
             # PERFORMANCE OPTIMIZATION: Skip expensive database checks for fresh tokens
             # Tokens less than 30 minutes old are considered "fresh" and safe to skip:
@@ -621,10 +602,8 @@ async def verify_token(
             token_age_minutes = (time.time() - iat) / 60 if iat else 999
             is_fresh_token = token_age_minutes < 30
 
-            logger.info(f"🔍 Token age: {token_age_minutes:.2f} minutes, is_fresh={is_fresh_token}")
-
             if is_fresh_token:
-                logger.info(f"✅ Fresh token detected (age: {token_age_minutes:.1f} min) - skipping database validation")
+                logger.debug(f"Fresh token (age: {token_age_minutes:.0f}min) — skipping DB validation")
                 # Skip to final validation checks
                 # We still validate all JWT claims, just skip database-dependent checks
 
@@ -632,7 +611,7 @@ async def verify_token(
             # ONLY for tokens older than 30 minutes
             user_id = payload.get("sub")
             if user_id and not is_fresh_token:
-                logger.info(f"🔍 Checking token version for user {user_id} (token is not fresh)")
+                logger.debug(f"Checking token version for user {user_id}")
                 try:
                     # Import here to avoid circular imports
                     from app.core.async_session import get_async_db
@@ -640,22 +619,19 @@ async def verify_token(
                     from sqlalchemy import select
 
                     async for db in get_async_db():
-                        logger.info(f"📊 Querying database for user {user_id}")
                         user_query = select(User).where(User.id == user_id)
                         result = await db.execute(user_query)
                         user = result.scalar_one_or_none()
 
                         if user:
-                            logger.info(f"✅ User found: {user_id}, current token_version={user.token_version}")
                             # Token version in payload
                             # For backwards compatibility: default to user's current version if missing
                             token_version_id = payload.get("token_version_id", user.token_version)
-                            logger.info(f"Token version_id in payload: {token_version_id}")
 
                             # Check if token version is outdated (only if token has explicit version)
                             # This allows old tokens without version_id to work during migration
                             if "token_version_id" in payload and token_version_id < user.token_version:
-                                logger.warning(f"❌ Token version mismatch for user {user_id}: token={token_version_id}, user={user.token_version}")
+                                logger.warning(f"Token version mismatch for user {user_id}: token={token_version_id}, current={user.token_version}")
                                 log_security_event("token_version_mismatch", {
                                     "user_id": user_id,
                                     "token_version": token_version_id,
@@ -663,91 +639,70 @@ async def verify_token(
                                     "jti": jti[:8] + "..." if jti else "unknown"
                                 })
                                 raise InvalidTokenError("Token has been revoked")
-                            logger.info("✅ Token version check passed")
                         else:
-                            logger.warning(f"⚠️ User not found in database: {user_id}")
+                            logger.warning(f"User not found in database during token version check: {user_id}")
                         break
                 except InvalidTokenError:
                     raise
                 except Exception as version_check_error:
-                    logger.error(f"❌ Error checking token version: {version_check_error}", exc_info=True)
+                    logger.error(f"Error checking token version: {version_check_error}", exc_info=True)
                     # Fail-open for version checks but log the security concern
                     log_security_event("token_version_check_failed", {
                         "user_id": user_id,
                         "error": str(version_check_error)
                     })
-            else:
-                if is_fresh_token:
-                    logger.info("⏭️ Skipping token version check (fresh token)")
 
             # Check blacklist using new blacklist service (jti already defined above)
             # ONLY for tokens older than 30 minutes (fresh tokens skip this)
             if jti and not is_fresh_token:
-                logger.info(f"🔍 Checking blacklist for JTI: {jti[:12]}...")
                 try:
                     # Import here to avoid circular imports
                     from app.services.token_blacklist_service import get_blacklist_service
                     blacklist_service = await get_blacklist_service()
-                    logger.info("✅ Blacklist service obtained")
 
                     is_blacklisted = await blacklist_service.is_token_blacklisted(jti)
-                    logger.info(f"Blacklist check result: is_blacklisted={is_blacklisted}")
 
                     if is_blacklisted:
-                        logger.warning(f"❌ Blacklisted token access attempt: {jti[:8]}...")
+                        logger.warning(f"Blacklisted token access attempt: jti={jti[:8]}...")
                         log_security_event("blacklisted_token_usage_attempt", {
                             "jti": jti[:8] + "...",
                             "token_type": token_type
                         })
                         raise InvalidTokenError("Token is blacklisted")
-                    logger.info("✅ Token is not blacklisted")
                 except InvalidTokenError:
                     raise
                 except Exception as blacklist_error:
-                    logger.error(f"❌ Error checking token blacklist: {blacklist_error}", exc_info=True)
+                    logger.error(f"Error checking token blacklist: {blacklist_error}", exc_info=True)
                     # Fail-open for blacklist checks to maintain availability
                     # but log the security concern
                     log_security_event("blacklist_check_failed", {
                         "jti": jti[:8] + "..." if jti else "unknown",
                         "error": str(blacklist_error)
                     })
-            else:
-                if is_fresh_token:
-                    logger.info("⏭️ Skipping blacklist check (fresh token)")
-                elif not jti:
-                    logger.warning("⚠️ No JTI in token payload - cannot check blacklist")
+            elif not jti and not is_fresh_token:
+                logger.warning("No JTI in token payload — cannot check blacklist")
             
             # Validate required claims (enhanced for financial application)
             required_claims = ["sub", "exp", "jti", "iss", "aud", "token_type"]
-            logger.info(f"🔍 Validating required claims: {required_claims}")
             for claim in required_claims:
                 if not payload.get(claim):
-                    logger.warning(f"❌ Missing required claim: {claim}")
+                    logger.warning(f"Token missing required claim: {claim}")
                     raise InvalidTokenError(f"Missing claim: {claim}")
-            logger.info("✅ All required claims present")
 
             # Validate not-before (nbf) claim if present
             nbf = payload.get("nbf")
-            if nbf:
-                logger.info(f"🔍 Checking not-before (nbf): nbf={nbf}, current_time={time.time()}")
-                if nbf > time.time():
-                    logger.warning(f"❌ Token not yet valid (nbf claim): nbf={nbf}, current_time={time.time()}")
-                    raise InvalidTokenError("Token not yet valid")
-                logger.info("✅ Token nbf check passed")
+            if nbf and nbf > time.time():
+                logger.warning(f"Token not yet valid (nbf claim)")
+                raise InvalidTokenError("Token not yet valid")
 
-            logger.info(f"✅✅✅ Token verified successfully with secret {i + 1} - RETURNING PAYLOAD")
+            logger.debug(f"Token verified successfully for user {payload.get('sub')}")
             return payload
 
         except InvalidTokenError as e:
-            logger.warning(f"❌ InvalidTokenError caught: {e}")
             last_error = e
             continue
 
-    logger.warning("❌❌❌ Token verification FAILED after trying all secrets")
-    if last_error:
-        logger.warning(f"Last error: {last_error}")
-    else:
-        logger.warning("No specific error recorded (possible JWT decode failure)")
+    logger.warning(f"Token verification failed after trying all secrets: {last_error or 'unknown error'}")
     return None
 
 
