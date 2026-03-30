@@ -10,7 +10,7 @@ Provides comprehensive dashboard data including:
 - Active goals with progress tracking (MODULE 5)
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,8 +46,8 @@ async def get_dashboard(
     """
     try:
         user_id = user.id
-        today = datetime.utcnow().date()
-        now = datetime.utcnow()
+        today = datetime.now(timezone.utc).date()
+        now = datetime.now(timezone.utc)
 
         # Get user's monthly income
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
@@ -434,9 +434,9 @@ async def get_quick_stats(
     """
     try:
         user_id = user.id
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         first_day_of_month = today.replace(day=1)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
 

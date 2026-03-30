@@ -5,7 +5,7 @@ Receipt processing, enhancement, and categorization endpoints
 import os
 import tempfile
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse
@@ -146,7 +146,7 @@ def process_receipt_ocr(
             category_hint=result.get("category_hint", result.get("category", "")),
             confidence=result.get("confidence", 0.0),
             raw_result=result,
-            completed_at=datetime.utcnow()
+            completed_at=datetime.now(timezone.utc)
         )
         db.add(ocr_job)
         db.commit()
@@ -169,7 +169,7 @@ def process_receipt_ocr(
                 "fields_needing_review": fields_needing_review,
                 "image_url": image_url
             },
-            "processed_at": datetime.utcnow().isoformat()
+            "processed_at": datetime.now(timezone.utc).isoformat()
         })
 
     except HTTPException:

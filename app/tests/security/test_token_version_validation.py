@@ -10,7 +10,7 @@ Tests the critical security fixes:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -201,16 +201,16 @@ class TestAccountLockout:
         )
 
         # Lock account for 30 minutes
-        user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+        user.account_locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
 
         # Should be locked now
-        assert user.account_locked_until > datetime.utcnow()
+        assert user.account_locked_until > datetime.now(timezone.utc)
 
         # Simulate time passing (set to past)
-        user.account_locked_until = datetime.utcnow() - timedelta(minutes=1)
+        user.account_locked_until = datetime.now(timezone.utc) - timedelta(minutes=1)
 
         # Should no longer be locked
-        assert user.account_locked_until < datetime.utcnow()
+        assert user.account_locked_until < datetime.now(timezone.utc)
 
 
 class TestAllAuthEndpointsIncludeVersion:

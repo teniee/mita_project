@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import calendar
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -104,14 +104,14 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
                 amount=expense.amount,
                 description=expense.description or f"Scheduled: {expense.category}",
                 merchant=expense.merchant,
-                spent_at=datetime.utcnow(),
+                spent_at=datetime.now(timezone.utc),
             )
             db.add(txn)
             db.flush()
 
             # 2. Mark the scheduled expense as processed
             expense.status = "processed"
-            expense.processed_at = datetime.utcnow()
+            expense.processed_at = datetime.now(timezone.utc)
             expense.transaction_id = txn.id
             db.flush()
 
@@ -202,7 +202,7 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
                 days_until=days_until,
                 merchant=expense.merchant,
             )
-            expense.reminder_sent_at = datetime.utcnow()
+            expense.reminder_sent_at = datetime.now(timezone.utc)
             db.flush()
             summary["reminders_sent"] += 1
         except Exception as exc:

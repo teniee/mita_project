@@ -15,7 +15,7 @@ import boto3
 import psycopg2
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 # Configure logging
@@ -77,7 +77,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             'body': json.dumps({
                 'message': f'Rotation step {step} completed successfully',
                 'secret_arn': secret_arn,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             })
         }
         
@@ -93,7 +93,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
                 'error': str(e),
                 'secret_arn': secret_arn,
                 'step': step,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             })
         }
 
@@ -320,7 +320,7 @@ def generate_new_credentials(current_secret: Dict[str, Any]) -> Dict[str, Any]:
     new_secret['password'] = new_password
     
     # Update metadata
-    new_secret['last_rotated'] = datetime.utcnow().isoformat()
+    new_secret['last_rotated'] = datetime.now(timezone.utc).isoformat()
     new_secret['rotation_version'] = new_secret.get('rotation_version', 0) + 1
     
     # Add rotation audit trail
@@ -328,7 +328,7 @@ def generate_new_credentials(current_secret: Dict[str, Any]) -> Dict[str, Any]:
         new_secret['rotation_history'] = []
     
     new_secret['rotation_history'].append({
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'trigger': 'automated_rotation',
         'previous_version': current_secret.get('rotation_version', 0)
     })

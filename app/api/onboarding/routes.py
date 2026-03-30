@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -131,7 +131,7 @@ def submit_onboarding(
     # Build calendar with error handling
     try:
         # Get current year and month for calendar generation
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_year = now.year
         current_month = now.month
 

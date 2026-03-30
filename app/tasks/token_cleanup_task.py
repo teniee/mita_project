@@ -16,7 +16,7 @@ provides additional monitoring and optimization.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.audit_logging import log_security_event
 
@@ -210,7 +210,7 @@ async def cleanup_security_audit_logs():
         
         # This would typically clean up audit log entries
         # For now, we'll just log that the cleanup ran
-        cutoff_date = datetime.utcnow() - timedelta(days=90)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=90)
         
         logger.info(f"Would clean up audit logs older than {cutoff_date}")
         

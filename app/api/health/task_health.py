@@ -4,7 +4,7 @@ Provides comprehensive health monitoring for the async task queue system.
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -49,7 +49,7 @@ async def task_system_health():
         
         health_report = {
             "status": overall_health["status"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "response_time_ms": round(response_time * 1000, 2),
             "components": {
                 "redis": redis_health,
@@ -79,7 +79,7 @@ async def task_system_health():
         
         return success_response({
             "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error": str(e),
             "components": {
                 "redis": {"status": "unknown"},
@@ -151,12 +151,12 @@ async def task_system_readiness():
         if redis_ready and workers_available:
             return success_response({
                 "status": "ready",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
         else:
             return success_response({
                 "status": "not_ready",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "redis_ready": redis_ready,
                 "workers_available": workers_available
             })
@@ -165,7 +165,7 @@ async def task_system_readiness():
         logger.error(f"Readiness check failed: {str(e)}")
         return success_response({
             "status": "not_ready",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error": str(e)
         })
 
@@ -186,7 +186,7 @@ async def task_system_liveness():
         if can_connect_redis:
             return success_response({
                 "status": "alive",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
         else:
             # System is not alive - container should be restarted

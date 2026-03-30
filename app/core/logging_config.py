@@ -7,7 +7,7 @@ import logging
 import logging.config
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.config import settings
@@ -20,7 +20,7 @@ class JSONFormatter(logging.Formatter):
         """Format log record as JSON"""
         # Base log data
         log_data = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'level': record.levelname,
             'logger': record.name,
             'message': record.getMessage(),
@@ -287,7 +287,7 @@ def log_structured(
     """Log a structured message with additional context"""
     extra_data = {
         'structured_data': kwargs,
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': datetime.now(timezone.utc).isoformat()
     }
     
     log_level = getattr(logging, level.upper(), logging.INFO)

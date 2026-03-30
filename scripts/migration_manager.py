@@ -122,7 +122,7 @@ class ProductionMigrationManager:
         
         lock_name = f"mita_{operation}_lock"
         locked_by = f"{os.environ.get('USER', 'unknown')}@{os.environ.get('HOSTNAME', 'unknown')}"
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.lock_timeout)
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=self.lock_timeout)
         
         conn = psycopg2.connect(self.db_url)
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -143,7 +143,7 @@ class ProductionMigrationManager:
                     """, (lock_name, locked_by, expires_at, json.dumps({
                         "operation": operation,
                         "pid": os.getpid(),
-                        "start_time": datetime.datetime.utcnow().isoformat()
+                        "start_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
                     })))
                     
                     logger.info(f"Acquired {operation} lock: {lock_name}")
@@ -159,7 +159,7 @@ class ProductionMigrationManager:
                     if existing_lock:
                         locked_by_existing, locked_at, expires_at_existing, lock_data = existing_lock
                         
-                        if expires_at_existing > datetime.datetime.utcnow().replace(tzinfo=expires_at_existing.tzinfo):
+                        if expires_at_existing > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=expires_at_existing.tzinfo):
                             raise MigrationLockError(
                                 f"Migration lock already held by {locked_by_existing} "
                                 f"since {locked_at}, expires at {expires_at_existing}"
@@ -173,7 +173,7 @@ class ProductionMigrationManager:
                             """, (lock_name, locked_by, expires_at, json.dumps({
                                 "operation": operation,
                                 "pid": os.getpid(),
-                                "start_time": datetime.datetime.utcnow().isoformat()
+                                "start_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
                             })))
                             
                             logger.info(f"Forcibly acquired {operation} lock after expiration")
@@ -323,7 +323,7 @@ class ProductionMigrationManager:
             raise MigrationError(f"Pre-migration backup failed: {result.stderr}")
         
         # Extract backup ID from output (simplified)
-        backup_id = "pre-migration-" + datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        backup_id = "pre-migration-" + datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
         return {"backup_id": backup_id, "status": "created"}
     
     def _get_current_revision(self) -> str:
@@ -361,7 +361,7 @@ class ProductionMigrationManager:
         # Set environment variables for the migration
         env = os.environ.copy()
         env["MIGRATION_IN_PROGRESS"] = "true"
-        env["MIGRATION_TIMESTAMP"] = datetime.datetime.utcnow().isoformat()
+        env["MIGRATION_TIMESTAMP"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
         # Run alembic upgrade with timeout
         try:

@@ -6,7 +6,7 @@ Automatically integrates goals with budget system for seamless fund allocation
 from typing import Dict, List
 from decimal import Decimal
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -268,7 +268,7 @@ class GoalBudgetIntegration:
                 amount=abs(float(amount)),  # Positive for savings
                 category="Savings",
                 description=f"Automatic savings for goal: {goal.title}",
-                spent_at=datetime.utcnow(),
+                spent_at=datetime.now(timezone.utc),
                 source="auto_goal_transfer"
             )
 

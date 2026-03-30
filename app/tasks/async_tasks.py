@@ -5,7 +5,7 @@ All long-running and computationally expensive tasks are defined here.
 
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -86,7 +86,7 @@ def process_ocr_task(
                 category_hint=ocr_result.get("category_hint", ocr_result.get("category", "")),
                 confidence=ocr_result.get("confidence", 0.0),
                 raw_result=ocr_result,
-                completed_at=datetime.utcnow()
+                completed_at=datetime.now(timezone.utc)
             )
             db.add(ocr_job)
             db.commit()
@@ -119,7 +119,7 @@ def process_ocr_task(
                 'transaction': transaction_result,
                 'job_id': job_id,
                 'image_url': image_url,
-                'processed_at': datetime.utcnow().isoformat()
+                'processed_at': datetime.now(timezone.utc).isoformat()
             }
 
         finally:
@@ -213,7 +213,7 @@ def generate_ai_analysis_task(
                 'snapshot': snapshot_result,
                 'user_id': user_id,
                 'period': f"{year}-{month:02d}",
-                'generated_at': datetime.utcnow().isoformat()
+                'generated_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -271,7 +271,7 @@ def budget_redistribution_task(
                 'redistribution_result': result,
                 'user_id': user_id,
                 'period': f"{year}-{month:02d}",
-                'processed_at': datetime.utcnow().isoformat()
+                'processed_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -334,7 +334,7 @@ def send_email_notification_task(
                 'status': 'success',
                 'recipient': user_email,
                 'subject': subject,
-                'sent_at': datetime.utcnow().isoformat()
+                'sent_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -410,7 +410,7 @@ def send_push_notification_task(
                 'status': 'success',
                 'user_id': user_id,
                 'message': message,
-                'sent_at': datetime.utcnow().isoformat()
+                'sent_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -465,7 +465,7 @@ def export_user_data_task(
             
             export_data = {
                 'user_id': user_id,
-                'export_generated_at': datetime.utcnow().isoformat(),
+                'export_generated_at': datetime.now(timezone.utc).isoformat(),
                 'user_profile': {
                     'email': user.email,
                     'created_at': user.created_at.isoformat() if user.created_at else None,
@@ -567,7 +567,7 @@ def export_user_data_task(
                     'transactions': len(export_data.get('transactions', [])),
                     'ai_analyses': len(export_data.get('ai_analysis', []))
                 },
-                'generated_at': datetime.utcnow().isoformat()
+                'generated_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -607,7 +607,7 @@ def daily_ai_advice_batch_task(task_id: Optional[str] = None) -> Dict[str, Any]:
         db: Session = next(get_db())
         
         try:
-            utc_now = datetime.utcnow()
+            utc_now = datetime.now(timezone.utc)
             today = utc_now.date()
             
             # Get all active users
@@ -669,7 +669,7 @@ def daily_ai_advice_batch_task(task_id: Optional[str] = None) -> Dict[str, Any]:
                 'success_count': success_count,
                 'error_count': error_count,
                 'batch_date': today.isoformat(),
-                'completed_at': datetime.utcnow().isoformat()
+                'completed_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -703,7 +703,7 @@ def monthly_budget_redistribution_batch_task(task_id: Optional[str] = None) -> D
         db: Session = next(get_db())
         
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # Redistribute for the previous month
             year = now.year
             month = now.month - 1
@@ -748,7 +748,7 @@ def monthly_budget_redistribution_batch_task(task_id: Optional[str] = None) -> D
                 'success_count': success_count,
                 'error_count': error_count,
                 'redistribution_period': f"{year}-{month:02d}",
-                'completed_at': datetime.utcnow().isoformat()
+                'completed_at': datetime.now(timezone.utc).isoformat()
             }
             
         finally:
@@ -796,7 +796,7 @@ def cleanup_old_tasks_batch_task(
             'status': 'success',
             'cleanup_result': cleanup_result,
             'max_age_hours': max_age_hours,
-            'cleaned_at': datetime.utcnow().isoformat()
+            'cleaned_at': datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:

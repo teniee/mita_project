@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -18,7 +18,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if any(p in path for p in ["/ocr", "/gpt", "/ai"]):
             client_ip = request.client.host
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             key = f"{client_ip}:{path}"
             rate_limit_store[key] = [
                 t for t in rate_limit_store[key] if now - t < self.window

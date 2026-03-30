@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ def run_budget_redistribution_batch():
     """Run monthly redistribution for all active users."""
     db: Session = next(get_db())
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     # Redistribute for the current month — rebalance categories that already exceeded budget.
     # Future days are handled by realtime_rebalancer when transactions are recorded.
     year = now.year

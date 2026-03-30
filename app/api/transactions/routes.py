@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 import logging
 
@@ -289,7 +289,7 @@ async def process_receipt(
         # Check if user is premium (simplified check)
         is_premium = hasattr(user, 'premium_until') and getattr(user, 'premium_until', None)
         if is_premium and isinstance(is_premium, datetime):
-            is_premium = is_premium > datetime.utcnow()
+            is_premium = is_premium > datetime.now(timezone.utc)
         else:
             is_premium = False
         
@@ -492,7 +492,7 @@ async def process_receipt_advanced(
             category_hint=result.get("category_hint", ""),
             confidence=result.get("confidence", 0.0),
             raw_result=result,
-            completed_at=datetime.utcnow()
+            completed_at=datetime.now(timezone.utc)
         )
         db.add(ocr_job)
         await db.commit()
@@ -570,7 +570,7 @@ async def process_receipts_batch(
                 category_hint=result.get("category_hint", ""),
                 confidence=result.get("confidence", 0.0),
                 raw_result=result,
-                completed_at=datetime.utcnow()
+                completed_at=datetime.now(timezone.utc)
             )
             db.add(ocr_job)
 

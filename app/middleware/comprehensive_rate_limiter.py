@@ -7,7 +7,7 @@ and fail-secure behavior for financial security compliance.
 import time
 import logging
 from typing import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import Request, Response, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -275,7 +275,7 @@ class ComprehensiveRateLimitMiddleware(BaseHTTPMiddleware):
         response_data = {
             "error": "rate_limit_exceeded",
             "message": detail,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "path": request.url.path,
             "method": request.method
         }

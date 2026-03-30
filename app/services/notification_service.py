@@ -5,7 +5,7 @@ Handles creation, delivery, scheduling, and tracking of all notifications
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -179,8 +179,8 @@ class NotificationService:
             if success:
                 notification.channel = "email"
                 notification.status = NotificationStatus.DELIVERED.value
-                notification.sent_at = datetime.utcnow()
-                notification.delivered_at = datetime.utcnow()
+                notification.sent_at = datetime.now(timezone.utc)
+                notification.delivered_at = datetime.now(timezone.utc)
                 self.db.commit()
 
                 # Log successful email delivery
@@ -254,8 +254,8 @@ class NotificationService:
                         if success:
                             notification.status = NotificationStatus.DELIVERED.value
                             notification.channel = "push"
-                            notification.sent_at = datetime.utcnow()
-                            notification.delivered_at = datetime.utcnow()
+                            notification.sent_at = datetime.now(timezone.utc)
+                            notification.delivered_at = datetime.now(timezone.utc)
                             self.db.commit()
 
                             # Log successful delivery
@@ -345,7 +345,7 @@ class NotificationService:
         query = query.filter(
             or_(
                 Notification.expires_at.is_(None),
-                Notification.expires_at > datetime.utcnow(),
+                Notification.expires_at > datetime.now(timezone.utc),
             )
         )
 
@@ -380,7 +380,7 @@ class NotificationService:
 
         if notification and not notification.is_read:
             notification.is_read = True
-            notification.read_at = datetime.utcnow()
+            notification.read_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(notification)
 
@@ -403,7 +403,7 @@ class NotificationService:
 
         for notification in notifications:
             notification.is_read = True
-            notification.read_at = datetime.utcnow()
+            notification.read_at = datetime.now(timezone.utc)
 
         self.db.commit()
 
@@ -435,7 +435,7 @@ class NotificationService:
                     Notification.is_read == False,
                     or_(
                         Notification.expires_at.is_(None),
-                        Notification.expires_at > datetime.utcnow(),
+                        Notification.expires_at > datetime.now(timezone.utc),
                     ),
                 )
             )
@@ -447,7 +447,7 @@ class NotificationService:
         Send all notifications that are scheduled for delivery
         Should be called by a cron job or background task
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         scheduled_notifications = (
             self.db.query(Notification)
@@ -470,7 +470,7 @@ class NotificationService:
         Clean up old notifications (older than specified days)
         Should be called by a cron job
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         old_notifications = (
             self.db.query(Notification)
@@ -479,7 +479,7 @@ class NotificationService:
                     Notification.created_at < cutoff_date,
                     and_(
                         Notification.expires_at.isnot(None),
-                        Notification.expires_at < datetime.utcnow(),
+                        Notification.expires_at < datetime.now(timezone.utc),
                     ),
                 )
             )

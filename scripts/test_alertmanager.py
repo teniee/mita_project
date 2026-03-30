@@ -9,7 +9,7 @@ Copyright © 2025 YAKOVLEV LTD - All Rights Reserved
 import asyncio
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 import structlog
@@ -89,7 +89,7 @@ class AlertmanagerTester:
                         "summary": f"Test alert: {alert_name}",
                         "description": "Test alert for validation"
                     },
-                    "startsAt": datetime.utcnow().isoformat() + "Z",
+                    "startsAt": datetime.now(timezone.utc).isoformat() + "Z",
                     "endsAt": None,
                     "generatorURL": f"{self.alertmanager_url}/graph",
                     "fingerprint": "test-fingerprint-123"
@@ -150,7 +150,7 @@ class AlertmanagerTester:
                 "description": f"This is a test {severity} alert",
                 "value": "test_value"
             },
-            "startsAt": datetime.utcnow().isoformat() + "Z",
+            "startsAt": datetime.now(timezone.utc).isoformat() + "Z",
             "generatorURL": f"{self.alertmanager_url}/test"
         }]
 

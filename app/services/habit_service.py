@@ -1,7 +1,7 @@
 """
 Service for calculating habit statistics and streaks
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 from uuid import UUID
 
@@ -24,7 +24,7 @@ async def calculate_habit_statistics(
     - completed_dates: list of ISO date strings for last 30 days
     """
     # Query completions for the last 90 days to calculate streaks accurately
-    ninety_days_ago = datetime.utcnow() - timedelta(days=90)
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
 
     result = await db.execute(
         select(HabitCompletion)
@@ -44,7 +44,7 @@ async def calculate_habit_statistics(
 
     # Calculate current streak (from today backwards)
     current_streak = 0
-    check_date = datetime.utcnow().date()
+    check_date = datetime.now(timezone.utc).date()
 
     while check_date in completion_dates_set:
         current_streak += 1
@@ -72,7 +72,7 @@ async def calculate_habit_statistics(
         longest_streak = max(longest_streak, current_temp_streak)
 
     # Calculate completion rate for last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     recent_completions = [
         c for c in all_completions
         if c.completed_at >= thirty_days_ago

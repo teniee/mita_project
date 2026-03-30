@@ -3,7 +3,7 @@ MODULE 5: Budgeting Goals - Comprehensive Tests
 Tests for Goal model, API endpoints, and business logic
 """
 import pytest
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -25,8 +25,8 @@ class TestGoalModel:
             saved_amount=Decimal('1000.00'),
             status='active',
             priority='high',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.title == "Emergency Fund"
@@ -44,8 +44,8 @@ class TestGoalModel:
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('250.00'),
             status='active',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         goal.update_progress()
@@ -61,8 +61,8 @@ class TestGoalModel:
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('1000.00'),
             status='active',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         goal.update_progress()
@@ -80,8 +80,8 @@ class TestGoalModel:
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('200.00'),
             status='active',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         goal.add_savings(Decimal('300.00'))
@@ -98,8 +98,8 @@ class TestGoalModel:
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('300.00'),
             status='active',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.remaining_amount == Decimal('700.00')
@@ -115,8 +115,8 @@ class TestGoalModel:
             saved_amount=Decimal('500.00'),
             status='active',
             target_date=date.today() - timedelta(days=1),
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert past_goal.is_overdue == True
@@ -130,8 +130,8 @@ class TestGoalModel:
             saved_amount=Decimal('500.00'),
             status='active',
             target_date=date.today() + timedelta(days=30),
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert future_goal.is_overdue == False
@@ -146,8 +146,8 @@ class TestGoalModel:
             saved_amount=Decimal('1000.00'),
             status='completed',
             progress=Decimal('100.00'),
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert completed_goal.is_completed == True
@@ -160,8 +160,8 @@ class TestGoalModel:
             saved_amount=Decimal('500.00'),
             status='active',
             progress=Decimal('50.00'),
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert active_goal.is_completed == False
@@ -184,8 +184,8 @@ def test_goal_progress_various_amounts(saved, target, expected_progress):
         target_amount=Decimal(str(target)),
         saved_amount=Decimal(str(saved)),
         status='active',
-        created_at=datetime.utcnow(),
-        last_updated=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        last_updated=datetime.now(timezone.utc),
     )
 
     goal.update_progress()
@@ -207,8 +207,8 @@ def test_goal_categories():
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('0.00'),
             status='active',
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.category == category
@@ -226,8 +226,8 @@ def test_goal_statuses():
             target_amount=Decimal('1000.00'),
             saved_amount=Decimal('0.00'),
             status=status,
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.status == status
@@ -246,8 +246,8 @@ def test_goal_priorities():
             saved_amount=Decimal('0.00'),
             status='active',
             priority=priority,
-            created_at=datetime.utcnow(),
-            last_updated=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.priority == priority

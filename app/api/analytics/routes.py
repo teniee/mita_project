@@ -80,10 +80,10 @@ async def get_behavioral_insights(
 ):
     """Get behavioral insights from analytics"""
     from app.db.models import Transaction
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     # Calculate behavioral insights from real transaction data
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
     # Get transactions from last 30 days
     result = await db.execute(
@@ -160,7 +160,7 @@ async def log_feature_usage(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Log feature usage for analytics"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import FeatureUsageLog
 
     feature = data.get("feature")
@@ -179,9 +179,9 @@ async def log_feature_usage(
         except (ValueError, AttributeError) as e:
             # Invalid timestamp format, fall back to current time
             logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
     else:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
     # Store in database
     usage_log = FeatureUsageLog(
@@ -214,7 +214,7 @@ async def log_feature_access_attempt(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Log when user attempts to access premium features"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import FeatureAccessLog
 
     feature = data.get("feature")
@@ -231,7 +231,7 @@ async def log_feature_access_attempt(
         is_premium_feature=is_premium_feature,
         screen=screen,
         extra_data=metadata,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
     db.add(access_log)
@@ -252,7 +252,7 @@ async def log_paywall_impression(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Log paywall impressions for conversion tracking"""
-    from datetime import datetime
+    from datetime import datetime, timezone
     from app.db.models import PaywallImpressionLog
 
     screen = data.get("screen")
@@ -268,9 +268,9 @@ async def log_paywall_impression(
         except (ValueError, AttributeError) as e:
             # Invalid timestamp format, fall back to current time
             logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
     else:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
     # Store in analytics database for conversion funnel analysis
     impression_log = PaywallImpressionLog(
@@ -303,7 +303,7 @@ async def get_seasonal_patterns(
 ):
     """Get seasonal spending patterns"""
     from app.db.models import Transaction
-    from datetime import datetime
+    from datetime import datetime, timezone
     from collections import defaultdict
 
     # Analyze historical data for seasonal trends
@@ -339,7 +339,7 @@ async def get_seasonal_patterns(
 
     # Identify seasonal patterns
     patterns = []
-    current_month = datetime.utcnow().month
+    current_month = datetime.now(timezone.utc).month
 
     # Holiday season (Nov-Dec)
     if 11 in month_averages and 12 in month_averages:

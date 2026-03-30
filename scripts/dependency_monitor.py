@@ -16,7 +16,7 @@ import os
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any
 import asyncio
@@ -52,7 +52,7 @@ class DependencyMonitor:
         logger.info("🔍 Generating dependency monitoring report...")
         
         report = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "project_root": str(self.project_root),
             "files_analyzed": {},
             "security_scan": {},
@@ -174,7 +174,7 @@ class DependencyMonitor:
         logger.info("🛡️ Running security vulnerability scan...")
         
         scan_results = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "vulnerabilities_found": 0,
             "critical_vulnerabilities": 0,
             "scan_status": "completed"
@@ -313,7 +313,7 @@ class DependencyMonitor:
     
     def save_report(self, report: Dict[str, Any]) -> str:
         """Save report to file"""
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         report_file = self.reports_dir / f"dependency_monitor_{timestamp}.json"
         
         with open(report_file, 'w') as f:

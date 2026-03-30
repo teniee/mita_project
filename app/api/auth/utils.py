@@ -8,7 +8,7 @@ Contains shared utility functions used across authentication endpoints:
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -94,7 +94,7 @@ async def revoke_user_tokens(
                     "revoked_by": revoked_by,
                     "old_token_version": old_version,
                     "new_token_version": user.token_version,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
             )
 

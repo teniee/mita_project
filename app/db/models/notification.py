@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from sqlalchemy import Boolean, Column, DateTime, JSON, String, Text
@@ -76,8 +76,8 @@ class Notification(Base):
     retry_count = Column(String, default="0")
 
     # Metadata
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime(timezone=True), nullable=True)  # Notification expiry
 
     # Grouping and categorization

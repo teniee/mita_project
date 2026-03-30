@@ -10,7 +10,7 @@ Handles:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -81,7 +81,7 @@ async def change_password(
 
         # Update user password
         current_user.password_hash = new_password_hash
-        current_user.updated_at = datetime.utcnow()
+        current_user.updated_at = datetime.now(timezone.utc)
 
         # Increment token version to invalidate existing tokens
         current_user.token_version = (current_user.token_version or 1) + 1
@@ -93,14 +93,14 @@ async def change_password(
         log_security_event("password_changed", {
             "user_id": str(current_user.id),
             "user_email": current_user.email,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
         logger.info(f"Password changed successfully for user {current_user.id}")
 
         return success_response({
             "message": "Password changed successfully",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
     except (AuthenticationError, ValidationError):
@@ -130,7 +130,7 @@ async def delete_account(
         log_security_event("account_deletion_initiated", {
             "user_id": str(current_user.id),
             "user_email": current_user.email,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
         # Revoke all user tokens before deletion
@@ -152,7 +152,7 @@ async def delete_account(
 
         return success_response({
             "message": "Account deleted successfully",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
     except ValidationError:
@@ -197,7 +197,7 @@ async def forgot_password(
 
         # Store token in database
         user.password_reset_token = reset_token
-        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         user.password_reset_attempts = 0
 
         await db.commit()
@@ -248,7 +248,7 @@ async def _do_verify_reset_token(token: str, db: AsyncSession):
         return success_response({"valid": False, "message": "Invalid or expired token"})
 
     if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
-        if user.password_reset_expires < datetime.utcnow():
+        if user.password_reset_expires < datetime.now(timezone.utc):
             return success_response({"valid": False, "message": "Reset token has expired"})
 
     return success_response({"valid": True, "message": "Reset token is valid", "user_id": str(user_id)})
@@ -318,7 +318,7 @@ async def reset_password(
 
         # Check expiration
         if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
-            if user.password_reset_expires < datetime.utcnow():
+            if user.password_reset_expires < datetime.now(timezone.utc):
                 raise ValidationError(
                     "Reset token has expired",
                     ErrorCode.AUTHENTICATION_TOKEN_EXPIRED

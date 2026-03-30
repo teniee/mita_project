@@ -6,7 +6,7 @@ Provides advanced health monitoring to detect issues that could cause 8-15+ seco
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import Dict, Any, Optional
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.circuit_breaker import get_circuit_breaker_manager
@@ -103,7 +103,7 @@ async def get_comprehensive_health(session: AsyncSession = Depends(get_async_db)
         
         response = {
             'status': overall_status,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'middleware': {
                 'overall_status': middleware_report.overall_status.value,
                 'metrics': middleware_metrics,
@@ -142,7 +142,7 @@ async def get_comprehensive_health(session: AsyncSession = Depends(get_async_db)
                 'status': 'unhealthy',
                 'message': 'Health check system failure',
                 'error': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -169,7 +169,7 @@ async def get_middleware_health(session: AsyncSession = Depends(get_async_db)):
         
         response = {
             'overall_status': middleware_report.overall_status.value,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'metrics': detailed_metrics,
             'performance_summary': middleware_report.performance_summary,
             'response_time_ms': middleware_report.response_time_ms,
@@ -196,7 +196,7 @@ async def get_middleware_health(session: AsyncSession = Depends(get_async_db)):
             detail={
                 'error': 'Middleware health check failed',
                 'message': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -248,7 +248,7 @@ async def get_component_health(
             detail={
                 'error': f'Component {component} health check failed',
                 'message': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -303,7 +303,7 @@ async def get_performance_health(session: AsyncSession = Depends(get_async_db)):
         
         response = {
             'performance_status': performance_status,
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'performance_summary': performance_summary,
             'alerts': [alert for alert in middleware_report.alerts if 'timeout' in alert.lower() or 'slow' in alert.lower()],
             'recommendations': [rec for rec in middleware_report.recommendations if 'performance' in rec.lower() or 'timeout' in rec.lower()],
@@ -319,7 +319,7 @@ async def get_performance_health(session: AsyncSession = Depends(get_async_db)):
             detail={
                 'error': 'Performance health check failed',
                 'message': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -366,13 +366,13 @@ async def get_health_history(
             })
         
         return {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'history': formatted_history,
             'analysis': analysis,
             'trends': trends,
             'monitoring_duration': {
                 'start_time': middleware_health_monitor.start_time.isoformat(),
-                'duration_hours': (datetime.utcnow() - middleware_health_monitor.start_time).total_seconds() / 3600
+                'duration_hours': (datetime.now(timezone.utc) - middleware_health_monitor.start_time).total_seconds() / 3600
             }
         }
         
@@ -383,7 +383,7 @@ async def get_health_history(
             detail={
                 'error': 'Health history retrieval failed',
                 'message': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -425,7 +425,7 @@ async def get_current_alerts(session: AsyncSession = Depends(get_async_db)):
             'component_issues': component_issues,
             'issues_detected': middleware_report.issues_detected,
             'recommendations': middleware_report.recommendations,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
         # Determine alert level
@@ -452,7 +452,7 @@ async def get_current_alerts(session: AsyncSession = Depends(get_async_db)):
             detail={
                 'error': 'Alert retrieval failed',
                 'message': str(e),
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -511,7 +511,7 @@ async def get_health_metrics(session: AsyncSession = Depends(get_async_db)):
         
         return {
             'metrics': "\n".join(metrics),
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'format': 'prometheus',
             'total_metrics': len(metrics)
         }
@@ -521,7 +521,7 @@ async def get_health_metrics(session: AsyncSession = Depends(get_async_db)):
         return {
             'metrics': "mita_middleware_health_status 0\nmita_middleware_metrics_error 1",
             'error': str(e),
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'format': 'prometheus'
         }
 

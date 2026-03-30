@@ -12,7 +12,7 @@ Research-based thresholds (BNPL studies 2023-2024):
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -773,7 +773,7 @@ async def update_achievement_calculations(
         db.add(achievement)
 
     achievement.calculations_performed += 1
-    achievement.last_calculation_date = datetime.utcnow()
+    achievement.last_calculation_date = datetime.now(timezone.utc)
 
     # Track declined calculations (user saw red/orange and hopefully won't proceed)
     if risk_level in [RiskLevel.RED, RiskLevel.ORANGE]:

@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 import requests
 from pathlib import Path
@@ -39,13 +39,13 @@ class HealthMonitoringDeployment:
     """
     
     def __init__(self):
-        self.deployment_start_time = datetime.utcnow()
+        self.deployment_start_time = datetime.now(timezone.utc)
         self.validation_results = []
         self.base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
         
     def log_step(self, step: str, status: str, details: str = ""):
         """Log deployment step with status"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         log_entry = {
             'timestamp': timestamp,
             'step': step,
@@ -436,7 +436,7 @@ class HealthMonitoringDeployment:
 
     def generate_deployment_report(self) -> Dict[str, Any]:
         """Generate comprehensive deployment report"""
-        deployment_duration = (datetime.utcnow() - self.deployment_start_time).total_seconds()
+        deployment_duration = (datetime.now(timezone.utc) - self.deployment_start_time).total_seconds()
         
         successful_steps = [r for r in self.validation_results if r['status'] == 'SUCCESS']
         error_steps = [r for r in self.validation_results if r['status'] == 'ERROR']
@@ -445,7 +445,7 @@ class HealthMonitoringDeployment:
         report = {
             'deployment_summary': {
                 'start_time': self.deployment_start_time.isoformat(),
-                'end_time': datetime.utcnow().isoformat(),
+                'end_time': datetime.now(timezone.utc).isoformat(),
                 'duration_seconds': deployment_duration,
                 'overall_status': 'SUCCESS' if len(error_steps) == 0 else 'FAILED',
                 'total_steps': len(self.validation_results),
@@ -505,7 +505,7 @@ class HealthMonitoringDeployment:
 
     def save_deployment_report(self, report: Dict[str, Any]):
         """Save deployment report to file"""
-        report_filename = f"health_monitoring_deployment_report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        report_filename = f"health_monitoring_deployment_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
         
         try:
             with open(report_filename, 'w') as f:

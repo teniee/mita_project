@@ -268,7 +268,7 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
         return False
 
     # Soft delete - set deleted_at timestamp
-    txn.deleted_at = datetime.utcnow()
+    txn.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
     return True

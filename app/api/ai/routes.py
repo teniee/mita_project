@@ -229,9 +229,9 @@ async def get_ai_profile(
             AIFinancialAnalyzer(db, user.id)
             # Generate basic profile from transaction data
             from app.db.models import Transaction
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, timezone
 
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
             result = await db.execute(
                 select(Transaction).filter(
                     Transaction.user_id == user.id,
@@ -326,10 +326,10 @@ async def get_budget_optimization(
         # Service not available, calculate from transaction data
         try:
             from app.db.models import Transaction
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, timezone
             from collections import defaultdict
 
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
             result = await db.execute(
                 select(Transaction).filter(
                     Transaction.user_id == user.id,
@@ -447,9 +447,9 @@ async def ai_assistant(
 
         if "spending" in question_lower or "spend" in question_lower:
             from app.db.models import Transaction
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, timezone
 
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
             result = await db.execute(
                 select(Transaction).filter(
                     Transaction.user_id == user.id,
@@ -628,9 +628,9 @@ async def get_financial_advice(
             if "budget" in question.lower() or advice_type == "budgeting":
                 # Get budget-related advice
                 from app.db.models import Transaction
-                from datetime import datetime, timedelta
+                from datetime import datetime, timedelta, timezone
 
-                thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+                thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
                 result = await db.execute(
                     select(Transaction).filter(
                         Transaction.user_id == user.id,

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import create_autospec
 
@@ -29,7 +29,7 @@ async def test_spent_defaults_to_current_date(monkeypatch):
     # Bypass isinstance(user, User) check
     monkeypatch.setattr(budget_routes, "User", type(user))
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     result = await budget_routes.spent(user=user, db=db)
     data = json.loads(result.body.decode())
 

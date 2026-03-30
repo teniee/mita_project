@@ -5,7 +5,7 @@ Provides standardized success and error response formats that integrate
 with the comprehensive error handling system.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
@@ -33,7 +33,7 @@ class StandardizedResponse:
             "success": True,
             "message": message,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "request_id": f"req_{uuid4().hex[:12]}"
         }
         
@@ -212,7 +212,7 @@ class FinancialResponseHelper:
         
         meta = {
             "analysis_type": analysis_type,
-            "generated_at": datetime.utcnow().isoformat() + "Z"
+            "generated_at": datetime.now(timezone.utc).isoformat() + "Z"
         }
         
         if confidence_score is not None:

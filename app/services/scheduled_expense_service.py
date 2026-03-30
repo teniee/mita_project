@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
@@ -165,7 +165,7 @@ async def cancel_scheduled_expense(
         return expense
 
     expense.status = "cancelled"
-    expense.deleted_at = datetime.utcnow()
+    expense.deleted_at = datetime.now(timezone.utc)
     await db.flush()
 
     logger.info(

@@ -23,7 +23,7 @@
   - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
   - [H-02: API base URL hardcoded in Flutter with no environment switching — FULLY FIXED](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
-  - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12)](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
+  - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12) — FULLY FIXED](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
   - [H-06: aioredis dependency is deprecated/dead](#h-06-aioredis-dependency-is-deprecateddead)
   - [H-07: Excessive debug logging in auth flow](#h-07-excessive-debug-logging-in-auth-flow)
@@ -421,14 +421,16 @@ At module import time, if `Settings()` fails for any reason, a `MinimalSettings`
 ---
 
 <a id="h-04-datetimeutcnow-used-throughout-deprecated-in-python-312"></a>
-### H-04: `datetime.utcnow()` used throughout (deprecated in Python 3.12)
+### H-04: `datetime.utcnow()` used throughout (deprecated in Python 3.12) — FULLY FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **Files** | `app/db/models/user.py` lines 20–21, `app/api/auth/login.py` lines 88, 109, 179, 186, `app/api/auth/registration.py` lines 101–102, and many more |
+| **Files** | 120+ files across `app/`, `scripts/`, `tests/`, `infrastructure/lambda/secret-rotation/jwt_rotation.py`, `infrastructure/lambda/secret-rotation/database_rotation.py` |
 | **Priority** | P2 — Fix before Python 3.13 |
 | **Effort** | 1 hour (project-wide search/replace) |
+| **Status** | **FULLY FIXED** (2026-03-29 initial, 2026-03-30 infrastructure lambdas) |
+| **Fix commit** | `feature/fix-h04-utcnow-deprecation` — commits `007a5b2` (initial) + `ba02602` (infra lambdas) |
 
 #### Description
 
@@ -482,6 +484,31 @@ from datetime import datetime, timezone
 created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 ```
+
+#### Fix Applied (2026-03-29)
+
+Replaced **all 522 occurrences** of `datetime.utcnow()` across the entire project with timezone-aware alternatives:
+
+1. **`datetime.utcnow()`** → **`datetime.now(timezone.utc)`** — all direct calls in app/, scripts/, tests/
+2. **`default=datetime.utcnow`** → **`default=lambda: datetime.now(timezone.utc)`** — SQLAlchemy column defaults (lazy callable)
+3. **`onupdate=datetime.utcnow`** → **`onupdate=lambda: datetime.now(timezone.utc)`** — SQLAlchemy onupdate triggers
+4. **`default_factory=datetime.utcnow`** → **`default_factory=lambda: datetime.now(timezone.utc)`** — dataclass fields
+5. **`datetime.datetime.utcnow()`** → **`datetime.datetime.now(datetime.timezone.utc)`** — scripts using module-level import
+6. **Test monkeypatches** updated to mock `now(tz)` instead of `utcnow()`
+7. **`timezone`** added to all import statements where missing (including inline/local imports)
+
+**Files modified:** 120+ files across `app/`, `scripts/`, `tests/`
+**Archive files (`.archive/`):** intentionally skipped — dead code
+
+#### Supplementary Fix (2026-03-30)
+
+Fixed **10 additional occurrences** in `infrastructure/lambda/secret-rotation/` that were missed in the initial sweep:
+
+- **`jwt_rotation.py`** — 6 occurrences: timestamps in Lambda responses, secret metadata (`created_at`, `expires_at`, `rotation_timestamp`), and key cleanup scheduling
+- **`database_rotation.py`** — 4 occurrences: timestamps in Lambda responses, `last_rotated` metadata, and rotation audit trail
+- **`timezone`** import added to both files
+
+**Result:** Zero `datetime.utcnow()` remaining in active codebase. Only `.archive/backups_2024-11/routes_old_backup.py` retains the old pattern (intentionally — dead code).
 
 ---
 
@@ -1202,7 +1229,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
 | ~~**P2**~~ | ~~C-02~~ | ~~Restrict Firebase API keys, enable App Check~~ | ~~1 hr~~ | **FIXED** |
 | ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter + eliminate all hardcoded URLs~~ | ~~1 hr~~ | **FULLY FIXED** |
-| **P2** | H-04 | Replace `datetime.utcnow()` project-wide | 1 hr | |
+| ~~**P2**~~ | ~~H-04~~ | ~~Replace `datetime.utcnow()` project-wide (incl. infra lambdas)~~ | ~~1 hr~~ | **FULLY FIXED** |
 | **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |
 | **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |
 | **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min | |

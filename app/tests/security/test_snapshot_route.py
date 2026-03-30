@@ -41,7 +41,7 @@ async def test_snapshot_access_after_logout(monkeypatch):
 
     db = DummyDB(
         types.SimpleNamespace(
-            rating=1, risk=1, summary="s", created_at=datetime.datetime.utcnow()
+            rating=1, risk=1, summary="s", created_at=datetime.datetime.now(datetime.timezone.utc)
         )
     )
 

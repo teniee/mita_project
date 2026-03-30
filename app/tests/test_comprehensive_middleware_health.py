@@ -7,7 +7,7 @@ import pytest
 import asyncio
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -222,7 +222,7 @@ class TestMiddlewareHealthMonitor:
         for i in range(5):
             report = Mock()
             report.overall_status = HealthStatus.HEALTHY if i < 3 else HealthStatus.DEGRADED
-            report.timestamp = datetime.utcnow() - timedelta(minutes=i)
+            report.timestamp = datetime.now(timezone.utc) - timedelta(minutes=i)
             report.response_time_ms = 500 + i * 100
             report.performance_summary = {'healthy_components': 4, 'components_checked': 5}
             mock_reports.append(report)
@@ -553,7 +553,7 @@ class TestHealthAlertManager:
         # Create mock unhealthy health report
         mock_report = Mock()
         mock_report.overall_status = HealthStatus.UNHEALTHY
-        mock_report.timestamp = datetime.utcnow()
+        mock_report.timestamp = datetime.now(timezone.utc)
         mock_report.response_time_ms = 15000  # 15 seconds - critical timeout risk
         mock_report.alerts = ["CRITICAL: System unhealthy"]
         mock_report.issues_detected = ["Multiple components failing"]
@@ -585,7 +585,7 @@ class TestHealthAlertManager:
         # Create mock health report with timeout risk
         mock_report = Mock()
         mock_report.overall_status = HealthStatus.DEGRADED
-        mock_report.timestamp = datetime.utcnow()
+        mock_report.timestamp = datetime.now(timezone.utc)
         mock_report.response_time_ms = 8000  # 8 seconds - approaching timeout
         mock_report.alerts = ["WARNING: High response times"]
         mock_report.issues_detected = ["Components responding slowly"]
@@ -615,7 +615,7 @@ class TestHealthAlertManager:
         assert not alert_manager._is_in_cooldown(rule_name)
         
         # Set cooldown
-        alert_manager.cooldown_tracker[rule_name] = datetime.utcnow() + timedelta(minutes=5)
+        alert_manager.cooldown_tracker[rule_name] = datetime.now(timezone.utc) + timedelta(minutes=5)
         
         # Second trigger - should be in cooldown
         assert alert_manager._is_in_cooldown(rule_name)
@@ -629,7 +629,7 @@ class TestHealthAlertManager:
             message="Test alert message",
             severity=AlertSeverity.MEDIUM,
             component="test_component",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         # Add to history
@@ -649,7 +649,7 @@ class TestHealthAlertManager:
             message="Test alert for acknowledgement",
             severity=AlertSeverity.HIGH,
             component="test_component",
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         alert_manager.active_alerts[alert.id] = alert
@@ -712,7 +712,7 @@ class TestHealthCheckIntegration:
         # Mock a health check response structure
         mock_response = {
             'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'middleware': {
                 'overall_status': 'healthy',
                 'metrics': {},

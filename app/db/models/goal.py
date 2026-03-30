@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Date, Text
@@ -38,8 +38,8 @@ class Goal(Base):
 
     # Dates
     target_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True, default=None)  # Soft delete support
 
@@ -61,7 +61,7 @@ class Goal(Base):
         """Check if goal is past target date"""
         if not self.target_date:
             return False
-        return self.target_date < datetime.utcnow().date() and not self.is_completed
+        return self.target_date < datetime.now(timezone.utc).date() and not self.is_completed
 
     def update_progress(self):
         """Calculate and update progress percentage"""
@@ -74,11 +74,11 @@ class Goal(Base):
             # Auto-complete if target reached
             if self.progress >= 100 and self.status == 'active':
                 self.status = 'completed'
-                self.completed_at = datetime.utcnow()
+                self.completed_at = datetime.now(timezone.utc)
         else:
             self.progress = 0
 
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     def add_savings(self, amount: Decimal):
         """Add amount to saved_amount and update progress"""

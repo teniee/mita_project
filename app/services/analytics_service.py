@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import extract, func, select
@@ -10,8 +10,8 @@ from app.services.core.api.analytics_engine import detect_anomalies
 
 
 def get_monthly_category_totals(user_id: str, db: Session):
-    current_year = datetime.utcnow().year
-    current_month = datetime.utcnow().month
+    current_year = datetime.now(timezone.utc).year
+    current_month = datetime.now(timezone.utc).month
 
     stmt = (
         select(Transaction.category, func.sum(Transaction.amount).label("total"))
@@ -31,8 +31,8 @@ def get_monthly_category_totals(user_id: str, db: Session):
 def get_monthly_trend(user_id: str, db: Session):
     """Return daily totals for the current month."""
 
-    current_year = datetime.utcnow().year
-    current_month = datetime.utcnow().month
+    current_year = datetime.now(timezone.utc).year
+    current_month = datetime.now(timezone.utc).month
 
     stmt = (
         select(
@@ -54,7 +54,7 @@ def get_monthly_trend(user_id: str, db: Session):
 
 
 def analyze_aggregate(calendar: List[dict]):
-    current_month = datetime.utcnow().strftime("%Y-%m")
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
     return aggregate_monthly_data(calendar, current_month)
 
 

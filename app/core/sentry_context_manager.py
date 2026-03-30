@@ -5,7 +5,7 @@ Provides comprehensive context tracking, custom error handlers, and financial co
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, List
 from contextlib import contextmanager
 from dataclasses import dataclass, asdict
@@ -113,8 +113,8 @@ class SentryContextManager:
     ):
         """Context manager for financial operations with comprehensive tracking"""
         
-        operation_id = f"{operation_name}_{datetime.utcnow().isoformat()}"
-        start_time = datetime.utcnow()
+        operation_id = f"{operation_name}_{datetime.now(timezone.utc).isoformat()}"
+        start_time = datetime.now(timezone.utc)
         
         with push_scope() as scope:
             try:
@@ -197,7 +197,7 @@ class SentryContextManager:
                 }
                 
                 # Record successful completion
-                duration = datetime.utcnow() - start_time
+                duration = datetime.now(timezone.utc) - start_time
                 
                 add_breadcrumb(
                     message=f"Completed financial operation: {operation_name}",
@@ -224,7 +224,7 @@ class SentryContextManager:
                 
             except Exception as e:
                 # Record failed operation
-                duration = datetime.utcnow() - start_time
+                duration = datetime.now(timezone.utc) - start_time
                 
                 add_breadcrumb(
                     message=f"Failed financial operation: {operation_name}",
@@ -355,7 +355,7 @@ class SentryContextManager:
             "transaction_type": transaction_type,
             "merchant": merchant,
             "category": category,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "compliance_scope": "pci_dss"
         })
         
@@ -402,7 +402,7 @@ class SentryContextManager:
         set_context("security", {
             "event_type": event_type,
             "severity": severity,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": details,
             "compliance_impact": "high" if severity in ["critical", "high"] else "medium"
         })
@@ -427,7 +427,7 @@ class SentryContextManager:
             details={
                 "severity": severity,
                 "event_details": details,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
     
@@ -448,7 +448,7 @@ class SentryContextManager:
             "regulation": regulation,
             "requirement": requirement,
             "status": status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": details or {}
         })
         
@@ -481,7 +481,7 @@ class SentryContextManager:
             "value": value,
             "unit": unit,
             "operation": operation,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id
         })
         
@@ -535,7 +535,7 @@ class SentryContextManager:
         
         audit_entry = {
             "event_type": event_type.value,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
             "operation_name": operation_name,
             "details": details or {},
@@ -564,7 +564,7 @@ class SentryContextManager:
     ) -> List[Dict[str, Any]]:
         """Get audit trail for compliance reporting"""
         
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         
         filtered_trail = []
         for entry in self.audit_trail:
@@ -597,7 +597,7 @@ class SentryContextManager:
         )
         
         report = {
-            "report_generated": datetime.utcnow().isoformat(),
+            "report_generated": datetime.now(timezone.utc).isoformat(),
             "report_period_days": days_back,
             "user_filter": user_id,
             "total_events": len(audit_data),

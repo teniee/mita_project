@@ -90,7 +90,7 @@ class ProductionBackupSystem:
         Returns:
             Dict with backup metadata
         """
-        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
         backup_id = f"{backup_type}-{timestamp}"
         
         logger.info(f"Starting {backup_type} backup: {backup_id}")
@@ -173,7 +173,7 @@ class ProductionBackupSystem:
             metadata = {
                 "backup_id": backup_id,
                 "backup_type": backup_type,
-                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "s3_bucket": self.bucket,
                 "s3_key": s3_key,
                 "sql_checksum": sql_checksum,
@@ -320,7 +320,7 @@ class ProductionBackupSystem:
     
     def _cleanup_old_backups(self):
         """Remove backups older than retention period"""
-        cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=self.retention_days)
+        cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=self.retention_days)
         
         try:
             response = self.s3.list_objects_v2(Bucket=self.bucket, Prefix="backups/")

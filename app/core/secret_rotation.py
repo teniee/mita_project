@@ -19,7 +19,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Callable
 import smtplib
@@ -189,7 +189,7 @@ class SecretRotationManager:
         
         # Calculate scheduled time
         if force:
-            scheduled_time = datetime.utcnow()
+            scheduled_time = datetime.now(timezone.utc)
         else:
             last_rotation = secret_metadata.created_at
             scheduled_time = last_rotation + timedelta(days=policy.rotation_interval_days)
@@ -221,7 +221,7 @@ class SecretRotationManager:
         
         try:
             # Update task status
-            task.last_attempt = datetime.utcnow()
+            task.last_attempt = datetime.now(timezone.utc)
             task.retry_count += 1
             
             # Get current secret value for rollback
@@ -486,7 +486,7 @@ MITA Finance - Secret Rotation Notification
 
 Event: {event_type.title()}
 Message: {message}
-Timestamp: {datetime.utcnow().isoformat()}
+Timestamp: {datetime.now(timezone.utc).isoformat()}
 
 Details:
 {json.dumps(context, indent=2, default=str)}
@@ -533,7 +533,7 @@ MITA DevOps Team
         """
         logger.info("Running scheduled secret rotations")
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         due_tasks = [task for task in self.pending_tasks if task.scheduled_time <= current_time]
         
         results = {

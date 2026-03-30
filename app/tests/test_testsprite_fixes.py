@@ -17,7 +17,7 @@ import sys
 import types
 import uuid
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException, status
@@ -152,7 +152,7 @@ def mock_db_with_user(mock_user):
                 advice = SimpleNamespace(
                     id="advice-001",
                     user_id=self.user.id,
-                    date=datetime.utcnow(),
+                    date=datetime.now(timezone.utc),
                     type="savings",
                     text="Save more money this month"
                 )

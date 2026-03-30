@@ -33,7 +33,7 @@ def cohort_insights(
 ):
     """Get cohort-based insights for the user"""
     from app.db.models import Transaction, User as UserModel
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from collections import defaultdict
 
     # Get user's monthly income for cohort classification
@@ -41,7 +41,7 @@ def cohort_insights(
     user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
 
     # Calculate user's actual spending (last 30 days)
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     user_transactions = db.query(Transaction).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= thirty_days_ago
@@ -120,7 +120,7 @@ def income_classification(
 ):
     """Get income classification analysis for the user"""
     from app.db.models import Transaction, User as UserModel
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from collections import defaultdict
 
     # Get user's actual monthly income from profile
@@ -148,7 +148,7 @@ def income_classification(
         confidence = 0.9
 
     # Analyze spending patterns from last 90 days
-    ninety_days_ago = datetime.utcnow() - timedelta(days=90)
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
     transactions = db.query(Transaction).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= ninety_days_ago
@@ -233,7 +233,7 @@ def get_peer_comparison(
     """Get peer comparison data based on user's cohort"""
     from app.db.models.transaction import Transaction
     from app.db.models import User as UserModel
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from sqlalchemy import func
 
     # Get user's monthly income for cohort determination
@@ -241,7 +241,7 @@ def get_peer_comparison(
     user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
 
     # Get user's spending for last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     user_spending = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= thirty_days_ago

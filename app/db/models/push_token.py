@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,4 +14,4 @@ class PushToken(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     token = Column(String, nullable=False, unique=True)
     platform = Column(String, nullable=False, default="fcm")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

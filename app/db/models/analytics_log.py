@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, JSON, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID
@@ -31,7 +31,7 @@ class FeatureUsageLog(Base):
     app_version = Column(String(20), nullable=True)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
 
 class FeatureAccessLog(Base):
@@ -56,7 +56,7 @@ class FeatureAccessLog(Base):
     extra_data = Column(JSON, nullable=True)  # Renamed from 'metadata' (reserved keyword)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
 
 class PaywallImpressionLog(Base):
@@ -80,4 +80,4 @@ class PaywallImpressionLog(Base):
     extra_data = Column(JSON, nullable=True)  # Renamed from 'metadata' (reserved keyword)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)

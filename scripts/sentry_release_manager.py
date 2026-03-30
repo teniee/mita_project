@@ -8,7 +8,7 @@ import os
 import sys
 import subprocess
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 import argparse
 import logging
@@ -91,7 +91,7 @@ class SentryReleaseManager:
                 "commit_author": commit_author,
                 "branch": branch,
                 "repository_url": repo_url,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
             }
         
         except subprocess.CalledProcessError as e:
@@ -102,7 +102,7 @@ class SentryReleaseManager:
                 "commit_author": "unknown",
                 "branch": "unknown",
                 "repository_url": "unknown",
-                "timestamp": datetime.utcnow().isoformat() + "Z"
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
             }
     
     def create_release(
@@ -120,7 +120,7 @@ class SentryReleaseManager:
         release_data = {
             "version": version,
             "projects": projects,
-            "dateReleased": datetime.utcnow().isoformat() + "Z",
+            "dateReleased": datetime.now(timezone.utc).isoformat() + "Z",
             "refs": [
                 {
                     "repository": git_info["repository_url"],
@@ -186,8 +186,8 @@ class SentryReleaseManager:
         deployment_data = {
             "environment": env,
             "name": deployment_name,
-            "dateStarted": datetime.utcnow().isoformat() + "Z",
-            "dateFinished": datetime.utcnow().isoformat() + "Z",
+            "dateStarted": datetime.now(timezone.utc).isoformat() + "Z",
+            "dateFinished": datetime.now(timezone.utc).isoformat() + "Z",
             "url": url
         }
         
@@ -215,7 +215,7 @@ class SentryReleaseManager:
         url = f"{self.base_url}/organizations/{self.org_slug}/releases/{version}/"
         
         finalize_data = {
-            "dateReleased": datetime.utcnow().isoformat() + "Z"
+            "dateReleased": datetime.now(timezone.utc).isoformat() + "Z"
         }
         
         try:
@@ -375,12 +375,12 @@ class SentryReleaseManager:
                         },
                         {
                             "title": "Timestamp",
-                            "value": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                            "value": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                             "short": True
                         }
                     ],
                     "footer": "MITA Finance Deployment System",
-                    "ts": int(datetime.utcnow().timestamp())
+                    "ts": int(datetime.now(timezone.utc).timestamp())
                 }
             ]
         }
@@ -473,12 +473,12 @@ def get_version_from_environment() -> str:
             universal_newlines=True
         ).strip()
         
-        timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"auto-{timestamp}-{commit_sha}"
         
     except subprocess.CalledProcessError:
         # Fallback to timestamp
-        return f"auto-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        return f"auto-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
 
 def main():

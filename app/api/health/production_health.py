@@ -6,7 +6,7 @@ Comprehensive health monitoring for financial-grade applications
 import asyncio
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, status, Depends
 import psutil
@@ -26,7 +26,7 @@ class ProductionHealthChecker:
     """Comprehensive health checker for production environment"""
     
     def __init__(self):
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
         self.health_history: List[Dict[str, Any]] = []
         self.max_history_size = 100
     
@@ -254,7 +254,7 @@ class ProductionHealthChecker:
     def check_application_health(self) -> Dict[str, Any]:
         """Check application-specific health metrics"""
         try:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             uptime = current_time - self.start_time
             uptime_seconds = int(uptime.total_seconds())
             
@@ -343,7 +343,7 @@ class ProductionHealthChecker:
             
             health_report = {
                 "overall_status": overall_status,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "services": all_checks,
                 "summary": {
                     "healthy_services": healthy_count,
@@ -367,7 +367,7 @@ class ProductionHealthChecker:
             logger.error(f"Comprehensive health check failed: {str(e)}")
             return {
                 "overall_status": "unhealthy",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "message": f"Health check system failure: {str(e)}",
                 "error": str(e)
             }
@@ -429,7 +429,7 @@ async def production_health_check(session: AsyncSession = Depends(get_async_sess
                 "overall_status": "unhealthy",
                 "message": "Health check system failure",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 
@@ -489,7 +489,7 @@ async def prometheus_metrics(session: AsyncSession = Depends(get_async_session))
         
         return {
             "metrics": "\n".join(metrics),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "format": "prometheus"
         }
         
@@ -498,5 +498,5 @@ async def prometheus_metrics(session: AsyncSession = Depends(get_async_session))
         return {
             "metrics": "mita_health_status 0\nmita_metrics_error 1",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }

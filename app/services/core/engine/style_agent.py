@@ -1,6 +1,6 @@
 # app/services/core/engine/style_agent.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 
@@ -19,7 +19,7 @@ def personalize_ui(user_id: str, profile: dict) -> Dict[str, str]:
     mood = profile.get("mood", "neutral")
     preferences = profile.get("preferences", {})
     preferred_theme = preferences.get("theme")
-    time_now = datetime.utcnow().hour
+    time_now = datetime.now(timezone.utc).hour
 
     # Theme: light/dark
     if preferred_theme:

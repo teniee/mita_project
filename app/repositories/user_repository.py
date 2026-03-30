@@ -4,7 +4,7 @@ Provides user-specific database operations with advanced features
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, and_, or_
 
 from app.repositories.base_repository import BaseRepository
@@ -36,7 +36,7 @@ class UserRepository(BaseRepository[User]):
     
     async def update_last_login(self, user_id: int) -> bool:
         """Update user's last login timestamp"""
-        return await self.update(user_id, {'last_login': datetime.utcnow()}) is not None
+        return await self.update(user_id, {'last_login': datetime.now(timezone.utc)}) is not None
     
     async def get_premium_users(self) -> List[User]:
         """Get all premium users"""
@@ -91,14 +91,14 @@ class UserRepository(BaseRepository[User]):
             premium_count = premium_users.scalar() or 0
             
             # Active users (logged in within last 30 days)
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
             active_users = await db.execute(
                 select(func.count(User.id)).where(User.last_login >= thirty_days_ago)
             )
             active_count = active_users.scalar() or 0
             
             # Users registered in last 7 days
-            seven_days_ago = datetime.utcnow() - timedelta(days=7)
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             new_users = await db.execute(
                 select(func.count(User.id)).where(User.created_at >= seven_days_ago)
             )
@@ -116,7 +116,7 @@ class UserRepository(BaseRepository[User]):
     async def get_inactive_users(self, days: int = 30) -> List[User]:
         """Get users who haven't logged in for specified days"""
         async with get_async_db_context() as db:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             result = await db.execute(
                 select(User).where(
                     or_(
@@ -138,13 +138,13 @@ class UserRepository(BaseRepository[User]):
     async def get_expiring_premium_users(self, days_ahead: int = 7) -> List[User]:
         """Get premium users whose subscription expires within specified days"""
         async with get_async_db_context() as db:
-            future_date = datetime.utcnow() + timedelta(days=days_ahead)
+            future_date = datetime.now(timezone.utc) + timedelta(days=days_ahead)
             result = await db.execute(
                 select(User).where(
                     and_(
                         User.is_premium == True,
                         User.premium_until <= future_date,
-                        User.premium_until >= datetime.utcnow()
+                        User.premium_until >= datetime.now(timezone.utc)
                     )
                 ).order_by(User.premium_until.asc())
             )
@@ -162,11 +162,11 @@ class UserRepository(BaseRepository[User]):
             if not user:
                 return {}
             
-            days_since_registration = (datetime.utcnow() - user.created_at).days
+            days_since_registration = (datetime.now(timezone.utc) - user.created_at).days
             days_since_last_login = None
             
             if user.last_login:
-                days_since_last_login = (datetime.utcnow() - user.last_login).days
+                days_since_last_login = (datetime.now(timezone.utc) - user.last_login).days
             
             return {
                 'user_id': user_id,

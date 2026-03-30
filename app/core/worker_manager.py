@@ -8,7 +8,7 @@ import signal
 import sys
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Callable, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -88,8 +88,8 @@ class MitaWorker(Worker):
         """Start worker with enhanced monitoring."""
         try:
             self.state = WorkerState.IDLE
-            self.start_time = datetime.utcnow()
-            self.last_heartbeat = datetime.utcnow()
+            self.start_time = datetime.now(timezone.utc)
+            self.last_heartbeat = datetime.now(timezone.utc)
             
             # Start health monitoring thread
             self._start_health_monitoring()
@@ -119,7 +119,7 @@ class MitaWorker(Worker):
     def perform_job(self, job, queue):
         """Override job performance to add monitoring."""
         self.state = WorkerState.BUSY
-        self.last_heartbeat = datetime.utcnow()
+        self.last_heartbeat = datetime.now(timezone.utc)
         
         try:
             result = super().perform_job(job, queue)
@@ -152,7 +152,7 @@ class MitaWorker(Worker):
             raise
         finally:
             self.state = WorkerState.IDLE
-            self.last_heartbeat = datetime.utcnow()
+            self.last_heartbeat = datetime.now(timezone.utc)
             
             # Check if max jobs reached
             if self.jobs_processed >= self.config.max_jobs:
@@ -161,7 +161,7 @@ class MitaWorker(Worker):
 
     def get_health_status(self) -> Dict[str, Any]:
         """Get comprehensive worker health status."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         uptime = (now - self.start_time).total_seconds() if self.start_time else 0
         
         return {
@@ -190,7 +190,7 @@ class MitaWorker(Worker):
             while not self.shutdown_requested:
                 try:
                     # Update heartbeat
-                    self.last_heartbeat = datetime.utcnow()
+                    self.last_heartbeat = datetime.now(timezone.utc)
                     
                     # Store health status in Redis
                     health_key = f"worker_health:{self.config.worker_id}"

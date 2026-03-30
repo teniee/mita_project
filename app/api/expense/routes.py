@@ -34,7 +34,7 @@ def add_expense(
         )
     
     # Check user's daily spending limit (optional business rule)
-    from datetime import datetime, date
+    from datetime import datetime, date, timezone
     date.today()
     # This could query user's daily expenses and check against limits
     
@@ -48,7 +48,7 @@ def add_expense(
         amount=expense_data['amount'],
         category=expense_data.get('action', 'expense'),
         description=f"Expense: {expense_data.get('action', 'general')}",
-        spent_at=datetime.utcnow()
+        spent_at=datetime.now(timezone.utc)
     )
     db.add(transaction)
     db.commit()
@@ -77,10 +77,10 @@ def get_history(
 
     # Query transactions (expenses) from database
     from app.db.models import Transaction
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     # Get last 90 days of expenses
-    ninety_days_ago = datetime.utcnow() - timedelta(days=90)
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
     transactions = db.query(Transaction).filter(
         Transaction.user_id == user.id,
         Transaction.spent_at >= ninety_days_ago

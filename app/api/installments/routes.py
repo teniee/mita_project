@@ -7,7 +7,7 @@ installment tracking, calendar integration, and achievement tracking.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 from decimal import Decimal
@@ -122,7 +122,7 @@ async def create_or_update_financial_profile(
             profile.rent_payment = profile_data.rent_payment
             profile.subscriptions_payment = profile_data.subscriptions_payment
             profile.planning_mortgage = profile_data.planning_mortgage
-            profile.updated_at = datetime.utcnow()
+            profile.updated_at = datetime.now(timezone.utc)
 
             logger.info(f"Updated financial profile for user {user.id}")
         else:
@@ -474,7 +474,7 @@ async def update_installment(
         if update_data.notes is not None:
             installment.notes = update_data.notes
 
-        installment.updated_at = datetime.utcnow()
+        installment.updated_at = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(installment)
@@ -536,7 +536,7 @@ async def delete_installment(
 
         # Soft delete - set deleted_at timestamp
         from datetime import datetime
-        installment.deleted_at = datetime.utcnow()
+        installment.deleted_at = datetime.now(timezone.utc)
         await db.commit()
 
         logger.info(f"Soft-deleted installment {installment_id} for user {user.id}")
@@ -606,7 +606,7 @@ async def get_monthly_calendar(
         # Build calendar events
         payment_events = []
         total_payments = Decimal('0.00')
-        today = datetime.utcnow()
+        today = datetime.now(timezone.utc)
 
         for installment in installments:
             # Check if payment falls in this month

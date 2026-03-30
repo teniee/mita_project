@@ -6,7 +6,7 @@ Provides secure JWT token configuration and validation
 import os
 import logging
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 import uuid
 
@@ -52,7 +52,7 @@ def create_secure_access_token(user_data: Dict[str, Any]) -> str:
     """
     Create secure access token with proper expiration and claims
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     payload = {
         'sub': str(user_data.get('sub', user_data.get('user_id', ''))),
@@ -75,7 +75,7 @@ def create_secure_refresh_token(user_data: Dict[str, Any]) -> str:
     """
     Create secure refresh token with longer expiration
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     payload = {
         'sub': str(user_data.get('sub', user_data.get('user_id', ''))),

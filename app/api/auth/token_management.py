@@ -9,7 +9,7 @@ Handles:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -171,7 +171,7 @@ async def logout_user_standardized(
 
         return StandardizedResponse.success(
             message="Logged out successfully",
-            data={"logout_time": datetime.utcnow().isoformat() + "Z"}
+            data={"logout_time": datetime.now(timezone.utc).isoformat() + "Z"}
         )
 
     except Exception as e:
