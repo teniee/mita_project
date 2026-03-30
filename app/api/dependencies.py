@@ -96,11 +96,11 @@ async def get_current_user(
     CRITICAL FIX: With auto_error=False, OAuth2PasswordBearer returns None when no token is present.
     We must explicitly check for None and raise 401 before any other processing.
     """
-    logger.info("🔐 GET_CURRENT_USER CALLED")
+    logger.debug("get_current_user called")
 
     # CRITICAL: Check for None token first (when auto_error=False, scheme returns None)
     if token is None:
-        logger.warning("❌ No token provided (Authorization header missing)")
+        logger.warning("Auth: no token provided (Authorization header missing)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -112,7 +112,7 @@ async def get_current_user(
         logger.debug(f"Token received - length: {len(token) if token else 0}")
 
         if not token or token.strip() == "":
-            logger.warning("❌ Empty or invalid token provided")
+            logger.warning("Auth: empty or invalid token provided")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "empty_token",
@@ -128,12 +128,10 @@ async def get_current_user(
 
         # Verify and decode token with comprehensive validation
         # Wrap in try-except to catch ANY exception from verify_token
-        logger.info("📞 Calling verify_token for access_token...")
+        logger.debug("Calling verify_token for access_token")
         try:
             payload = await verify_token(token, token_type="access_token")
-            logger.info(f"✅ verify_token returned - payload is {'None' if payload is None else 'present'}")
-            if payload:
-                logger.info(f"Payload user_id (sub): {payload.get('sub')}")
+            logger.debug(f"verify_token returned: {'None' if payload is None else 'valid payload'}")
         except (
             InvalidTokenError,
             ExpiredSignatureError,
@@ -145,7 +143,7 @@ async def get_current_user(
             PyJWTError
         ) as jwt_error:
             # JWT errors should always return 401
-            logger.warning(f"❌ JWT validation error during verify_token: {jwt_error}")
+            logger.warning(f"Auth: JWT validation error: {type(jwt_error).__name__}")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "jwt_verify_error",
@@ -162,7 +160,7 @@ async def get_current_user(
         except Exception as verify_error:
             # ANY other error from verify_token should also return 401 (not 500)
             # This handles database errors, network errors, etc. during token verification
-            logger.warning(f"❌ Token verification system error: {verify_error}", exc_info=True)
+            logger.warning(f"Auth: token verification system error: {type(verify_error).__name__}", exc_info=True)
             try:
                 log_security_event("authentication_failure", {
                     "reason": "verify_system_error",
@@ -178,7 +176,7 @@ async def get_current_user(
             )
 
         if not payload:
-            logger.warning("❌ Token verification failed - returned None")
+            logger.warning("Auth: token verification failed (invalid token)")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "invalid_token",
@@ -192,10 +190,9 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
-        logger.info("🔍 Extracting user_id from payload...")
         user_id = payload.get("sub")
         if not user_id:
-            logger.warning("❌ Token missing user ID (sub claim)")
+            logger.warning("Auth: token missing user ID (sub claim)")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "missing_user_id",
@@ -209,13 +206,9 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
-        logger.info(f"✅ User ID extracted: {user_id}")
-
         # Query user from cache or database
-        logger.info(f"📊 Querying user from cache/database for user_id={user_id}...")
         try:
             user = await _get_user_from_cache_or_db(user_id, db)
-            logger.info(f"✅ User query completed - user is {'None' if user is None else 'found'}")
             if user:
                 # CRITICAL FIX: Access ALL attributes before session closes to prevent DetachedInstanceError
                 # Accessing these attributes loads them into SQLAlchemy's instance state,
@@ -231,10 +224,10 @@ async def get_current_user(
                 user.budget_method if hasattr(user, 'budget_method') else None
                 user.savings_goal if hasattr(user, 'savings_goal') else None
                 is_premium = user.is_premium if hasattr(user, 'is_premium') else False
-                logger.info(f"User preloaded: email={email}, timezone={timezone}, is_premium={is_premium}")
+                logger.debug(f"User {user_id} attributes preloaded")
         except Exception as db_error:
             # Database errors during user lookup are system errors (500)
-            logger.error(f"❌ Database error during user lookup: {db_error}", exc_info=True)
+            logger.error(f"Auth: database error during user lookup: {db_error}", exc_info=True)
             try:
                 log_security_event("database_error", {
                     "operation": "user_lookup",
@@ -249,7 +242,7 @@ async def get_current_user(
             )
 
         if not user:
-            logger.warning(f"❌ User {user_id} not found in database")
+            logger.warning(f"Auth: user {user_id} not found in database")
             try:
                 log_security_event("authentication_failure", {
                     "reason": "user_not_found",
@@ -268,7 +261,7 @@ async def get_current_user(
         user._token_payload = payload
         user._token_scopes = payload.get("scope", "").split()
 
-        logger.info(f"✅✅✅ Successfully authenticated user {user_id} with scopes: {user._token_scopes}")
+        logger.info(f"Auth: user {user_id} authenticated successfully")
         try:
             log_security_event("authentication_success", {
                 "user_id": user_id,
@@ -279,7 +272,7 @@ async def get_current_user(
         except Exception as log_err:
             logger.error(f"Failed to log security event: {log_err}")
 
-        logger.info(f"🎉 RETURNING USER OBJECT for {user_id}")
+        logger.debug(f"Returning user object for {user_id}")
         return user
 
     except HTTPException:
@@ -296,7 +289,7 @@ async def get_current_user(
         PyJWTError
     ) as jwt_error:
         # ALL JWT-related exceptions should return 401 Unauthorized
-        logger.warning(f"JWT validation error: {jwt_error}")
+        logger.warning(f"Auth: JWT validation error: {type(jwt_error).__name__}")
         try:
             log_security_event("authentication_failure", {
                 "reason": "jwt_error",
@@ -312,7 +305,7 @@ async def get_current_user(
         )
     except Exception as e:
         # Only truly unexpected non-JWT, non-HTTP errors should return 500
-        logger.error(f"Unexpected error in get_current_user: {e}", exc_info=True)
+        logger.error(f"Auth: unexpected error in get_current_user: {e}", exc_info=True)
         try:
             log_security_event("system_error", {
                 "operation": "get_current_user",
@@ -438,7 +431,7 @@ async def get_refresh_token_user(
     """
     # CRITICAL: Check for None token first (when auto_error=False, scheme returns None)
     if token is None:
-        logger.warning("❌ No refresh token provided (Authorization header missing)")
+        logger.warning("Auth: no refresh token provided (Authorization header missing)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

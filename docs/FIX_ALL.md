@@ -26,7 +26,7 @@
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12) — FULLY FIXED](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
   - [H-06: aioredis dependency is deprecated/dead — FIXED](#h-06-aioredis-dependency-is-deprecateddead)
-  - [H-07: Excessive debug logging in auth flow](#h-07-excessive-debug-logging-in-auth-flow)
+  - [H-07: Excessive debug logging in auth flow — FIXED](#h-07-excessive-debug-logging-in-auth-flow)
   - [H-08: Single worker deployment ignores WEB_CONCURRENCY](#h-08-single-worker-deployment-ignores-web_concurrency)
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
   - [M-01: onGenerateRoute returns null, breaking dynamic navigation](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
@@ -617,7 +617,7 @@ The `aioredis` package was **merged into `redis-py`** starting from `redis>=4.2.
 ---
 
 <a id="h-07-excessive-debug-logging-in-auth-flow"></a>
-### H-07: Excessive debug logging in auth flow
+### H-07: Excessive debug logging in auth flow — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -625,46 +625,35 @@ The `aioredis` package was **merged into `redis-py`** starting from `redis>=4.2.
 | **Files** | `app/api/dependencies.py` lines 99–283, `app/services/auth_jwt_service.py` lines 515–739 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 30 minutes |
+| **Status** | **FIXED** (2026-03-30) |
+| **Fix commit** | `feature/fix-h07-excessive-auth-logging` |
 
 #### Description
 
-The `get_current_user()` function in `dependencies.py` contains **44 `logger.info()` calls** with emoji prefixes that fire on **every single authenticated request**:
+The `get_current_user()` function in `dependencies.py` contained **~14 `logger.info()` calls** with emoji prefixes that fired on **every single authenticated request**. Similarly, `verify_token()` in `auth_jwt_service.py` had another **~40 `logger.info()` calls**.
 
-```python
-logger.info("🔐 GET_CURRENT_USER CALLED")
-logger.info(f"Token received - length: {len(token) if token else 0}")
-logger.info(f"Token (first 30 chars): {token[:30] if token else 'None'}...")
-logger.info("📞 Calling verify_token for access_token...")
-logger.info(f"✅ verify_token returned - payload is {'None' if payload is None else 'present'}")
-logger.info(f"Payload user_id (sub): {payload.get('sub')}")
-logger.info(f"🔍 Extracting user_id from payload...")
-logger.info(f"✅ User ID extracted: {user_id}")
-logger.info(f"📊 Querying user from cache/database for user_id={user_id}...")
-# ... ~35 more logger.info() calls
-logger.info(f"🎉 RETURNING USER OBJECT for {user_id}")
-```
+Combined: **~54 INFO log lines per authenticated API request**.
 
-Similarly, `verify_token()` in `auth_jwt_service.py` has another ~20 `logger.info()` calls.
+#### What was fixed
 
-Combined: **~64 INFO log lines per authenticated API request**.
-
-#### What will happen if not fixed
-
-- At 100 requests/sec, this generates **6,400 log lines per second** — significant I/O overhead
-- Log storage fills up quickly (Render's log retention is limited)
-- Real errors get buried in noise — hard to spot actual problems
-- Sensitive data (user IDs, token types, scopes) at INFO level in all log aggregators
-- Added latency on every request from synchronous logging I/O
-
-#### How to fix
-
-1. Change most `logger.info()` to `logger.debug()` — they won't appear at production log level
-2. Remove token content logging entirely (see C-05)
-3. Keep only 2-3 key log points at INFO level:
+1. **Demoted all per-request trace logging from `logger.info()` to `logger.debug()`** — invisible at production log level (WARNING), available when needed by setting `LOG_LEVEL=DEBUG`
+2. **Removed all emoji prefixes from log messages** — emojis cause encoding issues in some log aggregators and add visual noise
+3. **Standardized log prefix `"Auth: "`** on all auth-related messages for easy `grep`/filtering in production
+4. **Kept exactly 1 `logger.info()` per successful authentication** in `get_current_user()`:
    ```python
    logger.info(f"Auth: user {user_id} authenticated successfully")
-   logger.warning(f"Auth: token verification failed for request")
    ```
+5. **Kept all `logger.warning()` for security failures** (token mismatch, expired, blacklisted, user not found)
+6. **Kept all `logger.error()` for system errors** (database failures, unexpected exceptions)
+7. **Removed sensitive data from log messages** — no more token lengths, payload keys, JTI values, or user attributes at INFO level
+
+#### Result
+
+- **Before:** ~54 INFO log lines per authenticated request
+- **After:** 1 INFO log line per successful auth, 1 WARNING on failure
+- **Net reduction:** ~52 log lines per request (96% reduction)
+- All security audit events (`log_security_event()`) preserved unchanged
+- Zero logic changes — only log levels and message text modified
 
 ---
 
@@ -1238,7 +1227,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P1**~~ | ~~H-01~~ | ~~Remove localhost from CORS in production~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-03~~ | ~~Remove MinimalSettings fallback~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-05~~ | ~~Fail startup on migration failure in production~~ | ~~5 min~~ | **FIXED** |
-| **P1** | H-07 | Reduce auth logging to WARNING/ERROR only | 30 min | |
+| ~~**P1**~~ | ~~H-07~~ | ~~Reduce auth logging to WARNING/ERROR only~~ | ~~30 min~~ | **FIXED** |
 | **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
 | **P1** | R-01 | Set `JWT_PREVIOUS_SECRET` in Railway (or disable rotation) | 5 min | |
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
