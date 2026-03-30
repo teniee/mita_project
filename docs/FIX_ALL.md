@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-03-30
+> **Last updated:** 2026-03-30 (H-08 fixed)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -27,7 +27,7 @@
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
   - [H-06: aioredis dependency is deprecated/dead — FIXED](#h-06-aioredis-dependency-is-deprecateddead)
   - [H-07: Excessive debug logging in auth flow — FIXED](#h-07-excessive-debug-logging-in-auth-flow)
-  - [H-08: Single worker deployment ignores WEB_CONCURRENCY](#h-08-single-worker-deployment-ignores-web_concurrency)
+  - [H-08: Single worker deployment ignores WEB_CONCURRENCY — FIXED](#h-08-single-worker-deployment-ignores-web_concurrency)
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
   - [M-01: onGenerateRoute returns null, breaking dynamic navigation](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
   - [M-02: login_data.dict() is deprecated in Pydantic v2](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
@@ -658,21 +658,23 @@ Combined: **~54 INFO log lines per authenticated API request**.
 ---
 
 <a id="h-08-single-worker-deployment-ignores-web_concurrency"></a>
-### H-08: Single worker deployment ignores WEB_CONCURRENCY
+### H-08: Single worker deployment ignores WEB_CONCURRENCY — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **Files** | `start.sh` line 210, `render.yaml` line 46 |
+| **Files** | `start.sh` lines 216–246 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-03-30) |
+| **Fix commit** | `fix/h08-web-concurrency` |
 
 #### Description
 
-The startup script always starts with exactly 1 worker:
+The startup script always started with exactly 1 worker:
 
 ```bash
-# start.sh:207-212
+# start.sh (before fix)
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \
@@ -681,28 +683,23 @@ exec uvicorn app.main:app \
     $UVLOOP_ARG
 ```
 
-But `render.yaml` configures 4 workers:
+But `render.yaml` / Railway configures workers via `WEB_CONCURRENCY` env var. The variable was set but **never read** by `start.sh`.
 
-```yaml
-- key: WEB_CONCURRENCY
-  value: 4
-```
+#### What was fixed
 
-The `WEB_CONCURRENCY` environment variable is set but **never read** by `start.sh`.
-
-#### What will happen if not fixed
-
-- A single uvicorn worker handles all requests sequentially during I/O operations
-- CPU-bound operations (ML inference for spacy/transformers, bcrypt hashing) block the entire server
-- Under moderate load (50+ concurrent users), requests queue and timeout
-- The Render "standard" plan resources (multiple vCPUs, more RAM) are wasted — only 1 core used
-
-#### How to fix
-
-Use the environment variable in `start.sh`:
+1. **`start.sh` now reads `WEB_CONCURRENCY`** — defaults to 1 if not set, so behavior is backwards-compatible
+2. **Input validation added** — validates the value is a positive integer between 1 and 16; falls back to 1 on invalid input with a warning
+3. **Startup log updated** — shows actual worker count in the command echo for observability
 
 ```bash
+# start.sh (after fix)
 WORKERS="${WEB_CONCURRENCY:-1}"
+
+# Validate worker count: must be a positive integer between 1 and 16
+if ! [[ "$WORKERS" =~ ^[0-9]+$ ]] || [ "$WORKERS" -lt 1 ] || [ "$WORKERS" -gt 16 ]; then
+    echo "⚠️  WARNING: Invalid WEB_CONCURRENCY value — falling back to 1 worker"
+    WORKERS=1
+fi
 
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
@@ -712,7 +709,7 @@ exec uvicorn app.main:app \
     $UVLOOP_ARG
 ```
 
-**Note:** With multiple workers, ensure `JWT_SECRET` is set via environment variable (not auto-generated per C-03), otherwise each worker gets a different secret.
+**Note:** JWT_SECRET is already enforced via C-03 fix, so all workers share the same secret from the environment variable.
 
 ---
 
@@ -1228,7 +1225,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P1**~~ | ~~H-03~~ | ~~Remove MinimalSettings fallback~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-05~~ | ~~Fail startup on migration failure in production~~ | ~~5 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-07~~ | ~~Reduce auth logging to WARNING/ERROR only~~ | ~~30 min~~ | **FIXED** |
-| **P1** | H-08 | Use WEB_CONCURRENCY env var for workers | 5 min | |
+| ~~**P1**~~ | ~~H-08~~ | ~~Use WEB_CONCURRENCY env var for workers~~ | ~~5 min~~ | **FIXED** |
 | **P1** | R-01 | Set `JWT_PREVIOUS_SECRET` in Railway (or disable rotation) | 5 min | |
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
