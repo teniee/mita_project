@@ -34,8 +34,7 @@ bcrypt==4.2.0                       # Bcrypt implementation
 cryptography==44.0.1                # SECURITY UPDATE: CVE-2024-12797 fixed
 
 # Redis and Caching
-aioredis==2.0.1                     # Async Redis client
-redis==5.2.0                        # Redis client for sync operations
+redis==5.2.0                        # Redis client (includes redis.asyncio for async operations)
 fastapi-limiter==0.1.6              # Rate limiting
 
 # HTTP and API - UPDATED FOR SECURITY

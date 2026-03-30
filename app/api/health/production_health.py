@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, status, Depends
 import psutil
-import aioredis
+import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 

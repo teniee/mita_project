@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-03-29
+> **Last updated:** 2026-03-30
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -25,7 +25,7 @@
   - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12) — FULLY FIXED](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
-  - [H-06: aioredis dependency is deprecated/dead](#h-06-aioredis-dependency-is-deprecateddead)
+  - [H-06: aioredis dependency is deprecated/dead — FIXED](#h-06-aioredis-dependency-is-deprecateddead)
   - [H-07: Excessive debug logging in auth flow](#h-07-excessive-debug-logging-in-auth-flow)
   - [H-08: Single worker deployment ignores WEB_CONCURRENCY](#h-08-single-worker-deployment-ignores-web_concurrency)
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
@@ -557,7 +557,7 @@ Migration failures can happen when:
 ---
 
 <a id="h-06-aioredis-dependency-is-deprecateddead"></a>
-### H-06: `aioredis` dependency is deprecated/dead
+### H-06: `aioredis` dependency is deprecated/dead — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -565,6 +565,8 @@ Migration failures can happen when:
 | **File** | `requirements.txt` line 37 |
 | **Priority** | P2 |
 | **Effort** | 30 minutes |
+| **Status** | **FIXED** (2026-03-30) |
+| **Fix commit** | `feature/fix-h06-aioredis-deprecated` |
 
 #### Description
 
@@ -597,6 +599,20 @@ The `aioredis` package was **merged into `redis-py`** starting from `redis>=4.2.
    from redis import asyncio as aioredis  # Drop-in compatible
    ```
 3. Or use `redis.asyncio.Redis` directly — the API is nearly identical
+
+#### What was done
+
+1. **Removed** `aioredis==2.0.1` from `requirements.txt` — the project already has `redis==5.2.0` which includes `redis.asyncio`
+2. **Replaced import** in `app/api/health/production_health.py` (the only file still using the deprecated package):
+   ```python
+   # Before
+   import aioredis
+
+   # After
+   import redis.asyncio as aioredis  # Drop-in replacement
+   ```
+3. **No other files affected** — all other Redis usage (`app/core/caching.py`, `app/core/limiter_setup.py`) already used `redis.asyncio`
+4. **Zero API changes** — `redis.asyncio.from_url()` is identical to `aioredis.from_url()`, all downstream code unchanged
 
 ---
 
@@ -1230,7 +1246,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~C-02~~ | ~~Restrict Firebase API keys, enable App Check~~ | ~~1 hr~~ | **FIXED** |
 | ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter + eliminate all hardcoded URLs~~ | ~~1 hr~~ | **FULLY FIXED** |
 | ~~**P2**~~ | ~~H-04~~ | ~~Replace `datetime.utcnow()` project-wide (incl. infra lambdas)~~ | ~~1 hr~~ | **FULLY FIXED** |
-| **P2** | H-06 | Remove `aioredis`, use `redis.asyncio` | 30 min | |
+| ~~**P2**~~ | ~~H-06~~ | ~~Remove `aioredis`, use `redis.asyncio`~~ | ~~30 min~~ | **FIXED** |
 | **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |
 | **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min | |
 | **P2** | M-05 | Make CI quality checks blocking | 15 min | |
