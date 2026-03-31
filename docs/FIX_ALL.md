@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-03-30 (H-08 fixed)
+> **Last updated:** 2026-03-31 (H-08 fully fixed — deployment copy patched)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -663,10 +663,10 @@ Combined: **~54 INFO log lines per authenticated API request**.
 | Field | Value |
 |-------|-------|
 | **Severity** | HIGH |
-| **Files** | `start.sh` lines 216–246 |
+| **Files** | `start.sh` lines 216–246, `scripts/deployment/start.sh` lines 216–246 |
 | **Priority** | P1 — Fix before launch |
 | **Effort** | 5 minutes |
-| **Status** | **FIXED** (2026-03-30) |
+| **Status** | **FIXED** (2026-03-31) |
 | **Fix commit** | `fix/h08-web-concurrency` |
 
 #### Description
@@ -685,14 +685,17 @@ exec uvicorn app.main:app \
 
 But `render.yaml` / Railway configures workers via `WEB_CONCURRENCY` env var. The variable was set but **never read** by `start.sh`.
 
+**Critical detail:** Two copies of `start.sh` exist in the repo. The Dockerfile copies `scripts/deployment/start.sh` (not root `start.sh`) into the production container. The initial fix (2026-03-30) only patched the root file — the actual production deployment file was missed.
+
 #### What was fixed
 
-1. **`start.sh` now reads `WEB_CONCURRENCY`** — defaults to 1 if not set, so behavior is backwards-compatible
+1. **Both `start.sh` files now read `WEB_CONCURRENCY`** — defaults to 1 if not set, so behavior is backwards-compatible
 2. **Input validation added** — validates the value is a positive integer between 1 and 16; falls back to 1 on invalid input with a warning
 3. **Startup log updated** — shows actual worker count in the command echo for observability
+4. **`scripts/deployment/start.sh` patched** (2026-03-31) — the Dockerfile copies this file to `/app/start.sh` in the container, so this is the file that actually runs in Docker-based production deployments
 
 ```bash
-# start.sh (after fix)
+# start.sh and scripts/deployment/start.sh (after fix)
 WORKERS="${WEB_CONCURRENCY:-1}"
 
 # Validate worker count: must be a positive integer between 1 and 16
@@ -710,6 +713,7 @@ exec uvicorn app.main:app \
 ```
 
 **Note:** JWT_SECRET is already enforced via C-03 fix, so all workers share the same secret from the environment variable.
+**Note:** `docker-compose.prod.yml` bypasses `start.sh` and hardcodes `--workers "4"` directly in the compose command — this is intentional for compose-based deployments where worker count is managed in the compose file.
 
 ---
 
@@ -1225,7 +1229,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P1**~~ | ~~H-03~~ | ~~Remove MinimalSettings fallback~~ | ~~10 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-05~~ | ~~Fail startup on migration failure in production~~ | ~~5 min~~ | **FIXED** |
 | ~~**P1**~~ | ~~H-07~~ | ~~Reduce auth logging to WARNING/ERROR only~~ | ~~30 min~~ | **FIXED** |
-| ~~**P1**~~ | ~~H-08~~ | ~~Use WEB_CONCURRENCY env var for workers~~ | ~~5 min~~ | **FIXED** |
+| ~~**P1**~~ | ~~H-08~~ | ~~Use WEB_CONCURRENCY env var for workers (both start.sh files)~~ | ~~5 min~~ | **FIXED** |
 | **P1** | R-01 | Set `JWT_PREVIOUS_SECRET` in Railway (or disable rotation) | 5 min | |
 | **P1** | R-02 | Fix `PYTHONPATH` from Render path to `/app` in Railway | 5 min | |
 | **P2** | R-03 | Set missing env vars in Railway (Sentry, Redis, SMTP) | 15 min | |
