@@ -213,6 +213,18 @@ fi
 echo ""
 echo "🔄 Starting application..."
 
+# Worker configuration — read from WEB_CONCURRENCY env var (set in render.yaml / Railway)
+# Default to 1 worker if not set, ensuring safe single-process fallback
+WORKERS="${WEB_CONCURRENCY:-1}"
+
+# Validate worker count: must be a positive integer between 1 and 16
+if ! [[ "$WORKERS" =~ ^[0-9]+$ ]] || [ "$WORKERS" -lt 1 ] || [ "$WORKERS" -gt 16 ]; then
+    echo "⚠️  WARNING: Invalid WEB_CONCURRENCY value '${WEB_CONCURRENCY}' — falling back to 1 worker"
+    WORKERS=1
+fi
+
+echo "✅ Worker processes: ${WORKERS}"
+
 # Detect uvloop availability for high-performance event loop
 UVLOOP_ARG=""
 if python -c "import uvloop" 2>/dev/null; then
@@ -222,13 +234,13 @@ else
     echo "⚠️  uvloop not available — falling back to default asyncio event loop"
 fi
 
-echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --access-log ${UVLOOP_ARG}"
+echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS} --access-log ${UVLOOP_ARG}"
 echo ""
 
 # Start the application
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \
-    --workers 1 \
+    --workers "${WORKERS}" \
     --access-log \
     $UVLOOP_ARG
