@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-03-31 (H-08 fully fixed — deployment copy patched)
+> **Last updated:** 2026-03-31 (M-01 fixed — onGenerateRoute fallback added)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -29,7 +29,7 @@
   - [H-07: Excessive debug logging in auth flow — FIXED](#h-07-excessive-debug-logging-in-auth-flow)
   - [H-08: Single worker deployment ignores WEB_CONCURRENCY — FIXED](#h-08-single-worker-deployment-ignores-web_concurrency)
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
-  - [M-01: onGenerateRoute returns null, breaking dynamic navigation](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
+  - [M-01: onGenerateRoute returns null, breaking dynamic navigation — FIXED](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
   - [M-02: login_data.dict() is deprecated in Pydantic v2](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
   - [M-03: Missing IgnoredAlert model in __init__.py](#m-03-missing-ignoredalert-model-in-__init__py)
   - [M-04: spacy and transformers in production requirements (huge image)](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
@@ -723,14 +723,15 @@ exec uvicorn app.main:app \
 ---
 
 <a id="m-01-ongenerateroute-returns-null-breaking-dynamic-navigation"></a>
-### M-01: `onGenerateRoute` returns null, breaking dynamic navigation
+### M-01: `onGenerateRoute` returns null, breaking dynamic navigation — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | MEDIUM |
-| **File** | `mobile_app/lib/main.dart` line 351 |
+| **File** | `mobile_app/lib/main.dart` line 348 |
 | **Priority** | P2 |
 | **Effort** | 15 minutes |
+| **Status** | **FIXED** |
 
 #### Description
 
@@ -746,19 +747,60 @@ When `onGenerateRoute` returns `null` and the route name isn't in the `routes` m
 
 Additionally, the log message says "CRITICAL DEBUG" — this is debug logging that fires on **every navigation** in production.
 
-#### How to fix
+#### Solution Applied
+
+Replaced `return null` with a production-grade themed "Not Found" page that:
+
+1. **Returns a `MaterialPageRoute`** with a proper Scaffold instead of `null` — prevents crash
+2. **Uses `logWarning`** instead of `logInfo('CRITICAL DEBUG:...')` — proper severity for anomalous routes, no noise on normal navigation
+3. **Shows themed UI** with icon, message, and "Go Home" button using `FilledButton.icon` (consistent with app-wide pattern)
+4. **Navigates to `/` (WelcomeScreen)** via `pushNamedAndRemoveUntil` — safe regardless of auth state
+5. **Does not expose route name to user** — security best practice for fintech app; route name logged server-side only
 
 ```dart
 onGenerateRoute: (settings) {
-    // Return an error page for unknown routes
+    logWarning('Unknown route requested: ${settings.name}',
+        tag: 'NAVIGATION');
     return MaterialPageRoute(
-      builder: (context) => Scaffold(
-        appBar: AppBar(title: const Text('Page Not Found')),
-        body: Center(child: Text('Route ${settings.name} not found')),
-      ),
+      settings: settings,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Scaffold(
+          appBar: AppBar(title: const Text('Page Not Found')),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.explore_off_rounded, size: 64,
+                      color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 16),
+                  Text('Page not found',
+                      style: theme.textTheme.headlineSmall),
+                  const SizedBox(height: 8),
+                  Text('The requested page could not be found.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/', (route) => false),
+                    icon: const Icon(Icons.home_rounded),
+                    label: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
 },
 ```
+
+**Also protects against:** 2 existing references to undefined `/auth-test` route (login_screen.dart:762, welcome_screen.dart:269) and unknown deep links from push notifications — all now show the fallback page instead of crashing.
 
 ---
 
@@ -1237,7 +1279,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~H-02~~ | ~~Add environment config to Flutter + eliminate all hardcoded URLs~~ | ~~1 hr~~ | **FULLY FIXED** |
 | ~~**P2**~~ | ~~H-04~~ | ~~Replace `datetime.utcnow()` project-wide (incl. infra lambdas)~~ | ~~1 hr~~ | **FULLY FIXED** |
 | ~~**P2**~~ | ~~H-06~~ | ~~Remove `aioredis`, use `redis.asyncio`~~ | ~~30 min~~ | **FIXED** |
-| **P2** | M-01 | Add fallback route handler in Flutter | 15 min | |
+| ~~**P2**~~ | ~~M-01~~ | ~~Add fallback route handler in Flutter~~ | ~~15 min~~ | **FIXED** |
 | **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min | |
 | **P2** | M-05 | Make CI quality checks blocking | 15 min | |
 | **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |

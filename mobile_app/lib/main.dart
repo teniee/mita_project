@@ -346,9 +346,54 @@ class _MITAAppState extends State<MITAApp> {
 
       initialRoute: '/', // Start at welcome screen
       onGenerateRoute: (settings) {
-        logInfo('CRITICAL DEBUG: Navigation to route: ${settings.name}',
+        // onGenerateRoute is only called for routes NOT in the routes table.
+        // Returning null here would crash the app — return a fallback instead.
+        logWarning('Unknown route requested: ${settings.name}',
             tag: 'NAVIGATION');
-        return null; // Let the routes table handle it
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) {
+            final theme = Theme.of(context);
+            return Scaffold(
+              appBar: AppBar(title: const Text('Page Not Found')),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.explore_off_rounded,
+                        size: 64,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Page not found',
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'The requested page could not be found.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        onPressed: () => Navigator.of(context)
+                            .pushNamedAndRemoveUntil('/', (route) => false),
+                        icon: const Icon(Icons.home_rounded),
+                        label: const Text('Go Home'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       },
       routes: {
         '/': (context) => const WelcomeScreen(),
