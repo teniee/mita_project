@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-03-31 (M-01 fixed — onGenerateRoute fallback added)
+> **Last updated:** 2026-04-01 (M-02 fixed — replaced all `.dict()` with `.model_dump()` project-wide)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -30,7 +30,7 @@
   - [H-08: Single worker deployment ignores WEB_CONCURRENCY — FIXED](#h-08-single-worker-deployment-ignores-web_concurrency)
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
   - [M-01: onGenerateRoute returns null, breaking dynamic navigation — FIXED](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
-  - [M-02: login_data.dict() is deprecated in Pydantic v2](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
+  - [M-02: login_data.dict() is deprecated in Pydantic v2 — FIXED](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
   - [M-03: Missing IgnoredAlert model in __init__.py](#m-03-missing-ignoredalert-model-in-__init__py)
   - [M-04: spacy and transformers in production requirements (huge image)](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
   - [M-05: CI/CD quality checks are non-blocking](#m-05-cicd-quality-checks-are-non-blocking)
@@ -805,14 +805,15 @@ onGenerateRoute: (settings) {
 ---
 
 <a id="m-02-login_datadict-is-deprecated-in-pydantic-v2"></a>
-### M-02: `login_data.dict()` is deprecated in Pydantic v2
+### M-02: `login_data.dict()` is deprecated in Pydantic v2 — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | MEDIUM |
-| **Files** | `app/api/auth/login.py` line 62, `app/api/auth/registration.py` line 61 |
+| **Files** | 9 files across `app/api/` (see full list below) |
 | **Priority** | P2 |
 | **Effort** | 15 minutes |
+| **Status** | **FIXED** (2026-04-01) |
 
 #### Description
 
@@ -823,17 +824,23 @@ registration_dict = registration_data.dict()  # Deprecated
 
 The project uses Pydantic v2 (`pydantic==2.9.2`), where `.dict()` is deprecated in favor of `.model_dump()`. This generates `DeprecationWarning` on every login and registration request.
 
-#### How to fix
+#### What was fixed
 
-```python
-login_dict = login_data.model_dump()
-registration_dict = registration_data.model_dump()
-```
+Replaced **all 9 occurrences** of `.dict()` with `.model_dump()` across the entire `app/` directory:
 
-Search the entire codebase for other occurrences:
-```bash
-grep -r "\.dict()" app/ --include="*.py" | grep -v test | grep -v __pycache__
-```
+| File | Line | Before → After |
+|------|------|----------------|
+| `app/api/auth/login.py` | 62 | `login_data.dict()` → `login_data.model_dump()` |
+| `app/api/auth/registration.py` | 61 | `registration_data.dict()` → `registration_data.model_dump()` |
+| `app/api/admin/rollback_webhook.py` | 262 | `webhook.dict()` → `webhook.model_dump()` |
+| `app/api/expense/routes.py` | 26 | `entry.dict()` → `entry.model_dump()` |
+| `app/api/financial/routes.py` | 55 | `payload.dict()` → `payload.model_dump()` |
+| `app/api/goal/routes.py` | 21 | `payload.dict()` → `payload.model_dump()` |
+| `app/api/installments/services.py` | 723 | `rf.dict()` → `rf.model_dump()` |
+| `app/api/notifications/routes.py` | 309 | `payload.dict()` → `payload.model_dump()` |
+| `app/api/transactions/routes.py` | 77 | `txn.dict()` → `txn.model_dump()` |
+
+**Verification:** `grep -r "\.dict()" app/ --include="*.py"` returns **0 matches**. All files pass `py_compile`.
 
 ---
 
@@ -1280,7 +1287,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~H-04~~ | ~~Replace `datetime.utcnow()` project-wide (incl. infra lambdas)~~ | ~~1 hr~~ | **FULLY FIXED** |
 | ~~**P2**~~ | ~~H-06~~ | ~~Remove `aioredis`, use `redis.asyncio`~~ | ~~30 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-01~~ | ~~Add fallback route handler in Flutter~~ | ~~15 min~~ | **FIXED** |
-| **P2** | M-02 | Replace `.dict()` with `.model_dump()` | 15 min | |
+| ~~**P2**~~ | ~~M-02~~ | ~~Replace `.dict()` with `.model_dump()`~~ | ~~15 min~~ | **FIXED** |
 | **P2** | M-05 | Make CI quality checks blocking | 15 min | |
 | **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |
 | **P2** | L-04 | Fix APNS sandbox default | 5 min | |

@@ -18,7 +18,7 @@ router = APIRouter(prefix="/goal", tags=["goal"])
 
 @router.post("/state-progress", response_model=ProgressOut)
 async def goal_from_state(payload: GoalState):
-    result = compute_goal_progress(payload.dict())
+    result = compute_goal_progress(payload.model_dump())
     return success_response(result)
 
 

@@ -23,7 +23,7 @@ def add_expense(
     """Add a new expense with comprehensive validation"""
     
     # Validate and sanitize input data
-    expense_data = InputValidator.validate_expense_data(entry.dict())
+    expense_data = InputValidator.validate_expense_data(entry.model_dump())
     expense_data["user_id"] = user.id
     
     # Business logic validation

@@ -720,7 +720,7 @@ async def calculate_installment_risk(
         dti_ratio=dti_with_installment,
         payment_to_income_ratio=payment_to_income,
         remaining_balance=balance_after_payment,
-        risk_factors=json.dumps([rf.dict() for rf in risk_factors]),
+        risk_factors=json.dumps([rf.model_dump() for rf in risk_factors]),
         user_proceeded=False  # Will be updated if user creates actual installment
     )
     db.add(calculation_record)

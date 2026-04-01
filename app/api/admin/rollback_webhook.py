@@ -259,7 +259,7 @@ async def trigger_rollback_from_alert(
             alert_name=alert_name,
             trigger=trigger_info["trigger"],
             reason=trigger_info["reason"],
-            alert_data=webhook.dict()
+            alert_data=webhook.model_dump()
         )
     )
 

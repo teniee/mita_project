@@ -306,7 +306,7 @@ def update_notification_preferences(
         prefs = UserPreference(user_id=user.id)
         db.add(prefs)
 
-    for key, value in payload.dict().items():
+    for key, value in payload.model_dump().items():
         setattr(prefs, key, value)
 
     db.commit()

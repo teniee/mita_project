@@ -59,7 +59,7 @@ async def login_user_standardized(
     await check_login_rate_limit(request)
 
     # Validate required fields
-    login_dict = login_data.dict()
+    login_dict = login_data.model_dump()
     validate_required_fields(login_dict, ["email", "password"])
 
     # Validate email format
