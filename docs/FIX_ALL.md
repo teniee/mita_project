@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-04-01 (M-02 fixed — replaced all `.dict()` with `.model_dump()` project-wide)
+> **Last updated:** 2026-04-01 (M-03 fixed — added `IgnoredAlert` model import to `__init__.py`)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -31,7 +31,7 @@
 - [MEDIUM — Functional issues, tech debt, reliability](#medium)
   - [M-01: onGenerateRoute returns null, breaking dynamic navigation — FIXED](#m-01-ongenerateroute-returns-null-breaking-dynamic-navigation)
   - [M-02: login_data.dict() is deprecated in Pydantic v2 — FIXED](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
-  - [M-03: Missing IgnoredAlert model in __init__.py](#m-03-missing-ignoredalert-model-in-__init__py)
+  - [M-03: Missing IgnoredAlert model in __init__.py — FIXED](#m-03-missing-ignoredalert-model-in-__init__py)
   - [M-04: spacy and transformers in production requirements (huge image)](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
   - [M-05: CI/CD quality checks are non-blocking](#m-05-cicd-quality-checks-are-non-blocking)
   - [M-06: Flutter tests are continue-on-error](#m-06-flutter-tests-are-continue-on-error)
@@ -845,7 +845,7 @@ Replaced **all 9 occurrences** of `.dict()` with `.model_dump()` across the enti
 ---
 
 <a id="m-03-missing-ignoredalert-model-in-__init__py"></a>
-### M-03: Missing `IgnoredAlert` model in `__init__.py`
+### M-03: Missing `IgnoredAlert` model in `__init__.py` — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -853,29 +853,33 @@ Replaced **all 9 occurrences** of `.dict()` with `.model_dump()` across the enti
 | **Files** | `app/db/models/__init__.py`, `app/db/models/ignored_alert.py` |
 | **Priority** | P2 |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** |
+| **Fixed date** | 2026-04-01 |
 
 #### Description
 
-The file `app/db/models/ignored_alert.py` exists and migration `0028_add_ignored_alerts_table.py` creates the table, but `IgnoredAlert` is **not imported** in `app/db/models/__init__.py`.
+The file `app/db/models/ignored_alert.py` exists and migration `0028_add_ignored_alerts_table.py` creates the table, but `IgnoredAlert` was **not imported** in `app/db/models/__init__.py`.
 
-This means:
+This meant:
 - The table exists in the database (created by migration)
-- But the ORM model is not registered with SQLAlchemy's metadata
-- Any code doing `from app.db.models import IgnoredAlert` will fail with `ImportError`
-- Alembic autogenerate may try to **drop** the table because it doesn't see the model
+- But the ORM model was not registered with SQLAlchemy's metadata
+- Any code doing `from app.db.models import IgnoredAlert` would fail with `ImportError`
+- Alembic autogenerate could try to **drop** the table because it didn't see the model
 
-#### How to fix
+#### Fix applied
 
-Add to `app/db/models/__init__.py`:
+Added `IgnoredAlert` import and `__all__` export to `app/db/models/__init__.py`:
 
 ```python
-from .ignored_alert import IgnoredAlert
+from .ignored_alert import IgnoredAlert  # added (line 10, alphabetical order)
 
 __all__ = [
     # ... existing exports ...
-    "IgnoredAlert",
+    "IgnoredAlert",  # added
 ]
 ```
+
+**Verified:** Model registers in `Base.metadata`, all 40 exports import correctly, `ignored_alerts` table visible to Alembic.
 
 ---
 
@@ -1291,7 +1295,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | **P2** | M-05 | Make CI quality checks blocking | 15 min | |
 | **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |
 | **P2** | L-04 | Fix APNS sandbox default | 5 min | |
-| **P3** | M-03 | Add IgnoredAlert to model imports | 5 min | |
+| ~~**P3**~~ | ~~M-03~~ | ~~Add IgnoredAlert to model imports~~ | ~~5 min~~ | **FIXED** |
 | **P3** | M-04 | Evaluate spacy/transformers necessity | 2 hrs | |
 | **P3** | M-07 | Clean up dual Base definitions | 15 min | |
 | **P3** | L-01 | Consolidate duplicate modules | Days | |
