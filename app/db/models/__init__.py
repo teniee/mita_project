@@ -7,6 +7,7 @@ from .daily_plan import DailyPlan
 from .expense import Expense
 from .goal import Goal
 from .habit import Habit, HabitCompletion
+from .ignored_alert import IgnoredAlert
 from .mood import Mood
 from .notification import Notification, NotificationType, NotificationPriority, NotificationStatus
 from .notification_log import NotificationLog
@@ -54,6 +55,7 @@ __all__ = [
     "Goal",
     "Habit",
     "HabitCompletion",
+    "IgnoredAlert",
     "BudgetAdvice",
     "AIAdviceTemplate",
     "Challenge",
