@@ -52,7 +52,7 @@ def installment_check_standardized(
     """
     
     # Validate required fields
-    payload_dict = payload.dict()
+    payload_dict = payload.model_dump()
     validate_required_fields(payload_dict, ["price", "months"])
     
     # Validate amount (price)

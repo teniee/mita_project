@@ -74,7 +74,7 @@ async def create_transaction_standardized(
     """
     
     # Validate transaction data
-    txn_dict = txn.dict()
+    txn_dict = txn.model_dump()
     validate_required_fields(txn_dict, ["amount", "category", "description"])
     
     # Validate amount

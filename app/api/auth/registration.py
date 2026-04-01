@@ -58,7 +58,7 @@ async def register_user_standardized(
     await check_register_rate_limit(request)
 
     # Validate required fields
-    registration_dict = registration_data.dict()
+    registration_dict = registration_data.model_dump()
     validate_required_fields(registration_dict, ["email", "password", "country"])
 
     # Validate email format
