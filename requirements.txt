@@ -55,9 +55,7 @@ google-cloud-vision==3.8.0          # Vision API
 google-auth==2.36.0                 # Google authentication
 google-api-python-client==2.149.0   # Google APIs
 
-# AI and NLP - UPDATED FOR SECURITY
-spacy==3.8.2                        # NLP library
-transformers==4.52.1                # SECURITY UPDATE: Multiple CVEs fixed
+# AI Integration
 openai==1.54.4                      # OpenAI API
 
 # Internationalization
