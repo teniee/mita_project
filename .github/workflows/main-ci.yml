@@ -43,13 +43,13 @@ jobs:
       - name: Code quality checks
         run: |
           # Format check
-          black --check . || echo "::warning::Code formatting issues detected"
+          black --check .
 
           # Import sorting
-          isort --check . || echo "::warning::Import sorting issues detected"
+          isort --check .
 
           # Linting
-          ruff . || echo "::warning::Linting issues detected"
+          ruff check .
 
       - name: Run tests
         run: |
@@ -57,9 +57,7 @@ jobs:
           pytest --maxfail=5 --disable-warnings -q
 
       - name: Security scan (Bandit)
-        run: |
-          bandit -r app/ -ll || echo "::warning::Security issues detected"
-        continue-on-error: true
+        run: bandit -r app/ -ll
 
   # Mobile Flutter CI
   mobile-ci:

@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-04-04 (M-04 fixed — removed unused `spacy` and `transformers` from production requirements)
+> **Last updated:** 2026-04-04 (M-05 fixed — made CI/CD quality checks blocking by removing `|| echo` fallbacks and `continue-on-error`)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -33,7 +33,7 @@
   - [M-02: login_data.dict() is deprecated in Pydantic v2 — FIXED](#m-02-login_datadict-is-deprecated-in-pydantic-v2)
   - [M-03: Missing IgnoredAlert model in __init__.py — FIXED](#m-03-missing-ignoredalert-model-in-__init__py)
   - [M-04: spacy and transformers in production requirements (huge image) — FIXED](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
-  - [M-05: CI/CD quality checks are non-blocking](#m-05-cicd-quality-checks-are-non-blocking)
+  - [M-05: CI/CD quality checks are non-blocking — FIXED](#m-05-cicd-quality-checks-are-non-blocking)
   - [M-06: Flutter tests are continue-on-error](#m-06-flutter-tests-are-continue-on-error)
   - [M-07: Two different Base definitions in db/](#m-07-two-different-base-definitions-in-db)
 - [LOW — Code quality, minor issues](#low)
@@ -943,7 +943,7 @@ Options:
 ---
 
 <a id="m-05-cicd-quality-checks-are-non-blocking"></a>
-### M-05: CI/CD quality checks are non-blocking
+### M-05: CI/CD quality checks are non-blocking — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -951,6 +951,7 @@ Options:
 | **File** | `.github/workflows/main-ci.yml` lines 46–62 |
 | **Priority** | P2 |
 | **Effort** | 15 minutes |
+| **Status** | **FIXED** (2026-04-04) |
 
 #### Description
 
@@ -983,6 +984,14 @@ Remove the `|| echo` fallbacks and let CI fail on quality issues:
 - name: Security scan (Bandit)
   run: bandit -r app/ -ll
 ```
+
+#### Resolution
+
+**Fixed on 2026-04-04.** Changes applied to `.github/workflows/main-ci.yml`:
+- Removed `|| echo "::warning::..."` fallbacks from `black`, `isort`, and `ruff` checks — failures now propagate non-zero exit codes and block the pipeline
+- Fixed deprecated `ruff .` syntax to `ruff check .` (required since ruff 0.1.0+)
+- Removed `|| echo "::warning::..."` fallback from Bandit security scan
+- Removed `continue-on-error: true` from Bandit step — security findings now block the pipeline
 
 ---
 
@@ -1307,7 +1316,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~H-06~~ | ~~Remove `aioredis`, use `redis.asyncio`~~ | ~~30 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-01~~ | ~~Add fallback route handler in Flutter~~ | ~~15 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-02~~ | ~~Replace `.dict()` with `.model_dump()`~~ | ~~15 min~~ | **FIXED** |
-| **P2** | M-05 | Make CI quality checks blocking | 15 min | |
+| ~~**P2**~~ | ~~M-05~~ | ~~Make CI quality checks blocking~~ | ~~15 min~~ | **FIXED** |
 | **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |
 | **P2** | L-04 | Fix APNS sandbox default | 5 min | |
 | ~~**P3**~~ | ~~M-03~~ | ~~Add IgnoredAlert to model imports~~ | ~~5 min~~ | **FIXED** |
