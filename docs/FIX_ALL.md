@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-04-04 (M-05 fixed — made CI/CD quality checks blocking by removing `|| echo` fallbacks and `continue-on-error`)
+> **Last updated:** 2026-04-04 (M-06 fixed — removed `continue-on-error` from Flutter tests and `|| echo` fallback from mobile dart format check)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -34,7 +34,7 @@
   - [M-03: Missing IgnoredAlert model in __init__.py — FIXED](#m-03-missing-ignoredalert-model-in-__init__py)
   - [M-04: spacy and transformers in production requirements (huge image) — FIXED](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
   - [M-05: CI/CD quality checks are non-blocking — FIXED](#m-05-cicd-quality-checks-are-non-blocking)
-  - [M-06: Flutter tests are continue-on-error](#m-06-flutter-tests-are-continue-on-error)
+  - [M-06: Flutter tests are continue-on-error — FIXED](#m-06-flutter-tests-are-continue-on-error)
   - [M-07: Two different Base definitions in db/](#m-07-two-different-base-definitions-in-db)
 - [LOW — Code quality, minor issues](#low)
   - [L-01: Massive code duplication across engine/logic/services](#l-01-massive-code-duplication-across-enginelogicservices)
@@ -996,14 +996,15 @@ Remove the `|| echo` fallbacks and let CI fail on quality issues:
 ---
 
 <a id="m-06-flutter-tests-are-continue-on-error"></a>
-### M-06: Flutter tests are `continue-on-error`
+### M-06: Flutter tests are `continue-on-error` — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | MEDIUM |
-| **File** | `.github/workflows/main-ci.yml` line 94 |
+| **File** | `.github/workflows/main-ci.yml` line 91–93 |
 | **Priority** | P2 |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-04-04) |
 
 #### Description
 
@@ -1015,6 +1016,12 @@ Remove the `|| echo` fallbacks and let CI fail on quality issues:
 
 Flutter tests can fail completely and CI still passes green. This means broken frontend code can be merged to `main` and auto-deployed.
 
+Additionally, the mobile "Verify code" step had the same `|| echo` non-blocking pattern that M-05 fixed on the backend side:
+
+```yaml
+dart format --set-exit-if-changed . || echo "::warning::Code formatting issues"
+```
+
 #### How to fix
 
 Remove `continue-on-error: true`:
@@ -1025,6 +1032,14 @@ Remove `continue-on-error: true`:
 ```
 
 If some tests are flaky, fix them or mark individual tests as `skip` rather than ignoring all failures.
+
+#### Resolution
+
+**Fixed on 2026-04-04.** Changes applied to `.github/workflows/main-ci.yml`:
+- Removed `continue-on-error: true` from the Flutter `Run tests` step — test failures now correctly fail the `mobile-ci` job and block the pipeline
+- Removed `|| echo "::warning::Code formatting issues"` fallback from `dart format` in the mobile "Verify code" step — dart formatting failures now propagate non-zero exit codes (same class of fix as M-05 on the backend side)
+
+**Note:** At the time of this fix, Flutter tests show 195 passed / 105 failed / 2 skipped. The 105 failing tests are pre-existing failures that were hidden by `continue-on-error`. These are predominantly `ProviderNotFoundError` issues in test setup (missing provider wrappers in test widgets). These test failures should be addressed as a separate task.
 
 ---
 
@@ -1317,7 +1332,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~M-01~~ | ~~Add fallback route handler in Flutter~~ | ~~15 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-02~~ | ~~Replace `.dict()` with `.model_dump()`~~ | ~~15 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-05~~ | ~~Make CI quality checks blocking~~ | ~~15 min~~ | **FIXED** |
-| **P2** | M-06 | Remove `continue-on-error` from Flutter tests | 5 min | |
+| ~~**P2**~~ | ~~M-06~~ | ~~Remove `continue-on-error` from Flutter tests~~ | ~~5 min~~ | **FIXED** |
 | **P2** | L-04 | Fix APNS sandbox default | 5 min | |
 | ~~**P3**~~ | ~~M-03~~ | ~~Add IgnoredAlert to model imports~~ | ~~5 min~~ | **FIXED** |
 | ~~**P3**~~ | ~~M-04~~ | ~~Evaluate spacy/transformers necessity~~ | ~~2 hrs~~ | **FIXED** |
