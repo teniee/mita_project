@@ -83,14 +83,13 @@ jobs:
       - name: Verify code
         run: |
           # Format check
-          dart format --set-exit-if-changed . || echo "::warning::Code formatting issues"
+          dart format --set-exit-if-changed .
 
           # Analyze
           flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Run tests
         run: flutter test
-        continue-on-error: true
 
   # Build check
   build-check:
