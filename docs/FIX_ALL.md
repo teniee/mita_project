@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-04-04 (M-06 fixed — removed `continue-on-error` from Flutter tests and `|| echo` fallback from mobile dart format check)
+> **Last updated:** 2026-04-05 (M-07 fixed — deleted empty `app/db/base.py`; all imports already use the single canonical `app/db/models/base.Base`)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -35,7 +35,7 @@
   - [M-04: spacy and transformers in production requirements (huge image) — FIXED](#m-04-spacy-and-transformers-in-production-requirements-huge-image)
   - [M-05: CI/CD quality checks are non-blocking — FIXED](#m-05-cicd-quality-checks-are-non-blocking)
   - [M-06: Flutter tests are continue-on-error — FIXED](#m-06-flutter-tests-are-continue-on-error)
-  - [M-07: Two different Base definitions in db/](#m-07-two-different-base-definitions-in-db)
+  - [M-07: Two different Base definitions in db/ — FIXED](#m-07-two-different-base-definitions-in-db)
 - [LOW — Code quality, minor issues](#low)
   - [L-01: Massive code duplication across engine/logic/services](#l-01-massive-code-duplication-across-enginelogicservices)
   - [L-02: 200+ stale remote branches](#l-02-200-stale-remote-branches)
@@ -1044,18 +1044,19 @@ If some tests are flaky, fix them or mark individual tests as `skip` rather than
 ---
 
 <a id="m-07-two-different-base-definitions-in-db"></a>
-### M-07: Two different `Base` definitions in `db/`
+### M-07: Two different `Base` definitions in `db/` — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | MEDIUM |
-| **Files** | `app/db/base.py` (empty), `app/db/models/base.py` (actual Base) |
+| **Files** | ~~`app/db/base.py`~~ (deleted), `app/db/models/base.py` (canonical Base) |
 | **Priority** | P3 |
 | **Effort** | 15 minutes |
+| **Status** | **FIXED** (2026-04-05) |
 
 #### Description
 
-- `app/db/base.py` — is an empty file (1 line, no content)
+- `app/db/base.py` — was an empty file (1 line, no content)
 - `app/db/models/base.py` — contains the actual `Base = declarative_base()`
 
 Some imports in the codebase may reference `app.db.base.Base` while others use `app.db.models.base.Base`. If different parts of the code import from different locations, SQLAlchemy models may register with **different** metadata objects, causing:
@@ -1063,11 +1064,9 @@ Some imports in the codebase may reference `app.db.base.Base` while others use `
 - Relationships failing to resolve
 - `create_all()` missing tables
 
-#### How to fix
+#### Fix applied
 
-Either:
-1. Delete `app/db/base.py` and ensure all imports use `app.db.models.base`
-2. Or make `app/db/base.py` re-export: `from app.db.models.base import Base`
+Deleted the empty `app/db/base.py` file. Verified that **zero imports** in the entire codebase referenced `app.db.base` — all 25+ model files, `alembic/env.py`, and `app/core/async_session.py` already imported from the canonical `app.db.models.base.Base`. The empty file was dead code that could only cause confusion.
 
 ---
 
@@ -1336,7 +1335,7 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | **P2** | L-04 | Fix APNS sandbox default | 5 min | |
 | ~~**P3**~~ | ~~M-03~~ | ~~Add IgnoredAlert to model imports~~ | ~~5 min~~ | **FIXED** |
 | ~~**P3**~~ | ~~M-04~~ | ~~Evaluate spacy/transformers necessity~~ | ~~2 hrs~~ | **FIXED** |
-| **P3** | M-07 | Clean up dual Base definitions | 15 min | |
+| ~~**P3**~~ | ~~M-07~~ | ~~Clean up dual Base definitions~~ | ~~15 min~~ | **FIXED** |
 | **P3** | L-01 | Consolidate duplicate modules | Days | |
 | **P3** | L-02 | Clean up 200+ stale branches | 30 min | |
 | **P3** | L-03 | Move root test files to tests/ | 10 min | |
