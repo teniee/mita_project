@@ -142,7 +142,7 @@ class Settings(BaseSettings):
     APNS_KEY_ID: str = ""
     APNS_TEAM_ID: str = ""
     APNS_TOPIC: str = "com.mita.finance"
-    APNS_USE_SANDBOX: bool = True
+    APNS_USE_SANDBOX: bool = False  # Override to True in development .env only
 
     # CORS - Allow configuration via environment (includes mobile app support)
     # SECURITY FIX: Removed wildcard (*) - only allow specific origins

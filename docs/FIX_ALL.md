@@ -1,7 +1,7 @@
 # MITA Finance — Production Readiness Audit: All Issues
 
 > **Date:** 2026-03-24
-> **Last updated:** 2026-04-05 (M-07 fixed — deleted empty `app/db/base.py`; all imports already use the single canonical `app/db/models/base.Base`)
+> **Last updated:** 2026-04-08 (L-03, L-04 fixed — moved root test files to `tests/`; changed `APNS_USE_SANDBOX` default to `False`)
 > **Branch:** `main`
 > **Auditor:** Claude Opus 4.6 (Bulletproof Deep Scan)
 > **Files analyzed:** 1221 files across backend, frontend, infrastructure, CI/CD, configs
@@ -12,17 +12,14 @@
 
 - [CRITICAL — App won't start or massive security breach](#critical)
   - [C-01: JWT and Secret Keys leaked in render.yaml — FIXED](#c-01-jwt-and-secret-keys-leaked-in-renderyaml)
-  - [C-02: Firebase API keys hardcoded in source code](#c-02-firebase-api-keys-hardcoded-in-source-code)
-  - [C-03: JWT_SECRET auto-generates on every restart if not set](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
-  - [C-04: Database URL logged in plaintext with credentials — FIXED](#c-04-database-url-logged-in-plaintext-with-credentials)
   - [C-02: Firebase API keys hardcoded in source code — FIXED](#c-02-firebase-api-keys-hardcoded-in-source-code)
   - [C-03: JWT_SECRET auto-generates on every restart if not set — FIXED](#c-03-jwt_secret-auto-generates-on-every-restart-if-not-set)
-  - [C-04: Database URL logged in plaintext with credentials](#c-04-database-url-logged-in-plaintext-with-credentials)
-  - [C-05: JWT tokens partially logged (first 30 chars)](#c-05-jwt-tokens-partially-logged-first-30-chars)
+  - [C-04: Database URL logged in plaintext with credentials — FIXED](#c-04-database-url-logged-in-plaintext-with-credentials)
+  - [C-05: JWT tokens partially logged (first 30 chars) — FIXED](#c-05-jwt-tokens-partially-logged-first-30-chars)
 - [HIGH — App starts but has major problems](#high)
   - [H-01: CORS always allows localhost origins in production — FIXED](#h-01-cors-always-allows-localhost-origins-in-production)
   - [H-02: API base URL hardcoded in Flutter with no environment switching — FULLY FIXED](#h-02-api-base-url-hardcoded-in-flutter-with-no-environment-switching)
-  - [H-03: MinimalSettings fallback silently swallows config errors](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
+  - [H-03: MinimalSettings fallback silently swallows config errors — FIXED](#h-03-minimalsettings-fallback-silently-swallows-config-errors)
   - [H-04: datetime.utcnow() used throughout (deprecated in Python 3.12) — FULLY FIXED](#h-04-datetimeutcnow-used-throughout-deprecated-in-python-312)
   - [H-05: Alembic migrations may fail silently and app starts anyway — FIXED](#h-05-alembic-migrations-may-fail-silently-and-app-starts-anyway)
   - [H-06: aioredis dependency is deprecated/dead — FIXED](#h-06-aioredis-dependency-is-deprecateddead)
@@ -39,8 +36,8 @@
 - [LOW — Code quality, minor issues](#low)
   - [L-01: Massive code duplication across engine/logic/services](#l-01-massive-code-duplication-across-enginelogicservices)
   - [L-02: 200+ stale remote branches](#l-02-200-stale-remote-branches)
-  - [L-03: Root-level test files outside tests/ directory](#l-03-root-level-test-files-outside-tests-directory)
-  - [L-04: APNS_USE_SANDBOX defaults to True](#l-04-apns_use_sandbox-defaults-to-true)
+  - [L-03: Root-level test files outside tests/ directory — FIXED](#l-03-root-level-test-files-outside-tests-directory)
+  - [L-04: APNS_USE_SANDBOX defaults to True — FIXED](#l-04-apns_use_sandbox-defaults-to-true)
 - [RAILWAY — Production environment misconfigurations](#railway)
   - [R-01: JWT_PREVIOUS_SECRET not set while JWT rotation is enabled](#r-01-jwt_previous_secret-not-set-while-jwt-rotation-is-enabled)
   - [R-02: PYTHONPATH points to Render path, not Railway](#r-02-pythonpath-points-to-render-path-not-railway)
@@ -1136,10 +1133,12 @@ git branch -r --merged main | grep -v 'main\|HEAD' | sed 's/origin\///' > branch
 while read branch; do git push origin --delete "$branch"; done < branches_to_delete.txt
 ```
 
+> **Note (2026-04-08):** Attempted CLI cleanup — GitHub repository rulesets (GH013) block branch deletion via `git push --delete`. Current count: 81 merged branches. To fix: either disable the "Cannot delete branch" rule temporarily in GitHub → Settings → Rules → Rulesets, or delete branches via the GitHub web UI (Branches tab).
+
 ---
 
 <a id="l-03-root-level-test-files-outside-tests-directory"></a>
-### L-03: Root-level test files outside `tests/` directory
+### L-03: Root-level test files outside `tests/` directory — FIXED
 
 | Field | Value |
 |-------|-------|
@@ -1147,31 +1146,36 @@ while read branch; do git push origin --delete "$branch"; done < branches_to_del
 | **Files** | `test_calendar_fix_real.py`, `test_calendar_save.py`, `verify_module5.py`, `verify_onboarding_flow.py` |
 | **Priority** | P3 |
 | **Effort** | 10 minutes |
+| **Status** | **FIXED** (2026-04-08) |
+| **Fix commit** | `main` (direct commit) |
 
 #### Description
 
 Four test/verification files sit in the project root instead of the `tests/` directory. They won't be picked up by `pytest` with the standard configuration and clutter the root directory.
 
-#### How to fix
+#### What was fixed
 
-```bash
-mv test_calendar_fix_real.py tests/
-mv test_calendar_save.py tests/
-mv verify_module5.py tests/
-mv verify_onboarding_flow.py tests/
-```
+All four files moved from project root to `tests/` directory:
+- `test_calendar_fix_real.py` → `tests/test_calendar_fix_real.py`
+- `test_calendar_save.py` → `tests/test_calendar_save.py`
+- `verify_module5.py` → `tests/verify_module5.py`
+- `verify_onboarding_flow.py` → `tests/verify_onboarding_flow.py`
+
+**Note:** `pytest.ini` has `testpaths = app/tests`, so these files still won't be auto-discovered by pytest. They are manual verification/test scripts that should be run directly.
 
 ---
 
 <a id="l-04-apns_use_sandbox-defaults-to-true"></a>
-### L-04: `APNS_USE_SANDBOX` defaults to True
+### L-04: `APNS_USE_SANDBOX` defaults to True — FIXED
 
 | Field | Value |
 |-------|-------|
 | **Severity** | LOW |
-| **File** | `app/core/config.py` line 146 |
+| **File** | `app/core/config.py` line 145 |
 | **Priority** | P2 |
 | **Effort** | 5 minutes |
+| **Status** | **FIXED** (2026-04-08) |
+| **Fix commit** | `main` (direct commit) |
 
 #### Description
 
@@ -1181,18 +1185,15 @@ APNS_USE_SANDBOX: bool = True
 
 The Apple Push Notification Service sandbox is for **development only**. Push notifications sent via the sandbox environment never reach production devices. If this default isn't overridden in production, users won't receive any push notifications.
 
-#### How to fix
+#### What was fixed
+
+Changed the default from `True` to `False`:
 
 ```python
 APNS_USE_SANDBOX: bool = False  # Override to True in development .env only
 ```
 
-Or tie it to environment:
-```python
-@property
-def apns_sandbox(self) -> bool:
-    return self.ENVIRONMENT != "production"
-```
+Production now defaults to the production APNS gateway. Developers should set `APNS_USE_SANDBOX=True` in their local `.env` file for testing.
 
 ---
 
@@ -1332,13 +1333,13 @@ If a service is not yet needed, ensure the code gracefully handles the missing v
 | ~~**P2**~~ | ~~M-02~~ | ~~Replace `.dict()` with `.model_dump()`~~ | ~~15 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-05~~ | ~~Make CI quality checks blocking~~ | ~~15 min~~ | **FIXED** |
 | ~~**P2**~~ | ~~M-06~~ | ~~Remove `continue-on-error` from Flutter tests~~ | ~~5 min~~ | **FIXED** |
-| **P2** | L-04 | Fix APNS sandbox default | 5 min | |
+| ~~**P2**~~ | ~~L-04~~ | ~~Fix APNS sandbox default~~ | ~~5 min~~ | **FIXED** |
 | ~~**P3**~~ | ~~M-03~~ | ~~Add IgnoredAlert to model imports~~ | ~~5 min~~ | **FIXED** |
 | ~~**P3**~~ | ~~M-04~~ | ~~Evaluate spacy/transformers necessity~~ | ~~2 hrs~~ | **FIXED** |
 | ~~**P3**~~ | ~~M-07~~ | ~~Clean up dual Base definitions~~ | ~~15 min~~ | **FIXED** |
 | **P3** | L-01 | Consolidate duplicate modules | Days | |
-| **P3** | L-02 | Clean up 200+ stale branches | 30 min | |
-| **P3** | L-03 | Move root test files to tests/ | 10 min | |
+| **P3** | L-02 | Clean up 200+ stale branches | 30 min | BLOCKED (GitHub repo rules prevent branch deletion via CLI) |
+| ~~**P3**~~ | ~~L-03~~ | ~~Move root test files to tests/~~ | ~~10 min~~ | **FIXED** |
 
 ---
 
