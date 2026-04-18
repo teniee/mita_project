@@ -3081,10 +3081,269 @@ Setup | Categories | Monthly | Calendar | Transactions | Rebalance | Goals
 ---
 
 *Раздел 10 — ЗАВЪРШЕН ✅*
-*Следващ: Раздел 11 — Apps Script функционалност*
+*Следващ: Раздел 11А — Apps Script: структура, тригери, меню*
 
 ---
 
+## РАЗДЕЛ 11А — APPS SCRIPT: МОДУЛНА СТРУКТУРА, ТРИГЕРИ И МЕНЮ
+
+### 11А.1 Файлова структура на скрипта
+
+Проектът използва Google Apps Script (V8 runtime). Кодът се организира в отделни `.gs` файлове в Apps Script редактора:
+
+| Файл | Съдържание |
+|---|---|
+| `Code.gs` | Точка на вход: `onOpen()`, `onEdit()`, меню |
+| `Setup.gs` | `runInitialSetup()`, `buildCategories()`, `buildMonthly()` |
+| `Calendar.gs` | `buildCalendar()`, `rebuildCalendar()`, `refreshCalendarRow()` |
+| `DayPlan.gs` | `buildDayPlan()`, `getDayPlan()`, `updateDayPlan()` |
+| `Transactions.gs` | `processTransactionRow()`, `logTransaction()` |
+| `Rebalancer.gs` | `rebalanceFutureDays()`, `buildDonorPool()`, `applyTransfer()` |
+| `Goals.gs` | `processGoalContribution()`, `refreshGoalProgress()` |
+| `Prices.gs` | `getPriceMatrix()`, `getCategoryBudget()`, `validatePrices()` |
+| `Dialogs.gs` | `showTransactionDialog()`, `showNewMonthDialog()`, `showGoalDialog()` |
+| `Utils.gs` | `getIncomeClass()`, `getDaysInMonth()`, `formatEur()`, `toast()` |
+| `Protect.gs` | `applyProtections()`, `hideSystemSheets()` |
+| `Changelog.gs` | `logChange()`, `getChangelog()` |
+
 ---
+
+### 11А.2 Манифест — appsscript.json
+
+```json
+{
+  "timeZone": "Europe/Sofia",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.scriptapp"
+  ]
+}
+```
+
+**Защо `script.scriptapp`:** нужен за инсталиране на `onEdit` installable trigger при първо стартиране. Без него `onEdit` работи само като simple trigger.
+
+---
+
+### 11А.3 Тригери
+
+#### Прост тригер (Simple trigger)
+```
+Функция : onOpen(e)
+Събитие : Отваряне на файла
+Ограничения: Не може да показва диалози, не изпълнява UrlFetch
+Действие : Изгражда менюто "MITA Бюджет"
+```
+
+#### Инсталируем тригер (Installable trigger)
+```
+Функция : onEditInstallable(e)
+Събитие : Редактиране на клетка (From spreadsheet → On edit)
+Инсталира се от: runInitialSetup() при първо стартиране
+Действие : Обработва транзакции + цели + Setup промени
+```
+
+> **Защо installable:** Simple `onEdit` не може да запише в друг лист без ограничения. Installable тригерът няма това ограничение.
+
+#### Проверка за дублиран тригер
+```javascript
+function ensureOnEditTrigger_() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const exists = triggers.some(t =>
+    t.getHandlerFunction() === 'onEditInstallable' &&
+    t.getEventType() === ScriptApp.EventType.ON_EDIT
+  );
+  if (!exists) {
+    ScriptApp.newTrigger('onEditInstallable')
+      .forSpreadsheet(SpreadsheetApp.getActive())
+      .onEdit()
+      .create();
+  }
+}
+```
+
+---
+
+### 11А.4 Структура на менюто
+
+```
+MITA Бюджет
+├── 1. Първоначална настройка — Генерирай бюджет
+├── ─────────────────────────
+├── 2. Запиши транзакция...
+├── 3. Нов месец...
+├── ─────────────────────────
+├── 4. Цели
+│   ├── Добави вноска...
+│   └── Покажи прогрес
+├── ─────────────────────────
+├── 5. Инструменти
+│   ├── Провери цени (_Prices)
+│   ├── Изчисти лог на преразпределенията
+│   ├── Изчисти транзакции
+│   └── Рестартирай защити
+└── 6. Версия и помощ
+    ├── Покажи версия
+    └── Отвори инструкции
+```
+
+#### Имплементация в Code.gs
+```javascript
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('MITA Бюджет')
+    .addItem('1. Първоначална настройка — Генерирай бюджет', 'runInitialSetup')
+    .addSeparator()
+    .addItem('2. Запиши транзакция…', 'showTransactionDialog')
+    .addItem('3. Нов месец…', 'showNewMonthDialog')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('4. Цели')
+      .addItem('Добави вноска…', 'showGoalDialog')
+      .addItem('Покажи прогрес', 'refreshGoalProgress'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('5. Инструменти')
+      .addItem('Провери цени (_Prices)', 'validatePrices')
+      .addItem('Изчисти лог на преразпределенията', 'clearRebalanceLog')
+      .addItem('Изчисти транзакции', 'clearTransactions')
+      .addItem('Рестартирай защити', 'applyProtections'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('6. Версия и помощ')
+      .addItem('Покажи версия', 'showVersion')
+      .addItem('Отвори инструкции', 'openInstructions'))
+    .addToUi();
+}
+```
+
+---
+
+### 11А.5 Named Ranges — пълен списък
+
+Всички Named Ranges се създават от `runInitialSetup()`:
+
+| Диапазон | Лист | Клетка | Тип |
+|---|---|---|---|
+| `_Income` | Setup | B4 | число |
+| `_IncomeClass` | Setup | B5 (формула) | текст |
+| `_MembersCount` | Setup | B6 | число |
+| `_CityKey` | Setup | B7 | текст |
+| `_BudgetMonth` | Setup | B10 | текст (YYYY-MM) |
+| `_Currency` | Setup | B11 | текст |
+| `_Discretionary` | Monthly | изчислена | число |
+| `_PriceVersion` | _Prices | R1 | текст |
+| `_DayPlanData` | _DayPlan | A:L | диапазон |
+| `_GoalLedger` | _GoalLedger | A:H | диапазон |
+
+```javascript
+function setNamedRange_(name, range) {
+  const ss = SpreadsheetApp.getActive();
+  try { ss.removeNamedRange(name); } catch(e) {}
+  ss.setNamedRange(name, range);
+}
+```
+
+---
+
+### 11А.6 Script Properties — конфигурация
+
+| Ключ | Стойност | Описание |
+|---|---|---|
+| `SETUP_COMPLETE` | `"true"` / `"false"` | Флаг: минала ли е Initial Setup |
+| `TRIGGER_ID` | ID стринг | За проверка/деинсталиране |
+| `PRICE_VERSION` | `"v1.3 \| 2026-04-16"` | Версия на ценовата матрица |
+| `LAST_REBALANCE_TS` | ISO timestamp | Последно преразпределение |
+| `BUDGET_MONTH` | `"2026-05"` | Кеш на текущия месец |
+| `INCOME_CLASS` | `"СРЕДЕН"` | Кеш на класа |
+
+```javascript
+const Props = {
+  get: (key) => PropertiesService.getScriptProperties().getProperty(key),
+  set: (key, val) => PropertiesService.getScriptProperties().setProperty(key, val),
+  isSetupDone: () => Props.get('SETUP_COMPLETE') === 'true'
+};
+```
+
+---
+
+### 11А.7 Константи и енумерации (Utils.gs)
+
+```javascript
+const INCOME_TIERS = {
+  LOW:          { min: 0,    label: 'НИСЪК'   },
+  LOWER_MIDDLE: { min: 650,  label: 'НИС.СР.' },
+  MIDDLE:       { min: 1100, label: 'СРЕДЕН'  },
+  UPPER_MIDDLE: { min: 1800, label: 'ВИС.СР.' },
+  HIGH:         { min: 3000, label: 'ВИСОК'   }
+};
+
+const PRIORITY = { SACRED: 0, PROTECTED: 1, FLEXIBLE: 2, DISCRETIONARY: 3 };
+
+const BEHAVIOR = { FIXED: 'fixed', SPREAD: 'spread', CLUSTERED: 'clustered' };
+
+const STATUS = { GREEN: 'ЗЕЛЕНО', YELLOW: 'ЖЪЛТО', RED: 'ЧЕРВЕНО', GRAY: 'СИВО' };
+
+const SHEETS = {
+  SETUP: 'Setup', CATEGORIES: 'Categories', MONTHLY: 'Monthly',
+  CALENDAR: 'Calendar', TRANSACTIONS: 'Transactions', REBALANCE: 'Rebalance',
+  GOALS: 'Goals', PRICES: '_Prices', DAY_PLAN: '_DayPlan',
+  GOAL_LEDGER: '_GoalLedger', GOAL_HISTORY: '_GoalHistory', CHANGELOG: '_Changelog'
+};
+
+const BG_HOLIDAYS_2026 = [
+  '2026-01-01','2026-03-03','2026-04-10','2026-04-12','2026-04-13',
+  '2026-05-01','2026-05-06','2026-05-24','2026-09-06','2026-09-22',
+  '2026-11-01','2026-12-24','2026-12-25','2026-12-26'
+];
+```
+
+---
+
+### 11А.8 Помощни функции — Utils.gs
+
+| Функция | Сигнатура | Връща | Описание |
+|---|---|---|---|
+| `getIncomeClass` | `(income: number) → string` | `'НИСЪК'`…`'ВИСОК'` | Класифицира дохода |
+| `getDaysInMonth` | `(yearMonth: string) → number` | `28`–`31` | Дни в YYYY-MM |
+| `getDateForDay` | `(yearMonth: string, day: number) → Date` | Date | Дата за ден N |
+| `getDayOfWeek` | `(date: Date) → string` | `'Пон'`…`'Нед'` | BG абревиатура |
+| `isHoliday` | `(date: Date) → boolean` | bool | BG официален празник |
+| `isWeekend` | `(date: Date) → boolean` | bool | Събота или неделя |
+| `formatEur` | `(amount: number) → string` | `'€ 12.50'` | Форматира сума |
+| `roundEur` | `(amount: number) → number` | number | Закръгля до €0.01 |
+| `toast` | `(msg: string, title?: string) → void` | — | Показва toast 4 сек |
+| `alertError` | `(msg: string) → void` | — | `ui.alert()` с грешка |
+| `getSheet` | `(name: string) → Sheet` | Sheet | Хвърля ако не съществува |
+| `getOrCreateSheet` | `(name: string) → Sheet` | Sheet | Създава ако липсва |
+| `clearSheetData` | `(sheet: Sheet) → void` | — | Изчиства данни без header |
+| `deterministicRng` | `(seed: number) → fn` | `() → number` | Псевдослучайни числа |
+
+```javascript
+function getIncomeClass(income) {
+  if (income >= 3000) return 'ВИСОК';
+  if (income >= 1800) return 'ВИС.СР.';
+  if (income >= 1100) return 'СРЕДЕН';
+  if (income >= 650)  return 'НИС.СР.';
+  return 'НИСЪК';
+}
+
+function deterministicRng(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+function toast(msg, title) {
+  SpreadsheetApp.getActive().toast(msg, title || 'MITA', 4);
+}
+```
+
+---
+
+*Раздел 11А — ЗАВЪРШЕН ✅*
+*Следващ: Раздел 11Б — функции Setup, Calendar, DayPlan, Transactions*
 
 ---
