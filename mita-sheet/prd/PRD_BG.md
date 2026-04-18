@@ -3347,3 +3347,429 @@ function toast(msg, title) {
 *Следващ: Раздел 11Б — функции Setup, Calendar, DayPlan, Transactions*
 
 ---
+
+## РАЗДЕЛ 11Б — APPS SCRIPT: SETUP, CALENDAR, DAYPLAN, TRANSACTIONS
+
+### 11Б.1 runInitialSetup() — Setup.gs
+
+**Роля:** Главна функция, стартира се веднъж при първо използване. Чете Setup, създава всички листа, попълва данни, поставя защити.
+
+**Сигнатура:** `function runInitialSetup(): void`
+
+**Поредност на изпълнение:**
+
+```
+1. Провери SETUP_COMPLETE → ако true, попитай дали да продължи
+2. Прочети Setup sheet → income, members, city, month, currency
+3. Изчисли incomeClass = getIncomeClass(income)
+4. Създай/изчисти листа: Categories, Monthly, Calendar, Transactions,
+   Rebalance, Goals, _Prices, _DayPlan, _GoalLedger, _GoalHistory, _Changelog
+5. Попълни _Prices (ценова матрица)
+6. buildCategories(income, incomeClass, members, city)
+7. buildMonthly(income)
+8. buildCalendar(yearMonth, incomeClass, members)
+9. buildDayPlan(yearMonth, categoriesData)
+10. Създай Named Ranges
+11. Запиши incomeClass в Setup!B5
+12. applyProtections() + hideSystemSheets()
+13. ensureOnEditTrigger_()
+14. Props.set('SETUP_COMPLETE', 'true')
+15. Props.set('BUDGET_MONTH', yearMonth)
+16. toast('Бюджетът е генериран успешно! ✓')
+```
+
+**Псевдокод:**
+```javascript
+function runInitialSetup() {
+  const ss = SpreadsheetApp.getActive();
+  const ui = SpreadsheetApp.getUi();
+
+  if (Props.isSetupDone()) {
+    const resp = ui.alert('Бюджетът вече е генериран. Искате ли да го презапишете?',
+      ui.ButtonSet.YES_NO);
+    if (resp !== ui.Button.YES) return;
+  }
+
+  const setup   = getSheet(SHEETS.SETUP);
+  const income  = setup.getRange('B4').getValue();
+  const members = setup.getRange('B6').getValue() || 1;
+  const city    = setup.getRange('B7').getValue() || 'SOFIA';
+  const month   = setup.getRange('B10').getValue(); // 'YYYY-MM'
+
+  if (!income || income < 100) {
+    alertError('Моля въведете месечен доход в Setup!B4'); return;
+  }
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    alertError('Невалиден формат на месец. Пример: 2026-05'); return;
+  }
+
+  const incomeClass = getIncomeClass(income);
+  setup.getRange('B5').setValue(incomeClass);
+
+  buildCategories_(income, incomeClass, members, city);
+  buildMonthly_(income);
+  buildCalendar_(month, incomeClass, members);
+  buildDayPlan_(month);
+  createAllNamedRanges_(ss);
+  applyProtections();
+  hideSystemSheets_();
+  ensureOnEditTrigger_();
+
+  Props.set('SETUP_COMPLETE', 'true');
+  Props.set('BUDGET_MONTH', month);
+  Props.set('INCOME_CLASS', incomeClass);
+
+  toast('✓ Бюджетът за ' + month + ' е генериран!', 'MITA');
+}
+```
+
+---
+
+### 11Б.2 buildCategories_() — Setup.gs
+
+**Роля:** Изгражда лист Categories с месечни суми по категории, изчислени от `_Prices`.
+
+**Сигнатура:** `function buildCategories_(income, incomeClass, members, city): void`
+
+**Структура на Categories след buildCategories_:**
+
+| Ред | A: Категория | B: Код | C: Месечен бюджет (€) | D: Приоритет | E: Поведение | F: Дневна ср. (€) |
+|---|---|---|---|---|---|---|
+| 1 | Заглавие | — | — | — | — | — |
+| 2 | Наем / Ипотека | rent | `=Setup!B_` | СВЕЩЕНА | fixed | `=C2/days` |
+| 3 | Спестявания | savings | `=income×tier%` | СВЕЩЕНА | fixed | — |
+| ... | ... | ... | ... | ... | ... | ... |
+
+**Логика за изчисляване на сума:**
+```javascript
+function getCategoryBudget_(catCode, incomeClass, members) {
+  const priceSheet = getSheet(SHEETS.PRICES);
+  const data = priceSheet.getDataRange().getValues();
+
+  const colIdx = { LOW: 7, 'НИС.СР.': 8, СРЕДЕН: 9, 'ВИС.СР.': 10, ВИСОК: 11 };
+  const qtyCol = colIdx[incomeClass] ?? 9;
+
+  let total = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[0] !== catCode) continue;    // A: category code
+    if (row[12] !== true) continue;      // M: included flag
+    const avgPrice = row[5];             // F: avg €
+    const qty      = row[qtyCol];        // H-L: quantity per tier
+    total += avgPrice * qty;
+  }
+  // Умножи по брой членове само за категории свързани с хора
+  const perPersonCats = ['groceries','coffee','personal_care','medical'];
+  if (perPersonCats.includes(catCode)) total *= members;
+
+  return roundEur(total);
+}
+```
+
+---
+
+### 11Б.3 buildCalendar_() — Calendar.gs
+
+**Роля:** Генерира 31-те реда на Calendar sheet с планирани суми по дни.
+
+**Сигнатура:** `function buildCalendar_(yearMonth: string, incomeClass: string, members: number): void`
+
+**Алгоритъм:**
+
+```
+1. Прочети Categories → списък {code, monthlyBudget, priority, behavior}
+2. days = getDaysInMonth(yearMonth)
+3. За всяка категория изчисли dailyAmounts[] с размер days
+   - FIXED: само ден 1 получава пълната сума; останалите = 0
+   - SPREAD: monthlyBudget / days (равномерно)
+   - CLUSTERED: сумата се разпределя само в събота/неделя/празници
+     seed = hash(yearMonth + catCode)
+     rng  = deterministicRng(seed)
+     clusteredDays = дни, където isWeekend или isHoliday
+     разпредели пропорционално с малко шум от rng
+4. plannedPerDay[d] = SUM(dailyAmounts[d] за всички категории)
+5. Запиши Calendar:
+   Row per day: [dayN, date, dayOfWeek, planned, 0, planned, 'СИВО', '']
+6. Форматирай: header row navy/yellow, данни с alternating rows
+7. Замрази ред 1
+```
+
+**Детайл за CLUSTERED разпределение:**
+```javascript
+function distributeClusteredDays_(monthlyBudget, yearMonth, catCode) {
+  const days = getDaysInMonth(yearMonth);
+  const [year, mon] = yearMonth.split('-').map(Number);
+  const amounts = new Array(days).fill(0);
+
+  const clusterDays = [];
+  for (let d = 1; d <= days; d++) {
+    const dt = new Date(year, mon - 1, d);
+    if (isWeekend(dt) || isHoliday(dt)) clusterDays.push(d);
+  }
+  if (clusterDays.length === 0) {
+    // Няма уикенди — fallback към spread
+    return new Array(days).fill(roundEur(monthlyBudget / days));
+  }
+
+  const seed = simpleHash_(yearMonth + catCode);
+  const rng  = deterministicRng(seed);
+
+  // Генерирай тегла с малко случайност
+  const weights = clusterDays.map(() => 0.8 + rng() * 0.4);
+  const wSum = weights.reduce((a, b) => a + b, 0);
+
+  clusterDays.forEach((d, i) => {
+    amounts[d - 1] = roundEur(monthlyBudget * weights[i] / wSum);
+  });
+
+  // Коригирай закръгляне
+  const diff = roundEur(monthlyBudget - amounts.reduce((a, b) => a + b, 0));
+  if (diff !== 0) amounts[clusterDays[0] - 1] = roundEur(amounts[clusterDays[0] - 1] + diff);
+
+  return amounts;
+}
+```
+
+---
+
+### 11Б.4 buildDayPlan_() — DayPlan.gs
+
+**Роля:** Попълва скрития `_DayPlan` лист — per-категория per-ден tracking таблица.
+
+**Сигнатура:** `function buildDayPlan_(yearMonth: string): void`
+
+**Структура на `_DayPlan` (колони A–L):**
+
+| A | B | C | D | E | F | G | H | I | J | K | L |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Day# | CatCode | Priority | Behavior | Planned€ | Remaining€ | Locked | MinFloor€ | MaxTake% | DonorRank | LastModTS | Notes |
+
+- Редове: `days × categories` (напр. 31 × 24 = 744 реда)
+- `F (Remaining)` = `D (Planned)` при старт; намалява при транзакции и rebalance
+- `G (Locked)` = TRUE ако денят е минал и е финализиран
+- `H (MinFloor)` = минималната сума под която донорът не може да слезе (€1.00 за DISCRETIONARY, €0 за FLEXIBLE)
+- `I (MaxTake%)` = 0.50 (50% правило)
+- `J (DonorRank)` = 1 (DISCRETIONARY дава пръв) … 4 (PROTECTED дава последен)
+
+```javascript
+function buildDayPlan_(yearMonth) {
+  const cats   = getCategoriesData_();   // чете Categories sheet
+  const days   = getDaysInMonth(yearMonth);
+  const sheet  = getOrCreateSheet(SHEETS.DAY_PLAN);
+  sheet.clearContents();
+
+  const header = ['Day#','CatCode','Priority','Behavior',
+                  'Planned€','Remaining€','Locked','MinFloor€',
+                  'MaxTake%','DonorRank','LastModTS','Notes'];
+  const rows = [header];
+
+  for (let d = 1; d <= days; d++) {
+    for (const cat of cats) {
+      const planned = cat.dailyAmounts[d - 1] || 0;
+      rows.push([
+        d,
+        cat.code,
+        cat.priority,
+        cat.behavior,
+        planned,
+        planned,        // Remaining = Planned при старт
+        false,          // Locked
+        cat.minFloor,
+        0.50,           // MaxTake 50%
+        cat.donorRank,
+        '',
+        ''
+      ]);
+    }
+  }
+
+  sheet.getRange(1, 1, rows.length, 12).setValues(rows);
+}
+```
+
+---
+
+### 11Б.5 onEditInstallable() — Code.gs
+
+**Роля:** Главен event handler за редактиране. Разпределя към подфункции.
+
+**Сигнатура:** `function onEditInstallable(e: GoogleAppsScript.Events.SheetsOnEdit): void`
+
+```javascript
+function onEditInstallable(e) {
+  if (!e || !e.range) return;
+  if (!Props.isSetupDone()) return;
+
+  const sheet = e.range.getSheet();
+  const name  = sheet.getName();
+  const col   = e.range.getColumn();
+  const row   = e.range.getRow();
+
+  if (name === SHEETS.TRANSACTIONS && row > 1 && col <= 5) {
+    processTransactionRow(sheet, row);
+    return;
+  }
+
+  if (name === SHEETS.GOALS && col === 5 && row > 1) {
+    processGoalContribution(sheet, row);
+    return;
+  }
+
+  if (name === SHEETS.SETUP && col === 2) {
+    // Потребителят е сменил нещо в Setup — само предупреди
+    toast('Промяна в Setup. Рестартирай бюджета от менюто ако е нужно.', '⚠️ MITA');
+  }
+}
+```
+
+---
+
+### 11Б.6 processTransactionRow() — Transactions.gs
+
+**Роля:** Обработва един ред от Transactions при въвеждане/редактиране.
+
+**Сигнатура:** `function processTransactionRow(sheet: Sheet, row: number): void`
+
+**Алгоритъм:**
+
+```
+1. Прочети ред: [date, dayN, catCode, amount, note, processed]
+2. АКО processed === 'OK' → ИЗХОД (вече обработен)
+3. Валидирай: date, dayN (1-31), catCode (в Categories), amount > 0
+4. АКО невалиден → маркирай с '#ERR' в F, покажи грешка → ИЗХОД
+5. Намери редовете в _DayPlan за dayN + catCode
+6. Обнови Remaining в _DayPlan: Remaining -= amount
+7. Обнови Calendar!E[dayN] (Spent): += amount
+8. Изчисли Calendar!F[dayN] (Remaining): = Planned - Spent
+9. Изчисли статус:
+   yellowThreshold = MAX(2, MIN(planned × 5%, 25))
+   АКО spent <= planned → GREEN
+   АКО spent <= planned + yellowThreshold → YELLOW
+   АКО spent >  planned + yellowThreshold → RED → rebalanceFutureDays(dayN, catCode, overspend)
+10. Оцвети ред dayN в Calendar (зелено/жълто/червено)
+11. Запиши 'OK' в Transactions!F[row]
+12. logChange_(...)
+```
+
+```javascript
+function processTransactionRow(sheet, row) {
+  const vals = sheet.getRange(row, 1, 1, 6).getValues()[0];
+  const [date, dayN, catCode, amount, note, processed] = vals;
+
+  if (processed === 'OK') return;
+
+  // Валидация
+  if (!dayN || dayN < 1 || dayN > 31 || !catCode || !amount || amount <= 0) {
+    sheet.getRange(row, 6).setValue('#ERR');
+    toast('⚠️ Невалидна транзакция на ред ' + row, 'MITA грешка');
+    return;
+  }
+
+  const ss = SpreadsheetApp.getActive();
+
+  // Обнови _DayPlan
+  updateDayPlanRemaining_(dayN, catCode, amount);
+
+  // Обнови Calendar
+  const calSheet = getSheet(SHEETS.CALENDAR);
+  const calRow   = dayN + 1; // ред 1 = header
+  const planned  = calSheet.getRange(calRow, 4).getValue();
+  const spent    = (calSheet.getRange(calRow, 5).getValue() || 0) + amount;
+  const remaining = roundEur(planned - spent);
+
+  calSheet.getRange(calRow, 5).setValue(spent);
+  calSheet.getRange(calRow, 6).setValue(remaining);
+
+  // Статус
+  const yThresh = Math.max(2, Math.min(planned * 0.05, 25));
+  let status, bgColor;
+  if (spent <= planned) {
+    status = STATUS.GREEN; bgColor = '#D9EAD3';
+  } else if (spent <= planned + yThresh) {
+    status = STATUS.YELLOW; bgColor = '#FFF2CC';
+  } else {
+    status = STATUS.RED; bgColor = '#F4CCCC';
+    const overspend = roundEur(spent - planned - yThresh);
+    rebalanceFutureDays(dayN, catCode, overspend);
+  }
+
+  calSheet.getRange(calRow, 7).setValue(status);
+  calSheet.getRange(calRow, 1, 1, 8).setBackground(bgColor);
+
+  sheet.getRange(row, 6).setValue('OK');
+}
+```
+
+---
+
+### 11Б.7 rebuildCalendar() — Calendar.gs
+
+**Роля:** Публична функция от менюто "Нов месец". Нулира Calendar и _DayPlan за нов месец без да пипа Setup и Categories.
+
+**Сигнатура:** `function rebuildCalendar(): void`
+
+```
+1. Провери SETUP_COMPLETE
+2. Покажи диалог: "Сигурни ли сте? Транзакциите НЕ се изтриват автоматично."
+3. Прочети новия месец от Setup!B10
+4. buildCalendar_(newMonth, incomeClass, members)
+5. buildDayPlan_(newMonth)
+6. Props.set('BUDGET_MONTH', newMonth)
+7. toast('Календарът е презаредин за ' + newMonth)
+```
+
+---
+
+### 11Б.8 refreshCalendarRow_() — Calendar.gs
+
+**Роля:** Вътрешна помощна функция. Преизчислява един ред от Calendar на базата на текущото състояние на _DayPlan и Transactions.
+
+**Сигнатура:** `function refreshCalendarRow_(dayN: number): void`
+
+```javascript
+function refreshCalendarRow_(dayN) {
+  const calSheet  = getSheet(SHEETS.CALENDAR);
+  const calRow    = dayN + 1;
+
+  // Сумирай всички транзакции за деня
+  const txSheet = getSheet(SHEETS.TRANSACTIONS);
+  const txData  = txSheet.getDataRange().getValues();
+  let spent = 0;
+  for (let i = 1; i < txData.length; i++) {
+    if (txData[i][1] == dayN && txData[i][5] === 'OK') {
+      spent += txData[i][3];
+    }
+  }
+
+  const planned   = calSheet.getRange(calRow, 4).getValue();
+  const remaining = roundEur(planned - spent);
+  const yThresh   = Math.max(2, Math.min(planned * 0.05, 25));
+
+  let status, bg;
+  const today = new Date();
+  const [yr, mo] = Props.get('BUDGET_MONTH').split('-').map(Number);
+  const dayDate = new Date(yr, mo - 1, dayN);
+
+  if (dayDate > today) {
+    status = STATUS.GRAY; bg = '#F3F3F3';
+  } else if (spent <= planned) {
+    status = STATUS.GREEN; bg = '#D9EAD3';
+  } else if (spent <= planned + yThresh) {
+    status = STATUS.YELLOW; bg = '#FFF2CC';
+  } else {
+    status = STATUS.RED; bg = '#F4CCCC';
+  }
+
+  calSheet.getRange(calRow, 5, 1, 3).setValues([[spent, remaining, status]]);
+  calSheet.getRange(calRow, 1, 1, 8).setBackground(bg);
+}
+```
+
+---
+
+*Раздел 11Б — ЗАВЪРШЕН ✅*
+*Следващ: Раздел 11В — Rebalancer, Goals, Dialogs, защити, error handling*
+
+---
+
+---
