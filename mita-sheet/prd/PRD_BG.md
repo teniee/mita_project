@@ -3344,7 +3344,264 @@ function toast(msg, title) {
 ---
 
 *Раздел 11А — ЗАВЪРШЕН ✅*
-*Следващ: Раздел 11Б — функции Setup, Calendar, DayPlan, Transactions*
+*Следващ: Раздел 11Б1 — runInitialSetup, buildCategories, buildMonthly*
+
+---
+
+## РАЗДЕЛ 11Б1 — SETUP.GS: ПЪРВОНАЧАЛНА НАСТРОЙКА
+
+### 11Б1.1 runInitialSetup() — главна функция
+
+**Сигнатура:** `function runInitialSetup(): void`
+**Извиква се от:** меню „1. Първоначална настройка"
+**Изпълнява се веднъж** (но може да се повтори — идемпотентна)
+
+```
+СТЪПКИ:
+1. Провери Setup лист — валидирай задължителни полета
+2. Прочети входни данни (income, fixed expenses, month, city, members)
+3. Изчисли incomeClass и discretionary
+4. Създай/изчисти Categories лист → buildCategories()
+5. Създай/изчисти Monthly лист   → buildMonthly()
+6. Създай/изчисти Calendar лист  → buildCalendar()
+7. Създай/изчисти _DayPlan лист  → buildDayPlan()
+8. Инсталирай onEdit тригер      → ensureOnEditTrigger_()
+9. Приложи защити               → applyProtections()
+10. Скрий системни листа        → hideSystemSheets()
+11. Запиши Script Properties    → Props.set(...)
+12. Toast: "Бюджетът е генериран успешно!"
+```
+
+#### Псевдокод
+
+```javascript
+function runInitialSetup() {
+  const ss = SpreadsheetApp.getActive();
+  const setup = ss.getSheetByName(SHEETS.SETUP);
+
+  // 1. Валидация
+  const income = setup.getRange('B4').getValue();
+  if (!income || income < 100) {
+    alertError('Въведи месечен нетен доход (минимум €100).');
+    return;
+  }
+  const month = setup.getRange('B10').getValue();  // "2026-05"
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    alertError('Форматът на месеца трябва да е YYYY-MM (пр. 2026-05).');
+    return;
+  }
+
+  // 2. Прочети данни
+  const data = readSetupData_(setup);
+
+  // 3. Изчисли клас и дискреционна сума
+  data.incomeClass  = getIncomeClass(data.income);
+  data.discretionary = calcDiscretionary_(data);
+
+  // 4-7. Изгради листата
+  buildCategories(data);
+  buildMonthly(data);
+  buildCalendar(data);
+  buildDayPlan(data);
+
+  // 8-10. Инфраструктура
+  ensureOnEditTrigger_();
+  applyProtections();
+  hideSystemSheets();
+
+  // 11. Запази в Props
+  Props.set('SETUP_COMPLETE', 'true');
+  Props.set('BUDGET_MONTH', data.month);
+  Props.set('INCOME_CLASS', data.incomeClass);
+
+  toast('Бюджетът е генериран успешно! ✓', 'MITA');
+}
+```
+
+---
+
+### 11Б1.2 readSetupData_() — четене на Setup лист
+
+```javascript
+function readSetupData_(setup) {
+  return {
+    income:      setup.getRange('B4').getValue(),   // число
+    rent:        setup.getRange('B5').getValue(),
+    utilities:   setup.getRange('B6').getValue(),
+    insurance:   setup.getRange('B7').getValue(),
+    debt:        setup.getRange('B8').getValue(),
+    savings:     setup.getRange('B9').getValue(),
+    currency:    setup.getRange('B11').getValue() || '€',
+    month:       String(setup.getRange('B10').getValue()),
+    members:     setup.getRange('B6').getValue() || 1,
+    city:        setup.getRange('B7').getValue() || 'sofia'
+  };
+}
+```
+
+> **Забележка:** `members` и `city` са в редове 6 и 7 на Setup — стойностите трябва да се съгласуват с окончателния Setup layout от Раздел 10.
+
+---
+
+### 11Б1.3 calcDiscretionary_() — изчисляване на свободна сума
+
+```javascript
+function calcDiscretionary_(data) {
+  const fixed = data.rent + data.utilities + data.insurance
+              + data.debt + data.savings;
+  return roundEur(data.income - fixed);
+}
+```
+
+Дискреционната сума е базата за разпределение по категории. Ако е отрицателна — грешка.
+
+---
+
+### 11Б1.4 buildCategories() — изграждане на Categories лист
+
+**Сигнатура:** `function buildCategories(data: SetupData): void`
+
+#### Алгоритъм
+
+```
+1. Вземи или създай лист "Categories"
+2. Изчисти всичко под ред 1
+3. Запиши header: [Категория, Месечен бюджет (€), Приоритет, Поведение, Дневна ср. (€)]
+4. За всяка категория в CATEGORY_DEFS:
+   a. Изчисли monthlyBudget = getCategoryBudget(catCode, data)
+   b. Запиши ред: [label, monthlyBudget, priority, behavior, dailyAvg]
+5. Форматирай: заглавен ред тъмносин/жълт, приоритет цветове
+6. Замрази ред 1
+7. Постави защита на колони C, D, G (само четене)
+```
+
+#### getCategoryBudget() — ценова матрица
+
+```javascript
+function getCategoryBudget(catCode, data) {
+  const prices = ss.getSheetByName(SHEETS.PRICES);
+  const rows   = prices.getDataRange().getValues();
+
+  // Намери тиерния индекс (0=LOW … 4=HIGH)
+  const tierIdx = ['НИСЪК','НИС.СР.','СРЕДЕН','ВИС.СР.','ВИСОК']
+                    .indexOf(data.incomeClass);          // → 0..4
+
+  // Колони H..L = qty за 5 тиера (индекси 7..11)
+  // Колона F = avg price (индекс 5)
+  // Колона M = included flag (индекс 12)
+  // Колона A = catCode (индекс 0)
+
+  let total = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row[0] !== catCode) continue;
+    if (row[12] !== true)   continue;   // included = FALSE → пропусни
+
+    const avgPrice = row[5];            // Avg €
+    const qty      = row[7 + tierIdx];  // Qty за текущия тиер
+    total += avgPrice * qty;
+  }
+
+  return roundEur(total * data.members);
+}
+```
+
+#### CATEGORY_DEFS — дефиниция на категориите
+
+```javascript
+const CATEGORY_DEFS = [
+  // code,            label BG,              priority,  behavior
+  ['savings',         'Спестявания',          0, 'fixed'],
+  ['rent',            'Наем / Ипотека',       0, 'fixed'],
+  ['debt',            'Дълг',                 0, 'fixed'],
+  ['groceries',       'Хранителни стоки',     1, 'spread'],
+  ['transport',       'Транспорт',            1, 'spread'],
+  ['medical',         'Здраве / Медицина',    1, 'clustered'],
+  ['utilities',       'Комунални услуги',     0, 'fixed'],
+  ['insurance',       'Застраховки',          0, 'fixed'],
+  ['coffee',          'Кафе / Закуски',       2, 'spread'],
+  ['personal_care',   'Лична хигиена',        2, 'clustered'],
+  ['clothing',        'Облекло',              2, 'clustered'],
+  ['subscriptions',   'Абонаменти',           2, 'fixed'],
+  ['dining',          'Хранене навън',        3, 'clustered'],
+  ['entertainment',   'Развлечения',          3, 'clustered'],
+  ['sport',           'Спорт / Фитнес',       3, 'clustered'],
+  ['travel',          'Пътувания / Почивка',  3, 'clustered'],
+  ['education',       'Образование',          2, 'clustered'],
+  ['home',            'Дом / Подобрения',     2, 'clustered'],
+  ['pets',            'Домашни животни',      1, 'spread'],
+  ['gifts',           'Подаръци',             3, 'clustered'],
+  ['car',             'Автомобил',            1, 'spread'],
+  ['kids',            'Деца',                 1, 'spread'],
+  ['phone',           'Телефон / Интернет',   2, 'fixed'],
+  ['other',           'Други',                3, 'spread'],
+];
+```
+
+---
+
+### 11Б1.5 buildMonthly() — изграждане на Monthly лист
+
+**Сигнатура:** `function buildMonthly(data: SetupData): void`
+
+#### Структура на Monthly лист (генерирана)
+
+```
+Ред 1 : MITA — Месечен бюджет | [месец]
+Ред 2 : (празен)
+Ред 3 : Месечен нетен доход        | [income]
+Ред 4 : Фиксирани разходи (общо)   | [sum fixed]
+Ред 5 : Дискреционна сума          | [discretionary]
+Ред 6 : (празен)
+Ред 7 : РАЗБИВКА ПО КАТЕГОРИИ      |
+Ред 8+: [категория] | [сума] | [% от доход] | [приоритет]
+...
+Последен ред: ОБЩО                 | [sum all]
+```
+
+#### Алгоритъм
+
+```javascript
+function buildMonthly(data) {
+  const sh = getOrCreateSheet(SHEETS.MONTHLY);
+  sh.clearContents();
+
+  const catSheet = ss.getSheetByName(SHEETS.CATEGORIES);
+  const catData  = catSheet.getDataRange().getValues().slice(1); // без header
+
+  let rows = [];
+
+  // Заглавна секция
+  rows.push(['MITA — Месечен бюджет', data.month]);
+  rows.push([]);
+  rows.push(['Месечен нетен доход', data.income]);
+  rows.push(['Фиксирани разходи', calcFixed_(data)]);
+  rows.push(['Дискреционна сума', data.discretionary]);
+  rows.push([]);
+  rows.push(['Категория', 'Бюджет (€)', '% от доход', 'Приоритет']);
+
+  // Ред за всяка категория
+  for (const cat of catData) {
+    const pct = roundEur((cat[1] / data.income) * 100);
+    rows.push([cat[0], cat[1], pct + '%', cat[2]]);
+  }
+
+  // Total ред
+  const total = catData.reduce((s, r) => s + r[1], 0);
+  rows.push([]);
+  rows.push(['ОБЩО', roundEur(total), roundEur((total/data.income)*100)+'%', '']);
+
+  sh.getRange(1, 1, rows.length, 4).setValues(rows);
+
+  // Named range за дискреционна сума
+  setNamedRange_('_Discretionary', sh.getRange(5, 2));
+}
+```
+
+---
+
+*Раздел 11Б1 — ЗАВЪРШЕН ✅*
+*Следващ: Раздел 11Б2 — buildCalendar, buildDayPlan, processTransactionRow*
 
 ---
 
