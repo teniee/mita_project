@@ -14,7 +14,7 @@ from sqlalchemy import desc, and_, func, select
 
 from app.api.dependencies import get_current_user, require_premium_user
 from app.core.async_session import get_async_db as get_db
-from app.api.base_crud import CRUDHelper
+from app.api.base_crud import AsyncCRUDHelper
 from app.db.models import Goal
 from app.utils.response_wrapper import success_response
 from app.services.notification_integration import get_notification_integration
@@ -564,7 +564,7 @@ async def get_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get a specific goal by ID"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
     return success_response(goal_to_dict(goal))
 
 
@@ -576,7 +576,7 @@ async def update_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Update an existing goal"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     # Track whether budget-relevant fields change so we know to re-sync.
     _budget_fields = {"target_amount", "saved_amount", "target_date", "status"}
@@ -643,7 +643,7 @@ async def delete_goal(
             "goal_budget_sync failed on delete goal=%s: %s", goal_id, _sync_err
         )
 
-    await CRUDHelper.delete_user_resource(db, Goal, goal_id, user.id, "Goal not found")
+    await AsyncCRUDHelper.delete_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
     return success_response({"status": "deleted", "id": str(goal_id)})
 
 
@@ -659,7 +659,7 @@ async def add_savings_to_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Add savings to a goal and update progress"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     # Store old progress to check for milestones
     old_progress = float(goal.progress)
@@ -712,7 +712,7 @@ async def mark_goal_completed(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Mark a goal as completed"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     goal.status = 'completed'
     goal.progress = 100
@@ -760,7 +760,7 @@ async def pause_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Pause an active goal"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     goal.status = 'paused'
     goal.last_updated = datetime.now(timezone.utc)
@@ -788,7 +788,7 @@ async def resume_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Resume a paused goal"""
-    goal = await CRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
 
     if goal.status != 'paused':
         raise HTTPException(status_code=400, detail="Only paused goals can be resumed")

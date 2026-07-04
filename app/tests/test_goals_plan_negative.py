@@ -32,14 +32,25 @@ class DummyDB:
         return self.rows
 
 
-def test_update_goal_not_found(monkeypatch):
+@pytest.mark.asyncio
+async def test_update_goal_not_found(monkeypatch):
     monkeypatch.setattr(
         "app.api.goals.routes.success_response", lambda data=None, message="": data
     )
-    db = DummyDB(record=None)
+
+    class DummyResult:
+        def scalar_one_or_none(self):
+            return None
+
+    class DummyAsyncDB:
+        async def execute(self, query):
+            return DummyResult()
+
     user = SimpleNamespace(id="u1")
     with pytest.raises(goals_routes.HTTPException) as exc:
-        goals_routes.update_goal("g1", goals_routes.GoalUpdate(), user=user, db=db)
+        await goals_routes.update_goal(
+            "g1", goals_routes.GoalUpdate(), user=user, db=DummyAsyncDB()
+        )
     assert exc.value.status_code == 404
 
 

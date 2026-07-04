@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional, Type, TypeVar
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 T = TypeVar('T')
@@ -312,3 +314,68 @@ class CRUDHelper:
             True if exists
         """
         return db.query(model).filter(model.id == resource_id).first() is not None
+
+
+class AsyncCRUDHelper:
+    """
+    Async counterpart of CRUDHelper for routes using AsyncSession.
+
+    CRUDHelper's sync Session API (db.query) does not exist on AsyncSession —
+    async routes must use these helpers instead.
+    """
+
+    @staticmethod
+    async def get_user_resource_or_404(
+        db: AsyncSession,
+        model: Type[T],
+        resource_id: UUID,
+        user_id: UUID,
+        detail: str = "Resource not found"
+    ) -> T:
+        """
+        Get a user-owned resource by ID or raise 404 (async).
+
+        Automatically filters out soft-deleted records for financial compliance.
+
+        Raises:
+            HTTPException: 404 if not found or not owned by user
+        """
+        query = select(model).where(
+            model.id == resource_id,
+            model.user_id == user_id,
+        )
+        if hasattr(model, 'deleted_at'):
+            query = query.where(model.deleted_at.is_(None))
+
+        result = await db.execute(query)
+        resource = result.scalar_one_or_none()
+        if not resource:
+            raise HTTPException(status_code=404, detail=detail)
+        return resource
+
+    @staticmethod
+    async def delete_resource(db: AsyncSession, resource: T) -> bool:
+        """Delete a resource (soft delete if supported, hard delete otherwise)."""
+        if hasattr(resource, 'deleted_at'):
+            # Soft delete for compliance (financial data must be recoverable)
+            from datetime import datetime, timezone
+            resource.deleted_at = datetime.now(timezone.utc)
+            await db.commit()
+        else:
+            await db.delete(resource)
+            await db.commit()
+        return True
+
+    @staticmethod
+    async def delete_user_resource_or_404(
+        db: AsyncSession,
+        model: Type[T],
+        resource_id: UUID,
+        user_id: UUID,
+        detail: str = "Resource not found"
+    ) -> bool:
+        """Delete a user-owned resource by ID or raise 404 (async, soft-delete aware)."""
+        resource = await AsyncCRUDHelper.get_user_resource_or_404(
+            db, model, resource_id, user_id, detail
+        )
+        return await AsyncCRUDHelper.delete_resource(db, resource)
