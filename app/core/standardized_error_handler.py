@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, Request, status
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -277,7 +278,7 @@ class ErrorResponse:
                 }
             }
             
-        elif isinstance(error, HTTPException):
+        elif isinstance(error, StarletteHTTPException):
             # Map FastAPI HTTPExceptions to standardized format
             error_code_mapping = {
                 401: ErrorCode.AUTH_INVALID_CREDENTIALS,
@@ -373,6 +374,8 @@ class StandardizedErrorHandler:
             logger.warning(f"Business logic error [{error_id}]: {error}", extra=log_context)
         elif isinstance(error, RateLimitError):
             logger.warning(f"Rate limit exceeded [{error_id}]: {error}", extra=log_context)
+        elif isinstance(error, StarletteHTTPException) and error.status_code < 500:
+            logger.info(f"HTTP {error.status_code} [{error_id}]: {error}", extra=log_context)
         else:
             # Server errors - log with full stack trace
             logger.error(
@@ -408,7 +411,7 @@ class StandardizedErrorHandler:
         # Determine status code
         if isinstance(error, StandardizedAPIException):
             status_code = error.status_code
-        elif isinstance(error, HTTPException):
+        elif isinstance(error, StarletteHTTPException):
             status_code = error.status_code
         elif isinstance(error, (ValidationError, RequestValidationError)):
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -420,7 +423,17 @@ class StandardizedErrorHandler:
         if isinstance(error, (StandardizedAPIException, RateLimitError)) and hasattr(error, 'retry_after'):
             if error.retry_after:
                 headers["Retry-After"] = str(error.retry_after)
-        
+
+        # Preserve headers attached to the exception (e.g. WWW-Authenticate,
+        # Retry-After on HTTPException) instead of silently dropping them.
+        exc_headers = getattr(error, "headers", None)
+        if exc_headers:
+            headers.update(exc_headers)
+
+        # RFC 7235: a 401 response MUST include a WWW-Authenticate header
+        if status_code == status.HTTP_401_UNAUTHORIZED and "WWW-Authenticate" not in headers:
+            headers["WWW-Authenticate"] = "Bearer"
+
         return JSONResponse(
             status_code=status_code,
             content=response_data,

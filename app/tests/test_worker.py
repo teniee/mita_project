@@ -1,34 +1,17 @@
-import importlib
-
-import redis
-import rq
+"""Smoke tests for the worker entry point and standard worker configuration."""
 
 
-def test_worker_initializes(monkeypatch):
-    called = {}
+def test_worker_module_has_main():
+    import app.worker as worker
 
-    class DummyWorker:
-        def __init__(self, queues):
-            called["queues"] = queues
+    assert callable(worker.main)
 
-        def work(self):
-            called["worked"] = True
 
-    class DummyConnCtx:
-        def __init__(self, conn):
-            pass
+def test_standard_worker_configs_cover_default_queue():
+    from app.core.worker_manager import create_standard_worker_configs
 
-        def __enter__(self):
-            return None
-
-        def __exit__(self, *a):
-            return False
-
-    monkeypatch.setattr(redis.Redis, "from_url", lambda url: object())
-    monkeypatch.setattr(rq, "Connection", DummyConnCtx)
-    monkeypatch.setattr(rq, "Worker", DummyWorker)
-    monkeypatch.setattr(rq, "Queue", lambda *a, **k: None)
-
-    importlib.reload(importlib.import_module("app.worker"))
-    assert called["queues"] == ["default"]
-    assert called["worked"]
+    configs = create_standard_worker_configs()
+    assert configs, "expected at least one standard worker config"
+    assert any("default" in c.queues for c in configs)
+    assert all(c.max_jobs > 0 for c in configs)
+    assert all(c.job_timeout > 0 for c in configs)

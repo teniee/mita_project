@@ -62,71 +62,9 @@ sys.modules["firebase_admin.credentials"] = dummy.credentials
 sys.modules["firebase_admin.firestore"] = dummy.firestore
 sys.modules["firebase_admin.messaging"] = dummy.messaging
 
-# Mock OpenAI
-openai_dummy = types.ModuleType("openai")
-openai_dummy.OpenAIError = Exception
-openai_dummy.RateLimitError = type('RateLimitError', (Exception,), {})
-openai_dummy.APIConnectionError = type('APIConnectionError', (Exception,), {})
-openai_dummy.APITimeoutError = type('APITimeoutError', (Exception,), {})
-openai_dummy.AuthenticationError = type('AuthenticationError', (Exception,), {})
-openai_dummy.BadRequestError = type('BadRequestError', (Exception,), {})
-openai_dummy.InternalServerError = type('InternalServerError', (Exception,), {})
-
-# Sync OpenAI client (for legacy code)
-openai_dummy.OpenAI = lambda *a, **k: types.SimpleNamespace(
-    chat=types.SimpleNamespace(
-        completions=types.SimpleNamespace(
-            create=lambda **k: types.SimpleNamespace(
-                choices=[types.SimpleNamespace(
-                    message=types.SimpleNamespace(content="AI generated advice")
-                )],
-                usage=types.SimpleNamespace(
-                    total_tokens=100,
-                    prompt_tokens=50,
-                    completion_tokens=50
-                )
-            )
-        )
-    )
-)
-
-# Async OpenAI client (for modern code)
-openai_dummy.AsyncOpenAI = lambda *a, **k: types.SimpleNamespace(
-    chat=types.SimpleNamespace(
-        completions=types.SimpleNamespace(
-            create=AsyncMock(return_value=types.SimpleNamespace(
-                choices=[types.SimpleNamespace(
-                    message=types.SimpleNamespace(content="AI generated advice")
-                )],
-                usage=types.SimpleNamespace(
-                    total_tokens=100,
-                    prompt_tokens=50,
-                    completion_tokens=50
-                )
-            ))
-        )
-    )
-)
-
-# Legacy ChatCompletion for old code
-openai_dummy.ChatCompletion = types.SimpleNamespace(
-    create=lambda **k: types.SimpleNamespace(
-        choices=[types.SimpleNamespace(
-            message=types.SimpleNamespace(content="AI generated advice")
-        )]
-    )
-)
-
-# Mock openai.types submodule
-openai_types = types.ModuleType("openai.types")
-openai_types.chat = types.SimpleNamespace(
-    ChatCompletionMessageParam=dict  # Simple dict type
-)
-openai_dummy.types = openai_types
-
-sys.modules["openai"] = openai_dummy
-sys.modules["openai.types"] = openai_types
-sys.modules["openai.types.chat"] = openai_types.chat
+# NOTE: the real `openai` package is installed and imports without
+# network access or an API key; stubbing it in sys.modules polluted
+# every later-collected test in the suite.
 
 # ============================================================================
 # APP & ROUTE IMPORTS (after env setup)

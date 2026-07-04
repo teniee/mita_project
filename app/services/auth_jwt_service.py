@@ -653,8 +653,11 @@ async def verify_token(
                     })
 
             # Check blacklist using new blacklist service (jti already defined above)
-            # ONLY for tokens older than 30 minutes (fresh tokens skip this)
-            if jti and not is_fresh_token:
+            # ALWAYS — logout/revocation must take effect immediately, even for
+            # fresh tokens. (The fresh-token skip above only covers the DB-bound
+            # token-version check; the blacklist check is Redis-backed with
+            # fail-open degradation, so its availability cost is bounded.)
+            if jti:
                 try:
                     # Import here to avoid circular imports
                     from app.services.token_blacklist_service import get_blacklist_service
@@ -679,7 +682,7 @@ async def verify_token(
                         "jti": jti[:8] + "..." if jti else "unknown",
                         "error": str(blacklist_error)
                     })
-            elif not jti and not is_fresh_token:
+            elif not jti:
                 logger.warning("No JTI in token payload — cannot check blacklist")
             
             # Validate required claims (enhanced for financial application)

@@ -34,8 +34,7 @@ class DummyDB:
         self.committed = True
 
 
-@pytest.mark.asyncio
-async def test_iap_webhook(monkeypatch):
+def test_iap_webhook(monkeypatch):
     sub = SimpleNamespace(expires_at=None)
     user = SimpleNamespace(id="u1", is_premium=False, premium_until=None)
     db = DummyDB(sub, user)
@@ -44,7 +43,7 @@ async def test_iap_webhook(monkeypatch):
         "app.api.iap.routes.success_response", lambda data=None, message="": data
     )
 
-    result = await iap_webhook(
+    result = iap_webhook(
         {"user_id": "u1", "expires_at": "2025-01-01T00:00:00"}, db=db
     )
 

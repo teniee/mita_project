@@ -70,14 +70,25 @@ def _patch_limiter(monkeypatch):
 
 def test_receipt_rate_limit(monkeypatch):
     app.dependency_overrides[tr.get_current_user] = lambda: SimpleNamespace(id="u1")
-    app.dependency_overrides[tr.get_db] = lambda: iter([None])
-    monkeypatch.setattr(tr.OCRReceiptService, "process_image", lambda self, path: {})
+    app.dependency_overrides[tr.get_async_db] = lambda: iter([None])
+
+    # The route enqueues OCR via the task manager (Redis); stub it out
+    class _Status:
+        value = "queued"
+
+    monkeypatch.setattr(
+        tr.task_manager,
+        "submit_ocr_task",
+        lambda **kw: SimpleNamespace(
+            task_id="t1", status=_Status(), estimated_completion=None
+        ),
+    )
     client = TestClient(app)
     file = {"file": ("r.jpg", b"data")}
     for _ in range(5):
-        resp = client.post("/api/transactions/transactions/receipt", files=file)
+        resp = client.post("/api/transactions/receipt", files=file)
         assert resp.status_code == 200
-    resp = client.post("/api/transactions/transactions/receipt", files=file)
+    resp = client.post("/api/transactions/receipt", files=file)
     assert resp.status_code == 429
 
 
@@ -92,7 +103,7 @@ def test_iap_validate_rate_limit(monkeypatch):
     client = TestClient(app)
     payload = {"receipt": "r", "platform": "ios"}
     for _ in range(5):
-        resp = client.post("/api/iap/iap/validate", json=payload)
+        resp = client.post("/api/iap/validate", json=payload)
         assert resp.status_code == 200
-    resp = client.post("/api/iap/iap/validate", json=payload)
+    resp = client.post("/api/iap/validate", json=payload)
     assert resp.status_code == 429
