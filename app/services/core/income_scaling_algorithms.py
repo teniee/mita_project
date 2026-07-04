@@ -46,7 +46,18 @@ class IncomeScalingAlgorithms:
     
     def __init__(self):
         self._load_scaling_parameters()
-    
+
+    @staticmethod
+    def _safe_elasticity(income_ratio: float, coefficient: float) -> float:
+        """income_ratio ** coefficient, safe for zero/near-zero income.
+
+        A zero income_ratio raised to a negative coefficient raises
+        ZeroDivisionError; flooring the ratio keeps the math defined while the
+        per-method min/max bounds keep the final result sensible.
+        """
+        return max(income_ratio, 1e-6) ** coefficient
+
+
     def _load_scaling_parameters(self) -> None:
         """Load scaling parameters for different threshold types"""
         self.scaling_params = {
@@ -122,7 +133,7 @@ class IncomeScalingAlgorithms:
         
         # Apply income elasticity scaling
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_ratio = base_ratio * elasticity_adjustment
         
         # Apply diminishing returns for very high incomes
@@ -166,7 +177,7 @@ class IncomeScalingAlgorithms:
         
         # Apply Engel's Law scaling (strong negative elasticity)
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_ratio = base_ratio * elasticity_adjustment
         
         # Family size has significant impact on food spending
@@ -206,7 +217,7 @@ class IncomeScalingAlgorithms:
         
         # Income elasticity scaling (positive for savings)
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_rate = base_rate * elasticity_adjustment
         
         # Life-cycle adjustment
@@ -254,7 +265,7 @@ class IncomeScalingAlgorithms:
         
         # Income elasticity scaling
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_threshold = base_threshold * elasticity_adjustment
         
         # Tier-specific adjustments (behavioral differences)
@@ -298,7 +309,7 @@ class IncomeScalingAlgorithms:
         
         # Income elasticity scaling (slight positive elasticity)
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_months = base_months * elasticity_adjustment
         
         # Job security adjustment (less secure = more months needed)
@@ -342,7 +353,7 @@ class IncomeScalingAlgorithms:
         
         # Strong positive elasticity for investment capacity
         income_ratio = annual_income / params.base_income
-        elasticity_adjustment = (income_ratio ** params.elasticity_coefficient)
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         scaled_capacity = base_capacity * elasticity_adjustment
         
         # Risk tolerance adjustment
@@ -422,8 +433,9 @@ class IncomeScalingAlgorithms:
         Economic Theory: Higher income allows more aggressive goal timelines.
         Age affects time horizon preferences.
         """
-        monthly_income * 12
-        
+        if monthly_income <= 0:
+            raise ValueError("monthly_income must be positive to compute goal constraints")
+
         # Calculate maximum reasonable contribution (% of income)
         income_tier = classify_income(monthly_income)
         
@@ -470,7 +482,22 @@ class IncomeScalingAlgorithms:
         
         category_multiplier = category_multipliers.get(goal_category.lower(), 1.0)
         maximum_timeline_months *= category_multiplier
-        
+
+        # Reconcile infeasible constraints: if the tier-based contribution cannot
+        # reach the goal within the age/category window, raise the contribution
+        # toward an absolute affordability ceiling (40% of income) instead of
+        # returning a minimum timeline that exceeds the maximum.
+        if minimum_timeline_months > maximum_timeline_months:
+            required_monthly = goal_amount / maximum_timeline_months
+            affordability_ceiling = monthly_income * 0.40
+            max_monthly_contribution = min(required_monthly * 1.1, affordability_ceiling)
+            minimum_timeline_months = max(1, goal_amount / max_monthly_contribution)
+            if minimum_timeline_months > maximum_timeline_months:
+                # Goal remains infeasible even at the affordability ceiling —
+                # extend the window to the feasible horizon so constraints stay
+                # internally consistent (min < max always holds).
+                maximum_timeline_months = minimum_timeline_months * 1.2
+
         return {
             "minimum_timeline_months": minimum_timeline_months,
             "maximum_timeline_months": maximum_timeline_months,
@@ -529,7 +556,7 @@ class IncomeScalingAlgorithms:
         income_ratio = target_income / base_income
         
         # Apply elasticity coefficient
-        elasticity_adjustment = income_ratio ** params.elasticity_coefficient
+        elasticity_adjustment = self._safe_elasticity(income_ratio, params.elasticity_coefficient)
         
         # Calculate scaled value
         scaled_value = base_value * elasticity_adjustment
@@ -573,6 +600,8 @@ def scale_threshold_by_income(
     elif threshold_type == "savings_rate":
         return service.scale_savings_rate_target(monthly_income, **kwargs)
     elif threshold_type == "small_purchase":
+        # spending_tier is a required argument; derive it from income when absent
+        kwargs.setdefault("spending_tier", classify_income(monthly_income))
         return service.scale_small_purchase_threshold(monthly_income, **kwargs)
     elif threshold_type == "emergency_fund":
         return service.scale_emergency_fund_months(monthly_income, **kwargs)

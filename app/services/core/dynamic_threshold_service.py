@@ -510,9 +510,17 @@ class DynamicThresholdService:
         # Get dynamic allocations instead of fixed 50/30/20
         allocations = self.get_budget_allocation_thresholds(user_context)
         
-        # Calculate personalized percentages
-        needs_pct = sum(allocations.get(cat, 0) for cat in ['housing', 'utilities', 'groceries', 'transport', 'healthcare']) * 100
-        wants_pct = sum(allocations.get(cat, 0) for cat in ['entertainment', 'dining', 'shopping', 'miscellaneous']) * 100
+        # Calculate personalized percentages.
+        # Allocation dicts use 'food' (see get_budget_weights); 'groceries'/'dining'
+        # are kept for forward compatibility with finer-grained allocations.
+        needs_pct = sum(
+            allocations.get(cat, 0)
+            for cat in ['housing', 'utilities', 'food', 'groceries', 'transport', 'healthcare', 'debt_payment']
+        ) * 100
+        wants_pct = sum(
+            allocations.get(cat, 0)
+            for cat in ['entertainment', 'dining', 'shopping', 'miscellaneous', 'luxury']
+        ) * 100
         savings_pct = allocations.get('savings', 0.1) * 100
         
         # Recommend appropriate budgeting method based on tier and context
@@ -1012,18 +1020,25 @@ def validate_threshold_consistency(
         bool: True if thresholds are consistent
     """
     try:
-        # Basic validation - ensure all percentages sum appropriately
-        if "budget_allocation" in str(thresholds):
-            total = sum(v for v in thresholds.values() if isinstance(v, (int, float)))
+        # Budget-allocation style dict: every value is a ratio in [0, 1].
+        # Such allocations must sum to ~100% of income.
+        numeric_values = [v for v in thresholds.values() if isinstance(v, (int, float))]
+        looks_like_allocation = (
+            len(numeric_values) >= 3
+            and len(numeric_values) == len(thresholds)
+            and all(0 <= v <= 1 for v in numeric_values)
+        )
+        if looks_like_allocation:
+            total = sum(numeric_values)
             if total > 1.2 or total < 0.8:  # Allow some flexibility
                 return False
-                
+
         # Ensure savings targets are achievable
-        if "savings_rate" in str(thresholds):
+        if "target_savings_rate" in thresholds:
             savings_rate = thresholds.get("target_savings_rate", 0)
             if savings_rate > 0.5 or savings_rate < 0:
                 return False
-        
+
         return True
         
     except Exception as e:

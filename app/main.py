@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+from typing import Optional
 
 import firebase_admin
 import sentry_sdk
@@ -81,7 +82,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # ---- Firebase Admin SDK init ----
 _firebase_initialized: bool = False
-_firebase_init_error: str | None = None
+_firebase_init_error: Optional[str] = None
 
 if not firebase_admin._apps:
     try:

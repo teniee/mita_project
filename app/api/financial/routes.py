@@ -80,18 +80,17 @@ def installment_check_standardized(
                 ErrorCode.BUSINESS_INVALID_OPERATION
             )
         
-        # Calculate additional financial insights
-        monthly_payment = validated_price / payload.months
-        monthly_payment * payload.months
-        
-        # Add metadata for better user experience
-        {
-            "monthly_payment": round(monthly_payment, 2),
+        # Enrich the result with derived installment metadata for the client
+        monthly_payment = round(validated_price / payload.months, 2)
+        result.setdefault("monthly_payment", monthly_payment)
+        result.update({
             "total_amount": validated_price,
             "installment_period": payload.months,
-            "budget_impact_assessment": "within_limits" if result.get("affordable", False) else "exceeds_limits"
-        }
-        
+            "budget_impact_assessment": (
+                "within_limits" if result.get("can_afford", False) else "exceeds_limits"
+            ),
+        })
+
         return FinancialResponseHelper.analysis_result(
             analysis_data=result,
             analysis_type="installment_evaluation",

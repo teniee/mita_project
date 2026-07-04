@@ -49,12 +49,13 @@ class Goal(Base):
     @hybrid_property
     def remaining_amount(self) -> Decimal:
         """Calculate remaining amount to reach goal"""
-        return max(Decimal(str(self.target_amount)) - Decimal(str(self.saved_amount)), Decimal('0'))
+        # Column defaults only apply at flush; guard against pre-flush None values
+        return max(Decimal(str(self.target_amount)) - Decimal(str(self.saved_amount or 0)), Decimal('0'))
 
     @hybrid_property
     def is_completed(self) -> bool:
         """Check if goal is completed"""
-        return self.status == 'completed' or self.progress >= 100
+        return self.status == 'completed' or (self.progress or 0) >= 100
 
     @hybrid_property
     def is_overdue(self) -> bool:
@@ -67,7 +68,7 @@ class Goal(Base):
         """Calculate and update progress percentage"""
         if self.target_amount > 0:
             self.progress = min(
-                (Decimal(str(self.saved_amount)) / Decimal(str(self.target_amount)) * 100),
+                (Decimal(str(self.saved_amount or 0)) / Decimal(str(self.target_amount)) * 100),
                 Decimal('100')
             )
 
@@ -82,7 +83,7 @@ class Goal(Base):
 
     def add_savings(self, amount: Decimal):
         """Add amount to saved_amount and update progress"""
-        self.saved_amount = Decimal(str(self.saved_amount)) + Decimal(str(amount))
+        self.saved_amount = Decimal(str(self.saved_amount or 0)) + Decimal(str(amount))
         self.update_progress()
 
     def __repr__(self):

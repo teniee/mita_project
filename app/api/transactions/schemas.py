@@ -144,11 +144,16 @@ class TxnIn(BaseModel):
     def validate_spent_at(cls, v):
         if v is None:
             return datetime.now(timezone.utc)
-        
+
+        # Clients may send timestamps without timezone info; treat them as UTC
+        # so the aware/naive comparison below cannot raise TypeError (→ 500).
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+
         # Enhanced date validation for financial transactions
         from datetime import timedelta
         now = datetime.now(timezone.utc)
-        
+
         # Check if date is not too far in the future (allow 1 day for timezone differences)
         if v > now + timedelta(days=1):
             raise ValueError("Transaction date cannot be more than 1 day in the future")
