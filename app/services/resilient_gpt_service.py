@@ -145,10 +145,20 @@ class ResilientGPTService:
                 fallback_type='categorization',
                 max_tokens=200
             )
-            
+
+            # A canned fallback string means the AI never answered — do not
+            # parse it as a model response (that would fabricate confidence).
+            if response in self.fallback_responses.get('categorization', []):
+                return {
+                    'category': 'Other',
+                    'confidence': 50,
+                    'reasoning': 'Automatic categorization unavailable',
+                    'suggested_category': None
+                }
+
             # Parse response for structured data
             return self._parse_categorization_response(response, description)
-            
+
         except Exception as e:
             logger.error(f"Expense categorization failed: {str(e)}")
             return {
@@ -326,8 +336,9 @@ class ResilientGPTService:
                 fallback_type='financial_advice',
                 max_tokens=50
             )
-            
-            return "temporarily unavailable" not in result.lower()
+
+            # A canned fallback response means the API did not actually answer
+            return result not in self.fallback_responses['financial_advice']
             
         except Exception as e:
             logger.error(f"Connection test failed: {str(e)}")

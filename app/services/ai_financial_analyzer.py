@@ -231,12 +231,17 @@ class AIFinancialAnalyzer:
     
     def _analyze_monthly_variance(self, spending_data: List[Dict]) -> float:
         """Calculate monthly spending variance"""
+        # Too few transactions make month-to-month variance statistical noise
+        # (e.g. 5 purchases straddling a month boundary look "irregular").
+        if len(spending_data) < 10:
+            return 0.0
+
         monthly_totals = {}
-        
+
         for expense in spending_data:
             month_key = expense['date'].strftime('%Y-%m')
             monthly_totals[month_key] = monthly_totals.get(month_key, 0) + expense['amount']
-        
+
         if len(monthly_totals) < 2:
             return 0.0
         

@@ -88,8 +88,8 @@ class TestResilientGPTService:
         messages = [{"role": "user", "content": "Test message"}]
         result = await gpt_service.ask_financial_advice(messages)
 
-        # Should return fallback response
-        assert "temporarily unavailable" in result.lower() or "try again" in result.lower()
+        # Should return one of the configured fallback responses
+        assert result in gpt_service.fallback_responses['financial_advice']
 
     @pytest.mark.asyncio
     async def test_budget_analysis(self, gpt_service):
@@ -178,9 +178,9 @@ class TestResilientGPTService:
 
         # The circuit breaker retries and may catch this as a connection-type error,
         # so the response may come from the timeout handler OR the connection fallback
-        assert ("longer than usual" in result.lower() or
-                "try again" in result.lower() or
-                "temporarily unavailable" in result.lower())
+        assert (result in gpt_service.fallback_responses['financial_advice'] or
+                "longer than usual" in result.lower() or
+                "try again" in result.lower())
 
     @pytest.mark.asyncio
     async def test_service_health_check(self, gpt_service):

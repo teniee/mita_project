@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.db.models import DailyPlan
 from app.core.category_priority import is_sacred, donor_sort_key
 from app.services.redistribution_audit_log import record_redistribution_event
+
+logger = logging.getLogger(__name__)
 
 
 def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: int):
@@ -82,15 +85,21 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                             "from_day": donor_entry.date.isoformat(),
                         }
                     )
-                    record_redistribution_event(
-                        db=db,
-                        user_id=user_id,
-                        from_category=donor_cat,
-                        to_category=cat,
-                        amount=to_take.quantize(Decimal("0.01")),
-                        reason="budget_redistribution",
-                        from_day=donor_entry.date,
-                    )
+                    # Record to audit log — must never break redistribution
+                    try:
+                        record_redistribution_event(
+                            db=db,
+                            user_id=user_id,
+                            from_category=donor_cat,
+                            to_category=cat,
+                            amount=to_take.quantize(Decimal("0.01")),
+                            reason="budget_redistribution",
+                            from_day=donor_entry.date,
+                        )
+                    except Exception as _audit_err:
+                        logger.warning(
+                            "audit log write failed (non-critical): %s", _audit_err
+                        )
                 if transfer <= Decimal("0"):
                     break
 
