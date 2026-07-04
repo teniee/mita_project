@@ -199,10 +199,38 @@ class SecurityConfig:
 
 class SecurityUtils:
     """Security utility functions"""
-    
+
+    @staticmethod
+    def validate_password_strength(password: str) -> None:
+        """Enforce the user password policy for a financial application.
+
+        Raises ValidationException (→ HTTP 400) on violations. System-generated
+        credentials (e.g. random OAuth placeholder passwords) must NOT go
+        through this method — they use the mechanical hashing path directly.
+        """
+        if not password or len(password) < SecurityConfig.MIN_PASSWORD_LENGTH:
+            raise ValidationException(
+                f"Password must be at least {SecurityConfig.MIN_PASSWORD_LENGTH} characters long",
+                field="password",
+            )
+        if len(password) > SecurityConfig.MAX_PASSWORD_LENGTH:
+            raise ValidationException(
+                f"Password cannot exceed {SecurityConfig.MAX_PASSWORD_LENGTH} characters",
+                field="password",
+            )
+        if not any(c.islower() for c in password):
+            raise ValidationException("Password must contain lowercase letters", field="password")
+        if not any(c.isupper() for c in password):
+            raise ValidationException("Password must contain uppercase letters", field="password")
+        if not any(c.isdigit() for c in password):
+            raise ValidationException("Password must contain numbers", field="password")
+        if not any(not c.isalnum() for c in password):
+            raise ValidationException("Password must contain special characters", field="password")
+
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using centralized secure configuration"""
+        """Hash a user-chosen password after enforcing the password policy"""
+        SecurityUtils.validate_password_strength(password)
         # Use centralized password hashing for consistency
         return centralized_hash_password(password)
     
@@ -213,8 +241,8 @@ class SecurityUtils:
         return centralized_verify_password(password, hashed)
     
     @staticmethod
-    def generate_secure_token(length: int = 32) -> str:
-        """Generate cryptographically secure random token"""
+    def generate_secure_token(length: int = 48) -> str:
+        """Generate cryptographically secure random token (length = random bytes)"""
         return secrets.token_urlsafe(length)
     
     @staticmethod

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Production-grade bcrypt settings - configurable via environment
-BCRYPT_ROUNDS = getattr(settings, 'BCRYPT_ROUNDS_PRODUCTION', 10)  # Optimized for performance while maintaining security
+BCRYPT_ROUNDS = getattr(settings, 'BCRYPT_ROUNDS_PRODUCTION', 12)  # Industry standard for financial applications
 BCRYPT_PERFORMANCE_TARGET_MS = getattr(settings, 'BCRYPT_PERFORMANCE_TARGET_MS', 500)  # Maximum acceptable hash time
 
 # Emergency/development settings (only for testing)
@@ -55,11 +55,7 @@ def get_thread_pool() -> ThreadPoolExecutor:
     return _thread_pool
 
 def get_bcrypt_rounds() -> int:
-    """Get appropriate bcrypt rounds based on environment"""
-    getattr(settings, 'ENVIRONMENT', 'development')
-    
-    # Use 12 rounds for all environments to ensure consistency and security
-    # Performance is acceptable (<50ms) so no need for environment-specific values
+    """Get bcrypt rounds (12 for all environments — consistency and security)"""
     return BCRYPT_ROUNDS
 
 def validate_password_requirements(password: str) -> None:

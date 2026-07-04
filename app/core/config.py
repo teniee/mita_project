@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120  # Default 2 hours — required for onboarding completion flow
     
     # Password Security Configuration
-    BCRYPT_ROUNDS_PRODUCTION: int = 10  # Optimized for performance while maintaining security
-    BCRYPT_ROUNDS_DEVELOPMENT: int = 10  # Balanced for development
+    BCRYPT_ROUNDS_PRODUCTION: int = 12  # Industry standard for financial applications
+    BCRYPT_ROUNDS_DEVELOPMENT: int = 12  # Keep parity with production (hash time still < target)
     BCRYPT_PERFORMANCE_TARGET_MS: int = 500  # Maximum acceptable hash time
     
     @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
